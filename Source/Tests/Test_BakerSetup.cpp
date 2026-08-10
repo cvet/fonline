@@ -33,8 +33,8 @@ static auto MakeTempBakerSetupDir(string_view name) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    const u8string base_utf8 = fs_path_to_u8string(base);
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    u8string base_utf8 = fs_path_to_u8string(base);
     return utf8_to_char_string(base_utf8.view());
 }
 
@@ -51,7 +51,7 @@ static auto RemoveBakerSetupDir(string_view path) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const u8string path_utf8 = path;
+    u8string path_utf8 = path;
     return fs_remove_dir_tree(path_utf8.view());
 }
 
@@ -59,7 +59,7 @@ static auto WriteBakerSetupText(string_view path, u8string_view content) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const u8string path_utf8 = path;
+    u8string path_utf8 = path;
     return fs_write_file_text(path_utf8.view(), content);
 }
 
@@ -67,7 +67,7 @@ static auto ReadBakerSetupText(string_view path) -> optional<u8string>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const u8string path_utf8 = path;
+    u8string path_utf8 = path;
     return fs_read_file_text(path_utf8.view());
 }
 
@@ -75,7 +75,7 @@ static auto WriteBakerSetupBytes(string_view path, const_span<byte> content) -> 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const u8string path_utf8 = path;
+    u8string path_utf8 = path;
     return fs_write_file_bytes(path_utf8.view(), content);
 }
 
@@ -83,7 +83,7 @@ static auto ReadBakerSetupBytes(string_view path) -> optional<vector<byte>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const u8string path_utf8 = path;
+    u8string path_utf8 = path;
     return fs_read_file_bytes(path_utf8.view());
 }
 
@@ -91,7 +91,7 @@ static auto BakerSetupLastWriteTime(string_view path) noexcept -> uint64_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const u8string path_utf8 = path;
+    u8string path_utf8 = path;
     return fs_last_write_time(path_utf8.view());
 }
 
@@ -99,7 +99,7 @@ static auto BakerSetupPathExists(string_view path) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const u8string path_utf8 = path;
+    u8string path_utf8 = path;
     return fs_exists(path_utf8.view());
 }
 
@@ -128,7 +128,7 @@ static auto ReadBakerSetupReport(string_view output_dir) -> nlohmann::json
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto report_data = ReadBakerSetupText(MakeBakerSetupReportPath(output_dir));
+    auto report_data = ReadBakerSetupText(MakeBakerSetupReportPath(output_dir));
     REQUIRE(report_data.has_value());
     return nlohmann::json::parse(utf8_as_char_view(report_data->view()));
 }
@@ -173,8 +173,8 @@ static auto MakeBakerSetupSpriteMeshTga() -> vector<byte>
 
     for (uint16_t y = 0; y < height; y++) {
         for (uint16_t x = 0; x < width; x++) {
-            const bool opaque = (x < 4 && y < 4) || (x >= width - 4 && y >= height - 4);
-            const size_t pixel_offset = header_size + (numeric_cast<size_t>(y) * width + x) * 4;
+            bool opaque = (x < 4 && y < 4) || (x >= width - 4 && y >= height - 4);
+            size_t pixel_offset = header_size + (numeric_cast<size_t>(y) * width + x) * 4;
             data[pixel_offset + 0] = byte {255};
             data[pixel_offset + 1] = byte {255};
             data[pixel_offset + 2] = byte {255};
@@ -187,7 +187,7 @@ static auto MakeBakerSetupSpriteMeshTga() -> vector<byte>
 
 static void SetBakerSetupFileWriteTime(string_view path, std::filesystem::file_time_type time)
 {
-    const u8string path_utf8 = path;
+    u8string path_utf8 = path;
     std::filesystem::last_write_time(std::filesystem::path {fs_make_path(path_utf8.view())}, time);
 }
 
@@ -195,7 +195,7 @@ static auto CalcBakerSetupZipCrc32(const_span<byte> data) noexcept -> uint32_t
 {
     uint32_t crc = 0xFFFFFFFF;
 
-    for (const byte value : data) {
+    for (byte value : data) {
         crc ^= std::to_integer<uint8_t>(value);
 
         for (size_t bit = 0; bit != 8; bit++) {
@@ -233,8 +233,8 @@ static void AppendBakerSetupZipLe32(vector<byte>& output, uint32_t value)
 static auto MakeBakerSetupStoredZip(string_view file_name, string_view file_content, uint32_t declared_size) -> vector<byte>
 {
     vector<byte> zip;
-    const uint16_t name_size = numeric_cast<uint16_t>(file_name.size());
-    const uint32_t crc = CalcBakerSetupZipCrc32(make_byte_span(file_content));
+    uint16_t name_size = numeric_cast<uint16_t>(file_name.size());
+    uint32_t crc = CalcBakerSetupZipCrc32(make_byte_span(file_content));
 
     AppendBakerSetupZipLe32(zip, 0x04034B50);
     AppendBakerSetupZipLe16(zip, 20);
@@ -386,15 +386,15 @@ TEST_CASE("BakerSetup")
 
 TEST_CASE("BakerDataSource")
 {
-    const string temp_dir = MakeTempBakerSetupDir("baker_data_source");
-    const u8string temp_dir_utf8 = temp_dir;
-    const string input_dir = strex(temp_dir).combine_path("input").str();
-    const string output_dir = strex(temp_dir).combine_path("output").str();
-    const string prebaked_input_path = strex(input_dir).combine_path("Data/prebaked.json").str();
-    const string prebaked_output_path = strex(output_dir).combine_path("Core/Data/prebaked.json").str();
-    const string runtime_input_path = strex(input_dir).combine_path("Data/runtime.json").str();
-    const string stale_input_path = strex(input_dir).combine_path("Data/stale.json").str();
-    const string stale_output_path = strex(output_dir).combine_path("Core/Data/stale.json").str();
+    string temp_dir = MakeTempBakerSetupDir("baker_data_source");
+    u8string temp_dir_utf8 = temp_dir;
+    string input_dir = strex(temp_dir).combine_path("input").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string prebaked_input_path = strex(input_dir).combine_path("Data/prebaked.json").str();
+    string prebaked_output_path = strex(output_dir).combine_path("Core/Data/prebaked.json").str();
+    string runtime_input_path = strex(input_dir).combine_path("Data/runtime.json").str();
+    string stale_input_path = strex(input_dir).combine_path("Data/stale.json").str();
+    string stale_output_path = strex(output_dir).combine_path("Core/Data/stale.json").str();
 
     ignore_unused(RemoveBakerSetupDir(temp_dir));
 
@@ -457,7 +457,7 @@ Bakers = {}
     ptr<const byte> prebaked_data_ptr = prebaked_data;
     CHECK(prebaked_data_ptr.reinterpret_as<char>().as_str(size) == "cached-prebaked");
 
-    const string runtime_output_path = strex(output_dir).combine_path("Core/Data/runtime.json").str();
+    string runtime_output_path = strex(output_dir).combine_path("Core/Data/runtime.json").str();
     CHECK_FALSE(BakerSetupPathExists(runtime_output_path));
 
     auto runtime_data = data_source.OpenFile("Data/runtime.json", size, write_time);
@@ -539,7 +539,7 @@ Bakers = {}
             strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
             .str());
 
-    const u8string temp_dir_utf8 = temp_dir;
+    u8string temp_dir_utf8 = temp_dir;
     settings.ApplyConfigFile(config, temp_dir_utf8.view());
 
     BakerDataSource data_source {&settings};
@@ -580,7 +580,7 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery.
     array<string_view, 3> metadata_targets = {"server", "client", "mapper"};
 
-    for (const string_view target : metadata_targets) {
+    for (string_view target : metadata_targets) {
         string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
         REQUIRE(WriteBakerSetupBytes(metadata_output_path, MakeEmptyMetadataBlob()));
         SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
@@ -605,7 +605,7 @@ Bakers = {}
         strex(temp_dir).combine_path("output").str(), MetadataBaker::NAME, ModelInfoBaker::NAME)
             .str());
 
-    const u8string temp_dir_utf8 = temp_dir;
+    u8string temp_dir_utf8 = temp_dir;
     settings.ApplyConfigFile(config, temp_dir_utf8);
 
     // Construction runs Reindex, whose output-discovery pass triggers the re-entrant metadata read.
@@ -662,7 +662,7 @@ Bakers = {}
             strex(temp_dir).combine_path("output").str(), RawCopyBaker::NAME, RawCopyBaker::NAME)
             .str());
 
-    const u8string temp_dir_utf8 = temp_dir;
+    u8string temp_dir_utf8 = temp_dir;
     settings.ApplyConfigFile(config, temp_dir_utf8.view());
 
     BakerDataSource data_source {&settings};
@@ -679,22 +679,22 @@ Bakers = {}
 
 TEST_CASE("BakerMasterRawCopy")
 {
-    const string temp_dir = MakeTempBakerSetupDir("master_baker_raw_copy");
-    const u8string temp_dir_utf8 = temp_dir;
-    const string input_dir = strex(temp_dir).combine_path("input").str();
-    const string output_dir = strex(temp_dir).combine_path("output").str();
-    const string source_path = strex(input_dir).combine_path("Data/keep.json").str();
-    const string excluded_source_path = strex(input_dir).combine_path("Data/_scratch.json").str();
-    const string output_path = strex(output_dir).combine_path("Core/Data/keep.json").str();
-    const string excluded_output_path = strex(output_dir).combine_path("Core/Data/_scratch.json").str();
-    const string outdated_path = strex(output_dir).combine_path("Core/Data/obsolete.json").str();
-    const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
-    const string report_path = MakeBakerSetupReportPath(output_dir);
-    const string full_report_path = MakeBakerSetupFullReportPath(output_dir);
+    string temp_dir = MakeTempBakerSetupDir("master_baker_raw_copy");
+    u8string temp_dir_utf8 = temp_dir;
+    string input_dir = strex(temp_dir).combine_path("input").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string source_path = strex(input_dir).combine_path("Data/keep.json").str();
+    string excluded_source_path = strex(input_dir).combine_path("Data/_scratch.json").str();
+    string output_path = strex(output_dir).combine_path("Core/Data/keep.json").str();
+    string excluded_output_path = strex(output_dir).combine_path("Core/Data/_scratch.json").str();
+    string outdated_path = strex(output_dir).combine_path("Core/Data/obsolete.json").str();
+    string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
+    string report_path = MakeBakerSetupReportPath(output_dir);
+    string full_report_path = MakeBakerSetupFullReportPath(output_dir);
 
     ignore_unused(RemoveBakerSetupDir(temp_dir));
 
-    const vector<byte> source_bytes = {byte {0x00}, byte {0x80}, byte {0xFF}};
+    vector<byte> source_bytes = {byte {0x00}, byte {0x80}, byte {0xFF}};
     REQUIRE(WriteBakerSetupBytes(source_path, source_bytes));
     REQUIRE(WriteBakerSetupText(excluded_source_path, u8"scratch"));
     REQUIRE(WriteBakerSetupText(outdated_path, u8"obsolete"));
@@ -727,12 +727,12 @@ Bakers = {}
 
     REQUIRE(BakerSetupPathExists(report_path));
     REQUIRE(BakerSetupPathExists(full_report_path));
-    const auto full_report_data = ReadBakerSetupText(full_report_path);
+    auto full_report_data = ReadBakerSetupText(full_report_path);
     REQUIRE(full_report_data.has_value());
-    const u8string report_path_utf8 = report_path;
-    const u8string output_dir_utf8 = output_dir;
-    const auto report_parent = std::filesystem::path {fs_make_path(report_path_utf8.view())}.parent_path();
-    const auto output_path_object = std::filesystem::path {fs_make_path(output_dir_utf8.view())};
+    u8string report_path_utf8 = report_path;
+    u8string output_dir_utf8 = output_dir;
+    auto report_parent = std::filesystem::path {fs_make_path(report_path_utf8.view())}.parent_path();
+    auto output_path_object = std::filesystem::path {fs_make_path(output_dir_utf8.view())};
     CHECK(report_parent == output_path_object);
 
     nlohmann::json first_report = ReadBakerSetupReport(output_dir);
@@ -792,7 +792,7 @@ Bakers = {}
     auto future_source_time = std::filesystem::file_time_type::clock::now() + std::chrono::minutes {1};
     SetBakerSetupFileWriteTime(source_path, future_source_time);
     REQUIRE(BakerSetupLastWriteTime(source_path) > BakerSetupLastWriteTime(output_path));
-    const auto output_write_time_before_rebake = BakerSetupLastWriteTime(output_path);
+    auto output_write_time_before_rebake = BakerSetupLastWriteTime(output_path);
 
     MasterBaker stale_source_baker {&settings};
     REQUIRE(stale_source_baker.BakeAll());
@@ -836,7 +836,7 @@ Bakers = {}
         output_dir, RawCopyBaker::NAME, RawCopyBaker::NAME);
     auto config = ConfigFile(std::move(config_text));
 
-    const u8string temp_dir_utf8 = temp_dir;
+    u8string temp_dir_utf8 = temp_dir;
     settings.ApplyConfigFile(config, temp_dir_utf8.view());
 
     MasterBaker baker {&settings};
@@ -860,7 +860,7 @@ TEST_CASE("BakerMasterImageReport")
 
     ignore_unused(RemoveBakerSetupDir(temp_dir));
 
-    const vector<byte> source_data = MakeBakerSetupSpriteMeshTga();
+    vector<byte> source_data = MakeBakerSetupSpriteMeshTga();
     REQUIRE(WriteBakerSetupBytes(source_path, source_data));
 
     GlobalSettings settings {true};
@@ -882,7 +882,7 @@ Bakers = {}
             output_dir, ImageBaker::NAME)
             .str());
 
-    const u8string temp_dir_utf8 = temp_dir;
+    u8string temp_dir_utf8 = temp_dir;
     settings.ApplyConfigFile(config, temp_dir_utf8.view());
 
     MasterBaker baker {&settings};
@@ -991,14 +991,14 @@ TEST_CASE("BakerMasterRawCopyEdges")
 {
     SECTION("Force baking deletes previous output")
     {
-        const string temp_dir = MakeTempBakerSetupDir("master_baker_force_raw_copy");
-        const u8string temp_dir_utf8 = temp_dir;
-        const string input_dir = strex(temp_dir).combine_path("input").str();
-        const string output_dir = strex(temp_dir).combine_path("output").str();
-        const string source_path = strex(input_dir).combine_path("Data/force.json").str();
-        const string output_path = strex(output_dir).combine_path("Core/Data/force.json").str();
-        const string outdated_path = strex(output_dir).combine_path("Core/Data/outdated.json").str();
-        const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
+        string temp_dir = MakeTempBakerSetupDir("master_baker_force_raw_copy");
+        u8string temp_dir_utf8 = temp_dir;
+        string input_dir = strex(temp_dir).combine_path("input").str();
+        string output_dir = strex(temp_dir).combine_path("output").str();
+        string source_path = strex(input_dir).combine_path("Data/force.json").str();
+        string output_path = strex(output_dir).combine_path("Core/Data/force.json").str();
+        string outdated_path = strex(output_dir).combine_path("Core/Data/outdated.json").str();
+        string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
         ignore_unused(RemoveBakerSetupDir(temp_dir));
 
@@ -1035,14 +1035,14 @@ Bakers = {}
 
     SECTION("Build hash mismatch forces output rebuild")
     {
-        const string temp_dir = MakeTempBakerSetupDir("master_baker_hash_raw_copy");
-        const u8string temp_dir_utf8 = temp_dir;
-        const string input_dir = strex(temp_dir).combine_path("input").str();
-        const string output_dir = strex(temp_dir).combine_path("output").str();
-        const string source_path = strex(input_dir).combine_path("Data/hash.json").str();
-        const string output_path = strex(output_dir).combine_path("Core/Data/hash.json").str();
-        const string outdated_path = strex(output_dir).combine_path("Core/Data/outdated.json").str();
-        const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
+        string temp_dir = MakeTempBakerSetupDir("master_baker_hash_raw_copy");
+        u8string temp_dir_utf8 = temp_dir;
+        string input_dir = strex(temp_dir).combine_path("input").str();
+        string output_dir = strex(temp_dir).combine_path("output").str();
+        string source_path = strex(input_dir).combine_path("Data/hash.json").str();
+        string output_path = strex(output_dir).combine_path("Core/Data/hash.json").str();
+        string outdated_path = strex(output_dir).combine_path("Core/Data/outdated.json").str();
+        string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
         ignore_unused(RemoveBakerSetupDir(temp_dir));
 
@@ -1080,10 +1080,10 @@ Bakers = {}
 
     SECTION("Missing input directory reports bake failure")
     {
-        const string temp_dir = MakeTempBakerSetupDir("master_baker_missing_input");
-        const u8string temp_dir_utf8 = temp_dir;
-        const string output_dir = strex(temp_dir).combine_path("output").str();
-        const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
+        string temp_dir = MakeTempBakerSetupDir("master_baker_missing_input");
+        u8string temp_dir_utf8 = temp_dir;
+        string output_dir = strex(temp_dir).combine_path("output").str();
+        string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
         ignore_unused(RemoveBakerSetupDir(temp_dir));
 
@@ -1108,10 +1108,10 @@ Bakers = {}
         CHECK_FALSE(baker.BakeAll());
         CHECK_FALSE(ReadBakerSetupText(build_hash_path).has_value());
 
-        const string report_path = MakeBakerSetupReportPath(output_dir);
+        string report_path = MakeBakerSetupReportPath(output_dir);
         REQUIRE(BakerSetupPathExists(report_path));
-        const u8string report_path_utf8 = report_path;
-        const u8string output_dir_utf8 = output_dir;
+        u8string report_path_utf8 = report_path;
+        u8string output_dir_utf8 = output_dir;
         CHECK(std::filesystem::path {fs_make_path(report_path_utf8.view())}.parent_path() == std::filesystem::path {fs_make_path(output_dir_utf8.view())});
 
         nlohmann::json report = ReadBakerSetupReport(output_dir);
@@ -1130,12 +1130,12 @@ TEST_CASE("BakerMasterRawCopyPackInputs")
 {
     SECTION("InputFiles zip pack can be baked asynchronously")
     {
-        const string temp_dir = MakeTempBakerSetupDir("master_baker_input_file_pack");
-        const u8string temp_dir_utf8 = temp_dir;
-        const string output_dir = strex(temp_dir).combine_path("output").str();
-        const string pack_path = strex(temp_dir).combine_path("PackedInput.zip").str();
-        const string output_path = strex(output_dir).combine_path("Core/Data/from_pack.json").str();
-        const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
+        string temp_dir = MakeTempBakerSetupDir("master_baker_input_file_pack");
+        u8string temp_dir_utf8 = temp_dir;
+        string output_dir = strex(temp_dir).combine_path("output").str();
+        string pack_path = strex(temp_dir).combine_path("PackedInput.zip").str();
+        string output_path = strex(output_dir).combine_path("Core/Data/from_pack.json").str();
+        string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
         ignore_unused(RemoveBakerSetupDir(temp_dir));
 
@@ -1168,12 +1168,12 @@ Bakers = {}
 
     SECTION("InputFiles read failure reports bake failure")
     {
-        const string temp_dir = MakeTempBakerSetupDir("master_baker_input_file_pack_error");
-        const u8string temp_dir_utf8 = temp_dir;
-        const string output_dir = strex(temp_dir).combine_path("output").str();
-        const string pack_path = strex(temp_dir).combine_path("BrokenInput.zip").str();
-        const string output_path = strex(output_dir).combine_path("Core/Data/broken.json").str();
-        const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
+        string temp_dir = MakeTempBakerSetupDir("master_baker_input_file_pack_error");
+        u8string temp_dir_utf8 = temp_dir;
+        string output_dir = strex(temp_dir).combine_path("output").str();
+        string pack_path = strex(temp_dir).combine_path("BrokenInput.zip").str();
+        string output_path = strex(output_dir).combine_path("Core/Data/broken.json").str();
+        string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
         ignore_unused(RemoveBakerSetupDir(temp_dir));
 

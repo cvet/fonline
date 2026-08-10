@@ -119,11 +119,11 @@ TEST_CASE("NetBuffer")
         out_buf.EndMsg();
 
         if constexpr (std::endian::native == std::endian::little) {
-            const array<byte, 9> golden = {byte {0x22}, byte {0x94}, byte {0x1E}, byte {0x01}, byte {0x09}, byte {0x00}, byte {0x00}, byte {0x00}, byte {0x0F}};
+            array<byte, 9> golden = {byte {0x22}, byte {0x94}, byte {0x1E}, byte {0x01}, byte {0x09}, byte {0x00}, byte {0x00}, byte {0x00}, byte {0x0F}};
             CHECK(std::ranges::equal(out_buf.GetData(), golden));
         }
         else {
-            const array<byte, 9> golden = {byte {0x01}, byte {0x1E}, byte {0x94}, byte {0x22}, byte {0x00}, byte {0x00}, byte {0x00}, byte {0x09}, byte {0x0F}};
+            array<byte, 9> golden = {byte {0x01}, byte {0x1E}, byte {0x94}, byte {0x22}, byte {0x00}, byte {0x00}, byte {0x00}, byte {0x09}, byte {0x0F}};
             CHECK(std::ranges::equal(out_buf.GetData(), golden));
         }
     }
@@ -203,7 +203,7 @@ TEST_CASE("NetBuffer")
     SECTION("InvalidSignatureThrows")
     {
         NetInBuffer in_buf {8};
-        const uint32_t invalid_signature = 0xDEADBEEF;
+        uint32_t invalid_signature = 0xDEADBEEF;
         in_buf.AddData({reinterpret_cast<const byte*>(&invalid_signature), sizeof(invalid_signature)});
 
         CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
@@ -228,7 +228,7 @@ TEST_CASE("NetBuffer")
         // A client-declared string length larger than the bytes actually buffered must be rejected
         // before the resize, so a tiny message cannot amplify into a multi-GB allocation
         NetInBuffer in_buf {8};
-        const uint32_t bogus_len = 0xFFFFFFFF;
+        uint32_t bogus_len = 0xFFFFFFFF;
         in_buf.AddData({reinterpret_cast<const byte*>(&bogus_len), sizeof(bogus_len)});
 
         CHECK_THROWS_AS(in_buf.Read<string>(), NetBufferException);
@@ -282,7 +282,7 @@ TEST_CASE("NetBufferAdversarial")
             out.Write<string_view>(variant % 2 == 0 ? "payload-string" : "");
             out.Write<uint16_t>(static_cast<uint16_t>(variant));
             out.EndMsg();
-            const auto data = out.GetData();
+            auto data = out.GetData();
             return vector<byte> {data.begin(), data.end()};
         };
 
@@ -335,9 +335,9 @@ TEST_CASE("NetBufferAdversarial")
     // before allocating, and a well-formed blob must round-trip.
     SECTION("PropsDataWireRoundtripAndCorruption")
     {
-        const vector<byte> a {byte {1}, byte {2}, byte {3}, byte {4}};
-        const vector<byte> b {};
-        const vector<byte> c {byte {9}, byte {9}, byte {9}};
+        vector<byte> a {byte {1}, byte {2}, byte {3}, byte {4}};
+        vector<byte> b {};
+        vector<byte> c {byte {9}, byte {9}, byte {9}};
         vector<nptr<const byte>> ptrs {a.data(), b.data(), c.data()};
         vector<uint32_t> sizes {static_cast<uint32_t>(a.size()), static_cast<uint32_t>(b.size()), static_cast<uint32_t>(c.size())};
 

@@ -766,7 +766,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 
     // Enum helpers
     for (const auto& enum_name : meta->GetAllEnums() | std::views::keys) {
-        const string enum_name_ascii = utf8_to_string(u8strex("{}", enum_name));
+        string enum_name_ascii = utf8_to_string(u8strex("{}", enum_name));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum_{}(string valueName)", enum_name_ascii, enum_name_ascii).c_str(), FO_SCRIPT_GENERIC(Game_ParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryParseEnum(string valueName, {}&out result)", enum_name_ascii).c_str(), FO_SCRIPT_GENERIC(Game_TryParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("string EnumToString({} value, bool fullSpecification = false)", enum_name_ascii).c_str(), FO_SCRIPT_GENERIC(Game_EnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
@@ -778,7 +778,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     for (const auto& type_name : meta->GetEntityTypes() | std::views::keys) {
         auto registrator = meta->GetPropertyRegistrator(type_name);
         FO_VERIFY_AND_THROW(registrator, "Missing property registrator for entity type");
-        const string registrator_type_name = utf8_to_string(u8strex("{}", registrator->GetTypeName()));
+        string registrator_type_name = utf8_to_string(u8strex("{}", registrator->GetTypeName()));
 
         for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
             auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator_type_name).c_str());

@@ -1219,7 +1219,7 @@ static auto TriangulateSpriteContours(const vector<SpriteContour>& contours, int
                 return std::nullopt;
             }
 
-            const auto [owner, inserted] = contour_vertex_owners.emplace(SpriteGridPointKey(point), i);
+            auto [owner, inserted] = contour_vertex_owners.emplace(SpriteGridPointKey(point), i);
 
             if (!inserted) {
                 ignore_unused(owner);

@@ -293,7 +293,7 @@ static auto IndexSkeletonJoints(string_view source_file, const vector<ModelSkele
             throw ModelSkeletonCompatibilityException("Skeleton source has duplicate joint hierarchy", source_file, FormatJointHierarchy(joint.Hierarchy));
         }
 
-        const auto [name_it, name_inserted] = result.HierarchyByName.emplace(joint.Name, joint.Hierarchy);
+        auto [name_it, name_inserted] = result.HierarchyByName.emplace(joint.Name, joint.Hierarchy);
 
         if (!name_inserted) {
             throw ModelSkeletonCompatibilityException("Skeleton source has duplicate joint name at two hierarchies", source_file, joint.Name, FormatJointHierarchy(name_it->second), FormatJointHierarchy(joint.Hierarchy));
@@ -540,7 +540,7 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
         "CanonicalSkeleton",
     };
 
-    const vector<byte> skeleton_payload = SerializeModelAnimationObject(*skeleton, strex("canonical skeleton for '{}'", model_description));
+    vector<byte> skeleton_payload = SerializeModelAnimationObject(*skeleton, strex("canonical skeleton for '{}'", model_description));
     result.SkeletonArchive = WrapAndValidateModelAnimationArchive(result.SkeletonMetadata, skeleton_payload);
     ModelAnimationArchive loaded_skeleton_archive = ReadModelAnimationArchive(result.SkeletonArchive, result.SkeletonMetadata);
     ozz::animation::Skeleton loaded_skeleton = DeserializeModelAnimationObject<ozz::animation::Skeleton>(loaded_skeleton_archive.Payload, strex("canonical skeleton for '{}'", model_description));
@@ -556,7 +556,7 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
         "BaseJointRemap",
     };
 
-    const vector<byte> base_remap_payload = WriteModelAnimationJointRemapPayload(result.BaseJointRemap, strex("base remap for '{}'", model_description));
+    vector<byte> base_remap_payload = WriteModelAnimationJointRemapPayload(result.BaseJointRemap, strex("base remap for '{}'", model_description));
     result.BaseJointRemapArchive = WrapAndValidateModelAnimationArchive(result.BaseJointRemapMetadata, base_remap_payload);
     ModelAnimationArchive loaded_base_remap_archive = ReadModelAnimationArchive(result.BaseJointRemapArchive, result.BaseJointRemapMetadata);
     ModelAnimationJointRemap loaded_base_remap = ReadModelAnimationJointRemapPayload(loaded_base_remap_archive.Payload, strex("base remap for '{}'", model_description));
@@ -586,7 +586,7 @@ auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto take_archive_payload = [](ModelAnimationArchiveMetadata& metadata, vector<byte>& archive_data) -> ModelAnimationRigArchiveData {
+    auto take_archive_payload = [](ModelAnimationArchiveMetadata& metadata, vector<byte>& archive_data) -> ModelAnimationRigArchiveData {
         ModelAnimationArchive archive = ReadModelAnimationArchive(archive_data, metadata);
         return ModelAnimationRigArchiveData {std::move(metadata), std::move(archive.Payload)};
     };
@@ -886,8 +886,8 @@ static auto BuildModelAnimationClipArtifact(const ModelAnimationSource& animatio
         animation.Name,
     };
 
-    const string animation_context = strex("animation '{}#{}'", animation.FileName, animation.Name);
-    const vector<byte> animation_payload = SerializeModelAnimationObject(*runtime_animation, animation_context);
+    string animation_context = strex("animation '{}#{}'", animation.FileName, animation.Name);
+    vector<byte> animation_payload = SerializeModelAnimationObject(*runtime_animation, animation_context);
     result.AnimationArchive = WrapAndValidateModelAnimationArchive(result.AnimationMetadata, animation_payload);
     ModelAnimationArchive loaded_animation_archive = ReadModelAnimationArchive(result.AnimationArchive, result.AnimationMetadata);
     ozz::animation::Animation loaded_animation = DeserializeModelAnimationObject<ozz::animation::Animation>(loaded_animation_archive.Payload, animation_context);
@@ -903,7 +903,7 @@ static auto BuildModelAnimationClipArtifact(const ModelAnimationSource& animatio
         strex("{}:JointRemap", animation.Name),
     };
 
-    const vector<byte> remap_payload = WriteModelAnimationJointRemapPayload(result.JointRemap, animation_context);
+    vector<byte> remap_payload = WriteModelAnimationJointRemapPayload(result.JointRemap, animation_context);
     result.JointRemapArchive = WrapAndValidateModelAnimationArchive(result.JointRemapMetadata, remap_payload);
     ModelAnimationArchive loaded_remap_archive = ReadModelAnimationArchive(result.JointRemapArchive, result.JointRemapMetadata);
     ModelAnimationJointRemap loaded_remap = ReadModelAnimationJointRemapPayload(loaded_remap_archive.Payload, animation_context);

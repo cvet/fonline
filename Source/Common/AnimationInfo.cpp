@@ -49,8 +49,8 @@ static auto ParseSpriteInfoIntValues(const ConfigKeyValueMap& values, string_vie
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ascii_values = utf8_to_string(GetRequiredSpriteInfoValue(values, file_name, section_name, key));
-    const vector<string_view> tokens = strvex(ascii_values).split(' ');
+    string ascii_values = utf8_to_string(GetRequiredSpriteInfoValue(values, file_name, section_name, key));
+    vector<string_view> tokens = strvex(ascii_values).split(' ');
     vector<int32_t> result;
     result.reserve(tokens.size());
 
@@ -213,9 +213,9 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> u8string
             }
         }
 
-        const int32_t duration_ms = numeric_cast<int32_t>(entry.Info.Duration.milliseconds());
-        const int32_t direction_count = numeric_cast<int32_t>(entry.Info.Directions.size());
-        const u8string entry_text = u8strex("[{}]\nSourcePath = {}\nInfoVersion = {}\nFrameCount = {}\nDurationMs = {}\nDirectionCount = {}\nSharedFrameIndices = {}\nOffsetsX = {}\nOffsetsY = {}\nWidths = {}\nHeights = {}\nNextOffsetsX = {}\nNextOffsetsY = {}\n\n", entry.ResourcePath, entry.SourcePath, SPRITE_INFO_VERSION, entry.Info.FrameCount, duration_ms, direction_count, shared_frame_indices, offsets_x, offsets_y, widths, heights, next_offsets_x, next_offsets_y);
+        int32_t duration_ms = numeric_cast<int32_t>(entry.Info.Duration.milliseconds());
+        int32_t direction_count = numeric_cast<int32_t>(entry.Info.Directions.size());
+        u8string entry_text = u8strex("[{}]\nSourcePath = {}\nInfoVersion = {}\nFrameCount = {}\nDurationMs = {}\nDirectionCount = {}\nSharedFrameIndices = {}\nOffsetsX = {}\nOffsetsY = {}\nWidths = {}\nHeights = {}\nNextOffsetsX = {}\nNextOffsetsY = {}\n\n", entry.ResourcePath, entry.SourcePath, SPRITE_INFO_VERSION, entry.Info.FrameCount, duration_ms, direction_count, shared_frame_indices, offsets_x, offsets_y, widths, heights, next_offsets_x, next_offsets_y);
         result.append(entry_text.view());
     }
 
@@ -283,14 +283,14 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
             FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation info section is missing a required bounds key", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
         }
 
-        const auto get_value = [&key_values, section_name](string_view key) -> u8string_view {
-            const auto it = key_values.find(key);
+        auto get_value = [&key_values, section_name](string_view key) -> u8string_view {
+            auto it = key_values.find(key);
             FO_VERIFY_AND_THROW(it != key_values.end(), "Model animation info key lookup failed", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             return it->second;
         };
-        const auto parse_int_values = [&get_value, section_name](string_view key) -> vector<int32_t> {
-            const string ascii_values = utf8_to_string(get_value(key));
-            const vector<string_view> tokens = strvex(ascii_values).split(' ');
+        auto parse_int_values = [&get_value, section_name](string_view key) -> vector<int32_t> {
+            string ascii_values = utf8_to_string(get_value(key));
+            vector<string_view> tokens = strvex(ascii_values).split(' ');
             vector<int32_t> values;
             values.reserve(tokens.size());
 
@@ -305,9 +305,9 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
 
             return values;
         };
-        const auto parse_float_values = [&get_value, section_name](string_view key) -> vector<float32_t> {
-            const string ascii_values = utf8_to_string(get_value(key));
-            const vector<string_view> tokens = strvex(ascii_values).split(' ');
+        auto parse_float_values = [&get_value, section_name](string_view key) -> vector<float32_t> {
+            string ascii_values = utf8_to_string(get_value(key));
+            vector<string_view> tokens = strvex(ascii_values).split(' ');
             vector<float32_t> values;
             values.reserve(tokens.size());
 

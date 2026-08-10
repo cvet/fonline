@@ -62,7 +62,7 @@ namespace BakerTests
         auto mutable_setting = FixedSettingForOverride(setting);
 
         if constexpr (std::same_as<setting_type, u8string> && std::convertible_to<U, string_view>) {
-            const string_view value_chars = std::forward<U>(value);
+            string_view value_chars = std::forward<U>(value);
             *mutable_setting = value_chars;
         }
         else {
@@ -338,7 +338,7 @@ namespace BakerTests
 
         void AddFile(string_view path, u8string_view content, uint64_t write_time = 1)
         {
-            const const_span<byte> bytes = utf8_to_byte_span(content);
+            const_span<byte> bytes = utf8_to_byte_span(content);
             AddFile(path, vector<byte> {bytes.begin(), bytes.end()}, write_time);
         }
 

@@ -86,8 +86,8 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     WriteLog("Connecting to server '{}:{}'", host, port);
 
 #else
-    const string_view host = _settings->WebSocketHost;
-    const uint16_t port = numeric_cast<uint16_t>(_settings->WebSocketPort);
+    string_view host = _settings->WebSocketHost;
+    uint16_t port = numeric_cast<uint16_t>(_settings->WebSocketPort);
 
     if (!_settings->SecuredWebSockets) {
         WebRelated::SetWebSocketScheme(false);
@@ -152,7 +152,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
 
         while (true) {
             if (CheckStatus(false)) {
-                const auto result_buf = ReceiveData();
+                auto result_buf = ReceiveData();
                 vector<byte> result(result_buf.size());
                 if (!result.empty()) {
                     MemCopy(result.data(), result_buf.data(), result_buf.size());
@@ -284,9 +284,9 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         }
     }
     else if (_settings->ProxyType == PROXY_HTTP) {
-        const string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", net_sockets::ipv4_to_string(_gameAddrIp), _gameAddrPort);
-        const vector<byte> result = send_recv(make_byte_span(request));
-        const string result_str {span_to_string(result)};
+        string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", net_sockets::ipv4_to_string(_gameAddrIp), _gameAddrPort);
+        vector<byte> result = send_recv(make_byte_span(request));
+        string result_str {span_to_string(result)};
 
         if (result_str.find(" 200 ") == string::npos) {
             throw NetworkClientException("Proxy connection error", request);

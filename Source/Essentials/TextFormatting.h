@@ -153,7 +153,7 @@ namespace text_format_detail
         }
         else if constexpr (std::is_array_v<std::remove_reference_t<T>> && IsRawCharTextArg<T>) {
             constexpr size_t extent = std::extent_v<std::remove_reference_t<T>>;
-            const size_t size = extent != 0 && value[extent - 1] == '\0' ? extent - 1 : extent;
+            size_t size = extent != 0 && value[extent - 1] == '\0' ? extent - 1 : extent;
             return string_view {value, size};
         }
         else {
@@ -185,7 +185,7 @@ public:
             }
         }
 
-        const std::format_string<text_format_detail::mapped_format_arg_t<Args>...> checked_format {literal};
+        std::format_string<text_format_detail::mapped_format_arg_t<Args>...> checked_format {literal};
         ignore_unused(checked_format);
     }
 
@@ -210,8 +210,8 @@ public:
             utf8_format[i] = literal[i];
         }
 
-        const std::array<char, N> char_format = std::bit_cast<std::array<char, N>>(utf8_format);
-        const std::format_string<text_format_detail::mapped_format_arg_t<Args>...> checked_format {string_view {char_format.data(), N - 1}};
+        std::array<char, N> char_format = std::bit_cast<std::array<char, N>>(utf8_format);
+        std::format_string<text_format_detail::mapped_format_arg_t<Args>...> checked_format {string_view {char_format.data(), N - 1}};
         ignore_unused(checked_format);
     }
 
@@ -225,7 +225,7 @@ template<typename... Args>
     requires((text_format_detail::IsUtf8FormatArg<Args>) && ...)
 [[nodiscard]] auto FormatUtf8(format_string<std::type_identity_t<Args>...> format, Args&&... args) -> u8string
 {
-    const string result = text_format_detail::FormatAdapted(format.view(), std::forward<Args>(args)...);
+    string result = text_format_detail::FormatAdapted(format.view(), std::forward<Args>(args)...);
     return utf8_from_char_span(const_span<char> {result.data(), result.size()});
 }
 
@@ -233,8 +233,8 @@ template<typename... Args>
     requires((text_format_detail::IsUtf8FormatArg<Args>) && ...)
 [[nodiscard]] auto FormatUtf8(u8format_string<std::type_identity_t<Args>...> format, Args&&... args) -> u8string
 {
-    const string_view format_view = text_format_detail::AdaptUtf8FormatArg(format.view());
-    const string result = text_format_detail::FormatAdapted(format_view, std::forward<Args>(args)...);
+    string_view format_view = text_format_detail::AdaptUtf8FormatArg(format.view());
+    string result = text_format_detail::FormatAdapted(format_view, std::forward<Args>(args)...);
     return utf8_from_char_span(const_span<char> {result.data(), result.size()});
 }
 

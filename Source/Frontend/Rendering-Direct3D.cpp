@@ -736,17 +736,17 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, u8string_view name, cons
         // Create the vertex shader
         {
             u8string vertex_shader_fname = u8strex("{}.fofx-{}-vert-hlsl", u8strex(name).erase_file_extension(), pass + 1);
-            const vector<byte> vertex_shader_data = loader(vertex_shader_fname);
-            const u8string vertex_shader_content = utf8_from_byte_span(vertex_shader_data);
+            vector<byte> vertex_shader_data = loader(vertex_shader_fname);
+            u8string vertex_shader_content = utf8_from_byte_span(vertex_shader_data);
             FO_VERIFY_AND_THROW(!vertex_shader_content.empty(), "Direct3D effect vertex shader content is empty after loading", name, pass + 1, vertex_shader_fname);
 
             nptr<ID3DBlob> vertex_shader_blob {};
             nptr<ID3DBlob> error_blob {};
 
-            const ptr<const char> vertex_shader_content_cstr = utf8_to_c_str(vertex_shader_content.view_nt());
+            ptr<const char> vertex_shader_content_cstr = utf8_to_c_str(vertex_shader_content.view_nt());
             ptr<const char> vertex_shader_entry_point = "main";
             auto vertex_shader_profile = make_ptr(_ctx->Settings->Direct3DVertexShaderProfile.c_str());
-            const auto d3d_compile = ::D3DCompile(vertex_shader_content_cstr.get(), vertex_shader_content.size(), nullptr, nullptr, nullptr, vertex_shader_entry_point.get(), vertex_shader_profile.get(), 0, 0, vertex_shader_blob.get_pp(), error_blob.get_pp());
+            auto d3d_compile = ::D3DCompile(vertex_shader_content_cstr.get(), vertex_shader_content.size(), nullptr, nullptr, nullptr, vertex_shader_entry_point.get(), vertex_shader_profile.get(), 0, 0, vertex_shader_blob.get_pp(), error_blob.get_pp());
 
             if (FAILED(d3d_compile)) {
                 FO_VERIFY_AND_THROW(error_blob, "Shader compilation failed without an error blob");
@@ -810,17 +810,17 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, u8string_view name, cons
         // Create the pixel shader
         {
             u8string pixel_shader_fname = u8strex("{}.fofx-{}-frag-hlsl", u8strex(name).erase_file_extension(), pass + 1);
-            const vector<byte> pixel_shader_data = loader(pixel_shader_fname);
-            const u8string pixel_shader_content = utf8_from_byte_span(pixel_shader_data);
+            vector<byte> pixel_shader_data = loader(pixel_shader_fname);
+            u8string pixel_shader_content = utf8_from_byte_span(pixel_shader_data);
             FO_VERIFY_AND_THROW(!pixel_shader_content.empty(), "Direct3D effect pixel shader content is empty after loading", name, pass + 1, pixel_shader_fname);
 
             nptr<ID3DBlob> pixel_shader_blob {};
             nptr<ID3DBlob> error_blob {};
 
-            const ptr<const char> pixel_shader_content_cstr = utf8_to_c_str(pixel_shader_content.view_nt());
+            ptr<const char> pixel_shader_content_cstr = utf8_to_c_str(pixel_shader_content.view_nt());
             ptr<const char> pixel_shader_entry_point = "main";
             auto pixel_shader_profile = make_ptr(_ctx->Settings->Direct3DPixelShaderProfile.c_str());
-            const auto d3d_compile = ::D3DCompile(pixel_shader_content_cstr.get(), pixel_shader_content.size(), nullptr, nullptr, nullptr, pixel_shader_entry_point.get(), pixel_shader_profile.get(), 0, 0, pixel_shader_blob.get_pp(), error_blob.get_pp());
+            auto d3d_compile = ::D3DCompile(pixel_shader_content_cstr.get(), pixel_shader_content.size(), nullptr, nullptr, nullptr, pixel_shader_entry_point.get(), pixel_shader_profile.get(), 0, 0, pixel_shader_blob.get_pp(), error_blob.get_pp());
 
             if (FAILED(d3d_compile)) {
                 FO_VERIFY_AND_THROW(error_blob, "Shader compilation failed without an error blob");

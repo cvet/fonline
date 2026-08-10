@@ -46,7 +46,7 @@ static_assert(!std::constructible_from<FileReader, const_span<uint8_t>>);
 
 static auto MakeTempMountedDir(string_view name) -> u8string
 {
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_u8string(base);
 }
 
@@ -54,22 +54,22 @@ TEST_CASE("FileSystem")
 {
     SECTION("MountedDirectorySupportsFilteringAndReading")
     {
-        const u8string temp_dir = MakeTempMountedDir("filesystem_mount");
-        const bool removed_before = fs_remove_dir_tree(temp_dir.view());
+        u8string temp_dir = MakeTempMountedDir("filesystem_mount");
+        bool removed_before = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before);
 
-        const u8string text_file_path = fs_combine_path(temp_dir.view(), "texts/a.txt");
-        const u8string alternate_text_file_path = fs_combine_path(temp_dir.view(), "texts/aroot.txt");
-        const u8string binary_file_path = fs_combine_path(temp_dir.view(), "texts/b.bin");
-        const u8string raw_file_path = fs_combine_path(temp_dir.view(), "texts/raw.bin");
-        const u8string nested_text_file_path = fs_combine_path(temp_dir.view(), "texts/nested/c.txt");
-        const u8string scratch_map_file_path = fs_combine_path(temp_dir.view(), "maps/Generated/_compose.fomap");
-        const u8string authored_map_file_path = fs_combine_path(temp_dir.view(), "maps/Generated/Authored.fomap");
-        const u8string root_file_path = fs_combine_path(temp_dir.view(), "root.txt");
+        u8string text_file_path = fs_combine_path(temp_dir.view(), "texts/a.txt");
+        u8string alternate_text_file_path = fs_combine_path(temp_dir.view(), "texts/aroot.txt");
+        u8string binary_file_path = fs_combine_path(temp_dir.view(), "texts/b.bin");
+        u8string raw_file_path = fs_combine_path(temp_dir.view(), "texts/raw.bin");
+        u8string nested_text_file_path = fs_combine_path(temp_dir.view(), "texts/nested/c.txt");
+        u8string scratch_map_file_path = fs_combine_path(temp_dir.view(), "maps/Generated/_compose.fomap");
+        u8string authored_map_file_path = fs_combine_path(temp_dir.view(), "maps/Generated/Authored.fomap");
+        u8string root_file_path = fs_combine_path(temp_dir.view(), "root.txt");
         REQUIRE(fs_write_file_text(text_file_path.view(), u8"alpha"));
         REQUIRE(fs_write_file_text(alternate_text_file_path.view(), u8"not-root"));
         REQUIRE(fs_write_file_bytes(binary_file_path.view(), string_to_byte_span("beta")));
-        const vector<byte> raw_bytes = {byte {0x00}, byte {0x80}, byte {0xFF}};
+        vector<byte> raw_bytes = {byte {0x00}, byte {0x80}, byte {0xFF}};
         REQUIRE(fs_write_file_bytes(raw_file_path.view(), raw_bytes));
         REQUIRE(fs_write_file_text(nested_text_file_path.view(), u8"gamma"));
         REQUIRE(fs_write_file_text(scratch_map_file_path.view(), u8"scratch"));
@@ -94,7 +94,7 @@ TEST_CASE("FileSystem")
         REQUIRE(file);
         CHECK(file.GetText() == u8string {u8"beta"});
 
-        const File raw_file = fs.ReadFile("texts/raw.bin");
+        File raw_file = fs.ReadFile("texts/raw.bin");
         REQUIRE(raw_file);
         CHECK(raw_file.GetData() == raw_bytes);
         CHECK(std::ranges::equal(raw_file.GetDataSpan(), raw_bytes));
@@ -108,10 +108,10 @@ TEST_CASE("FileSystem")
         CHECK(txt_files.FindFileByName("a").GetText() == u8string {u8"alpha"});
         CHECK(txt_files.FindFileByPath("root.txt").GetText() == u8string {u8"root"});
 
-        const FileCollection text_dir_files = fs.FilterFiles("", "texts", false);
+        FileCollection text_dir_files = fs.FilterFiles("", "texts", false);
         CHECK(text_dir_files.GetFilesCount() == 4);
 
-        const FileCollection all_files = fs.GetAllFiles();
+        FileCollection all_files = fs.GetAllFiles();
         CHECK(all_files.GetFilesCount() == 8);
 
         vector<string> no_patterns;
@@ -150,7 +150,7 @@ TEST_CASE("FileSystem")
 
     SECTION("FileReaderSupportsEndianReadsSeekingAndFragments")
     {
-        const array<byte, 15> data {{byte {0x01}, byte {0x02}, byte {0x03}, byte {0x04}, byte {0x05}, byte {0x06}, byte {0x07}, byte {0x08}, byte {0x09}, byte {0x0A}, byte {0x0B}, byte {0x0C}, byte {0x0D}, byte {'O'}, byte {'K'}}};
+        array<byte, 15> data {{byte {0x01}, byte {0x02}, byte {0x03}, byte {0x04}, byte {0x05}, byte {0x06}, byte {0x07}, byte {0x08}, byte {0x09}, byte {0x0A}, byte {0x0B}, byte {0x0C}, byte {0x0D}, byte {'O'}, byte {'K'}}};
 
         FileReader reader {data};
 
@@ -162,7 +162,7 @@ TEST_CASE("FileSystem")
         CHECK(reader.GetCurPos() == 13);
         CHECK(reader.SeekFragment("O"));
         CHECK(reader.GetCurPos() == 13);
-        const u8string reader_text = reader.GetText();
+        u8string reader_text = reader.GetText();
         CHECK(reader_text.view().native_view().ends_with(u8"OK"));
 
         reader.SetCurPos(0);
@@ -174,7 +174,7 @@ TEST_CASE("FileSystem")
 
     SECTION("FileReaderSupportsNullTerminatedAndTrailingFragmentCases")
     {
-        const array<byte, 11> data {{byte {'H'}, byte {'i'}, byte {0}, byte {'B'}, byte {'y'}, byte {'e'}, byte {0}, byte {'O'}, byte {'K'}, byte {'!'}, byte {'!'}}};
+        array<byte, 11> data {{byte {'H'}, byte {'i'}, byte {0}, byte {'B'}, byte {'y'}, byte {'e'}, byte {0}, byte {'O'}, byte {'K'}, byte {'!'}, byte {'!'}}};
 
         FileReader reader {data};
 
@@ -184,7 +184,7 @@ TEST_CASE("FileSystem")
         CHECK(reader.GetCurPos() == 7);
         CHECK(reader.SeekFragment("OK!!"));
         CHECK(reader.GetCurPos() == 7);
-        const u8string reader_text = reader.GetText();
+        u8string reader_text = reader.GetText();
         CHECK(reader_text.view().native_view().ends_with(u8"OK!!"));
 
         reader.SetCurPos(0);
@@ -194,11 +194,11 @@ TEST_CASE("FileSystem")
 
     SECTION("FileCollectionReportsMissingEntriesWithoutThrowing")
     {
-        const u8string temp_dir = MakeTempMountedDir("filesystem_missing_lookup");
-        const bool removed_before = fs_remove_dir_tree(temp_dir.view());
+        u8string temp_dir = MakeTempMountedDir("filesystem_missing_lookup");
+        bool removed_before = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before);
 
-        const u8string entry_path = fs_combine_path(temp_dir.view(), "entries/one.txt");
+        u8string entry_path = fs_combine_path(temp_dir.view(), "entries/one.txt");
         REQUIRE(fs_write_file_text(entry_path.view(), u8"one"));
 
         FileSystem fs;
@@ -215,12 +215,12 @@ TEST_CASE("FileSystem")
 
     SECTION("CachedDirectoryCanRefreshItsFileIndex")
     {
-        const u8string temp_dir = MakeTempMountedDir("filesystem_refresh");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        u8string temp_dir = MakeTempMountedDir("filesystem_refresh");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
-        const u8string first_path = fs_combine_path(temp_dir, "first.txt");
-        const u8string second_path = fs_combine_path(temp_dir, "second.txt");
+        u8string first_path = fs_combine_path(temp_dir, "first.txt");
+        u8string second_path = fs_combine_path(temp_dir, "second.txt");
         REQUIRE(fs_write_file_text(first_path, u8"first"));
 
         FileSystem fs;

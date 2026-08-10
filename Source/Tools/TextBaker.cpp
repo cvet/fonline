@@ -157,7 +157,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
             if (lang_name == target_lang) {
                 TextPack text_pack {&hashes};
 
-                const u8string file_text = file.GetText();
+                u8string file_text = file.GetText();
 
                 if (!text_pack.LoadFromText(file_text.view(), text_pack_name)) {
                     throw TextPackException("Invalid text file", file.GetPath());

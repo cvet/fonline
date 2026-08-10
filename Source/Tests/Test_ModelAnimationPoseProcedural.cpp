@@ -146,8 +146,8 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
     };
     ModelSkeletonCompatibilityReport compatibility_report = BuildModelSkeletonCompatibilityReport(base_skeleton, {});
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts(model_description, base_skeleton, compatibility_report, {}, false);
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
-    const vector<byte> serialized = WriteModelAnimationRigData(rig_data, "procedural runtime pose test");
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
+    vector<byte> serialized = WriteModelAnimationRigData(rig_data, "procedural runtime pose test");
 
     ModelAnimationRuntimeProceduralTestFixture fixture;
     fixture.Rig = LoadModelAnimationRuntimeRig(serialized, model_description, base_skeleton.FileName, false);

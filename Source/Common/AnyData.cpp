@@ -47,7 +47,7 @@ static auto ParseValidatedScalarValue(u8string_view raw_value, AnyData::ValueTyp
         throw AnyDataException("Invalid non-ASCII scalar value", raw_value);
     }
 
-    const string ascii_value = utf8_to_string(raw_value);
+    string ascii_value = utf8_to_string(raw_value);
     auto value = strvex(ascii_value);
     value.trim();
 
@@ -196,7 +196,7 @@ auto AnyData::ValueToCodedString(const Value& value) -> u8string
             throw AnyDataException("Cannot serialize non-finite float64 value", float_value);
         }
 
-        const string formatted_value = strex("{:f}", float_value).rtrim("0").rtrim(".");
+        string formatted_value = strex("{:f}", float_value).rtrim("0").rtrim(".");
         return formatted_value;
     }
     case ValueType::Bool:
@@ -217,7 +217,7 @@ auto AnyData::ValueToCodedString(const Value& value) -> u8string
                 next_iteration = true;
             }
 
-            const auto coded_value = ValueToCodedString(arr_entry);
+            auto coded_value = ValueToCodedString(arr_entry);
             arr_str.append(coded_value.view());
         }
 
@@ -237,10 +237,10 @@ auto AnyData::ValueToCodedString(const Value& value) -> u8string
                 next_iteration = true;
             }
 
-            const auto coded_key = StringEscaping::CodeString(dict_key.view());
+            auto coded_key = StringEscaping::CodeString(dict_key.view());
             dict_str.append(coded_key.view());
             dict_str.append(" ");
-            const auto coded_value = ValueToCodedString(dict_value);
+            auto coded_value = ValueToCodedString(dict_value);
             dict_str.append(coded_value.view());
         }
 
@@ -257,7 +257,7 @@ auto AnyData::ValueToString(const Value& value) -> u8string
 
     u8string str = ValueToCodedString(value);
 
-    const auto str_view = str.view().native_view();
+    auto str_view = str.view().native_view();
 
     if (str_view.length() >= 2 && str_view.front() == u8'\"' && str_view.back() == u8'\"') {
         if (str_view[1] != u8' ' && str_view[1] != u8'\t' && str_view[str_view.length() - 2] != u8' ' && str_view[str_view.length() - 2] != u8'\t') {
@@ -291,7 +291,7 @@ auto AnyData::ParseValue(u8string_view str, bool as_dict, bool as_array, ValueTy
             if (as_array) {
                 Array dict_arr;
 
-                const auto decoded_dict_value_entry = StringEscaping::DecodeString(dict_value_entry.view());
+                auto decoded_dict_value_entry = StringEscaping::DecodeString(dict_value_entry.view());
                 size_t nested_pos = 0;
                 u8string arr_entry;
 
@@ -346,7 +346,7 @@ auto AnyData::ReadToken(u8string_view str, size_t& pos, u8string& result) -> boo
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto source = str.native_view();
+    auto source = str.native_view();
     size_t cursor = pos;
 
     while (cursor < source.size() && (source[cursor] == u8' ' || source[cursor] == u8'\t')) {
@@ -429,13 +429,13 @@ void StringEscaping::AppendCodeString(u8string& result, u8string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto source = str.native_view();
+    auto source = str.native_view();
 
-    if (const auto issue = validate_utf8_text(source)) {
+    if (auto issue = validate_utf8_text(source)) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
-    const bool protect = source.empty() || source.find_first_of(u8" \t\r\n\\\"") != std::u8string_view::npos;
+    bool protect = source.empty() || source.find_first_of(u8" \t\r\n\\\"") != std::u8string_view::npos;
 
     if (protect) {
         result.append("\"");
@@ -494,8 +494,8 @@ auto StringEscaping::DecodeString(u8string_view str) -> u8string
         return {};
     }
 
-    const auto source = str.native_view();
-    const bool is_protected = source.front() == u8'\"';
+    auto source = str.native_view();
+    bool is_protected = source.front() == u8'\"';
     bool closing_quote_found = false;
     size_t segment_begin = is_protected ? 1 : 0;
     u8string result;

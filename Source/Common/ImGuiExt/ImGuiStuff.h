@@ -506,7 +506,7 @@ inline void ImGuiTextUnformatted(u8string_view text)
         return;
     }
 
-    const const_span<char> text_chars = utf8_to_char_span(text);
+    const_span<char> text_chars = utf8_to_char_span(text);
     auto text_begin = make_nptr(text_chars.data());
     auto text_end = text_begin.offset(text_chars.size());
     ImGui::TextUnformatted(text_begin.get(), text_end.get());

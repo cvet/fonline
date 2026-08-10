@@ -2007,12 +2007,12 @@ namespace EntityOps
 #define RUN_SCRIPT_FUNC_THROWS(func_name, expected_message) \
     auto func = server->FindFunc<void>(get_func("EntityOps::" func_name)); \
     REQUIRE(func); \
-    const auto prev_callback = GetExceptionCallback(); \
+    auto prev_callback = GetExceptionCallback(); \
     u8string message; \
     SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); }); \
     auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
     CHECK_FALSE(func.Call()); \
-    const u8string expected_message_utf8 {expected_message}; \
+    u8string expected_message_utf8 {expected_message}; \
     INFO(utf8_to_char_string(message)); \
     CHECK(message.view().native_view().find(expected_message_utf8.view().native_view()) != std::u8string_view::npos)
 
@@ -2022,9 +2022,9 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
     u8string message;
     std::mutex message_locker;
 
-    const auto prev_callback = GetExceptionCallback();
+    auto prev_callback = GetExceptionCallback();
     SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) {
-        const std::scoped_lock locker(message_locker);
+        std::scoped_lock locker(message_locker);
 
         message.append(msg);
         message.append("\n");

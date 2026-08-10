@@ -70,7 +70,7 @@ void MapManager::LoadFromResources()
             ScopedSyncContext sync_ctx;
 
             auto map_file = File::Load(map_file_header_copy);
-            const const_span<byte> map_data = map_file.GetDataSpan();
+            const_span<byte> map_data = map_file.GetDataSpan();
             auto reader = DataReader(map_data);
 
             auto map_size = map_proto->GetSize();

@@ -309,7 +309,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
     int32_t corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
     int32_t corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
 
-    const u8string map_text = u8strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
+    u8string map_text = u8strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
         corrected_width, corrected_height, corrected_width / 2, corrected_height / 2);
 
     return mapper->LoadMapFromText(name, name, map_text);
@@ -325,7 +325,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper,
         throw ScriptException("Map text has no [ProtoMap] section");
     }
 
-    const u8string map_text {text};
+    u8string map_text {text};
     return mapper->LoadMapFromText(name, name, map_text);
 }
 

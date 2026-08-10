@@ -127,7 +127,7 @@ FO_SCRIPT_API void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self)
         throw ScriptException("Critter is not on global map");
     }
 
-    const vector<ptr<Critter>> group = self->GetGlobalMapGroup();
+    vector<ptr<Critter>> group = self->GetGlobalMapGroup();
 
     // Validate the complete group before the first send so an uncovered member cannot leave the client with a
     // half-delivered group.

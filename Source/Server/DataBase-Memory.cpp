@@ -171,7 +171,7 @@ protected:
                 doc_entry.fields.reserve(doc.Size());
 
                 for (auto&& [doc_key, doc_value] : doc) {
-                    const auto value = AnyData::ValueToString(doc_value);
+                    auto value = AnyData::ValueToString(doc_value);
                     doc_entry.fields.emplace_back(FieldRow {utf8_to_char_string(doc_key.view()), utf8_to_char_string(value.view())});
                 }
 

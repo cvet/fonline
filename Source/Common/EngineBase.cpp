@@ -565,7 +565,7 @@ void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map
                 hstring current = replacement;
 
                 while (true) {
-                    const auto [name3, inserted] = visited.emplace(current);
+                    auto [name3, inserted] = visited.emplace(current);
                     ignore_unused(name3);
                     FO_VERIFY_AND_THROW(inserted, "Migration rule chain contains a cycle while finalizing registration", name1, name2, target, replacement, current);
 
@@ -588,10 +588,10 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string rule_name_utf8 = rule_name;
-    const u8string extra_info_utf8 = extra_info;
-    const u8string target_utf8 = target;
-    const u8string replacement_utf8 = replacement;
+    u8string rule_name_utf8 = rule_name;
+    u8string extra_info_utf8 = extra_info;
+    u8string target_utf8 = target;
+    u8string replacement_utf8 = replacement;
     RegisterMigrationRule(rule_name_utf8, extra_info_utf8, target_utf8, replacement_utf8);
 }
 
@@ -617,7 +617,7 @@ void EngineMetadata::RegisterMigrationRule(u8string_view rule_name, u8string_vie
     hstring current = hreplacement;
 
     while (true) {
-        const auto [name, inserted] = visited.emplace(current);
+        auto [name, inserted] = visited.emplace(current);
         ignore_unused(name);
         FO_VERIFY_AND_THROW(inserted, "Migration rule chain contains a cycle", rule_name, extra_info, target, replacement, current);
 
@@ -820,7 +820,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prop_name = Hashes.ToHashedString(u8strex("{}Ids", entry));
+    auto prop_name = Hashes.ToHashedString(u8strex("{}Ids", entry));
     auto holder_prop = holder->GetProperties()->GetRegistrator()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 

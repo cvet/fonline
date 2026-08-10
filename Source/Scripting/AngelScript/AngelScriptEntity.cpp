@@ -413,8 +413,8 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     auto engine = GetGameEngine(as_engine);
     hstring entity_type = engine->Hashes.ToHashedString(*entity_name);
     const auto& protos = engine->GetProtoEntities(entity_type);
-    const bool is_fixed_type = engine->IsFixedType(entity_type);
-    const string entity_type_name = utf8_to_string(u8strex("{}", entity_type));
+    bool is_fixed_type = engine->IsFixedType(entity_type);
+    string entity_type_name = utf8_to_string(u8strex("{}", entity_type));
 
     auto result = CreateScriptArray(as_engine, is_fixed_type ? strex("array<{}>", entity_type_name).c_str() : strex("array<Proto{}>", entity_type_name).c_str());
     result->Reserve(numeric_cast<int32_t>(protos.size()));
@@ -436,9 +436,9 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto engine = GetGameEngine(as_engine);
-    const auto entity_type = engine->Hashes.ToHashedString(*entity_name);
-    const string entity_type_name = utf8_to_string(u8strex("{}", entity_type));
-    const auto prop_enum = static_cast<int32_t>(*GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0));
+    auto entity_type = engine->Hashes.ToHashedString(*entity_name);
+    string entity_type_name = utf8_to_string(u8strex("{}", entity_type));
+    auto prop_enum = static_cast<int32_t>(*GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0));
     auto prop_value = GetGenericAddressArgAs<const any_t>(gen, 1);
     auto registrator = engine->GetPropertyRegistrator(*entity_name);
     FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
@@ -602,7 +602,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
     auto meta = GetEngineMetadata(as_engine);
     const auto& holder_type = meta->GetEntityType(holder->GetTypeName());
     auto holder_entry = make_ptr(&holder_type.HolderEntries.at(*entry));
-    const string target_type_name = utf8_to_string(u8strex("{}", holder_entry->TargetType));
+    string target_type_name = utf8_to_string(u8strex("{}", holder_entry->TargetType));
 
     if (entities && !entities->empty()) {
         small_vector<ptr<Entity>, 8> result_entities;
@@ -1372,8 +1372,8 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
             }
 
             if (!prop->IsDisabled() && !prop->IsComponentItself() && prop->IsMutable()) {
-                const string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
-                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+                string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
+                auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(Entity_SetPropertyValue), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
             }
         }
@@ -1416,11 +1416,11 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
     unordered_set<string> registered_funcdefs;
 
     for (auto&& [type_name, type_desc] : meta->GetEntityTypes()) {
-        const string type_name_ascii = utf8_to_string(u8strex("{}", type_name));
-        const string class_name = type_desc.IsGlobal ? strex("{}Singleton", type_name_ascii).str() : type_name_ascii;
+        string type_name_ascii = utf8_to_string(u8strex("{}", type_name));
+        string class_name = type_desc.IsGlobal ? strex("{}Singleton", type_name_ascii).str() : type_name_ascii;
 
         for (const auto& method : type_desc.Methods) {
-            const string method_name = utf8_to_string(u8strex("{}", method.Name));
+            string method_name = utf8_to_string(u8strex("{}", method.Name));
 
             // Funcdef variants
             for (const auto& arg : method.Args) {
@@ -1442,13 +1442,13 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
                 FO_VERIFY_AND_THROW(!method.Setter, "Method setter is already set");
                 FO_VERIFY_AND_THROW(method.Args.empty(), "Method arguments must be empty before this operation");
 
-                const string getter_decl = strex("{} get_{}()", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), method_name);
+                string getter_decl = strex("{} get_{}()", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), method_name);
                 registered_id = as_engine->RegisterGlobalFunction(getter_decl.c_str(), FO_SCRIPT_GENERIC(Entity_GlobalMethodCall), FO_SCRIPT_GENERIC_CONV, make_nptr(&method).void_cast());
                 FO_AS_VERIFY(registered_id);
             }
             else {
-                const string possible_getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
-                const string method_decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), possible_getset, method_name, MakeScriptArgsName(method.Args));
+                string possible_getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
+                string method_decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), possible_getset, method_name, MakeScriptArgsName(method.Args));
                 registered_id = as_engine->RegisterObjectMethod(class_name.c_str(), method_decl.c_str(), FO_SCRIPT_GENERIC(Entity_MethodCall), FO_SCRIPT_GENERIC_CONV, make_nptr(&method).void_cast());
                 FO_AS_VERIFY(registered_id);
             }
@@ -1461,19 +1461,19 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
 
     // Register events
     for (auto&& [type_name, type_desc] : meta->GetEntityTypes()) {
-        const string type_name_ascii = utf8_to_string(u8strex("{}", type_name));
-        const string class_name = type_desc.IsGlobal ? strex("{}Singleton", type_name_ascii).str() : type_name_ascii;
+        string type_name_ascii = utf8_to_string(u8strex("{}", type_name));
+        string class_name = type_desc.IsGlobal ? strex("{}Singleton", type_name_ascii).str() : type_name_ascii;
 
         for (const auto& event : type_desc.Events) {
-            const string event_name = utf8_to_string(u8strex("{}", event.Name));
-            const string first_arg = !type_desc.IsGlobal ? strex("{}@+ self", type_name_ascii, strex(type_name_ascii).lower()) : string();
-            const string event_args_decl = MakeScriptArgsName(event.Args);
-            const string event_obj_args_decl = strex("{}{}{}", first_arg, !first_arg.empty() && !event_args_decl.empty() ? ", " : "", event_args_decl);
-            const string event_funcdef_void = strex("{}{}EventFunc", type_name_ascii, event_name);
-            const string event_funcdef_result = strex("{}{}EventFuncResult", type_name_ascii, event_name);
-            const string event_funcdef_void_decl = strex("void {}({})", event_funcdef_void, event_obj_args_decl);
-            const string event_funcdef_result_decl = strex("EventResult {}({})", event_funcdef_result, event_obj_args_decl);
-            const string event_type_name = strex("{}{}Event", type_name_ascii, event_name);
+            string event_name = utf8_to_string(u8strex("{}", event.Name));
+            string first_arg = !type_desc.IsGlobal ? strex("{}@+ self", type_name_ascii, strex(type_name_ascii).lower()) : string();
+            string event_args_decl = MakeScriptArgsName(event.Args);
+            string event_obj_args_decl = strex("{}{}{}", first_arg, !first_arg.empty() && !event_args_decl.empty() ? ", " : "", event_args_decl);
+            string event_funcdef_void = strex("{}{}EventFunc", type_name_ascii, event_name);
+            string event_funcdef_result = strex("{}{}EventFuncResult", type_name_ascii, event_name);
+            string event_funcdef_void_decl = strex("void {}({})", event_funcdef_void, event_obj_args_decl);
+            string event_funcdef_result_decl = strex("EventResult {}({})", event_funcdef_result, event_obj_args_decl);
+            string event_type_name = strex("{}{}Event", type_name_ascii, event_name);
 
             FO_AS_VERIFY(as_engine->RegisterFuncdef(event_funcdef_void_decl.c_str()));
             FO_AS_VERIFY(as_engine->RegisterFuncdef(event_funcdef_result_decl.c_str()));
@@ -1493,14 +1493,14 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
 
     // Register entity holders
     for (auto&& [type_name, type_desc] : meta->GetEntityTypes()) {
-        const string type_name_ascii = utf8_to_string(u8strex("{}", type_name));
-        const string class_name = type_desc.IsGlobal ? strex("{}Singleton", type_name_ascii).str() : type_name_ascii;
+        string type_name_ascii = utf8_to_string(u8strex("{}", type_name));
+        string class_name = type_desc.IsGlobal ? strex("{}Singleton", type_name_ascii).str() : type_name_ascii;
 
         for (const auto& holder_entry : type_desc.HolderEntries) {
             auto entry_name = make_ptr(&holder_entry.first);
             auto entry_type = make_ptr(&holder_entry.second.TargetType);
-            const string entry_name_ascii = utf8_to_string(u8strex("{}", *entry_name));
-            const string entry_type_ascii = utf8_to_string(u8strex("{}", *entry_type));
+            string entry_name_ascii = utf8_to_string(u8strex("{}", *entry_name));
+            string entry_type_ascii = utf8_to_string(u8strex("{}", *entry_type));
 
             if (backend->HasEntityMngr()) {
                 if (type_desc.HasProtos) {

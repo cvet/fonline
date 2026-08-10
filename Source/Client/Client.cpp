@@ -764,13 +764,13 @@ void ClientEngine::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-        const u8string client_resources = Settings->ClientResources;
+        u8string client_resources = Settings->ClientResources;
         resources.AddDirSource(client_resources, false, true, true);
 
         if (!Settings->UserWritablePath.empty()) {
             // Installed client: self-update resource patches live in the per-user writable dir; layer
             // it on top so the up-to-date file wins the size/hash check below.
-            const u8string writable_resources = fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources);
+            u8string writable_resources = fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources);
             resources.AddDirSource(writable_resources, false, true, true);
         }
 

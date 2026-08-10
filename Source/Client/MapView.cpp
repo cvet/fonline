@@ -302,13 +302,13 @@ void MapView::LoadStaticData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _engine->Resources.ReadFile(u8strex("{}.fomap-bin-client", GetProtoId()));
+    auto file = _engine->Resources.ReadFile(u8strex("{}.fomap-bin-client", GetProtoId()));
 
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
 
-    const const_span<byte> file_data = file.GetDataSpan();
+    const_span<byte> file_data = file.GetDataSpan();
     auto reader = DataReader(file_data);
 
     // Hashes
@@ -1724,7 +1724,7 @@ void MapView::TraceLightLine(ptr<LightSource> ls, mpos from_hex, mpos& to_hex, i
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto [base_sx, base_sy] = GeometryHelper::GetStepsCoords({from_hex.x, from_hex.y}, {to_hex.x, to_hex.y});
+    auto [base_sx, base_sy] = GeometryHelper::GetStepsCoords({from_hex.x, from_hex.y}, {to_hex.x, to_hex.y});
     float32_t sx1_f = base_sx;
     float32_t sy1_f = base_sy;
 
@@ -1984,7 +1984,7 @@ void MapView::LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoi
     center_pos.y += GameSettings::MAP_HEX_HEIGHT / 2;
 
     // Per-light ovalization metadata.
-    const auto [screen_anchor_ox, screen_anchor_oy] = GeometryHelper::GetHexOffset(ipos32 {0, 0}, _screenRawHex);
+    auto [screen_anchor_ox, screen_anchor_oy] = GeometryHelper::GetHexOffset(ipos32 {0, 0}, _screenRawHex);
     fpos32 screen_anchor_tex = {numeric_cast<float32_t>(screen_anchor_ox), numeric_cast<float32_t>(screen_anchor_oy)};
     int32_t natural_radius = std::max(1, ls->Distance);
     float32_t fan_radius = numeric_cast<float32_t>(natural_radius);
@@ -2010,7 +2010,7 @@ void MapView::LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoi
         uint8_t alpha = std::get<1>(fan_hex);
         bool use_offsets = std::get<2>(fan_hex);
 
-        const auto [ox_int, oy_int] = GeometryHelper::GetHexOffset(ls->Hex, hex);
+        auto [ox_int, oy_int] = GeometryHelper::GetHexOffset(ls->Hex, hex);
         float32_t ox = numeric_cast<float32_t>(ox_int);
         float32_t oy = numeric_cast<float32_t>(oy_int);
         ipos32 pos = {center_pos.x + iround<int32_t>(ox), center_pos.y + iround<int32_t>(oy)};

@@ -188,7 +188,7 @@ auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -
     }
 #if FO_GEOMETRY == 2
     else {
-        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32_t>(x2 - x1), numeric_cast<float32_t>(y2 - y1));
+        auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32_t>(x2 - x1), numeric_cast<float32_t>(y2 - y1));
 
         if (dir >= 22.5f && dir < 67.5f) {
             return hdir::North;

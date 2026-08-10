@@ -9,7 +9,7 @@ static auto MakeTempCacheDir(string_view name) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_u8string(base);
 }
 
@@ -17,14 +17,14 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string temp_dir = MakeTempCacheDir(temp_dir_name);
-    const bool removed_before = fs_remove_dir_tree(temp_dir);
+    u8string temp_dir = MakeTempCacheDir(temp_dir_name);
+    bool removed_before = fs_remove_dir_tree(temp_dir);
     ignore_unused(removed_before);
 
     {
         CacheStorage cache {temp_dir};
-        const u8string unicode_text {u8"A\u042Fe\u0301\U0001F642\uFFFD\0B"};
-        const vector<byte> unicode_bytes {
+        u8string unicode_text {u8"A\u042Fe\u0301\U0001F642\uFFFD\0B"};
+        vector<byte> unicode_bytes {
             byte {0x41},
             byte {0xD0},
             byte {0xAF},
@@ -41,7 +41,7 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
             byte {0x00},
             byte {0x42},
         };
-        const vector<byte> binary_payload {byte {0x00}, byte {0x80}, byte {0xFF}};
+        vector<byte> binary_payload {byte {0x00}, byte {0x80}, byte {0xFF}};
 
         cache.SetText("text-to-bytes", unicode_text);
         CHECK(cache.HasEntry("text-to-bytes"));
@@ -65,7 +65,7 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
         CHECK(cache.GetBytes("binary") == binary_payload);
         CHECK_THROWS_AS((void)cache.GetText("binary"), TextValidationException);
 
-        const vector<byte> malformed_utf8 {byte {0xF0}, byte {0x28}, byte {0x8C}, byte {0x28}};
+        vector<byte> malformed_utf8 {byte {0xF0}, byte {0x28}, byte {0x8C}, byte {0x28}};
         cache.SetBytes("malformed", malformed_utf8);
         CHECK(cache.GetBytes("malformed") == malformed_utf8);
 
@@ -80,15 +80,15 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
         }
 
         std::u8string mutable_backing = u8"valid";
-        const optional<u8string_view> checked_view = u8string_view::TryFrom(mutable_backing);
+        optional<u8string_view> checked_view = u8string_view::TryFrom(mutable_backing);
         REQUIRE(checked_view.has_value());
-        const u8string_view stale_view = *checked_view;
+        u8string_view stale_view = *checked_view;
         mutable_backing[0] = char8_t {0xFF};
 
         CHECK_THROWS_AS(cache.SetText("stale-new", stale_view), TextValidationException);
         CHECK_FALSE(cache.HasEntry("stale-new"));
 
-        const u8string original_text {u8"original"};
+        u8string original_text {u8"original"};
         cache.SetText("stale-existing", original_text);
         CHECK_THROWS_AS(cache.SetText("stale-existing", stale_view), TextValidationException);
         CHECK(cache.GetText("stale-existing") == original_text);
@@ -119,17 +119,17 @@ TEST_CASE("CacheStorage")
 
     SECTION("EntryNamesAreSanitizedForFileBackend")
     {
-        const u8string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        u8string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
-        const u8string payload {u8"payload"};
+        u8string payload {u8"payload"};
         cache.SetText("dir\\nested/file.txt", payload);
 
         CHECK(cache.HasEntry("dir\\nested/file.txt"));
         CHECK(cache.GetText("dir\\nested/file.txt") == payload);
-        const u8string nested_file = fs_path_to_u8string(std::filesystem::path {fs_make_path(temp_dir)} / std::filesystem::path {u8"dir_nested_file.txt"});
+        u8string nested_file = fs_path_to_u8string(std::filesystem::path {fs_make_path(temp_dir)} / std::filesystem::path {u8"dir_nested_file.txt"});
         CHECK(fs_exists(nested_file));
 
         CHECK(fs_remove_dir_tree(temp_dir));
@@ -137,12 +137,12 @@ TEST_CASE("CacheStorage")
 
     SECTION("MoveConstructionPreservesAccess")
     {
-        const u8string temp_dir = MakeTempCacheDir("cache_storage_move");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        u8string temp_dir = MakeTempCacheDir("cache_storage_move");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
         CacheStorage original {temp_dir};
-        const u8string value {u8"value"};
+        u8string value {u8"value"};
         original.SetText("name", value);
 
         CacheStorage moved {std::move(original)};

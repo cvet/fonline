@@ -222,7 +222,7 @@ namespace aswrap
     {
         static auto read(AngelScript::asIScriptGeneric* gen, int index) -> T
         {
-            const auto arg_index = static_cast<AngelScript::asUINT>(index);
+            auto arg_index = static_cast<AngelScript::asUINT>(index);
 
             if constexpr (std::is_lvalue_reference_v<T>) {
                 using BaseType = std::remove_reference_t<T>;
@@ -312,13 +312,13 @@ namespace aswrap
     static void StoreReturnValue(AngelScript::asIScriptGeneric* gen, T value)
     {
         if constexpr (std::is_lvalue_reference_v<T>) {
-            const auto as_result = gen->SetReturnAddress(ReferenceReturnValueAsAddress(value));
+            auto as_result = gen->SetReturnAddress(ReferenceReturnValueAsAddress(value));
             if (as_result < 0) {
                 ThrowScriptCoreException(__FILE__, __LINE__, as_result);
             }
         }
         else if constexpr (std::is_pointer_v<T>) {
-            const auto as_result = gen->SetReturnAddress(PointerReturnValueAsAddress(value));
+            auto as_result = gen->SetReturnAddress(PointerReturnValueAsAddress(value));
             if (as_result < 0) {
                 ThrowScriptCoreException(__FILE__, __LINE__, as_result);
             }

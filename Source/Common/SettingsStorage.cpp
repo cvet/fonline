@@ -156,11 +156,11 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 
     // Keep tool settings out of the resource cache: a dedicated per-application directory in the user data base.
     // No user data base (unusual sandbox) means best-effort no persistence rather than writing next to the binary.
-    const u8string base = Platform::GetUserDataBase();
+    u8string base = Platform::GetUserDataBase();
 
     if (!base.empty()) {
-        const u8string fonline_dir = fs_combine_path(base, "FOnline");
-        const u8string dir = fs_combine_path(fonline_dir, app_name);
+        u8string fonline_dir = fs_combine_path(base, "FOnline");
+        u8string dir = fs_combine_path(fonline_dir, app_name);
         _cache = SafeAlloc::MakeUnique<CacheStorage>(dir);
     }
 
@@ -183,7 +183,7 @@ auto SettingsStorageImpl::GetEntry(string_view key) const -> optional<string>
 #else
 
     if (_cache && _cache->HasEntry(key)) {
-        const u8string value = _cache->GetText(key);
+        u8string value = _cache->GetText(key);
         return utf8_to_string(value);
     }
 

@@ -50,16 +50,16 @@ auto utf8_from_char_span(const_span<char> value) -> u8string
         return {};
     }
 
-    const string_view source {value.data(), value.size()};
+    string_view source {value.data(), value.size()};
 
-    if (const auto issue = validate_utf8_text(source)) {
+    if (auto issue = validate_utf8_text(source)) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
     utf8_storage copy;
     copy.reserve(value.size());
 
-    for (const char code_unit : value) {
+    for (char code_unit : value) {
         copy.push_back(static_cast<char8_t>(static_cast<unsigned char>(code_unit)));
     }
 
@@ -74,14 +74,14 @@ auto utf8_from_byte_span(const_span<byte> value) -> u8string
         return {};
     }
 
-    if (const auto issue = validate_utf8_text(value)) {
+    if (auto issue = validate_utf8_text(value)) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
     utf8_storage copy;
     copy.reserve(value.size());
 
-    for (const byte code_unit : value) {
+    for (byte code_unit : value) {
         copy.push_back(static_cast<char8_t>(std::to_integer<uint8_t>(code_unit)));
     }
 
@@ -96,14 +96,14 @@ auto string_from_byte_span(const_span<byte> value) -> string
         return {};
     }
 
-    if (const auto issue = validate_ascii_text(value)) {
+    if (auto issue = validate_ascii_text(value)) {
         throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
     }
 
     std::basic_string<char, std::char_traits<char>, SafeAllocator<char>> copy;
     copy.reserve(value.size());
 
-    for (const byte code_unit : value) {
+    for (byte code_unit : value) {
         copy.push_back(std::to_integer<char>(code_unit));
     }
 
@@ -115,11 +115,11 @@ auto utf8_from_terminated_char_span(const_span<char> storage) -> u8string
     FO_STACK_TRACE_ENTRY();
 
     if (storage.empty() || storage.back() != char {}) {
-        const size_t offset = storage.empty() ? 0 : storage.size() - 1;
+        size_t offset = storage.empty() ? 0 : storage.size() - 1;
         throw TextValidationException(TextEncoding::Utf8, TextValidationError::MissingTerminator, offset);
     }
 
-    const const_span<char> content = storage.first(storage.size() - 1);
+    const_span<char> content = storage.first(storage.size() - 1);
 
     for (size_t i = 0; i < content.size(); i++) {
         if (content[i] == char {}) {
@@ -134,7 +134,7 @@ auto utf8_as_char_view(u8string_view value) noexcept -> string_view
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const const_span<char> chars = utf8_to_char_span(value);
+    const_span<char> chars = utf8_to_char_span(value);
     return {chars.data(), chars.size()};
 }
 
@@ -142,7 +142,7 @@ auto utf8_to_char_string(u8string_view value) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_utf8_text(value.native_view())) {
+    if (auto issue = validate_utf8_text(value.native_view())) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
@@ -167,16 +167,16 @@ auto utf8_to_string(std::u8string_view value) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string_view utf8_value = u8string_view::FromChecked(value);
+    u8string_view utf8_value = u8string_view::FromChecked(value);
 
-    if (const auto issue = validate_ascii_text(utf8_value.native_view())) {
+    if (auto issue = validate_ascii_text(utf8_value.native_view())) {
         throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
     }
 
     string result;
     result.reserve(utf8_value.size());
 
-    for (const char8_t code_unit : utf8_value.native_view()) {
+    for (char8_t code_unit : utf8_value.native_view()) {
         result.push_back(static_cast<char>(code_unit));
     }
 
@@ -191,7 +191,7 @@ auto utf8_to_char_span(u8string_view value) noexcept -> const_span<char>
         return {};
     }
 
-    const ptr<const char8_t> data {value.data()};
+    ptr<const char8_t> data {value.data()};
     return {data.reinterpret_as<char>().get(), value.size()};
 }
 
@@ -221,7 +221,7 @@ auto utf8_to_c_str(u8string_view_nt value) noexcept -> ptr<const char>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const ptr<const char8_t> data {value.c_str()};
+    ptr<const char8_t> data {value.c_str()};
     return data.reinterpret_as<char>();
 }
 
@@ -239,7 +239,7 @@ auto validate_utf16_text(std::u16string_view value) noexcept -> optional<TextVal
     size_t offset = 0;
 
     while (offset < value.size()) {
-        const char16_t code_unit = value[offset];
+        char16_t code_unit = value[offset];
 
         if (code_unit >= char16_t {0xD800} && code_unit <= char16_t {0xDBFF}) {
             if (offset + 1 >= value.size() || value[offset + 1] < char16_t {0xDC00} || value[offset + 1] > char16_t {0xDFFF}) {
@@ -267,7 +267,7 @@ auto utf8_to_utf16(u8string_view value) -> utf16_string
         return {};
     }
 
-    if (const auto issue = validate_utf8_text(value.native_view())) {
+    if (auto issue = validate_utf8_text(value.native_view())) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
@@ -277,7 +277,7 @@ auto utf8_to_utf16(u8string_view value) -> utf16_string
     size_t offset = 0;
 
     while (offset < value.size()) {
-        const uint32_t scalar = DecodeUtf8Scalar(value.native_view(), offset);
+        uint32_t scalar = DecodeUtf8Scalar(value.native_view(), offset);
         AppendUtf16Scalar(result, scalar);
     }
 
@@ -288,7 +288,7 @@ auto utf16_to_utf8(std::u16string_view value) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_utf16_text(value)) {
+    if (auto issue = validate_utf16_text(value)) {
         throw TextValidationException(TextEncoding::Utf16, issue->Error, issue->Offset);
     }
 
@@ -298,11 +298,11 @@ auto utf16_to_utf8(std::u16string_view value) -> u8string
     size_t offset = 0;
 
     while (offset < value.size()) {
-        const uint32_t first = value[offset];
+        uint32_t first = value[offset];
         uint32_t scalar = first;
 
         if (first >= 0xD800 && first <= 0xDBFF) {
-            const uint32_t second = value[offset + 1];
+            uint32_t second = value[offset + 1];
             scalar = 0x10000 + ((first - 0xD800) << 10) + (second - 0xDC00);
             offset += 2;
         }
@@ -323,14 +323,14 @@ auto utf16_to_wide(std::u16string_view value) -> wide_string
 
     static_assert(sizeof(char16_t) == sizeof(wchar_t));
 
-    if (const auto issue = validate_utf16_text(value)) {
+    if (auto issue = validate_utf16_text(value)) {
         throw TextValidationException(TextEncoding::Utf16, issue->Error, issue->Offset);
     }
 
     wide_string result;
     result.reserve(value.size());
 
-    for (const char16_t code_unit : value) {
+    for (char16_t code_unit : value) {
         result.push_back(std::bit_cast<wchar_t>(code_unit));
     }
 
@@ -346,11 +346,11 @@ auto wide_to_utf16(std::wstring_view value) -> utf16_string
     utf16_string result;
     result.reserve(value.size());
 
-    for (const wchar_t code_unit : value) {
+    for (wchar_t code_unit : value) {
         result.push_back(std::bit_cast<char16_t>(code_unit));
     }
 
-    if (const auto issue = validate_utf16_text(std::u16string_view {result.data(), result.size()})) {
+    if (auto issue = validate_utf16_text(std::u16string_view {result.data(), result.size()})) {
         throw TextValidationException(TextEncoding::Utf16, issue->Error, issue->Offset);
     }
 
@@ -361,12 +361,12 @@ auto string_to_wide_string(string_view_nt value) -> wide_string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const const_span<char> storage {value.c_str(), value.size() + 1};
-    const string_view_nt checked = string_view_nt_from_span(storage);
+    const_span<char> storage {value.c_str(), value.size() + 1};
+    string_view_nt checked = string_view_nt_from_span(storage);
     wide_string result;
     result.reserve(checked.size());
 
-    for (const char code_unit : checked) {
+    for (char code_unit : checked) {
         result.push_back(static_cast<wchar_t>(std::bit_cast<uint8_t>(code_unit)));
     }
 
@@ -377,7 +377,7 @@ auto utf8_to_wide_string(u8string_view value) -> wide_string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const utf16_string utf16_value = utf8_to_utf16(value);
+    utf16_string utf16_value = utf8_to_utf16(value);
     return utf16_to_wide(std::u16string_view {utf16_value.data(), utf16_value.size()});
 }
 #endif
@@ -386,27 +386,27 @@ static auto DecodeUtf8Scalar(std::u8string_view value, size_t& offset) noexcept 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const uint32_t lead = value[offset];
+    uint32_t lead = value[offset];
     uint32_t scalar = lead;
 
     if (lead < 0x80) {
         offset++;
     }
     else if (lead < 0xE0) {
-        const uint32_t continuation1 = value[offset + 1];
+        uint32_t continuation1 = value[offset + 1];
         scalar = ((lead & 0x1F) << 6) | (continuation1 & 0x3F);
         offset += 2;
     }
     else if (lead < 0xF0) {
-        const uint32_t continuation1 = value[offset + 1];
-        const uint32_t continuation2 = value[offset + 2];
+        uint32_t continuation1 = value[offset + 1];
+        uint32_t continuation2 = value[offset + 2];
         scalar = ((lead & 0x0F) << 12) | ((continuation1 & 0x3F) << 6) | (continuation2 & 0x3F);
         offset += 3;
     }
     else {
-        const uint32_t continuation1 = value[offset + 1];
-        const uint32_t continuation2 = value[offset + 2];
-        const uint32_t continuation3 = value[offset + 3];
+        uint32_t continuation1 = value[offset + 1];
+        uint32_t continuation2 = value[offset + 2];
+        uint32_t continuation3 = value[offset + 3];
         scalar = ((lead & 0x07) << 18) | ((continuation1 & 0x3F) << 12) | ((continuation2 & 0x3F) << 6) | (continuation3 & 0x3F);
         offset += 4;
     }
@@ -422,7 +422,7 @@ static void AppendUtf16Scalar(utf16_string& output, uint32_t scalar)
         output.push_back(static_cast<char16_t>(scalar));
     }
     else {
-        const uint32_t adjusted = scalar - 0x10000;
+        uint32_t adjusted = scalar - 0x10000;
         output.push_back(static_cast<char16_t>(0xD800 + (adjusted >> 10)));
         output.push_back(static_cast<char16_t>(0xDC00 + (adjusted & 0x3FF)));
     }

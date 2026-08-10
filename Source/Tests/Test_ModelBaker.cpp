@@ -418,7 +418,7 @@ static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig) -> string
 
     vector<string> captured_messages;
     SetLogCallback("model-info-animation-geometry-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(utf8_to_char_string(message)); });
-    const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-info-animation-geometry-test", {}); });
+    auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-info-animation-geometry-test", {}); });
     CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
 
     auto diagnostic = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Model description baking error:") != string::npos; });
@@ -454,7 +454,7 @@ static auto ReadSavedModelInfoString(DataReader& reader) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32_t len = reader.Read<uint32_t>();
+    uint32_t len = reader.Read<uint32_t>();
     const_span<byte> str_bytes = reader.ReadBytes(len);
     return string {span_to_string(str_bytes)};
 }
@@ -463,7 +463,7 @@ static void ReadSavedModelInfoHeader(DataReader& reader)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const const_span<byte> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
+    const_span<byte> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
     REQUIRE(std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin()));
     CHECK(reader.Read<uint16_t>() == MODEL_DESCRIPTION_SCHEMA_VERSION);
     CHECK(reader.Read<uint16_t>() == MODEL_DESCRIPTION_SUPPORTED_FLAGS);
@@ -1164,7 +1164,7 @@ TEST_CASE("ModelMeshBakerOrchestration")
 
         vector<string> captured_messages;
         SetLogCallback("model-mesh-unweighted-vertex-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(utf8_to_char_string(message)); });
-        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-unweighted-vertex-test", {}); });
+        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-unweighted-vertex-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/UnweightedVertex.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
@@ -1193,7 +1193,7 @@ TEST_CASE("ModelMeshBakerOrchestration")
 
         vector<string> captured_messages;
         SetLogCallback("model-mesh-wide-hierarchy-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(utf8_to_char_string(message)); });
-        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-wide-hierarchy-test", {}); });
+        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-wide-hierarchy-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/TooWide.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
@@ -1215,7 +1215,7 @@ f 1 2 3
 
         vector<string> captured_messages;
         SetLogCallback("model-mesh-non-finite-test", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(utf8_to_char_string(message)); });
-        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-non-finite-test", {}); });
+        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-non-finite-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/NonFinite.obj"), ModelMeshBakerException);
@@ -1408,7 +1408,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
         CHECK(rig.Outputs.count("Critters/NoAnim.fo3d") == 1);
 
-        const u8string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
+        u8string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
         CHECK(config.view().native_view().find(u8"[Critters/Test.fo3d]\n") != std::u8string_view::npos);
         CHECK(config.view().native_view().find(u8"StateAnimations = 0 0\n") != std::u8string_view::npos);
         CHECK(config.view().native_view().find(u8"ActionAnimations = 1 3\n") != std::u8string_view::npos);
@@ -1438,7 +1438,7 @@ ActionAnimEqual 4 6
         ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"), LoadTestModelSourceFixture);
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-        const u8string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
+        u8string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
         CHECK(config.view().native_view().find(u8"StateAnimations = 1 0 1 0\n") != std::u8string_view::npos);
         CHECK(config.view().native_view().find(u8"ActionAnimations = 5 5 3 3\n") != std::u8string_view::npos);
         CHECK(config.view().native_view().find(u8"DurationsMs = 500 500 200 200\n") != std::u8string_view::npos);

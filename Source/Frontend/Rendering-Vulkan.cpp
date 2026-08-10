@@ -326,7 +326,7 @@ static VKAPI_ATTR auto VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverit
 
     ignore_unused(type, user_data);
 
-    const string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? "ERROR" : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? "WARN" : "INFO";
+    string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? "ERROR" : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? "WARN" : "INFO";
     const char* message_id = data != nullptr && data->pMessageIdName != nullptr ? data->pMessageIdName : "?";
     const char* message = data != nullptr && data->pMessage != nullptr ? data->pMessage : "?";
     WriteLog("[VkLayer/{}] {}: {}", sev, message_id, message);
@@ -1502,7 +1502,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
             size_t alignment = numeric_cast<size_t>(_ctx->MinUniformBufferOffsetAlignment);
 
-            const auto upload_uniform_buffer = [&](int32_t binding, const_span<byte> src_data) {
+            auto upload_uniform_buffer = [&](int32_t binding, const_span<byte> src_data) {
                 if (binding < 0 || src_data.empty()) {
                     return;
                 }
@@ -1810,7 +1810,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
         // Load vertex shader SPIR-V
         {
             u8string vert_fname = u8strex("{}.fofx-{}-vert-spv", u8strex(name).erase_file_extension(), pass + 1);
-            const vector<byte> vert_content = loader(vert_fname);
+            vector<byte> vert_content = loader(vert_fname);
             FO_VERIFY_AND_THROW(!vert_content.empty(), "Vertex shader SPIR-V is empty");
             FO_VERIFY_AND_THROW(vert_content.size() % sizeof(uint32_t) == 0, "Vertex shader SPIR-V size is not a multiple of 4");
 
@@ -1827,7 +1827,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
         // Load fragment shader SPIR-V
         {
             u8string frag_fname = u8strex("{}.fofx-{}-frag-spv", u8strex(name).erase_file_extension(), pass + 1);
-            const vector<byte> frag_content = loader(frag_fname);
+            vector<byte> frag_content = loader(frag_fname);
             FO_VERIFY_AND_THROW(!frag_content.empty(), "Fragment shader SPIR-V is empty");
             FO_VERIFY_AND_THROW(frag_content.size() % sizeof(uint32_t) == 0, "Fragment shader SPIR-V size is not a multiple of 4");
 

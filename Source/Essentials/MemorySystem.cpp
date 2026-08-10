@@ -449,7 +449,7 @@ static auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
-    const auto result_size = num * size;
+    auto result_size = num * size;
     if (num != 0 && size != 0 && result_size / num != size) {
         return nullptr; // Overflow
     }
@@ -621,11 +621,11 @@ extern void ReportBadAlloc(string_view message, string_view type_str, size_t cou
     WriteBaseLogBytes(std::as_bytes(const_span<char> {type_str.data(), type_str.size()}));
     WriteAscii("\n");
     WriteAscii("Count: ");
-    const string_view count_text = ItoA(static_cast<int64_t>(count), itoa_buf, 10);
+    string_view count_text = ItoA(static_cast<int64_t>(count), itoa_buf, 10);
     WriteBaseLogBytes(std::as_bytes(const_span<char> {count_text.data(), count_text.size()}));
     WriteAscii("\n");
     WriteAscii("Size: ");
-    const string_view size_text = ItoA(static_cast<int64_t>(size), itoa_buf, 10);
+    string_view size_text = ItoA(static_cast<int64_t>(size), itoa_buf, 10);
     WriteBaseLogBytes(std::as_bytes(const_span<char> {size_text.data(), size_text.size()}));
     WriteAscii("\n\n");
     SafeWriteStackTrace(GetStackTrace());

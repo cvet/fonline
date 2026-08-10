@@ -41,7 +41,7 @@ extern void LogToFile(string_view path, bool append)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_path = path;
+    u8string utf8_path = path;
     LogToFile(utf8_path, append);
 }
 
@@ -49,11 +49,11 @@ extern void LogToFile(u8string_view path, bool append)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string checked_path = u8string::FromChecked(path.native_view());
-    const std::filesystem::path native_path {fs_make_path(checked_path)};
+    u8string checked_path = u8string::FromChecked(path.native_view());
+    std::filesystem::path native_path {fs_make_path(checked_path)};
 
     if (!base_logging_detail::OpenLogFileNative(native_path, append)) {
-        const u8string message = FormatUtf8("Can't create log file '{}'\n", checked_path);
+        u8string message = FormatUtf8("Can't create log file '{}'\n", checked_path);
         WriteBaseLog(message);
     }
 }
@@ -77,7 +77,7 @@ auto fs_resolve_path(u8string_view path) -> u8string
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto resolved = std::filesystem::absolute(std::filesystem::path {fs_make_path(path)}, ec);
+    auto resolved = std::filesystem::absolute(std::filesystem::path {fs_make_path(path)}, ec);
     return !ec ? fs_path_to_u8string(resolved) : fs_path_to_u8string(std::filesystem::path {fs_make_path(path)});
 }
 
@@ -122,7 +122,7 @@ auto fs_combine_path(u8string_view base_path, string_view ascii_relative_path) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string relative_path = ascii_relative_path;
+    u8string relative_path = ascii_relative_path;
     return fs_combine_path(base_path, relative_path);
 }
 
@@ -210,7 +210,7 @@ auto fs_read_file_text(u8string_view path) -> optional<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto bytes = fs_read_file_bytes(path);
+    auto bytes = fs_read_file_bytes(path);
 
     if (!bytes) {
         return std::nullopt;
@@ -223,7 +223,7 @@ auto fs_compare_file_bytes(u8string_view path, const_span<byte> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto existing_content = fs_read_file_bytes(path);
+    auto existing_content = fs_read_file_bytes(path);
 
     if (!existing_content || existing_content->size() != content.size()) {
         return false;
@@ -240,8 +240,8 @@ auto fs_write_file_bytes(u8string_view path, const_span<byte> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto dir = std::filesystem::path {fs_make_path(path)}.parent_path();
-    const u8string dir_str = fs_path_to_u8string(dir);
+    auto dir = std::filesystem::path {fs_make_path(path)}.parent_path();
+    u8string dir_str = fs_path_to_u8string(dir);
 
     if (!dir.empty() && !fs_create_directories(dir_str.view())) {
         return false;
@@ -338,8 +338,8 @@ auto fs_hash_file(u8string_view path) -> optional<uint64_t>
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    const auto step = [](uint64_t hash, const_span<byte> bytes) noexcept {
-        for (const byte data_byte : bytes) {
+    auto step = [](uint64_t hash, const_span<byte> bytes) noexcept {
+        for (byte data_byte : bytes) {
             hash = (hash ^ std::to_integer<uint8_t>(data_byte)) * prime;
         }
         return hash;
@@ -380,8 +380,8 @@ auto fs_hash_bytes(const_span<byte> data) noexcept -> uint64_t
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    const auto step = [](uint64_t hash, const_span<byte> bytes) noexcept {
-        for (const byte data_byte : bytes) {
+    auto step = [](uint64_t hash, const_span<byte> bytes) noexcept {
+        for (byte data_byte : bytes) {
             hash = (hash ^ std::to_integer<uint8_t>(data_byte)) * prime;
         }
         return hash;
@@ -398,24 +398,24 @@ static void RecursiveDirLook(u8string_view base_dir, u8string_view cur_dir, bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto full_dir = std::filesystem::path {fs_make_path(base_dir)} / std::filesystem::path {fs_make_path(cur_dir)};
-    const auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
+    auto full_dir = std::filesystem::path {fs_make_path(base_dir)} / std::filesystem::path {fs_make_path(cur_dir)};
+    auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
 
     for (const auto& dir_entry : dir_iterator) {
-        const u8string path = fs_path_to_u8string(dir_entry.path().filename());
-        const std::u8string_view path_view = path.view().native_view();
+        u8string path = fs_path_to_u8string(dir_entry.path().filename());
+        std::u8string_view path_view = path.view().native_view();
 
         if (!path_view.empty() && path_view.front() != u8'.' && path_view.front() != u8'~') {
             if (dir_entry.is_directory()) {
                 if (path_view.front() != u8'_' && recursive) {
-                    const u8string next_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(cur_dir)} / std::filesystem::path {fs_make_path(path.view())});
+                    u8string next_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(cur_dir)} / std::filesystem::path {fs_make_path(path.view())});
                     RecursiveDirLook(base_dir, next_dir.view(), recursive, visitor);
                 }
             }
             else {
                 uintmax_t file_size = dir_entry.file_size();
                 FO_VERIFY_AND_THROW(std::cmp_less_equal(file_size, std::numeric_limits<size_t>::max()), "Disk file is too large to fit into memory buffer");
-                const u8string relative_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(cur_dir)} / std::filesystem::path {fs_make_path(path.view())});
+                u8string relative_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(cur_dir)} / std::filesystem::path {fs_make_path(path.view())});
                 visitor(relative_path.view(), static_cast<size_t>(file_size), dir_entry.last_write_time().time_since_epoch().count());
             }
         }

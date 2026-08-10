@@ -304,9 +304,9 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
             throw ClientDataValidationException("Negative string length", type.Name, str_len);
         }
 
-        const size_t str_size = numeric_cast<size_t>(str_len);
+        size_t str_size = numeric_cast<size_t>(str_len);
         const_span<byte> str_data = reader.ReadBytes(str_size);
-        const string_view str = span_to_string(str_data);
+        string_view str = span_to_string(str_data);
 
         if (validate_utf8_text(str)) {
             throw ClientDataValidationException("String is not valid UTF-8", type.Name);
@@ -326,7 +326,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsRefType) {
-        const uint32_t raw_size = reader.Read<uint32_t>();
+        uint32_t raw_size = reader.Read<uint32_t>();
         const_span<byte> ref_raw_data = reader.ReadBytes(raw_size);
         ValidateInboundRefTypeRawData(type.Name, type, ref_raw_data, meta);
     }
@@ -411,7 +411,7 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
         }
 
         const_span<byte> str_data = data.subspan(offset, str_len);
-        const string_view str = span_to_string(str_data);
+        string_view str = span_to_string(str_data);
 
         if (validate_utf8_text(str)) {
             throw ClientDataValidationException("String in packed property data is not valid UTF-8", owner_name);
@@ -535,7 +535,7 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<byte> 
     }
 
     if (type.IsBool) {
-        const uint8_t value = std::to_integer<uint8_t>(data[0]);
+        uint8_t value = std::to_integer<uint8_t>(data[0]);
 
         if (value > 1) {
             throw ClientDataValidationException("Invalid bool value", type.Name, value);

@@ -94,7 +94,7 @@ auto CacheStorage::HasEntry(string_view entry_name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_entry_name = entry_name;
+    u8string utf8_entry_name = entry_name;
     return HasEntry(utf8_entry_name);
 }
 
@@ -109,7 +109,7 @@ auto CacheStorage::GetText(string_view entry_name) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_entry_name = entry_name;
+    u8string utf8_entry_name = entry_name;
     return GetText(utf8_entry_name);
 }
 
@@ -117,7 +117,7 @@ auto CacheStorage::GetText(u8string_view entry_name) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<byte> bytes = _impl->GetBytes(entry_name);
+    vector<byte> bytes = _impl->GetBytes(entry_name);
     return utf8_from_byte_span(bytes);
 }
 
@@ -125,7 +125,7 @@ auto CacheStorage::GetBytes(string_view entry_name) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_entry_name = entry_name;
+    u8string utf8_entry_name = entry_name;
     return GetBytes(utf8_entry_name);
 }
 
@@ -140,7 +140,7 @@ void CacheStorage::SetText(string_view entry_name, u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_entry_name = entry_name;
+    u8string utf8_entry_name = entry_name;
     SetText(utf8_entry_name, text);
 }
 
@@ -148,7 +148,7 @@ void CacheStorage::SetText(string_view entry_name, string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_text = text;
+    u8string utf8_text = text;
     SetText(entry_name, utf8_text);
 }
 
@@ -156,7 +156,7 @@ void CacheStorage::SetText(u8string_view entry_name, u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_utf8_text(text.native_view())) {
+    if (auto issue = validate_utf8_text(text.native_view())) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
@@ -167,7 +167,7 @@ void CacheStorage::SetBytes(string_view entry_name, const_span<byte> bytes)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_entry_name = entry_name;
+    u8string utf8_entry_name = entry_name;
     SetBytes(utf8_entry_name, bytes);
 }
 
@@ -182,7 +182,7 @@ void CacheStorage::RemoveEntry(string_view entry_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_entry_name = entry_name;
+    u8string utf8_entry_name = entry_name;
     RemoveEntry(utf8_entry_name);
 }
 
@@ -197,7 +197,7 @@ auto FileCacheStorage::MakeCacheEntryPath(u8string_view work_path, u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string safe_name = u8strex(data_name).replace(u8'/', u8'_').replace(u8'\\', u8'_');
+    u8string safe_name = u8strex(data_name).replace(u8'/', u8'_').replace(u8'\\', u8'_');
     return fs_path_to_u8string(std::filesystem::path {fs_make_path(work_path)} / std::filesystem::path {fs_make_path(safe_name)});
 }
 

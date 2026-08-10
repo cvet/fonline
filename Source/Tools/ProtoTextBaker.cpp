@@ -115,8 +115,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     unordered_map<hstring, unordered_map<hstring, map<string, u8string>>> all_file_protos;
 
     for (const auto& file : filtered_files) {
-        const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
-        const auto fopro_options = is_fomap ? ConfigFileOption::SkipNestedSections : ConfigFileOption::None;
+        bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
+        auto fopro_options = is_fomap ? ConfigFileOption::SkipNestedSections : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetText(), fopro_options);
 
         for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {
@@ -157,7 +157,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                 section_kv.emplace(string(key), value);
             }
 
-            const string name = section_kv.count("$Name") != 0 ? utf8_to_string(section_kv.at("$Name")) : string {file.GetNameNoExt()};
+            string name = section_kv.count("$Name") != 0 ? utf8_to_string(section_kv.at("$Name")) : string {file.GetNameNoExt()};
             hstring pid = engine.Hashes.ToHashedString(name);
             pid = engine.CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
 
@@ -195,7 +195,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             map<string, u8string> proto_kv;
 
             function<void(string_view, const map<string, u8string>&)> fill_parent_recursive = [&](string_view name, const map<string, u8string>& cur_kv) {
-                const string parent_name_line = cur_kv.count("$Parent") != 0 ? utf8_to_string(cur_kv.at("$Parent")) : string {};
+                string parent_name_line = cur_kv.count("$Parent") != 0 ? utf8_to_string(cur_kv.at("$Parent")) : string {};
 
                 for (auto& parent_name : strex(parent_name_line).split(' ')) {
                     hstring parent_pid = engine.Hashes.ToHashedString(parent_name);

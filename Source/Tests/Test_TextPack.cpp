@@ -74,7 +74,7 @@ TEST_CASE("TextPack")
     {
         TextPack pack(&TestHashes);
 
-        const u8string input {u8"{100}{}{Hello}\n{200}{3}{World}\n{300}{}{Line1\nLine2}"};
+        u8string input {u8"{100}{}{Hello}\n{200}{3}{World}\n{300}{}{Line1\nLine2}"};
 
         REQUIRE(pack.LoadFromText(input.view(), "Dialogs"));
         CHECK(pack.GetSize() == 3);
@@ -89,7 +89,7 @@ TEST_CASE("TextPack")
     {
         TextPack pack(&TestHashes);
 
-        const u8string input {u8"{QuestEntry}{}{Base}\n{QuestEntry}{Suffix}{Combined}"};
+        u8string input {u8"{QuestEntry}{}{Base}\n{QuestEntry}{Suffix}{Combined}"};
 
         REQUIRE(pack.LoadFromText(input.view(), "Quest"));
         CHECK(TextEquals(pack.GetText(MakeKey("Quest", "QuestEntry"), 0), u8"Base"));
@@ -100,8 +100,8 @@ TEST_CASE("TextPack")
     {
         TextPack pack(&TestHashes);
 
-        const auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
-        const u8string input {u8"{LaserRifle}{Name}{Scoped energy rifle}"};
+        auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
+        u8string input {u8"{LaserRifle}{Name}{Scoped energy rifle}"};
 
         REQUIRE(pack.LoadFromText(input.view(), "Items"));
         CHECK(TextEquals(pack.GetText(key, 0), u8"Scoped energy rifle"));
@@ -137,7 +137,7 @@ TEST_CASE("TextPack")
     SECTION("BinaryRoundtripValidatesUnicodePayloads")
     {
         TextPack pack(&TestHashes);
-        const auto key = MakeKey("Dialogs", "Unicode");
+        auto key = MakeKey("Dialogs", "Unicode");
         pack.AddText(key, u8"Привет, 世界 🌍 é �");
 
         vector<byte> data = pack.GetBinaryData();
@@ -189,8 +189,8 @@ TEST_CASE("TextPack")
     SECTION("LoadFromTextMapAndClearWorkTogether")
     {
         TextPack pack(&TestHashes);
-        const auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Desc");
-        const map<string, u8string> entries {{"7", u8string {u8"Seven"}}, {"11", u8string {u8"Eleven"}}, {FormatKey(structured_key), u8string {u8"Description"}}};
+        auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Desc");
+        map<string, u8string> entries {{"7", u8string {u8"Seven"}}, {"11", u8string {u8"Eleven"}}, {FormatKey(structured_key), u8string {u8"Description"}}};
 
         pack.LoadFromTextMap(entries, "Dialogs");
 
@@ -240,7 +240,7 @@ TEST_CASE("TextPack")
     SECTION("GetTextSkipOutOfRangeReturnsEmptyString")
     {
         TextPack pack(&TestHashes);
-        const auto key = MakeKey("Dialogs", "5");
+        auto key = MakeKey("Dialogs", "5");
         pack.AddText(key, u8"Alpha");
         pack.AddText(key, u8"Beta");
 
@@ -254,7 +254,7 @@ TEST_CASE("TextPack")
     {
         TextPack pack(&TestHashes);
 
-        const u8string input {u8"{10}{}{Valid}\n{20}{Broken\n{30}{}{StillValid}"};
+        u8string input {u8"{10}{}{Valid}\n{20}{Broken\n{30}{}{StillValid}"};
 
         CHECK_FALSE(pack.LoadFromText(input.view(), "Dialogs"));
         CHECK(TextEquals(pack.GetText(MakeKey("Dialogs", "10"), 0), u8"Valid"));

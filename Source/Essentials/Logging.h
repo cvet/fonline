@@ -68,7 +68,7 @@ namespace logging_detail
     void write_formatted_log(LogType type, format_string<std::type_identity_t<Args>...> format, Args&&... args) noexcept
     {
         try {
-            const u8string message = FormatUtf8(format, std::forward<Args>(args)...);
+            u8string message = FormatUtf8(format, std::forward<Args>(args)...);
             WriteLogMessage(type, message);
         }
         catch (...) {
@@ -81,7 +81,7 @@ namespace logging_detail
     void write_formatted_log(LogType type, u8format_string<std::type_identity_t<Args>...> format, Args&&... args) noexcept
     {
         try {
-            const u8string message = FormatUtf8(format, std::forward<Args>(args)...);
+            u8string message = FormatUtf8(format, std::forward<Args>(args)...);
             WriteLogMessage(type, message);
         }
         catch (...) {

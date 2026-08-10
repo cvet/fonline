@@ -99,7 +99,7 @@ auto fs_write_file_bytes(u8string_view path, const_span<byte> content) -> bool;
 auto fs_write_file_text(u8string_view path, u8string_view content) -> bool;
 inline auto fs_write_file_text(u8string_view path, string_view ascii_content) -> bool
 {
-    const u8string utf8_content = ascii_content;
+    u8string utf8_content = ascii_content;
     return fs_write_file_text(path, utf8_content);
 }
 auto fs_remove_file(u8string_view path) noexcept -> bool;

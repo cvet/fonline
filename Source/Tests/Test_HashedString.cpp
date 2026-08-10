@@ -69,16 +69,16 @@ TEST_CASE("HashedString")
 
     SECTION("RawByteGolden")
     {
-        const vector<byte> bytes {byte {0x00}, byte {0x80}, byte {0xFF}};
+        vector<byte> bytes {byte {0x00}, byte {0x80}, byte {0xFF}};
         CHECK(HashStorage::DefaultHash(bytes) == 0xD4769C76A82E82B0ULL);
     }
 
     SECTION("Utf8StorageRoundtrip")
     {
         HashStorage storage {};
-        const u8string resource_path {u8"Ресурсы/заставка-🌍.png"};
+        u8string resource_path {u8"Ресурсы/заставка-🌍.png"};
 
-        const hstring hashed_path = storage.ToHashedString(resource_path.view());
+        hstring hashed_path = storage.ToHashedString(resource_path.view());
 
         CHECK(hashed_path.as_hash() == HashStorage::DefaultHash(utf8_to_byte_span(resource_path.view())));
         CHECK(storage.CheckHashedString(resource_path.view()));

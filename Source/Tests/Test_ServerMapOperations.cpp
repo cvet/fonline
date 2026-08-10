@@ -4822,8 +4822,8 @@ namespace MapOpsTest
 
 #if FO_ANGELSCRIPT_SCRIPTING
         BakerServerEngine script_engine {rig.BakedFiles};
-        const vector<byte> script_blob = BakerTests::CompileInlineScripts(&script_engine, "StaticMapScripts", {{"Scripts/StaticMapScripts.fos", "namespace StaticMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
-            const string message_str = string(message);
+        vector<byte> script_blob = BakerTests::CompileInlineScripts(&script_engine, "StaticMapScripts", {{"Scripts/StaticMapScripts.fos", "namespace StaticMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+            string message_str = string(message);
 
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                 throw ScriptSystemException(message_str);
@@ -4969,12 +4969,12 @@ namespace MapOpsTest
     { \
         auto func = server->FindFunc<void>(get_func(func_name)); \
         REQUIRE(func); \
-        const auto prev_callback = GetExceptionCallback(); \
+        auto prev_callback = GetExceptionCallback(); \
         u8string message; \
         SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); }); \
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
         CHECK_FALSE(func.Call()); \
-        const u8string expected_message_utf8 {expected_message}; \
+        u8string expected_message_utf8 {expected_message}; \
         CHECK(message.view().native_view().find(expected_message_utf8.view().native_view()) != std::u8string_view::npos); \
     }
 

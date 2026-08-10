@@ -163,7 +163,7 @@ TEST_CASE("CommonUtilities")
         pixels.emplace_back(ucolor {1, 2, 3, 4});
         pixels.emplace_back(ucolor {5, 6, 7, 8});
 
-        const u8string file_path_utf8 = fs_path_to_u8string(file_path);
+        u8string file_path_utf8 = fs_path_to_u8string(file_path);
         WriteSimpleTga(file_path_utf8.view(), image_size, pixels);
 
         REQUIRE(std::filesystem::exists(file_path));
@@ -246,8 +246,8 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     vector<byte> containing_data {byte {0xAA}, byte {0xBB}, byte {0xCC}};
     containing_data.insert(containing_data.end(), data.begin(), data.end());
     containing_data.insert(containing_data.end(), {byte {0xDD}, byte {0xEE}});
-    const const_span<byte> resource_data = const_span<byte> {containing_data}.subspan(3, data.size());
-    const SpriteResourceData resource = ReadSpriteResource(resource_data);
+    const_span<byte> resource_data = const_span<byte> {containing_data}.subspan(3, data.size());
+    SpriteResourceData resource = ReadSpriteResource(resource_data);
 
     REQUIRE(resource.Animation.Sprite.has_value());
     const SpriteInfo& sprite_info = *resource.Animation.Sprite;
@@ -328,7 +328,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
 {
     SECTION("AnyPreservesUtf8Text")
     {
-        const any_t value {u8"Привет 🌍"};
+        any_t value {u8"Привет 🌍"};
 
         CHECK(NativeScriptText::FromScriptString<u8string>(value) == u8"Привет 🌍");
     }
@@ -337,7 +337,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
     {
         string script_value = utf8_to_char_string(u8"Привет 🌍");
         string script_result;
-        const array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
+        array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
         FuncCallData call {
             .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
             .ArgsData = args,
@@ -353,7 +353,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
     {
         string script_value = utf8_to_char_string(u8"Не ASCII");
         string script_result;
-        const array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
+        array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
         FuncCallData call {
             .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
             .ArgsData = args,
@@ -366,7 +366,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
     SECTION("NativeProviderRevalidatesBorrowedStrictViews")
     {
         std::u8string backing = u8"valid";
-        const auto strict_view = u8string_view::TryFrom(backing);
+        auto strict_view = u8string_view::TryFrom(backing);
         REQUIRE(strict_view.has_value());
         backing[0] = static_cast<char8_t>(0xFF);
 
@@ -376,7 +376,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
     SECTION("NativeCallerWritesBackMutableUtf8Value")
     {
         string script_value = "initial";
-        const array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
+        array<ptr<void>, 1> args {make_ptr(&script_value).void_cast()};
         FuncCallData call {
             .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
             .ArgsData = args,
@@ -391,7 +391,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
     {
         vector<u8string> script_values {u8string {u8"old"}, u8string {u8"старое"}};
         NativeDataProvider::StorageEntryType storage;
-        const array<ptr<void>, 1> args {NativeDataProvider::NormalizeArg(script_values, storage)};
+        array<ptr<void>, 1> args {NativeDataProvider::NormalizeArg(script_values, storage)};
         FuncCallData call {
             .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
             .ArgsData = args,
@@ -408,7 +408,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
     {
         map<u8string, u8string> script_values {{u8string {u8"old"}, u8string {u8"value"}}};
         NativeDataProvider::StorageEntryType storage;
-        const array<ptr<void>, 1> args {NativeDataProvider::NormalizeArg(script_values, storage)};
+        array<ptr<void>, 1> args {NativeDataProvider::NormalizeArg(script_values, storage)};
         FuncCallData call {
             .Accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR),
             .ArgsData = args,
@@ -434,7 +434,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
 
         REQUIRE(func.Call(u8"привет 🌍"));
 
-        const u8string result = func.GetResult();
+        u8string result = func.GetResult();
         CHECK(result.view() == u8"привет 🌍 / script");
     }
 
@@ -452,7 +452,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
 
         REQUIRE(func.Call());
 
-        const vector<u8string> result = func.GetResult();
+        vector<u8string> result = func.GetResult();
         REQUIRE(result.size() == 2);
         CHECK(result[0].view() == u8"один");
         CHECK(result[1].view() == u8"два 🌍");
@@ -471,7 +471,7 @@ TEST_CASE("NativeScriptStrictTextBridge")
 
         REQUIRE(func.Call());
 
-        const map<u8string, u8string> result = func.GetResult();
+        map<u8string, u8string> result = func.GetResult();
         REQUIRE(result.size() == 1);
         CHECK(result.begin()->first.view() == u8"ключ");
         CHECK(result.begin()->second.view() == u8"значение 🌍");

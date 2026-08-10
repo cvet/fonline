@@ -347,7 +347,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
 
     SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME);
-    const ptr<const char> app_name = utf8_to_c_str(Settings.GameName.view_nt());
+    ptr<const char> app_name = utf8_to_c_str(Settings.GameName.view_nt());
     SDL_SetHint(SDL_HINT_APP_NAME, app_name.get());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
 
@@ -642,8 +642,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     };
     platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED {
         if (text != nullptr) {
-            const size_t text_size = std::char_traits<char>::length(text) + 1;
-            const u8string utf8_text = utf8_from_terminated_char_span(const_span<char> {text, text_size});
+            size_t text_size = std::char_traits<char>::length(text) + 1;
+            u8string utf8_text = utf8_from_terminated_char_span(const_span<char> {text, text_size});
             GetApp()->Input.SetClipboardText(utf8_text);
         }
         else {
@@ -747,7 +747,7 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
     if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
         auto active_renderer = GetActiveRenderer(_ctx);
         _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](u8string_view path) -> vector<byte> {
-            const auto file = resources.ReadFile(path);
+            auto file = resources.ReadFile(path);
             FO_VERIFY_AND_THROW(file, "ImGui_Default effect not found");
             return file.GetData();
         });
@@ -1189,7 +1189,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_CENTERED);
     }
 
-    const ptr<const char> window_title = utf8_to_c_str(Settings.GameName.view_nt());
+    ptr<const char> window_title = utf8_to_c_str(Settings.GameName.view_nt());
     SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, window_title.get());
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.width);
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.height);
@@ -1972,7 +1972,7 @@ void Application::BeginFrame()
                                 SDL_free(data.get());
                             }
                         });
-                        const size_t text_size = std::char_traits<char>::length(clipboard_text.get()) + 1;
+                        size_t text_size = std::char_traits<char>::length(clipboard_text.get()) + 1;
                         paste_ev.Text = utf8_from_terminated_char_span(const_span<char> {clipboard_text.get(), text_size});
                     }
                     else {
@@ -2015,7 +2015,7 @@ void Application::BeginFrame()
         case SDL_EVENT_TEXT_INPUT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
-            const size_t text_size = std::char_traits<char>::length(sdl_event.text.text) + 1;
+            size_t text_size = std::char_traits<char>::length(sdl_event.text.text) + 1;
             ev1.Text = utf8_from_terminated_char_span(const_span<char> {sdl_event.text.text, text_size});
 
             if (!imgui_capture_keyboard) {
@@ -2034,7 +2034,7 @@ void Application::BeginFrame()
         case SDL_EVENT_DROP_TEXT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
-            const size_t text_size = std::char_traits<char>::length(sdl_event.drop.data) + 1;
+            size_t text_size = std::char_traits<char>::length(sdl_event.drop.data) + 1;
             ev1.Text = utf8_from_terminated_char_span(const_span<char> {sdl_event.drop.data, text_size});
             _ctx->EventsQueue.emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
@@ -2043,11 +2043,11 @@ void Application::BeginFrame()
         } break;
         case SDL_EVENT_DROP_FILE: {
             FO_VERIFY_AND_THROW(sdl_event.drop.data != nullptr, "SDL file-drop event does not contain a path");
-            const size_t drop_path_size = std::char_traits<char>::length(sdl_event.drop.data) + 1;
-            const const_span<char> drop_path_storage {sdl_event.drop.data, drop_path_size};
-            const u8string drop_path = utf8_from_terminated_char_span(drop_path_storage);
+            size_t drop_path_size = std::char_traits<char>::length(sdl_event.drop.data) + 1;
+            const_span<char> drop_path_storage {sdl_event.drop.data, drop_path_size};
+            u8string drop_path = utf8_from_terminated_char_span(drop_path_storage);
 
-            if (const auto file_size = fs_file_size(drop_path.view())) {
+            if (auto file_size = fs_file_size(drop_path.view())) {
                 std::ifstream file {fs_open_ifstream(drop_path.view())};
 
                 if (!file) {
@@ -2066,7 +2066,7 @@ void Application::BeginFrame()
 
                 if (size == 0 || (file.read(buf, static_cast<std::streamsize>(size)) && file.gcount() == static_cast<std::streamsize>(size))) {
                     buf[size] = 0;
-                    const u8string file_text = utf8_from_char_span(const_span<char> {buf, size});
+                    u8string file_text = utf8_from_char_span(const_span<char> {buf, size});
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
                     ev1.Text = u8strex(u8"{}\n{}{}", drop_path, file_text, stripped ? "..." : "");
@@ -2217,7 +2217,7 @@ void Application::BeginFrame()
 #if FO_WINDOWS || FO_LINUX || FO_MAC
         bool is_app_focused = main_sdl_window == SDL_GetKeyboardFocus();
 #else
-        const bool is_app_focused = (SDL_GetWindowFlags(main_sdl_window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
+        bool is_app_focused = (SDL_GetWindowFlags(main_sdl_window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
 #endif
 
         if (is_app_focused) {
@@ -2729,7 +2729,7 @@ void AppWindow::SetTitle(u8string_view title)
 
     // Virtual windows show the title in the engine's tab bar; only OS windows need to push it down to SDL.
     if (!_isVirtual && _windowHandle && _app->_ctx->ActiveRendererType != RenderType::Null) {
-        const ptr<const char> title_ptr = utf8_to_c_str(_title.view_nt());
+        ptr<const char> title_ptr = utf8_to_c_str(_title.view_nt());
         auto sdl_window = _windowHandle.reinterpret_as<SDL_Window>();
         FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
         SDL_SetWindowTitle(sdl_window.get(), title_ptr.get());
@@ -3036,7 +3036,7 @@ void AppInput::SetClipboardText(u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string clipboard_text {text};
+    u8string clipboard_text {text};
     ptr<const char> clipboard_text_ptr = utf8_to_c_str(clipboard_text.view_nt());
     SDL_SetClipboardText(clipboard_text_ptr.get());
     WebRelated::SyncClipboardToSystem(text);
@@ -3054,7 +3054,7 @@ auto AppInput::GetClipboardText() -> const u8string&
                 SDL_free(data.get());
             }
         });
-        const size_t text_size = std::char_traits<char>::length(clipboard_text.get()) + 1;
+        size_t text_size = std::char_traits<char>::length(clipboard_text.get()) + 1;
         _clipboardTextStorage = utf8_from_terminated_char_span(const_span<char> {clipboard_text.get(), text_size});
     }
     else {
@@ -3134,7 +3134,7 @@ void AppAudio::MixAudio(span<byte> output, const_span<byte> buf, int32_t volume)
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
     FO_VERIFY_AND_THROW(output.size() == buf.size(), "Mix audio output and buffer sizes mismatch", output.size(), buf.size());
 
-    const float32_t volume_01 = numeric_cast<float32_t>(std::clamp(volume, 0, 100)) / 100.0f;
+    float32_t volume_01 = numeric_cast<float32_t>(std::clamp(volume, 0, 100)) / 100.0f;
     nptr<byte> output_data = output.data();
     nptr<const byte> source_data = buf.data();
     SDL_MixAudio(output_data.reinterpret_as<uint8_t>().get(), source_data.reinterpret_as<uint8_t>().get(), _app->_ctx->AudioSpec.format, numeric_cast<Uint32>(output.size()), volume_01);
@@ -3172,23 +3172,23 @@ void Application::ShowErrorMessage(u8string_view message, u8string_view tracebac
 
     constexpr u8string_view fatal_error_title = u8"Fatal Error";
     constexpr u8string_view error_title = u8"Error";
-    const u8string_view title = fatal_error ? fatal_error_title : error_title;
+    u8string_view title = fatal_error ? fatal_error_title : error_title;
 
 #if FO_WEB || FO_ANDROID || FO_IOS
 
 #if FO_WEB
-    const u8string web_message = traceback.empty() ? u8string(message) : u8strex(u8"{}\n\n{}", message, traceback);
+    u8string web_message = traceback.empty() ? u8string(message) : u8strex(u8"{}\n\n{}", message, traceback);
     WebRelated::ShowError(title, web_message);
 #else
-    const u8string title_text {title};
-    const u8string message_text {message};
-    const ptr<const char> title_ptr = utf8_to_c_str(title_text.view_nt());
-    const ptr<const char> message_ptr = utf8_to_c_str(message_text.view_nt());
+    u8string title_text {title};
+    u8string message_text {message};
+    ptr<const char> title_ptr = utf8_to_c_str(title_text.view_nt());
+    ptr<const char> message_ptr = utf8_to_c_str(message_text.view_nt());
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title_ptr.get(), message_ptr.get(), nullptr);
 #endif
 
 #else
-    const u8string title_text {title};
+    u8string title_text {title};
     auto verb_message = u8string(message);
 
     if (!traceback.empty()) {
@@ -3234,8 +3234,8 @@ void Application::ShowErrorMessage(u8string_view message, u8string_view tracebac
     SDL_MessageBoxData data;
     SDL_zero(data);
     data.flags = SDL_MESSAGEBOX_ERROR | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
-    const ptr<const char> title_ptr = utf8_to_c_str(title_text.view_nt());
-    const ptr<const char> message_ptr = utf8_to_c_str(verb_message.view_nt());
+    ptr<const char> title_ptr = utf8_to_c_str(title_text.view_nt());
+    ptr<const char> message_ptr = utf8_to_c_str(verb_message.view_nt());
     data.title = title_ptr.get();
     data.message = message_ptr.get();
     data.numbuttons = fatal_error ? 2 : 4;

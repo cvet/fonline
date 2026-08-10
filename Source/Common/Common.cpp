@@ -60,22 +60,22 @@ CommandLineArgs::CommandLineArgs(int32_t argc, nptr<char*> argv)
     ignore_unused(argc, argv);
 
     int wide_argc = 0;
-    const nptr<wchar_t*> wide_argv {::CommandLineToArgvW(::GetCommandLineW(), &wide_argc)};
+    nptr<wchar_t*> wide_argv {::CommandLineToArgvW(::GetCommandLineW(), &wide_argc)};
     FO_VERIFY_AND_THROW(wide_argv, "Failed to parse the Windows process command line");
-    const auto release_wide_argv = scope_exit([wide_argv]() noexcept { (void)::LocalFree(wide_argv.reinterpret_as<void>().get()); });
+    auto release_wide_argv = scope_exit([wide_argv]() noexcept { (void)::LocalFree(wide_argv.reinterpret_as<void>().get()); });
     CommandLineArgs wide_args {numeric_cast<int32_t>(wide_argc), wide_argv};
     _args = std::move(wide_args._args);
 #else
-    const size_t arg_count = numeric_cast<size_t>(argc);
+    size_t arg_count = numeric_cast<size_t>(argc);
     FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
 
     _args.reserve(arg_count);
 
     for (size_t i = 0; i < arg_count; ++i) {
-        const nptr<const char> arg {argv[i]};
+        nptr<const char> arg {argv[i]};
         FO_VERIFY_AND_THROW(arg, "Command line argument string is null");
 
-        const size_t arg_size = std::char_traits<char>::length(arg.get());
+        size_t arg_size = std::char_traits<char>::length(arg.get());
         _args.emplace_back(utf8_from_terminated_char_span(const_span<char> {arg.get(), arg_size + 1}));
     }
 #endif
@@ -86,17 +86,17 @@ CommandLineArgs::CommandLineArgs(int32_t argc, nptr<wchar_t*> argv)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t arg_count = numeric_cast<size_t>(argc);
+    size_t arg_count = numeric_cast<size_t>(argc);
     FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Wide command line argument vector is null while argument count is non-zero");
 
     _args.reserve(arg_count);
 
     for (size_t i = 0; i < arg_count; ++i) {
-        const nptr<const wchar_t> arg {argv[i]};
+        nptr<const wchar_t> arg {argv[i]};
         FO_VERIFY_AND_THROW(arg, "Wide command line argument string is null");
 
-        const size_t arg_size = std::char_traits<wchar_t>::length(arg.get());
-        const utf16_string arg_utf16 = wide_to_utf16(std::wstring_view {arg.get(), arg_size});
+        size_t arg_size = std::char_traits<wchar_t>::length(arg.get());
+        utf16_string arg_utf16 = wide_to_utf16(std::wstring_view {arg.get(), arg_size});
         u8string arg_utf8 = utf16_to_utf8(std::u16string_view {arg_utf16.data(), arg_utf16.size()});
         (void)arg_utf8.view_nt();
         _args.emplace_back(std::move(arg_utf8));
@@ -110,7 +110,7 @@ CommandLineArgs::CommandLineArgs(const_span<CommandLineArg> args)
 
     _args.reserve(args.size());
 
-    for (const CommandLineArg arg : args) {
+    for (CommandLineArg arg : args) {
         u8string owned_arg {arg};
         (void)owned_arg.view_nt();
         _args.emplace_back(std::move(owned_arg));
@@ -249,12 +249,12 @@ void WriteSimpleTga(u8string_view fname, isize32 size, vector<ucolor> data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view fname_text = utf8_as_char_view(fname);
-    const auto dir = std::filesystem::path {fs_make_path(fname)}.parent_path();
+    string_view fname_text = utf8_as_char_view(fname);
+    auto dir = std::filesystem::path {fs_make_path(fname)}.parent_path();
 
     if (!dir.empty()) {
-        const u8string dir_path = fs_path_to_u8string(dir);
-        const auto dir_ok = fs_create_directories(dir_path.view());
+        u8string dir_path = fs_path_to_u8string(dir);
+        auto dir_ok = fs_create_directories(dir_path.view());
         FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir_path.view(), fname_text);
     }
 
@@ -267,7 +267,7 @@ void WriteSimpleTga(u8string_view fname, isize32 size, vector<ucolor> data)
         std::swap(pixel.comp.r, pixel.comp.b);
     }
 
-    const array<byte, 18> header = {byte {0}, byte {0}, byte {2}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, //
+    array<byte, 18> header = {byte {0}, byte {0}, byte {2}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, byte {0}, //
         byte {numeric_cast<uint8_t>(size.width % 256)}, byte {numeric_cast<uint8_t>(size.width / 256)}, //
         byte {numeric_cast<uint8_t>(size.height % 256)}, byte {numeric_cast<uint8_t>(size.height / 256)}, byte {4 * 8}, byte {0x20}};
     ptr<const byte> header_bytes = header.data();

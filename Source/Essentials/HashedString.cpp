@@ -68,8 +68,8 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
         return false;
     }
 
-    const const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
-    const auto hash_value = _hashFunc(bytes);
+    const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
+    auto hash_value = _hashFunc(bytes);
 
     shared_lock locker {_hashStorageLocker};
 
@@ -84,8 +84,8 @@ auto HashStorage::CheckHashedString(u8string_view s) const noexcept -> bool
         return false;
     }
 
-    const auto bytes = utf8_to_byte_span(s);
-    const auto hash_value = _hashFunc(bytes);
+    auto bytes = utf8_to_byte_span(s);
+    auto hash_value = _hashFunc(bytes);
 
     shared_lock locker {_hashStorageLocker};
 
@@ -102,8 +102,8 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         return {};
     }
 
-    const const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
-    const auto hash_value = _hashFunc(bytes);
+    const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
+    auto hash_value = _hashFunc(bytes);
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {
@@ -113,7 +113,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 #if FO_DEBUG
             bool collision_detected = s != it->second->Str;
 #else
-            const auto collision_detected = s.length() != it->second->Str.length();
+            auto collision_detected = s.length() != it->second->Str.length();
 #endif
 
             if (collision_detected) {
@@ -132,7 +132,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
         scoped_lock locker {_hashStorageLocker};
 
-        const auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
+        auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
         ignore_unused(inserted); // Do not assert because somebody else can insert it already
 
         return hstring(it->second.get());
@@ -143,7 +143,7 @@ auto HashStorage::ToHashedString(u8string_view s) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string chars = utf8_to_char_string(s);
+    string chars = utf8_to_char_string(s);
     return ToHashedString(chars);
 }
 

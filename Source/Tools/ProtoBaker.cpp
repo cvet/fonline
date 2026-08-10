@@ -136,8 +136,8 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
 
     for (const auto& file : files) {
-        const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
-        const auto fopro_options = is_fomap ? ConfigFileOption::SkipNestedSections : ConfigFileOption::None;
+        bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
+        auto fopro_options = is_fomap ? ConfigFileOption::SkipNestedSections : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetText(), fopro_options);
 
         for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {

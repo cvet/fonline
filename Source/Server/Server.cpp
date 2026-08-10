@@ -236,7 +236,7 @@ auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
         return std::nullopt;
     }
 
-    const auto exe_path = Platform::GetExePath();
+    auto exe_path = Platform::GetExePath();
     if (exe_path) {
         _healthFileName = u8strex("{}_Health.txt", u8strvex(*exe_path).extract_file_name().erase_file_extension());
     }
@@ -271,7 +271,7 @@ auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optiona
 
     string buf;
     buf.reserve(health_info.size() + 128);
-    const u8string header = FormatUtf8("{} v{}\n\n", Settings->GameName, Settings->GameVersion);
+    u8string header = FormatUtf8("{} v{}\n\n", Settings->GameName, Settings->GameVersion);
     buf.append(utf8_as_char_view(header.view()));
     buf += health_info;
     WriteHealthFile(buf);
@@ -566,7 +566,7 @@ auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
     FO_STACK_TRACE_ENTRY();
 
     if (IsPackaged()) {
-        const string_view storage_kind = Settings->UpdateFilesInMemory ? "memory" : "disk";
+        string_view storage_kind = Settings->UpdateFilesInMemory ? "memory" : "disk";
         WriteLog("Initialize updater backend with client resources using {} storage", storage_kind);
 
         _updaterBackend.emplace();
@@ -1376,7 +1376,7 @@ void ServerEngine::DrawGui()
 
     constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
-    const auto info_row = [](const auto& key, const auto& value) {
+    auto info_row = [](const auto& key, const auto& value) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGuiTextUnformatted(key);
@@ -1534,8 +1534,8 @@ void ServerEngine::DrawGui()
     draw_item = [&](ptr<const Item> item) {
         ImGui::PushID(make_nptr(item.get()).void_cast());
 
-        const u8string label = u8strex("{} ({}) x{}", item->GetName(), item->GetId(), item->GetCount());
-        const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
+        u8string label = u8strex("{} ({}) x{}", item->GetName(), item->GetId(), item->GetCount());
+        ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
         if (ImGui::TreeNode(label_ptr.get())) {
             if (begin_info_table("##ItemSummary")) {
@@ -1580,9 +1580,9 @@ void ServerEngine::DrawGui()
     auto draw_critter = [&](ptr<const Critter> cr) {
         ImGui::PushID(make_nptr(cr.get()).void_cast());
 
-        const string_view cond_str = cond_to_str(cr->GetCondition());
-        const u8string label = u8strex("{} ({}) [{}]", cr->GetDisplayName(), cr->GetId(), cond_str);
-        const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
+        string_view cond_str = cond_to_str(cr->GetCondition());
+        u8string label = u8strex("{} ({}) [{}]", cr->GetDisplayName(), cr->GetId(), cond_str);
+        ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
         if (ImGui::TreeNode(label_ptr.get())) {
             if (begin_info_table("##CritterSummary")) {
@@ -1633,8 +1633,8 @@ void ServerEngine::DrawGui()
     auto draw_map = [&](ptr<const Map> map) {
         ImGui::PushID(make_nptr(map.get()).void_cast());
 
-        const u8string label = u8strex("{} ({})", map->GetProtoId(), map->GetId());
-        const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
+        u8string label = u8strex("{} ({})", map->GetProtoId(), map->GetId());
+        ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
         if (ImGui::TreeNode(label_ptr.get())) {
             const_span<ptr<Critter>> critters = map->GetCritters();
@@ -1694,8 +1694,8 @@ void ServerEngine::DrawGui()
             auto player = players[i].as_ptr();
             ImGui::PushID(make_nptr(player.get()).void_cast());
 
-            const u8string label = u8strex("{} ({})", player->GetDisplayName(), player->GetId());
-            const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
+            u8string label = u8strex("{} ({})", player->GetDisplayName(), player->GetId());
+            ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
             if (ImGui::TreeNode(label_ptr.get())) {
                 auto controlled_critter = player->GetControlledCritter();
@@ -1779,8 +1779,8 @@ void ServerEngine::DrawGui()
             auto loc = locations[i].as_ptr();
             ImGui::PushID(make_nptr(loc.get()).void_cast());
 
-            const u8string label = u8strex("{} ({})", loc->GetProtoId(), loc->GetId());
-            const ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
+            u8string label = u8strex("{} ({})", loc->GetProtoId(), loc->GetId());
+            ptr<const char> label_ptr = utf8_to_c_str(label.view_nt());
 
             if (ImGui::TreeNode(label_ptr.get())) {
                 if (begin_info_table("##LocSummary")) {
@@ -2638,10 +2638,10 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     auto updater_version = in_buf->Read<uint32_t>();
     string requested_binary_target = in_buf->Read<string>();
 
-    const auto compatibility_outdated = comp_version != Settings->CompatibilityVersion;
-    const auto updater_outdated = updater_version != FO_UPDATER_VERSION;
-    const string client_compatibility_version = string(comp_version);
-    const string binary_target = string(requested_binary_target);
+    auto compatibility_outdated = comp_version != Settings->CompatibilityVersion;
+    auto updater_outdated = updater_version != FO_UPDATER_VERSION;
+    string client_compatibility_version = string(comp_version);
+    string binary_target = string(requested_binary_target);
 
     // Begin data encrypting
     auto in_encrypt_key = in_buf->Read<uint32_t>();
@@ -2699,7 +2699,7 @@ void ServerEngine::LoadReportedHashes()
     vector<string> loaded;
 
     for (const auto& reported_string : DbStorage.GetAllStringIds(HashReportsCollectionName)) {
-        const u8string utf8_reported_string = reported_string;
+        u8string utf8_reported_string = reported_string;
 
         // Now resolvable - developers added the missing string after the report, so stop tracking and broadcasting it
         if (Hashes.CheckHashedString(utf8_reported_string.view())) {
@@ -2995,7 +2995,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         registered_player = true;
 
         if (player_doc.Contains("_Name")) {
-            const auto player_name = AnyData::ValueToString(player_doc["_Name"]);
+            auto player_name = AnyData::ValueToString(player_doc["_Name"]);
             player->SetName(player_name);
         }
 
@@ -3157,7 +3157,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     in_buf.Unlock();
 
-    const u8string player_name = player->GetDisplayName();
+    u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3165,7 +3165,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    const string map_name {map->GetName()};
+    string map_name {map->GetName()};
 
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
@@ -3182,7 +3182,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    const u8string critter_name = cr->GetDisplayName();
+    u8string critter_name = cr->GetDisplayName();
 
     nptr<Critter> expected_cr = cr;
 
@@ -3333,7 +3333,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     in_buf.Unlock();
 
-    const u8string player_name = player->GetDisplayName();
+    u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3341,7 +3341,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    const string map_name {map->GetName()};
+    string map_name {map->GetName()};
 
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
@@ -3358,7 +3358,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    const u8string critter_name = cr->GetDisplayName();
+    u8string critter_name = cr->GetDisplayName();
 
     auto expected_cr = cr;
 
@@ -3441,7 +3441,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     in_buf.Unlock();
 
-    const u8string player_name = player->GetDisplayName();
+    u8string player_name = player->GetDisplayName();
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3449,7 +3449,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
         return;
     }
 
-    const string map_name {map->GetName()};
+    string map_name {map->GetName()};
 
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
@@ -3466,7 +3466,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
         return;
     }
 
-    const u8string critter_name = cr->GetDisplayName();
+    u8string critter_name = cr->GetDisplayName();
 
     auto expected_cr = cr;
 
@@ -4157,9 +4157,9 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 
-    const u8string player_name = player->GetDisplayName();
-    const u8string critter_name = cr->GetDisplayName();
-    const string map_name {map->GetName()};
+    u8string player_name = player->GetDisplayName();
+    u8string critter_name = cr->GetDisplayName();
+    string map_name {map->GetName()};
 
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
@@ -4288,10 +4288,10 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Cr
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string player_name = player->GetDisplayName();
-    const u8string critter_name = cr->GetDisplayName();
-    const string map_name {map->GetName()};
-    const int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
+    u8string player_name = player->GetDisplayName();
+    u8string critter_name = cr->GetDisplayName();
+    string map_name {map->GetName()};
+    int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
 
     if (direct_distance > max_hex_distance) {
         WriteLog("Process_StopMove: client stop hex is too far from server hex, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}, limit {}", player_name, critter_name, cr->GetId(), map_name, cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance, max_hex_distance);

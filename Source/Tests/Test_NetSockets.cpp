@@ -125,7 +125,7 @@ TEST_CASE("NetSockets")
         REQUIRE(sender.bind("127.0.0.1", 0));
         REQUIRE(sender.can_write(WriteTimeout));
 
-        const array<byte, 4> payload = {byte {'p'}, byte {'i'}, byte {'n'}, byte {'g'}};
+        array<byte, 4> payload = {byte {'p'}, byte {'i'}, byte {'n'}, byte {'g'}};
         REQUIRE(sender.send_to("127.0.0.1", receiver_port, payload) == numeric_cast<int32_t>(payload.size()));
         REQUIRE(receiver.can_read(ReadTimeout));
 
@@ -153,12 +153,12 @@ TEST_CASE("NetSockets")
         tcp_socket accepted = server.accept();
         REQUIRE(accepted.is_valid());
 
-        const array<byte, 5> payload = {byte {'h'}, byte {'e'}, byte {'l'}, byte {'l'}, byte {'o'}};
+        array<byte, 5> payload = {byte {'h'}, byte {'e'}, byte {'l'}, byte {'l'}, byte {'o'}};
         REQUIRE(client.send(payload) == numeric_cast<int32_t>(payload.size()));
         REQUIRE(accepted.can_read(ReadTimeout));
 
         array<byte, 16> buffer {};
-        const int32_t received = accepted.receive(buffer);
+        int32_t received = accepted.receive(buffer);
 
         REQUIRE(received == numeric_cast<int32_t>(payload.size()));
         CHECK(std::equal(payload.begin(), payload.end(), buffer.begin()));

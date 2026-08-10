@@ -90,7 +90,7 @@ auto CompileEffekseerProject(u8string_view project_path, const_span<byte> projec
         throw EffekseerCompilerException("Effekseer project is empty", project_path);
     }
 
-    const u8string xml = utf8_from_byte_span(project_data);
+    u8string xml = utf8_from_byte_span(project_data);
     XmlNode project = ParseXmlProject(project_path, xml);
     return CompileProject(project_path, project);
 }
@@ -103,7 +103,7 @@ auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte
         throw EffekseerCompilerException("Effekseer project is empty", project_path);
     }
 
-    const u8string xml = utf8_from_byte_span(project_data);
+    u8string xml = utf8_from_byte_span(project_data);
     XmlNode project = ParseXmlProject(project_path, xml);
     CompilerContext context = CreateCompilerContext(project_path, project);
     return vector<u8string> {context.Dependencies.begin(), context.Dependencies.end()};
@@ -123,7 +123,7 @@ auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte
     size_t begin = 0;
     size_t end = value.size();
 
-    const std::u8string_view native_value = value.native_view();
+    std::u8string_view native_value = value.native_view();
 
     while (begin < end && IsXmlSpace(native_value[begin])) {
         ++begin;
@@ -141,24 +141,24 @@ auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte
 
     u8string result;
     result.reserve(value.size());
-    const std::u8string_view native_value = value.native_view();
+    std::u8string_view native_value = value.native_view();
 
     for (size_t pos = 0; pos < value.size();) {
         if (native_value[pos] != u8'&') {
-            const size_t entity_begin = native_value.find(u8'&', pos);
-            const size_t text_end = entity_begin != std::u8string_view::npos ? entity_begin : native_value.size();
+            size_t entity_begin = native_value.find(u8'&', pos);
+            size_t text_end = entity_begin != std::u8string_view::npos ? entity_begin : native_value.size();
             result.append(u8string_view::FromChecked(native_value.substr(pos, text_end - pos)));
             pos = text_end;
             continue;
         }
 
-        const size_t end = native_value.find(u8';', pos + 1);
+        size_t end = native_value.find(u8';', pos + 1);
 
         if (end == std::u8string_view::npos) {
             throw EffekseerCompilerException("Effekseer project contains an unterminated XML entity", project_path);
         }
 
-        const u8string_view entity = u8string_view::FromChecked(native_value.substr(pos + 1, end - pos - 1));
+        u8string_view entity = u8string_view::FromChecked(native_value.substr(pos + 1, end - pos - 1));
 
         if (entity == u8"amp") {
             result.append("&");
@@ -206,7 +206,7 @@ public:
         SkipSpace();
 
         if (StartsWith(u8"<?xml")) {
-            const size_t declaration_end = _xml.native_view().find(u8"?>", _position + 5);
+            size_t declaration_end = _xml.native_view().find(u8"?>", _position + 5);
 
             if (declaration_end == std::u8string_view::npos) {
                 Fail("Effekseer project has an unterminated XML declaration");
@@ -260,8 +260,8 @@ private:
         size_t begin = _position;
 
         while (_position < _xml.size()) {
-            const char8_t ch = _xml.native_view()[_position];
-            const bool valid = (ch >= u8'A' && ch <= u8'Z') || (ch >= u8'a' && ch <= u8'z') || (ch >= u8'0' && ch <= u8'9') || ch == u8'_';
+            char8_t ch = _xml.native_view()[_position];
+            bool valid = (ch >= u8'A' && ch <= u8'Z') || (ch >= u8'a' && ch <= u8'z') || (ch >= u8'0' && ch <= u8'9') || ch == u8'_';
 
             if (!valid) {
                 break;
@@ -335,8 +335,8 @@ private:
                 continue;
             }
 
-            const size_t markup_begin = _xml.native_view().find(u8'<', _position);
-            const size_t text_end = markup_begin != std::u8string_view::npos ? markup_begin : _xml.size();
+            size_t markup_begin = _xml.native_view().find(u8'<', _position);
+            size_t text_end = markup_begin != std::u8string_view::npos ? markup_begin : _xml.size();
             text.append(u8string_view::FromChecked(_xml.native_view().substr(_position, text_end - _position)));
             _position = text_end;
         }
@@ -409,11 +409,11 @@ private:
         return default_value;
     }
 
-    const string ascii_value = utf8_to_string(value->Text);
+    string ascii_value = utf8_to_string(value->Text);
     int32_t result {};
     const char* begin = ascii_value.data();
     const char* end = begin + ascii_value.size();
-    const auto [parse_end, error] = std::from_chars(begin, end, result);
+    auto [parse_end, error] = std::from_chars(begin, end, result);
 
     if (error != std::errc {} || parse_end != end) {
         throw EffekseerCompilerException("Effekseer project contains an invalid integer", path, value->Text);
@@ -432,11 +432,11 @@ private:
         return default_value;
     }
 
-    const string ascii_value = utf8_to_string(value->Text);
+    string ascii_value = utf8_to_string(value->Text);
     float32_t result {};
     const char* begin = ascii_value.data();
     const char* end = begin + ascii_value.size();
-    const auto [parse_end, error] = std::from_chars(begin, end, result, std::chars_format::general);
+    auto [parse_end, error] = std::from_chars(begin, end, result, std::chars_format::general);
 
     if (error != std::errc {} || parse_end != end || !std::isfinite(result)) {
         throw EffekseerCompilerException("Effekseer project contains an invalid float", path, value->Text);
@@ -524,7 +524,7 @@ void BinaryWriter::WriteUtf16(u8string_view value)
     for (size_t i = 0; i < value.size();) {
         size_t length = value.size() - i;
         auto text_pos = make_ptr(value.data() + i);
-        const optional<uint32_t> codepoint = utf8::Decode(text_pos, length);
+        optional<uint32_t> codepoint = utf8::Decode(text_pos, length);
 
         if (!codepoint || !utf8::IsValid(*codepoint)) {
             throw EffekseerCompilerException("Effekseer dependency path is not valid UTF-8", value);
@@ -1549,8 +1549,8 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string normalized_path = u8strex(path).normalize_path_slashes();
-    const std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(normalized_path)}).lexically_normal();
+    u8string normalized_path = u8strex(path).normalize_path_slashes();
+    std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(normalized_path)}).lexically_normal();
     return fs_path_to_u8string(resolved);
 }
 
@@ -1558,14 +1558,14 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string resolved_path = ResolveDependencyPath(context, path);
+    u8string resolved_path = ResolveDependencyPath(context, path);
     optional<vector<byte>> bytes = fs_read_file_bytes(resolved_path);
 
     if (!bytes || bytes->size() < 18) {
         return std::nullopt;
     }
 
-    const ptr<const byte> data = bytes->data();
+    ptr<const byte> data = bytes->data();
     constexpr std::array<byte, 8> signature {byte {0x89}, byte {'P'}, byte {'N'}, byte {'G'}, byte {0x0d}, byte {0x0a}, byte {0x1a}, byte {0x0a}};
     uint32_t width = 0;
     uint32_t height = 0;
@@ -1580,7 +1580,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     }
     else {
         constexpr string_view tga_footer {"TRUEVISION-XFILE.\0", 18};
-        const bool has_tga_footer = bytes->size() >= tga_footer.size() && std::ranges::equal(const_span<byte> {bytes->data() + bytes->size() - tga_footer.size(), tga_footer.size()}, string_to_byte_span(tga_footer));
+        bool has_tga_footer = bytes->size() >= tga_footer.size() && std::ranges::equal(const_span<byte> {bytes->data() + bytes->size() - tga_footer.size(), tga_footer.size()}, string_to_byte_span(tga_footer));
 
         if (u8strex(path).get_file_extension() != u8"tga" && !has_tga_footer) {
             return std::nullopt;

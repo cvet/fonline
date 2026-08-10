@@ -82,7 +82,7 @@ extern void WriteBaseLog(u8string_view message, nptr<const CatchedStackTraceData
     FO_NO_STACK_TRACE_ENTRY();
 
     if (validate_utf8_text(message.native_view())) {
-        const u8string_view rejected {u8"Base log message rejected: invalid UTF-8\n"};
+        u8string_view rejected {u8"Base log message rejected: invalid UTF-8\n"};
         WriteBaseLogBytes(utf8_to_byte_span(rejected), st ? st.get() : nullptr);
         return;
     }
@@ -95,7 +95,7 @@ extern void WriteLogMessage(LogType type, u8string_view message, nptr<const Catc
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const u8string checked_message = u8string::FromChecked(message.native_view());
+        u8string checked_message = u8string::FromChecked(message.native_view());
 
         if (Logging == nullptr) {
             u8string result;
@@ -127,7 +127,7 @@ extern void SetLogCallback(string_view key, LogFunc callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string checked_key {key};
+    string checked_key {key};
 
     std::scoped_lock locker {Logging->Locker};
 
@@ -165,16 +165,16 @@ static void EmitLogMessage(LogType type, u8string_view message, nptr<const Catch
     result.reserve(message.size() + 64);
 
     if (!Logging->TagsDisabled) {
-        const time_desc_t time = nanotime::now().desc(true);
-        const string date_tag = strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
-        const string time_tag = strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
+        time_desc_t time = nanotime::now().desc(true);
+        string date_tag = strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
+        string time_tag = strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
         result.append(date_tag);
         result.append(time_tag);
 
-        if (const std::thread::id thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
-            const string_view thread_name = get_this_thread_name();
-            const u8string thread_name_utf8 = thread_name;
-            const u8string thread_tag = FormatUtf8("[{}] ", thread_name_utf8);
+        if (std::thread::id thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
+            string_view thread_name = get_this_thread_name();
+            u8string thread_name_utf8 = thread_name;
+            u8string thread_tag = FormatUtf8("[{}] ", thread_name_utf8);
             result.append(thread_tag.view());
         }
     }
@@ -202,7 +202,7 @@ static void EmitLogMessage(LogType type, u8string_view message, nptr<const Catch
     }
 
 #if FO_TRACY
-    const const_span<char> tracy_message = utf8_to_char_span(result.view());
+    const_span<char> tracy_message = utf8_to_char_span(result.view());
     TracyMessage(tracy_message.data(), tracy_message.size());
 #endif
 }

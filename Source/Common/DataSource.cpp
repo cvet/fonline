@@ -302,9 +302,9 @@ auto DataSource::MountPack(u8string_view dir, u8string_view name, bool maybe_not
 
     FO_VERIFY_AND_THROW(!name.empty(), "Pack data source mount requested an empty pack name", dir, maybe_not_available);
 
-    const auto is_file_present = [](u8string_view path) -> bool { return static_cast<bool>(fs_open_ifstream(path)); };
+    auto is_file_present = [](u8string_view path) -> bool { return static_cast<bool>(fs_open_ifstream(path)); };
 
-    const u8string path = fs_path_to_u8string(std::filesystem::path {fs_make_path(dir)} / std::filesystem::path {fs_make_path(name)});
+    u8string path = fs_path_to_u8string(std::filesystem::path {fs_make_path(dir)} / std::filesystem::path {fs_make_path(name)});
 
     if (name == u8"Embedded") {
         return SafeAlloc::MakeUnique<EmbeddedFile>();
@@ -388,7 +388,7 @@ auto NonCachedDir::IsFileExists(string_view path) const -> bool
         return false;
     }
 
-    const u8string full_path = fs_combine_path(_baseDir.view(), path);
+    u8string full_path = fs_combine_path(_baseDir.view(), path);
 
     if (!fs_exists(full_path.view())) {
         return false;
@@ -408,7 +408,7 @@ auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
         return false;
     }
 
-    const u8string full_path = fs_combine_path(_baseDir.view(), path);
+    u8string full_path = fs_combine_path(_baseDir.view(), path);
     auto file = fs_open_ifstream(full_path.view());
 
     if (!file) {
@@ -428,7 +428,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
         return nullptr;
     }
 
-    const u8string full_path = fs_combine_path(_baseDir.view(), path);
+    u8string full_path = fs_combine_path(_baseDir.view(), path);
     auto file = fs_open_ifstream(full_path.view());
 
     if (!file) {
@@ -455,7 +455,7 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
         return {};
     }
 
-    const u8string full_dir = fs_combine_path(_baseDir, dir);
+    u8string full_dir = fs_combine_path(_baseDir, dir);
 
     if (!dir.empty() && !fs_is_dir(full_dir)) {
         return {};
@@ -488,7 +488,7 @@ auto CachedDir::Reindex() -> bool
     vector<string> files_tree_names;
 
     fs_iterate_dir(_baseDir, _recursive, [&](u8string_view path, size_t size, uint64_t write_time) {
-        const string path_text = utf8_to_string(path);
+        string path_text = utf8_to_string(path);
         FileEntry fe;
         fe.FileName = fs_path_to_u8string(std::filesystem::path {fs_make_path(_baseDir)} / std::filesystem::path {fs_make_path(path)});
         fe.FileSize = size;
@@ -987,9 +987,9 @@ ZipFile::ZipFile(u8string_view fname) :
 
     ffunc.opaque = _fileStream.void_cast();
 
-    const ptr<const char> file_name = utf8_to_c_str(_fileName.view_nt());
+    ptr<const char> file_name = utf8_to_c_str(_fileName.view_nt());
     auto zip_handle = make_nptr(unzOpen2(file_name.get(), &ffunc));
-    const auto close_on_fail = scope_fail([&zip_handle]() noexcept {
+    auto close_on_fail = scope_fail([&zip_handle]() noexcept {
         if (zip_handle) {
             unzClose(zip_handle.get());
             zip_handle = nullptr;
@@ -1100,7 +1100,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<byte>(numeric_cast<size_t>(info.UncompressedSize));
-    const auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
+    auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
         throw DataSourceException("Can't read file from zip (unzCloseCurrentFile)", path);
@@ -1333,7 +1333,7 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<byte>(numeric_cast<size_t>(info.UncompressedSize));
-    const auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
+    auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
         throw DataSourceException("Can't read embedded file (unzCloseCurrentFile)", path);
@@ -1351,13 +1351,13 @@ FilesList::FilesList()
     _filesTree.clear();
     _filesTreeNames.clear();
 
-    const auto files_tree_content = fs_read_file_text(u8"FilesTree.txt");
+    auto files_tree_content = fs_read_file_text(u8"FilesTree.txt");
 
     if (!files_tree_content) {
         throw DataSourceException("Can't open 'FilesTree.txt' in file list assets");
     }
 
-    const string_view files_tree_text = utf8_as_char_view(files_tree_content->view());
+    string_view files_tree_text = utf8_as_char_view(files_tree_content->view());
 
     for (string_view name : strvex(files_tree_text).split('\n')) {
         name = strvex(name).trim();
@@ -1366,7 +1366,7 @@ FilesList::FilesList()
             continue;
         }
 
-        const u8string file_name = name;
+        u8string file_name = name;
         auto file = fs_open_ifstream(file_name.view());
 
         if (!file) {

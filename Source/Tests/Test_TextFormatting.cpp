@@ -218,15 +218,15 @@ TEST_CASE("TextFormatting")
 {
     SECTION("EmptyFormatsAndStrictStringsStayEmpty")
     {
-        const string empty_ascii;
-        const u8string empty_utf8;
+        string empty_ascii;
+        u8string empty_utf8;
 
         CHECK(strex("").empty());
         CHECK(FormatUtf8("").empty());
         CHECK(FormatUtf8(u8"").empty());
 
-        const string bracketed_ascii = strex("[{}]", empty_ascii);
-        const u8string bracketed_utf8 = FormatUtf8(u8"[{}|{}]", empty_ascii, empty_utf8);
+        string bracketed_ascii = strex("[{}]", empty_ascii);
+        u8string bracketed_utf8 = FormatUtf8(u8"[{}|{}]", empty_ascii, empty_utf8);
 
         CHECK(bracketed_ascii == "[]");
         CHECK(bracketed_utf8 == u8"[|]");
@@ -234,15 +234,15 @@ TEST_CASE("TextFormatting")
 
     SECTION("StrexFormatsAsciiAndUtf8Destinations")
     {
-        const u8string utf8_text {u8"мир"};
-        const string ascii_result = strex("id={:04}; hex={:#x}; fixed={:.2f}; text={:>5}", uint32_t {7}, uint32_t {255}, 3.14159, "ok");
-        const u8string utf8_result = u8strex(u8"значение={:04}; текст={}", uint32_t {7}, utf8_text);
+        u8string utf8_text {u8"мир"};
+        string ascii_result = strex("id={:04}; hex={:#x}; fixed={:.2f}; text={:>5}", uint32_t {7}, uint32_t {255}, 3.14159, "ok");
+        u8string utf8_result = u8strex(u8"значение={:04}; текст={}", uint32_t {7}, utf8_text);
 
         CHECK(ascii_result == "id=0007; hex=0xff; fixed=3.14; text=   ok");
         CHECK(utf8_result == u8"значение=0007; текст=мир");
         CHECK_THROWS_AS(
             [] {
-                const string invalid_ascii_result = strex("{}", InvalidFormattedByte {0x80});
+                string invalid_ascii_result = strex("{}", InvalidFormattedByte {0x80});
                 ignore_unused(invalid_ascii_result);
             }(),
             TextValidationException);
@@ -250,19 +250,19 @@ TEST_CASE("TextFormatting")
 
     SECTION("Utf8LiteralAndStrictArgumentsPreserveEveryTextShape")
     {
-        const string ascii {"ASCII"};
-        const u8string localized {u8"Привет"};
-        const u8string result = FormatUtf8(u8"literal=текст|{}|{}|e\u0301|🌍", ascii, localized);
+        string ascii {"ASCII"};
+        u8string localized {u8"Привет"};
+        u8string result = FormatUtf8(u8"literal=текст|{}|{}|e\u0301|🌍", ascii, localized);
 
         CHECK(result == u8"literal=текст|ASCII|Привет|e\u0301|🌍");
     }
 
     SECTION("AsciiFormatPromotesStrictAsciiToUtf8AndAcceptsUtf8Arguments")
     {
-        const string label {"message"};
-        const u8string value {u8"мир 🌍"};
-        const u8string result = FormatUtf8("{}: {}", label, value);
-        const u8string temporary_result = FormatUtf8("{}: {}", label, u8string {u8"временный 🌍"});
+        string label {"message"};
+        u8string value {u8"мир 🌍"};
+        u8string result = FormatUtf8("{}: {}", label, value);
+        u8string temporary_result = FormatUtf8("{}: {}", label, u8string {u8"временный 🌍"});
 
         CHECK(result == u8"message: мир 🌍");
         CHECK(temporary_result == u8"message: временный 🌍");
@@ -270,12 +270,12 @@ TEST_CASE("TextFormatting")
 
     SECTION("NarrowCharacterArgumentsPromoteDirectlyToUtf8")
     {
-        const u8string strict_value {u8"ошибка 🌍"};
-        const string narrow_value = utf8_to_char_string(strict_value);
+        u8string strict_value {u8"ошибка 🌍"};
+        string narrow_value = utf8_to_char_string(strict_value);
         const char* narrow_ptr = narrow_value.c_str();
 
-        const u8string ascii_format_result = FormatUtf8("{} | {}", narrow_value, narrow_ptr);
-        const u8string utf8_format_result = FormatUtf8(u8"значение: {}", narrow_ptr);
+        u8string ascii_format_result = FormatUtf8("{} | {}", narrow_value, narrow_ptr);
+        u8string utf8_format_result = FormatUtf8(u8"значение: {}", narrow_ptr);
 
         CHECK(ascii_format_result == u8"ошибка 🌍 | ошибка 🌍");
         CHECK(utf8_format_result == u8"значение: ошибка 🌍");
@@ -295,8 +295,8 @@ TEST_CASE("TextFormatting")
         NoncopyableFormattedValue value;
         value.Value = 42;
 
-        const string ascii_result = strex("value={:04}", value);
-        const u8string utf8_result = FormatUtf8(u8"значение={}", value);
+        string ascii_result = strex("value={:04}", value);
+        u8string utf8_result = FormatUtf8(u8"значение={}", value);
 
         CHECK(ascii_result == "value=0042");
         CHECK(utf8_result == u8"значение=42");
@@ -304,16 +304,16 @@ TEST_CASE("TextFormatting")
 
     SECTION("EmbeddedNullsArePreservedInFormatsAndArguments")
     {
-        const string ascii_argument = string(string_view {"x\0y", 3});
-        const string ascii_result = strex("A\0{}Z", ascii_argument);
-        const string_view expected_ascii {"A\0x\0yZ", 6};
+        string ascii_argument = string(string_view {"x\0y", 3});
+        string ascii_result = strex("A\0{}Z", ascii_argument);
+        string_view expected_ascii {"A\0x\0yZ", 6};
 
         CHECK(ascii_result.size() == expected_ascii.size());
         CHECK(ascii_result == expected_ascii);
 
-        const u8string utf8_argument = u8string::FromChecked(std::u8string_view {u8"я\0🌍", 7});
-        const u8string utf8_result = FormatUtf8(u8"Ю\0{}!", utf8_argument);
-        const std::u8string_view expected_utf8 {u8"Ю\0я\0🌍!", 11};
+        u8string utf8_argument = u8string::FromChecked(std::u8string_view {u8"я\0🌍", 7});
+        u8string utf8_result = FormatUtf8(u8"Ю\0{}!", utf8_argument);
+        std::u8string_view expected_utf8 {u8"Ю\0я\0🌍!", 11};
 
         CHECK(utf8_result.size() == expected_utf8.size());
         CHECK(utf8_result.view().native_view() == expected_utf8);
@@ -322,7 +322,7 @@ TEST_CASE("TextFormatting")
     SECTION("WholeAsciiOutputIsValidatedAfterCustomFormatting")
     {
         try {
-            const string result = strex("ok:{}!", InvalidFormattedByte {0x80});
+            string result = strex("ok:{}!", InvalidFormattedByte {0x80});
             ignore_unused(result);
             FAIL("Invalid ASCII strex result was accepted");
         }

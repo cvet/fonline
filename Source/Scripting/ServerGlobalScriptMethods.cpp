@@ -1106,7 +1106,7 @@ FO_SCRIPT_API map<u8string, u8string> Server_Game_DbGetPlayerData(ptr<ServerEngi
         throw ScriptException("Player id arg is zero");
     }
 
-    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, playerId);
+    auto doc = server->DbStorage.Get(server->PlayersCollectionName, playerId);
     map<u8string, u8string> result;
 
     for (const auto& [key, value] : doc) {
@@ -1155,7 +1155,7 @@ FO_SCRIPT_API map<u8string, u8string> Server_Game_DbGetRecord(ptr<ServerEngine> 
         throw ScriptException("Record id arg is zero");
     }
 
-    const auto doc = server->DbStorage.Get(collectionName, id);
+    auto doc = server->DbStorage.Get(collectionName, id);
     map<u8string, u8string> result;
 
     for (const auto& [key, value] : doc) {
@@ -1176,7 +1176,7 @@ FO_SCRIPT_API map<u8string, u8string> Server_Game_DbGetRecord(ptr<ServerEngine> 
         throw ScriptException("Record id arg is empty");
     }
 
-    const auto doc = server->DbStorage.Get(collectionName, string(id));
+    auto doc = server->DbStorage.Get(collectionName, string(id));
     map<u8string, u8string> result;
 
     for (const auto& [key, value] : doc) {
@@ -1618,7 +1618,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
     return std::bit_cast<int32_t>(retval);
 
 #elif !FO_WINDOWS && !FO_WEB
-    const string command_str = string(command);
+    string command_str = string(command);
     auto command_cstr = make_ptr(command_str.c_str());
     auto in = make_nptr(popen(command_cstr.get(), "r"));
 

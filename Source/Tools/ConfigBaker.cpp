@@ -82,10 +82,10 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
 
         auto bake_config = [&](string_view sub_config) -> bool {
             FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
-            const u8string config_path = _context->Settings->GetAppliedConfigs().front();
-            const std::filesystem::path native_config_path {fs_make_path(config_path.view())};
-            const u8string config_name = fs_path_to_u8string(native_config_path.filename());
-            const u8string config_dir = fs_path_to_u8string(native_config_path.parent_path());
+            u8string config_path = _context->Settings->GetAppliedConfigs().front();
+            std::filesystem::path native_config_path {fs_make_path(config_path.view())};
+            u8string config_name = fs_path_to_u8string(native_config_path.filename());
+            u8string config_dir = fs_path_to_u8string(native_config_path.parent_path());
 
             auto maincfg = GlobalSettings(true);
             maincfg.ApplyConfigAtPath(config_name.view(), config_dir.view());
@@ -114,11 +114,11 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             int32_t settings_errors = 0;
 
             for (auto&& [key, value] : config_settings) {
-                const auto is_server_setting = server_settings.count(key) != 0;
-                const auto is_client_setting = client_settings.count(key) != 0;
-                const string_view value_chars = utf8_as_char_view(value.view());
-                const strvex value_ext {value_chars};
-                const bool skip_write = value.empty() || value.view() == u8"0" || strex(value_chars).lower() == "false";
+                auto is_server_setting = server_settings.count(key) != 0;
+                auto is_client_setting = client_settings.count(key) != 0;
+                string_view value_chars = utf8_as_char_view(value.view());
+                strvex value_ext {value_chars};
+                bool skip_write = value.empty() || value.view() == u8"0" || strex(value_chars).lower() == "false";
                 u8string_view shortened_value = value.view();
                 if (value_ext.is_explicit_bool()) {
                     if (value_ext.to_bool()) {
@@ -129,7 +129,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                     }
                 }
                 if (!skip_write) {
-                    const u8string line = FormatUtf8(u8"{}={}\n", key, shortened_value);
+                    u8string line = FormatUtf8(u8"{}={}\n", key, shortened_value);
                     server_config_content.append(line.view());
                 }
 
@@ -139,7 +139,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
 
                 if (is_client_setting) {
                     if (!skip_write) {
-                        const u8string line = FormatUtf8(u8"{}={}\n", key, shortened_value);
+                        u8string line = FormatUtf8(u8"{}={}\n", key, shortened_value);
                         client_config_content.append(line.view());
                     }
 
@@ -161,8 +161,8 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             }
 
             if (settings_errors == 0) {
-                const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, u8string_view cfg_content) {
-                    const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
+                auto write_config = [&](string_view cfg_name1, string_view cfg_name2, u8string_view cfg_content) {
+                    string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
                     _context->WriteData(cfg_name, utf8_to_byte_span(cfg_content));
                 };
 

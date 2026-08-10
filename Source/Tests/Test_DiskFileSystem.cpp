@@ -44,7 +44,7 @@ static_assert(!std::is_invocable_r_v<bool, FsWriteAsciiText, string_view, string
 
 static auto MakeTempTestDir(string_view name) -> u8string
 {
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_u8string(base);
 }
 
@@ -52,13 +52,13 @@ TEST_CASE("DiskFileSystem")
 {
     SECTION("TextReadWriteRenameAndRemoveRoundtrip")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_roundtrip");
-        const auto file_path = fs_combine_path(temp_dir.view(), "nested/data.txt");
-        const auto renamed_path = fs_combine_path(temp_dir.view(), "nested/renamed.txt");
+        auto temp_dir = MakeTempTestDir("diskfs_roundtrip");
+        auto file_path = fs_combine_path(temp_dir.view(), "nested/data.txt");
+        auto renamed_path = fs_combine_path(temp_dir.view(), "nested/renamed.txt");
         constexpr char8_t content_literal[] = u8"Привет 🌍\0filesystem";
-        const u8string content = u8string::FromChecked(std::u8string_view {content_literal, std::size(content_literal) - 1});
+        u8string content = u8string::FromChecked(std::u8string_view {content_literal, std::size(content_literal) - 1});
 
-        const auto removed_before_roundtrip = fs_remove_dir_tree(temp_dir.view());
+        auto removed_before_roundtrip = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before_roundtrip);
 
         REQUIRE(fs_write_file_text(file_path.view(), content.view()));
@@ -79,11 +79,11 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("TextReadRejectsMalformedUtf8WithoutChangingByteAccess")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_invalid_utf8");
-        const auto file_path = fs_combine_path(temp_dir.view(), "invalid.txt");
-        const vector<byte> malformed {byte {0xC3}, byte {0x28}};
+        auto temp_dir = MakeTempTestDir("diskfs_invalid_utf8");
+        auto file_path = fs_combine_path(temp_dir.view(), "invalid.txt");
+        vector<byte> malformed {byte {0xC3}, byte {0x28}};
 
-        const auto removed_before_test = fs_remove_dir_tree(temp_dir.view());
+        auto removed_before_test = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before_test);
 
         REQUIRE(fs_write_file_bytes(file_path.view(), malformed));
@@ -95,18 +95,18 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("BinaryReadWriteCompareAndHashRoundtrip")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_binary_roundtrip");
-        const auto file_path = fs_combine_path(temp_dir.view(), "nested/data.bin");
-        const vector<byte> content {byte {0x00}, byte {0x80}, byte {0xFF}};
-        const vector<byte> different_content {byte {0x00}, byte {0x80}, byte {0xFE}};
+        auto temp_dir = MakeTempTestDir("diskfs_binary_roundtrip");
+        auto file_path = fs_combine_path(temp_dir.view(), "nested/data.bin");
+        vector<byte> content {byte {0x00}, byte {0x80}, byte {0xFF}};
+        vector<byte> different_content {byte {0x00}, byte {0x80}, byte {0xFE}};
 
-        const auto removed_before_roundtrip = fs_remove_dir_tree(temp_dir.view());
+        auto removed_before_roundtrip = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before_roundtrip);
 
         CHECK_FALSE(fs_read_file_bytes(file_path.view()).has_value());
         REQUIRE(fs_write_file_bytes(file_path.view(), content));
 
-        const auto read_content = fs_read_file_bytes(file_path.view());
+        auto read_content = fs_read_file_bytes(file_path.view());
         REQUIRE(read_content.has_value());
         CHECK(*read_content == content);
         CHECK(fs_compare_file_bytes(file_path.view(), content));
@@ -118,7 +118,7 @@ TEST_CASE("DiskFileSystem")
         CHECK(*fs_hash_file(file_path.view()) == expected_hash);
 
         REQUIRE(fs_write_file_bytes(file_path.view(), {}));
-        const auto empty_content = fs_read_file_bytes(file_path.view());
+        auto empty_content = fs_read_file_bytes(file_path.view());
         REQUIRE(empty_content.has_value());
         CHECK(empty_content->empty());
         CHECK(fs_compare_file_bytes(file_path.view(), {}));
@@ -128,11 +128,11 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("IterateDirRespectsRecursiveFlag")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_iterate");
-        const auto top_file = fs_combine_path(temp_dir.view(), "top.txt");
-        const auto nested_file = fs_combine_path(temp_dir.view(), "sub/nested.txt");
+        auto temp_dir = MakeTempTestDir("diskfs_iterate");
+        auto top_file = fs_combine_path(temp_dir.view(), "top.txt");
+        auto nested_file = fs_combine_path(temp_dir.view(), "sub/nested.txt");
 
-        const auto removed_before_iterate = fs_remove_dir_tree(temp_dir.view());
+        auto removed_before_iterate = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before_iterate);
         REQUIRE(fs_write_file_text(top_file.view(), u8"top"));
         REQUIRE(fs_write_file_text(nested_file.view(), u8"nested"));
@@ -153,10 +153,10 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("TouchAndStreamHelpersWork")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_stream");
-        const auto file_path = fs_combine_path(temp_dir.view(), "touch.bin");
+        auto temp_dir = MakeTempTestDir("diskfs_stream");
+        auto file_path = fs_combine_path(temp_dir.view(), "touch.bin");
 
-        const auto removed_before_stream = fs_remove_dir_tree(temp_dir.view());
+        auto removed_before_stream = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before_stream);
         REQUIRE(fs_create_directories(temp_dir.view()));
         REQUIRE(fs_touch_file(file_path.view()));
@@ -169,7 +169,7 @@ TEST_CASE("DiskFileSystem")
 
         array<byte, 3> buf {};
         REQUIRE(stream_read_exact(stream, buf));
-        const array<byte, 3> expected_prefix {byte {'a'}, byte {'b'}, byte {'c'}};
+        array<byte, 3> expected_prefix {byte {'a'}, byte {'b'}, byte {'c'}};
         CHECK(buf == expected_prefix);
         CHECK(stream_get_read_pos(stream) == 3);
         REQUIRE(stream_set_read_pos(stream, 1, std::ios_base::cur));
@@ -183,12 +183,12 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("FileHashMatchesInMemoryReference")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_hash");
-        const auto file_path = fs_combine_path(temp_dir.view(), "hash.bin");
-        const auto removed_before_hash = fs_remove_dir_tree(temp_dir.view());
+        auto temp_dir = MakeTempTestDir("diskfs_hash");
+        auto file_path = fs_combine_path(temp_dir.view(), "hash.bin");
+        auto removed_before_hash = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before_hash);
 
-        const auto check_hash = [&file_path](size_t size) {
+        auto check_hash = [&file_path](size_t size) {
             vector<byte> data(size);
 
             for (size_t index = 0; index < size; index++) {
@@ -209,12 +209,12 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("MakeWritablePathLayersRelativeUnderRoot")
     {
-        const u8string root {u8"/data/user"};
-        const u8string nested_relative {u8"Resources/Sub"};
-        const u8string empty_path;
-        const u8string cache_path {u8"Cache"};
-        const u8string expected_cache_path = fs_combine_path(root.view(), "Cache");
-        const u8string expected_nested_path = fs_combine_path(root.view(), "Resources/Sub");
+        u8string root {u8"/data/user"};
+        u8string nested_relative {u8"Resources/Sub"};
+        u8string empty_path;
+        u8string cache_path {u8"Cache"};
+        u8string expected_cache_path = fs_combine_path(root.view(), "Cache");
+        u8string expected_nested_path = fs_combine_path(root.view(), "Resources/Sub");
 
         // Portable layout (empty root): the relative path is returned unchanged, written next to the exe.
         CHECK(fs_make_writable_path(empty_path.view(), cache_path.view()) == cache_path);
@@ -225,7 +225,7 @@ TEST_CASE("DiskFileSystem")
         CHECK(fs_make_writable_path(root.view(), nested_relative.view()) == expected_nested_path);
 
         // An already-absolute relative path is never relocated under the root, in either layout.
-        const auto absolute_input = MakeTempTestDir("diskfs_writable_abs");
+        auto absolute_input = MakeTempTestDir("diskfs_writable_abs");
         CHECK(fs_is_absolute_path(absolute_input.view()));
         CHECK(fs_make_writable_path(root.view(), absolute_input.view()) == absolute_input);
         CHECK(fs_make_writable_path(empty_path.view(), absolute_input.view()) == absolute_input);

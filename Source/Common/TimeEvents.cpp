@@ -566,7 +566,7 @@ auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
     }
 
     if (!call_result && repeat_duration) {
-        const string_view delegate_suffix = te->FuncName.second != 0 ? " (delegate)" : "";
+        string_view delegate_suffix = te->FuncName.second != 0 ? " (delegate)" : "";
         WriteLog("Time event {}{} stopped due to exception", te->FuncName.first, delegate_suffix);
     }
 

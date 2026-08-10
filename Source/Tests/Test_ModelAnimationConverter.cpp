@@ -90,8 +90,8 @@ static auto LoadModelAnimationRuntimeTestRig(string_view model_description, stri
         bindings.emplace_back(ModelAnimationRigBindingSource {numeric_cast<int32_t>(clip_index + 1), 0, clip.SourceFile, clip.ClipName, false});
     }
 
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), bindings);
-    const vector<byte> serialized = WriteModelAnimationRigData(rig_data, strex("runtime test for '{}'", model_description));
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), bindings);
+    vector<byte> serialized = WriteModelAnimationRigData(rig_data, strex("runtime test for '{}'", model_description));
     return LoadModelAnimationRuntimeRig(serialized, model_description, base_model, nearest_sampling);
 }
 
@@ -255,8 +255,8 @@ static auto BuildModelAnimationRuntimeEvaluationTestRig(bool nearest_sampling) -
         ModelAnimationRigBindingSource {6, 0, rotation0.FileName, rotation0.Name, false},
         ModelAnimationRigBindingSource {7, 0, rotation1.FileName, rotation1.Name, false},
     };
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), bindings);
-    const vector<byte> serialized = WriteModelAnimationRigData(rig_data, "runtime evaluation test");
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), bindings);
+    vector<byte> serialized = WriteModelAnimationRigData(rig_data, "runtime evaluation test");
     return LoadModelAnimationRuntimeRig(serialized, "Models/RuntimeEvaluation.fo3d", base.FileName, nearest_sampling);
 }
 
@@ -355,9 +355,9 @@ TEST_CASE("ModelAnimationRuntimePoseOwnsIndependentHierarchicalRestMatrices")
     };
     ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
     ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts("Models/RuntimePose.fo3d", base, report, {}, false);
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
-    const vector<byte> serialized = WriteModelAnimationRigData(rig_data, "runtime pose test");
-    const unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeRig(serialized, "Models/RuntimePose.fo3d", base.FileName, false);
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
+    vector<byte> serialized = WriteModelAnimationRigData(rig_data, "runtime pose test");
+    unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeRig(serialized, "Models/RuntimePose.fo3d", base.FileName, false);
 
     ModelAnimationRuntimePose first {runtime_rig.get()};
     ModelAnimationRuntimePose second {runtime_rig.get()};
@@ -727,14 +727,14 @@ TEST_CASE("ModelAnimationConverterProductionRigDataRejectsWrongSkeletonOzzTypeTa
     ModelAnimationRigData rig_data = BuildModelAnimationProductionTestRigData();
     REQUIRE_FALSE(rig_data.Clips.empty());
     rig_data.Skeleton.Payload = rig_data.Clips.front().Animation.Payload;
-    const vector<byte> serialized = WriteModelAnimationRigData(rig_data, "wrong skeleton type test");
+    vector<byte> serialized = WriteModelAnimationRigData(rig_data, "wrong skeleton type test");
     CHECK_THROWS_WITH(LoadModelAnimationRuntimeRig(serialized, "Models/ProductionBody.fo3d", "Models/ProductionBody.fbx", false), Catch::Matchers::ContainsSubstring("wrong type tag"));
 }
 
 TEST_CASE("ModelAnimationConverterProductionRigDataRejectsInterpolationPolicyMismatch")
 {
-    const ModelAnimationRigData rig_data = BuildModelAnimationProductionTestRigData();
-    const vector<byte> serialized = WriteModelAnimationRigData(rig_data, "interpolation policy mismatch test");
+    ModelAnimationRigData rig_data = BuildModelAnimationProductionTestRigData();
+    vector<byte> serialized = WriteModelAnimationRigData(rig_data, "interpolation policy mismatch test");
     CHECK_THROWS_WITH(LoadModelAnimationRuntimeRig(serialized, "Models/ProductionBody.fo3d", "Models/ProductionBody.fbx", true), Catch::Matchers::ContainsSubstring("nearest-sampling timeline"));
 }
 
@@ -772,9 +772,9 @@ TEST_CASE("ModelAnimationRuntimeResolvesCanonicalRigAgainstSourceDfsOrder")
     CHECK(artifacts.BaseJointRemap.SourceToCanonicalJointIndices == vector<uint32_t> {0, 4, 5, 1, 3});
     CHECK(artifacts.BaseJointRemap.CanonicalJointPresent == vector<uint8_t> {1, 1, 0, 1, 1, 1});
 
-    const ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
-    const vector<byte> serialized = WriteModelAnimationRigData(rig_data, "runtime hierarchy-order test");
-    const unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeRig(serialized, "Models/HierarchyOrder.fo3d", base.FileName, false);
+    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
+    vector<byte> serialized = WriteModelAnimationRigData(rig_data, "runtime hierarchy-order test");
+    unique_ptr<ModelAnimationRuntimeRig> runtime_rig = LoadModelAnimationRuntimeRig(serialized, "Models/HierarchyOrder.fo3d", base.FileName, false);
     REQUIRE(runtime_rig->GetJointCount() == 6);
     vector<string> joint_names;
     joint_names.reserve(runtime_rig->GetJointCount());

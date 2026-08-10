@@ -57,7 +57,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     map<string, vector<UpdateFileInfo>> binary_target_update_files;
     map<string, vector<byte>> binary_target_update_files_desc;
 
-    const auto add_sync_file = [&settings, &update_files](u8string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
+    auto add_sync_file = [&settings, &update_files](u8string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
 
         auto file = fs_open_ifstream(disk_path);
@@ -100,21 +100,21 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         return info;
     };
 
-    const u8string client_resources = settings.ClientResources;
-    const auto client_resources_dir = std::filesystem::path {fs_make_path(client_resources)};
+    u8string client_resources = settings.ClientResources;
+    auto client_resources_dir = std::filesystem::path {fs_make_path(client_resources)};
 
     for (const auto& resource_entry : settings.ClientResourceEntries) {
         if (resource_entry != "Embedded") {
-            const auto pack_name = strex("{}.zip", resource_entry).str();
-            const auto pack_disk_path = fs_path_to_u8string(client_resources_dir / pack_name);
+            auto pack_name = strex("{}.zip", resource_entry).str();
+            auto pack_disk_path = fs_path_to_u8string(client_resources_dir / pack_name);
             auto info = add_sync_file(pack_disk_path.view(), pack_name, UpdateFileTarget::ClientResources);
             common_update_files.emplace_back(std::move(info));
         }
     }
 
-    const u8string platform_binaries = settings.PlatformBinaries;
-    const auto platform_binaries_dir = std::filesystem::path {fs_make_path(platform_binaries)};
-    const auto platform_binaries_path = fs_path_to_u8string(platform_binaries_dir);
+    u8string platform_binaries = settings.PlatformBinaries;
+    auto platform_binaries_dir = std::filesystem::path {fs_make_path(platform_binaries)};
+    auto platform_binaries_path = fs_path_to_u8string(platform_binaries_dir);
 
     if (std::filesystem::exists(platform_binaries_dir)) {
         FO_VERIFY_AND_THROW(std::filesystem::is_directory(platform_binaries_dir), "Platform binaries path exists but is not a directory", platform_binaries_path.view());
@@ -124,22 +124,22 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
                 continue;
             }
 
-            const auto binary_target_name = fs_path_to_u8string(platform_entry.path().filename());
-            const u8string platform_entry_path = fs_path_to_u8string(platform_entry.path());
+            auto binary_target_name = fs_path_to_u8string(platform_entry.path().filename());
+            u8string platform_entry_path = fs_path_to_u8string(platform_entry.path());
             FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path.view(), platform_entry_path.view());
 
             for (const auto& binary_entry : std::filesystem::recursive_directory_iterator {platform_entry.path()}) {
-                const u8string binary_entry_path = fs_path_to_u8string(binary_entry.path());
+                u8string binary_entry_path = fs_path_to_u8string(binary_entry.path());
                 FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name.view(), binary_entry_path.view());
-                const auto disk_path = fs_path_to_u8string(binary_entry.path());
-                const auto client_file_name = fs_path_to_u8string(binary_entry.path().filename());
+                auto disk_path = fs_path_to_u8string(binary_entry.path());
+                auto client_file_name = fs_path_to_u8string(binary_entry.path().filename());
                 auto info = add_sync_file(disk_path.view(), utf8_as_char_view(client_file_name.view()), UpdateFileTarget::ClientBinaries);
                 binary_target_update_files[utf8_to_string(binary_target_name.view())].emplace_back(std::move(info));
             }
         }
     }
 
-    const auto build_update_desc = [&update_files, &common_update_files](vector<byte>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
+    auto build_update_desc = [&update_files, &common_update_files](vector<byte>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
         auto writer = DataWriter(desc);
 
         auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
@@ -233,7 +233,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     if (update_portion_size != 0 && !update_file.InMemory) {
         disk_update_data.resize(update_portion_size);
 
-        const auto read_update_file_portion = [](u8string_view disk_path, uint64_t start_offset, vector<byte>& data) {
+        auto read_update_file_portion = [](u8string_view disk_path, uint64_t start_offset, vector<byte>& data) {
             FO_STACK_TRACE_ENTRY();
 
             auto file = fs_open_ifstream(disk_path);

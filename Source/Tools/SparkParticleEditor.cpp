@@ -636,8 +636,8 @@ auto SparkParticleEditor::SaveChanges() -> bool
     nptr<const SPK::IO::Saver> saver = base_system->getContext().getIOManager().getSaver("xml");
     FO_VERIFY_AND_THROW(saver, "Missing required saver");
 
-    const u8string disk_path = file.GetDiskPath();
-    const std::string path {utf8_to_c_str(disk_path.view_nt()).get()};
+    u8string disk_path = file.GetDiskPath();
+    std::string path {utf8_to_c_str(disk_path.view_nt()).get()};
 
     if (!saver->save(path, base_system.get(), path)) {
         _saveError = strex("Failed to save particle source '{}'", _assetPath);

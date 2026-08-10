@@ -167,7 +167,7 @@ auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<byte> buf) -> s
     }
 
     vector<vector<byte>> packets;
-    const auto consumed = _channel.PrepareOutput(buf, packets, nanotime::now());
+    auto consumed = _channel.PrepareOutput(buf, packets, nanotime::now());
     SendPackets(packets);
     return consumed;
 }
@@ -230,14 +230,14 @@ void NetworkClientConnection_UdpSockets::PumpInput()
         string host;
         uint16_t port = 0;
         auto packet_buf = make_byte_span(_packetBuf);
-        const auto received = _socket.receive_from(packet_buf, host, port);
+        auto received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
             break;
         }
 
         UdpPacketInfo packet;
-        const const_span<byte> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
+        const_span<byte> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;

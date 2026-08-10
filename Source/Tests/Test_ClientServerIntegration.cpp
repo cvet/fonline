@@ -210,10 +210,10 @@ namespace ClientServerIntegrationClient
     {
         FO_STACK_TRACE_ENTRY();
 
-        const std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
-        const u8string dir_name = strex("lf_client_updater_{}_{}", name, suffix);
-        const std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name.view())};
-        const u8string base_utf8 = fs_path_to_u8string(base);
+        std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+        u8string dir_name = strex("lf_client_updater_{}_{}", name, suffix);
+        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name.view())};
+        u8string base_utf8 = fs_path_to_u8string(base);
         return base_utf8;
     }
 
@@ -221,8 +221,8 @@ namespace ClientServerIntegrationClient
     {
         FO_STACK_TRACE_ENTRY();
 
-        const u8string bake_dir = MakeTempClientUpdaterBakeDir("resources");
-        const u8string fonts_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(bake_dir.view())} / std::filesystem::path {u8"Embedded/Fonts"});
+        u8string bake_dir = MakeTempClientUpdaterBakeDir("resources");
+        u8string fonts_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(bake_dir.view())} / std::filesystem::path {u8"Embedded/Fonts"});
 
         REQUIRE(fs_create_directories(fonts_dir.view()));
 
@@ -240,11 +240,11 @@ Letter ' '
 End
 )"};
 
-        const u8string default_font_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(fonts_dir.view())} / std::filesystem::path {u8"Default.fofnt"});
+        u8string default_font_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(fonts_dir.view())} / std::filesystem::path {u8"Default.fofnt"});
         REQUIRE(fs_write_file_text(default_font_path.view(), default_font));
 
-        const vector<byte> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
-        const u8string default_sprite_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(fonts_dir.view())} / std::filesystem::path {u8"Default.png"});
+        vector<byte> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
+        u8string default_sprite_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(fonts_dir.view())} / std::filesystem::path {u8"Default.png"});
         REQUIRE(fs_write_file_bytes(default_sprite_path.view(), default_font_sprite));
 
         return bake_dir;
@@ -341,7 +341,7 @@ End
         auto value_sv = string_view {health_info}.substr(begin, end == string::npos ? string::npos : end - begin);
 
         size_t value = 0;
-        const auto [ptr, ec] = std::from_chars(value_sv.data(), value_sv.data() + value_sv.size(), value);
+        auto [ptr, ec] = std::from_chars(value_sv.data(), value_sv.data() + value_sv.size(), value);
         REQUIRE(ec == std::errc {});
         REQUIRE(ptr == value_sv.data() + value_sv.size());
 
@@ -531,7 +531,7 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     auto previous_exception_callback = GetExceptionCallback();
     std::atomic_int exception_reports {};
     SetExceptionCallback([&exception_reports](u8string_view, const CatchedStackTraceData&, bool) { exception_reports.fetch_add(1); });
-    const auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { SetExceptionCallback(std::move(previous)); });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { SetExceptionCallback(std::move(previous)); });
 
     std::atomic_bool disconnected {};
     auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<byte> data) {
@@ -837,8 +837,8 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
 
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
-    const u8string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    const auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { (void)fs_remove_dir_tree(updater_bake_output.view()); });
+    u8string updater_bake_output = PrepareClientUpdaterBakeOutput();
+    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { (void)fs_remove_dir_tree(updater_bake_output.view()); });
     BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
 
     auto server = MakeServerEngine(server_settings);
@@ -917,7 +917,7 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     auto model_name_prop = critter_registrator->GetPropertyByIndex(CritterView::ModelName_RegIndex);
     REQUIRE(static_cast<bool>(model_name_prop));
 
-    const hstring::hash_t unresolved_hash = reported.as_hash();
+    hstring::hash_t unresolved_hash = reported.as_hash();
     critter_props.SetRawData(model_name_prop, make_byte_span(&unresolved_hash, sizeof(unresolved_hash)));
 
     auto proto = client->GetProtoCritter(client->Hashes.ToHashedString("UnitTestSharedCritter"));

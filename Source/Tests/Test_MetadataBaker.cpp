@@ -37,8 +37,8 @@ TEST_CASE("MetadataBaker")
     using namespace BakerTests;
 
     TestRig rig;
-    const auto bakers = MakeRequestedBakers({string(MetadataBaker::NAME)}, rig);
-    const auto read_baked_tags = [](const vector<byte>& output) {
+    auto bakers = MakeRequestedBakers({string(MetadataBaker::NAME)}, rig);
+    auto read_baked_tags = [](const vector<byte>& output) {
         map<string, vector<vector<string>>> tags;
         DataReader reader(output);
         auto tag_count = reader.Read<uint16_t>();
@@ -176,8 +176,8 @@ namespace InlineMetadataDocs
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
-        const auto fixed_type_it = tags.find("FixedType");
+        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
+        auto fixed_type_it = tags.find("FixedType");
         REQUIRE(fixed_type_it != tags.end());
         CHECK(std::ranges::count(fixed_type_it->second, vector<string> {"RealMetadataType"}) == 1);
     }
@@ -698,7 +698,7 @@ namespace TestUtf8Migration
         meta.RegisterSide(EngineSideKind::ClientSide);
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(rig.Outputs.at("TestPack.fometa-client"))));
 
-        const auto rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString(u8"СomfortableСarrying"));
+        auto rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString(u8"СomfortableСarrying"));
         REQUIRE(rule.has_value());
         CHECK(rule.value() == meta.Hashes.ToHashedString("ComfortableCarrying"));
     }

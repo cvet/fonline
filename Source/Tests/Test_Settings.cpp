@@ -12,7 +12,7 @@ static_assert(std::same_as<decltype(std::declval<const CommandLineArgs&>().Get(s
 
 static auto MakeTempSettingsDir(string_view name) -> u8string
 {
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_u8string(base);
 }
 
@@ -131,19 +131,19 @@ TEST_CASE("Settings")
                                      u8"InputDirs = ресурсы/карты\n"
                                      u8"InputFiles = архивы/текстуры.zip\n"
                                      u8"Bakers = RawCopy\n"}};
-        const u8string config_dir {u8"корень/конфигурация"};
+        u8string config_dir {u8"корень/конфигурация"};
 
         settings.ApplyConfigFile(config, config_dir.view());
 
         CHECK(settings.BakeOutput.view() == u8"данные/мир-🌍");
         CHECK(settings.GameName.view() == u8"Последний рубеж 🌍");
-        const auto packs = settings.GetResourcePacks();
+        auto packs = settings.GetResourcePacks();
         REQUIRE(packs.size() == 1);
         REQUIRE(packs[0].InputDirs.size() == 1);
         REQUIRE(packs[0].InputFiles.size() == 1);
 
-        const u8string expected_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(config_dir.view())} / std::filesystem::path {u8"ресурсы/карты"});
-        const u8string expected_file = fs_path_to_u8string(std::filesystem::path {fs_make_path(config_dir.view())} / std::filesystem::path {u8"архивы/текстуры.zip"});
+        u8string expected_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(config_dir.view())} / std::filesystem::path {u8"ресурсы/карты"});
+        u8string expected_file = fs_path_to_u8string(std::filesystem::path {fs_make_path(config_dir.view())} / std::filesystem::path {u8"архивы/текстуры.zip"});
         CHECK(packs[0].InputDirs[0] == expected_dir);
         CHECK(packs[0].InputFiles[0] == expected_file);
     }
@@ -168,9 +168,9 @@ TEST_CASE("Settings")
     SECTION("EnvironmentExpansionPreservesUtf8AndRejectsMalformedBytes")
     {
         constexpr const char* variable_name = "FO_SETTINGS_UTF8_ENV_TEST";
-        const nptr<const char> original_value {std::getenv(variable_name)};
-        const optional<string> saved_value = original_value ? optional<string> {string {original_value.get()}} : optional<string> {};
-        const auto restore_env = scope_exit([&]() noexcept {
+        nptr<const char> original_value {std::getenv(variable_name)};
+        optional<string> saved_value = original_value ? optional<string> {string {original_value.get()}} : optional<string> {};
+        auto restore_env = scope_exit([&]() noexcept {
             if (saved_value) {
                 (void)setenv(variable_name, saved_value->c_str(), 1);
             }
@@ -179,8 +179,8 @@ TEST_CASE("Settings")
             }
         });
 
-        const u8string unicode_value {u8"Последний рубеж 🌍"};
-        const ptr<const char> unicode_value_cstr = utf8_to_c_str(unicode_value.view_nt());
+        u8string unicode_value {u8"Последний рубеж 🌍"};
+        ptr<const char> unicode_value_cstr = utf8_to_c_str(unicode_value.view_nt());
         REQUIRE(setenv(variable_name, unicode_value_cstr.get(), 1) == 0);
 
         GlobalSettings valid_settings {false};
@@ -200,7 +200,7 @@ TEST_CASE("Settings")
     SECTION("ApplyCommandLineSetsCustomValuesAndImplicitFlags")
     {
         GlobalSettings settings {false};
-        const array<CommandLineArg, 4> argv = {
+        array<CommandLineArg, 4> argv = {
             u8"lf_tests",
             u8"--CustomCli",
             u8"123",
@@ -225,8 +225,8 @@ TEST_CASE("Settings")
         u8string executable {u8"lf_тесты"};
         u8string option {u8"--CustomCli"};
         u8string value {u8"значение-𐍈"};
-        const array<CommandLineArg, 3> argv = {executable.view(), option.view(), value.view()};
-        const CommandLineArgs args {argv};
+        array<CommandLineArg, 3> argv = {executable.view(), option.view(), value.view()};
+        CommandLineArgs args {argv};
 
         executable.assign(u8"changed");
         option.assign(u8"changed");
@@ -258,7 +258,7 @@ TEST_CASE("Settings")
 
     SECTION("CommandLineArgsRejectEmbeddedNullInStrictViews")
     {
-        const array<CommandLineArg, 1> argv = {u8"a\0b"};
+        array<CommandLineArg, 1> argv = {u8"a\0b"};
 
         try {
             (void)CommandLineArgs {argv};
@@ -276,7 +276,7 @@ TEST_CASE("Settings")
         // Capture the "Set <name> to <value>" lines emitted by the logging pass.
         u8string captured;
         SetLogCallback("settings_secret_redaction_test", [&captured](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.append(message); });
-        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
+        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
         // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
@@ -325,12 +325,12 @@ TEST_CASE("Settings")
 
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
-        const u8string temp_dir = MakeTempSettingsDir("settings_config");
-        const bool removed_before = fs_remove_dir_tree(temp_dir.view());
+        u8string temp_dir = MakeTempSettingsDir("settings_config");
+        bool removed_before = fs_remove_dir_tree(temp_dir.view());
         ignore_unused(removed_before);
 
-        const u8string payload_path = fs_combine_path(temp_dir.view(), "payload.txt");
-        const u8string config_path = fs_combine_path(temp_dir.view(), "main.fomain");
+        u8string payload_path = fs_combine_path(temp_dir.view(), "payload.txt");
+        u8string config_path = fs_combine_path(temp_dir.view(), "main.fomain");
         REQUIRE(fs_write_file_text(payload_path.view(), u8"  loaded value  "));
         REQUIRE(fs_write_file_text(config_path.view(), u8"ExternalValue = $FILE{payload.txt}\n"));
 
@@ -408,18 +408,18 @@ TEST_CASE("Settings")
 
         // An explicit absolute path is the installed layout: resolve it, create it, and pre-create the
         // cache + resource-overlay subdirs under it.
-        const auto root = MakeTempSettingsDir("settings_writable_root");
+        auto root = MakeTempSettingsDir("settings_writable_root");
         (void)fs_remove_dir_tree(root.view());
 
         settings.UserWritablePath = root;
         ResolveUserWritablePath(settings);
 
-        const u8string resolved_root = settings.UserWritablePath;
-        const u8string cache_resources = settings.CacheResources;
-        const u8string client_resources = settings.ClientResources;
-        const u8string expected_root = fs_resolve_path(root.view());
-        const u8string cache_path = fs_make_writable_path(resolved_root.view(), cache_resources.view());
-        const u8string client_resources_path = fs_make_writable_path(resolved_root.view(), client_resources.view());
+        u8string resolved_root = settings.UserWritablePath;
+        u8string cache_resources = settings.CacheResources;
+        u8string client_resources = settings.ClientResources;
+        u8string expected_root = fs_resolve_path(root.view());
+        u8string cache_path = fs_make_writable_path(resolved_root.view(), cache_resources.view());
+        u8string client_resources_path = fs_make_writable_path(resolved_root.view(), client_resources.view());
         CHECK(resolved_root == expected_root);
         CHECK(fs_is_dir(resolved_root.view()));
         CHECK(fs_is_dir(cache_path.view()));
@@ -445,10 +445,10 @@ TEST_CASE("Settings")
 
         // A root whose parent is a regular file can't be created: the resolver must fail safe to portable
         // rather than brick startup.
-        const auto temp_dir = MakeTempSettingsDir("settings_writable_blocker");
+        auto temp_dir = MakeTempSettingsDir("settings_writable_blocker");
         (void)fs_remove_dir_tree(temp_dir.view());
-        const auto blocker = fs_combine_path(temp_dir.view(), "blocker");
-        const auto blocked_root = fs_combine_path(blocker.view(), "sub");
+        auto blocker = fs_combine_path(temp_dir.view(), "blocker");
+        auto blocked_root = fs_combine_path(blocker.view(), "sub");
         REQUIRE(fs_write_file_text(blocker.view(), u8"x"));
 
         settings.UserWritablePath = blocked_root;

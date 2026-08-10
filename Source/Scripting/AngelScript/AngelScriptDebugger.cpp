@@ -201,8 +201,8 @@ DebuggerEndpointServer::Impl::Impl(ptr<const AngelScriptBackend> backend)
 
     constexpr uint16_t base_port = ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT;
     constexpr uint16_t span = ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN;
-    const int32_t pid_num = strex(Platform::GetCurrentProcessIdStr()).to_int32();
-    const uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % span) : uint16_t {0};
+    int32_t pid_num = strex(Platform::GetCurrentProcessIdStr()).to_int32();
+    uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % span) : uint16_t {0};
 
     bool listen_ok = false;
 
@@ -446,7 +446,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
     FO_VERIFY_AND_THROW(step_state, "Missing debugger step state for context");
 
     if (ConsumePauseStart()) {
-        const auto [source_path, source_line] = resolve_debug_location();
+        auto [source_path, source_line] = resolve_debug_location();
 
         step_state->LastStoppedDepth = ctx->GetCallstackSize();
         step_state->HasLastStoppedDepth = true;
@@ -465,7 +465,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
     }
 
     if (HasAnyBreakpoints()) {
-        const auto [source_path, source_line] = resolve_debug_location();
+        auto [source_path, source_line] = resolve_debug_location();
 
         if (HasBreakpoint(source_path, source_line)) {
             step_state->LastStoppedDepth = ctx->GetCallstackSize();
@@ -517,7 +517,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
             step_state->BaseSourceLine = step_state->BreakpointSourceLine;
         }
         else {
-            const auto [source_path, source_line] = resolve_debug_location();
+            auto [source_path, source_line] = resolve_debug_location();
             step_state->BaseSourcePath = source_path;
             step_state->BaseSourceLine = source_line;
         }
@@ -525,7 +525,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
 
     if (step_state->Mode != DebuggerStepMode::None) {
         uint32_t depth = ctx->GetCallstackSize();
-        const auto [source_path, source_line] = resolve_debug_location();
+        auto [source_path, source_line] = resolve_debug_location();
         bool has_moved_from_base_location = !step_state->BaseSourcePath.has_value() || step_state->BaseSourceLine != source_line || step_state->BaseSourcePath != source_path;
 
         bool should_stop = [&]() -> bool {
@@ -1098,19 +1098,19 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
 
         string remote_host;
         uint16_t remote_port = 0;
-        const int32_t read_size = _discoverySocket.receive_from(span<byte>(read_buf.data(), buffer_size - 1), remote_host, remote_port);
+        int32_t read_size = _discoverySocket.receive_from(span<byte>(read_buf.data(), buffer_size - 1), remote_host, remote_port);
 
         if (read_size <= 0) {
             continue;
         }
 
-        const string_view request = span_to_string(const_span<byte> {read_buf.data(), numeric_cast<size_t>(read_size)});
+        string_view request = span_to_string(const_span<byte> {read_buf.data(), numeric_cast<size_t>(read_size)});
 
         if (!strvex(request).starts_with(ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE)) {
             continue;
         }
 
-        const string response = strex("{{\"type\":\"discovery\",\"processId\":\"{}\",\"endpoint\":\"{}\",\"targetName\":\"{}\",\"protocolVersion\":1}}\n", _instanceId, _endpoint, _targetName).str();
+        string response = strex("{{\"type\":\"discovery\",\"processId\":\"{}\",\"endpoint\":\"{}\",\"targetName\":\"{}\",\"protocolVersion\":1}}\n", _instanceId, _endpoint, _targetName).str();
         _discoverySocket.send_to(remote_host, remote_port, make_byte_span(response));
     }
 }

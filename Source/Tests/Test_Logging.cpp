@@ -119,7 +119,7 @@ TEST_CASE("Logging")
 
         SetLogCallback("sv", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(utf8_to_char_string(message)); });
 
-        const u8string raw {u8"raw {} payload"}; // Curly braces should NOT be interpreted as format placeholders.
+        u8string raw {u8"raw {} payload"}; // Curly braces should NOT be interpreted as format placeholders.
         WriteLog(raw.view());
 
         REQUIRE(captured.size() == 1);
@@ -235,7 +235,7 @@ TEST_CASE("Logging")
     SECTION("StrictUtf8FormattingNeedsNoCharacterAdapter")
     {
         u8string captured;
-        const u8string path {u8"Ресурсы/заставка-🌍.png"};
+        u8string path {u8"Ресурсы/заставка-🌍.png"};
 
         SetLogCallback("unicode-format", [&captured](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.assign(message); });
         WriteLog("Loading {}", path);
@@ -252,8 +252,8 @@ TEST_CASE("Logging")
     SECTION("NativeExceptionMessagePromotesDirectlyToUtf8")
     {
         u8string captured;
-        const string error_chars = utf8_to_char_string(u8"соединение разорвано 🌍");
-        const std::runtime_error ex {error_chars.c_str()};
+        string error_chars = utf8_to_char_string(u8"соединение разорвано 🌍");
+        std::runtime_error ex {error_chars.c_str()};
 
         SetLogCallback("exception-what", [&captured](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.assign(message); });
         WriteLog("Connection error: {}", ex.what());
@@ -269,7 +269,7 @@ TEST_CASE("Logging")
 
         SetLogCallback("malformed", [&](LogType, u8string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(utf8_to_char_string(message)); });
 
-        const string malformed(1, std::bit_cast<char>(uint8_t {0xFF}));
+        string malformed(1, std::bit_cast<char>(uint8_t {0xFF}));
         WriteLog("{}", malformed.c_str());
 
         REQUIRE(captured.size() == 1);

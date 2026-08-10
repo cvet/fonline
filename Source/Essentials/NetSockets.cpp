@@ -393,7 +393,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
         return false;
     }
 #else
-    const int32_t flags = ::fcntl(sock, F_GETFL, 0);
+    int32_t flags = ::fcntl(sock, F_GETFL, 0);
 
     if (flags < 0 || ::fcntl(sock, F_SETFL, flags | O_NONBLOCK) != 0) {
         CloseSocket(sock);
@@ -581,7 +581,7 @@ auto tcp_server::accept() noexcept -> tcp_socket
 #endif
     auto addr_len_ptr = make_ptr(&addr_len);
     auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    const socket_t client_sock = ::accept(*_listenSock, addr_ptr.get(), addr_len_ptr.get());
+    socket_t client_sock = ::accept(*_listenSock, addr_ptr.get(), addr_len_ptr.get());
 
     if (client_sock == INVALID_SOCKET_VALUE) {
         return {};
@@ -730,7 +730,7 @@ auto udp_socket::receive_from(span<byte> data, string& out_host, uint16_t& out_p
 #endif
     auto addr_len_ptr = make_ptr(&addr_len);
     auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    const int32_t result = ::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get());
+    int32_t result = ::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get());
 
     if (result <= 0) {
         return result;

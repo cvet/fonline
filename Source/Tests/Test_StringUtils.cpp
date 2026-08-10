@@ -46,7 +46,7 @@ namespace
         vector<byte> bytes;
         bytes.reserve(values.size());
 
-        for (const uint8_t value : values) {
+        for (uint8_t value : values) {
             bytes.emplace_back(static_cast<byte>(value));
         }
 
@@ -114,9 +114,9 @@ TEST_CASE("StringUtils")
         CHECK(strex("  {} World {}", "Hello", "!").str() == "  Hello World !");
         CHECK(strex("{}{}{}", 1, 2, 3).str() == "123");
 
-        const u8string strict_value {u8"Привет"};
-        const u8string ascii_format_result = u8strex("{} {}", strict_value, 42);
-        const u8string utf8_format_result = u8strex(u8"{} мир", strict_value);
+        u8string strict_value {u8"Привет"};
+        u8string ascii_format_result = u8strex("{} {}", strict_value, 42);
+        u8string utf8_format_result = u8strex(u8"{} мир", strict_value);
         CHECK(ascii_format_result == u8"Привет 42");
         CHECK(utf8_format_result == u8"Привет мир");
     }
@@ -179,8 +179,8 @@ TEST_CASE("StringUtils")
 
     SECTION("GetResult")
     {
-        const string direct_ascii_result = strex("Dump_{}", 17);
-        const u8string direct_utf8_result = strex("Dump_{}", 17);
+        string direct_ascii_result = strex("Dump_{}", 17);
+        u8string direct_utf8_result = strex("Dump_{}", 17);
 
         CHECK(static_cast<string_view>(strex(" Hello   ").trim()) == "Hello");
         CHECK(static_cast<string>(strex(" \tHello   ").trim()) == "Hello");
@@ -204,18 +204,18 @@ TEST_CASE("StringUtils")
 
     SECTION("Utf8")
     {
-        const u8string strict_hello {u8" Привет   "};
-        const u8string hello_lower {u8" привет   "};
-        const u8string hello_mixed {u8" Привет   "};
-        const u8string hello_upper {u8" ПРИВЕТ   "};
-        const u8string other_word {u8" тттввв   "};
-        const u8string three_e {u8"еее"};
-        const u8string upper_source {u8" ПриВЕТ   "};
-        const u8string upper_mixed {u8" ПриВет   "};
-        const u8string replacement_character {u8"�"};
-        const vector<byte> encoded_surrogate_bytes = RawBytes({0xED, 0xA0, 0x80});
-        const string_view encoded_surrogate = span_to_string(encoded_surrogate_bytes);
-        const vector<byte> invalid_lead_bytes = RawBytes({200});
+        u8string strict_hello {u8" Привет   "};
+        u8string hello_lower {u8" привет   "};
+        u8string hello_mixed {u8" Привет   "};
+        u8string hello_upper {u8" ПРИВЕТ   "};
+        u8string other_word {u8" тттввв   "};
+        u8string three_e {u8"еее"};
+        u8string upper_source {u8" ПриВЕТ   "};
+        u8string upper_mixed {u8" ПриВет   "};
+        u8string replacement_character {u8"�"};
+        vector<byte> encoded_surrogate_bytes = RawBytes({0xED, 0xA0, 0x80});
+        string_view encoded_surrogate = span_to_string(encoded_surrogate_bytes);
+        vector<byte> invalid_lead_bytes = RawBytes({200});
 
         CHECK_FALSE(validate_utf8_text(string_view {}));
         CHECK(validate_utf8_text(span_to_string(invalid_lead_bytes)));
@@ -228,7 +228,7 @@ TEST_CASE("StringUtils")
         CHECK_FALSE(u8strvex(hello_mixed).compare_ignore_case(three_e));
         CHECK(u8strvex(strict_hello).length_utf8() == 10);
 
-        const u8string strict_hello_copy = u8strex(strict_hello);
+        u8string strict_hello_copy = u8strex(strict_hello);
         CHECK(strict_hello_copy == strict_hello);
 
         CHECK_THROWS_AS(u8string(span_to_string(invalid_lead_bytes)), TextValidationException);
@@ -240,15 +240,15 @@ TEST_CASE("StringUtils")
         CHECK(u8strex(upper_source).lower() == hello_lower);
         CHECK(u8strex(upper_mixed).upper() == hello_upper);
 
-        const u8string controls_removed = u8strex(u8"\x03Привет\x7F\n").erase_ascii_control_chars();
+        u8string controls_removed = u8strex(u8"\x03Привет\x7F\n").erase_ascii_control_chars();
         CHECK(controls_removed == u8"Привет");
         CHECK(u8strvex(u8"\t Привет 🌍 \r\n").trim() == u8"Привет 🌍");
         CHECK(u8strvex(u8" \n\r\t").trim().empty());
         CHECK(u8strvex(u8"жПриветж").trim(u8"ж") == u8"Привет");
         CHECK(u8strvex(u8"жтж").rtrim(u8"ж") == u8"жт");
 
-        const u8string metadata_line {u8"Proto Modifier Сomfortable.Сarrying ComfortableCarrying"};
-        const auto metadata_tokens = u8strvex(metadata_line).tokenize();
+        u8string metadata_line {u8"Proto Modifier Сomfortable.Сarrying ComfortableCarrying"};
+        auto metadata_tokens = u8strvex(metadata_line).tokenize();
         REQUIRE(metadata_tokens.size() == 6);
         CHECK(metadata_tokens[0] == u8"Proto");
         CHECK(metadata_tokens[1] == u8"Modifier");
@@ -280,7 +280,7 @@ TEST_CASE("StringUtils")
             uint32_t CodePoint;
         };
 
-        const array<ValidCase, 11> valid_cases = {
+        array<ValidCase, 11> valid_cases = {
             ValidCase {RawBytes({0x00}), 0x000000u},
             ValidCase {RawBytes({0x7F}), 0x00007Fu},
             ValidCase {RawBytes({0xC2, 0x80}), 0x000080u},
@@ -295,21 +295,21 @@ TEST_CASE("StringUtils")
         };
 
         for (const auto& test : valid_cases) {
-            const string_view encoded = span_to_string(test.Encoded);
+            string_view encoded = span_to_string(test.Encoded);
             size_t decode_length = encoded.size();
-            const auto decoded = utf8::Decode(make_ptr(encoded.data()), decode_length);
+            auto decoded = utf8::Decode(make_ptr(encoded.data()), decode_length);
             REQUIRE(decoded.has_value());
             CHECK(*decoded == test.CodePoint);
             CHECK(decode_length == encoded.size());
 
             char encoded_buf[4] {};
-            const auto encoded_length = utf8::Encode(test.CodePoint, encoded_buf);
+            auto encoded_length = utf8::Encode(test.CodePoint, encoded_buf);
             REQUIRE(encoded_length.has_value());
             CHECK(*encoded_length == encoded.size());
             CHECK(std::ranges::equal(make_byte_span(encoded_buf, *encoded_length), test.Encoded));
 
             size_t round_trip_length = *encoded_length;
-            const auto round_trip = utf8::Decode(make_ptr(encoded_buf), round_trip_length);
+            auto round_trip = utf8::Decode(make_ptr(encoded_buf), round_trip_length);
             REQUIRE(round_trip.has_value());
             CHECK(*round_trip == test.CodePoint);
             CHECK(round_trip_length == *encoded_length);
@@ -324,7 +324,7 @@ TEST_CASE("StringUtils")
             size_t ConsumedLength;
         };
 
-        const array<InvalidCase, 22> invalid_cases = {
+        array<InvalidCase, 22> invalid_cases = {
             InvalidCase {RawBytes({0x80}), 1},
             InvalidCase {RawBytes({0xC0, 0x80}), 1},
             InvalidCase {RawBytes({0xC1, 0xBF}), 1},
@@ -350,9 +350,9 @@ TEST_CASE("StringUtils")
         };
 
         for (const auto& test : invalid_cases) {
-            const string_view encoded = span_to_string(test.Encoded);
+            string_view encoded = span_to_string(test.Encoded);
             size_t decode_length = encoded.size();
-            const auto decoded = utf8::Decode(make_ptr(encoded.data()), decode_length);
+            auto decoded = utf8::Decode(make_ptr(encoded.data()), decode_length);
             CHECK_FALSE(decoded.has_value());
             CHECK(decode_length == test.ConsumedLength);
         }
@@ -366,9 +366,9 @@ TEST_CASE("StringUtils")
     {
         constexpr array<uint32_t, 4> invalid_scalars = {0x00D800u, 0x00DFFFu, 0x110000u, 0xFFFFFFFFu};
 
-        for (const uint32_t code_point : invalid_scalars) {
+        for (uint32_t code_point : invalid_scalars) {
             char encoded_buf[4] = {'k', 'e', 'e', 'p'};
-            const auto encoded_length = utf8::Encode(code_point, encoded_buf);
+            auto encoded_length = utf8::Encode(code_point, encoded_buf);
             CHECK_FALSE(encoded_length.has_value());
             CHECK(string_view(encoded_buf, sizeof(encoded_buf)) == "keep");
         }
@@ -502,7 +502,7 @@ TEST_CASE("StringUtils")
         CHECK(strex(",One,Two").split(',') == vector<string>({"One", "Two"}));
         CHECK(strex("One,Two,").split(',') == vector<string>({"One", "Two"}));
 
-        const auto utf8_parts = u8strex(u8" Привет мир  Земля ").split(u8' ');
+        auto utf8_parts = u8strex(u8" Привет мир  Земля ").split(u8' ');
         constexpr u8string_view hello {u8"Привет"};
         constexpr u8string_view world {u8"мир"};
         constexpr u8string_view earth {u8"Земля"};
@@ -540,7 +540,7 @@ TEST_CASE("StringUtils")
         CHECK(strex("aaaBBBcccDBEFaGh HelBlo Ba!").replace('a', 'X').str() == "XXXBBBcccDBEFXGh HelBlo BX!");
         CHECK(strex("aaBDdDBaBBBDBcccDBEFaGh HelDBBlo Ba!").replace('D', 'B', 'X').str() == "aaBDdXaBBBXcccXEFaGh HelXBlo Ba!");
         CHECK(strex("aaBDdDBaHelDBBlocccDBEFaGh HelDBBlo Ba!").replace("HelDBBlo", "X").str() == "aaBDdDBaXcccDBEFaGh X Ba!");
-        const u8string replaced_utf8 = u8strex(u8"Привет, мир! Привет!").replace(u8"Привет", u8"Здравствуй");
+        u8string replaced_utf8 = u8strex(u8"Привет, мир! Привет!").replace(u8"Привет", u8"Здравствуй");
         CHECK(replaced_utf8 == u8"Здравствуй, мир! Здравствуй!");
         CHECK(strex("aaaBBBcccDBEFGh Hello !").lower().str() == "aaabbbcccdbefgh hello !");
         CHECK(strex("aaaBBBcccDBEFGh Hello !").upper().str() == "AAABBBCCCDBEFGH HELLO !");
@@ -563,7 +563,7 @@ TEST_CASE("StringUtils")
         CHECK(strex("cur/next/../../last/a/").combine_path("x/y/z").str() == "last/a/x/y/z");
         CHECK(strex("../cur/next/../../last/a/").combine_path("x/y/z").str() == "../last/a/x/y/z");
         CHECK(strex("../../cur/next/../../last/a/").combine_path("x/y/z").str() == "../../last/a/x/y/z");
-        const u8string combined_utf8_path = u8strex(u8"каталог/").combine_path(u8"файл.txt");
+        u8string combined_utf8_path = u8strex(u8"каталог/").combine_path(u8"файл.txt");
         CHECK(combined_utf8_path == u8"каталог/файл.txt");
         CHECK(strex("D:\\MyDir\\X\\..\\Y\\.\\.\\Z\\").normalize_path_slashes().str() == "D:/MyDir/X/../Y/././Z/");
     }
@@ -576,8 +576,8 @@ TEST_CASE("StringUtils")
 #if FO_WINDOWS
     SECTION("WinParseWideChar")
     {
-        const u8string utf8_world {u8"Мир"};
-        const string char_utf8_world = utf8_to_char_string(utf8_world);
+        u8string utf8_world {u8"Мир"};
+        string char_utf8_world = utf8_to_char_string(utf8_world);
 
         CHECK(strex().parse_wide_char(L"Hello").str() == "Hello");
         CHECK(strex("Hello").parse_wide_char(L"World").str() == "HelloWorld");

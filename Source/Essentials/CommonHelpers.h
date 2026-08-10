@@ -473,7 +473,7 @@ template<typename T>
         return {};
     }
 
-    const ptr<const byte> data {bytes.data()};
+    ptr<const byte> data {bytes.data()};
     return data.reinterpret_as<char>().as_str(bytes.size());
 }
 

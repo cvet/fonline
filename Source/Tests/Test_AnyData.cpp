@@ -118,17 +118,17 @@ TEST_CASE("AnyData")
 
     SECTION("Utf8StringAndDictKeyRoundTrip")
     {
-        const u8string text {u8"Привет, 🌍"};
-        const auto encoded_text = AnyData::ValueToString(AnyData::Value {text});
+        u8string text {u8"Привет, 🌍"};
+        auto encoded_text = AnyData::ValueToString(AnyData::Value {text});
         CHECK(AnyData::ParseValue(encoded_text, false, false, AnyData::ValueType::String).AsString() == text.view());
 
         AnyData::Dict dict;
-        const u8string key {u8"ключ-🔑"};
-        const u8string value {u8"значение-📌"};
+        u8string key {u8"ключ-🔑"};
+        u8string value {u8"значение-📌"};
         dict.Emplace(key, value);
 
-        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
-        const auto parsed_dict = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
+        auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        auto parsed_dict = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
         CHECK(parsed_dict.AsDict()[key].AsString() == value.view());
     }
 
@@ -223,8 +223,8 @@ TEST_CASE("AnyData")
 
     SECTION("EmptyContainersParsing")
     {
-        const auto parsed_arr_value = AnyData::ParseValue(u8"", false, true, AnyData::ValueType::String);
-        const auto parsed_dict_value = AnyData::ParseValue(u8"", true, false, AnyData::ValueType::Int64);
+        auto parsed_arr_value = AnyData::ParseValue(u8"", false, true, AnyData::ValueType::String);
+        auto parsed_dict_value = AnyData::ParseValue(u8"", true, false, AnyData::ValueType::Int64);
         const auto& parsed_arr = parsed_arr_value.AsArray();
         const auto& parsed_dict = parsed_dict_value.AsDict();
 
@@ -314,9 +314,9 @@ TEST_CASE("AnyData")
 
     SECTION("CarriageReturnIsStripped")
     {
-        const u8string text {u8"line1\rline2\nline3"};
-        const u8string normalized_text {u8"line1line2\nline3"};
-        const auto encoded = AnyData::ValueToString(AnyData::Value {text});
+        u8string text {u8"line1\rline2\nline3"};
+        u8string normalized_text {u8"line1line2\nline3"};
+        auto encoded = AnyData::ValueToString(AnyData::Value {text});
 
         CHECK(StringEscaping::CodeString(text.view()) == u8"\"line1line2\\nline3\"");
         CHECK(StringEscaping::DecodeString(u8"\"line1\\rline2\\nline3\"") == normalized_text);

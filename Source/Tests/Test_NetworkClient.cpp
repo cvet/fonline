@@ -47,7 +47,7 @@ namespace
         vector<byte> result;
         result.reserve(values.size());
 
-        for (const uint8_t value : values) {
+        for (uint8_t value : values) {
             result.emplace_back(byte {value});
         }
 
@@ -175,16 +175,16 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
     CHECK(conn->CheckStatus(true));
     CHECK_FALSE(conn->CheckStatus(false));
 
-    const vector<byte> incoming_data = Bytes({1, 2, 3});
+    vector<byte> incoming_data = Bytes({1, 2, 3});
     server_send_to_client(incoming_data);
 
     CHECK(conn->CheckStatus(false));
 
-    const auto recv_data = conn->ReceiveData();
+    auto recv_data = conn->ReceiveData();
     CHECK(vector<byte>(recv_data.begin(), recv_data.end()) == incoming_data);
     CHECK(conn->GetBytesReceived() == incoming_data.size());
 
-    const vector<byte> outgoing_data = Bytes({4, 5, 6, 7});
+    vector<byte> outgoing_data = Bytes({4, 5, 6, 7});
     CHECK(conn->SendData(outgoing_data) == outgoing_data.size());
     CHECK(server_received == outgoing_data);
     CHECK(conn->GetBytesSend() == outgoing_data.size());
@@ -257,7 +257,7 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
     client.Connect();
     REQUIRE(server_send_to_client);
 
-    const vector<byte> invalid = {byte {0x00}, byte {0x00}};
+    vector<byte> invalid = {byte {0x00}, byte {0x00}};
     server_send_to_client(invalid);
 
     CHECK_NOTHROW(client.Process());

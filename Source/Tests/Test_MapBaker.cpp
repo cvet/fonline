@@ -49,7 +49,7 @@ static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view pr
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<byte> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    vector<byte> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
 
@@ -62,8 +62,8 @@ static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view pr
     rig.AddBakedFile("MapBakerTest.fopro-bin-client", MakeMapProtoBlob(client_proto_engine, client_map_type, proto_name));
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    const vector<byte> script_blob = BakerTests::CompileInlineScripts(&server_proto_engine, "MapBakerScripts", {{"Scripts/MapBakerScripts.fos", "namespace MapBakerScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
-        const string message_str = string(message);
+    vector<byte> script_blob = BakerTests::CompileInlineScripts(&server_proto_engine, "MapBakerScripts", {{"Scripts/MapBakerScripts.fos", "namespace MapBakerScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+        string message_str = string(message);
 
         if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
             throw ScriptSystemException(message_str);

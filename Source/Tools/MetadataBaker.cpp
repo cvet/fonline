@@ -148,25 +148,25 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
     ctx.ResultTags["Target"].emplace_back(vector<string> {string(target)});
 
     for (size_t i = 0; i < files.size(); i++) {
-        const std::u8string_view file_str = readed_files[i].view().native_view();
+        std::u8string_view file_str = readed_files[i].view().native_view();
         size_t pos = 0;
         size_t line_number = 1;
 
         while (true) {
-            const size_t prev_pos = pos;
+            size_t prev_pos = pos;
             pos = file_str.find(u8"///@", pos);
 
             if (pos == std::u8string_view::npos) {
                 break;
             }
 
-            const auto it_begin = file_str.begin() + numeric_cast<ptrdiff_t>(prev_pos);
-            const auto it_end = file_str.begin() + numeric_cast<ptrdiff_t>(pos);
+            auto it_begin = file_str.begin() + numeric_cast<ptrdiff_t>(prev_pos);
+            auto it_end = file_str.begin() + numeric_cast<ptrdiff_t>(pos);
             line_number += std::count(it_begin, it_end, u8'\n');
 
-            const size_t previous_line_end = file_str.rfind(u8'\n', pos);
-            const size_t line_begin = previous_line_end == std::u8string_view::npos ? 0 : previous_line_end + 1;
-            const std::u8string_view line_prefix = file_str.substr(line_begin, pos - line_begin);
+            size_t previous_line_end = file_str.rfind(u8'\n', pos);
+            size_t line_begin = previous_line_end == std::u8string_view::npos ? 0 : previous_line_end + 1;
+            std::u8string_view line_prefix = file_str.substr(line_begin, pos - line_begin);
 
             if (!std::ranges::all_of(line_prefix, [](const char8_t value) { return value == u8' ' || value == u8'\t' || value == u8'\r'; })) {
                 pos += 4;
@@ -189,7 +189,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
                 pos = file_str.size();
             }
 
-            const size_t comment_pos = utf8_line.find(u8"//");
+            size_t comment_pos = utf8_line.find(u8"//");
             if (comment_pos != std::u8string_view::npos) {
                 utf8_line = utf8_line.substr(0, comment_pos);
             }
@@ -200,7 +200,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
                 size_t write_pos = 0;
 
                 for (size_t line_pos = 0; line_pos < normalized_line.size(); line_pos++) {
-                    const char8_t ch = normalized_line[line_pos];
+                    char8_t ch = normalized_line[line_pos];
 
                     if (ch == u8'\\' && line_pos + 1 < normalized_line.size() && (normalized_line[line_pos + 1] == u8'\n' || normalized_line[line_pos + 1] == u8'\r')) {
                         normalized_line[write_pos++] = u8' ';
@@ -218,14 +218,14 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
                 normalized_line.resize(write_pos);
             }
 
-            const u8string_view utf8_normalized_line = u8string_view::FromChecked(normalized_line);
+            u8string_view utf8_normalized_line = u8string_view::FromChecked(normalized_line);
             auto utf8_tokens = u8strvex(utf8_normalized_line).tokenize();
 
             if (utf8_tokens.empty()) {
                 throw MetadataBakerException("Invalid codegen tag: empty tag", files[i].GetPath(), line_number);
             }
 
-            const string tag_name = utf8_to_string(utf8_tokens.front());
+            string tag_name = utf8_to_string(utf8_tokens.front());
 
             if (!valid_codegen_tags.contains(tag_name)) {
                 throw MetadataBakerException("Invalid codegen tag: unknown tag name", files[i].GetPath(), line_number, tag_name);
@@ -1526,7 +1526,7 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto merge_dotted_tokens = [&](const auto tokens) -> u8string {
+        auto merge_dotted_tokens = [&](const auto tokens) -> u8string {
             if (tokens.empty()) {
                 throw MetadataBakerException("Invalid MigrationRule codegen tag: empty rule argument", tag_desc.SourceFile, tag_desc.LineNumber);
             }
@@ -1534,7 +1534,7 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             u8string value;
             bool expect_token = true;
 
-            for (const auto token : tokens) {
+            for (auto token : tokens) {
                 if (token == u8".") {
                     if (expect_token) {
                         throw MetadataBakerException("Invalid MigrationRule codegen tag: malformed dotted name", tag_desc.SourceFile, tag_desc.LineNumber);
@@ -1570,10 +1570,10 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const u8string rule_name {tag_desc.Tokens[0]};
-        const u8string extra_info {tag_desc.Tokens[1]};
-        const auto target = merge_dotted_tokens(span(tag_desc.Tokens).subspan(2, last_arg_begin - 2));
-        const auto replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
+        u8string rule_name {tag_desc.Tokens[0]};
+        u8string extra_info {tag_desc.Tokens[1]};
+        auto target = merge_dotted_tokens(span(tag_desc.Tokens).subspan(2, last_arg_begin - 2));
+        auto replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
 
         ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
 

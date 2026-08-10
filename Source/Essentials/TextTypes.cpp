@@ -80,7 +80,7 @@ auto u8string_view::FromChecked(native_view_type value) -> u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_utf8_text(value)) {
+    if (auto issue = validate_utf8_text(value)) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
@@ -95,7 +95,7 @@ auto try_string_view_nt_from_span(const_span<char> storage) noexcept -> optional
         return std::nullopt;
     }
 
-    const string_view content {storage.data(), storage.size() - 1};
+    string_view content {storage.data(), storage.size() - 1};
 
     if (content.find(char {}) != string_view::npos) {
         return std::nullopt;
@@ -109,13 +109,13 @@ auto string_view_nt_from_span(const_span<char> storage) -> string_view_nt
     FO_STACK_TRACE_ENTRY();
 
     if (storage.empty() || storage.back() != char {}) {
-        const size_t offset = storage.empty() ? 0 : storage.size() - 1;
+        size_t offset = storage.empty() ? 0 : storage.size() - 1;
         throw TextValidationException(TextEncoding::Ascii, TextValidationError::MissingTerminator, offset);
     }
 
-    const string_view content {storage.data(), storage.size() - 1};
+    string_view content {storage.data(), storage.size() - 1};
 
-    if (const size_t null_pos = content.find(char {}); null_pos != string_view::npos) {
+    if (size_t null_pos = content.find(char {}); null_pos != string_view::npos) {
         throw TextValidationException(TextEncoding::Ascii, TextValidationError::EmbeddedNull, null_pos);
     }
 
@@ -130,7 +130,7 @@ auto u8string_view_nt::TryFrom(const const_span<char8_t>& storage) noexcept -> o
         return std::nullopt;
     }
 
-    const const_span<char8_t> content = storage.first(storage.size() - 1);
+    const_span<char8_t> content = storage.first(storage.size() - 1);
 
     for (size_t i = 0; i < content.size(); i++) {
         if (content[i] == char8_t {}) {
@@ -138,7 +138,7 @@ auto u8string_view_nt::TryFrom(const const_span<char8_t>& storage) noexcept -> o
         }
     }
 
-    const auto checked = u8string_view::TryFrom(std::u8string_view {content.data(), content.size()});
+    auto checked = u8string_view::TryFrom(std::u8string_view {content.data(), content.size()});
 
     if (!checked) {
         return std::nullopt;
@@ -152,11 +152,11 @@ auto u8string_view_nt::FromChecked(const const_span<char8_t>& storage) -> u8stri
     FO_STACK_TRACE_ENTRY();
 
     if (storage.empty() || storage.back() != char8_t {}) {
-        const size_t offset = storage.empty() ? 0 : storage.size() - 1;
+        size_t offset = storage.empty() ? 0 : storage.size() - 1;
         throw TextValidationException(TextEncoding::Utf8, TextValidationError::MissingTerminator, offset);
     }
 
-    const const_span<char8_t> content = storage.first(storage.size() - 1);
+    const_span<char8_t> content = storage.first(storage.size() - 1);
 
     for (size_t i = 0; i < content.size(); i++) {
         if (content[i] == char8_t {}) {
@@ -171,7 +171,7 @@ u8string::u8string(u8string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_utf8_text(value.native_view())) {
+    if (auto issue = validate_utf8_text(value.native_view())) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
@@ -184,13 +184,13 @@ u8string::u8string(string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_ascii_text(value)) {
+    if (auto issue = validate_ascii_text(value)) {
         throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
     }
 
     _storage.reserve(value.size());
 
-    for (const char code_unit : value) {
+    for (char code_unit : value) {
         _storage.push_back(static_cast<char8_t>(static_cast<unsigned char>(code_unit)));
     }
 }
@@ -257,7 +257,7 @@ auto u8string::view_nt() const& -> u8string_view_nt
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const size_t null_pos = _storage.find(char8_t {}); null_pos != storage_type::npos) {
+    if (size_t null_pos = _storage.find(char8_t {}); null_pos != storage_type::npos) {
         throw TextValidationException(TextEncoding::Utf8, TextValidationError::EmbeddedNull, null_pos);
     }
 
@@ -282,7 +282,7 @@ auto u8string::assign(u8string_view value) -> u8string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_utf8_text(value.native_view())) {
+    if (auto issue = validate_utf8_text(value.native_view())) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
@@ -300,14 +300,14 @@ auto u8string::assign(string_view value) -> u8string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_ascii_text(value)) {
+    if (auto issue = validate_ascii_text(value)) {
         throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
     }
 
     storage_type replacement;
     replacement.reserve(value.size());
 
-    for (const char code_unit : value) {
+    for (char code_unit : value) {
         replacement.push_back(static_cast<char8_t>(static_cast<unsigned char>(code_unit)));
     }
 
@@ -319,7 +319,7 @@ auto u8string::append(u8string_view value) -> u8string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_utf8_text(value.native_view())) {
+    if (auto issue = validate_utf8_text(value.native_view())) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
@@ -337,14 +337,14 @@ auto u8string::append(string_view value) -> u8string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_ascii_text(value)) {
+    if (auto issue = validate_ascii_text(value)) {
         throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
     }
 
     storage_type suffix;
     suffix.reserve(value.size());
 
-    for (const char code_unit : value) {
+    for (char code_unit : value) {
         suffix.push_back(static_cast<char8_t>(static_cast<unsigned char>(code_unit)));
     }
 

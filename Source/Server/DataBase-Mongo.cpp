@@ -38,8 +38,8 @@ public:
         auto mongoc_cleanup_guard = scope_fail([]() noexcept { mongoc_cleanup(); });
 
         bson_error_t error;
-        const u8string uri_text {uri};
-        const ptr<const char> uri_ptr = utf8_to_c_str(uri_text.view_nt());
+        u8string uri_text {uri};
+        ptr<const char> uri_ptr = utf8_to_c_str(uri_text.view_nt());
         auto mongo_uri = make_nptr(mongoc_uri_new_with_error(uri_ptr.get(), &error));
 
         if (!mongo_uri) {
@@ -58,8 +58,8 @@ public:
         mongoc_uri_destroy(mongo_uri.get());
         mongoc_client_set_appname(client.get(), FO_DEV_NAME);
 
-        const u8string db_name_text {db_name};
-        const ptr<const char> db_name_ptr = utf8_to_c_str(db_name_text.view_nt());
+        u8string db_name_text {db_name};
+        ptr<const char> db_name_ptr = utf8_to_c_str(db_name_text.view_nt());
         auto database = make_nptr(mongoc_client_get_database(client.get(), db_name_ptr.get()));
 
         if (!database) {

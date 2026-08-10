@@ -120,7 +120,7 @@ namespace text_detail
         size_t pos = 0;
 
         while (pos < value.size()) {
-            const uint8_t lead = ToByte(value[pos]);
+            uint8_t lead = ToByte(value[pos]);
 
             if (lead < 0x80) {
                 pos++;
@@ -153,7 +153,7 @@ namespace text_detail
                     return TextValidationIssue {TextValidationError::TruncatedSequence, pos};
                 }
 
-                const uint8_t continuation = ToByte(value[pos + i]);
+                uint8_t continuation = ToByte(value[pos + i]);
 
                 if ((continuation & 0xC0) != 0x80) {
                     return TextValidationIssue {TextValidationError::InvalidContinuationByte, pos + i};
@@ -291,7 +291,7 @@ public:
     {
         static_assert(N > 0);
 
-        const native_view_type literal_view {literal, N - 1};
+        native_view_type literal_view {literal, N - 1};
         return literal[N - 1] == 0 && !validate_utf8_text(literal_view) && _view == literal_view;
     }
 

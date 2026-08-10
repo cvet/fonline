@@ -572,7 +572,7 @@ void TextureAtlasManager::DumpAtlases() const
             break;
         }
 
-        const u8string fname = u8strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
+        u8string fname = u8strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
         vector<ucolor> tex_data = atlas->GetTexture()->GetTextureRegion({0, 0}, atlas->GetSize());
         atlas->GetLayout()->DrawDumpOverlay(tex_data);
         WriteSimpleTga(fname.view(), atlas->GetSize(), std::move(tex_data));

@@ -427,8 +427,8 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
                 FO_VERIFY_AND_THROW(entry, "Missing Tracy call stack entry");
 
                 ctx_ext->TracyExecutionCalls++;
-                const auto tracy_srcloc = ___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0);
-                const auto tracy_zone = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
+                auto tracy_srcloc = ___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0);
+                auto tracy_zone = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
                 ctx_ext->TracyZones.emplace_back(tracy_zone);
             }
         }
@@ -749,29 +749,29 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* raw_ctx, AngelSc
     }
 
     nptr<AngelScriptTracyCallEntry> entry {};
-    const auto func_key = std::bit_cast<size_t>(func.get());
+    auto func_key = std::bit_cast<size_t>(func.get());
 
     {
         scoped_lock lock {AngelScriptTracy->CacheLocker};
 
-        if (const auto it = AngelScriptTracy->CacheEntries.find(func_key); it != AngelScriptTracy->CacheEntries.end()) {
+        if (auto it = AngelScriptTracy->CacheEntries.find(func_key); it != AngelScriptTracy->CacheEntries.end()) {
             entry = &it->second;
         }
     }
 
     if (!entry) {
-        const int32_t ctx_line = ctx->GetLineNumber();
+        int32_t ctx_line = ctx->GetLineNumber();
         ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
         auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(5));
-        const string_view orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt.get());
-        const auto orig_line = numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ctx_line, lnt.get()));
-        const nptr<const char> func_decl = func->GetDeclaration(true);
+        string_view orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt.get());
+        auto orig_line = numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ctx_line, lnt.get()));
+        nptr<const char> func_decl = func->GetDeclaration(true);
 
         scoped_lock lock {AngelScriptTracy->CacheLocker};
 
         entry = &AngelScriptTracy->CacheEntries.emplace(func_key, AngelScriptTracyCallEntry {}).first->second;
 
-        const auto safe_copy = [](auto& to, size_t& len, string_view from) {
+        auto safe_copy = [](auto& to, size_t& len, string_view from) {
             len = std::min(from.length(), to.size() - 1);
             MemCopy(to.data(), from.data(), len);
             to[len] = 0;
@@ -785,8 +785,8 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* raw_ctx, AngelSc
     ctx_ext->TracyExecutionCalls++;
     ctx_ext->TracyStackTrace.emplace_back(entry);
 
-    const auto tracy_srcloc = ___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0);
-    const auto tracy_zone = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
+    auto tracy_srcloc = ___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0);
+    auto tracy_zone = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
     ctx_ext->TracyZones.emplace_back(tracy_zone);
 }
 

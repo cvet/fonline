@@ -100,7 +100,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPWSTR* argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const CommandLineArgs service_args {numeric_cast<int32_t>(argc), argv};
+        CommandLineArgs service_args {numeric_cast<int32_t>(argc), argv};
         InitApp(service_args, AppInitFlags::PrebakeResources);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);

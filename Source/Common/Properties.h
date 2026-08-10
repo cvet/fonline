@@ -610,7 +610,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         prop_data.Pass(GetRawData(prop));
     }
 
-    const const_span<byte> data = {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()};
+    const_span<byte> data = {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()};
 
     T result;
 
@@ -738,7 +738,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
         return {};
     }
 
-    const const_span<byte> data = {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()};
+    const_span<byte> data = {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()};
 
     T result;
 
@@ -805,7 +805,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
-    const auto new_value_ptr = make_ptr(&new_value);
+    auto new_value_ptr = make_ptr(&new_value);
     ValidateFiniteRawData(prop, {new_value_ptr.template reinterpret_as<byte>().get(), sizeof(T)});
 
     if (prop->IsVirtual()) {
@@ -900,7 +900,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                 SetRawData(prop, {prop_data.GetPtrAs<byte>().get(), prop_data.GetSize()});
             }
             else {
-                const auto new_value_hash_ptr = make_ptr(&new_value_hash);
+                auto new_value_hash_ptr = make_ptr(&new_value_hash);
                 SetRawData(prop, {new_value_hash_ptr.template reinterpret_as<byte>().get(), sizeof(hstring::hash_t)});
             }
 

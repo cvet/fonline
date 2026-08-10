@@ -74,7 +74,7 @@ auto parse_uri_scheme(string_view value) noexcept -> optional<string_view>
         return std::nullopt;
     }
 
-    for (const char code_unit : value.substr(1)) {
+    for (char code_unit : value.substr(1)) {
         if (!is_uri_scheme_tail_character(code_unit)) {
             return std::nullopt;
         }
@@ -87,7 +87,7 @@ strex::operator string&&()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_ascii_text(_sv)) {
+    if (auto issue = validate_ascii_text(_sv)) {
         throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
     }
 
@@ -102,7 +102,7 @@ strex::operator string() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_ascii_text(_sv)) {
+    if (auto issue = validate_ascii_text(_sv)) {
         throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
     }
 
@@ -1192,7 +1192,7 @@ void u8strex::own_storage()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string_view storage_view = _s;
+    u8string_view storage_view = _s;
 
     if (_sv.data() == storage_view.data() && _sv.size() == storage_view.size()) {
         return;
@@ -1221,8 +1221,8 @@ auto u8strvex::compare_ignore_case(u8string_view other) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view left = _sv.native_view();
-    const std::u8string_view right = other.native_view();
+    std::u8string_view left = _sv.native_view();
+    std::u8string_view right = other.native_view();
 
     if (left.size() != right.size()) {
         return false;
@@ -1230,9 +1230,9 @@ auto u8strvex::compare_ignore_case(u8string_view other) const noexcept -> bool
 
     for (size_t i = 0; i < left.size();) {
         size_t left_length = left.size() - i;
-        const auto left_ucs = utf8::Decode(make_ptr(left.data()).offset(i), left_length);
+        auto left_ucs = utf8::Decode(make_ptr(left.data()).offset(i), left_length);
         size_t right_length = right.size() - i;
-        const auto right_ucs = utf8::Decode(make_ptr(right.data()).offset(i), right_length);
+        auto right_ucs = utf8::Decode(make_ptr(right.data()).offset(i), right_length);
         FO_BASIC_STRONG_ASSERT(left_ucs.has_value());
         FO_BASIC_STRONG_ASSERT(right_ucs.has_value());
 
@@ -1280,7 +1280,7 @@ auto u8strvex::length_utf8() const noexcept -> size_t
 
     size_t length = 0;
 
-    for (const char8_t code_unit : _sv.native_view()) {
+    for (char8_t code_unit : _sv.native_view()) {
         length += (static_cast<uint8_t>(code_unit) & 0xC0) != 0x80 ? 1u : 0u;
     }
 
@@ -1354,11 +1354,11 @@ auto u8strvex::split(char8_t delimiter) const -> vector<u8string_view>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
+    std::u8string_view source = _sv.native_view();
     vector<u8string_view> result;
 
     for (size_t pos = 0;;) {
-        const size_t end_pos = source.find(delimiter, pos);
+        size_t end_pos = source.find(delimiter, pos);
         u8string_view entry = u8string_view::FromChecked(source.substr(pos, end_pos != std::u8string_view::npos ? end_pos - pos : std::u8string_view::npos));
 
         if (!entry.empty()) {
@@ -1385,12 +1385,12 @@ auto u8strvex::tokenize() const noexcept -> vector<u8string_view>
 
     vector<u8string_view> result;
 
-    const u8string_view trimmed_text = u8strvex(_sv).trim();
-    const std::u8string_view text = trimmed_text.native_view();
+    u8string_view trimmed_text = u8strvex(_sv).trim();
+    std::u8string_view text = trimmed_text.native_view();
     size_t cur_tok_pos = 0;
     size_t cur_tok_len = 0;
 
-    const auto flush_tok_if_exists = [&]() noexcept {
+    auto flush_tok_if_exists = [&]() noexcept {
         if (cur_tok_len != 0) {
             result.emplace_back(u8string_view::FromChecked(text.substr(cur_tok_pos, cur_tok_len)));
             cur_tok_pos += cur_tok_len;
@@ -1398,9 +1398,9 @@ auto u8strvex::tokenize() const noexcept -> vector<u8string_view>
         }
     };
 
-    for (const char8_t value : text) {
-        const bool is_ascii = value <= char8_t {0x7F};
-        const char ascii_value = static_cast<char>(value);
+    for (char8_t value : text) {
+        bool is_ascii = value <= char8_t {0x7F};
+        char ascii_value = static_cast<char>(value);
 
         if (is_ascii && StrData->TokSym.contains(ascii_value)) {
             flush_tok_if_exists();
@@ -1424,11 +1424,11 @@ auto u8strex::split(char8_t delimiter) const -> vector<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<u8string_view> views = u8strvex::split(delimiter);
+    vector<u8string_view> views = u8strvex::split(delimiter);
     vector<u8string> result;
     result.reserve(views.size());
 
-    for (const u8string_view view : views) {
+    for (u8string_view view : views) {
         result.emplace_back(view);
     }
 
@@ -1439,11 +1439,11 @@ auto u8strex::tokenize() const -> vector<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<u8string_view> views = u8strvex::tokenize();
+    vector<u8string_view> views = u8strvex::tokenize();
     vector<u8string> result;
     result.reserve(views.size());
 
-    for (const u8string_view view : views) {
+    for (u8string_view view : views) {
         result.emplace_back(view);
     }
 
@@ -1454,8 +1454,8 @@ auto u8strvex::substring_until(char8_t separator) -> u8strvex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const size_t pos = source.find(separator);
+    std::u8string_view source = _sv.native_view();
+    size_t pos = source.find(separator);
 
     if (pos != std::u8string_view::npos) {
         _sv = u8string_view::FromChecked(source.substr(0, pos));
@@ -1476,8 +1476,8 @@ auto u8strvex::substring_until(u8string_view separator) -> u8strvex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const size_t pos = source.find(separator.native_view());
+    std::u8string_view source = _sv.native_view();
+    size_t pos = source.find(separator.native_view());
 
     if (pos != std::u8string_view::npos) {
         _sv = u8string_view::FromChecked(source.substr(0, pos));
@@ -1498,8 +1498,8 @@ auto u8strvex::substring_after(char8_t separator) -> u8strvex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const size_t pos = source.find(separator);
+    std::u8string_view source = _sv.native_view();
+    size_t pos = source.find(separator);
     _sv = pos != std::u8string_view::npos ? u8string_view::FromChecked(source.substr(pos + 1)) : u8string_view {};
     return *this;
 }
@@ -1516,8 +1516,8 @@ auto u8strvex::substring_after(u8string_view separator) -> u8strvex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const size_t pos = source.find(separator.native_view());
+    std::u8string_view source = _sv.native_view();
+    size_t pos = source.find(separator.native_view());
     _sv = pos != std::u8string_view::npos ? u8string_view::FromChecked(source.substr(pos + separator.size())) : u8string_view {};
     return *this;
 }
@@ -1566,12 +1566,12 @@ auto u8strvex::ltrim(u8string_view chars) -> u8strvex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const std::u8string_view trim_chars = chars.native_view();
-    const auto contains_trim_char = [trim_chars](uint32_t value) noexcept {
+    std::u8string_view source = _sv.native_view();
+    std::u8string_view trim_chars = chars.native_view();
+    auto contains_trim_char = [trim_chars](uint32_t value) noexcept {
         for (size_t i = 0; i < trim_chars.size();) {
             size_t length = trim_chars.size() - i;
-            const auto code_point = utf8::Decode(make_ptr(trim_chars.data()).offset(i), length);
+            auto code_point = utf8::Decode(make_ptr(trim_chars.data()).offset(i), length);
             FO_BASIC_STRONG_ASSERT(code_point.has_value());
 
             if (*code_point == value) {
@@ -1587,7 +1587,7 @@ auto u8strvex::ltrim(u8string_view chars) -> u8strvex&
     size_t pos = 0;
     while (pos < source.size()) {
         size_t length = source.size() - pos;
-        const auto code_point = utf8::Decode(make_ptr(source.data()).offset(pos), length);
+        auto code_point = utf8::Decode(make_ptr(source.data()).offset(pos), length);
         FO_BASIC_STRONG_ASSERT(code_point.has_value());
 
         if (!contains_trim_char(*code_point)) {
@@ -1613,12 +1613,12 @@ auto u8strvex::rtrim(u8string_view chars) -> u8strvex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const std::u8string_view trim_chars = chars.native_view();
-    const auto contains_trim_char = [trim_chars](uint32_t value) noexcept {
+    std::u8string_view source = _sv.native_view();
+    std::u8string_view trim_chars = chars.native_view();
+    auto contains_trim_char = [trim_chars](uint32_t value) noexcept {
         for (size_t i = 0; i < trim_chars.size();) {
             size_t length = trim_chars.size() - i;
-            const auto code_point = utf8::Decode(make_ptr(trim_chars.data()).offset(i), length);
+            auto code_point = utf8::Decode(make_ptr(trim_chars.data()).offset(i), length);
             FO_BASIC_STRONG_ASSERT(code_point.has_value());
 
             if (*code_point == value) {
@@ -1634,7 +1634,7 @@ auto u8strvex::rtrim(u8string_view chars) -> u8strvex&
     size_t end_pos = 0;
     for (size_t pos = 0; pos < source.size();) {
         size_t length = source.size() - pos;
-        const auto code_point = utf8::Decode(make_ptr(source.data()).offset(pos), length);
+        auto code_point = utf8::Decode(make_ptr(source.data()).offset(pos), length);
         FO_BASIC_STRONG_ASSERT(code_point.has_value());
 
         if (!contains_trim_char(*code_point)) {
@@ -1670,13 +1670,13 @@ auto u8strex::erase(char8_t begin, char8_t end) -> u8strex&
 
     mutate_storage([begin, end](auto& storage) {
         while (true) {
-            const size_t begin_pos = storage.find(begin);
+            size_t begin_pos = storage.find(begin);
 
             if (begin_pos == storage.npos) {
                 break;
             }
 
-            const size_t end_pos = storage.find(end, begin_pos + 1);
+            size_t end_pos = storage.find(end, begin_pos + 1);
 
             if (end_pos == storage.npos) {
                 break;
@@ -1694,7 +1694,7 @@ auto u8strex::erase_ascii_control_chars() -> u8strex&
 
     mutate_storage([](auto& storage) {
         std::erase_if(storage, [](char8_t ch) {
-            const uint8_t code = static_cast<uint8_t>(ch);
+            uint8_t code = static_cast<uint8_t>(ch);
             return code < 0x20 || code == 0x7F;
         });
     });
@@ -1722,8 +1722,8 @@ auto u8strex::replace(u8string_view from, u8string_view to) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view from_view = from.native_view();
-    const std::u8string_view to_view = to.native_view();
+    std::u8string_view from_view = from.native_view();
+    std::u8string_view to_view = to.native_view();
 
     if (from_view.empty()) {
         return *this;
@@ -1747,11 +1747,11 @@ auto u8strex::lower() -> u8strex&
     mutate_storage([](auto& storage) {
         for (size_t i = 0; i < storage.size();) {
             size_t length = storage.size() - i;
-            const auto decoded = utf8::Decode(make_ptr(storage.data()).offset(i), length);
+            auto decoded = utf8::Decode(make_ptr(storage.data()).offset(i), length);
             FO_BASIC_STRONG_ASSERT(decoded.has_value());
 
             char8_t encoded[4];
-            const auto encoded_length = utf8::Encode(utf8::Lower(*decoded), encoded);
+            auto encoded_length = utf8::Encode(utf8::Lower(*decoded), encoded);
             FO_BASIC_STRONG_ASSERT(encoded_length.has_value());
             storage.replace(i, length, encoded, *encoded_length);
             i += *encoded_length;
@@ -1767,11 +1767,11 @@ auto u8strex::upper() -> u8strex&
     mutate_storage([](auto& storage) {
         for (size_t i = 0; i < storage.size();) {
             size_t length = storage.size() - i;
-            const auto decoded = utf8::Decode(make_ptr(storage.data()).offset(i), length);
+            auto decoded = utf8::Decode(make_ptr(storage.data()).offset(i), length);
             FO_BASIC_STRONG_ASSERT(decoded.has_value());
 
             char8_t encoded[4];
-            const auto encoded_length = utf8::Encode(utf8::Upper(*decoded), encoded);
+            auto encoded_length = utf8::Encode(utf8::Upper(*decoded), encoded);
             FO_BASIC_STRONG_ASSERT(encoded_length.has_value());
             storage.replace(i, length, encoded, *encoded_length);
             i += *encoded_length;
@@ -1800,7 +1800,7 @@ auto u8strex::format_path() -> u8strex&
         }
 
         while (true) {
-            const size_t pos = storage.find(u8"/./");
+            size_t pos = storage.find(u8"/./");
 
             if (pos == storage.npos) {
                 break;
@@ -1810,13 +1810,13 @@ auto u8strex::format_path() -> u8strex&
         }
 
         while (true) {
-            const size_t pos = storage.find(u8"/../");
+            size_t pos = storage.find(u8"/../");
 
             if (pos == storage.npos || pos == 0) {
                 break;
             }
 
-            const size_t previous = storage.rfind(u8'/', pos - 1);
+            size_t previous = storage.rfind(u8'/', pos - 1);
 
             if (previous == storage.npos) {
                 storage.erase(0, pos + 4);
@@ -1838,8 +1838,8 @@ auto u8strex::extract_dir() -> u8strex&
     FO_STACK_TRACE_ENTRY();
 
     format_path();
-    const std::u8string_view source = _sv.native_view();
-    const size_t pos = source.find_last_of(u8'/');
+    std::u8string_view source = _sv.native_view();
+    size_t pos = source.find_last_of(u8'/');
     _sv = pos != std::u8string_view::npos ? u8string_view::FromChecked(source.substr(0, pos)) : u8string_view {};
     return *this;
 }
@@ -1848,8 +1848,8 @@ auto u8strvex::extract_file_name() -> u8strvex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const size_t pos = source.find_last_of(u8"/\\");
+    std::u8string_view source = _sv.native_view();
+    size_t pos = source.find_last_of(u8"/\\");
 
     if (pos != std::u8string_view::npos) {
         _sv = u8string_view::FromChecked(source.substr(pos + 1));
@@ -1870,8 +1870,8 @@ auto u8strex::get_file_extension() -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const size_t dot = source.find_last_of(u8'.');
+    std::u8string_view source = _sv.native_view();
+    size_t dot = source.find_last_of(u8'.');
     _sv = dot != std::u8string_view::npos ? u8string_view::FromChecked(source.substr(dot + 1)) : u8string_view {};
     return lower();
 }
@@ -1880,8 +1880,8 @@ auto u8strvex::erase_file_extension() -> u8strvex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view source = _sv.native_view();
-    const size_t dot = source.find_last_of(u8'.');
+    std::u8string_view source = _sv.native_view();
+    size_t dot = source.find_last_of(u8'.');
 
     if (dot != std::u8string_view::npos) {
         _sv = u8string_view::FromChecked(source.substr(0, dot));
@@ -1902,10 +1902,10 @@ auto u8strex::change_file_name(u8string_view new_name) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string extension = u8strex(_sv).get_file_extension();
+    u8string extension = u8strex(_sv).get_file_extension();
 
     if (!extension.empty()) {
-        const u8string name_with_extension = u8strex(u8"{}.{}", new_name, extension);
+        u8string name_with_extension = u8strex(u8"{}.{}", new_name, extension);
         _s = u8strex(_sv).extract_dir().combine_path(name_with_extension);
     }
     else {
@@ -1920,7 +1920,7 @@ auto u8strex::change_file_name(string_view new_name) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_name = new_name;
+    u8string utf8_name = new_name;
     return change_file_name(utf8_name);
 }
 
@@ -1940,7 +1940,7 @@ auto u8strex::change_file_extension(string_view new_ext) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_ext = new_ext;
+    u8string utf8_ext = new_ext;
     return change_file_extension(utf8_ext);
 }
 
@@ -1953,7 +1953,7 @@ auto u8strex::combine_path(u8string_view path) -> u8strex&
     }
 
     own_storage();
-    const std::u8string_view path_view = path.native_view();
+    std::u8string_view path_view = path.native_view();
 
     if (!_s.empty() && _s.view().native_view().back() != u8'/' && path_view.front() != u8'/') {
         _s.append("/");
@@ -1968,7 +1968,7 @@ auto u8strex::combine_path(string_view path) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_path = path;
+    u8string utf8_path = path;
     return combine_path(utf8_path);
 }
 
@@ -2083,7 +2083,7 @@ auto utf8::Decode(ptr<const char> str, size_t& length) noexcept -> optional<uint
         return std::nullopt;
     }
 
-    const auto make_result = [&length](uint32_t ch, size_t ch_length) noexcept -> optional<uint32_t> {
+    auto make_result = [&length](uint32_t ch, size_t ch_length) noexcept -> optional<uint32_t> {
         length = ch_length;
 
         if (!utf8::IsValid(ch)) {
@@ -2093,7 +2093,7 @@ auto utf8::Decode(ptr<const char> str, size_t& length) noexcept -> optional<uint
         return ch;
     };
 
-    const auto make_error = [&length]() noexcept -> optional<uint32_t> {
+    auto make_error = [&length]() noexcept -> optional<uint32_t> {
         length = 1;
         return std::nullopt;
     };
@@ -2230,7 +2230,7 @@ auto utf8::Encode(uint32_t ucs, char8_t (&buf)[4]) noexcept -> optional<size_t>
     FO_NO_STACK_TRACE_ENTRY();
 
     char char_buf[4];
-    const auto length = Encode(ucs, char_buf);
+    auto length = Encode(ucs, char_buf);
 
     if (length) {
         for (size_t i = 0; i < *length; i++) {

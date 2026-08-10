@@ -133,7 +133,7 @@ FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, u8string_v
     ignore_unused(engine);
 
     size_t decode_length = text.size();
-    const auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
     FO_VERIFY_AND_THROW(ch.has_value(), "Invalid UTF-8 sequence");
 
     length = numeric_cast<int32_t>(decode_length);
@@ -146,7 +146,7 @@ FO_SCRIPT_API u8string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t u
     ignore_unused(engine);
 
     char8_t buf[4];
-    const auto len = utf8::Encode(ucs, buf);
+    auto len = utf8::Encode(ucs, buf);
     FO_VERIFY_AND_THROW(len.has_value(), "Invalid Unicode scalar value");
 
     return u8string::FromChecked(std::u8string_view {buf, *len});

@@ -173,13 +173,13 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
     try {
         auto st = MakeErrorStackTrace(ex);
 
-        if (const auto callback = GetExceptionCallback()) {
-            const u8string message = exception_message_utf8(ex);
+        if (auto callback = GetExceptionCallback()) {
+            u8string message = exception_message_utf8(ex);
             callback(message.view(), st, true);
         }
         else {
-            const strex message {"{}\n", ex.what()};
-            const string_view message_chars = message.strv();
+            strex message {"{}\n", ex.what()};
+            string_view message_chars = message.strv();
             WriteBaseLogBytes(std::as_bytes(const_span<char> {message_chars.data(), message_chars.size()}), &st);
             WriteAscii("Shutdown!\n\n");
         }
@@ -210,13 +210,13 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
     try {
         auto st = MakeErrorStackTrace(ex);
 
-        if (const auto callback = GetExceptionCallback()) {
-            const u8string message = exception_message_utf8(ex);
+        if (auto callback = GetExceptionCallback()) {
+            u8string message = exception_message_utf8(ex);
             callback(message.view(), st, false);
         }
         else {
-            const strex message {"{}\n", ex.what()};
-            const string_view message_chars = message.strv();
+            strex message {"{}\n", ex.what()};
+            string_view message_chars = message.strv();
             WriteBaseLogBytes(std::as_bytes(const_span<char> {message_chars.data(), message_chars.size()}), &st);
             WriteAscii("\n\n");
         }
@@ -231,12 +231,12 @@ auto exception_message_utf8(const std::exception& ex) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto engine_ex = dynamic_cast<const BaseEngineException*>(&ex)) {
+    if (auto engine_ex = dynamic_cast<const BaseEngineException*>(&ex)) {
         return u8string {engine_ex->what_utf8()};
     }
 
     try {
-        const char* const message = ex.what();
+        const char* message = ex.what();
         return utf8_from_char_span(const_span<char> {message, std::strlen(message)});
     }
     catch (const TextValidationException&) {
@@ -421,7 +421,7 @@ static auto FormatRuntimeCrashInfo(nptr<const char> reason) -> string
     FO_NO_STACK_TRACE_ENTRY();
 
     string info = strex("Runtime termination: {}", reason ? string_view {reason.get()} : "unknown").str();
-    const std::exception_ptr current_exception = std::current_exception();
+    std::exception_ptr current_exception = std::current_exception();
 
     if (current_exception) {
         try {

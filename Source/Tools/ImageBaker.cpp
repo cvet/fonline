@@ -216,7 +216,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         FO_VERIFY_AND_THROW(sprite_info_file, "Baked sprite info resource is not readable", sprite_info_path);
 
         for (SpriteInfoFileEntry& entry : ReadSpriteInfoFile(sprite_info_path, sprite_info_file.GetText())) {
-            const bool inserted = sprite_info_entries.emplace(entry.SourcePath, std::move(entry)).second;
+            bool inserted = sprite_info_entries.emplace(entry.SourcePath, std::move(entry)).second;
             FO_VERIFY_AND_THROW(inserted, "Baked sprite info resource contains a duplicate source path", sprite_info_path);
         }
     }
@@ -313,7 +313,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
             entries.emplace_back(std::move(entry));
         }
 
-        const u8string sprite_info = WriteSpriteInfoFile(entries);
+        u8string sprite_info = WriteSpriteInfoFile(entries);
         _context->WriteData(sprite_info_path, utf8_to_byte_span(sprite_info.view()));
     }
 }
@@ -768,7 +768,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
                 break;
             }
 
-            const u8string frm_path = u8strex("{}/{}", frm_dir, frm_name);
+            u8string frm_path = u8strex("{}/{}", frm_dir, frm_name);
             auto sub_collection = LoadAny(utf8_to_string(frm_path), files);
             frames += sub_collection.SequenceSize;
 
@@ -1382,10 +1382,10 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader, 
     reader.SetCurPos(0xA + 256 * 3);
 
     for (auto i = 0, j = w * h; i < j; i++) {
-        const auto index = numeric_cast<int32_t>(reader.GetUInt8()) * 3;
-        const auto r = numeric_cast<uint8_t>(ImageByteValue(palette, numeric_cast<size_t>(index + 2)) * 4);
-        const auto g = numeric_cast<uint8_t>(ImageByteValue(palette, numeric_cast<size_t>(index + 1)) * 4);
-        const auto b = numeric_cast<uint8_t>(ImageByteValue(palette, numeric_cast<size_t>(index + 0)) * 4);
+        auto index = numeric_cast<int32_t>(reader.GetUInt8()) * 3;
+        auto r = numeric_cast<uint8_t>(ImageByteValue(palette, numeric_cast<size_t>(index + 2)) * 4);
+        auto g = numeric_cast<uint8_t>(ImageByteValue(palette, numeric_cast<size_t>(index + 1)) * 4);
+        auto b = numeric_cast<uint8_t>(ImageByteValue(palette, numeric_cast<size_t>(index + 0)) * 4);
         pixels[i] = ucolor {r, g, b};
     }
 
@@ -1821,7 +1821,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             int32_t name_len = reader.GetLEInt32();
             FO_VERIFY_AND_THROW(name_len >= 0, "ART sequence name length is negative", name_len);
             const_span<byte> name_data = reader.GetCurDataSpan(numeric_cast<size_t>(name_len));
-            const auto name = string(!name_data.empty() ? BytesAsText(ImageSpanBytesAt(name_data, 0)).get() : "", name_data.size());
+            auto name = string(!name_data.empty() ? BytesAsText(ImageSpanBytesAt(name_data, 0)).get() : "", name_data.size());
             reader.GoForward(name_data.size());
             uint16_t index = reader.GetLEUInt16();
 
@@ -2077,7 +2077,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 size_t rle_pos = 0;
 
                 while (rle_pos < rle_data.size()) {
-                    const int32_t control = ImageByteValue(rle_data, rle_pos);
+                    int32_t control = ImageByteValue(rle_data, rle_pos);
                     rle_pos++;
 
                     int32_t control_mode = control & 3;
@@ -2206,7 +2206,7 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
 
     // Decode
     while (rle_pos < rle_data.size()) {
-        const uint8_t control = ImageByteValue(rle_data, rle_pos);
+        uint8_t control = ImageByteValue(rle_data, rle_pos);
         rle_pos++;
 
         int32_t control_mode = control & 3;
@@ -2338,7 +2338,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
 
         // Decode
         while (rle_pos < rle_data.size()) {
-            const int32_t control = ImageByteValue(rle_data, rle_pos);
+            int32_t control = ImageByteValue(rle_data, rle_pos);
             rle_pos++;
 
             int32_t control_mode = control & 3;

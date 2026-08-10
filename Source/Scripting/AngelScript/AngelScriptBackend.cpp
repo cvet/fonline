@@ -75,12 +75,12 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     FO_VERIFY_AND_THROW(as_engine, "AngelScript engine callback parameter is null");
     auto backend = GetScriptBackend(as_engine);
     auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
-    const string_view orig_file = Preprocessor::ResolveOriginalFile(message->row, lnt.get());
-    const uint32_t orig_line = Preprocessor::ResolveOriginalLine(message->row, lnt.get());
-    const string orig_file_name = strex(string_view {orig_file.data(), orig_file.size()}).extract_file_name().str();
-    const nptr<const char> message_chars = message->message;
-    const string_view message_text = message_chars ? string_view {message_chars.get()} : "<no message>";
-    const string formatted_message = strex("{}({},{}): {} : {}", orig_file_name, orig_line, message->col, type, message_text).str();
+    string_view orig_file = Preprocessor::ResolveOriginalFile(message->row, lnt.get());
+    uint32_t orig_line = Preprocessor::ResolveOriginalLine(message->row, lnt.get());
+    string orig_file_name = strex(string_view {orig_file.data(), orig_file.size()}).extract_file_name().str();
+    nptr<const char> message_chars = message->message;
+    string_view message_text = message_chars ? string_view {message_chars.get()} : "<no message>";
+    string formatted_message = strex("{}({},{}): {} : {}", orig_file_name, orig_line, message->col, type, message_text).str();
 
     backend->SendMessage(formatted_message);
 }
@@ -341,8 +341,8 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     }();
 
     FO_VERIFY_AND_THROW(script_bin_files.GetFilesCount() == 1, "Resource pack must contain exactly one script bytecode file for this engine side", _meta->GetSide(), script_bin_files.GetFilesCount());
-    const auto script_bin_file = File::Load(*script_bin_files.begin());
-    const const_span<byte> script_bin = script_bin_file.GetDataSpan();
+    auto script_bin_file = File::Load(*script_bin_files.begin());
+    const_span<byte> script_bin = script_bin_file.GetDataSpan();
 
     FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 0, "AngelScript engine must not contain modules before loading bytecode", _asEngine->GetModuleCount());
     FO_VERIFY_AND_THROW(!script_bin.empty(), "AngelScript bytecode resource is empty", script_bin_file.GetPath(), _meta->GetSide());
@@ -479,8 +479,8 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 
             data.resize(0);
 
-            const auto load_from_memory = [&](const u8string& path) -> bool {
-                const auto it = _scriptFiles->find(path);
+            auto load_from_memory = [&](const u8string& path) -> bool {
+                auto it = _scriptFiles->find(path);
 
                 if (it == _scriptFiles->end()) {
                     return false;
@@ -492,16 +492,16 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
             };
 
             if (!dir.empty()) {
-                const u8string utf8_dir = utf8_from_char_span(const_span<char> {dir.data(), dir.size()});
-                const u8string utf8_file_name = utf8_from_char_span(const_span<char> {file_name.data(), file_name.size()});
-                const u8string combined_path = u8strex(utf8_dir).combine_path(utf8_file_name);
+                u8string utf8_dir = utf8_from_char_span(const_span<char> {dir.data(), dir.size()});
+                u8string utf8_file_name = utf8_from_char_span(const_span<char> {file_name.data(), file_name.size()});
+                u8string combined_path = u8strex(utf8_dir).combine_path(utf8_file_name);
 
                 if (load_from_memory(combined_path)) {
                     return true;
                 }
             }
 
-            const u8string utf8_file_name = utf8_from_char_span(const_span<char> {file_name.data(), file_name.size()});
+            u8string utf8_file_name = utf8_from_char_span(const_span<char> {file_name.data(), file_name.size()});
             if (load_from_memory(utf8_file_name)) {
                 return true;
             }
@@ -530,15 +530,15 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         u8string script_path = script_file.GetDataSource()->IsDiskDir() ? script_file.GetDiskPath() : u8string {script_file.GetPath()};
         u8string script_content = script_file.GetText();
 
-        const std::u8string_view script_content_view = script_content.view().native_view();
-        const size_t line_sep = script_content_view.find(u8'\n');
-        const std::u8string_view first_line = script_content_view.substr(0, line_sep);
+        std::u8string_view script_content_view = script_content.view().native_view();
+        size_t line_sep = script_content_view.find(u8'\n');
+        std::u8string_view first_line = script_content_view.substr(0, line_sep);
 
         int32_t sort = 0;
-        const size_t sort_pos = first_line.find(u8"Sort ");
+        size_t sort_pos = first_line.find(u8"Sort ");
 
         if (sort_pos != std::u8string_view::npos) {
-            const u8string_view sort_text = u8string_view::FromChecked(first_line.substr(sort_pos + 5));
+            u8string_view sort_text = u8string_view::FromChecked(first_line.substr(sort_pos + 5));
             sort = u8strvex(sort_text).substring_until(u8' ').to_int32();
         }
 
@@ -814,7 +814,7 @@ auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, s
     int32_t parsed_priority = int32_t {};
     const char* begin = args.data();
     const char* end = begin + args.size();
-    const auto [parsed_end, ec] = std::from_chars(begin, end, parsed_priority);
+    auto [parsed_end, ec] = std::from_chars(begin, end, parsed_priority);
 
     if (ec != std::errc {} || parsed_end != end) {
         return false;

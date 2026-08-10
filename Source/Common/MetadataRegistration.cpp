@@ -58,20 +58,20 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<byte> metadata
     auto sections_count = reader.Read<uint16_t>();
 
     for (uint16_t i = 0; i < sections_count; i++) {
-        const auto section_name_size = reader.Read<uint16_t>();
-        const string section_name = utf8_to_string(reader.ReadUtf8StringView(section_name_size));
+        auto section_name_size = reader.Read<uint16_t>();
+        string section_name = utf8_to_string(reader.ReadUtf8StringView(section_name_size));
 
-        const auto entries_count = reader.Read<uint32_t>();
+        auto entries_count = reader.Read<uint32_t>();
 
         if (section_name == "MigrationRule") {
             migration_rules.reserve(entries_count);
 
             for (uint32_t j = 0; j < entries_count; j++) {
                 auto& cur_entry = migration_rules.emplace_back();
-                const auto tokens_count = reader.Read<uint32_t>();
+                auto tokens_count = reader.Read<uint32_t>();
 
                 for (uint32_t k = 0; k < tokens_count; k++) {
-                    const auto token_size = reader.Read<uint16_t>();
+                    auto token_size = reader.Read<uint16_t>();
                     cur_entry.emplace_back(reader.ReadUtf8StringView(token_size));
                 }
             }
@@ -82,10 +82,10 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<byte> metadata
 
             for (uint32_t j = 0; j < entries_count; j++) {
                 auto& cur_entry = entries.emplace_back();
-                const auto tokens_count = reader.Read<uint32_t>();
+                auto tokens_count = reader.Read<uint32_t>();
 
                 for (uint32_t k = 0; k < tokens_count; k++) {
-                    const auto token_size = reader.Read<uint16_t>();
+                    auto token_size = reader.Read<uint16_t>();
                     cur_entry.emplace_back(utf8_to_string(reader.ReadUtf8StringView(token_size)));
                 }
             }

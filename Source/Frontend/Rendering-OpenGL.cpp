@@ -743,23 +743,23 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
         }
 
         u8string vert_fname = u8strex("{}.fofx-{}-vert-{}", u8strex(name).erase_file_extension(), pass + 1, ext);
-        const vector<byte> vert_data = loader(vert_fname);
-        const u8string vert_content = utf8_from_byte_span(vert_data);
+        vector<byte> vert_data = loader(vert_fname);
+        u8string vert_content = utf8_from_byte_span(vert_data);
         FO_VERIFY_AND_THROW(!vert_content.empty(), "OpenGL effect vertex shader content is empty after loading", name, pass + 1, vert_fname);
         u8string frag_fname = u8strex("{}.fofx-{}-frag-{}", u8strex(name).erase_file_extension(), pass + 1, ext);
-        const vector<byte> frag_data = loader(frag_fname);
-        const u8string frag_content = utf8_from_byte_span(frag_data);
+        vector<byte> frag_data = loader(frag_fname);
+        u8string frag_content = utf8_from_byte_span(frag_data);
         FO_VERIFY_AND_THROW(!frag_content.empty(), "OpenGL effect fragment shader content is empty after loading", name, pass + 1, frag_fname);
 
         // Create shaders
         GLuint vs;
         GL(vs = glCreateShader(GL_VERTEX_SHADER));
-        const nptr<const char> vs_source = utf8_to_c_str(vert_content.view_nt());
+        nptr<const char> vs_source = utf8_to_c_str(vert_content.view_nt());
         GL(glShaderSource(vs, 1, vs_source.get_pp(), nullptr));
 
         GLuint fs;
         GL(fs = glCreateShader(GL_FRAGMENT_SHADER));
-        const nptr<const char> fs_source = utf8_to_c_str(frag_content.view_nt());
+        nptr<const char> fs_source = utf8_to_c_str(frag_content.view_nt());
         GL(glShaderSource(fs, 1, fs_source.get_pp(), nullptr));
 
         // Info parser

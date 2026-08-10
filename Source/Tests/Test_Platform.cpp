@@ -84,11 +84,11 @@ TEST_CASE("Platform")
 {
     SECTION("GetExePathReturnsExistingPath")
     {
-        const optional<u8string> exe_path = Platform::GetExePath();
+        optional<u8string> exe_path = Platform::GetExePath();
 
         REQUIRE(exe_path.has_value());
         CHECK_FALSE(exe_path->empty());
-        const std::filesystem::path native_path {exe_path->view().native_view()};
+        std::filesystem::path native_path {exe_path->view().native_view()};
         CHECK(std::filesystem::exists(native_path));
         CHECK(std::filesystem::is_regular_file(native_path));
     }
@@ -103,7 +103,7 @@ TEST_CASE("Platform")
 #if FO_WINDOWS
         CHECK(pid_str != "0");
 #elif FO_LINUX || FO_MAC
-        const std::string runtime_pid = std::to_string(::getpid());
+        std::string runtime_pid = std::to_string(::getpid());
         CHECK(pid_str == runtime_pid.c_str());
 #else
         CHECK(pid_str == "0");
@@ -113,7 +113,7 @@ TEST_CASE("Platform")
     SECTION("GetFuncAddrCanResolveProcessSymbols")
     {
         using FuncPtr = void (*)();
-        const FuncPtr func = Platform::GetFuncAddr<FuncPtr>(nullptr, string_view_nt {"getpid"});
+        FuncPtr func = Platform::GetFuncAddr<FuncPtr>(nullptr, string_view_nt {"getpid"});
 
 #if FO_LINUX || FO_MAC
         CHECK(func != nullptr);
@@ -131,8 +131,8 @@ TEST_CASE("Platform")
     SECTION("RuntimeSymbolStorageUsesTheSharedTerminatedViewHelper")
     {
         array<char, 7> symbol_storage = {'g', 'e', 't', 'p', 'i', 'd', char {}};
-        const const_span<char> bounded_symbol {symbol_storage.data(), symbol_storage.size()};
-        const optional<string_view_nt> checked_symbol = try_string_view_nt_from_span(bounded_symbol);
+        const_span<char> bounded_symbol {symbol_storage.data(), symbol_storage.size()};
+        optional<string_view_nt> checked_symbol = try_string_view_nt_from_span(bounded_symbol);
         REQUIRE(checked_symbol.has_value());
 
         symbol_storage[2] = char {};
@@ -160,10 +160,10 @@ TEST_CASE("Platform")
     SECTION("LoadModuleRevalidatesExternalTerminatedViews")
     {
         array<char8_t, 7> module_storage = {u8'm', u8'o', u8'd', u8'u', u8'l', u8'e', char8_t {}};
-        const const_span<char8_t> bounded_module {module_storage.data(), module_storage.size()};
-        const optional<u8string_view_nt> checked_module = u8string_view_nt::TryFrom(bounded_module);
+        const_span<char8_t> bounded_module {module_storage.data(), module_storage.size()};
+        optional<u8string_view_nt> checked_module = u8string_view_nt::TryFrom(bounded_module);
         REQUIRE(checked_module.has_value());
-        const u8string_view_nt stale_module = *checked_module;
+        u8string_view_nt stale_module = *checked_module;
         module_storage[2] = char8_t {0xFF};
 
         try {
@@ -187,13 +187,13 @@ TEST_CASE("Platform")
     SECTION("InfoHelpersRevalidateExternalTerminatedViews")
     {
         array<char8_t, 7> text_storage = {u8't', u8'e', u8'x', u8't', u8'-', u8'x', char8_t {}};
-        const const_span<char8_t> bounded_text {text_storage.data(), text_storage.size()};
-        const optional<u8string_view_nt> checked_text = u8string_view_nt::TryFrom(bounded_text);
+        const_span<char8_t> bounded_text {text_storage.data(), text_storage.size()};
+        optional<u8string_view_nt> checked_text = u8string_view_nt::TryFrom(bounded_text);
         REQUIRE(checked_text.has_value());
-        const u8string_view_nt stale_text = *checked_text;
+        u8string_view_nt stale_text = *checked_text;
         text_storage[2] = char8_t {0xFF};
 
-        const auto check_rejected = [&](const auto& invoke) {
+        auto check_rejected = [&](const auto& invoke) {
             try {
                 invoke(stale_text);
                 FAIL("A stale malformed UTF-8 diagnostic string was accepted");
@@ -248,11 +248,11 @@ TEST_CASE("Platform")
 
         auto restore_env = [&set_env](const char* name, const optional<string>& saved) { set_env(name, saved.has_value() ? saved->c_str() : ""); };
 
-        const optional<string> saved_generic = save_env("FO_PLATFORM_UTF8_ENV_TEST");
+        optional<string> saved_generic = save_env("FO_PLATFORM_UTF8_ENV_TEST");
         set_env("FO_PLATFORM_UTF8_ENV_TEST", "strict-value");
-        const optional<u8string> generic_value = Platform::GetEnvironmentUtf8(string_view_nt {"FO_PLATFORM_UTF8_ENV_TEST"});
+        optional<u8string> generic_value = Platform::GetEnvironmentUtf8(string_view_nt {"FO_PLATFORM_UTF8_ENV_TEST"});
         set_env("FO_PLATFORM_UTF8_ENV_TEST", "");
-        const optional<u8string> empty_value = Platform::GetEnvironmentUtf8(string_view_nt {"FO_PLATFORM_UTF8_ENV_TEST"});
+        optional<u8string> empty_value = Platform::GetEnvironmentUtf8(string_view_nt {"FO_PLATFORM_UTF8_ENV_TEST"});
         restore_env("FO_PLATFORM_UTF8_ENV_TEST", saved_generic);
 
         REQUIRE(generic_value.has_value());
@@ -262,9 +262,9 @@ TEST_CASE("Platform")
         // The resolver reads the OS user-data env vars directly (no SDL/shell32). Drive each platform's
         // primary var and its documented fallback, capture the results, then restore the real env.
 #if FO_WINDOWS
-        const auto to_utf8 = [](string_view value) -> u8string { return value; };
-        const auto saved_local = save_env("LOCALAPPDATA");
-        const auto saved_roaming = save_env("APPDATA");
+        auto to_utf8 = [](string_view value) -> u8string { return value; };
+        auto saved_local = save_env("LOCALAPPDATA");
+        auto saved_roaming = save_env("APPDATA");
 
         string local_dir = strex("C:").combine_path("AppData/Local").str();
         string roaming_dir = strex("C:").combine_path("AppData/Roaming").str();
@@ -282,31 +282,31 @@ TEST_CASE("Platform")
         CHECK(from_local == to_utf8(local_dir));
         CHECK(from_roaming == to_utf8(roaming_dir));
 #elif FO_MAC || FO_IOS
-        const auto saved_home = save_env("HOME");
-        const u8string home_dir {u8"/Users/тест_𐍈"};
-        const ptr<const char> home_dir_cstr = utf8_to_c_str(home_dir.view_nt());
+        auto saved_home = save_env("HOME");
+        u8string home_dir {u8"/Users/тест_𐍈"};
+        ptr<const char> home_dir_cstr = utf8_to_c_str(home_dir.view_nt());
 
         set_env("HOME", home_dir_cstr.get());
-        const auto from_home = Platform::GetUserDataBase();
+        auto from_home = Platform::GetUserDataBase();
 
         restore_env("HOME", saved_home);
 
         CHECK(from_home == u8string {u8"/Users/тест_𐍈/Library/Application Support"});
 #else
-        const auto to_utf8 = [](string_view value) -> u8string { return value; };
-        const auto saved_xdg = save_env("XDG_DATA_HOME");
-        const auto saved_home = save_env("HOME");
+        auto to_utf8 = [](string_view value) -> u8string { return value; };
+        auto saved_xdg = save_env("XDG_DATA_HOME");
+        auto saved_home = save_env("HOME");
 
-        const u8string xdg_dir {u8"/tmp/данные_𐍈"};
-        const ptr<const char> xdg_dir_cstr = utf8_to_c_str(xdg_dir.view_nt());
-        const auto home_dir = strex("/home").combine_path("test").str();
+        u8string xdg_dir {u8"/tmp/данные_𐍈"};
+        ptr<const char> xdg_dir_cstr = utf8_to_c_str(xdg_dir.view_nt());
+        auto home_dir = strex("/home").combine_path("test").str();
 
         set_env("XDG_DATA_HOME", xdg_dir_cstr.get());
-        const auto from_xdg = Platform::GetUserDataBase();
+        auto from_xdg = Platform::GetUserDataBase();
 
         set_env("XDG_DATA_HOME", "");
         set_env("HOME", home_dir.c_str());
-        const auto from_home = Platform::GetUserDataBase();
+        auto from_home = Platform::GetUserDataBase();
 
         restore_env("XDG_DATA_HOME", saved_xdg);
         restore_env("HOME", saved_home);
@@ -324,9 +324,9 @@ TEST_CASE("Platform")
 #else
         constexpr const char* variable_name = "XDG_DATA_HOME";
 #endif
-        const nptr<const char> original_value {std::getenv(variable_name)};
-        const optional<string> saved_value = original_value ? optional<string> {string {original_value.get()}} : optional<string> {};
-        const auto restore_env = scope_exit([&]() noexcept {
+        nptr<const char> original_value {std::getenv(variable_name)};
+        optional<string> saved_value = original_value ? optional<string> {string {original_value.get()}} : optional<string> {};
+        auto restore_env = scope_exit([&]() noexcept {
             if (saved_value) {
                 (void)setenv(variable_name, saved_value->c_str(), 1);
             }

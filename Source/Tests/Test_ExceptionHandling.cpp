@@ -25,9 +25,9 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("BaseEngineExceptionAcceptsStrictTextParamsDirectly")
     {
-        const u8string utf8_value {u8"путь/🌍"};
-        const string ascii_value {"Server"};
-        const GenericException ex {"Strict text context", utf8_value, utf8_value.view(), ascii_value, string_view {ascii_value}};
+        u8string utf8_value {u8"путь/🌍"};
+        string ascii_value {"Server"};
+        GenericException ex {"Strict text context", utf8_value, utf8_value.view(), ascii_value, string_view {ascii_value}};
 
         REQUIRE(ex.params().size() == 4);
         CHECK(ex.params()[0] == utf8_value);
@@ -35,7 +35,7 @@ TEST_CASE("ExceptionHandling")
         CHECK(ex.params()[2] == u8"Server");
         CHECK(ex.params()[3] == u8"Server");
         CHECK(string_view {ex.what()}.find(utf8_as_char_view(utf8_value.view())) != string_view::npos);
-        const u8string strict_message = exception_message_utf8(ex);
+        u8string strict_message = exception_message_utf8(ex);
         CHECK(strict_message.view().native_view().find(utf8_value.view().native_view()) != std::u8string_view::npos);
     }
 
@@ -43,7 +43,7 @@ TEST_CASE("ExceptionHandling")
     {
         std::string invalid_message {"bad native text "};
         invalid_message.push_back(static_cast<char>(0xFF));
-        const std::runtime_error ex {invalid_message};
+        std::runtime_error ex {invalid_message};
 
         CHECK(exception_message_utf8(ex) == u8string {u8"Native exception message is not valid UTF-8"});
     }
@@ -95,7 +95,7 @@ TEST_CASE("ExceptionHandling")
 
         auto callback = GetExceptionCallback();
         REQUIRE(callback);
-        const CatchedStackTraceData st {std::nullopt, {}};
+        CatchedStackTraceData st {std::nullopt, {}};
         callback(u8"Msg", st, true);
 
         CHECK(message == u8"Msg");

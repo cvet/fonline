@@ -183,7 +183,7 @@ public:
         strvex(),
         _s {text_format_detail::FormatAdapted(format.view(), std::forward<Args>(args)...)}
     {
-        if (const auto issue = validate_ascii_text(_s)) {
+        if (auto issue = validate_ascii_text(_s)) {
             throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
         }
 
@@ -230,7 +230,7 @@ public:
     {
         (void)std::vformat_to(std::back_inserter(_s), format, std::make_format_args(args...));
 
-        if (const auto issue = validate_ascii_text(_s)) {
+        if (auto issue = validate_ascii_text(_s)) {
             throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
         }
 

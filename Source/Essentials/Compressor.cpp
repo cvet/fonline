@@ -60,9 +60,9 @@ auto Compressor::Compress(const_span<byte> data) -> vector<byte>
     auto buf_len = numeric_cast<uLongf>(CalculateMaxCompressedBufSize(data.size()));
     auto buf = vector<byte>(buf_len);
     auto output = make_nptr(buf.data()).reinterpret_as<Bytef>();
-    const auto input = make_nptr(data.data()).reinterpret_as<const Bytef>();
+    auto input = make_nptr(data.data()).reinterpret_as<const Bytef>();
 
-    const auto result = compress2(output.get(), &buf_len, input.get(), numeric_cast<uLong>(data.size()), Z_BEST_SPEED);
+    auto result = compress2(output.get(), &buf_len, input.get(), numeric_cast<uLong>(data.size()), Z_BEST_SPEED);
 
     if (result != Z_OK) {
         throw CompressionException("Compression failed", result);
@@ -78,11 +78,11 @@ auto Compressor::Decompress(const_span<byte> data, size_t mul_approx) -> vector<
 
     auto buf_len = numeric_cast<uLongf>(data.size() * mul_approx);
     auto buf = vector<byte>(buf_len);
-    const auto input = make_nptr(data.data()).reinterpret_as<const Bytef>();
+    auto input = make_nptr(data.data()).reinterpret_as<const Bytef>();
 
     while (true) {
         auto output = make_nptr(buf.data()).reinterpret_as<Bytef>();
-        const auto result = uncompress(output.get(), &buf_len, input.get(), numeric_cast<uLong>(data.size()));
+        auto result = uncompress(output.get(), &buf_len, input.get(), numeric_cast<uLong>(data.size()));
 
         if (result == Z_BUF_ERROR) {
             buf_len *= 2;
@@ -161,7 +161,7 @@ void StreamCompressor::Compress(const_span<byte> buf, vector<byte>& result)
     int32_t deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
     FO_VERIFY_AND_THROW(deflate_result == Z_OK, "Zlib deflate did not finish with Z_OK", deflate_result, Z_OK, buf.size(), result.size());
 
-    const auto writed_len = numeric_cast<size_t>(_impl->ZStream.next_in - input_begin.get());
+    auto writed_len = numeric_cast<size_t>(_impl->ZStream.next_in - input_begin.get());
     FO_VERIFY_AND_THROW(writed_len == buf.size(), "Zlib deflate did not consume the full input buffer", writed_len, buf.size());
 
     size_t compr_len = numeric_cast<size_t>(_impl->ZStream.next_out - output_begin.get());

@@ -77,7 +77,7 @@ namespace
                 throw GenericException("Unexpected recording effect request", name);
             }
 
-            const auto bytes = string_to_byte_span(content);
+            auto bytes = string_to_byte_span(content);
             return {bytes.begin(), bytes.end()};
         };
     }
@@ -901,7 +901,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     mesh.Vertices = {{0, 0}, {2, 0}, {0, 2}};
     mesh.Indices = {0, 1, 2};
 
-    const vector<byte> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
+    vector<byte> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
     SpriteMeshData cropped_mesh;
     cropped_mesh.SourceSize = {4, 3};
     cropped_mesh.SourceOffset = {1, -1};
@@ -915,11 +915,11 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     constexpr size_t mesh_vertices_offset = mesh_source_offset_offset + sizeof(int32_t) * 2;
     constexpr size_t mesh_indices_offset = mesh_vertices_offset + 3 * sizeof(uint16_t) * 2;
 
-    const auto write_u16 = [](vector<byte>& data, size_t offset, uint16_t value) {
+    auto write_u16 = [](vector<byte>& data, size_t offset, uint16_t value) {
         data[offset] = byte {numeric_cast<uint8_t>(value & 0xFF)};
         data[offset + 1] = byte {numeric_cast<uint8_t>(value >> 8)};
     };
-    const auto write_u32 = [](vector<byte>& data, size_t offset, uint32_t value) {
+    auto write_u32 = [](vector<byte>& data, size_t offset, uint32_t value) {
         data[offset] = byte {numeric_cast<uint8_t>(value & 0xFF)};
         data[offset + 1] = byte {numeric_cast<uint8_t>((value >> 8) & 0xFF)};
         data[offset + 2] = byte {numeric_cast<uint8_t>((value >> 16) & 0xFF)};

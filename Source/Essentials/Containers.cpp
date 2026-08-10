@@ -57,7 +57,7 @@ auto u8istringstream::operator>>(string& value) -> u8istringstream&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto token = ReadToken();
+    auto token = ReadToken();
 
     if (token) {
         value = utf8_to_string(*token);
@@ -70,7 +70,7 @@ auto u8istringstream::operator>>(u8string& value) -> u8istringstream&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto token = ReadToken();
+    auto token = ReadToken();
 
     if (token) {
         value.assign(*token);
@@ -116,7 +116,7 @@ auto u8istringstream::ReadToken() -> optional<u8string_view>
         return std::nullopt;
     }
 
-    const std::u8string_view input = _input.view().native_view();
+    std::u8string_view input = _input.view().native_view();
 
     while (_position < input.size() && IsUtf8StreamSpace(input[_position])) {
         _position++;
@@ -128,7 +128,7 @@ auto u8istringstream::ReadToken() -> optional<u8string_view>
         return std::nullopt;
     }
 
-    const size_t begin = _position;
+    size_t begin = _position;
 
     while (_position < input.size() && !IsUtf8StreamSpace(input[_position])) {
         _position++;
@@ -146,7 +146,7 @@ auto u8istringstream::ReadLine(u8string& line, char8_t delimiter) -> bool
         return false;
     }
 
-    const std::u8string_view input = _input.view().native_view();
+    std::u8string_view input = _input.view().native_view();
 
     if (_position == input.size()) {
         _eof = true;
@@ -154,7 +154,7 @@ auto u8istringstream::ReadLine(u8string& line, char8_t delimiter) -> bool
         return false;
     }
 
-    const size_t delimiter_pos = input.find(delimiter, _position);
+    size_t delimiter_pos = input.find(delimiter, _position);
 
     if (delimiter_pos == std::u8string_view::npos) {
         line.assign(u8string_view::FromChecked(input.substr(_position)));

@@ -168,11 +168,11 @@ namespace NativeScriptText
             return utf8_to_char_string(value);
         }
         else if constexpr (std::same_as<std::remove_cvref_t<T>, u8string_view>) {
-            const u8string checked_value {value};
+            u8string checked_value {value};
             return utf8_to_char_string(checked_value);
         }
         else if constexpr (std::same_as<std::remove_cvref_t<T>, u8string_view_nt>) {
-            const u8string checked_value {value.view()};
+            u8string checked_value {value.view()};
             (void)checked_value.view_nt();
             return utf8_to_char_string(checked_value);
         }
@@ -186,7 +186,7 @@ namespace NativeScriptText
     {
         static_assert(IsStrictOwner<T>);
 
-        const u8string utf8_value = utf8_from_char_span(const_span<char> {value.data(), value.size()});
+        u8string utf8_value = utf8_from_char_span(const_span<char> {value.data(), value.size()});
 
         if constexpr (std::same_as<T, string>) {
             return utf8_to_string(utf8_value);
@@ -287,7 +287,7 @@ namespace NativeDataProvider
             _scriptValues.reserve(cont.size());
 
             for (auto& [key, value] : cont) {
-                const ptr<void> key_ptr = [&]() -> ptr<void> {
+                ptr<void> key_ptr = [&]() -> ptr<void> {
                     if constexpr (NativeScriptText::IsStrictOwner<typename T::key_type>) {
                         _scriptKeys.emplace_back(NativeScriptText::ToScriptString(key));
                         return make_ptr(&_scriptKeys.back()).void_cast();
@@ -296,7 +296,7 @@ namespace NativeDataProvider
                         return make_ptr(&key).void_cast();
                     }
                 }();
-                const ptr<void> value_ptr = [&]() -> ptr<void> {
+                ptr<void> value_ptr = [&]() -> ptr<void> {
                     if constexpr (NativeScriptText::IsStrictOwner<typename T::mapped_type>) {
                         _scriptValues.emplace_back(NativeScriptText::ToScriptString(value));
                         return make_ptr(&_scriptValues.back()).void_cast();
@@ -311,7 +311,7 @@ namespace NativeDataProvider
 
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> key, ptr<void> value) FO_DEFERRED {
-                const auto native_key = [&]() -> typename T::key_type {
+                auto native_key = [&]() -> typename T::key_type {
                     if constexpr (NativeScriptText::IsStrictOwner<typename T::key_type>) {
                         const string& script_key = *cast_from_void<const string*>(key.get());
                         return NativeScriptText::FromScriptString<typename T::key_type>(script_key);
@@ -343,7 +343,7 @@ namespace NativeDataProvider
             _scriptValues.reserve(cont.size());
 
             for (const auto& [key, value] : cont) {
-                const ptr<void> key_ptr = [&]() -> ptr<void> {
+                ptr<void> key_ptr = [&]() -> ptr<void> {
                     if constexpr (NativeScriptText::IsStrictOwner<typename T::key_type>) {
                         _scriptKeys.emplace_back(NativeScriptText::ToScriptString(key));
                         return make_ptr(&_scriptKeys.back()).void_cast();
@@ -352,7 +352,7 @@ namespace NativeDataProvider
                         return make_ptr(&key).void_cast();
                     }
                 }();
-                const ptr<void> value_ptr = [&]() -> ptr<void> {
+                ptr<void> value_ptr = [&]() -> ptr<void> {
                     if constexpr (NativeScriptText::IsStrictOwner<typename T::mapped_type>) {
                         _scriptValues.emplace_back(NativeScriptText::ToScriptString(value));
                         return make_ptr(&_scriptValues.back()).void_cast();
@@ -781,7 +781,7 @@ namespace NativeDataCaller
             size_t size = accessor.GetDictSize(data);
 
             for (size_t i = 0; i < size; i++) {
-                const auto kv = accessor.GetDictElement(data, i);
+                auto kv = accessor.GetDictElement(data, i);
                 m.emplace(ReadScriptValue<typename raw_t::key_type>(kv.first), ReadScriptValue<typename raw_t::mapped_type>(kv.second));
             }
 

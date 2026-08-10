@@ -70,7 +70,7 @@ static auto ExtractBraceToken(u8string& line, size_t& offset, u8string& token, b
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto first = line.view().native_view().find(u8'{', offset);
+    auto first = line.view().native_view().find(u8'{', offset);
 
     if (first == std::u8string_view::npos) {
         return false;
@@ -150,7 +150,7 @@ auto TextPack::GetText(TextPackKey key, size_t skip) const -> u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t text_count = _textData.count(key);
+    size_t text_count = _textData.count(key);
     auto it = _textData.find(key);
 
     if (skip >= text_count) {
@@ -374,7 +374,7 @@ void TextPack::FixText(const TextPack& base_pack)
 
     // Add keys that are in the base pack but not in this pack
     for (auto&& [key, value] : base_pack._textData) {
-        const auto has_same_entry = _textData.count(key) != 0;
+        auto has_same_entry = _textData.count(key) != 0;
 
         if (!has_same_entry) {
             AddText(key, value.view());

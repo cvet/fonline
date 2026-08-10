@@ -666,7 +666,7 @@ TEST_CASE("NormalizeHexOffset")
     constexpr mpos START_HEX {100, 100};
 
     // An offset of one whole hex step: normalization must move the logical hex by exactly that step.
-    const auto offset_to_neighbour = [](mpos from_hex, mpos to_hex) -> ipos16 {
+    auto offset_to_neighbour = [](mpos from_hex, mpos to_hex) -> ipos16 {
         ipos32 delta = GeometryHelper::GetHexPos(to_hex) - GeometryHelper::GetHexPos(from_hex);
         return {numeric_cast<int16_t>(delta.x), numeric_cast<int16_t>(delta.y)};
     };
@@ -689,11 +689,11 @@ TEST_CASE("NormalizeHexOffset")
     {
         mpos hex = START_HEX;
         ipos16 hex_offset = offset_to_neighbour(START_HEX, neighbour_hex);
-        const ipos16 original_offset = hex_offset;
+        ipos16 original_offset = hex_offset;
 
         // This is the production defect: the rounding lands on a hex the critter could never walk
         // onto, and adopting it makes the server's move reconciliation fail for good.
-        const auto reject_neighbour = [neighbour_hex](mpos check_hex) { return check_hex != neighbour_hex; };
+        auto reject_neighbour = [neighbour_hex](mpos check_hex) { return check_hex != neighbour_hex; };
 
         CHECK_FALSE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, reject_neighbour));
         CHECK(hex == START_HEX);

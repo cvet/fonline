@@ -1840,7 +1840,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         auto func = server->FindFunc<void>(fn("ScriptBuiltins::InvalidIntConversionFromAny"));
         REQUIRE(func);
 
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
         u8string message;
         string traceback;
         bool fatal = true;
@@ -2090,13 +2090,13 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
         u8string message;
         SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); });
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
-        const u8string expected_message_utf8 {expected_message};
+        u8string expected_message_utf8 {expected_message};
         INFO(func_name);
         INFO(utf8_to_char_string(message));
         CHECK(message.view().native_view().find(expected_message_utf8.view().native_view()) != std::u8string_view::npos);

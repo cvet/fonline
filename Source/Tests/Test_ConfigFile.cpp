@@ -138,8 +138,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("CollectsSectionContent")
     {
-        const u8string source {u8"[ShaderCommon]\nline_1 \\\nline_2\nvalue # keep content before comment stripping\n\n[VertexShader]\nvoid main() {}\n"};
-        const ConfigFile config = MakeConfig(u8"Effect.fofx", source, ConfigFileOption::CollectContent);
+        u8string source {u8"[ShaderCommon]\nline_1 \\\nline_2\nvalue # keep content before comment stripping\n\n[VertexShader]\nvoid main() {}\n"};
+        ConfigFile config = MakeConfig(u8"Effect.fofx", source, ConfigFileOption::CollectContent);
 
         CHECK(NativeText(config.GetSectionContent("ShaderCommon")) == u8"line_1 line_2\nvalue # keep content before comment stripping\n");
         CHECK(NativeText(config.GetSectionContent("VertexShader")) == u8"void main() {}\n");
@@ -147,16 +147,16 @@ TEST_CASE("ConfigFile")
 
     SECTION("CollectsSectionContentForTabContinuedLines")
     {
-        const u8string source {u8"[ShaderCommon]\nline_1\t\\\nline_2\n"};
-        const ConfigFile config = MakeConfig(u8"Effect.fofx", source, ConfigFileOption::CollectContent);
+        u8string source {u8"[ShaderCommon]\nline_1\t\\\nline_2\n"};
+        ConfigFile config = MakeConfig(u8"Effect.fofx", source, ConfigFileOption::CollectContent);
 
         CHECK(NativeText(config.GetSectionContent("ShaderCommon")) == u8"line_1 line_2\n");
     }
 
     SECTION("TreatsWholeLineSlashCommentsAsContentRatherThanEntries")
     {
-        const u8string source {u8"[ShaderCommon]\n// Power curve — гамма = 1.0\nEndpoint = https://example.invalid/effect\n"};
-        const ConfigFile config = MakeConfig(u8"Effect.fofx", source, ConfigFileOption::CollectContent);
+        u8string source {u8"[ShaderCommon]\n// Power curve — гамма = 1.0\nEndpoint = https://example.invalid/effect\n"};
+        ConfigFile config = MakeConfig(u8"Effect.fofx", source, ConfigFileOption::CollectContent);
 
         CHECK(NativeText(config.GetSectionContent("ShaderCommon")) == u8"// Power curve — гамма = 1.0\nEndpoint = https://example.invalid/effect\n");
         CHECK(NativeText(config.GetAsStr("ShaderCommon", "Endpoint")) == u8"https://example.invalid/effect");
@@ -165,8 +165,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("ParsesCrLfLinesAndContinuation")
     {
-        const u8string source {u8"[ShaderCommon]\r\nline_1 \\\r\nline_2\r\n[Section]\r\nKey = Value\r\n"};
-        const ConfigFile config = MakeConfig(u8"Effect.fofx", source, ConfigFileOption::CollectContent);
+        u8string source {u8"[ShaderCommon]\r\nline_1 \\\r\nline_2\r\n[Section]\r\nKey = Value\r\n"};
+        ConfigFile config = MakeConfig(u8"Effect.fofx", source, ConfigFileOption::CollectContent);
 
         CHECK(NativeText(config.GetSectionContent("ShaderCommon")) == u8"line_1 line_2\n");
         CHECK(NativeText(config.GetAsStr("Section", "Key")) == u8"Value");
@@ -174,8 +174,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("ParsesBoolIntsAndDefaults")
     {
-        const u8string source {u8"[Section]\nEnabled = true\nDisabled = FALSE\nCount = 42\nName = Value\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[Section]\nEnabled = true\nDisabled = FALSE\nCount = 42\nName = Value\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         CHECK(config.GetAsInt("Section", "Enabled") == 1);
         CHECK(config.GetAsInt("Section", "Disabled") == 0);
@@ -191,7 +191,7 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesUnicodeFileNamesAndValues")
     {
-        const ConfigFile config = MakeConfig(u8"Конфигурация.fomain", u8"[Text]\nValue = Привет, 世界 🌍\nCombining = é\n");
+        ConfigFile config = MakeConfig(u8"Конфигурация.fomain", u8"[Text]\nValue = Привет, 世界 🌍\nCombining = é\n");
 
         CHECK(NativeText(config.GetAsStr("Text", "Value")) == u8"Привет, 世界 🌍");
         CHECK(NativeText(config.GetAsStr("Text", "Combining")) == u8"é");
@@ -205,8 +205,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("TreatsFormFeedAndVerticalTabAsConfigWhitespace")
     {
-        const u8string source {u8"[Section]\n\fCount\v=\f42\v\n\vEnabled\f=\vtrue\f\nText\f=\vValue\f\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[Section]\n\fCount\v=\f42\v\n\vEnabled\f=\vtrue\f\nText\f=\vValue\f\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         CHECK(config.GetAsInt("Section", "Count") == 42);
         CHECK(config.GetAsInt("Section", "Enabled") == 1);
@@ -215,8 +215,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesEscapedCommentCharacters")
     {
-        const u8string source {u8"[Section]\nText = keep\\#hash # strip this\nOther = value\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[Section]\nText = keep\\#hash # strip this\nOther = value\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         CHECK(NativeText(config.GetAsStr("Section", "Text")) == u8"keep\\#hash");
         CHECK(NativeText(config.GetAsStr("Section", "Other")) == u8"value");
@@ -224,8 +224,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesCommentCharactersInsideDoubleQuotes")
     {
-        const u8string source {u8"[Section]\nText = \"quoted # hash\" # strip this\nOther = value\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[Section]\nText = \"quoted # hash\" # strip this\nOther = value\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         CHECK(NativeText(config.GetAsStr("Section", "Text")) == u8"\"quoted # hash\"");
         CHECK(NativeText(config.GetAsStr("Section", "Other")) == u8"value");
@@ -233,8 +233,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesCommentCharactersInsideDoubleQuotesAcrossContinuedLines")
     {
-        const u8string source {u8"[Section]\nText = \"quoted # hash\" \\\ncontinued # tail\nOther = value\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[Section]\nText = \"quoted # hash\" \\\ncontinued # tail\nOther = value\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         CHECK(NativeText(config.GetAsStr("Section", "Text")) == u8"\"quoted # hash\" continued");
         CHECK(NativeText(config.GetAsStr("Section", "Other")) == u8"value");
@@ -242,16 +242,16 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesCommentCharactersInsideQuotedAppendedValues")
     {
-        const u8string source {u8"[Section]\nText = base\nText += \"quoted # hash\" # strip this\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[Section]\nText = base\nText += \"quoted # hash\" # strip this\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         CHECK(NativeText(config.GetAsStr("Section", "Text")) == u8"base \"quoted # hash\"");
     }
 
     SECTION("PreservesCommentCharactersAfterEscapedQuotesInsideDoubleQuotes")
     {
-        const u8string source {u8"[Section]\nText = \"quoted \\\" # hash\" # strip this\nOther = value\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[Section]\nText = \"quoted \\\" # hash\" # strip this\nOther = value\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         CHECK(NativeText(config.GetAsStr("Section", "Text")) == u8"\"quoted \\\" # hash\"");
         CHECK(NativeText(config.GetAsStr("Section", "Other")) == u8"value");
@@ -259,8 +259,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("SkipsBraceFormatLines")
     {
-        const u8string source {u8"[Section]\n{Speech 2 Answer 10}{}{Уровень >= 3.}\nKey = Value\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[Section]\n{Speech 2 Answer 10}{}{Уровень >= 3.}\nKey = Value\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         REQUIRE(config.GetSection("Section").size() == 1);
         CHECK(NativeText(config.GetAsStr("Section", "Key")) == u8"Value");
@@ -268,7 +268,7 @@ TEST_CASE("ConfigFile")
 
     SECTION("ReturnsRepeatedSections")
     {
-        const u8string source {u8"[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n"};
+        u8string source {u8"[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n"};
         ConfigFile config = MakeConfig(u8"Items.fopro", source);
         vector<ptr<ConfigKeyValueMap>> sections = config.GetSections("ProtoItem");
 
@@ -386,8 +386,8 @@ TEST_CASE("ConfigFile")
     {
         ConfigFile config = MakeConfig(u8"Items.fopro", u8"[ProtoItem]\n$Name = One\n");
 
-        const auto existing_section = config.GetSectionKeyValues("ProtoItem");
-        const auto missing_section = config.GetSectionKeyValues("Missing");
+        auto existing_section = config.GetSectionKeyValues("ProtoItem");
+        auto missing_section = config.GetSectionKeyValues("Missing");
         vector<ptr<ConfigKeyValueMap>> missing_sections = config.GetSections("Missing");
         auto all_sections = config.GetSections();
 
@@ -424,8 +424,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("IgnoresMalformedSectionsAndEntries")
     {
-        const u8string source {u8"[]\nNoSeparator\n[ValidSection\n[Good]\nKey = Value\n"};
-        const ConfigFile config = MakeConfig(u8"Test.cfg", source);
+        u8string source {u8"[]\nNoSeparator\n[ValidSection\n[Good]\nKey = Value\n"};
+        ConfigFile config = MakeConfig(u8"Test.cfg", source);
 
         CHECK_FALSE(config.HasSection("ValidSection"));
         CHECK(config.HasSection("Good"));
@@ -434,9 +434,9 @@ TEST_CASE("ConfigFile")
 
     SECTION("IgnoresEntriesWithEmptyTrimmedKeys")
     {
-        const u8string source {u8"[Good]\n   = Ignored\n\t+= IgnoredToo\nKey = Value\n"};
+        u8string source {u8"[Good]\n   = Ignored\n\t+= IgnoredToo\nKey = Value\n"};
         ConfigFile config = MakeConfig(u8"Test.cfg", source);
-        const auto section = config.GetSectionKeyValues("Good");
+        auto section = config.GetSectionKeyValues("Good");
 
         REQUIRE(static_cast<bool>(section));
         CHECK(section->size() == 1);
@@ -444,7 +444,7 @@ TEST_CASE("ConfigFile")
         CHECK(NativeText(config.GetAsStr("Good", "Key")) == u8"Value");
     }
 
-    const u8string benchmark_input = BuildConfigBenchmarkInput(128, 12);
+    u8string benchmark_input = BuildConfigBenchmarkInput(128, 12);
 
     BENCHMARK("ParseLargeConfig")
     {

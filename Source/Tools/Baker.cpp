@@ -103,9 +103,9 @@ BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name)
             };
         }
 
-        const AsyncWriteDataCallback write_data = ctx->WriteData;
+        AsyncWriteDataCallback write_data = ctx->WriteData;
         _context->WriteData = [report, pack_name, stored_baker_name, write_data](string_view path, const_span<byte> data) mutable {
-            const BakingWriteResult result = write_data(path, data);
+            BakingWriteResult result = write_data(path, data);
             report->RecordOutputSubmission(pack_name, stored_baker_name, path, data.size(), result);
             return result;
         };
@@ -238,7 +238,7 @@ auto MasterBaker::BakeAll() noexcept -> bool
         report_path = GetBakingReportPath(_settings->BakeOutput.view());
 
         if (!report_path.empty()) {
-            const auto remove_old_report_ok = fs_remove_file(report_path.view());
+            auto remove_old_report_ok = fs_remove_file(report_path.view());
             FO_VERIFY_AND_THROW(remove_old_report_ok, "Unable to delete the previous baking report", report_path.view());
         }
 
@@ -258,20 +258,20 @@ auto MasterBaker::BakeAll() noexcept -> bool
 
         if (!report_path.empty()) {
             try {
-                const u8string report_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(report_path.view())}.parent_path());
+                u8string report_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(report_path.view())}.parent_path());
                 if (!report_dir.empty()) {
-                    const auto create_report_dir_ok = fs_create_directories(report_dir.view());
+                    auto create_report_dir_ok = fs_create_directories(report_dir.view());
                     FO_VERIFY_AND_THROW(create_report_dir_ok, "Unable to create the baking report directory", report_dir.view());
                 }
 
-                const u8string report_data = _report->Serialize();
-                const auto write_report_ok = fs_write_file_text(report_path.view(), report_data.view());
+                u8string report_data = _report->Serialize();
+                auto write_report_ok = fs_write_file_text(report_path.view(), report_data.view());
                 FO_VERIFY_AND_THROW(write_report_ok, "Unable to write the baking report", report_path.view());
                 WriteLog("Baking report saved to {}", report_path.view());
 
                 if (success && _report->IsFullRebuild()) {
-                    const u8string full_report_path = GetFullBakingReportPath(_settings->BakeOutput.view());
-                    const auto write_full_report_ok = fs_write_file_text(full_report_path.view(), report_data.view());
+                    u8string full_report_path = GetFullBakingReportPath(_settings->BakeOutput.view());
+                    auto write_full_report_ok = fs_write_file_text(full_report_path.view(), report_data.view());
                     FO_VERIFY_AND_THROW(write_full_report_ok, "Unable to write the full baking report", full_report_path.view());
                     WriteLog("Full baking report saved to {}", full_report_path.view());
                 }
@@ -295,14 +295,14 @@ void MasterBaker::BakeAllInternal()
     WriteLog("Start baking");
 
     FO_VERIFY_AND_THROW(!_settings->BakeOutput.empty(), "Resource baker cannot write outputs because BakeOutput is empty", _settings->GetResourcePacks().size());
-    const u8string bake_output = _settings->BakeOutput;
-    const auto make_output_path = [&bake_output](string_view path) -> u8string { return fs_combine_path(bake_output.view(), path); };
+    u8string bake_output = _settings->BakeOutput;
+    auto make_output_path = [&bake_output](string_view path) -> u8string { return fs_combine_path(bake_output.view(), path); };
 
-    const u8string build_hash_path = make_output_path("Resources.build-hash");
-    const auto prev_build_hash = fs_read_file_text(build_hash_path.view());
-    const string_view build_hash_text = FO_BUILD_HASH;
-    const u8string current_build_hash = build_hash_text;
-    const auto build_hash_deleted = fs_remove_file(build_hash_path.view());
+    u8string build_hash_path = make_output_path("Resources.build-hash");
+    auto prev_build_hash = fs_read_file_text(build_hash_path.view());
+    string_view build_hash_text = FO_BUILD_HASH;
+    u8string current_build_hash = build_hash_text;
+    auto build_hash_deleted = fs_remove_file(build_hash_path.view());
     FO_VERIFY_AND_THROW(build_hash_deleted, "Unable to delete the previous build hash file", build_hash_path.view());
 
     std::atomic_bool force_baking = false;
@@ -320,7 +320,7 @@ void MasterBaker::BakeAllInternal()
     }
 
     if (force_baking) {
-        const auto delete_output_ok = fs_remove_dir_tree(bake_output.view());
+        auto delete_output_ok = fs_remove_dir_tree(bake_output.view());
         FO_VERIFY_AND_THROW(delete_output_ok, "Unable to delete baking output dir");
     }
 
@@ -333,7 +333,7 @@ void MasterBaker::BakeAllInternal()
 
     _report->SetRebuildMode(force_baking, rebuild_reason);
 
-    const auto make_output_ok = fs_create_directories(bake_output.view());
+    auto make_output_ok = fs_create_directories(bake_output.view());
     FO_VERIFY_AND_THROW(make_output_ok, "Unable to recreate baking output dir");
 
     FileSystem baking_output;
@@ -377,9 +377,9 @@ void MasterBaker::BakeAllInternal()
             pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, true);
         }
         for (const auto& input_file : res_pack.InputFiles) {
-            const std::filesystem::path native_input_file {fs_make_path(input_file.view())};
-            const u8string dir = fs_path_to_u8string(native_input_file.parent_path());
-            const u8string pack = fs_path_to_u8string(native_input_file.stem());
+            std::filesystem::path native_input_file {fs_make_path(input_file.view())};
+            u8string dir = fs_path_to_u8string(native_input_file.parent_path());
+            u8string pack = fs_path_to_u8string(native_input_file.stem());
             pack_bake_context_ptr->InputFiles.AddCustomSource(DataSource::MountPack(dir.view(), pack.view(), false));
         }
 
@@ -400,8 +400,8 @@ void MasterBaker::BakeAllInternal()
             }
 
             if (!force_baking) {
-                const u8string output_path = fs_combine_path(context->OutputDir.view(), path);
-                const auto file_write_time = fs_last_write_time(output_path.view());
+                u8string output_path = fs_combine_path(context->OutputDir.view(), path);
+                auto file_write_time = fs_last_write_time(output_path.view());
                 return write_time > file_write_time;
             }
             else {
@@ -409,17 +409,17 @@ void MasterBaker::BakeAllInternal()
             }
         };
 
-        const auto write_data = [context = pack_bake_context_ptr](string_view path, const_span<byte> baked_data) mutable -> BakingWriteResult {
-            const u8string res_path = fs_combine_path(context->OutputDir.view(), path);
+        auto write_data = [context = pack_bake_context_ptr](string_view path, const_span<byte> baked_data) mutable -> BakingWriteResult {
+            u8string res_path = fs_combine_path(context->OutputDir.view(), path);
 
             if (!fs_compare_file_bytes(res_path.view(), baked_data)) {
-                const auto res_file_write_ok = fs_write_file_bytes(res_path.view(), baked_data);
+                auto res_file_write_ok = fs_write_file_bytes(res_path.view(), baked_data);
                 FO_VERIFY_AND_THROW(res_file_write_ok, "Unable to write baked resource file", res_path.view());
                 ++context->BakedFiles;
                 return BakingWriteResult::Changed;
             }
             else {
-                const auto res_file_touch_ok = fs_touch_file(res_path.view());
+                auto res_file_touch_ok = fs_touch_file(res_path.view());
                 FO_VERIFY_AND_THROW(res_file_touch_ok, "Unable to update the timestamp of an unchanged baked resource file", res_path.view());
                 return BakingWriteResult::Unchanged;
             }
@@ -444,7 +444,7 @@ void MasterBaker::BakeAllInternal()
                     bake_context->FirstBake = true;
 
                     bake_context->BakingTime.Resume();
-                    const auto make_res_output_ok = fs_create_directories(bake_context->OutputDir.view());
+                    auto make_res_output_ok = fs_create_directories(bake_context->OutputDir.view());
                     FO_VERIFY_AND_THROW(make_res_output_ok, "Unable to create the resource pack output directory", bake_context->OutputDir.view());
                     bake_context->BakingTime.Pause();
                 }
@@ -476,7 +476,7 @@ void MasterBaker::BakeAllInternal()
             int32_t max_order = (*it)->GetOrder();
 
             if (bake_order == max_order) {
-                const string_view plural_suffix = bake_context->BakedFiles != 1 ? "s" : string_view {};
+                string_view plural_suffix = bake_context->BakedFiles != 1 ? "s" : string_view {};
                 WriteLog("Baking of {} complete in {}, baked {} file{}", bake_context->PackName, //
                     bake_context->BakingTime.GetDuration(), bake_context->BakedFiles, plural_suffix);
                 bake_context->Report->RecordPackDuration(bake_context->PackName, bake_context->BakingTime.GetDuration().milliseconds());
@@ -498,7 +498,7 @@ void MasterBaker::BakeAllInternal()
 
         for (const auto& res_pack : res_packs) {
             auto res_pack_ptr = make_ptr(&res_pack);
-            const u8string output_path = make_output_path(res_pack.Name);
+            u8string output_path = make_output_path(res_pack.Name);
             prepare_res_bakings.emplace_back(run_async(async_mode, strex("PreparePack-{}", res_pack_ptr->Name), [&, res_pack_ptr, output_path]() FO_DEFERRED { return prepare_bake_pack(*res_pack_ptr, output_path); }));
         }
 
@@ -602,23 +602,23 @@ void MasterBaker::BakeAllInternal()
 
     fs_iterate_dir(bake_output.view(), true, [&](u8string_view path, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
-        const string path_text {utf8_as_char_view(path)};
+        string path_text {utf8_as_char_view(path)};
 
         if (strex(path_text).lower() == "baking.report.json" || strex(path_text).lower() == "baking.full.report.json") {
             return;
         }
 
         if (actual_resource_names.count(exclude_all_ext(path_text)) == 0) {
-            const u8string outdated_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(bake_output.view())} / std::filesystem::path {fs_make_path(path)});
-            const auto remove_outdated_ok = fs_remove_file(outdated_path.view());
+            u8string outdated_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(bake_output.view())} / std::filesystem::path {fs_make_path(path)});
+            auto remove_outdated_ok = fs_remove_file(outdated_path.view());
             FO_VERIFY_AND_THROW(remove_outdated_ok, "Unable to delete outdated baked resource", path_text);
             _report->RecordOutdatedFile(path_text);
             WriteLog("Delete outdated file {}", path);
         }
     });
 
-    const u8string baker_cache_dir = fs_combine_path(_settings->BakeOutput, BAKER_CACHE_DIR);
-    const u8string effekseer_cache_dir = fs_combine_path(baker_cache_dir, "Effekseer");
+    u8string baker_cache_dir = fs_combine_path(_settings->BakeOutput, BAKER_CACHE_DIR);
+    u8string effekseer_cache_dir = fs_combine_path(baker_cache_dir, "Effekseer");
 
     if (fs_is_dir(effekseer_cache_dir)) {
         constexpr u8string_view dependency_cache_suffix = u8".deps";
@@ -627,8 +627,8 @@ void MasterBaker::BakeAllInternal()
             ignore_unused(size, write_time);
 
             if (u8strvex(path).ends_with(dependency_cache_suffix)) {
-                const auto cached_output_path_utf8 = u8string_view::FromChecked(path.native_view().substr(0, path.size() - dependency_cache_suffix.size()));
-                const string cached_output_path = utf8_to_string(cached_output_path_utf8);
+                auto cached_output_path_utf8 = u8string_view::FromChecked(path.native_view().substr(0, path.size() - dependency_cache_suffix.size()));
+                string cached_output_path = utf8_to_string(cached_output_path_utf8);
 
                 if (actual_resource_names.count(exclude_all_ext(cached_output_path)) == 0) {
                     (void)fs_remove_file(fs_combine_path(effekseer_cache_dir, path));
@@ -642,7 +642,7 @@ void MasterBaker::BakeAllInternal()
     WriteLog("Time {}", backing_time.GetDuration());
     WriteLog("Baking complete!");
 
-    const auto build_hash_write_ok = fs_write_file_text(build_hash_path.view(), current_build_hash.view());
+    auto build_hash_write_ok = fs_write_file_text(build_hash_path.view(), current_build_hash.view());
     FO_VERIFY_AND_THROW(build_hash_write_ok, "Unable to write the build hash file", build_hash_path.view());
 }
 
@@ -696,7 +696,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, u8string_view contex
 
     for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
         auto prop = registrator->GetPropertyByIndexUnsafe(i);
-        const string_view property_name = prop->GetName();
+        string_view property_name = prop->GetName();
 
         if (prop->IsBaseTypeResource()) {
             if (prop->IsPlainData()) {
@@ -728,11 +728,11 @@ auto BaseBaker::ValidateProperties(const Properties& props, u8string_view contex
         }
 
         if (script_sys && !prop->GetBaseScriptFuncType().empty()) {
-            const string_view script_func_type = prop->GetBaseScriptFuncType();
+            string_view script_func_type = prop->GetBaseScriptFuncType();
 
             if (prop->IsPlainData()) {
-                const auto func_name = props.GetValue<hstring>(prop);
-                const auto rule_it = script_func_verify.find(prop->GetBaseScriptFuncType());
+                auto func_name = props.GetValue<hstring>(prop);
+                auto rule_it = script_func_verify.find(prop->GetBaseScriptFuncType());
 
                 if (rule_it == script_func_verify.end()) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, script_func_type, property_name, context);
@@ -780,8 +780,8 @@ auto BakerDataSource::Reindex() -> bool
     for (const auto& res_pack : res_packs) {
         auto& res_entry = input_resources.emplace_back();
         res_entry.Name = res_pack.Name;
-        const auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64_t write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
-        const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, const_span<byte> data) {
+        auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64_t write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
+        auto write_data = [this, res_pack_name = res_pack.Name](string_view path, const_span<byte> data) {
             WriteData(res_pack_name, path, data);
             return BakingWriteResult::Changed;
         };
@@ -794,9 +794,9 @@ auto BakerDataSource::Reindex() -> bool
             res_entry.InputDir.AddDirSource(dir, true);
         }
         for (const auto& path : res_pack.InputFiles) {
-            const std::filesystem::path native_path {fs_make_path(path.view())};
-            const u8string dir = fs_path_to_u8string(native_path.parent_path());
-            const u8string pack = fs_path_to_u8string(native_path.stem());
+            std::filesystem::path native_path {fs_make_path(path.view())};
+            u8string dir = fs_path_to_u8string(native_path.parent_path());
+            u8string pack = fs_path_to_u8string(native_path.stem());
             res_entry.InputDir.AddCustomSource(DataSource::MountPack(dir.view(), pack.view(), false));
         }
 
@@ -840,7 +840,7 @@ auto BakerDataSource::Reindex() -> bool
         return false;
     };
 
-    const auto write_file = [](string_view path, const_span<byte> data) -> BakingWriteResult {
+    auto write_file = [](string_view path, const_span<byte> data) -> BakingWriteResult {
         ignore_unused(path, data);
         FO_UNREACHABLE_PLACE();
     };
@@ -874,8 +874,8 @@ auto BakerDataSource::MakeOutputPath(string_view res_pack_name, string_view path
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string relative_path = strex(res_pack_name).combine_path(path).str();
-    const u8string bake_output = _settings->BakeOutput;
+    string relative_path = strex(res_pack_name).combine_path(path).str();
+    u8string bake_output = _settings->BakeOutput;
     return fs_combine_path(bake_output.view(), relative_path);
 }
 
@@ -883,7 +883,7 @@ auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uin
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string output_path = MakeOutputPath(res_pack_name, path);
+    u8string output_path = MakeOutputPath(res_pack_name, path);
 
     if (write_time > fs_last_write_time(output_path.view())) {
         scoped_lock locker {_outputFilesLocker};
@@ -899,8 +899,8 @@ void BakerDataSource::WriteData(string_view res_pack_name, string_view path, con
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string output_path = MakeOutputPath(res_pack_name, path);
-    const auto write_file_ok = fs_write_file_bytes(output_path.view(), data);
+    u8string output_path = MakeOutputPath(res_pack_name, path);
+    auto write_file_ok = fs_write_file_bytes(output_path.view(), data);
     FO_VERIFY_AND_THROW(write_file_ok, "Unable to write the baked output file", output_path.view());
 }
 
@@ -922,7 +922,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
         input_write_time = it->second;
     }
 
-    const auto accept_output_path = [&](const u8string& output_path) -> u8string {
+    auto accept_output_path = [&](const u8string& output_path) -> u8string {
         write_time = input_write_time;
         FO_VERIFY_AND_THROW(write_time != 0, "Baked output file write time is not available");
 
@@ -932,11 +932,11 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
     // Try find already baked
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
-        const u8string output_path = MakeOutputPath(res_entry.Name, path);
+        u8string output_path = MakeOutputPath(res_entry.Name, path);
 
         if (fs_exists(output_path.view())) {
             if (input_write_time > fs_last_write_time(output_path.view())) {
-                const auto delete_output_file_ok = fs_remove_file(output_path.view());
+                auto delete_output_file_ok = fs_remove_file(output_path.view());
                 FO_VERIFY_AND_THROW(delete_output_file_ok, "Unable to delete the stale baked output file", output_path.view());
                 break;
             }
@@ -948,7 +948,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
     // Runtime baking
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
-        const u8string output_path = MakeOutputPath(res_entry.Name, path);
+        u8string output_path = MakeOutputPath(res_entry.Name, path);
 
         for (const auto& baker : res_entry.Bakers) {
             baker->BakeFiles(res_entry.InputFiles, path);
@@ -980,7 +980,7 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64_t& write_t
         return false;
     }
 
-    const auto output_size = fs_file_size(output_path->view());
+    auto output_size = fs_file_size(output_path->view());
     FO_VERIFY_AND_THROW(output_size, "Unable to query the size of the baked output file", output_path->view());
 
     size = numeric_cast<size_t>(*output_size);
@@ -1013,7 +1013,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_t
         return nullptr;
     }
 
-    const auto output_data = fs_read_file_bytes(output_path->view());
+    auto output_data = fs_read_file_bytes(output_path->view());
     FO_VERIFY_AND_THROW(output_data, "Unable to read the baked output file", output_path->view());
 
     size = output_data->size();

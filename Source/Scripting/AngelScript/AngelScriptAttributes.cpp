@@ -1375,7 +1375,7 @@ static auto TryParseAttributePriority(string_view raw_attribute, string_view att
     int32_t parsed_priority = int32_t {};
     const char* begin = args.data();
     const char* end = begin + args.size();
-    const auto [parsed_end, ec] = std::from_chars(begin, end, parsed_priority);
+    auto [parsed_end, ec] = std::from_chars(begin, end, parsed_priority);
 
     if (ec != std::errc {} || parsed_end != end) {
         return false;

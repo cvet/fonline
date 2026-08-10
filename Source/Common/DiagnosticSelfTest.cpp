@@ -53,13 +53,13 @@ void DiagnosticSelfTest::RunIfRequested()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<u8string> env = Platform::GetEnvironmentUtf8(string_view_nt {"FO_SELFTEST_CRASH"});
+    optional<u8string> env = Platform::GetEnvironmentUtf8(string_view_nt {"FO_SELFTEST_CRASH"});
 
     if (!env) {
         return;
     }
 
-    const string mode = utf8_to_string(env->view());
+    string mode = utf8_to_string(env->view());
     RunSelfTestCrash(mode);
 }
 

@@ -118,11 +118,11 @@ static auto MakeRemoteCallImplementationDecl(const EngineMetadata& meta, const R
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view ns = strvex(inbound_call.SubsystemHint).erase_file_extension();
-    const string call_name = utf8_to_string(u8strex("{}", inbound_call.Name));
+    string_view ns = strvex(inbound_call.SubsystemHint).erase_file_extension();
+    string call_name = utf8_to_string(u8strex("{}", inbound_call.Name));
 
     if (meta.GetSide() == EngineSideKind::ServerSide) {
-        const auto args = MakeScriptArgsName(inbound_call.Args);
+        auto args = MakeScriptArgsName(inbound_call.Args);
         return strex("void {}::{}(Player@+ player{}{})", ns, call_name, !args.empty() ? ", " : "", args);
     }
 
@@ -341,7 +341,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             return hstr_value.void_cast();
         }
         else if (type.IsRefType) {
-            const uint32_t raw_size = reader.Read<uint32_t>();
+            uint32_t raw_size = reader.Read<uint32_t>();
             const_span<byte> ref_raw_data = reader.ReadBytes(raw_size);
 
             auto ref_obj = CreateRefTypeScriptObjectFromRawData(type, ref_raw_data);
@@ -499,8 +499,8 @@ void RegisterAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
     }
 
     for (const auto& outbound_call : (*meta->GetOutboundRemoteCalls()) | std::views::values) {
-        const string call_name = utf8_to_string(u8strex("{}", outbound_call.Name));
-        const string method_decl = strex("void {}({})", call_name, MakeScriptArgsName(outbound_call.Args));
+        string call_name = utf8_to_string(u8strex("{}", outbound_call.Name));
+        string method_decl = strex("void {}({})", call_name, MakeScriptArgsName(outbound_call.Args));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("RemoteCaller", method_decl.c_str(), FO_SCRIPT_GENERIC(OutboundRemoteCallFunc), FO_SCRIPT_GENERIC_CONV, make_nptr(&outbound_call).void_cast()));
 
         if (meta->GetSide() == EngineSideKind::ServerSide) {

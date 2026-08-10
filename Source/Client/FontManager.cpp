@@ -409,7 +409,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     u8string image_name;
 
     // Parse data
-    const u8string font_text = file.GetText();
+    u8string font_text = file.GetText();
     u8istringstream str {font_text};
     string key;
     u8string letter_buf;
@@ -473,8 +473,8 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
             size_t letter_len = letter_buf.size() - utf8_letter_begin;
             FO_STRONG_ASSERT(utf8_letter_begin <= letter_buf.size(), "String offset is past the end of the string");
-            const auto letter_pos = make_ptr(letter_buf.view().data() + utf8_letter_begin);
-            const auto letter = utf8::Decode(letter_pos, letter_len);
+            auto letter_pos = make_ptr(letter_buf.view().data() + utf8_letter_begin);
+            auto letter = utf8::Decode(letter_pos, letter_len);
 
             if (!letter) {
                 throw FontManagerException("Invalid UTF-8 letter", font_path, letter_buf);
@@ -697,7 +697,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         ucolor d;
         bool reset = false;
 
-        const u8string_view validated_str = u8string_view::FromChecked(std::u8string_view {str.data(), str.size()});
+        u8string_view validated_str = u8string_view::FromChecked(std::u8string_view {str.data(), str.size()});
 
         if (!ParseInlineColorTag(validated_str, marker_pos, tag_end, d, reset)) {
             buf.append(str, marker_pos, 1);
@@ -989,7 +989,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         }
 
         size_t letter_len = 0;
-        const uint32_t letter = DecodeFontLayoutChar(str, numeric_cast<size_t>(i), letter_len);
+        uint32_t letter = DecodeFontLayoutChar(str, numeric_cast<size_t>(i), letter_len);
         i_advance = numeric_cast<int32_t>(letter_len);
 
         switch (letter) {
@@ -1110,7 +1110,7 @@ auto FontManager::ParseInlineColorTag(u8string_view str, size_t marker_pos, size
         native_value.remove_prefix(1);
     }
 
-    const u8string_view value = u8string_view::FromChecked(native_value);
+    u8string_view value = u8string_view::FromChecked(native_value);
 
     if (!IsInlineColorHex(value)) {
         return false;
@@ -1120,7 +1120,7 @@ auto FontManager::ParseInlineColorTag(u8string_view str, size_t marker_pos, size
         native_value.remove_prefix(2);
     }
 
-    const string value_str = utf8_to_string(u8string_view::FromChecked(native_value));
+    string value_str = utf8_to_string(u8string_view::FromChecked(native_value));
     color = ucolor {numeric_cast<uint32_t>(std::strtoul(value_str.c_str(), nullptr, 16))};
     tag_end = close_pos + 1;
     reset = false;
@@ -1136,7 +1136,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     FO_VERIFY_AND_THROW(rect.width >= 0, "Text layout rectangle width must not be negative", rect.width);
     FO_VERIFY_AND_THROW(rect.height >= 0, "Text layout rectangle height must not be negative", rect.height);
 
-    const std::array<uint64_t, 8> key_parts {
+    std::array<uint64_t, 8> key_parts {
         HashStorage::DefaultHash(make_byte_span(str.native_view())),
         static_cast<uint32_t>(font),
         static_cast<uint32_t>(format.Flags),
@@ -1147,7 +1147,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
         static_cast<uint32_t>(mode),
     };
 
-    const uint64_t key = HashStorage::DefaultHash(make_byte_span(key_parts));
+    uint64_t key = HashStorage::DefaultHash(make_byte_span(key_parts));
 
     if (auto it = _formatCache.find(key); it != _formatCache.end()) {
         it->second->LastUsedFrame = _frameIndex;
@@ -1243,7 +1243,7 @@ void FontManager::DrawText(irect32 rect, u8string_view str, ucolor color, TextFo
         }
 
         size_t letter_len = 0;
-        const uint32_t letter = DecodeFontLayoutChar(format_str, numeric_cast<size_t>(i), letter_len);
+        uint32_t letter = DecodeFontLayoutChar(format_str, numeric_cast<size_t>(i), letter_len);
         i_advance = numeric_cast<int32_t>(letter_len);
 
         switch (letter) {
@@ -1360,7 +1360,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_str = str;
+    u8string utf8_str = str;
     DrawText(rect, utf8_str, color, format);
 }
 
@@ -1388,7 +1388,7 @@ auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_str = str;
+    u8string utf8_str = str;
     return GetLinesCount(size, utf8_str, num_font);
 }
 
@@ -1414,7 +1414,7 @@ auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_fon
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_str = str;
+    u8string utf8_str = str;
     return GetLinesHeight(size, utf8_str, num_font);
 }
 
@@ -1450,7 +1450,7 @@ auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_str = str;
+    u8string utf8_str = str;
     return GetTextInfo(size, utf8_str, format, result_size, lines);
 }
 
@@ -1472,7 +1472,7 @@ auto FontManager::SplitLines(irect32 rect, string_view str, FontType num_font) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string utf8_str = str;
+    u8string utf8_str = str;
     return SplitLines(rect, utf8_str, num_font);
 }
 
@@ -1490,7 +1490,7 @@ static auto DecodeFontLayoutChar(std::u8string_view text, size_t offset, size_t&
     FO_STRONG_ASSERT(offset < text.size(), "Font layout UTF-8 offset is past the end of the string");
 
     encoded_length = text.size() - offset;
-    const auto decoded = utf8::Decode(make_ptr(text.data()).offset(offset), encoded_length);
+    auto decoded = utf8::Decode(make_ptr(text.data()).offset(offset), encoded_length);
 
     // Font layout is resilient to malformed input: consume the codec-provided
     // recovery width and render no glyph for the invalid sequence.

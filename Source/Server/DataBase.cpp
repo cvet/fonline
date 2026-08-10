@@ -389,13 +389,13 @@ void DataBaseImpl::InitializeOpLogs()
         throw DataBaseException("Empty oplog path in settings");
     }
 
-    const auto open_log_file = [&](optional<RecoveryLogHandle>& handle, u8string_view file_path, string_view file_desc) {
+    auto open_log_file = [&](optional<RecoveryLogHandle>& handle, u8string_view file_path, string_view file_desc) {
         if (file_path.empty()) {
             throw DataBaseException("Empty oplog path", file_desc);
         }
 
-        const std::filesystem::path native_path {fs_make_path(file_path)};
-        const u8string dir = fs_path_to_u8string(native_path.parent_path());
+        std::filesystem::path native_path {fs_make_path(file_path)};
+        u8string dir = fs_path_to_u8string(native_path.parent_path());
 
         if (!dir.empty() && !fs_create_directories(dir.view())) {
             throw DataBaseException("Oplog directory can't be created", file_desc, dir.view());
@@ -468,7 +468,7 @@ void DataBaseImpl::InitializeOpLogs()
     };
 
     open_log_file(_pendingChangesLog, _settings->OpLogPath.view(), "pending database changes file");
-    const u8string committed_oplog_path = MakeCommittedOpLogPath(_settings->OpLogPath.view());
+    u8string committed_oplog_path = MakeCommittedOpLogPath(_settings->OpLogPath.view());
     open_log_file(_committedChangesLog, committed_oplog_path.view(), "committed database changes file");
 
     if (_committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
@@ -486,7 +486,7 @@ void DataBaseImpl::RestorePendingChanges()
 
     FO_VERIFY_AND_THROW(_pendingChangesLog, "Missing required pending changes log");
     FO_VERIFY_AND_THROW(_committedChangesLog, "Missing required committed changes log");
-    const string_view op_log_path = utf8_as_char_view(_settings->OpLogPath.view());
+    string_view op_log_path = utf8_as_char_view(_settings->OpLogPath.view());
 
     const_span<string> pending_changes_content = _pendingChangesLog->GetContent();
     const_span<string> committed_changes_content = _committedChangesLog->GetContent();
@@ -497,7 +497,7 @@ void DataBaseImpl::RestorePendingChanges()
 
     for (size_t i = 0; i < committed_changes_content.size(); i++) {
         FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), op_log_path);
-        const size_t line_index = i + 1;
+        size_t line_index = i + 1;
 
         if (pending_changes_content[i] != committed_changes_content[i]) {
             throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, op_log_path);
@@ -510,9 +510,9 @@ void DataBaseImpl::RestorePendingChanges()
     try {
         for (size_t i = committed_changes_content.size(); i < pending_changes_content.size(); i++) {
             const auto& line = pending_changes_content[i];
-            const auto line_view = string_view {line};
-            const auto first_space = line_view.find(' ');
-            const auto second_space = line_view.find(' ', first_space + 1);
+            auto line_view = string_view {line};
+            auto first_space = line_view.find(' ');
+            auto second_space = line_view.find(' ', first_space + 1);
             FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, op_log_path, line_view.size(), first_space);
             FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, op_log_path, line_view.size(), first_space, second_space);
 
@@ -581,7 +581,7 @@ void DataBaseImpl::RestorePendingChanges()
     WriteLog("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
     if (!_committedChangesLog->Truncate()) {
-        const u8string committed_oplog_path = MakeCommittedOpLogPath(_settings->OpLogPath.view());
+        u8string committed_oplog_path = MakeCommittedOpLogPath(_settings->OpLogPath.view());
         throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", committed_oplog_path.view());
     }
     if (!_pendingChangesLog->Truncate()) {
@@ -1175,14 +1175,14 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(u8string path) :
     }
 
 #if FO_WINDOWS
-    const utf16_string path_utf16 = utf8_to_utf16(_path.view());
-    const wide_string path_wide = utf16_to_wide(path_utf16);
+    utf16_string path_utf16 = utf8_to_utf16(_path.view());
+    wide_string path_wide = utf16_to_wide(path_utf16);
     if (_wsopen_s(&_fd, path_wide.c_str(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
         throw DataBaseException("Failed to open recovery oplog file", _path.view());
     }
 
 #else
-    const ptr<const char> path_cstr = utf8_to_c_str(_path.view_nt());
+    ptr<const char> path_cstr = utf8_to_c_str(_path.view_nt());
     _fd = open(path_cstr.get(), O_RDWR | O_CREAT, 0666);
 
     if (_fd < 0) {
@@ -1241,7 +1241,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 #if FO_WINDOWS
     auto size = _lseeki64(_fd, 0, SEEK_END);
 #else
-    const auto size = lseek(_fd, 0, SEEK_END);
+    auto size = lseek(_fd, 0, SEEK_END);
 #endif
 
     if (size < 0) {
@@ -1271,7 +1271,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
         auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
         int32_t read_size = _read(_fd, read_pos.get(), chunk);
 #else
-        const auto read_size = read(_fd, read_pos.get(), remaining);
+        auto read_size = read(_fd, read_pos.get(), remaining);
 #endif
 
         if (read_size <= 0) {
@@ -1417,7 +1417,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
         int32_t written_size = _write(_fd, write_pos.get(), chunk);
 #else
-        const auto written_size = write(_fd, write_pos.get(), remaining);
+        auto written_size = write(_fd, write_pos.get(), remaining);
 #endif
 
         if (written_size <= 0) {
@@ -1457,7 +1457,7 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, u8string_view connecti
         return DataBase(std::move(impl));
     };
 
-    if (const vector<u8string_view> options = SplitDataBaseConnectionInfo(connection_info); !options.empty()) {
+    if (vector<u8string_view> options = SplitDataBaseConnectionInfo(connection_info); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());
 
         if (options.front().native_view() == u8"JSON" && options.size() == 2) {
@@ -1486,7 +1486,7 @@ static auto SplitDataBaseConnectionInfo(u8string_view connection_info) -> vector
     FO_STACK_TRACE_ENTRY();
 
     vector<u8string_view> options;
-    const std::u8string_view text = connection_info.native_view();
+    std::u8string_view text = connection_info.native_view();
     size_t pos = 0;
 
     while (pos < text.size()) {
@@ -1498,8 +1498,8 @@ static auto SplitDataBaseConnectionInfo(u8string_view connection_info) -> vector
             break;
         }
 
-        const size_t separator = text.find(u8' ', pos);
-        const size_t end = separator != std::u8string_view::npos ? separator : text.size();
+        size_t separator = text.find(u8' ', pos);
+        size_t end = separator != std::u8string_view::npos ? separator : text.size();
         options.emplace_back(u8string_view::FromChecked(text.substr(pos, end - pos)));
         pos = end;
     }
@@ -1539,7 +1539,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        const string_view value_str = utf8_as_char_view(value.AsString());
+        string_view value_str = utf8_as_char_view(value.AsString());
 
         if (!bson_append_utf8(aligned_bson, key_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
@@ -1719,7 +1719,7 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
         auto dict_json = nlohmann::json::object();
 
         for (auto&& [dict_key, dict_value] : value.AsDict()) {
-            const auto dict_key_chars = utf8_to_char_string(dict_key.view());
+            auto dict_key_chars = utf8_to_char_string(dict_key.view());
             dict_json[dict_key_chars.c_str()] = AnyValueToJson(dict_value);
         }
 
@@ -1788,7 +1788,7 @@ static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
         return value.get<bool>();
     }
     if (value.is_string()) {
-        const string text = value.get<string>();
+        string text = value.get<string>();
         return utf8_from_char_span(const_span<char> {text.data(), text.size()});
     }
     if (value.is_array()) {
@@ -1820,7 +1820,7 @@ static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json
     auto doc_json = nlohmann::json::object();
 
     for (auto&& [doc_key, doc_value] : doc) {
-        const auto doc_key_chars = utf8_to_char_string(doc_key.view());
+        auto doc_key_chars = utf8_to_char_string(doc_key.view());
         doc_json[doc_key_chars.c_str()] = AnyValueToJson(doc_value);
     }
 
@@ -2035,8 +2035,8 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
         result.reserve(2 + value.size() * 2);
         result += "s_";
 
-        for (const auto ch : value) {
-            const uint8_t encoded_byte = static_cast<uint8_t>(ch);
+        for (auto ch : value) {
+            uint8_t encoded_byte = static_cast<uint8_t>(ch);
             result.push_back(hex_digits[encoded_byte >> 4]);
             result.push_back(hex_digits[encoded_byte & 0x0F]);
         }
@@ -2047,8 +2047,8 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
     string result;
     result.reserve(value.size());
 
-    for (const auto ch : value) {
-        const uint8_t encoded_byte = static_cast<uint8_t>(ch);
+    for (auto ch : value) {
+        uint8_t encoded_byte = static_cast<uint8_t>(ch);
 
         if (!ShouldEscapeDbStringByte(encoded_byte, escaping)) {
             result.push_back(ch);

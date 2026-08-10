@@ -58,7 +58,7 @@ public:
         requires(std::is_arithmetic_v<T> && !std::same_as<T, char> && !std::same_as<T, char8_t> && !std::same_as<T, wchar_t>)
     auto operator>>(T& value) -> u8istringstream&
     {
-        const auto token = ReadToken();
+        auto token = ReadToken();
 
         if (!token) {
             return *this;
@@ -69,7 +69,7 @@ public:
             return *this;
         }
 
-        const string token_chars = utf8_to_string(*token);
+        string token_chars = utf8_to_string(*token);
         istringstream token_stream {token_chars};
         token_stream >> value;
 

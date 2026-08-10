@@ -912,7 +912,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
             return {};
         }
 
-        const string_view proto_name = utf8_as_char_view(proto_value.AsString());
+        string_view proto_name = utf8_as_char_view(proto_value.AsString());
 
         if (proto_name.empty()) {
             WriteLog(LogType::Warning, "{} '_Proto' section of entity {} is empty", collection_name, id);
@@ -1080,9 +1080,9 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
     // cover; it is not a trusted fresh-entity publication boundary.
     ValidateEntityAccess(player);
 
-    const ident_t assigned_id = player->GetId();
+    ident_t assigned_id = player->GetId();
     FO_VERIFY_AND_THROW(!id || !assigned_id || assigned_id == id, "Player is already assigned a different id", assigned_id, id);
-    const ident_t requested_id = id ? id : assigned_id;
+    ident_t requested_id = id ? id : assigned_id;
     scoped_lock lock {_registryLock};
 
     if (requested_id) {
@@ -1099,7 +1099,7 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
 
     RegisterEntity(player);
     player->SetPersistent(persistent);
-    const auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
+    auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
     FO_STRONG_ASSERT(inserted, "Player id is already registered", player->GetId());
 }
 
@@ -1123,7 +1123,7 @@ void EntityManager::RegisterLocation(ptr<Location> loc)
     CaptureFreshEntity(loc);
 
     RegisterEntity(loc);
-    const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
+    auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
     FO_STRONG_ASSERT(inserted, "Location id is already registered", loc->GetId(), loc->GetProtoId());
 }
 
@@ -1147,7 +1147,7 @@ void EntityManager::RegisterMap(ptr<Map> map)
     CaptureFreshEntity(map);
 
     RegisterEntity(map);
-    const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
+    auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
     FO_STRONG_ASSERT(inserted, "Map id is already registered", map->GetId(), map->GetProtoId());
 }
 
@@ -1171,7 +1171,7 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
     CaptureFreshEntity(cr);
 
     RegisterEntity(cr);
-    const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
+    auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
     FO_STRONG_ASSERT(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
 }
 
@@ -1195,7 +1195,7 @@ void EntityManager::RegisterItem(ptr<Item> item)
     CaptureFreshEntity(item);
 
     RegisterEntity(item);
-    const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
+    auto [it, inserted] = _allItems.emplace(item->GetId(), item);
     FO_STRONG_ASSERT(inserted, "Item id is already registered", item->GetId(), item->GetProtoId());
 }
 
@@ -1246,7 +1246,7 @@ void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
     RegisterEntity(custom_entity);
 
     auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
-    const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
+    auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
     FO_STRONG_ASSERT(inserted, "Custom entity id is already registered", custom_entity->GetTypeName(), custom_entity->GetId());
 }
 
@@ -1406,7 +1406,7 @@ void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ident_t id = entity->GetId();
+    ident_t id = entity->GetId();
     FO_VERIFY_AND_THROW(!id || !_allEntities.contains(id), "Fresh entity is already published in the global entity registry", entity->GetTypeName(), id);
     _engine->RequireCurrentSyncContext()->EnsureFreshEntitySynced(entity);
 }
@@ -1436,7 +1436,7 @@ void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
         _lastEntityId = std::max(_lastEntityId, id_num);
     }
 
-    const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity.hold_ref());
+    auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity.hold_ref());
     FO_VERIFY_AND_THROW(inserted, "Entity id is already registered in the global entity registry", entity->GetTypeName(), entity->GetId());
 }
 
@@ -1484,7 +1484,7 @@ void EntityManager::DestroyEntity(ptr<Entity> entity)
     }
     else {
         auto proto_entity = entity.dyn_cast<ProtoEntity>();
-        const string_view proto_prefix = proto_entity ? "Proto" : string_view {};
+        string_view proto_prefix = proto_entity ? "Proto" : string_view {};
         WriteLog(LogType::Warning, "Trying to destroy entity: {}{}", proto_prefix, entity->GetTypeName());
     }
 }
@@ -1671,7 +1671,7 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
             FO_VERIFY_AND_THROW(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0, "Custom entity id is already registered for this type while loading from storage", type_name, id);
         }
 
-        const auto collection_name = _engine->Hashes.ToHashedString(u8strex("{}s", type_name));
+        auto collection_name = _engine->Hashes.ToHashedString(u8strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {

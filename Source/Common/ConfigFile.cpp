@@ -43,7 +43,7 @@ ConfigFile::ConfigFile(u8string str, ConfigFileOption options) :
     // The input is the first owned node, so the section views into it keep a stable address even
     // after this object is moved; appending further nodes never invalidates it
     const u8string& owned_input = _ownedValues.emplace_back(std::move(str));
-    const std::u8string_view input = owned_input.view().native_view();
+    std::u8string_view input = owned_input.view().native_view();
 
     auto cur_section_it = _sectionKeyValues.emplace(string_view {}, ConfigKeyValueMap {});
     ptr<ConfigKeyValueMap> cur_section = &cur_section_it->second;
@@ -63,8 +63,8 @@ ConfigFile::ConfigFile(u8string str, ConfigFileOption options) :
     size_t line_begin = 0;
 
     while (line_begin <= input.size()) {
-        const size_t line_end = input.find(u8'\n', line_begin);
-        const size_t view_end = line_end != std::u8string_view::npos ? line_end : input.size();
+        size_t line_end = input.find(u8'\n', line_begin);
+        size_t view_end = line_end != std::u8string_view::npos ? line_end : input.size();
         std::u8string_view line = input.substr(line_begin, view_end - line_begin);
 
         std::u8string merged_line;
@@ -92,7 +92,7 @@ ConfigFile::ConfigFile(u8string str, ConfigFileOption options) :
         }
 
         if (line.size() >= 2 && line.back() == u8'\\' && (line[line.size() - 2] == u8' ' || line[line.size() - 2] == u8'\t')) {
-            const std::u8string_view continued_line = line.substr(0, line.size() - 1);
+            std::u8string_view continued_line = line.substr(0, line.size() - 1);
             size_t continued_begin = 0;
             size_t continued_end = continued_line.size();
             TrimConfigRange(continued_line, continued_begin, continued_end);
@@ -104,7 +104,7 @@ ConfigFile::ConfigFile(u8string str, ConfigFileOption options) :
         // New section
         if (line.front() == u8'[') {
             // Parse name
-            const size_t end = line.find(u8']');
+            size_t end = line.find(u8']');
 
             if (end == std::u8string_view::npos) {
                 continue;
@@ -120,10 +120,10 @@ ConfigFile::ConfigFile(u8string str, ConfigFileOption options) :
                 continue;
             }
 
-            const string raw_section_name = utf8_to_string(raw_section_name_utf8);
+            string raw_section_name = utf8_to_string(raw_section_name_utf8);
 
             // A name with a separator is a nested section; what its prefix means is up to the consumer
-            const bool nested_section = raw_section_name.find('/') != string::npos;
+            bool nested_section = raw_section_name.find('/') != string::npos;
 
             // Store current section content
             if (IsEnumSet(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
@@ -140,7 +140,7 @@ ConfigFile::ConfigFile(u8string str, ConfigFileOption options) :
             skip_cur_section = false;
 
             // Add new section
-            const string_view stored_section_name = StoreOwnedKey(raw_section_name);
+            string_view stored_section_name = StoreOwnedKey(raw_section_name);
 
             cur_section_it = _sectionKeyValues.emplace(stored_section_name, ConfigKeyValueMap {});
             cur_section = &cur_section_it->second;
@@ -164,8 +164,8 @@ ConfigFile::ConfigFile(u8string str, ConfigFileOption options) :
                 continue;
             }
 
-            const string_view stored_key = StoreOwnedKey(key);
-            const u8string_view stored_value = StoreOwnedValue(value.view());
+            string_view stored_key = StoreOwnedKey(key);
+            u8string_view stored_value = StoreOwnedValue(value.view());
 
             if (append_value) {
                 auto existing_it = cur_section->find(stored_key);
@@ -220,7 +220,7 @@ auto ConfigFile::ParseConfigKeyValueLine(std::u8string_view line, string& key, u
     size_t content_end = line.size();
 
     for (size_t i = 0; i < line.size(); i++) {
-        const char8_t ch = line[i];
+        char8_t ch = line[i];
         bool escaped = (backslash_run & 1U) != 0;
 
         if (ch == u8'"' && !escaped) {
@@ -322,13 +322,13 @@ auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) con
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ConfigSections::const_iterator it_section = _sectionKeyValues.find(section_name);
+    ConfigSections::const_iterator it_section = _sectionKeyValues.find(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return nullptr;
     }
 
-    const ConfigKeyValueMap::const_iterator it_key = it_section->second.find(key_name);
+    ConfigKeyValueMap::const_iterator it_key = it_section->second.find(key_name);
 
     if (it_key == it_section->second.end()) {
         return nullptr;
@@ -391,7 +391,7 @@ auto ConfigFile::GetSection(string_view section_name) const -> const ConfigKeyVa
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ConfigSections::const_iterator it = _sectionKeyValues.find(section_name);
+    ConfigSections::const_iterator it = _sectionKeyValues.find(section_name);
     FO_VERIFY_AND_THROW(it != _sectionKeyValues.end(), "Lookup failed in section key values");
 
     return it->second;

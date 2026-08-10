@@ -723,7 +723,7 @@ FO_SCRIPT_API u8string Client_Game_ReplaceText(ptr<ClientEngine> client, u8strin
 {
     ignore_unused(client);
 
-    const u8string replacement = u8strex("{}", to);
+    u8string replacement = u8strex("{}", to);
     return u8strex(text).replace(from, replacement);
 }
 
@@ -1571,8 +1571,8 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, u8string
         }
     }
 
-    const u8string path = u8strex(filePath).format_path();
-    const u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path.view())}.parent_path());
+    u8string path = u8strex(filePath).format_path();
+    u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path.view())}.parent_path());
 
     if (!dir.empty()) {
         if (!fs_create_directories(dir.view())) {
@@ -1588,8 +1588,8 @@ FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, u8string_view 
 {
     ignore_unused(client);
 
-    const u8string path = u8strex(filePath).format_path();
-    const u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path.view())}.parent_path());
+    u8string path = u8strex(filePath).format_path();
+    u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path.view())}.parent_path());
 
     if (!dir.empty()) {
         if (!fs_create_directories(dir.view())) {
@@ -1604,7 +1604,7 @@ FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, u8string_view 
     }
 
     if (!text.empty()) {
-        const const_span<char> text_chars = utf8_to_char_span(text);
+        const_span<char> text_chars = utf8_to_char_span(text);
         file.write(text_chars.data(), static_cast<std::streamsize>(text_chars.size()));
     }
 
@@ -1629,7 +1629,7 @@ FO_SCRIPT_API void Client_Game_SetCacheData(ptr<ClientEngine> client, string_vie
     }
 
     vector<byte> cache_data(numeric_cast<size_t>(dataSize));
-    const size_t copy_size = std::min(cache_data.size(), data.size());
+    size_t copy_size = std::min(cache_data.size(), data.size());
 
     if (copy_size != 0) {
         MemCopy(cache_data.data(), data.data(), copy_size);
@@ -1641,7 +1641,7 @@ FO_SCRIPT_API void Client_Game_SetCacheData(ptr<ClientEngine> client, string_vie
 ///@ ExportMethod
 FO_SCRIPT_API vector<uint8_t> Client_Game_GetCacheData(ptr<ClientEngine> client, string_view name)
 {
-    const vector<byte> cache_data = client->Cache.GetBytes(name);
+    vector<byte> cache_data = client->Cache.GetBytes(name);
     vector<uint8_t> data(cache_data.size());
     MemCopy(data.data(), cache_data.data(), cache_data.size());
     return data;
@@ -1680,7 +1680,7 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
         cfg_user += strex("{} = {}\n", key, value);
     }
 
-    const u8string config_text = cfg_user;
+    u8string config_text = cfg_user;
     client->Cache.SetText(LOCAL_CONFIG_NAME, config_text.view());
 }
 
@@ -1693,7 +1693,7 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
         cfg_user += strex("{} = {}\n", keyValues[i], keyValues[i + 1]);
     }
 
-    const u8string config_text = cfg_user;
+    u8string config_text = cfg_user;
     client->Cache.SetText(LOCAL_CONFIG_NAME, config_text.view());
 }
 

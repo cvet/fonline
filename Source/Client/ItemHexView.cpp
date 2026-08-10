@@ -118,7 +118,7 @@ void ItemHexView::Process()
         auto step_hex = _moveSteps[_moveSteps.size() * std::min(proc, 99) / 100];
 
         if (auto hex = GetHex(); hex != step_hex) {
-            const auto [x, y] = GeometryHelper::GetHexOffset(hex, step_hex);
+            auto [x, y] = GeometryHelper::GetHexOffset(hex, step_hex);
 
             _moveStartOffset.x -= numeric_cast<float32_t>(x);
             _moveStartOffset.y -= numeric_cast<float32_t>(y);

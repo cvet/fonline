@@ -165,7 +165,7 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
             throw ModelSourceLoaderException("Model source has a duplicate joint hierarchy", asset.FileName, joint.Name);
         }
 
-        const auto [name_it, name_inserted] = hierarchy_by_name.emplace(joint.Name, joint.Hierarchy);
+        auto [name_it, name_inserted] = hierarchy_by_name.emplace(joint.Name, joint.Hierarchy);
 
         if (!name_inserted) {
             throw ModelSourceLoaderException("Model source has a duplicate joint name", asset.FileName, name_it->first);
@@ -236,7 +236,7 @@ auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const Mode
 
     {
         scoped_lock locker {_mutex};
-        const auto [it, inserted] = _loads.emplace(string(path), pending);
+        auto [it, inserted] = _loads.emplace(string(path), pending);
         load = it->second;
         owner = inserted;
     }

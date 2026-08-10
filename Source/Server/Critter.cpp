@@ -644,8 +644,8 @@ auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
 
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
-        const vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
-        const auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+        vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
+        auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
         return it != members.end() && cr_id != GetId();
     }
 
@@ -665,7 +665,7 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
         vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
-        const auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+        auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
         if (it != members.end() && cr_id != GetId()) {
             return it->as_nptr();
         }

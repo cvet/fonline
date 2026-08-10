@@ -719,7 +719,7 @@ static auto Any_ConvFrom(const T& self) -> any_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const u8string value = u8strex("{}", self);
+    u8string value = u8strex("{}", self);
     return any_t(value);
 }
 
@@ -1149,10 +1149,10 @@ static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> a
             continue;
         }
 
-        const string_view handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : string_view {});
-        const string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
-        const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
-        const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+        string_view handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : string_view {});
+        string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
+        auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
+        auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
 
         string host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
 

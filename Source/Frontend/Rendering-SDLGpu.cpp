@@ -833,7 +833,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
     // `-spv` that Rendering-Vulkan uses: `-spv_sdl` for the Vulkan driver, SDL-remapped `-msl_*` for the Metal driver.
     bool spirv = _ctx->ShaderFormat == SDL_GPU_SHADERFORMAT_SPIRV;
 #if FO_IOS
-    const string_view shader_flavor = spirv ? "spv_sdl" : "msl_ios";
+    string_view shader_flavor = spirv ? "spv_sdl" : "msl_ios";
 #else
     string_view shader_flavor = spirv ? "spv_sdl" : "msl_mac";
 #endif
@@ -843,9 +843,9 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
     for (size_t pass = 0; pass < sdl_effect->_passCount; pass++) {
         // Per-stage SDL binding slots and resource counts from the baked [EffectInfoSdl] section
         u8string pass_info_fname = u8strex("{}.fofx-{}-info", u8strex(name).erase_file_extension(), pass + 1);
-        const vector<byte> pass_info_data = loader(pass_info_fname);
-        const u8string pass_info_content = utf8_from_byte_span(pass_info_data);
-        const auto pass_info = ConfigFile(pass_info_content);
+        vector<byte> pass_info_data = loader(pass_info_fname);
+        u8string pass_info_content = utf8_from_byte_span(pass_info_data);
+        auto pass_info = ConfigFile(pass_info_content);
 
         if (!pass_info.HasSection("EffectInfoSdl")) {
             throw EffectLoadException("Effect info has no EffectInfoSdl section, rebake resources", name, pass_info_fname);
@@ -885,9 +885,9 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
 #endif
 
         // Shaders
-        const auto create_shader = [&](bool is_vertex) {
+        auto create_shader = [&](bool is_vertex) {
             u8string shader_fname = u8strex("{}.fofx-{}-{}-{}", u8strex(name).erase_file_extension(), pass + 1, is_vertex ? "vert" : "frag", shader_flavor);
-            const vector<byte> shader_content = loader(shader_fname);
+            vector<byte> shader_content = loader(shader_fname);
             FO_VERIFY_AND_THROW(!shader_content.empty(), "SDL_GPU effect shader content is empty after loading", name, pass + 1, shader_fname);
 
             SDL_GPUShaderCreateInfo shader_info = {};

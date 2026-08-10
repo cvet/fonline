@@ -258,7 +258,7 @@ void NetOutBuffer::WriteHashedString(hstring value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hash = value.as_hash();
+    auto hash = value.as_hash();
     auto hash_bytes = make_ptr(&hash).reinterpret_as<const byte>();
     Push(hash_bytes, sizeof(hash));
 }

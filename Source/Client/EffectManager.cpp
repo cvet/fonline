@@ -64,7 +64,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, u8string_view path) -> nptr<Re
 
     // Load new
     unique_ptr<RenderEffect> effect = _render->CreateEffect(usage, effect_path, [this](u8string_view path2) -> vector<byte> {
-        if (const auto file = _resources->ReadFile(path2)) {
+        if (auto file = _resources->ReadFile(path2)) {
             return file.GetData();
         }
 

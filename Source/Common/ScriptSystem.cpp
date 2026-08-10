@@ -94,7 +94,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, cons
                 throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
-            const uint32_t field_size = span_read_object<uint32_t>(make_byte_span(raw_data), data_pos);
+            uint32_t field_size = span_read_object<uint32_t>(make_byte_span(raw_data), data_pos);
 
             if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
                 throw PropertySerializationException("Wrong ref field raw size", base_type.Name, field_prop->GetName());
@@ -172,7 +172,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
             if (!is_default && field_prop->IsPlainData()) {
                 is_default = true;
 
-                for (const byte raw_byte : field_raw_data) {
+                for (byte raw_byte : field_raw_data) {
                     if (raw_byte != byte {0}) {
                         is_default = false;
                         break;
@@ -285,7 +285,7 @@ void ScriptSystem::RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto [it, inserted] = _backends.emplace(index, std::move(backend));
+    auto [it, inserted] = _backends.emplace(index, std::move(backend));
     ignore_unused(it);
     FO_VERIFY_AND_THROW(inserted, "Backends[index] is already set");
 }

@@ -484,7 +484,7 @@ namespace
             }
             else {
                 REQUIRE(data);
-                const const_span<byte> data_span {data.get(), size};
+                const_span<byte> data_span {data.get(), size};
                 result.emplace_back(data_span.begin(), data_span.end());
             }
         }
@@ -1323,7 +1323,7 @@ TEST_CASE("PropertiesRawDataCopy")
         props.SetValue<string>(name_prop, "");
 
         Properties derived(&registrator, &props);
-        const auto string_bytes = [](string_view value) -> const_span<byte> { return make_byte_span(value); };
+        auto string_bytes = [](string_view value) -> const_span<byte> { return make_byte_span(value); };
 
         CHECK(props.GetRawDataSize(value_prop) == sizeof(uint16_t));
         CHECK(props.GetRawDataSize(flag_prop) == sizeof(bool));
@@ -1339,7 +1339,7 @@ TEST_CASE("PropertiesRawDataCopy")
         derived.SetRawData(value_prop, same_value);
         CHECK(derived.GetValue<uint16_t>(value_prop) == 0x1234);
 
-        const bool same_flag_value = true;
+        bool same_flag_value = true;
         derived.SetRawData(flag_prop, make_byte_span(&same_flag_value, sizeof(same_flag_value)));
         CHECK(derived.GetValue<bool>(flag_prop));
 
@@ -1955,10 +1955,10 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
     props.SetValue<int32_t>(value_prop, 10);
     props.SetValue<string>(name_prop, "valid");
 
-    const byte full_store_type {0};
-    const byte separate_store_type {1};
-    const byte invalid_store_type {0xFE};
-    const int32_t payload_value = 42;
+    byte full_store_type {0};
+    byte separate_store_type {1};
+    byte invalid_store_type {0xFE};
+    int32_t payload_value = 42;
 
     SECTION("PointerAndSizeListsMustMatch")
     {
@@ -1986,7 +1986,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("SeparateIndexTableMustBeAligned")
     {
-        const array<byte, 1> misaligned_index_table {byte {0}};
+        array<byte, 1> misaligned_index_table {byte {0}};
         vector<nptr<const byte>> payload {&separate_store_type, misaligned_index_table.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(misaligned_index_table.size())};
 
@@ -1995,7 +1995,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("SeparatePayloadCountMustMatchIndexTable")
     {
-        const auto index_table = MakeRawUInt16(value_prop->GetRegIndex());
+        auto index_table = MakeRawUInt16(value_prop->GetRegIndex());
         vector<nptr<const byte>> payload {&separate_store_type, index_table.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(index_table.size())};
 
@@ -2004,14 +2004,14 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("SeparateIndexMustPointAtARealProperty")
     {
-        const auto payload_value_data = MakeRawInt32(payload_value);
-        const auto zero_index_table = MakeRawUInt16(0);
+        auto payload_value_data = MakeRawInt32(payload_value);
+        auto zero_index_table = MakeRawUInt16(0);
         vector<nptr<const byte>> zero_payload {&separate_store_type, zero_index_table.data(), payload_value_data.data()};
         vector<uint32_t> zero_sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(zero_index_table.size()), numeric_cast<uint32_t>(payload_value_data.size())};
 
         CHECK_THROWS(props.RestoreData(zero_payload, zero_sizes));
 
-        const auto out_of_bounds_index_table = MakeRawUInt16(999);
+        auto out_of_bounds_index_table = MakeRawUInt16(999);
         vector<nptr<const byte>> out_of_bounds_payload {&separate_store_type, out_of_bounds_index_table.data(), payload_value_data.data()};
         vector<uint32_t> out_of_bounds_sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(out_of_bounds_index_table.size()), numeric_cast<uint32_t>(payload_value_data.size())};
 
@@ -2028,7 +2028,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("FullPodDataSizeMustMatchASectionBoundary")
     {
-        const array<byte, 1> pod_data {byte {0}};
+        array<byte, 1> pod_data {byte {0}};
         vector<nptr<const byte>> payload {&full_store_type, pod_data.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(full_store_type)), numeric_cast<uint32_t>(pod_data.size())};
 
@@ -2075,7 +2075,7 @@ TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
     auto whole = numeric_cast<uint32_t>(registrator.GetWholeDataSize());
 
     vector<byte> blob;
-    const auto append_u32 = [&blob](uint32_t value) {
+    auto append_u32 = [&blob](uint32_t value) {
         const byte* bytes = reinterpret_cast<const byte*>(&value);
         blob.insert(blob.end(), bytes, bytes + sizeof(value));
     };
@@ -2332,8 +2332,8 @@ TEST_CASE("PropertiesOverlayIndexMaintenance")
     Properties base(&registrator);
     Properties derived(&registrator, &base);
 
-    const auto string_bytes = [](string_view value) -> const_span<byte> { return make_byte_span(value); };
-    const string large_value(5000, 'L');
+    auto string_bytes = [](string_view value) -> const_span<byte> { return make_byte_span(value); };
+    string large_value(5000, 'L');
 
     for (size_t i = 0; i < 17; i++) {
         string value = i == 0 ? large_value : strex("value-{}", i).str();
@@ -2389,7 +2389,7 @@ TEST_CASE("PropertiesOverlayDataKeepsNaturalAlignment")
     base.SetValue<hstring>(hash_prop, base_hash);
     base.SetValue<int64_t>(wide_prop, base_wide_value);
 
-    const auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
+    auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
 
     auto check_overlay_values = [&](const Properties& props) {
         auto flag_raw_data = props.GetRawData(flag_prop);
@@ -2461,10 +2461,10 @@ TEST_CASE("PropertiesOverlayGrowthAccountsForRepackAlignment")
     Properties base(&registrator);
     Properties derived(&registrator, &base);
 
-    const array<byte, 1> first_data = {byte {1}};
-    const array<byte, 7> second_data = {byte {2}, byte {2}, byte {2}, byte {2}, byte {2}, byte {2}, byte {2}};
-    const array<byte, 5> tail_data = {byte {3}, byte {3}, byte {3}, byte {3}, byte {3}};
-    const array<byte, 16> growing_data = {byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}};
+    array<byte, 1> first_data = {byte {1}};
+    array<byte, 7> second_data = {byte {2}, byte {2}, byte {2}, byte {2}, byte {2}, byte {2}, byte {2}};
+    array<byte, 5> tail_data = {byte {3}, byte {3}, byte {3}, byte {3}, byte {3}};
+    array<byte, 16> growing_data = {byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}, byte {4}};
 
     // Allocation order produces a 14-byte tail. Stable alignment-first repacking changes it to
     // 20 bytes, so a capacity selected only from the old tail is too small for the growing block.
@@ -2597,7 +2597,7 @@ TEST_CASE("PropertiesOverlayDataStaysAlignedThroughRepack")
     derived.SetValue<uint32_t>(int_prop, 0x33333333);
     derived.SetValue<int64_t>(wide_prop, 0x2222222222222222);
 
-    const auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
+    auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
 
     // Growing and shrinking string payloads force tail growth, garbage buildup and repacks
     for (size_t str_size : {100, 300, 50, 1000, 10, 500}) {
@@ -2754,7 +2754,7 @@ TEST_CASE("PropertiesRejectNonFiniteFloatValues")
     CHECK_THROWS(props.SetValue(float32_prop, raw_float_data));
 
     array<byte, sizeof(int32_t) + sizeof(float32_t) + sizeof(bool)> raw_waypoint {};
-    const float32_t raw_distance = std::numeric_limits<float32_t>::infinity();
+    float32_t raw_distance = std::numeric_limits<float32_t>::infinity();
     MemCopy(raw_waypoint.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_waypoint_data;
@@ -2963,7 +2963,7 @@ TEST_CASE("PropertiesPlainDataValueAccessors")
     CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(-17.0));
 
     HashStorage small_hashes {[](const_span<byte> data) -> uint64_t {
-        const string_view text = span_to_string(data);
+        string_view text = span_to_string(data);
         return text == "SmallHash" ? uint64_t {7} : HashStorage::DefaultHash(data);
     }};
     TestNameResolver small_resolver;
@@ -3491,7 +3491,7 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
         CHECK(raw_data[16] == byte {2});
         CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 24) == -0x2222222222222222);
 
-        for (const size_t pad_pos : {1, 2, 3, 4, 5, 6, 7, 17, 18, 19, 20, 21, 22, 23}) {
+        for (size_t pad_pos : {1, 2, 3, 4, 5, 6, 7, 17, 18, 19, 20, 21, 22, 23}) {
             CHECK(raw_data[pad_pos] == byte {0});
         }
     }
@@ -3654,7 +3654,7 @@ TEST_CASE("PropertiesOverlayRepackHandlesUnevenComplexSizes")
     Properties base(&registrator);
     Properties derived(&registrator, &base);
 
-    const auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
+    auto is_aligned = [](const byte* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
 
     derived.SetValue<int64_t>(wide_prop, 0x2222222222222222);
     derived.SetValue<uint32_t>(int_prop, 0x33333333);
@@ -4624,7 +4624,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
         pair {500, 50},
     };
 
-    for (const auto [prop_count, fill_percent] : scenarios) {
+    for (auto [prop_count, fill_percent] : scenarios) {
         DYNAMIC_SECTION("Props=" << prop_count << ", Fill=" << fill_percent << "%")
         {
             PropertiesStorageStrategyPerfFixture fixture(prop_count, fill_percent);
@@ -4897,7 +4897,7 @@ TEST_CASE("PropertiesStorageStrategyMetrics", "[properties]")
         pair {500, 50},
     };
 
-    for (const auto [prop_count, fill_percent] : scenarios) {
+    for (auto [prop_count, fill_percent] : scenarios) {
         PropertiesStorageStrategyPerfFixture fixture(prop_count, fill_percent);
 
         map<string, string> packed_text_data;

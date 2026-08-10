@@ -388,7 +388,7 @@ TEST_CASE("AngelScriptValueAlignment")
         nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
         REQUIRE(script_module != nullptr);
 
-        for (const string_view class_decl : {"AlignTest::MixedMembers", "AlignTest::DerivedMembers", "AlignTest::DerivedTwice", "AlignTest::WithMixin"}) {
+        for (string_view class_decl : {"AlignTest::MixedMembers", "AlignTest::DerivedMembers", "AlignTest::DerivedTwice", "AlignTest::WithMixin"}) {
             INFO(class_decl);
             nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl.data());
             REQUIRE(class_type != nullptr);

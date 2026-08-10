@@ -161,7 +161,7 @@ static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     if (IsPackaged()) {
-        const u8string client_resources = settings.ClientResources;
+        u8string client_resources = settings.ClientResources;
         FileSystem resources;
         resources.AddPacksSource(client_resources.view(), settings.ClientResourceEntries);
         resources.AddPacksSource(client_resources.view(), settings.MapperResourceEntries);

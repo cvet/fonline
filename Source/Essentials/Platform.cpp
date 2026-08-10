@@ -86,9 +86,9 @@ static auto WinApi_GetEnvironmentUtf8(string_view_nt variable_name) -> optional<
 {
     FO_STACK_TRACE_ENTRY();
 
-    const wide_string variable_name_wide = string_to_wide_string(variable_name);
-    const ptr<const wchar_t> variable_name_cstr {variable_name_wide.c_str()};
-    const DWORD required_size = ::GetEnvironmentVariableW(variable_name_cstr.get(), nullptr, 0);
+    wide_string variable_name_wide = string_to_wide_string(variable_name);
+    ptr<const wchar_t> variable_name_cstr {variable_name_wide.c_str()};
+    DWORD required_size = ::GetEnvironmentVariableW(variable_name_cstr.get(), nullptr, 0);
 
     if (required_size == 0) {
         return std::nullopt;
@@ -98,14 +98,14 @@ static auto WinApi_GetEnvironmentUtf8(string_view_nt variable_name) -> optional<
 
     while (true) {
         ptr<wchar_t> value_data {value.data()};
-        const DWORD value_size = ::GetEnvironmentVariableW(variable_name_cstr.get(), value_data.get(), static_cast<DWORD>(value.size()));
+        DWORD value_size = ::GetEnvironmentVariableW(variable_name_cstr.get(), value_data.get(), static_cast<DWORD>(value.size()));
 
         if (value_size == 0) {
             return std::nullopt;
         }
 
         if (static_cast<size_t>(value_size) < value.size()) {
-            const utf16_string value_utf16 = wide_to_utf16(std::wstring_view {value_data.get(), static_cast<size_t>(value_size)});
+            utf16_string value_utf16 = wide_to_utf16(std::wstring_view {value_data.get(), static_cast<size_t>(value_size)});
             u8string result = utf16_to_utf8(std::u16string_view {value_utf16.data(), value_utf16.size()});
             return result.empty() ? optional<u8string> {} : optional<u8string> {std::move(result)};
         }
@@ -119,8 +119,8 @@ static auto WinApi_GetProcAddress(string_view_nt mod, string_view_nt name) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ptr<const char> module_name {mod.c_str()};
-    const ptr<const char> proc_name {name.c_str()};
+    ptr<const char> module_name {mod.c_str()};
+    ptr<const char> proc_name {name.c_str()};
 
     auto hmod = ::GetModuleHandleA(module_name.get());
 
@@ -163,14 +163,14 @@ static auto Posix_GetEnvironmentUtf8(string_view_nt variable_name) -> optional<u
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ptr<const char> variable_name_cstr {variable_name.c_str()};
-    const nptr<const char> value {std::getenv(variable_name_cstr.get())};
+    ptr<const char> variable_name_cstr {variable_name.c_str()};
+    nptr<const char> value {std::getenv(variable_name_cstr.get())};
 
     if (!value || value[0] == char {}) {
         return std::nullopt;
     }
 
-    const size_t value_size = std::char_traits<char>::length(value.get());
+    size_t value_size = std::char_traits<char>::length(value.get());
     return utf8_from_char_span(const_span<char> {value.get(), value_size});
 }
 
@@ -190,16 +190,16 @@ void Platform::InfoLog(u8string_view_nt str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const const_span<char8_t> storage {str.c_str(), str.size() + 1};
-    const u8string_view_nt checked_str = u8string_view_nt::FromChecked(storage);
+    const_span<char8_t> storage {str.c_str(), str.size() + 1};
+    u8string_view_nt checked_str = u8string_view_nt::FromChecked(storage);
 
 #if FO_WINDOWS
-    const utf16_string message_utf16 = utf8_to_utf16(checked_str.view());
-    const wstring message = utf16_to_wide(std::u16string_view {message_utf16.data(), message_utf16.size()});
+    utf16_string message_utf16 = utf8_to_utf16(checked_str.view());
+    wstring message = utf16_to_wide(std::u16string_view {message_utf16.data(), message_utf16.size()});
     auto message_cstr = make_ptr(message.c_str());
     ::OutputDebugStringW(message_cstr.get());
 #elif FO_ANDROID
-    const ptr<const char> message_cstr = utf8_to_c_str(checked_str);
+    ptr<const char> message_cstr = utf8_to_c_str(checked_str);
     __android_log_write(ANDROID_LOG_INFO, "FO", message_cstr.get());
 #else
     ignore_unused(checked_str);
@@ -210,16 +210,16 @@ void Platform::SetThreadName(u8string_view_nt str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const const_span<char8_t> storage {str.c_str(), str.size() + 1};
-    const u8string_view_nt checked_str = u8string_view_nt::FromChecked(storage);
+    const_span<char8_t> storage {str.c_str(), str.size() + 1};
+    u8string_view_nt checked_str = u8string_view_nt::FromChecked(storage);
 
 #if FO_WINDOWS
     using SetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
     const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>(string_view_nt {"kernel32.dll"}, string_view_nt {"SetThreadDescription"});
 
     if (set_thread_description != nullptr) {
-        const utf16_string thread_name_utf16 = utf8_to_utf16(checked_str.view());
-        const wstring thread_name = utf16_to_wide(std::u16string_view {thread_name_utf16.data(), thread_name_utf16.size()});
+        utf16_string thread_name_utf16 = utf8_to_utf16(checked_str.view());
+        wstring thread_name = utf16_to_wide(std::u16string_view {thread_name_utf16.data(), thread_name_utf16.size()});
         auto thread_name_cstr = make_ptr(thread_name.c_str());
         set_thread_description(::GetCurrentThread(), thread_name_cstr.get());
     }
@@ -251,7 +251,7 @@ auto Platform::GetExePath() -> optional<u8string>
         }
     }
 
-    const utf16_string path_utf16 = wide_to_utf16(std::wstring_view {path_data.get(), static_cast<size_t>(path_size)});
+    utf16_string path_utf16 = wide_to_utf16(std::wstring_view {path_data.get(), static_cast<size_t>(path_size)});
     return utf16_to_utf8(std::u16string_view {path_utf16.data(), path_utf16.size()});
 
 #elif FO_LINUX
@@ -259,13 +259,13 @@ auto Platform::GetExePath() -> optional<u8string>
 
     while (true) {
         ptr<char> path_data {path.data()};
-        const ssize_t path_size_raw = ::readlink("/proc/self/exe", path_data.get(), path.size());
+        ssize_t path_size_raw = ::readlink("/proc/self/exe", path_data.get(), path.size());
 
         if (path_size_raw < 0) {
             return std::nullopt;
         }
 
-        const size_t path_size = static_cast<size_t>(path_size_raw);
+        size_t path_size = static_cast<size_t>(path_size_raw);
 
         if (path_size < path.size()) {
             return utf8_from_char_span(const_span<char> {path_data.get(), path_size});
@@ -277,8 +277,8 @@ auto Platform::GetExePath() -> optional<u8string>
 #elif FO_MAC
     array<char, PROC_PIDPATHINFO_MAXSIZE> path {};
     ptr<char> path_data {path.data()};
-    const pid_t pid = ::getpid();
-    const int32_t path_size = ::proc_pidpath(pid, path_data.get(), static_cast<uint32_t>(path.size()));
+    pid_t pid = ::getpid();
+    int32_t path_size = ::proc_pidpath(pid, path_data.get(), static_cast<uint32_t>(path.size()));
 
     if (path_size <= 0) {
         return std::nullopt;
@@ -666,23 +666,23 @@ auto Platform::LoadModule(u8string_view_nt module_name) -> nptr<void>
     FO_STACK_TRACE_ENTRY();
 
     nptr<void> module_handle = nullptr;
-    const const_span<char8_t> storage {module_name.c_str(), module_name.size() + 1};
-    const u8string_view_nt checked_module_name = u8string_view_nt::FromChecked(storage);
+    const_span<char8_t> storage {module_name.c_str(), module_name.size() + 1};
+    u8string_view_nt checked_module_name = u8string_view_nt::FromChecked(storage);
     u8string module_path {checked_module_name.view()};
 
 #if FO_WINDOWS
     AppendModuleExtension(module_path, u8".dll");
-    const utf16_string module_path_utf16 = utf8_to_utf16(module_path.view());
-    const wstring module_path_wide = utf16_to_wide(std::u16string_view {module_path_utf16.data(), module_path_utf16.size()});
-    const ptr<const wchar_t> module_path_cstr {module_path_wide.c_str()};
+    utf16_string module_path_utf16 = utf8_to_utf16(module_path.view());
+    wstring module_path_wide = utf16_to_wide(std::u16string_view {module_path_utf16.data(), module_path_utf16.size()});
+    ptr<const wchar_t> module_path_cstr {module_path_wide.c_str()};
     module_handle = ::LoadLibraryW(module_path_cstr.get());
 #elif FO_LINUX
     AppendModuleExtension(module_path, u8".so");
-    const ptr<const char> module_path_cstr = utf8_to_c_str(module_path.view_nt());
+    ptr<const char> module_path_cstr = utf8_to_c_str(module_path.view_nt());
     module_handle = ::dlopen(module_path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
 #elif FO_MAC
     AppendModuleExtension(module_path, u8".dylib");
-    const ptr<const char> module_path_cstr = utf8_to_c_str(module_path.view_nt());
+    ptr<const char> module_path_cstr = utf8_to_c_str(module_path.view_nt());
     module_handle = ::dlopen(module_path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
 #else
     ignore_unused(module_path);
@@ -711,7 +711,7 @@ auto Platform::GetFuncAddr(nptr<void> module_handle, string_view_nt func_name) -
     FO_STACK_TRACE_ENTRY();
 
     nptr<void> func = nullptr;
-    const ptr<const char> func_name_cstr {func_name.c_str()};
+    ptr<const char> func_name_cstr {func_name.c_str()};
 
 #if FO_WINDOWS
     func = WinApi_GetProcAddressRaw(module_handle, func_name_cstr);

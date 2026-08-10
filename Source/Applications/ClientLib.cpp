@@ -76,7 +76,7 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view exports_pointer_status = raw_exports ? "set" : "null";
+    string_view exports_pointer_status = raw_exports ? "set" : "null";
     WriteLog("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, exports_pointer_status, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     if (!IsSupportedClientRuntimeAbi(host_abi_version) || raw_exports == nullptr) {
@@ -142,7 +142,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
                 runtime_result->RequestedRuntimePath = utf8_to_c_str(Data->StagedRuntimePath.view_nt()).get();
             }
             else {
-                const string_view quit_status = quit_success ? "yes" : "no";
+                string_view quit_status = quit_success ? "yes" : "no";
                 WriteLog("Client runtime DLL: returning shutdown, success {}", quit_status);
                 runtime_result->Success = quit_success;
             }
@@ -176,8 +176,8 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         result_success = runtime_result->Success;
     }
 
-    const string_view result_pointer_status = runtime_result ? "set" : "null";
-    const string_view result_status = result_success ? "yes" : "no";
+    string_view result_pointer_status = runtime_result ? "set" : "null";
+    string_view result_status = result_success ? "yes" : "no";
     WriteLog("Client runtime DLL: finished with {}, result pointer {}, success {}", result_kind, result_pointer_status, result_status);
 }
 

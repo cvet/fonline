@@ -303,13 +303,13 @@ extern void set_this_thread_name(const string& name) noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const u8string utf8_name = name;
-        const u8string_view_nt utf8_name_nt = utf8_name.view_nt();
+        u8string utf8_name = name;
+        u8string_view_nt utf8_name_nt = utf8_name.view_nt();
         ThreadName = name;
         Platform::SetThreadName(utf8_name_nt);
 
 #if FO_TRACY
-        const ptr<const char> name_cstr = utf8_to_c_str(utf8_name_nt);
+        ptr<const char> name_cstr = utf8_to_c_str(utf8_name_nt);
         tracy::SetThreadName(name_cstr.get());
 #endif
     }

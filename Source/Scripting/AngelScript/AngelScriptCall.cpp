@@ -369,10 +369,10 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
         if ((ret_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
             nptr<AngelScript::asITypeInfo> as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
             FO_VERIFY_AND_THROW(as_ret_type, "Missing AngelScript return type info");
-            const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
-            const bool is_value_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_VALUE) != 0;
-            const bool is_array = is_ref_type && string_view {as_ret_type->GetName()} == "array";
-            const bool is_dict = is_ref_type && string_view {as_ret_type->GetName()} == "dict";
+            bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
+            bool is_value_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_VALUE) != 0;
+            bool is_array = is_ref_type && string_view {as_ret_type->GetName()} == "array";
+            bool is_dict = is_ref_type && string_view {as_ret_type->GetName()} == "dict";
 
             if (is_array || is_dict) {
                 nptr<void> ret_obj = as_engine->CreateScriptObject(as_ret_type.get());
@@ -406,7 +406,7 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
             nptr<AngelScript::asITypeInfo> as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
             FO_VERIFY_AND_THROW(as_ret_type, "Missing AngelScript return type info");
-            const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
+            bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
 
             if (is_ref_type) {
                 nptr<void> ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData);

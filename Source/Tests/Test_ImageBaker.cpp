@@ -37,7 +37,7 @@ static auto MakeByteFixture(std::initializer_list<uint8_t> values) -> vector<byt
     vector<byte> bytes;
     bytes.reserve(values.size());
 
-    for (const uint8_t value : values) {
+    for (uint8_t value : values) {
         bytes.emplace_back(static_cast<byte>(value));
     }
 
@@ -56,13 +56,13 @@ static void SetByte(vector<byte>& data, size_t pos, uint8_t value)
 
 static void AppendByteValues(vector<byte>& data, std::initializer_list<uint8_t> values)
 {
-    const vector<byte> bytes = MakeByteFixture(values);
+    vector<byte> bytes = MakeByteFixture(values);
     data.insert(data.end(), bytes.begin(), bytes.end());
 }
 
 static void AppendNumericBytes(vector<byte>& data, const vector<uint8_t>& values)
 {
-    const const_span<byte> bytes = make_byte_span(values);
+    const_span<byte> bytes = make_byte_span(values);
     data.insert(data.end(), bytes.begin(), bytes.end());
 }
 
@@ -245,8 +245,8 @@ static void AppendFrmFrames(vector<byte>& data, const vector<FrmFrameSpec>& fram
     vector<byte> palette(256 * 3);
 
     for (uint8_t index = 1; index <= GameSettings::MAP_DIR_COUNT; index++) {
-        const uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
-        const size_t palette_pos = numeric_cast<size_t>(index) * 3;
+        uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
+        size_t palette_pos = numeric_cast<size_t>(index) * 3;
         SetByte(palette, palette_pos + 0, color_base);
         SetByte(palette, palette_pos + 1, numeric_cast<uint8_t>(color_base + 1));
         SetByte(palette, palette_pos + 2, numeric_cast<uint8_t>(color_base + 2));
@@ -367,7 +367,7 @@ static void AppendFrmFrames(vector<byte>& data, const vector<FrmFrameSpec>& fram
     SetByte(data, 4, 1);
     SetByte(data, 6, 1);
 
-    const size_t palette_index = 0xA + 1 * 3;
+    size_t palette_index = 0xA + 1 * 3;
     SetByte(data, palette_index + 0, 1);
     SetByte(data, palette_index + 1, 2);
     SetByte(data, palette_index + 2, 3);
@@ -417,7 +417,7 @@ static void AppendFrmFrames(vector<byte>& data, const vector<FrmFrameSpec>& fram
     AppendLe32(data, 0x00332211);
     AppendByte(data, 1);
 
-    const vector<byte> rle = MakeByteFixture({0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40});
+    vector<byte> rle = MakeByteFixture({0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40});
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
@@ -573,7 +573,7 @@ static void AppendTilPrefix(vector<byte>& data)
     AppendLe32(data, 0x00332211);
     AppendByte(data, 1);
 
-    const vector<byte> rle = MakeByteFixture({0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40});
+    vector<byte> rle = MakeByteFixture({0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40});
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
@@ -796,7 +796,7 @@ static void AppendSprImage(vector<byte>& data, int32_t pos_x, int32_t pos_y, int
     AppendLe16(data, 0); // Animation index
 
     AppendByteValues(data, {'<', 's', 'p', 'r', 'a', 'n', 'i', 'm', '>', '\0', '\0', '\0'});
-    const size_t file_offset_pos = data.size();
+    size_t file_offset_pos = data.size();
     AppendLe32(data, 0);
     AppendLeInt32(data, 0); // Collection name length
     AppendLeInt32(data, 1); // Frame count
@@ -830,7 +830,7 @@ static void AppendSprImage(vector<byte>& data, int32_t pos_x, int32_t pos_y, int
 
 static void ReplaceFirstTagByte(vector<byte>& data, string_view tag, uint8_t replacement)
 {
-    const auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](byte lhs, char rhs) { return std::to_integer<uint8_t>(lhs) == numeric_cast<uint8_t>(rhs); });
+    auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](byte lhs, char rhs) { return std::to_integer<uint8_t>(lhs) == numeric_cast<uint8_t>(rhs); });
     FO_VERIFY_AND_THROW(it != data.end(), "Test tag not found", tag);
     *it = static_cast<byte>(replacement);
 }
@@ -842,7 +842,7 @@ static void ReplaceFirstTagByte(vector<byte>& data, string_view tag, uint8_t rep
 
 static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, const vector<byte>& data, uint64_t write_time = 1)
 {
-    const string bytes {span_to_string(data)};
+    string bytes {span_to_string(data)};
     rig.AddSourceFile(path, bytes, write_time);
 }
 
@@ -900,8 +900,8 @@ static void SkipSpriteMesh(DataReader& reader)
     frame.NextX = reader.Read<int16_t>();
     frame.NextY = reader.Read<int16_t>();
 
-    const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-    const auto frame_data = reader.ReadBytes(data_size);
+    size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
+    auto frame_data = reader.ReadBytes(data_size);
     frame.Data.resize(frame_data.size());
     if (!frame.Data.empty()) {
         MemCopy(frame.Data.data(), frame_data.data(), frame_data.size());
@@ -938,7 +938,7 @@ static void SkipSpriteMesh(DataReader& reader)
         frame.NextX = reader.Read<int16_t>();
         frame.NextY = reader.Read<int16_t>();
 
-        const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
+        size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
         const_span<byte> frame_data = reader.ReadBytes(data_size);
         frame.Data.resize(frame_data.size());
         if (!frame.Data.empty()) {
@@ -1576,11 +1576,11 @@ TEST_CASE("ImageBaker")
 
         TestRig first;
         ConfigureSpriteMesh(first);
-        const vector<byte> first_output = BakeAlphaMask(first, mask);
+        vector<byte> first_output = BakeAlphaMask(first, mask);
 
         TestRig second;
         ConfigureSpriteMesh(second);
-        const vector<byte> second_output = BakeAlphaMask(second, mask);
+        vector<byte> second_output = BakeAlphaMask(second, mask);
 
         CHECK(first_output == second_output);
     }
@@ -1747,7 +1747,7 @@ TEST_CASE("ImageBaker")
 
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
         const vector<byte>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        const vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
+        vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
         REQUIRE(sprite_info_entries.size() == 2);
         CHECK(sprite_info_entries[0].Info.FrameCount == 1);
         CHECK(sprite_info_entries[0].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
@@ -1856,8 +1856,8 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<int16_t>() == -dir - 1);
 
             const_span<byte> data = reader.ReadBytes(4);
-            const uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
-            const vector<byte> expected_data {
+            uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
+            vector<byte> expected_data {
                 byte {numeric_cast<uint8_t>(color_base * 4)},
                 byte {numeric_cast<uint8_t>((color_base + 1) * 4)},
                 byte {numeric_cast<uint8_t>((color_base + 2) * 4)},
@@ -2268,7 +2268,7 @@ TEST_CASE("ImageBaker")
             int16_t next_x = reader.Read<int16_t>();
             int16_t next_y = reader.Read<int16_t>();
 
-            const size_t data_size = numeric_cast<size_t>(width) * height * 4;
+            size_t data_size = numeric_cast<size_t>(width) * height * 4;
             const_span<byte> data = reader.ReadBytes(data_size);
             vector<uint8_t> pixels(data.size());
             if (!pixels.empty()) {
@@ -2560,7 +2560,7 @@ Frm=one.toy
         REQUIRE(rig.Outputs.contains("gfx/runtime-info.tga"));
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
         const vector<byte>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
+        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == u8"gfx/runtime-info.tga");
         CHECK(entries.front().ResourcePath == "gfx/runtime-info.tga");
@@ -2578,7 +2578,7 @@ Frm=one.toy
             .Duration = std::chrono::milliseconds {100},
             .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
         };
-        const u8string stale_sprite_info = WriteSpriteInfoFile({
+        u8string stale_sprite_info = WriteSpriteInfoFile({
             SpriteInfoFileEntry {.SourcePath = u8string {u8"gfx/current.tga"}, .ResourcePath = "gfx/current.tga", .Info = info},
             SpriteInfoFileEntry {.SourcePath = u8string {u8"gfx/removed.tga"}, .ResourcePath = "gfx/removed.tga", .Info = info},
         });
@@ -2589,24 +2589,24 @@ Frm=one.toy
 
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
         const vector<byte>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
+        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == u8"gfx/current.tga");
     }
 
     SECTION("SpriteInfoSourcePathPreservesUtf8")
     {
-        const SpriteInfo info {
+        SpriteInfo info {
             .FrameCount = 1,
             .Duration = std::chrono::milliseconds {100},
             .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
         };
-        const u8string source_path {u8"графика/персонаж-🌍.tga"};
-        const u8string sprite_info = WriteSpriteInfoFile({
+        u8string source_path {u8"графика/персонаж-🌍.tga"};
+        u8string sprite_info = WriteSpriteInfoFile({
             SpriteInfoFileEntry {.SourcePath = source_path, .ResourcePath = "gfx/runtime.tga", .Info = info},
         });
 
-        const vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info);
+        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info);
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == source_path);
     }

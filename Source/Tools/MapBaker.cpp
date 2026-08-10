@@ -189,8 +189,8 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 #endif
 
     // Bake maps
-    const auto bake_map = [&](const File& file, const string& map_name) {
-        const u8string file_content = file.GetText();
+    auto bake_map = [&](const File& file, const string& map_name) {
+        u8string file_content = file.GetText();
 
         vector<byte> props_data;
         uint32_t map_cr_count = 0;

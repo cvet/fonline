@@ -106,20 +106,20 @@ TEST_CASE("TextConversions")
         constexpr char8_t source[] = u8"ASCII|Привет|e\u0301|🌍|�|\0|end";
         constexpr array<char, std::size(source)> source_chars = ToCharStorage(source);
         constexpr array<byte, std::size(source)> source_bytes = ToByteStorage(source);
-        const u8string_view expected = u8string_view::FromChecked(std::u8string_view {source, std::size(source) - 1});
+        u8string_view expected = u8string_view::FromChecked(std::u8string_view {source, std::size(source) - 1});
 
-        const const_span<char> char_input {source_chars.data(), source_chars.size() - 1};
-        const const_span<byte> byte_input {source_bytes.data(), source_bytes.size() - 1};
-        const u8string from_chars = utf8_from_char_span(char_input);
-        const u8string from_bytes = utf8_from_byte_span(byte_input);
+        const_span<char> char_input {source_chars.data(), source_chars.size() - 1};
+        const_span<byte> byte_input {source_bytes.data(), source_bytes.size() - 1};
+        u8string from_chars = utf8_from_char_span(char_input);
+        u8string from_bytes = utf8_from_byte_span(byte_input);
 
         CHECK(from_chars.view().native_view() == expected.native_view());
         CHECK(from_bytes.view().native_view() == expected.native_view());
         CHECK(from_chars.size() == char_input.size());
         CHECK(from_bytes.size() == byte_input.size());
 
-        const const_span<char> chars_again = utf8_to_char_span(from_chars.view());
-        const const_span<byte> bytes_again = utf8_to_byte_span(from_bytes.view());
+        const_span<char> chars_again = utf8_to_char_span(from_chars.view());
+        const_span<byte> bytes_again = utf8_to_byte_span(from_bytes.view());
         REQUIRE(chars_again.size() == char_input.size());
         REQUIRE(bytes_again.size() == byte_input.size());
         CHECK(string_view {chars_again.data(), chars_again.size()} == string_view {char_input.data(), char_input.size()});
@@ -127,8 +127,8 @@ TEST_CASE("TextConversions")
         CHECK(utf8_from_char_span(chars_again) == from_chars);
         CHECK(utf8_from_byte_span(bytes_again) == from_bytes);
 
-        const array<byte, 7> ascii_bytes = {byte {'A'}, byte {'S'}, byte {'C'}, byte {0}, byte {'I'}, byte {'I'}, byte {0x7F}};
-        const string ascii = string_from_byte_span(ascii_bytes);
+        array<byte, 7> ascii_bytes = {byte {'A'}, byte {'S'}, byte {'C'}, byte {0}, byte {'I'}, byte {'I'}, byte {0x7F}};
+        string ascii = string_from_byte_span(ascii_bytes);
         CHECK(ascii == string_view {"ASC\0II\x7F", 7});
         CHECK(std::ranges::equal(string_to_byte_span(ascii), ascii_bytes));
         CHECK(string_from_byte_span(string_to_byte_span(ascii)) == ascii);
@@ -138,24 +138,24 @@ TEST_CASE("TextConversions")
     {
         constexpr char8_t source[] = u8"ASCII|Привет|é|🌍|\0|end";
         constexpr array<char, std::size(source)> source_chars = ToCharStorage(source);
-        const const_span<char> char_source {source_chars.data(), source_chars.size() - 1};
-        const u8string utf8 = utf8_from_char_span(char_source);
-        const string_view borrowed = utf8_as_char_view(utf8.view());
-        const string owned = utf8_to_char_string(utf8.view());
+        const_span<char> char_source {source_chars.data(), source_chars.size() - 1};
+        u8string utf8 = utf8_from_char_span(char_source);
+        string_view borrowed = utf8_as_char_view(utf8.view());
+        string owned = utf8_to_char_string(utf8.view());
 
         CHECK(std::ranges::equal(borrowed, char_source));
         CHECK(std::ranges::equal(owned, char_source));
         CHECK(static_cast<const void*>(borrowed.data()) == static_cast<const void*>(utf8.view().data()));
 
-        const u8string map_value_one {u8"Первое"};
-        const u8string map_value_two {u8"Second"};
-        const map<string_view, u8string_view> strict_values = {{"One", map_value_one.view()}, {"Two", map_value_two.view()}};
-        const map<string_view, string_view> char_values = utf8_map_as_char_views(strict_values);
+        u8string map_value_one {u8"Первое"};
+        u8string map_value_two {u8"Second"};
+        map<string_view, u8string_view> strict_values = {{"One", map_value_one.view()}, {"Two", map_value_two.view()}};
+        map<string_view, string_view> char_values = utf8_map_as_char_views(strict_values);
         CHECK(char_values.at("One") == utf8_as_char_view(map_value_one.view()));
         CHECK(char_values.at("Two") == "Second");
         CHECK(static_cast<const void*>(char_values.at("One").data()) == static_cast<const void*>(map_value_one.view().data()));
 
-        const string ascii {"Config.Key-7"};
+        string ascii {"Config.Key-7"};
         CHECK(ascii == "Config.Key-7");
         CHECK(utf8_to_string(u8"Config.Key-7") == "Config.Key-7");
         CHECK(utf8_to_string(std::u8string_view {u8"Section"}) == "Section");
@@ -170,7 +170,7 @@ TEST_CASE("TextConversions")
             CHECK(ex.offset() == 0);
         }
 
-        const std::u8string malformed = {char8_t {'A'}, char8_t {0x80}};
+        std::u8string malformed = {char8_t {'A'}, char8_t {0x80}};
 
         try {
             (void)utf8_to_string(std::u8string_view {malformed});
@@ -183,7 +183,7 @@ TEST_CASE("TextConversions")
         }
 
         std::u8string stale_storage = u8"valid";
-        const u8string_view stale = u8string_view::FromChecked(stale_storage);
+        u8string_view stale = u8string_view::FromChecked(stale_storage);
         stale_storage[1] = char8_t {0x80};
 
         CHECK_THROWS_AS(utf8_to_char_string(stale), TextValidationException);
@@ -192,13 +192,13 @@ TEST_CASE("TextConversions")
 
     SECTION("MalformedUtf8ReportsTheExactReasonAndOffset")
     {
-        const array<byte, 3> invalid_lead = {byte {'A'}, byte {'B'}, byte {0x80}};
-        const array<byte, 4> invalid_continuation = {byte {'A'}, byte {0xE2}, byte {0x28}, byte {0xA1}};
-        const array<byte, 3> truncated = {byte {'A'}, byte {0xF0}, byte {0x9F}};
-        const array<byte, 2> overlong = {byte {0xC0}, byte {0xAF}};
-        const array<byte, 3> surrogate = {byte {0xED}, byte {0xA0}, byte {0x80}};
-        const array<byte, 5> out_of_range = {byte {'A'}, byte {0xF4}, byte {0x90}, byte {0x80}, byte {0x80}};
-        const array<pair<const_span<byte>, TextValidationIssue>, 6> cases = {{
+        array<byte, 3> invalid_lead = {byte {'A'}, byte {'B'}, byte {0x80}};
+        array<byte, 4> invalid_continuation = {byte {'A'}, byte {0xE2}, byte {0x28}, byte {0xA1}};
+        array<byte, 3> truncated = {byte {'A'}, byte {0xF0}, byte {0x9F}};
+        array<byte, 2> overlong = {byte {0xC0}, byte {0xAF}};
+        array<byte, 3> surrogate = {byte {0xED}, byte {0xA0}, byte {0x80}};
+        array<byte, 5> out_of_range = {byte {'A'}, byte {0xF4}, byte {0x90}, byte {0x80}, byte {0x80}};
+        array<pair<const_span<byte>, TextValidationIssue>, 6> cases = {{
             {invalid_lead, {TextValidationError::InvalidLeadByte, 2}},
             {invalid_continuation, {TextValidationError::InvalidContinuationByte, 2}},
             {truncated, {TextValidationError::TruncatedSequence, 1}},
@@ -219,7 +219,7 @@ TEST_CASE("TextConversions")
             }
         }
 
-        const array<char, 4> invalid_chars = {'A', std::bit_cast<char>(uint8_t {0xE2}), '(', std::bit_cast<char>(uint8_t {0xA1})};
+        array<char, 4> invalid_chars = {'A', std::bit_cast<char>(uint8_t {0xE2}), '(', std::bit_cast<char>(uint8_t {0xA1})};
 
         try {
             (void)utf8_from_char_span(invalid_chars);
@@ -231,7 +231,7 @@ TEST_CASE("TextConversions")
             CHECK(ex.offset() == 2);
         }
 
-        const array<byte, 2> invalid_ascii = {byte {'A'}, byte {0x80}};
+        array<byte, 2> invalid_ascii = {byte {'A'}, byte {0x80}};
 
         try {
             (void)string_from_byte_span(invalid_ascii);
@@ -248,10 +248,10 @@ TEST_CASE("TextConversions")
     {
         constexpr char8_t source[] = u8"Привет 🌍";
         constexpr array<char, std::size(source)> source_chars = ToCharStorage(source);
-        const u8string converted = utf8_from_terminated_char_span(source_chars);
+        u8string converted = utf8_from_terminated_char_span(source_chars);
         CHECK(converted.view().native_view() == std::u8string_view {source, std::size(source) - 1});
 
-        const array<char, 2> missing_terminator = {'n', 'o'};
+        array<char, 2> missing_terminator = {'n', 'o'};
 
         try {
             (void)utf8_from_terminated_char_span(missing_terminator);
@@ -263,7 +263,7 @@ TEST_CASE("TextConversions")
             CHECK(ex.offset() == 1);
         }
 
-        const array<char, 4> embedded_null = {'A', char {}, 'B', char {}};
+        array<char, 4> embedded_null = {'A', char {}, 'B', char {}};
 
         try {
             (void)utf8_from_terminated_char_span(embedded_null);
@@ -275,7 +275,7 @@ TEST_CASE("TextConversions")
             CHECK(ex.offset() == 1);
         }
 
-        const const_span<char> empty_storage {};
+        const_span<char> empty_storage {};
 
         try {
             (void)utf8_from_terminated_char_span(empty_storage);
@@ -292,31 +292,31 @@ TEST_CASE("TextConversions")
     {
         constexpr char8_t utf8_source[] = u8"Привет 🌍";
         constexpr array<char, std::size(utf8_source)> utf8_expected_chars = ToCharStorage(utf8_source);
-        const u8string utf8 {utf8_source};
-        const u8string_view utf8_view = utf8.view();
-        const const_span<char> utf8_chars = utf8_to_char_span(utf8_view);
-        const const_span<byte> utf8_bytes = utf8_to_byte_span(utf8_view);
+        u8string utf8 {utf8_source};
+        u8string_view utf8_view = utf8.view();
+        const_span<char> utf8_chars = utf8_to_char_span(utf8_view);
+        const_span<byte> utf8_bytes = utf8_to_byte_span(utf8_view);
 
         CHECK(utf8_chars.size() == utf8_view.size());
         CHECK(utf8_bytes.size() == utf8_view.size());
         CHECK(static_cast<const void*>(utf8_chars.data()) == static_cast<const void*>(utf8_view.data()));
         CHECK(static_cast<const void*>(utf8_bytes.data()) == static_cast<const void*>(utf8_view.data()));
 
-        const ptr<const char> utf8_cstr = utf8_to_c_str(utf8.view_nt());
-        const const_span<char> utf8_cstr_content = make_span(utf8_cstr, utf8_chars.size());
-        const const_span<char> utf8_expected_content {utf8_expected_chars.data(), utf8_expected_chars.size() - 1};
+        ptr<const char> utf8_cstr = utf8_to_c_str(utf8.view_nt());
+        const_span<char> utf8_cstr_content = make_span(utf8_cstr, utf8_chars.size());
+        const_span<char> utf8_expected_content {utf8_expected_chars.data(), utf8_expected_chars.size() - 1};
         CHECK(utf8_cstr == make_ptr(utf8_chars.data()));
         CHECK(std::ranges::equal(utf8_cstr_content, utf8_expected_content));
         CHECK(utf8_cstr[utf8_chars.size()] == char {});
 
-        const string ascii {"SDK-name"};
-        const string_view ascii_view = ascii;
-        const const_span<byte> ascii_bytes = string_to_byte_span(ascii_view);
+        string ascii {"SDK-name"};
+        string_view ascii_view = ascii;
+        const_span<byte> ascii_bytes = string_to_byte_span(ascii_view);
         CHECK(ascii_bytes.size() == ascii_view.size());
         CHECK(static_cast<const void*>(ascii_bytes.data()) == static_cast<const void*>(ascii_view.data()));
 
-        const ptr<const char> ascii_cstr {ascii.c_str()};
-        const const_span<char> ascii_cstr_content = make_span(ascii_cstr, ascii_view.size());
+        ptr<const char> ascii_cstr {ascii.c_str()};
+        const_span<char> ascii_cstr_content = make_span(ascii_cstr, ascii_view.size());
         CHECK(ascii_cstr == make_ptr(ascii_view.data()));
         CHECK(ascii_view == "SDK-name");
         CHECK(std::ranges::equal(ascii_cstr_content, ascii_view));
@@ -325,7 +325,7 @@ TEST_CASE("TextConversions")
 
     SECTION("Utf16RoundTripsUnicodeScalarBoundaries")
     {
-        const array<char16_t, 11> boundaries = {
+        array<char16_t, 11> boundaries = {
             char16_t {0x0000},
             char16_t {0x007F},
             char16_t {0x0080},
@@ -338,22 +338,22 @@ TEST_CASE("TextConversions")
             char16_t {0xDBFF},
             char16_t {0xDFFF},
         };
-        const std::u16string_view source {boundaries.data(), boundaries.size()};
+        std::u16string_view source {boundaries.data(), boundaries.size()};
 
         CHECK_FALSE(validate_utf16_text(source));
 
-        const u8string utf8 = utf16_to_utf8(source);
-        const utf16_string decoded = utf8_to_utf16(utf8.view());
+        u8string utf8 = utf16_to_utf8(source);
+        utf16_string decoded = utf8_to_utf16(utf8.view());
         CHECK(std::u16string_view {decoded.data(), decoded.size()} == source);
         CHECK(utf16_to_utf8(std::u16string_view {decoded.data(), decoded.size()}) == utf8);
     }
 
     SECTION("Utf16RejectsLoneSurrogatesAtTheirExactOffsets")
     {
-        const array<char16_t, 2> trailing_high = {u'A', char16_t {0xD800}};
-        const array<char16_t, 3> high_before_scalar = {u'A', char16_t {0xD800}, u'B'};
-        const array<char16_t, 3> lone_low = {u'A', char16_t {0xDC00}, u'B'};
-        const array<pair<std::u16string_view, TextValidationIssue>, 3> cases = {{
+        array<char16_t, 2> trailing_high = {u'A', char16_t {0xD800}};
+        array<char16_t, 3> high_before_scalar = {u'A', char16_t {0xD800}, u'B'};
+        array<char16_t, 3> lone_low = {u'A', char16_t {0xDC00}, u'B'};
+        array<pair<std::u16string_view, TextValidationIssue>, 3> cases = {{
             {{trailing_high.data(), trailing_high.size()}, {TextValidationError::UnpairedHighSurrogate, 1}},
             {{high_before_scalar.data(), high_before_scalar.size()}, {TextValidationError::UnpairedHighSurrogate, 1}},
             {{lone_low.data(), lone_low.size()}, {TextValidationError::UnpairedLowSurrogate, 1}},
@@ -377,9 +377,9 @@ TEST_CASE("TextConversions")
     SECTION("utf8_to_utf16RevalidatesBrandedViews")
     {
         std::u8string storage = u8"valid";
-        const optional<u8string_view> checked = u8string_view::TryFrom(storage);
+        optional<u8string_view> checked = u8string_view::TryFrom(storage);
         REQUIRE(checked);
-        const u8string_view stale = checked.value();
+        u8string_view stale = checked.value();
         storage[0] = char8_t {0x80};
 
         try {
@@ -396,22 +396,22 @@ TEST_CASE("TextConversions")
 #if FO_WINDOWS
     SECTION("WindowsWideTextPreservesStrictUtf16CodeUnits")
     {
-        const array<char16_t, 5> source = {u'A', char16_t {0x0416}, char16_t {0xD83C}, char16_t {0xDF0D}, u'Z'};
-        const std::u16string_view source_view {source.data(), source.size()};
-        const wide_string wide = utf16_to_wide(source_view);
-        const utf16_string decoded = wide_to_utf16(std::wstring_view {wide.data(), wide.size()});
+        array<char16_t, 5> source = {u'A', char16_t {0x0416}, char16_t {0xD83C}, char16_t {0xDF0D}, u'Z'};
+        std::u16string_view source_view {source.data(), source.size()};
+        wide_string wide = utf16_to_wide(source_view);
+        utf16_string decoded = wide_to_utf16(std::wstring_view {wide.data(), wide.size()});
 
         CHECK(std::u16string_view {decoded.data(), decoded.size()} == source_view);
 
-        const string ascii {"SDK-name"};
-        const wide_string ascii_wide = string_to_wide_string(string_view_nt_from_span(const_span<char> {ascii.data(), ascii.size() + 1}));
+        string ascii {"SDK-name"};
+        wide_string ascii_wide = string_to_wide_string(string_view_nt_from_span(const_span<char> {ascii.data(), ascii.size() + 1}));
         CHECK(std::wstring_view {ascii_wide.data(), ascii_wide.size()} == L"SDK-name");
 
-        const u8string utf8 {u8"Привет 🌍"};
-        const wide_string utf8_wide = utf8_to_wide_string(utf8.view());
+        u8string utf8 {u8"Привет 🌍"};
+        wide_string utf8_wide = utf8_to_wide_string(utf8.view());
         CHECK(wide_to_utf16(std::wstring_view {utf8_wide.data(), utf8_wide.size()}) == utf8_to_utf16(utf8.view()));
 
-        const array<char16_t, 2> invalid_source = {u'A', char16_t {0xD800}};
+        array<char16_t, 2> invalid_source = {u'A', char16_t {0xD800}};
         CHECK_THROWS_AS(utf16_to_wide(std::u16string_view {invalid_source.data(), invalid_source.size()}), TextValidationException);
 
         wide_string invalid_wide;

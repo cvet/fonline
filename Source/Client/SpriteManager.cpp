@@ -1160,7 +1160,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
     mspr_list.SortIfNeeded();
 
-    const auto [range_begin, range_end] = mspr_list.GetDrawOrderRange(draw_oder_from, draw_oder_to);
+    auto [range_begin, range_end] = mspr_list.GetDrawOrderRange(draw_oder_from, draw_oder_to);
     const_span<unique_ptr<MapSprite>> sprites = mspr_list.GetActiveSprites();
     bool apply_brightness = _settings->Brightness != 0;
 

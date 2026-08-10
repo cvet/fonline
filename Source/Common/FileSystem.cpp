@@ -403,8 +403,8 @@ auto FileReader::GetBEUInt16() -> uint16_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    const uint32_t high_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
-    const uint32_t low_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
+    uint32_t high_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
+    uint32_t low_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
     return numeric_cast<uint16_t>((high_byte << 8) | low_byte);
 }
 
@@ -417,8 +417,8 @@ auto FileReader::GetLEUInt16() -> uint16_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    const uint32_t low_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
-    const uint32_t high_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
+    uint32_t low_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
+    uint32_t high_byte = std::to_integer<uint8_t>(_buf[_curPos++]);
     return numeric_cast<uint16_t>(low_byte | (high_byte << 8));
 }
 
@@ -546,7 +546,7 @@ void FileSystem::AddPackSource(u8string_view dir, u8string_view pack, bool maybe
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
     else {
-        const u8string pack_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(dir)} / std::filesystem::path {fs_make_path(pack)});
+        u8string pack_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(dir)} / std::filesystem::path {fs_make_path(pack)});
         auto ds = DataSource::MountDir(pack_dir.view(), true, false, maybe_not_available);
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
@@ -557,7 +557,7 @@ void FileSystem::AddPacksSource(u8string_view dir, const vector<string>& packs)
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& pack : packs) {
-        const u8string pack_name = pack;
+        u8string pack_name = pack;
         AddPackSource(dir, pack_name.view());
     }
 }
@@ -769,7 +769,7 @@ auto FileSystem::ReadFile(u8string_view path) const -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string path_chars = utf8_to_char_string(path);
+    string path_chars = utf8_to_char_string(path);
     return ReadFile(path_chars);
 }
 
@@ -777,7 +777,7 @@ auto FileSystem::ReadFileText(string_view path) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = ReadFile(path);
+    auto file = ReadFile(path);
     return file ? file.GetText() : u8string();
 }
 

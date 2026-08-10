@@ -134,7 +134,7 @@ static auto ErrorContains(const vector<byte>& data, const ModelAnimationArchiveM
 
 TEST_CASE("ModelAnimationArchive round-trip and deterministic layout")
 {
-    const vector<byte> payload {byte {0x00}, byte {0x01}, byte {0x7F}, byte {0x80}, byte {0xFF}};
+    vector<byte> payload {byte {0x00}, byte {0x01}, byte {0x7F}, byte {0x80}, byte {0xFF}};
 
     SECTION("All payload kinds round-trip")
     {
@@ -146,9 +146,9 @@ TEST_CASE("ModelAnimationArchive round-trip and deterministic layout")
 
         for (ModelAnimationArchiveKind kind : kinds) {
             CAPTURE(static_cast<uint16_t>(kind));
-            const ModelAnimationArchiveMetadata metadata = MakeArchiveMetadata(kind);
-            const vector<byte> data = WriteModelAnimationArchive(metadata, payload);
-            const ModelAnimationArchive archive = ReadModelAnimationArchive(data, metadata);
+            ModelAnimationArchiveMetadata metadata = MakeArchiveMetadata(kind);
+            vector<byte> data = WriteModelAnimationArchive(metadata, payload);
+            ModelAnimationArchive archive = ReadModelAnimationArchive(data, metadata);
 
             CHECK(archive.SchemaVersion == MODEL_ANIMATION_ARCHIVE_SCHEMA_VERSION);
             CHECK(string_view {archive.PayloadRevision} == MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION);
@@ -166,9 +166,9 @@ TEST_CASE("ModelAnimationArchive round-trip and deterministic layout")
 
     SECTION("Every scalar is little-endian and output is stable")
     {
-        const ModelAnimationArchiveMetadata metadata = MakeArchiveMetadata();
-        const ModelAnimationArchiveTestOffsets offsets = MakeArchiveOffsets(metadata);
-        const vector<byte> data = WriteModelAnimationArchive(metadata, payload);
+        ModelAnimationArchiveMetadata metadata = MakeArchiveMetadata();
+        ModelAnimationArchiveTestOffsets offsets = MakeArchiveOffsets(metadata);
+        vector<byte> data = WriteModelAnimationArchive(metadata, payload);
 
         CHECK(WriteModelAnimationArchive(metadata, payload) == data);
         REQUIRE(offsets.Payload + payload.size() == data.size());
@@ -190,13 +190,13 @@ TEST_CASE("ModelAnimationArchive round-trip and deterministic layout")
 
         CHECK(std::to_integer<size_t>(data[offsets.RevisionLength]) == MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION.size());
         CHECK(data[offsets.RevisionLength + 1] == byte {0x00});
-        const const_span<byte> revision_bytes = make_byte_span(MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION);
+        const_span<byte> revision_bytes = make_byte_span(MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION);
         CHECK(std::equal(revision_bytes.begin(), revision_bytes.end(), data.begin() + offsets.Revision));
         CHECK(std::to_integer<size_t>(data[offsets.SourceLength]) == metadata.SourceAsset.size());
-        const const_span<byte> source_bytes = make_byte_span(metadata.SourceAsset);
+        const_span<byte> source_bytes = make_byte_span(metadata.SourceAsset);
         CHECK(std::equal(source_bytes.begin(), source_bytes.end(), data.begin() + offsets.Source));
         CHECK(std::to_integer<size_t>(data[offsets.ObjectLength]) == metadata.ObjectName.size());
-        const const_span<byte> object_bytes = make_byte_span(metadata.ObjectName);
+        const_span<byte> object_bytes = make_byte_span(metadata.ObjectName);
         CHECK(std::equal(object_bytes.begin(), object_bytes.end(), data.begin() + offsets.Object));
         CHECK(std::to_integer<size_t>(data[offsets.PayloadLength]) == payload.size());
 
@@ -208,7 +208,7 @@ TEST_CASE("ModelAnimationArchive round-trip and deterministic layout")
 
 TEST_CASE("ModelAnimationArchive rejects invalid write metadata")
 {
-    const vector<byte> payload {byte {1}};
+    vector<byte> payload {byte {1}};
 
     SECTION("Unknown kind")
     {
@@ -275,10 +275,10 @@ TEST_CASE("ModelAnimationArchive rejects invalid write metadata")
 
 TEST_CASE("ModelAnimationArchive validates every metadata field")
 {
-    const ModelAnimationArchiveMetadata metadata = MakeArchiveMetadata();
-    const vector<byte> payload {byte {0x10}, byte {0x20}, byte {0x30}};
-    const vector<byte> valid_data = WriteModelAnimationArchive(metadata, payload);
-    const ModelAnimationArchiveTestOffsets offsets = MakeArchiveOffsets(metadata);
+    ModelAnimationArchiveMetadata metadata = MakeArchiveMetadata();
+    vector<byte> payload {byte {0x10}, byte {0x20}, byte {0x30}};
+    vector<byte> valid_data = WriteModelAnimationArchive(metadata, payload);
+    ModelAnimationArchiveTestOffsets offsets = MakeArchiveOffsets(metadata);
 
     SECTION("Magic")
     {
@@ -382,16 +382,16 @@ TEST_CASE("ModelAnimationArchive validates every metadata field")
 
 TEST_CASE("ModelAnimationArchive rejects every payload corruption boundary")
 {
-    const ModelAnimationArchiveMetadata metadata = MakeArchiveMetadata();
-    const vector<byte> payload {byte {0x10}, byte {0x20}, byte {0x30}, byte {0x40}};
-    const vector<byte> valid_data = WriteModelAnimationArchive(metadata, payload);
-    const ModelAnimationArchiveTestOffsets offsets = MakeArchiveOffsets(metadata);
+    ModelAnimationArchiveMetadata metadata = MakeArchiveMetadata();
+    vector<byte> payload {byte {0x10}, byte {0x20}, byte {0x30}, byte {0x40}};
+    vector<byte> valid_data = WriteModelAnimationArchive(metadata, payload);
+    ModelAnimationArchiveTestOffsets offsets = MakeArchiveOffsets(metadata);
 
     SECTION("Every truncated prefix")
     {
         for (size_t cut_size = 0; cut_size < valid_data.size(); cut_size++) {
             CAPTURE(cut_size);
-            const vector<byte> truncated(valid_data.begin(), valid_data.begin() + cut_size);
+            vector<byte> truncated(valid_data.begin(), valid_data.begin() + cut_size);
             CHECK_THROWS_AS(ReadModelAnimationArchive(truncated, metadata), ModelAnimationArchiveException);
         }
     }
@@ -449,7 +449,7 @@ TEST_CASE("ModelAnimationArchive rejects every payload corruption boundary")
     SECTION("Truncation diagnostics include asset context")
     {
         vector<byte> data(valid_data.begin(), valid_data.end() - 1);
-        const string error = GetReadError(data, metadata);
+        string error = GetReadError(data, metadata);
         CHECK(error.find("Truncated") != string::npos);
         CHECK(error.find("actors/human.fbx#Run") != string::npos);
     }
@@ -504,8 +504,8 @@ TEST_CASE("ModelAnimationRigData joint remap round-trip and validation")
     remap.CanonicalJointPresent = {1, 0, 1};
     remap.NearestSampleTimes = {0.0f, 0.5f, 1.0f};
 
-    const vector<byte> data = WriteModelAnimationJointRemapPayload(remap, "test remap");
-    const ModelAnimationJointRemap loaded = ReadModelAnimationJointRemapPayload(data, "test remap");
+    vector<byte> data = WriteModelAnimationJointRemapPayload(remap, "test remap");
+    ModelAnimationJointRemap loaded = ReadModelAnimationJointRemapPayload(data, "test remap");
     CHECK(loaded.Duration == remap.Duration);
     CHECK(loaded.CanonicalJointCount == remap.CanonicalJointCount);
     CHECK(loaded.SourceToCanonicalJointIndices == remap.SourceToCanonicalJointIndices);
@@ -554,9 +554,9 @@ TEST_CASE("ModelAnimationRigData joint remap round-trip and validation")
 
 TEST_CASE("ModelAnimationRigData rig manifest round-trip and corruption rejection")
 {
-    const ModelAnimationRigData source = MakeRigData();
-    const vector<byte> data = WriteModelAnimationRigData(source, "Models/Test.fo3d");
-    const ModelAnimationRigData loaded = ReadModelAnimationRigData(data, "Models/Test.fo3d");
+    ModelAnimationRigData source = MakeRigData();
+    vector<byte> data = WriteModelAnimationRigData(source, "Models/Test.fo3d");
+    ModelAnimationRigData loaded = ReadModelAnimationRigData(data, "Models/Test.fo3d");
 
     CHECK(loaded.RigSignature == source.RigSignature);
     CHECK(loaded.CacheSignature == source.CacheSignature);

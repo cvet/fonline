@@ -412,7 +412,7 @@ public:
     virtual void SetClipboardText(u8string_view text) = 0;
     void SetClipboardText(string_view text)
     {
-        const u8string utf8_text = text;
+        u8string utf8_text = text;
         SetClipboardText(utf8_text);
     }
 };

@@ -73,7 +73,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
     if (!settings->UserWritablePath.empty()) {
-        const u8string writable_resources = fs_make_writable_path(settings->UserWritablePath, settings->ClientResources);
+        u8string writable_resources = fs_make_writable_path(settings->UserWritablePath, settings->ClientResources);
         _resources.AddDirSource(writable_resources, false, true, true);
     }
     if (!_settings->DefaultSplashPack.empty()) {
@@ -155,9 +155,9 @@ auto Updater::Process() -> bool
                 cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
             }
 
-            const auto cur = numeric_cast<float32_t>(cur_bytes) / (1024.0f * 1024.0f);
-            const auto max = std::max(numeric_cast<float32_t>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
-            const u8string name = u8strex(update_file.Name).format_path();
+            auto cur = numeric_cast<float32_t>(cur_bytes) / (1024.0f * 1024.0f);
+            auto max = std::max(numeric_cast<float32_t>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
+            u8string name = u8strex(update_file.Name).format_path();
 
             update_text.append(u8strex("{} {:.2f} / {:.2f} MB\n", name, cur, max));
         }
@@ -233,18 +233,18 @@ void Updater::GetNextFile()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
-    const auto file_output_dir = [&](const UpdateFile& f) -> u8string { return file_uses_binary_dir(f) ? _binaryDir : fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
-    const auto make_temp_path = [&](const UpdateFile& f) -> u8string {
-        const u8string output_dir = file_output_dir(f);
-        const u8string temp_name = FormatUtf8(u8"~{}", f.Name);
+    auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
+    auto file_output_dir = [&](const UpdateFile& f) -> u8string { return file_uses_binary_dir(f) ? _binaryDir : fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
+    auto make_temp_path = [&](const UpdateFile& f) -> u8string {
+        u8string output_dir = file_output_dir(f);
+        u8string temp_name = FormatUtf8(u8"~{}", f.Name);
         return fs_combine_path(output_dir.view(), temp_name.view());
     };
-    const auto make_live_path = [&](const UpdateFile& f) -> u8string {
-        const u8string output_dir = file_output_dir(f);
+    auto make_live_path = [&](const UpdateFile& f) -> u8string {
+        u8string output_dir = file_output_dir(f);
         return fs_combine_path(output_dir.view(), f.Name.view());
     };
-    const auto make_final_path = [&](const UpdateFile& f) -> u8string {
+    auto make_final_path = [&](const UpdateFile& f) -> u8string {
         u8string live_path = make_live_path(f);
 
         if (file_uses_binary_dir(f)) {
@@ -253,9 +253,9 @@ void Updater::GetNextFile()
 
         return live_path;
     };
-    const auto try_promote_staged_binary = [&](const UpdateFile& f, u8string_view staged_path) {
+    auto try_promote_staged_binary = [&](const UpdateFile& f, u8string_view staged_path) {
         if (file_uses_binary_dir(f)) {
-            const u8string live_path = make_live_path(f);
+            u8string live_path = make_live_path(f);
             (void)ReplaceFileSafely(staged_path, live_path.view());
         }
     };
@@ -269,8 +269,8 @@ void Updater::GetNextFile()
         }
 
         const auto& prev_update_file = _filesToUpdate.front();
-        const u8string prev_path = make_final_path(prev_update_file);
-        const u8string temp_path = make_temp_path(prev_update_file);
+        u8string prev_path = make_final_path(prev_update_file);
+        u8string temp_path = make_temp_path(prev_update_file);
 
         if (!IsDiskFileHashMatch(temp_path.view(), prev_update_file.Size, prev_update_file.Hash)) {
             WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path.view(), prev_update_file.Name);
@@ -284,7 +284,7 @@ void Updater::GetNextFile()
             return;
         }
 
-        const string_view binary_status = prev_update_file.IsClientBinary ? "yes" : "no";
+        string_view binary_status = prev_update_file.IsClientBinary ? "yes" : "no";
         WriteLog("Client updater: promoted downloaded file to {}, binary {}", prev_path.view(), binary_status);
         try_promote_staged_binary(prev_update_file, prev_path.view());
         _filesToUpdate.erase(_filesToUpdate.begin());
@@ -292,9 +292,9 @@ void Updater::GetNextFile()
 
     if (!_filesToUpdate.empty()) {
         auto& next_update_file = _filesToUpdate.front();
-        const u8string final_path = make_final_path(next_update_file);
-        const u8string temp_path = make_temp_path(next_update_file);
-        const auto temp_file_size = GetDiskFileSize(temp_path.view());
+        u8string final_path = make_final_path(next_update_file);
+        u8string temp_path = make_temp_path(next_update_file);
+        auto temp_file_size = GetDiskFileSize(temp_path.view());
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
@@ -315,7 +315,7 @@ void Updater::GetNextFile()
                         return;
                     }
 
-                    const string_view binary_status = next_update_file.IsClientBinary ? "yes" : "no";
+                    string_view binary_status = next_update_file.IsClientBinary ? "yes" : "no";
                     WriteLog("Client updater: promoted existing temp file to {}, binary {}", final_path.view(), binary_status);
                     try_promote_staged_binary(next_update_file, final_path.view());
                     _filesToUpdate.erase(_filesToUpdate.begin());
@@ -329,7 +329,7 @@ void Updater::GetNextFile()
             }
         }
 
-        const u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(temp_path.view())}.parent_path());
+        u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(temp_path.view())}.parent_path());
 
         if (!dir.empty()) {
             if (!fs_create_directories(dir.view())) {
@@ -347,7 +347,7 @@ void Updater::GetNextFile()
             return;
         }
 
-        const string_view binary_status = next_update_file.IsClientBinary ? "yes" : "no";
+        string_view binary_status = next_update_file.IsClientBinary ? "yes" : "no";
         WriteLog("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, binary_status, next_update_file.Size, next_update_file.RemaningSize, temp_path.view(), final_path.view());
         RequestUpdateFile(next_update_file);
     }
@@ -419,8 +419,8 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
 
-        const bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
-        const string_view self_update_status = can_self_update_binaries ? "supported" : "unsupported";
+        bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+        string_view self_update_status = can_self_update_binaries ? "supported" : "unsupported";
         WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", self_update_status, GetCurrentBinaryUpdateTargetName());
 
         if (!can_self_update_binaries) {
@@ -474,9 +474,9 @@ void Updater::Net_OnInitData()
     FO_VERIFY_AND_THROW(!_fileListReceived, "Update file list was already received");
     _fileListReceived = true;
 
-    const auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
-    const string_view update_mode = _binariesMode ? "binaries" : "resources";
-    const string_view update_target = _binariesMode ? "ClientBinaries" : "ClientResources";
+    auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
+    string_view update_mode = _binariesMode ? "binaries" : "resources";
+    string_view update_target = _binariesMode ? "ClientBinaries" : "ClientResources";
     WriteLog("Client updater: received update list, bytes {}, mode {}, target {}", data_size, update_mode, update_target);
 
     if (data.empty()) {
@@ -495,7 +495,7 @@ void Updater::Net_OnInitData()
     FileSystem resources;
 
     if (!_binariesMode) {
-        const u8string client_resources = _settings->ClientResources;
+        u8string client_resources = _settings->ClientResources;
         resources.AddDirSource(client_resources, false, true, true);
     }
 
@@ -565,7 +565,7 @@ void Updater::Net_OnInitData()
             string fname_dir = strex(fname).extract_dir().str();
             local_name = fname_dir.empty() ? remapped_basename : strex(fname_dir).combine_path(remapped_basename).str();
 
-            const u8string file_path = fs_combine_path(_binaryDir.view(), local_name);
+            u8string file_path = fs_combine_path(_binaryDir.view(), local_name);
 
             if (remapped_basename == strex("{}.pdb", runtime_local_prefix).str()) {
                 if (fs_exists(file_path.view())) {
@@ -594,7 +594,7 @@ void Updater::Net_OnInitData()
             if (file_header) {
                 if (file_header.GetSize() == size) {
                     if (file_header.GetDataSource()->IsDiskDir()) {
-                        const u8string disk_path = file_header.GetDiskPath();
+                        u8string disk_path = file_header.GetDiskPath();
 
                         if (IsDiskFileHashMatch(disk_path.view(), size, hash)) {
                             continue;
@@ -626,7 +626,7 @@ void Updater::Net_OnInitData()
     reader.VerifyEnd();
 
     if (!_filesToUpdate.empty()) {
-        const string_view update_mode = _binariesMode ? "binaries" : "resources";
+        string_view update_mode = _binariesMode ? "binaries" : "resources";
         WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), update_mode);
         GetNextFile();
     }
@@ -753,7 +753,7 @@ auto Updater::IsDiskFileHashMatch(u8string_view file_path, uint64_t expected_siz
     u8string cache_key = u8strex("{}-{:016x}.hash", u8strvex(file_path).extract_file_name(), hashing::hash<std::u8string_view> {}(file_path.native_view()));
 
     if (_cache.HasEntry(cache_key)) {
-        const auto data = _cache.GetBytes(cache_key);
+        auto data = _cache.GetBytes(cache_key);
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
@@ -772,7 +772,7 @@ auto Updater::IsDiskFileHashMatch(u8string_view file_path, uint64_t expected_siz
         return false;
     }
 
-    const CachedHash entry {*local_size, local_mtime, *local_hash};
+    CachedHash entry {*local_size, local_mtime, *local_hash};
     _cache.SetBytes(cache_key, make_byte_span(&entry, sizeof(entry)));
 
     return *local_hash == expected_hash;
@@ -805,7 +805,7 @@ auto Updater::ReplaceFileSafely(u8string_view temp_path, u8string_view final_pat
 
     u8string backup_path {final_path};
     backup_path.append(u8".bak");
-    const auto final_exists = fs_exists(final_path);
+    auto final_exists = fs_exists(final_path);
 
     (void)fs_remove_file(backup_path.view());
 
@@ -847,7 +847,7 @@ auto Updater::GetRuntimeLivePath() const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const u8string runtime_name = GetCurrentClientRuntimeLibraryName();
+    u8string runtime_name = GetCurrentClientRuntimeLibraryName();
     u8string runtime_path = fs_combine_path(_binaryDir.view(), runtime_name.view());
     runtime_path.append(GetClientRuntimeLibraryExtension());
     return runtime_path;
@@ -1018,15 +1018,15 @@ auto ResolveClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8st
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<u8string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
+    optional<u8string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
 
     if (!target.has_value()) {
         return u8string {fallback_runtime_path};
     }
 
-    const u8string staging_path = MakeClientRuntimeStagingPath(target->view());
-    const bool live_exists = fs_exists(target->view()) && !fs_is_dir(target->view());
-    const bool staging_exists = fs_exists(staging_path.view()) && !fs_is_dir(staging_path.view());
+    u8string staging_path = MakeClientRuntimeStagingPath(target->view());
+    bool live_exists = fs_exists(target->view()) && !fs_is_dir(target->view());
+    bool staging_exists = fs_exists(staging_path.view()) && !fs_is_dir(staging_path.view());
     return live_exists || staging_exists ? target.value() : u8string {fallback_runtime_path};
 }
 
@@ -1044,7 +1044,7 @@ auto ReadClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8strin
         return std::nullopt;
     }
 
-    const optional<u8string> content = fs_read_file_text(bootstrap_file_path);
+    optional<u8string> content = fs_read_file_text(bootstrap_file_path);
 
     if (!content.has_value() || content->size() > ClientRuntimeBootstrapMaxSize) {
         return std::nullopt;
@@ -1061,15 +1061,15 @@ auto WriteClientRuntimeBootstrapTarget(u8string_view bootstrap_file_path, u8stri
         return false;
     }
 
-    const optional<u8string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
+    optional<u8string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
 
     if (!normalized_path.has_value() || normalized_path->size() + 1 > ClientRuntimeBootstrapMaxSize) {
         return false;
     }
 
     // Write-then-rename so a crash or a concurrent reader never observes a partially written selector
-    const u8string temp_path = FormatUtf8("{}.tmp", bootstrap_file_path);
-    const u8string selector_content = FormatUtf8("{}\n", normalized_path->view());
+    u8string temp_path = FormatUtf8("{}.tmp", bootstrap_file_path);
+    u8string selector_content = FormatUtf8("{}\n", normalized_path->view());
 
     if (!fs_write_file_text(temp_path.view(), selector_content.view())) {
         return false;
@@ -1088,31 +1088,31 @@ void PromoteStagedRuntimeCompanions(u8string_view binary_dir) noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const u8string runtime_name = GetCurrentClientRuntimeLibraryName();
+        u8string runtime_name = GetCurrentClientRuntimeLibraryName();
         u8string runtime_primary_name = runtime_name;
         runtime_primary_name.append(GetClientRuntimeLibraryExtension());
-        const u8string staging_suffix {ClientBinaryStagingSuffix};
+        u8string staging_suffix {ClientBinaryStagingSuffix};
 
         vector<pair<u8string, u8string>> renames;
 
         fs_iterate_dir(binary_dir, false, [&](u8string_view path, size_t, uint64_t) {
-            const u8string file_name = fs_path_to_u8string(std::filesystem::path {fs_make_path(path)}.filename());
-            const std::u8string_view file_name_view = file_name.view().native_view();
-            const std::u8string_view staging_suffix_view = staging_suffix.view().native_view();
+            u8string file_name = fs_path_to_u8string(std::filesystem::path {fs_make_path(path)}.filename());
+            std::u8string_view file_name_view = file_name.view().native_view();
+            std::u8string_view staging_suffix_view = staging_suffix.view().native_view();
 
             if (!file_name_view.ends_with(staging_suffix_view)) {
                 return;
             }
 
-            const u8string_view unstaged_name = u8string_view::FromChecked(file_name_view.substr(0, file_name_view.size() - staging_suffix_view.size()));
+            u8string_view unstaged_name = u8string_view::FromChecked(file_name_view.substr(0, file_name_view.size() - staging_suffix_view.size()));
 
             if (unstaged_name == runtime_primary_name.view()) {
                 return;
             }
 
-            const std::u8string_view unstaged_name_view = unstaged_name.native_view();
-            const std::u8string_view runtime_name_view = runtime_name.view().native_view();
-            const bool matches_runtime = unstaged_name == runtime_name.view() || (unstaged_name_view.size() > runtime_name_view.size() && unstaged_name_view.starts_with(runtime_name_view) && unstaged_name_view[runtime_name_view.size()] == u8'.');
+            std::u8string_view unstaged_name_view = unstaged_name.native_view();
+            std::u8string_view runtime_name_view = runtime_name.view().native_view();
+            bool matches_runtime = unstaged_name == runtime_name.view() || (unstaged_name_view.size() > runtime_name_view.size() && unstaged_name_view.starts_with(runtime_name_view) && unstaged_name_view[runtime_name_view.size()] == u8'.');
 
             if (!matches_runtime) {
                 return;
@@ -1135,8 +1135,8 @@ auto GetCurrentClientRuntimeLibraryName() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
-        const u8string name = u8strex(*exe_path).extract_file_name().erase_file_extension();
+    if (auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
+        u8string name = u8strex(*exe_path).extract_file_name().erase_file_extension();
 
         if (!name.empty()) {
             return utf8_to_string(name.view());
@@ -1200,13 +1200,13 @@ static auto NormalizeClientRuntimeBootstrapTarget(u8string_view runtime_path, u8
         trimmed_path_view.remove_suffix(1);
     }
 
-    const u8string trimmed_path = u8string::FromChecked(trimmed_path_view);
+    u8string trimmed_path = u8string::FromChecked(trimmed_path_view);
 
     if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs_is_absolute_path(trimmed_path.view()) || trimmed_path_view.find(u8'\0') != std::u8string_view::npos || trimmed_path_view.find(u8'\r') != std::u8string_view::npos || trimmed_path_view.find(u8'\n') != std::u8string_view::npos) {
         return std::nullopt;
     }
 
-    const u8string file_name = fs_path_to_u8string(std::filesystem::path {fs_make_path(trimmed_path.view())}.filename());
+    u8string file_name = fs_path_to_u8string(std::filesystem::path {fs_make_path(trimmed_path.view())}.filename());
 
     if (file_name.view() != expected_runtime_file_name) {
         return std::nullopt;

@@ -37,8 +37,8 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const u8string collection_dir = u8strex("{}", collection_name);
-        const u8string dir = fs_combine_path(_storageDir, collection_dir);
+        u8string collection_dir = u8strex("{}", collection_name);
+        u8string dir = fs_combine_path(_storageDir, collection_dir);
 
         if (!fs_create_directories(dir)) {
             throw DataBaseException("DbJson Can't ensure collection directory", dir);
@@ -55,10 +55,10 @@ protected:
         vector<DataBaseKey> ids;
 
         std::error_code ec;
-        const u8string collection_dir = u8strex("{}", collection_name);
-        const u8string collection_path = fs_combine_path(_storageDir, collection_dir);
-        const auto dir_path = std::filesystem::path {fs_make_path(collection_path)};
-        const auto dir_iterator = std::filesystem::directory_iterator(dir_path, ec);
+        u8string collection_dir = u8strex("{}", collection_name);
+        u8string collection_path = fs_combine_path(_storageDir, collection_dir);
+        auto dir_path = std::filesystem::path {fs_make_path(collection_path)};
+        auto dir_iterator = std::filesystem::directory_iterator(dir_path, ec);
 
         if (!ec) {
             for (const auto& dir_entry : dir_iterator) {
@@ -66,8 +66,8 @@ protected:
                     continue;
                 }
 
-                const u8string path_utf8 = fs_path_to_u8string(dir_entry.path().filename());
-                const string path {utf8_as_char_view(path_utf8.view())};
+                u8string path_utf8 = fs_path_to_u8string(dir_entry.path().filename());
+                string path {utf8_as_char_view(path_utf8.view())};
 
                 if (strex(path).get_file_extension() != "json") {
                     continue;
@@ -104,10 +104,10 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const u8string relative_path = u8strex("{}/{}.json", collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
-        const u8string path = fs_combine_path(_storageDir, relative_path);
+        u8string relative_path = u8strex("{}/{}.json", collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        u8string path = fs_combine_path(_storageDir, relative_path);
 
-        const auto json = fs_read_file_text(path);
+        auto json = fs_read_file_text(path);
 
         if (!json) {
             return {};
@@ -115,7 +115,7 @@ protected:
 
         bson_t bson;
         bson_error_t error;
-        const const_span<char> json_chars = utf8_to_char_span(json->view());
+        const_span<char> json_chars = utf8_to_char_span(json->view());
 
         if (!bson_init_from_json(&bson, json_chars.data(), numeric_cast<ssize_t>(json_chars.size()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
@@ -136,8 +136,8 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const u8string relative_path = u8strex("{}/{}.json", collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
-        const u8string path = fs_combine_path(_storageDir, relative_path);
+        u8string relative_path = u8strex("{}/{}.json", collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        u8string path = fs_combine_path(_storageDir, relative_path);
 
         if (fs_exists(path)) {
             throw DataBaseException("DbJson File exists for inserting", path);
@@ -157,17 +157,17 @@ protected:
         auto json = make_unique_del_ptr(json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
-        const auto pretty_json = nlohmann::json::parse(json.get());
-        const auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
-        const u8string pretty_json_utf8 = utf8_from_char_span(const_span<char> {pretty_json_dump.data(), pretty_json_dump.size()});
+        auto pretty_json = nlohmann::json::parse(json.get());
+        auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
+        u8string pretty_json_utf8 = utf8_from_char_span(const_span<char> {pretty_json_dump.data(), pretty_json_dump.size()});
 
-        const u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path)}.parent_path());
+        u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path)}.parent_path());
 
         if (!dir.empty() && !fs_create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file", path);
         }
 
-        const u8string tmp_path = u8strex("{}.tmp", path);
+        u8string tmp_path = u8strex("{}.tmp", path);
 
         if (!fs_write_file_text(tmp_path, pretty_json_utf8)) {
             fs_remove_file(tmp_path);
@@ -188,10 +188,10 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const u8string relative_path = u8strex("{}/{}.json", collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
-        const u8string path = fs_combine_path(_storageDir, relative_path);
+        u8string relative_path = u8strex("{}/{}.json", collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        u8string path = fs_combine_path(_storageDir, relative_path);
 
-        const auto json = fs_read_file_text(path);
+        auto json = fs_read_file_text(path);
 
         if (!json) {
             throw DataBaseException("DbJson Can't open file for reading", path);
@@ -199,7 +199,7 @@ protected:
 
         bson_t bson;
         bson_error_t error;
-        const const_span<char> json_chars = utf8_to_char_span(json->view());
+        const_span<char> json_chars = utf8_to_char_span(json->view());
 
         if (!bson_init_from_json(&bson, json_chars.data(), numeric_cast<ssize_t>(json_chars.size()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
@@ -217,17 +217,17 @@ protected:
         auto new_json = make_unique_del_ptr(new_json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
-        const auto pretty_json = nlohmann::json::parse(new_json.get());
-        const auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
-        const u8string pretty_json_utf8 = utf8_from_char_span(const_span<char> {pretty_json_dump.data(), pretty_json_dump.size()});
+        auto pretty_json = nlohmann::json::parse(new_json.get());
+        auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
+        u8string pretty_json_utf8 = utf8_from_char_span(const_span<char> {pretty_json_dump.data(), pretty_json_dump.size()});
 
-        const u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path)}.parent_path());
+        u8string dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(path)}.parent_path());
 
         if (!dir.empty() && !fs_create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file for writing", path);
         }
 
-        const u8string tmp_path = u8strex("{}.tmp", path);
+        u8string tmp_path = u8strex("{}.tmp", path);
 
         if (!fs_write_file_text(tmp_path, pretty_json_utf8)) {
             fs_remove_file(tmp_path);
@@ -246,8 +246,8 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const u8string relative_path = u8strex("{}/{}.json", collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
-        const u8string path = fs_combine_path(_storageDir, relative_path);
+        u8string relative_path = u8strex("{}/{}.json", collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        u8string path = fs_combine_path(_storageDir, relative_path);
 
         if (!fs_remove_file(path)) {
             throw DataBaseException("DbJson Can't delete file", path);

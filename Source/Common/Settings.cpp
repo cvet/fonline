@@ -43,10 +43,10 @@ static auto TrimSettingValue(u8string_view value) -> u8string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::u8string_view native_value = value.native_view();
+    std::u8string_view native_value = value.native_view();
     size_t begin = 0;
     size_t end = native_value.size();
-    const auto is_space = [](char8_t ch) noexcept { return ch == u8' ' || ch == u8'\t' || ch == u8'\r' || ch == u8'\n'; };
+    auto is_space = [](char8_t ch) noexcept { return ch == u8' ' || ch == u8'\t' || ch == u8'\r' || ch == u8'\n'; };
 
     while (begin < end && is_space(native_value[begin])) {
         begin++;
@@ -96,8 +96,8 @@ static void SetEntry(T& entry, u8string_view value, bool append)
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (std::same_as<T, string>) {
-        const auto any_value = ParseSettingValue(value, false, AnyData::ValueType::String);
-        const string string_value = utf8_to_string(any_value.AsString());
+        auto any_value = ParseSettingValue(value, false, AnyData::ValueType::String);
+        string string_value = utf8_to_string(any_value.AsString());
         string replacement = append ? entry : string {};
 
         if (append && !replacement.empty()) {
@@ -108,9 +108,9 @@ static void SetEntry(T& entry, u8string_view value, bool append)
         entry = std::move(replacement);
     }
     else if constexpr (std::same_as<T, u8string>) {
-        const auto any_value = ParseSettingValue(value, false, AnyData::ValueType::String);
+        auto any_value = ParseSettingValue(value, false, AnyData::ValueType::String);
         u8string replacement = append ? entry : u8string {};
-        const u8string parsed_value {any_value.AsString()};
+        u8string parsed_value {any_value.AsString()};
 
         if (append && !replacement.empty()) {
             replacement.append(" ");
@@ -120,44 +120,44 @@ static void SetEntry(T& entry, u8string_view value, bool append)
         entry = std::move(replacement);
     }
     else if constexpr (std::same_as<T, bool>) {
-        const auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Bool);
+        auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Bool);
         if (!append) {
             entry = {};
         }
         entry |= any_value.AsBool();
     }
     else if constexpr (std::floating_point<T>) {
-        const auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Float64);
+        auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Float64);
         if (!append) {
             entry = {};
         }
         entry += numeric_cast<float32_t>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
-        const auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Int64);
+        auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Int64);
         if (!append) {
             entry = {};
         }
         entry = static_cast<T>(static_cast<int64_t>(entry) | any_value.AsInt64());
     }
     else if constexpr (some_strong_type<T>) {
-        const auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Int64);
+        auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Int64);
         if (!append) {
             entry = {};
         }
         entry = T {numeric_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
     else if constexpr (some_property_plain_type<T>) {
-        const auto any_value = ParseSettingValue(value, false, AnyData::ValueType::String);
+        auto any_value = ParseSettingValue(value, false, AnyData::ValueType::String);
         if (!append) {
             entry = {};
         }
-        const string string_value = utf8_to_string(any_value.AsString());
+        string string_value = utf8_to_string(any_value.AsString());
         istringstream istr {string_value};
         istr >> entry;
     }
     else {
-        const auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Int64);
+        auto any_value = ParseSettingValue(value, false, AnyData::ValueType::Int64);
         if (!append) {
             entry = {};
         }
@@ -171,7 +171,7 @@ static void SetEntry(vector<T>& entry, u8string_view value, bool append)
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (std::same_as<T, string>) {
-        const auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::String);
+        auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::String);
         const auto& arr = arr_value.AsArray();
         vector<string> replacement = append ? entry : vector<string> {};
 
@@ -182,7 +182,7 @@ static void SetEntry(vector<T>& entry, u8string_view value, bool append)
         entry = std::move(replacement);
     }
     else if constexpr (std::same_as<T, u8string>) {
-        const auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::String);
+        auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::String);
         const auto& arr = arr_value.AsArray();
         vector<u8string> replacement = append ? entry : vector<u8string> {};
 
@@ -193,7 +193,7 @@ static void SetEntry(vector<T>& entry, u8string_view value, bool append)
         entry = std::move(replacement);
     }
     else if constexpr (std::same_as<T, bool>) {
-        const auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::Bool);
+        auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::Bool);
         const auto& arr = arr_value.AsArray();
         vector<bool> replacement = append ? entry : vector<bool> {};
 
@@ -204,7 +204,7 @@ static void SetEntry(vector<T>& entry, u8string_view value, bool append)
         entry = std::move(replacement);
     }
     else if constexpr (std::floating_point<T>) {
-        const auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::Float64);
+        auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::Float64);
         const auto& arr = arr_value.AsArray();
         vector<T> replacement = append ? entry : vector<T> {};
 
@@ -215,7 +215,7 @@ static void SetEntry(vector<T>& entry, u8string_view value, bool append)
         entry = std::move(replacement);
     }
     else if constexpr (std::is_enum_v<T>) {
-        const auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::Int64);
+        auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::Int64);
         const auto& arr = arr_value.AsArray();
         vector<T> replacement = append ? entry : vector<T> {};
 
@@ -226,7 +226,7 @@ static void SetEntry(vector<T>& entry, u8string_view value, bool append)
         entry = std::move(replacement);
     }
     else {
-        const auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::Int64);
+        auto arr_value = ParseSettingValue(value, true, AnyData::ValueType::Int64);
         const auto& arr = arr_value.AsArray();
         vector<T> replacement = append ? entry : vector<T> {};
 
@@ -244,7 +244,7 @@ static void DrawEntry(string_view name, const T& entry)
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (std::same_as<T, u8string> || std::same_as<T, vector<u8string>>) {
-        const u8string value = [&]() -> u8string {
+        u8string value = [&]() -> u8string {
             if constexpr (std::same_as<T, u8string>) {
                 return entry;
             }
@@ -252,8 +252,8 @@ static void DrawEntry(string_view name, const T& entry)
                 return JoinUtf8SettingValues(entry);
             }
         }();
-        const u8string text = FormatUtf8("{}: {}", name, value);
-        const string text_chars {utf8_as_char_view(text.view())};
+        u8string text = FormatUtf8("{}: {}", name, value);
+        string text_chars {utf8_as_char_view(text.view())};
         ImGui::TextUnformatted(text_chars.c_str());
     }
     else {
@@ -324,9 +324,9 @@ void GlobalSettings::ApplyConfigAtPath(u8string_view config_name, u8string_view 
         return;
     }
 
-    const u8string config_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(config_dir)} / std::filesystem::path {fs_make_path(config_name)});
+    u8string config_path = fs_path_to_u8string(std::filesystem::path {fs_make_path(config_dir)} / std::filesystem::path {fs_make_path(config_name)});
 
-    if (const auto settings_content = fs_read_file_text(config_path.view())) {
+    if (auto settings_content = fs_read_file_text(config_path.view())) {
         _appliedConfigs.emplace_back(config_path);
 
         auto config = ConfigFile(std::move(*settings_content));
@@ -354,7 +354,7 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
     FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < args.size(); i++) {
-        const u8string_view arg = args.Get(i);
+        u8string_view arg = args.Get(i);
 
         if (arg.empty()) {
             continue;
@@ -365,15 +365,15 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
         }
 
         if (CommandLineArgs::IsOption(arg)) {
-            const bool has_next_arg = i + 1 < args.size();
-            const u8string_view next_arg = args.Get(i + 1);
-            const u8string_view trimmed_arg = TrimSettingValue(arg);
-            const string arg_text = utf8_to_string(trimmed_arg);
-            const string key = arg_text.substr(arg_text.starts_with("--") ? 2 : 1);
-            const u8string_view value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? TrimSettingValue(next_arg) : u8"1";
+            bool has_next_arg = i + 1 < args.size();
+            u8string_view next_arg = args.Get(i + 1);
+            u8string_view trimmed_arg = TrimSettingValue(arg);
+            string arg_text = utf8_to_string(trimmed_arg);
+            string key = arg_text.substr(arg_text.starts_with("--") ? 2 : 1);
+            u8string_view value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? TrimSettingValue(next_arg) : u8"1";
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
-                const u8string_view shown = IsSecretSettingName(key) ? u8"***" : value;
+                u8string_view shown = IsSecretSettingName(key) ? u8"***" : value;
                 WriteLog(LogType::Info, "Set {} to {}", key, shown);
                 SetValue(key, value);
             }
@@ -387,13 +387,13 @@ void GlobalSettings::ApplyInternalConfig()
 
 #include "InternalConfig.gen.inc"
 
-    const string config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
+    string config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
 
     if (strvex(config_str).starts_with("###InternalConfig###")) {
         throw SettingsException("Internal config not patched");
     }
 
-    const u8string config_text = config_str;
+    u8string config_text = config_str;
     auto config = ConfigFile(config_text);
     ApplyConfigFile(config, u8string_view {});
 }
@@ -540,10 +540,10 @@ void GlobalSettings::SetValue(string_view setting_name, u8string_view setting_va
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string owned_setting_name {setting_name};
-    const u8string checked_setting_value {setting_value};
-    const std::u8string_view setting_value_utf8 = checked_setting_value.view().native_view();
-    const bool append = !setting_value_utf8.empty() && setting_value_utf8.front() == u8'+';
+    string owned_setting_name {setting_name};
+    u8string checked_setting_value {setting_value};
+    std::u8string_view setting_value_utf8 = checked_setting_value.view().native_view();
+    bool append = !setting_value_utf8.empty() && setting_value_utf8.front() == u8'+';
     u8string_view value = u8string_view::FromChecked(setting_value_utf8.substr(append ? 1 : 0));
 
     // Resolve environment variables and files
@@ -553,22 +553,22 @@ void GlobalSettings::SetValue(string_view setting_name, u8string_view setting_va
 
     if (pos != std::u8string_view::npos) {
         while (pos != std::u8string_view::npos) {
-            const bool is_env = setting_value_utf8.compare(pos, "$ENV{"_len, u8"$ENV{") == 0;
-            const bool is_file = setting_value_utf8.compare(pos, "$FILE{"_len, u8"$FILE{") == 0;
-            const bool is_target_env = setting_value_utf8.compare(pos, "$TARGET_ENV{"_len, u8"$TARGET_ENV{") == 0;
-            const bool is_target_file = setting_value_utf8.compare(pos, "$TARGET_FILE{"_len, u8"$TARGET_FILE{") == 0;
-            const size_t len = is_env ? "$ENV{"_len : (is_file ? "$FILE{"_len : (is_target_env ? "$TARGET_ENV{"_len : "$TARGET_FILE{"_len));
+            bool is_env = setting_value_utf8.compare(pos, "$ENV{"_len, u8"$ENV{") == 0;
+            bool is_file = setting_value_utf8.compare(pos, "$FILE{"_len, u8"$FILE{") == 0;
+            bool is_target_env = setting_value_utf8.compare(pos, "$TARGET_ENV{"_len, u8"$TARGET_ENV{") == 0;
+            bool is_target_file = setting_value_utf8.compare(pos, "$TARGET_FILE{"_len, u8"$TARGET_FILE{") == 0;
+            size_t len = is_env ? "$ENV{"_len : (is_file ? "$FILE{"_len : (is_target_env ? "$TARGET_ENV{"_len : "$TARGET_FILE{"_len));
 
             if (is_env || is_file || (!_bakingMode && (is_target_env || is_target_file))) {
                 pos += len;
                 size_t end_pos = setting_value_utf8.find(u8'}', pos);
 
                 if (end_pos != std::u8string_view::npos) {
-                    const u8string_view name = u8string_view::FromChecked(setting_value_utf8.substr(pos, end_pos - pos));
+                    u8string_view name = u8string_view::FromChecked(setting_value_utf8.substr(pos, end_pos - pos));
 
                     if (is_env || is_target_env) {
-                        const string variable_name = utf8_to_string(name);
-                        const optional<u8string> env = !variable_name.empty() ? Platform::GetEnvironmentUtf8(string_view_nt_from_span(const_span<char> {variable_name.data(), variable_name.size() + 1})) : std::nullopt;
+                        string variable_name = utf8_to_string(name);
+                        optional<u8string> env = !variable_name.empty() ? Platform::GetEnvironmentUtf8(string_view_nt_from_span(const_span<char> {variable_name.data(), variable_name.size() + 1})) : std::nullopt;
 
                         if (env) {
                             resolved_value.append(u8string_view::FromChecked(setting_value_utf8.substr(prev_pos, pos - prev_pos - len)));
@@ -582,17 +582,17 @@ void GlobalSettings::SetValue(string_view setting_name, u8string_view setting_va
                         }
                     }
                     else {
-                        const u8string name_utf8 {name};
-                        const u8string file_path = fs_is_absolute_path(name_utf8.view()) ? name_utf8 : fs_path_to_u8string(std::filesystem::path {fs_make_path(config_dir)} / std::filesystem::path {fs_make_path(name_utf8.view())});
+                        u8string name_utf8 {name};
+                        u8string file_path = fs_is_absolute_path(name_utf8.view()) ? name_utf8 : fs_path_to_u8string(std::filesystem::path {fs_make_path(config_dir)} / std::filesystem::path {fs_make_path(name_utf8.view())});
                         if (auto file_content = fs_read_file_text(file_path.view())) {
                             std::u8string_view trimmed_file_content = file_content->view().native_view();
-                            const size_t trimmed_begin = trimmed_file_content.find_first_not_of(u8" \n\r\t");
+                            size_t trimmed_begin = trimmed_file_content.find_first_not_of(u8" \n\r\t");
 
                             if (trimmed_begin == std::u8string_view::npos) {
                                 trimmed_file_content = {};
                             }
                             else {
-                                const size_t trimmed_end = trimmed_file_content.find_last_not_of(u8" \n\r\t");
+                                size_t trimmed_end = trimmed_file_content.find_last_not_of(u8" \n\r\t");
                                 trimmed_file_content = trimmed_file_content.substr(trimmed_begin, trimmed_end - trimmed_begin + 1);
                             }
 
@@ -626,7 +626,7 @@ void GlobalSettings::SetValue(string_view setting_name, u8string_view setting_va
         value = resolved_value.view();
     }
 
-    const u8string strict_value {value};
+    u8string strict_value {value};
 
 #define SET_SETTING(sett) \
     SetEntry(sett, strict_value.view(), append); \
@@ -661,8 +661,8 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<ConfigKeyValueMap>>& res_
     FO_STACK_TRACE_ENTRY();
 
     for (ptr<const ConfigKeyValueMap> res_pack : res_packs) {
-        const auto get_map_value = [&](string_view key) -> u8string {
-            const auto it = res_pack->find(key);
+        auto get_map_value = [&](string_view key) -> u8string {
+            auto it = res_pack->find(key);
             return it != res_pack->end() ? u8string {it->second} : u8string {};
         };
 
@@ -738,8 +738,8 @@ void GlobalSettings::AddSubConfigs(const vector<ptr<ConfigKeyValueMap>>& sub_con
     FO_STACK_TRACE_ENTRY();
 
     for (ptr<const ConfigKeyValueMap> sub_config : sub_configs) {
-        const auto get_map_value = [&](string_view key) -> u8string {
-            const auto it = sub_config->find(key);
+        auto get_map_value = [&](string_view key) -> u8string {
+            auto it = sub_config->find(key);
             return it != sub_config->end() ? u8string {it->second} : u8string {};
         };
 
@@ -753,12 +753,12 @@ void GlobalSettings::AddSubConfigs(const vector<ptr<ConfigKeyValueMap>>& sub_con
             throw SettingsException("Sub config name not specifed");
         }
 
-        const u8string parents_value = get_map_value("Parent");
+        u8string parents_value = get_map_value("Parent");
         if (auto parents = u8strex(parents_value).split(u8' '); !parents.empty()) {
             for (const u8string& parent : parents) {
-                const string parent_name = utf8_to_string(parent);
-                const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == parent_name; };
-                const auto it = std::ranges::find_if(_subConfigs, find_predicate);
+                string parent_name = utf8_to_string(parent);
+                auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == parent_name; };
+                auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
                 if (it == _subConfigs.end()) {
                     throw SettingsException("Parent sub config not found", parent_name);
@@ -792,7 +792,7 @@ auto GlobalSettings::Save() const -> map<string, u8string>
 
     for (auto&& [key, value] : _customSettings) {
         if (_appliedSettings.count(key) != 0) {
-            const string formatted_value = strex("{}", value);
+            string formatted_value = strex("{}", value);
             result.emplace(key, formatted_value);
         }
     }
@@ -808,7 +808,7 @@ auto GlobalSettings::Save() const -> map<string, u8string>
                 result.emplace(name, JoinUtf8SettingValues(value));
             }
             else {
-                const string formatted_value = strex("{}", value);
+                string formatted_value = strex("{}", value);
                 result.emplace(name, formatted_value);
             }
         }

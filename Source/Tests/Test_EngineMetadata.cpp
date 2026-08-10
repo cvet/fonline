@@ -67,7 +67,7 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
     };
 
     auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SpriteInfoTestPack");
-    const u8string sprite_info = WriteSpriteInfoFile({entry});
+    u8string sprite_info = WriteSpriteInfoFile({entry});
     source->AddFile("SpriteInfo/TestPack.foinfo", sprite_info.view());
 
     FileSystem resources;
@@ -325,10 +325,10 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
     SECTION("RejectsUnsupportedSpriteInfoVersion")
     {
         FileSystem resources = MakeSpriteAnimationInfoResources();
-        const File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
-        const u8string info_text = info_file.GetText();
-        const string info_ascii = utf8_to_string(info_text.view());
-        const u8string invalid_info = strex(info_ascii).replace("InfoVersion = 1", "InfoVersion = 2");
+        File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
+        u8string info_text = info_file.GetText();
+        string info_ascii = utf8_to_string(info_text.view());
+        u8string invalid_info = strex(info_ascii).replace("InfoVersion = 1", "InfoVersion = 2");
 
         auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
         source->AddFile("SpriteInfo/TestPack.foinfo", invalid_info.view());

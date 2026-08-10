@@ -329,7 +329,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
             writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
             description.Save(writer);
-            const vector<byte> animation_rig_data = WriteModelAnimationRigData(validated.AnimationRigData, file.GetPath());
+            vector<byte> animation_rig_data = WriteModelAnimationRigData(validated.AnimationRigData, file.GetPath());
             writer.Write<uint64_t>(numeric_cast<uint64_t>(animation_rig_data.size()));
             writer.WriteBytes(animation_rig_data);
             _context->WriteData(file.GetPath(), data);
@@ -476,8 +476,8 @@ void ModelDescriptionParser::ParseFile(string_view fname, const vector<pair<stri
     _maxWriteTime = std::max(_maxWriteTime, file.GetWriteTime());
     _includeStack.emplace_back(fname);
 
-    const u8string strict_content = file.GetText();
-    const string content = ApplyModelDescriptionReplacements(utf8_to_char_string(strict_content.view()), replacements);
+    u8string strict_content = file.GetText();
+    string content = ApplyModelDescriptionReplacements(utf8_to_char_string(strict_content.view()), replacements);
     ParseContent(file.GetPath(), content, description, state);
 
     _includeStack.pop_back();
@@ -1637,7 +1637,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
 
             for (int32_t resolved_state : resolved_state_inputs) {
                 for (int32_t resolved_action : resolved_action_inputs) {
-                    const auto [it, inserted] = output_pairs.emplace(resolved_state, resolved_action);
+                    auto [it, inserted] = output_pairs.emplace(resolved_state, resolved_action);
                     ignore_unused(it);
                     FO_VERIFY_AND_THROW(inserted, "Model animation aliases resolve to duplicate output entry", file.GetPath(), resolved_state, resolved_action);
 

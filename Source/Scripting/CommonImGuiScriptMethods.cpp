@@ -2112,14 +2112,14 @@ FO_SCRIPT_API u8string Common_ImGui_GetClipboardText([[maybe_unused]] ptr<Script
         return {};
     }
 
-    const size_t text_size = std::char_traits<char>::length(text.get()) + 1;
+    size_t text_size = std::char_traits<char>::length(text.get()) + 1;
     return utf8_from_terminated_char_span(const_span<char> {text.get(), text_size});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetClipboardText([[maybe_unused]] ptr<ScriptImGui> self, u8string_view text)
 {
-    const u8string clipboard_text {text};
+    u8string clipboard_text {text};
     ImGui::SetClipboardText(utf8_to_c_str(clipboard_text.view_nt()).get());
 }
 

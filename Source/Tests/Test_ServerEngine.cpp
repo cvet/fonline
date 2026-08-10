@@ -83,7 +83,7 @@ namespace
 
     static auto MakeTempServerResourceDir(string_view name) -> u8string
     {
-        const auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+        auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
         return fs_path_to_u8string(base);
     }
 
@@ -146,7 +146,7 @@ namespace
         CHECK_THROWS_WITH(ctx.EnsureEntitySynced(target), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
         // Read before the test releases the contention itself, so this reflects only the watchdog.
-        const bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
+        bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
         ensure_finished.store(true, std::memory_order_release);
         release_state.store(true, std::memory_order_release);
         state_owner.join();
@@ -419,7 +419,7 @@ namespace ServerEngineTest
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const string_view body = mode == ServerTestScriptMode::StopOnInit ? "return EventResult::StopChain;" : string_view {R"(throw("Unit test OnInit failure");
+        string_view body = mode == ServerTestScriptMode::StopOnInit ? "return EventResult::StopChain;" : string_view {R"(throw("Unit test OnInit failure");
         return EventResult::ContinueChain;)"};
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ServerEngineInitGateScripts",
@@ -651,17 +651,17 @@ TEST_CASE("ServerResourcesMountBakedServerEntries")
         SKIP("Baked directory mounting is only used by unpackaged test binaries");
     }
 
-    const u8string temp_dir = MakeTempServerResourceDir("baked_entries");
-    const bool removed_before = fs_remove_dir_tree(temp_dir.view());
+    u8string temp_dir = MakeTempServerResourceDir("baked_entries");
+    bool removed_before = fs_remove_dir_tree(temp_dir.view());
     ignore_unused(removed_before);
 
     auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir.view()); });
 
-    const u8string baked_dir = fs_combine_path(temp_dir.view(), "Baked");
-    const u8string packaged_dir = fs_combine_path(temp_dir.view(), "Packaged");
-    const u8string baked_server_payload = fs_combine_path(baked_dir.view(), "ServerPack/payload.txt");
-    const u8string baked_client_payload = fs_combine_path(baked_dir.view(), "ClientPack/client-only.txt");
-    const u8string packaged_server_payload = fs_combine_path(packaged_dir.view(), "ServerPack/payload.txt");
+    u8string baked_dir = fs_combine_path(temp_dir.view(), "Baked");
+    u8string packaged_dir = fs_combine_path(temp_dir.view(), "Packaged");
+    u8string baked_server_payload = fs_combine_path(baked_dir.view(), "ServerPack/payload.txt");
+    u8string baked_client_payload = fs_combine_path(baked_dir.view(), "ClientPack/client-only.txt");
+    u8string packaged_server_payload = fs_combine_path(packaged_dir.view(), "ServerPack/payload.txt");
 
     REQUIRE(fs_write_file_text(baked_server_payload.view(), u8"baked-server"));
     REQUIRE(fs_write_file_text(baked_client_payload.view(), u8"client"));
@@ -822,7 +822,7 @@ TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
 
 TEST_CASE("ServerEngineWritesHealthFile")
 {
-    const u8string health_file_name = MakeServerHealthFileName();
+    u8string health_file_name = MakeServerHealthFileName();
     RemoveServerHealthFile(health_file_name.view());
 
     auto cleanup_health_file = scope_exit([&health_file_name]() noexcept { RemoveServerHealthFile(health_file_name.view()); });
@@ -860,7 +860,7 @@ TEST_CASE("ServerEngineWritesHealthFile")
     REQUIRE(WaitForUnlockedServerCondition(
         server.get(), locked,
         [&health_file_name, &health_content] {
-            const auto content = fs_read_file_text(health_file_name.view());
+            auto content = fs_read_file_text(health_file_name.view());
 
             if (!content.has_value() || content->view().native_view().find(u8"Server uptime:") == std::u8string_view::npos || content->view().native_view().find(u8"Connections:") == std::u8string_view::npos) {
                 return false;
@@ -1597,7 +1597,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(ctx.ValidateAccess(cr_a));
     CHECK(ctx.ValidateAccess(cr_b));
     CHECK(IsEntityAccessValid(cr_b));
-    const auto retained_children = ctx.GetHeldEntities();
+    auto retained_children = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_children, cr_a_entity) != retained_children.end());
     CHECK(std::ranges::find(retained_children, cr_b_entity) != retained_children.end());
     ctx.Release();
@@ -1658,7 +1658,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
     // Read before the test releases the contention itself, so this reflects only the watchdog.
-    const bool rescued_by_watchdog = release_child.load(std::memory_order_acquire);
+    bool rescued_by_watchdog = release_child.load(std::memory_order_acquire);
     ensure_finished.store(true, std::memory_order_release);
     release_child.store(true, std::memory_order_release);
     child_owner.join();
@@ -1668,7 +1668,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // rather than being rescued by the watchdog letting go.
     CHECK_FALSE(rescued_by_watchdog);
     CHECK(ctx.ValidateAccess(map));
-    const auto retained_cover = ctx.GetHeldEntities();
+    auto retained_cover = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_cover, map_entity) != retained_cover.end());
     CHECK(std::ranges::find(retained_cover, cr_a_entity) == retained_cover.end());
     ctx.Release();
@@ -1683,7 +1683,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ExpectSustainedEnsureStateMutexContentionThrows(ctx, cr_a, target_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_target_state_mutex_contention, map_entity) != cover_after_target_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_target_state_mutex_contention, cr_a_entity) == cover_after_target_state_mutex_contention.end());
         ctx.Release();
@@ -1702,7 +1702,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_intermediate_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_intermediate_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_intermediate_state_mutex_contention, map_entity) != cover_after_intermediate_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_intermediate_state_mutex_contention, nested_item_entity) == cover_after_intermediate_state_mutex_contention.end());
         ctx.Release();
@@ -1723,13 +1723,13 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, second_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
-        const bool first_state_mutex_free = first_lock->TryLockStateMutex();
+        bool first_state_mutex_free = first_lock->TryLockStateMutex();
         REQUIRE(first_state_mutex_free);
         if (first_state_mutex_free) {
             first_lock->UnlockStateMutex();
         }
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_second_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_second_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, map_entity) != cover_after_second_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, nested_item_entity) == cover_after_second_state_mutex_contention.end());
         ctx.Release();
@@ -1747,7 +1747,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 1);
         CHECK(ctx.ValidateAccess(map));
         CHECK(ctx.ValidateAccess(cr_a));
-        const auto cover_after_transient_contention = ctx.GetHeldEntities();
+        auto cover_after_transient_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_transient_contention, map_entity) != cover_after_transient_contention.end());
         CHECK(std::ranges::find(cover_after_transient_contention, cr_a_entity) != cover_after_transient_contention.end());
         ctx.Release();
@@ -1816,7 +1816,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
 
     CHECK(ctx.ValidateAccess(map));
-    const auto retained_cover_after_partial_rollback = ctx.GetHeldEntities();
+    auto retained_cover_after_partial_rollback = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_cover_after_partial_rollback, map_entity) != retained_cover_after_partial_rollback.end());
     CHECK(std::ranges::find(retained_cover_after_partial_rollback, nested_item_entity) == retained_cover_after_partial_rollback.end());
     release_later.store(true, std::memory_order_release);

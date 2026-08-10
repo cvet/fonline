@@ -40,7 +40,7 @@ auto text_format_detail::AdaptUtf8FormatArg(u8string_view value) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto issue = validate_utf8_text(value.native_view())) {
+    if (auto issue = validate_utf8_text(value.native_view())) {
         throw TextValidationException(TextEncoding::Utf8, issue->Error, issue->Offset);
     }
 
