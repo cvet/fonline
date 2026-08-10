@@ -1,9 +1,9 @@
-namespace Serializator
+namespace Serializer
 {
 
 // Data serialization
 
-class Serializator
+class Serializer
 {
     private
     uint8[] dataArray;
@@ -14,7 +14,7 @@ class Serializator
     private
     int dataSize;
 
-    Serializator()
+    Serializer()
     {
         dataArray = array<uint8>();
         curPos = 0;
@@ -22,7 +22,7 @@ class Serializator
         dataSize = 0;
     }
 
-    Serializator(int approxSize)
+    Serializer(int approxSize)
     {
         dataArray = array<uint8>();
         curPos = 0;
@@ -84,7 +84,7 @@ class Serializator
         dataSize = 0;
     }
 
-    Serializator SetCurPos(int pos)
+    Serializer SetCurPos(int pos)
     {
         GrowBuffer(pos);
         curPos = pos;
@@ -94,7 +94,7 @@ class Serializator
         return this;
     }
 
-    Serializator Fill(uint8 value, int length)
+    Serializer Fill(uint8 value, int length)
     {
         GrowBuffer(curPos + length);
         for (int i = 0; i < length; i++) {
@@ -106,7 +106,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const int64& value)
+    Serializer Set(const int64& value)
     {
         GrowBuffer(curPos + 8);
         dataArray[curPos++] = (value >> 56) & 0xFF;
@@ -123,7 +123,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const int& value)
+    Serializer Set(const int& value)
     {
         GrowBuffer(curPos + 4);
         dataArray[curPos++] = (value >> 24) & 0xFF;
@@ -136,7 +136,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const int16& value)
+    Serializer Set(const int16& value)
     {
         GrowBuffer(curPos + 2);
         dataArray[curPos++] = (value >> 8) & 0xFF;
@@ -147,7 +147,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const int8& value)
+    Serializer Set(const int8& value)
     {
         GrowBuffer(curPos + 1);
         dataArray[curPos++] = value;
@@ -157,7 +157,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const uint64& value)
+    Serializer Set(const uint64& value)
     {
         GrowBuffer(curPos + 8);
         dataArray[curPos++] = (value >> 56) & 0xFF;
@@ -174,7 +174,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const uint& value)
+    Serializer Set(const uint& value)
     {
         GrowBuffer(curPos + 4);
         dataArray[curPos++] = (value >> 24) & 0xFF;
@@ -187,7 +187,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const uint16& value)
+    Serializer Set(const uint16& value)
     {
         GrowBuffer(curPos + 2);
         dataArray[curPos++] = (value >> 8) & 0xFF;
@@ -198,7 +198,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const uint8& value)
+    Serializer Set(const uint8& value)
     {
         GrowBuffer(curPos + 1);
         dataArray[curPos++] = value;
@@ -208,7 +208,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const bool& value)
+    Serializer Set(const bool& value)
     {
         GrowBuffer(curPos + 1);
         dataArray[curPos++] = value ? 1 : 0;
@@ -218,7 +218,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const string& value)
+    Serializer Set(const string& value)
     {
         int len = value.rawLength();
         GrowBuffer(curPos + len + 1);
@@ -232,37 +232,37 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const hstring& value)
+    Serializer Set(const hstring& value)
     {
         return Set(value.str);
     }
 
-    Serializator Set(const ident& value)
+    Serializer Set(const ident& value)
     {
         return Set(value.value);
     }
 
-    Serializator Set(const timespan& value)
+    Serializer Set(const timespan& value)
     {
         return Set(value.nanoseconds);
     }
 
-    Serializator Set(const synctime& value)
+    Serializer Set(const synctime& value)
     {
         return Set(value.milliseconds);
     }
 
-    Serializator Set(const ucolor& value)
+    Serializer Set(const ucolor& value)
     {
         return Set(value.value);
     }
 
-    Serializator Set(const any& value)
+    Serializer Set(const any& value)
     {
         return Set(string(value));
     }
 
-    Serializator Set(const int64[] values)
+    Serializer Set(const int64[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen * 8;
@@ -277,7 +277,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const int[] values)
+    Serializer Set(const int[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen * 4;
@@ -292,7 +292,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const int16[] values)
+    Serializer Set(const int16[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen * 2;
@@ -307,7 +307,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const int8[] values)
+    Serializer Set(const int8[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen;
@@ -322,7 +322,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const uint64[] values)
+    Serializer Set(const uint64[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen * 8;
@@ -337,7 +337,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const uint[] values)
+    Serializer Set(const uint[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen * 4;
@@ -352,7 +352,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const uint16[] values)
+    Serializer Set(const uint16[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen * 2;
@@ -367,7 +367,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const uint8[] values)
+    Serializer Set(const uint8[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen;
@@ -382,7 +382,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const bool[] values)
+    Serializer Set(const bool[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen;
@@ -397,7 +397,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const string[] values)
+    Serializer Set(const string[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen; // Length and zeros
@@ -415,7 +415,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const hstring[] values)
+    Serializer Set(const hstring[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen; // Length and zeros
@@ -433,7 +433,7 @@ class Serializator
         return this;
     }
 
-    Serializator Set(const ident[] values)
+    Serializer Set(const ident[] values)
     {
         int valuesLen = values.length();
         int len = 4 + valuesLen * 8;
@@ -448,7 +448,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(int64& value)
+    Serializer Get(int64& value)
     {
         value = 0;
         if (curPos + 8 > dataSize) {
@@ -465,7 +465,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(int& value)
+    Serializer Get(int& value)
     {
         value = 0;
         if (curPos + 4 > dataSize) {
@@ -478,7 +478,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(int16& value)
+    Serializer Get(int16& value)
     {
         value = 0;
         if (curPos + 2 > dataSize) {
@@ -489,7 +489,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(int8& value)
+    Serializer Get(int8& value)
     {
         value = 0;
         if (curPos + 1 > dataSize) {
@@ -499,7 +499,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(uint64& value)
+    Serializer Get(uint64& value)
     {
         value = 0;
         if (curPos + 8 > dataSize) {
@@ -516,7 +516,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(uint& value)
+    Serializer Get(uint& value)
     {
         value = 0;
         if (curPos + 4 > dataSize) {
@@ -529,7 +529,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(uint16& value)
+    Serializer Get(uint16& value)
     {
         value = 0;
         if (curPos + 2 > dataSize) {
@@ -540,7 +540,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(uint8& value)
+    Serializer Get(uint8& value)
     {
         value = 0;
         if (curPos + 1 > dataSize) {
@@ -550,7 +550,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(bool& value)
+    Serializer Get(bool& value)
     {
         value = false;
         if (curPos + 1 > dataSize) {
@@ -560,7 +560,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(string& str)
+    Serializer Get(string& str)
     {
         int len = 0;
         for (int i = curPos;; i++) {
@@ -581,7 +581,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(hstring& value)
+    Serializer Get(hstring& value)
     {
         string str;
         Get(str);
@@ -589,13 +589,13 @@ class Serializator
         return this;
     }
 
-    Serializator Get(ident& value)
+    Serializer Get(ident& value)
     {
         Get(value.value);
         return this;
     }
 
-    Serializator Get(timespan& value)
+    Serializer Get(timespan& value)
     {
         int64 i = 0;
         Get(i);
@@ -603,7 +603,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(synctime& value)
+    Serializer Get(synctime& value)
     {
         int64 i = 0;
         Get(i);
@@ -611,13 +611,13 @@ class Serializator
         return this;
     }
 
-    Serializator Get(ucolor& value)
+    Serializer Get(ucolor& value)
     {
         Get(value.value);
         return this;
     }
 
-    Serializator Get(any& value)
+    Serializer Get(any& value)
     {
         string str;
         Get(str);
@@ -625,7 +625,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(int64[] values)
+    Serializer Get(int64[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -636,7 +636,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(int[] values)
+    Serializer Get(int[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -647,7 +647,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(int16[] values)
+    Serializer Get(int16[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -658,7 +658,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(int8[] values)
+    Serializer Get(int8[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -669,7 +669,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(uint64[] values)
+    Serializer Get(uint64[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -680,7 +680,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(uint[] values)
+    Serializer Get(uint[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -691,7 +691,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(uint16[] values)
+    Serializer Get(uint16[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -702,7 +702,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(uint8[] values)
+    Serializer Get(uint8[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -713,7 +713,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(bool[] values)
+    Serializer Get(bool[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -724,7 +724,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(string[] values)
+    Serializer Get(string[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -735,7 +735,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(hstring[] values)
+    Serializer Get(hstring[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);
@@ -746,7 +746,7 @@ class Serializator
         return this;
     }
 
-    Serializator Get(ident[] values)
+    Serializer Get(ident[] values)
     {
         int valuesLen = 0;
         Get(valuesLen);

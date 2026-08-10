@@ -42,10 +42,10 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(PropertySerializationException);
 
-class PropertiesSerializator final
+class PropertiesSerializer final
 {
 public:
-    PropertiesSerializator() = delete;
+    PropertiesSerializer() = delete;
 
     [[nodiscard]] static auto SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document;
     [[nodiscard]] static auto LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool;

@@ -184,10 +184,10 @@ namespace BakerTests
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = meta.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = meta.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoType proto {meta.Hashes.ToHashedString(proto_name), registrator};
+        ProtoType proto {meta.Hashes.ToHashedString(proto_name), registrar};
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
@@ -227,7 +227,7 @@ namespace BakerTests
         writer.WriteStringBytes(type_name.as_str());
 
         for (const auto& [proto_name, configure] : protos) {
-            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
+            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrar(type_name)};
 
             if (configure) {
                 configure(proto);

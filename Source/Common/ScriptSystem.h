@@ -72,7 +72,7 @@ class FileSystem;
 
 class Property;
 class PropertyRawData;
-class PropertyRegistrator;
+class PropertyRegistrar;
 
 class EngineMetadata;
 class BaseEngine;
@@ -84,7 +84,7 @@ using ScriptSelfEntity = Entity;
 class DynamicRefTypeInstance final : public RefCounted<DynamicRefTypeInstance>
 {
 public:
-    explicit DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept;
+    explicit DynamicRefTypeInstance(ptr<const PropertyRegistrar> registrar) noexcept;
     DynamicRefTypeInstance(const DynamicRefTypeInstance&) = delete;
     DynamicRefTypeInstance(DynamicRefTypeInstance&&) = delete;
     auto operator=(const DynamicRefTypeInstance&) -> DynamicRefTypeInstance& = delete;
@@ -101,7 +101,7 @@ private:
     [[nodiscard]] auto GetProps() noexcept -> ptr<Properties>;
     [[nodiscard]] auto GetProps() const noexcept -> ptr<const Properties>;
 
-    ptr<const PropertyRegistrator> _registrator;
+    ptr<const PropertyRegistrar> _registrar;
     optional<Properties> _props {};
     vector<uint8_t> _cachedRawData {};
     bool _cachedRawDataDirty {};

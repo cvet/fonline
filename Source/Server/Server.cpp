@@ -40,7 +40,7 @@
 #include "ImGuiStuff.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
-#include "PropertiesSerializator.h"
+#include "PropertiesSerializer.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -400,7 +400,7 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
     register_collection(HashReportsCollectionName, DataBaseKeyType::String);
 
     for (const auto& type_desc : entity_types | std::views::values) {
-        register_collection(type_desc.PropRegistrator->GetTypeNamePlural(), DataBaseKeyType::IntId);
+        register_collection(type_desc.PropRegistrar->GetTypeNamePlural(), DataBaseKeyType::IntId);
     }
     for (const auto& entry : Settings->CustomCollections) {
         register_custom_collection(entry);
@@ -434,10 +434,10 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
     sync_time_prop->AddPostSetter(wrap_post_setter(&ServerEngine::OnSaveSynchronizedTime));
 
     for (const auto& type_desc : GetEntityTypes() | std::views::values) {
-        const auto& registrator = type_desc.PropRegistrator;
+        const auto& registrar = type_desc.PropRegistrar;
 
-        for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-            auto prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
+            auto prop = registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
             FO_VERIFY_AND_THROW(prop, "Property not found by index");
 
             if (prop->IsDisabled()) {
@@ -456,13 +456,13 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 
     // Properties that sending to clients
     {
-        auto set_send_callbacks = [](nptr<const PropertyRegistrator> registrator, const PropertyPostSetCallback& callback) {
-            FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-            auto registrator_ptr = registrator;
-            FO_VERIFY_AND_THROW(registrator_ptr, "Property registrator pointer is null");
+        auto set_send_callbacks = [](nptr<const PropertyRegistrar> registrar, const PropertyPostSetCallback& callback) {
+            FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
+            auto registrar_ptr = registrar;
+            FO_VERIFY_AND_THROW(registrar_ptr, "Property registrar pointer is null");
 
-            for (size_t i = 1; i < registrator_ptr->GetPropertiesCount(); i++) {
-                auto prop = registrator_ptr->GetPropertyByIndex(numeric_cast<int32_t>(i));
+            for (size_t i = 1; i < registrar_ptr->GetPropertiesCount(); i++) {
+                auto prop = registrar_ptr->GetPropertyByIndex(numeric_cast<int32_t>(i));
                 FO_VERIFY_AND_THROW(prop, "Property not found by index");
 
                 if (prop->IsDisabled()) {
@@ -476,56 +476,56 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendGlobalValue));
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendPlayerValue));
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendItemValue));
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendCritterValue));
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendMapValue));
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendLocationValue));
+        set_send_callbacks(GetPropertyRegistrar(GameProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendGlobalValue));
+        set_send_callbacks(GetPropertyRegistrar(PlayerProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendPlayerValue));
+        set_send_callbacks(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendItemValue));
+        set_send_callbacks(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendCritterValue));
+        set_send_callbacks(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendMapValue));
+        set_send_callbacks(GetPropertyRegistrar(LocationProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ServerEngine::OnSendLocationValue));
 
         for (const auto& type_desc : GetEntityTypes() | std::views::values) {
             if (type_desc.Exported) {
                 continue;
             }
 
-            set_send_callbacks(type_desc.PropRegistrator, wrap_post_setter(&ServerEngine::OnSendCustomEntityValue));
+            set_send_callbacks(type_desc.PropRegistrar, wrap_post_setter(&ServerEngine::OnSendCustomEntityValue));
         }
     }
 
     // Properties with custom behaviours
     {
-        auto set_setter = [](nptr<const PropertyRegistrator> registrator, int32_t prop_index, PropertySetCallback callback) {
-            FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-            auto registrator_ptr = registrator;
-            FO_VERIFY_AND_THROW(registrator_ptr, "Property registrator pointer is null");
+        auto set_setter = [](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertySetCallback callback) {
+            FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
+            auto registrar_ptr = registrar;
+            FO_VERIFY_AND_THROW(registrar_ptr, "Property registrar pointer is null");
 
-            auto prop = registrator_ptr->GetPropertyByIndex(prop_index);
+            auto prop = registrar_ptr->GetPropertyByIndex(prop_index);
             FO_VERIFY_AND_THROW(prop, "Property not found by index");
             prop->AddSetter(std::move(callback));
         };
-        auto set_post_setter = [](nptr<const PropertyRegistrator> registrator, int32_t prop_index, PropertyPostSetCallback callback) {
-            FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-            auto registrator_ptr = registrator;
-            FO_VERIFY_AND_THROW(registrator_ptr, "Property registrator pointer is null");
+        auto set_post_setter = [](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertyPostSetCallback callback) {
+            FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
+            auto registrar_ptr = registrar;
+            FO_VERIFY_AND_THROW(registrar_ptr, "Property registrar pointer is null");
 
-            auto prop = registrator_ptr->GetPropertyByIndex(prop_index);
+            auto prop = registrar_ptr->GetPropertyByIndex(prop_index);
             FO_VERIFY_AND_THROW(prop, "Property not found by index");
             prop->AddPostSetter(std::move(callback));
         };
 
-        set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, wrap_post_setter(&ServerEngine::OnSetCritterLookDistance));
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) FO_DEFERRED {
+        set_post_setter(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, wrap_post_setter(&ServerEngine::OnSetCritterLookDistance));
+        set_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) FO_DEFERRED {
             FO_VERIFY_AND_THROW(entity, "Missing entity in property setter");
             auto entity_ptr = entity;
             FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
             OnSetItemCount(entity_ptr, prop, data.GetPtr());
         });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemHidden));
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemMultihexLines));
+        set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemHidden));
+        set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
+        set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
+        set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
+        set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
+        set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemMultihexLines));
     }
 
     return std::nullopt;
@@ -588,7 +588,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
         }
         else {
-            if (!PropertiesSerializator::LoadFromDocument(GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
+            if (!PropertiesSerializer::LoadFromDocument(GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
                 throw ServerInitException("Failed to load globals document");
             }
         }
@@ -741,9 +741,9 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 
     // Sample server stats at the sync tick: online counts, uptime, job throughput and CPU load.
     {
-        scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
-        _stats.CurOnline = _unloginedPlayers.size() + EntityMngr.GetPlayersCount();
+        _stats.CurOnline = _notLoggedInPlayers.size() + EntityMngr.GetPlayersCount();
         _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
     }
 
@@ -771,50 +771,50 @@ auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
     return std::chrono::nanoseconds {Settings->FrameTimePeriodNs};
 }
 
-void ServerEngine::OnPlayerConnected(ptr<Player> unlogined_player)
+void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(unlogined_player.as_uintptr())};
+    auto key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
     ScopedSyncContext ctx;
 
-    // CreateUnloginedPlayer already holds the session in the unlogined list, but on the network
+    // CreateNotLoggedInPlayer already holds the session in the not-logged-in list, but on the network
     // thread nothing covers it yet. Capture its own lock in this context before the connection
     // callback and the worker job can reach it.
-    ctx.GetContext().EnsureFreshEntitySynced(unlogined_player);
-    unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+    ctx.GetContext().EnsureFreshEntitySynced(not_logged_in_player);
+    not_logged_in_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
     scope_fail rollback_publication {[&]() noexcept {
         safe_call([&] {
-            scoped_lock locker {_unloginedPlayersLocker};
-            vec_remove_unique_value(_unloginedPlayers, unlogined_player.hold_ref());
+            scoped_lock locker {_notLoggedInPlayersLocker};
+            vec_remove_unique_value(_notLoggedInPlayers, not_logged_in_player.hold_ref());
         });
-        safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
-        safe_call([&] { unlogined_player->MarkAsDestroyed(); });
+        safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { not_logged_in_player->MarkAsDestroyed(); });
     }};
 
-    _workerPool->Submit(key, [this, unlogined_player_ = unlogined_player.hold_ref()]() mutable -> std::optional<timespan> { return UnloginedPlayerJob(unlogined_player_); });
+    _workerPool->Submit(key, [this, not_logged_in_player_ = not_logged_in_player.hold_ref()]() mutable -> std::optional<timespan> { return NotLoggedInPlayerJob(not_logged_in_player_); });
     rollback_publication.release();
 }
 
-auto ServerEngine::UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::optional<timespan>
+auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
     auto ctx = RequireCurrentSyncContext();
-    ctx->SyncEntity(unlogined_player);
+    ctx->SyncEntity(not_logged_in_player);
 
-    if (unlogined_player->IsDestroyed()) {
+    if (not_logged_in_player->IsDestroyed()) {
         return std::nullopt;
     }
 
-    auto connection = unlogined_player->GetConnection();
+    auto connection = not_logged_in_player->GetConnection();
 
     try {
-        ProcessConnection(unlogined_player);
-        ProcessUnloginedPlayer(unlogined_player);
+        ProcessConnection(not_logged_in_player);
+        ProcessNotLoggedInPlayer(not_logged_in_player);
     }
     catch (const UnknownMessageException&) {
         WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
@@ -834,24 +834,24 @@ auto ServerEngine::UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::opti
         ReportExceptionAndContinue(ex);
     }
 
-    if (unlogined_player->IsDestroyed()) {
+    if (not_logged_in_player->IsDestroyed()) {
         return std::nullopt;
     }
 
     return std::chrono::milliseconds {Settings->ConnectionProcessPeriodMs};
 }
 
-void ServerEngine::OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_player)
+void ServerEngine::OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (unlogined_player) {
-        auto unlogined_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(unlogined_player.as_uintptr())};
-        _workerPool->Cancel(unlogined_key);
+    if (not_logged_in_player) {
+        auto not_logged_in_key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
+        _workerPool->Cancel(not_logged_in_key);
     }
 
-    if (!unlogined_player || !(player == unlogined_player)) {
-        auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(player.as_uintptr())};
+    if (!not_logged_in_player || !(player == not_logged_in_player)) {
+        auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(player.as_uintptr())};
         _workerPool->Cancel(same_addr_key);
     }
 
@@ -1188,8 +1188,8 @@ void ServerEngine::Shutdown()
         DbStorage.WaitCommitChanges();
     }
 
-    // Logined players
-    WriteLog("Shutdown stage: disconnect logined players (count={})", EntityMngr.GetPlayersCount());
+    // LoggedIn players
+    WriteLog("Shutdown stage: disconnect logged-in players (count={})", EntityMngr.GetPlayersCount());
 
     vector<refcount_ptr<Player>> players = EntityMngr.GetPlayers();
 
@@ -1198,21 +1198,21 @@ void ServerEngine::Shutdown()
         player->GetConnection()->HardDisconnect();
     }
 
-    // Unlogined players
-    WriteLog("Shutdown stage: disconnect unlogined players");
+    // NotLoggedIn players
+    WriteLog("Shutdown stage: disconnect not-logged-in players");
 
     {
-        scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
-        for (auto& player : _unloginedPlayers) {
-            // Unlogined players are not in the entity registry, so the whole-world lock above did not
+        for (auto& player : _notLoggedInPlayers) {
+            // NotLoggedIn players are not in the entity registry, so the whole-world lock above did not
             // reach them; capture each one before the validated disconnect/destroy touches.
             EnsureEntitySynced(player);
             player->GetConnection()->HardDisconnect();
             player->MarkAsDestroyed();
         }
 
-        _unloginedPlayers.clear();
+        _notLoggedInPlayers.clear();
     }
 
     // Done
@@ -1388,11 +1388,11 @@ void ServerEngine::DrawGui()
     auto draw_properties_table = [&info_row, &begin_info_table](ptr<const Entity> entity) {
         if (begin_info_table("##PropsTable")) {
             auto props = entity->GetProperties();
-            auto registrator = props->GetRegistrator();
-            size_t props_count = registrator->GetPropertiesCount();
+            auto registrar = props->GetRegistrar();
+            size_t props_count = registrar->GetPropertiesCount();
 
             for (size_t i = 1; i < props_count; ++i) {
-                auto prop = registrator->GetPropertyByIndexUnsafe(i);
+                auto prop = registrar->GetPropertyByIndexUnsafe(i);
 
                 if (prop->IsDisabled()) {
                     continue;
@@ -1694,7 +1694,7 @@ void ServerEngine::DrawGui()
 
                     info_row("Id", strex("{}", player->GetId()).str());
                     info_row("Name", player->GetName());
-                    info_row("Logined", strex("{}", player->GetLogined()).str());
+                    info_row("LoggedIn", strex("{}", player->GetLoggedIn()).str());
                     info_row("Host", connection->GetHost());
                     info_row("Port", strex("{}", connection->GetPort()).str());
                     info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
@@ -1727,19 +1727,19 @@ void ServerEngine::DrawGui()
     }
 
     {
-        scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
-        if (ImGui::CollapsingHeader(strex("Unlogined players ({})###UnloginedPlayers", _unloginedPlayers.size()).c_str())) {
+        if (ImGui::CollapsingHeader(strex("NotLoggedIn players ({})###NotLoggedInPlayers", _notLoggedInPlayers.size()).c_str())) {
             int32_t index = 0;
 
-            for (const auto& player : _unloginedPlayers) {
+            for (const auto& player : _notLoggedInPlayers) {
                 ImGui::PushID(index++);
 
                 auto connection = player->GetConnection();
                 string label = strex("{}:{}", connection->GetHost(), connection->GetPort()).str();
 
                 if (ImGui::TreeNode(label.c_str())) {
-                    if (begin_info_table("##UnloginedSummary")) {
+                    if (begin_info_table("##NotLoggedInSummary")) {
                         auto connection_diagnostics = connection->GetDiagnostics();
 
                         info_row("Host", connection->GetHost());
@@ -1908,10 +1908,10 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
         size_t cur_players;
 
         {
-            scoped_lock locker {_unloginedPlayersLocker};
+            scoped_lock locker {_notLoggedInPlayersLocker};
 
             cur_players = EntityMngr.GetPlayersCount();
-            cur_connections = _unloginedPlayers.size() + cur_players;
+            cur_connections = _notLoggedInPlayers.size() + cur_players;
         }
 
         if (!ShouldAcceptConnection(cur_connections, cur_players, Settings->MaxConnections, Settings->MaxPlayers)) {
@@ -1922,54 +1922,54 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
         }
     }
 
-    CreateUnloginedPlayer(std::move(net_connection));
+    CreateNotLoggedInPlayer(std::move(net_connection));
 }
 
-auto ServerEngine::CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>
+auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Player> unlogined_player = [&]() -> ptr<Player> {
-        scoped_lock locker {_unloginedPlayersLocker};
+    ptr<Player> not_logged_in_player = [&]() -> ptr<Player> {
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
         auto connection = SafeAlloc::MakeUnique<ServerConnection>(Settings, std::move(net_connection));
         auto new_player = SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, std::move(connection));
-        _unloginedPlayers.emplace_back(std::move(new_player));
-        return _unloginedPlayers.back();
+        _notLoggedInPlayers.emplace_back(std::move(new_player));
+        return _notLoggedInPlayers.back();
     }();
 
-    // Widen the outer SyncContext's cover to include the freshly-created unlogined player so
-    // the caller (script via `Game.CreateUnloginedPlayer()` or any engine path running inside
+    // Widen the outer SyncContext's cover to include the freshly-created not-logged-in player so
+    // the caller (script via `Game.CreateNotLoggedInPlayer()` or any engine path running inside
     // a job's SyncContext) can immediately read/write its properties without a separate
     // `Sync::Lock(player)`. This is a creation boundary - the session shell has no cover yet, so
     // it goes through the trusted fresh capture rather than ordinary retention. Network-thread
     // path has no current context - the conditional skips safely there.
     if (auto outermost = SyncContext::GetOutermostOnThisThread()) {
-        outermost->EnsureFreshEntitySynced(unlogined_player);
+        outermost->EnsureFreshEntitySynced(not_logged_in_player);
     }
 
-    OnPlayerConnected(unlogined_player);
-    return unlogined_player;
+    OnPlayerConnected(not_logged_in_player);
+    return not_logged_in_player;
 }
 
-void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
+void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto connection = unlogined_player->GetConnection();
+    auto connection = not_logged_in_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
 
-        auto player_holder = unlogined_player.hold_ref();
+        auto player_holder = not_logged_in_player.hold_ref();
 
-        scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
-        auto it = std::ranges::find(_unloginedPlayers, player_holder);
+        auto it = std::ranges::find(_notLoggedInPlayers, player_holder);
 
-        if (it != _unloginedPlayers.end()) {
-            _unloginedPlayers.erase(it);
-            unlogined_player->MarkAsDestroyed();
+        if (it != _notLoggedInPlayers.end()) {
+            _notLoggedInPlayers.erase(it);
+            not_logged_in_player->MarkAsDestroyed();
         }
 
         return;
@@ -1995,7 +1995,7 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
 
         if (!connection->IsHandshakeComplete()) {
             if (msg == NetMessage::Handshake) {
-                Process_Handshake(unlogined_player);
+                Process_Handshake(not_logged_in_player);
             }
             else {
                 throw GenericException("Expected handshake message", msg);
@@ -2004,8 +2004,8 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
         else {
             switch (msg) {
             case NetMessage::Ping:
-                Process_Ping(unlogined_player);
-                unlogined_player->Send_TimeSync();
+                Process_Ping(not_logged_in_player);
+                not_logged_in_player->Send_TimeSync();
                 break;
             case NetMessage::GetUpdateFile: {
                 if (!_updaterBackend) {
@@ -2015,19 +2015,19 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
                 }
 
                 auto updater_backend = make_ptr(&*_updaterBackend);
-                updater_backend->ProcessUpdateFile(unlogined_player, Settings->UpdateFileMaxPortionSize);
+                updater_backend->ProcessUpdateFile(not_logged_in_player, Settings->UpdateFileMaxPortionSize);
                 connection->RegisterLoginProgress(GameTime.GetFrameTime());
                 break;
             }
             case NetMessage::RemoteCall:
-                Process_RemoteCall(unlogined_player);
+                Process_RemoteCall(not_logged_in_player);
                 connection->RegisterLoginProgress(GameTime.GetFrameTime());
                 break;
             case NetMessage::UnresolvedHash:
                 Process_UnresolvedHash(connection);
                 break;
             default:
-                throw GenericException("Unexpected unlogined player message", msg);
+                throw GenericException("Unexpected not-logged-in player message", msg);
             }
         }
 
@@ -2823,9 +2823,9 @@ void ServerEngine::BroadcastReportedString(string_view reported_string)
     }
 
     {
-        scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
-        for (auto& player : _unloginedPlayers) {
+        for (auto& player : _notLoggedInPlayers) {
             player->Send_HashList(hash_strings);
         }
     }
@@ -2850,21 +2850,21 @@ void ServerEngine::Process_Ping(ptr<Player> player)
     }
 }
 
-auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<Player>
+auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!unlogined_player->GetLogined(), "Unlogged player is already marked as logged in");
+    FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
 
-    auto player_holder = unlogined_player.hold_ref();
+    auto player_holder = not_logged_in_player.hold_ref();
 
     {
-        scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
-        vec_remove_unique_value(_unloginedPlayers, player_holder);
+        vec_remove_unique_value(_notLoggedInPlayers, player_holder);
     }
 
-    auto player = unlogined_player;
+    auto player = not_logged_in_player;
     bool registered_player = false;
     bool inserted_player_record = false;
 
@@ -2873,7 +2873,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<P
             safe_call([&] { DbStorage.Delete(PlayersCollectionName, player->GetId()); });
         }
 
-        safe_call([&] { player->SetLogined(false); });
+        safe_call([&] { player->SetLoggedIn(false); });
         safe_call([&] { player->GetConnection()->HardDisconnect(); });
 
         if (registered_player) {
@@ -2887,11 +2887,11 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<P
     EntityMngr.RegisterPlayer(player, ident_t {});
     registered_player = true;
 
-    auto player_doc = PropertiesSerializator::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this);
+    auto player_doc = PropertiesSerializer::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this);
     DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
     inserted_player_record = true;
 
-    player->SetLogined(true);
+    player->SetLoggedIn(true);
     player->Send_LoginSuccess();
 
     ValidateEntityAccess(player);
@@ -2902,7 +2902,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<P
         auto connection = player->GetConnection();
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
-        player->SetLogined(false);
+        player->SetLoggedIn(false);
         player->DetachCritter();
         player->ResetViewMap();
         player->MarkAsDestroyed();
@@ -2913,48 +2913,48 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<P
         throw GenericException("New player login rejected by OnPlayerLogin");
     }
 
-    OnPlayerLogined(player, unlogined_player);
+    OnPlayerLoggedIn(player, not_logged_in_player);
 
     return player;
 }
 
-auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> ptr<Player>
+auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player, ident_t player_id) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!unlogined_player->GetLogined(), "Unlogged player is already marked as logged in");
+    FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
     FO_VERIFY_AND_THROW(player_id, "Missing required player id");
 
-    auto player_holder = unlogined_player.hold_ref();
+    auto player_holder = not_logged_in_player.hold_ref();
 
     {
-        scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
-        vec_remove_unique_value(_unloginedPlayers, player_holder);
+        vec_remove_unique_value(_notLoggedInPlayers, player_holder);
     }
 
     refcount_nptr<Player> player_ref {};
     nptr<Player> player {};
     bool registered_player = false;
     bool reconnect_swapped = false;
-    bool destroy_unlogined_after_login = false;
+    bool destroy_not_logged_in_after_login = false;
 
     scope_fail disconnect_on_error {[&]() noexcept {
         if (reconnect_swapped && player) {
-            safe_call([&] { player->SwapConnection(unlogined_player); });
+            safe_call([&] { player->SwapConnection(not_logged_in_player); });
         }
 
-        safe_call([&] { unlogined_player->SetLogined(false); });
-        safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { not_logged_in_player->SetLoggedIn(false); });
+        safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(); });
 
         if (registered_player) {
-            safe_call([&] { unlogined_player->DetachCritter(); });
-            safe_call([&] { unlogined_player->ResetViewMap(); });
-            safe_call([&] { unlogined_player->MarkAsDestroyed(); });
-            safe_call([&] { EntityMngr.UnregisterPlayer(unlogined_player); });
+            safe_call([&] { not_logged_in_player->DetachCritter(); });
+            safe_call([&] { not_logged_in_player->ResetViewMap(); });
+            safe_call([&] { not_logged_in_player->MarkAsDestroyed(); });
+            safe_call([&] { EntityMngr.UnregisterPlayer(not_logged_in_player); });
         }
         else {
-            safe_call([&] { unlogined_player->MarkAsDestroyed(); });
+            safe_call([&] { not_logged_in_player->MarkAsDestroyed(); });
         }
     }};
 
@@ -2962,15 +2962,15 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
     player = player_ref;
 
     if (!player) {
-        player = unlogined_player;
-        FO_VERIFY_AND_THROW(player, "Player must resolve to the unlogined player when the stored record is absent");
+        player = not_logged_in_player;
+        FO_VERIFY_AND_THROW(player, "Player must resolve to the not-logged-in player when the stored record is absent");
 
         auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
         if (player_doc.Empty()) {
             throw GenericException("Player data not found");
         }
-        if (!PropertiesSerializator::LoadFromDocument(player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
+        if (!PropertiesSerializer::LoadFromDocument(player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
             throw GenericException("Invalid player data");
         }
 
@@ -2981,7 +2981,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
             player->SetName(AnyData::ValueToString(player_doc["_Name"]));
         }
 
-        player->SetLogined(true);
+        player->SetLoggedIn(true);
         player->Send_LoginSuccess();
 
         ValidateEntityAccess(player);
@@ -2990,7 +2990,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
 
         if (login_result == Entity::EventResult::StopChain) {
             auto connection = player->GetConnection();
-            player->SetLogined(false);
+            player->SetLoggedIn(false);
             player->DetachCritter();
             player->ResetViewMap();
             player->MarkAsDestroyed();
@@ -3006,27 +3006,27 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         // its cover here: OnPlayerLogin and initial-info delivery may need the controlled critter,
         // map, and location in addition to both player entities.
         ValidateEntityAccess(player);
-        ValidateEntityAccess(unlogined_player);
+        ValidateEntityAccess(not_logged_in_player);
 
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Existing player was destroyed before reconnect");
-        FO_VERIFY_AND_THROW(!unlogined_player->IsDestroyed(), "Unlogined player was destroyed before reconnect");
+        FO_VERIFY_AND_THROW(!not_logged_in_player->IsDestroyed(), "NotLoggedIn player was destroyed before reconnect");
 
         // Kick previous
-        player->SwapConnection(unlogined_player);
+        player->SwapConnection(not_logged_in_player);
         reconnect_swapped = true;
-        unlogined_player->GetConnection()->HardDisconnect();
+        not_logged_in_player->GetConnection()->HardDisconnect();
         player->Send_LoginSuccess();
 
         ValidateEntityAccess(player);
-        ValidateEntityAccess(unlogined_player);
+        ValidateEntityAccess(not_logged_in_player);
 
-        EventResult login_result = OnPlayerLogin.Fire(player, unlogined_player);
+        EventResult login_result = OnPlayerLogin.Fire(player, not_logged_in_player);
 
         if (login_result == Entity::EventResult::StopChain) {
-            player->SetLogined(false);
+            player->SetLoggedIn(false);
             player->GetConnection()->GracefulDisconnect();
-            unlogined_player->SetLogined(false);
-            unlogined_player->MarkAsDestroyed();
+            not_logged_in_player->SetLoggedIn(false);
+            not_logged_in_player->MarkAsDestroyed();
             disconnect_on_error.release();
             throw GenericException("Player reconnect rejected by OnPlayerLogin");
         }
@@ -3037,40 +3037,40 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
             SendCritterInitialInfo(cr, nullptr);
         }
 
-        destroy_unlogined_after_login = true;
+        destroy_not_logged_in_after_login = true;
     }
 
-    OnPlayerLogined(player, unlogined_player);
+    OnPlayerLoggedIn(player, not_logged_in_player);
 
-    if (destroy_unlogined_after_login) {
+    if (destroy_not_logged_in_after_login) {
         // Keep the displaced player alive until scheduling succeeds so scope_fail can still swap
-        // the connection back if OnPlayerLogined throws.
-        unlogined_player->MarkAsDestroyed();
+        // the connection back if OnPlayerLoggedIn throws.
+        not_logged_in_player->MarkAsDestroyed();
     }
 
     disconnect_on_error.release();
     return player;
 }
 
-auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr<Player>
+auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!unlogined_player->GetLogined(), "Unlogged player is already marked as logged in");
+    FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
 
-    auto player_holder = unlogined_player.hold_ref();
+    auto player_holder = not_logged_in_player.hold_ref();
 
     {
-        scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_notLoggedInPlayersLocker};
 
-        vec_remove_unique_value(_unloginedPlayers, player_holder);
+        vec_remove_unique_value(_notLoggedInPlayers, player_holder);
     }
 
-    ptr<Player> player = unlogined_player;
+    ptr<Player> player = not_logged_in_player;
     bool registered_player = false;
 
     scope_fail disconnect_on_error {[&]() noexcept {
-        safe_call([&] { player->SetLogined(false); });
+        safe_call([&] { player->SetLoggedIn(false); });
         safe_call([&] { player->GetConnection()->HardDisconnect(); });
 
         if (registered_player) {
@@ -3083,7 +3083,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr
     EntityMngr.RegisterPlayer(player, ident_t {}, false);
     registered_player = true;
 
-    player->SetLogined(true);
+    player->SetLoggedIn(true);
     player->Send_LoginSuccess();
 
     ValidateEntityAccess(player);
@@ -3092,7 +3092,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr
 
     if (login_result == Entity::EventResult::StopChain) {
         auto connection = player->GetConnection();
-        player->SetLogined(false);
+        player->SetLoggedIn(false);
         player->DetachCritter();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
@@ -3102,7 +3102,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr
         throw GenericException("Temporary player login rejected by OnPlayerLogin");
     }
 
-    OnPlayerLogined(player, unlogined_player);
+    OnPlayerLoggedIn(player, not_logged_in_player);
 
     return player;
 }
@@ -3517,22 +3517,22 @@ void ServerEngine::Process_Property(ptr<Player> player)
     bool is_public = false;
     nptr<const Property> prop;
     nptr<Entity> entity;
-    auto get_property = [](nptr<const PropertyRegistrator> registrator, uint16_t property_index_) -> nptr<const Property> {
-        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-        return registrator->GetPropertyByIndex(numeric_cast<int32_t>(property_index_));
+    auto get_property = [](nptr<const PropertyRegistrar> registrar, uint16_t property_index_) -> nptr<const Property> {
+        FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
+        return registrar->GetPropertyByIndex(numeric_cast<int32_t>(property_index_));
     };
 
     switch (type) {
     case NetProperty::Game:
         is_public = true;
-        prop = get_property(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(GameProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             entity = this;
         }
         break;
     case NetProperty::Player:
-        prop = get_property(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(PlayerProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             entity = player;
@@ -3540,14 +3540,14 @@ void ServerEngine::Process_Property(ptr<Player> player)
         break;
     case NetProperty::Critter:
         is_public = true;
-        prop = get_property(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             entity = EntityMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        prop = get_property(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             entity = cr;
@@ -3555,7 +3555,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         break;
     case NetProperty::MapItem:
         is_public = true;
-        prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             entity = EntityMngr.GetItem(item_id);
@@ -3563,7 +3563,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             auto cr2 = EntityMngr.GetCritter(cr_id);
@@ -3578,7 +3578,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         }
         break;
     case NetProperty::ChosenItem:
-        prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             if (cr) {
@@ -3592,7 +3592,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         break;
     case NetProperty::Map:
         is_public = true;
-        prop = get_property(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             if (cr) {
@@ -3602,7 +3602,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         break;
     case NetProperty::Location:
         is_public = true;
-        prop = get_property(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrar(LocationProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
             if (cr) {
@@ -3695,7 +3695,7 @@ void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> pro
         entry_id = ident_t {1};
     }
 
-    auto value = PropertiesSerializator::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
+    auto value = PropertiesSerializer::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
 
     hstring collection_name;
 
@@ -3740,7 +3740,7 @@ void ServerEngine::OnSaveSynchronizedTime(ptr<Entity> entity, ptr<const Property
 
     if (!GameTime.IsTimeSynchronized()) {
         // Init / external pin path: persist the exact property value.
-        auto value = PropertiesSerializator::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
+        auto value = PropertiesSerializer::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
         DbStorage.Update(entity->GetTypeName(), ident_t {1}, prop->GetName(), value);
         return;
     }

@@ -907,11 +907,11 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     // A server-only runtime hstring that is not read through NetInBuffer, matching lazy property/script resolves
     hstring reported = server->Hashes.ToHashedString("integration_test_lazy_hash");
 
-    auto critter_registrator = client->GetPropertyRegistrator(CritterView::ENTITY_TYPE_NAME);
-    REQUIRE(static_cast<bool>(critter_registrator));
+    auto critter_registrar = client->GetPropertyRegistrar(CritterView::ENTITY_TYPE_NAME);
+    REQUIRE(static_cast<bool>(critter_registrar));
 
-    auto critter_props = Properties(critter_registrator);
-    auto model_name_prop = critter_registrator->GetPropertyByIndex(CritterView::ModelName_RegIndex);
+    auto critter_props = Properties(critter_registrar);
+    auto model_name_prop = critter_registrar->GetPropertyByIndex(CritterView::ModelName_RegIndex);
     REQUIRE(static_cast<bool>(model_name_prop));
 
     hstring::hash_t unresolved_hash = reported.as_hash();

@@ -184,7 +184,7 @@ The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript
 - `Gui.fos`
 - `Sprite.fos`
 - `LineTracer.fos`
-- `Serializator.fos`
+- `Serializer.fos`
 - `MapperCore.fos`
 - `FixedDropMenu.fos`
 - `Tween.fos`

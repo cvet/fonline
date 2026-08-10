@@ -756,10 +756,10 @@ namespace LocEntity
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
