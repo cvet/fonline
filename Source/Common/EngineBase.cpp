@@ -143,18 +143,18 @@ struct EngineBaseData
 };
 FO_GLOBAL_DATA(EngineBaseData, Data);
 
-EngineMetadata::EngineMetadata(const MeatdataRegistrator& registrator) :
+EngineMetadata::EngineMetadata(const MetadataRegistrar& registrar) :
     _protoMngr(make_ptr(this))
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+    FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
     for (const auto& name : Data->BuiltinTypes | std::views::keys) {
         RegisterBaseType(name);
     }
 
-    registrator();
+    registrar();
 }
 
 void EngineMetadata::RegisterSide(EngineSideKind side)
@@ -167,7 +167,7 @@ void EngineMetadata::RegisterSide(EngineSideKind side)
     _side = side;
 }
 
-auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrator>
+auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrar>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -183,7 +183,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     FO_VERIFY_AND_THROW(exported || _enums.count(strex("{}Property", name)) == 0, "Entity property enum type is already registered", name);
     FO_VERIFY_AND_THROW(exported || !_baseTypes.contains(strex("{}Property", name)), "Entity property type name conflicts with an already registered base type", name);
 
-    auto registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, &Hashes, this);
+    auto registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(name, _side, &Hashes, this);
 
     EntityTypeDesc desc {
         .Exported = exported,
@@ -191,7 +191,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         .HasProtos = has_protos,
         .HasStatics = has_statics,
         .HasAbstract = has_abstract,
-        .PropRegistrator = std::move(registrator),
+        .PropRegistrar = std::move(registrar),
     };
 
     auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
@@ -215,8 +215,8 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     if (!exported) {
         RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
 
-        entry.first->second.PropRegistrator->RegisterProperty({"Common", "ident", "CustomHolderId", "Persistent", "CoreProperty", "SharedProperty"});
-        entry.first->second.PropRegistrator->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
+        entry.first->second.PropRegistrar->RegisterProperty({"Common", "ident", "CustomHolderId", "Persistent", "CoreProperty", "SharedProperty"});
+        entry.first->second.PropRegistrar->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
     }
 
     auto type = RegisterBaseType(name);
@@ -225,10 +225,10 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         type->IsSingleton = true;
     }
 
-    return entry.first->second.PropRegistrator;
+    return entry.first->second.PropRegistrar;
 }
 
-auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrator>
+auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrar>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -243,7 +243,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
         RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
     }
 
-    auto registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, &Hashes, this);
+    auto registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(name, _side, &Hashes, this);
 
     EntityTypeDesc desc {
         .Exported = exported,
@@ -251,7 +251,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
         .HasProtos = true,
         .HasStatics = false,
         .HasAbstract = false,
-        .PropRegistrator = std::move(registrator),
+        .PropRegistrar = std::move(registrar),
     };
 
     auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
@@ -259,7 +259,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     RegisterBaseType(name);
 
-    return entry.first->second.PropRegistrator;
+    return entry.first->second.PropRegistrar;
 }
 
 void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent)
@@ -272,10 +272,10 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Holder entry registration references an unknown holder entity type", holder_type, target_type, entry);
     FO_VERIFY_AND_THROW(it->second->HolderEntries.count(Hashes.ToHashedString(entry)) == 0, "Holder entity type already has an entry with this name", holder_type, target_type, entry);
 
-    auto registrator = GetPropertyRegistratorForEdit(holder_type);
+    auto registrar = GetPropertyRegistrarForEdit(holder_type);
     ptr<const Property> prop = persistent ? //
-        registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
-        registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
+        registrar->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
+        registrar->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
     RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
 
     it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync, .Persistent = persistent});
@@ -410,10 +410,10 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType layout registration conflicts with already registered methods", name, ref_type.Methods.size());
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType layout is already registered", name, layout.size());
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrator == nullptr, "RefType layout registration found an existing fields registrator", name);
-    FO_VERIFY_AND_THROW(_dynamicRefTypeRegistrators.count(string(name)) == 0, "Dynamic RefType registrator is already registered", name);
+    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType layout registration found an existing fields registrar", name);
+    FO_VERIFY_AND_THROW(_dynamicRefTypeRegistrars.count(string(name)) == 0, "Dynamic RefType registrar is already registered", name);
 
-    auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(strex("{}RefType", name), _side, &Hashes, this);
+    auto fields_registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(strex("{}RefType", name), _side, &Hashes, this);
 
     for (const auto& field_tokens : layout) {
         FO_VERIFY_AND_THROW(field_tokens.size() >= 2, "RefType field needs at least name and type tokens", name);
@@ -425,12 +425,12 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
         tokens.emplace_back(field_tokens[0]); // Name
         tokens.insert(tokens.end(), field_tokens.begin() + 2, field_tokens.end());
 
-        fields_registrator->RegisterProperty(tokens);
+        fields_registrar->RegisterProperty(tokens);
     }
 
-    ref_type.FieldsRegistrator = fields_registrator;
+    ref_type.FieldsRegistrar = fields_registrar;
     ref_type.IsDynamicLayout = true;
-    _dynamicRefTypeRegistrators.emplace(name, std::move(fields_registrator));
+    _dynamicRefTypeRegistrars.emplace(name, std::move(fields_registrar));
 }
 
 void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>&& methods)
@@ -443,7 +443,7 @@ void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType methods are already registered", name, ref_type.Methods.size());
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType methods registration conflicts with a dynamic field layout", name);
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrator == nullptr, "RefType methods registration found an existing fields registrator", name);
+    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType methods registration found an existing fields registrar", name);
 
     ref_type.Methods = std::move(methods);
 }
@@ -458,7 +458,7 @@ void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType single-method registration conflicts with already registered methods", name, ref_type.Methods.size(), method.Name);
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType single-method registration conflicts with a dynamic field layout", name, method.Name);
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrator == nullptr, "RefType single-method registration found an existing fields registrator", name, method.Name);
+    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType single-method registration found an existing fields registrar", name, method.Name);
 
     ref_type.Methods.emplace_back(std::move(method));
 }
@@ -686,40 +686,40 @@ void EngineMetadata::FinalizeRegistration()
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!std::ranges::any_of(_structLayouts, [](auto&& e) { return e.second.Fields.empty(); }), "Registered struct layout has no fields");
-    FO_VERIFY_AND_THROW(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && e.second.FieldsRegistrator == nullptr; }), "Registered reference type has no methods or field registrator");
+    FO_VERIFY_AND_THROW(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && e.second.FieldsRegistrar == nullptr; }), "Registered reference type has no methods or field registrar");
 
     _registrationFinalized = true;
 }
 
-auto EngineMetadata::GetPropertyRegistrator(hstring type_name) const noexcept -> nptr<const PropertyRegistrator>
+auto EngineMetadata::GetPropertyRegistrar(hstring type_name) const noexcept -> nptr<const PropertyRegistrar>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto it = _entityTypes.find(type_name);
 
     if (it != _entityTypes.end()) {
-        return it->second.PropRegistrator;
+        return it->second.PropRegistrar;
     }
 
     auto it2 = _fixedTypes.find(type_name);
 
     if (it2 != _fixedTypes.end()) {
-        return it2->second.PropRegistrator;
+        return it2->second.PropRegistrar;
     }
 
     return nullptr;
 }
 
-auto EngineMetadata::GetPropertyRegistrator(string_view type_name) const noexcept -> nptr<const PropertyRegistrator>
+auto EngineMetadata::GetPropertyRegistrar(string_view type_name) const noexcept -> nptr<const PropertyRegistrar>
 {
     FO_STACK_TRACE_ENTRY();
 
     hstring type_name_hashed = Hashes.ToHashedString(type_name);
 
-    return GetPropertyRegistrator(type_name_hashed);
+    return GetPropertyRegistrar(type_name_hashed);
 }
 
-auto EngineMetadata::GetPropertyRegistratorForEdit(string_view type_name) -> ptr<PropertyRegistrator>
+auto EngineMetadata::GetPropertyRegistrarForEdit(string_view type_name) -> ptr<PropertyRegistrar>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -728,12 +728,12 @@ auto EngineMetadata::GetPropertyRegistratorForEdit(string_view type_name) -> ptr
     auto it = _entityTypesByStr.find(type_name);
 
     if (it != _entityTypesByStr.end()) {
-        return it->second->PropRegistrator;
+        return it->second->PropRegistrar;
     }
 
     auto it2 = _fixedTypesByStr.find(type_name);
     FO_VERIFY_AND_THROW(it2 != _fixedTypesByStr.end(), "Lookup failed in fixed types by str");
-    return it2->second->PropRegistrator;
+    return it2->second->PropRegistrar;
 }
 
 auto EngineMetadata::IsValidBaseType(string_view type_str) const noexcept -> bool
@@ -810,7 +810,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
     FO_STACK_TRACE_ENTRY();
 
     auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
-    auto holder_prop = holder->GetProperties()->GetRegistrator()->FindProperty(prop_name);
+    auto holder_prop = holder->GetProperties()->GetRegistrar()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 
     return holder_prop;
@@ -1116,7 +1116,7 @@ auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const n
     FO_NO_STACK_TRACE_ENTRY();
 
     if (auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
-        type_name = it->second->PropRegistrator->GetTypeName();
+        type_name = it->second->PropRegistrar->GetTypeName();
     }
 
     return _protoMngr.GetProtoEntity(type_name, proto_id);
@@ -1127,7 +1127,7 @@ auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const
     FO_NO_STACK_TRACE_ENTRY();
 
     if (auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
-        type_name = it->second->PropRegistrator->GetTypeName();
+        type_name = it->second->PropRegistrar->GetTypeName();
     }
 
     return _protoMngr.GetProtoEntities(type_name);
@@ -1173,10 +1173,10 @@ void EngineMetadata::RegisterAnimationInfo(const FileSystem& resources)
     _animationInfos = ReadAnimationInfo(resources, Hashes);
 }
 
-BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
-    EngineMetadata(registrator),
+BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MetadataRegistrar& registrar) :
+    EngineMetadata(registrar),
     ScriptSystem(),
-    Entity(GetPropertyRegistratorForEdit(ENTITY_TYPE_NAME), nullptr, nullptr),
+    Entity(GetPropertyRegistrarForEdit(ENTITY_TYPE_NAME), nullptr, nullptr),
     GameProperties(*GetInitRef()),
     Settings {settings},
     Resources {std::move(resources)},

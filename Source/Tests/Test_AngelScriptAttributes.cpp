@@ -1454,14 +1454,14 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterEntityType("Critter", true, false, true, true, true);
         meta.RegisterRefType("RouteSnapshot");
 
-        PropertyRegistrator registrator("ScriptPropertyNameEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
-        auto int_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-        auto string_array_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
-        auto counter_dict_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
-        auto proto_array_dict_prop = registrator.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
-        auto ref_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
-        auto ref_array_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
-        auto ref_dict_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+        PropertyRegistrar registrar("ScriptPropertyNameEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
+        auto int_prop = registrar.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+        auto string_array_prop = registrar.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+        auto counter_dict_prop = registrar.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
+        auto proto_array_dict_prop = registrar.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
+        auto ref_prop = registrar.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+        auto ref_array_prop = registrar.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+        auto ref_dict_prop = registrar.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
 
         CHECK(MakeScriptPropertyName(int_prop) == "int");
         CHECK(MakeScriptPropertyName(string_array_prop) == "array<string>");

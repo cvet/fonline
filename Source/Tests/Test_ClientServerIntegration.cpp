@@ -764,10 +764,10 @@ End
         // A default-constructed property set still serializes to a non-empty blob, so it is produced here
         // rather than writing a zero size the reader cannot restore from
         auto make_default_props_blob = [&engine](string_view type_name) {
-            auto registrator = engine.GetPropertyRegistrator(engine.Hashes.ToHashedString(type_name));
-            REQUIRE(static_cast<bool>(registrator));
+            auto registrar = engine.GetPropertyRegistrar(engine.Hashes.ToHashedString(type_name));
+            REQUIRE(static_cast<bool>(registrar));
 
-            Properties props {registrator};
+            Properties props {registrar};
             vector<uint8_t> props_data;
             set<hstring> str_hashes;
             props.StoreAllData(props_data, str_hashes);
@@ -824,10 +824,10 @@ End
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -1208,7 +1208,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     client->Connect();
     REQUIRE(WaitForConnected(client, server));
 
-    // The connected-but-unlogined session only accepts a remote call, which is how a real client logs in
+    // The connected-but-not-logged-in session only accepts a remote call, which is how a real client logs in
     REQUIRE(client->CallFunc<void>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendLogin")));
 
     int32_t login_success_calls = 0;
@@ -1432,7 +1432,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
 
         // Collapsing headers opt out of the log auto-expansion, so the root panels are seeded open by hand;
         // otherwise the per-map, per-critter and per-item rows never render even with a populated world
-        constexpr std::array ROOT_PANEL_IDS = {"Info", "Performance details", "###Players", "###UnloginedPlayers", "###Locations", "Data base"};
+        constexpr std::array ROOT_PANEL_IDS = {"Info", "Performance details", "###Players", "###NotLoggedInPlayers", "###Locations", "Data base"};
 
         for (int32_t frame = 0; frame < 3; frame++) {
             ImGui::NewFrame();
@@ -1952,11 +1952,11 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     // A server-only runtime hstring that is not read through NetInBuffer, matching lazy property/script resolves
     hstring reported = server->Hashes.ToHashedString("integration_test_lazy_hash");
 
-    auto critter_registrator = client->GetPropertyRegistrator(CritterView::ENTITY_TYPE_NAME);
-    REQUIRE(static_cast<bool>(critter_registrator));
+    auto critter_registrar = client->GetPropertyRegistrar(CritterView::ENTITY_TYPE_NAME);
+    REQUIRE(static_cast<bool>(critter_registrar));
 
-    auto critter_props = Properties(critter_registrator);
-    auto model_name_prop = critter_registrator->GetPropertyByIndex(CritterView::ModelName_RegIndex);
+    auto critter_props = Properties(critter_registrar);
+    auto model_name_prop = critter_registrar->GetPropertyByIndex(CritterView::ModelName_RegIndex);
     REQUIRE(static_cast<bool>(model_name_prop));
 
     hstring::hash_t unresolved_hash = reported.as_hash();

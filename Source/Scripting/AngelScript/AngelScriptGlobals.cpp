@@ -750,11 +750,11 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 
     // Property enum groups
     for (const auto& type_name : meta->GetEntityTypes() | std::views::keys) {
-        auto registrator = meta->GetPropertyRegistrator(type_name);
-        FO_VERIFY_AND_THROW(registrator, "Missing property registrator for entity type");
+        auto registrar = meta->GetPropertyRegistrar(type_name);
+        FO_VERIFY_AND_THROW(registrar, "Missing property registrar for entity type");
 
-        for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
-            auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator->GetTypeName()).c_str());
+        for (auto&& [group_name, properties] : registrar->GetPropertyGroups()) {
+            auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrar->GetTypeName()).c_str());
             enums_arr->Reserve(numeric_cast<int32_t>(properties.size()));
 
             for (const auto& prop : properties) {
@@ -762,8 +762,8 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
                 enums_arr->InsertLast(make_nptr(&e).void_cast());
             }
 
-            FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
-            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, make_nptr(enums_arr.get()).void_cast()));
+            FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrar->GetTypeName()).c_str()));
+            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrar->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, make_nptr(enums_arr.get()).void_cast()));
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
 
             // Hand the array's owned reference to the shutdown cleanup so it outlives this scope but is

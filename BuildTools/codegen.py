@@ -2172,12 +2172,12 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
 
 def append_entity_type_registration(register_lines: list[str], target: str) -> None:
     register_lines.append('// Entity types')
-    register_lines.append('unordered_map<string, PropertyRegistrator*> registrators;')
+    register_lines.append('unordered_map<string, PropertyRegistrar*> registrars;')
     for entity in game_entities:
         if not entity_allowed(entity, target):
             continue
         entity_info = game_entities_info[entity]
-        register_lines.append('registrators["' + entity + '"] = meta->RegisterEntityType("' + entity + '", ' +
+        register_lines.append('registrars["' + entity + '"] = meta->RegisterEntityType("' + entity + '", ' +
                 cpp_bool(entity_info.exported) + ', ' +
                 cpp_bool(entity_info.is_global) + ', ' +
                 cpp_bool(entity_info.has_protos) + ', ' +
@@ -2200,14 +2200,14 @@ def append_property_registration(helper_lines: list[str], register_lines: list[s
         body_lines: list[str] = []
         for prop_tag in codegen_tags['ExportProperty']:
             if prop_tag.entity == entity:
-                body_lines.append('registrator->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
+                body_lines.append('registrar->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
 
         if not body_lines:
             continue
 
         function_name = make_unique_cpp_identifier(used_names, 'RegisterProperties_', entity)
-        append_static_function(helper_lines, 'static void ' + function_name + '(PropertyRegistrator* registrator)', body_lines)
-        register_lines.append(function_name + '(registrators["' + entity + '"]);')
+        append_static_function(helper_lines, 'static void ' + function_name + '(PropertyRegistrar* registrar)', body_lines)
+        register_lines.append(function_name + '(registrars["' + entity + '"]);')
 
     register_lines.append('')
 

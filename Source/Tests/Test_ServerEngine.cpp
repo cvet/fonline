@@ -182,10 +182,10 @@ namespace
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -461,8 +461,8 @@ namespace ServerEngineInitGateTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -571,12 +571,12 @@ namespace ServerEngineInitGateTest
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
-        server->RequireCurrentSyncContext()->SyncEntity(unlogined_player);
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        server->RequireCurrentSyncContext()->SyncEntity(not_logged_in_player);
 
-        unlogined_player->SetName(name);
-        unlogined_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(unlogined_player);
+        not_logged_in_player->SetName(name);
+        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
+        auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
 
         return player;
     }
@@ -2789,9 +2789,9 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     SECTION("SingletonOwnedEntityEnsureIsIdempotent")
     {
         EntityLock singleton_lock;
-        auto registrator = server->GetPropertyRegistrator("Critter");
-        REQUIRE(registrator);
-        auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrator, nullptr);
+        auto registrar = server->GetPropertyRegistrar("Critter");
+        REQUIRE(registrar);
+        auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrar, nullptr);
         CHECK_FALSE(singleton_owned_entity->GetEntityLock());
         singleton_owned_entity->SetEntityLock(make_nptr(&singleton_lock));
 
@@ -3063,8 +3063,8 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
         (void)CreateLoggedPlayer(server, "UnitTestGuiPlayer");
         (void)server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
 
-        shared_ptr<NetworkServerConnection> unlogined_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        (void)server->CreateUnloginedPlayer(std::move(unlogined_connection));
+        shared_ptr<NetworkServerConnection> not_logged_in_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        (void)server->CreateNotLoggedInPlayer(std::move(not_logged_in_connection));
     }
 
     REQUIRE(server->EntityMngr.GetCrittersCount() >= 1);
@@ -3101,7 +3101,7 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
 
     // Collapsing headers opt out of the log auto-expansion, so their stored state is seeded by hand. The
     // ids mirror the root panels of ServerEngine::DrawGui; the log assertions below catch any drift
-    constexpr std::array ROOT_PANEL_IDS = {"Info", "Performance details", "###Players", "###UnloginedPlayers", "###Locations", "Data base"};
+    constexpr std::array ROOT_PANEL_IDS = {"Info", "Performance details", "###Players", "###NotLoggedInPlayers", "###Locations", "Data base"};
 
     string drawn_text;
 
@@ -3135,7 +3135,7 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
     CHECK(drawn_text.find("Data base") != string::npos);
     CHECK(drawn_text.find("Memory documents") != string::npos);
     CHECK(drawn_text.find("Performance details") != string::npos);
-    CHECK(drawn_text.find("Unlogined players (1)") != string::npos);
+    CHECK(drawn_text.find("NotLoggedIn players (1)") != string::npos);
 }
 
 FO_END_NAMESPACE

@@ -127,8 +127,8 @@ masked. Notable cases:
   and those libbfd caches remain reachable — LSan does not report them.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
   cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
-- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrator` is a
-  `unique_ptr` so every `PropertyRegistrator` (and the `Property` objects it holds) is freed when
+- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a
+  `unique_ptr` so every `PropertyRegistrar` (and the `Property` objects it holds) is freed when
   `EngineMetadata`'s type maps are destroyed.
 
 ## Code coverage
@@ -197,7 +197,7 @@ runs for real. `Test_ServerEngine.cpp` shows the pattern. These details matter:
   the nested panels so a renamed panel fails the test rather than silently
   dropping coverage.
 - Server diagnostics run at an engine sync point, but that does not implicitly
-  cover entity state. `ServerEngine::DrawGui()` snapshots unlogined players
+  cover entity state. `ServerEngine::DrawGui()` snapshots not-logged-in players
   because they are intentionally absent from the entity registry, then acquires
   one replacement cover for that snapshot plus the registered world. The
   snapshot is taken under the publication lock and that lock is released before
@@ -205,7 +205,7 @@ runs for real. `Test_ServerEngine.cpp` shows the pattern. These details matter:
   order. `EnsureEntitySynced` is not an alternative here: it only retains an
   entity the context already covers and throws for one it does not, which is
   exactly the case for a player outside the registry. Tests should keep a real
-  unlogined connection in the snapshot so this boundary cannot regress.
+  not-logged-in connection in the snapshot so this boundary cannot regress.
 - **Pass an explicit depth to `LogToBuffer`.** The default auto-open depth is 2,
   so anything nested deeper stays collapsed and its body never runs. Raising it
   (`ImGui::LogToBuffer(12)`) took the SPARK particle editor from 27% to 48%

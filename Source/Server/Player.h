@@ -140,7 +140,7 @@ private:
     // hold it (the GetConnection getters, the cross-object SwapConnection swap of other->_connection) reach it
     // under the cooperative entity cover — which also excludes SwapConnection — and are FO_TSA_NO_ANALYSIS.
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
-    string _name {"(Unlogined)"};
+    string _name {"(NotLoggedIn)"};
     // Non-owning back-pointer to the controlled critter, atomic so the lock-free broadcast fan-out can read it
     // for the is_chosen identity compare (subject == controlled critter) without the recipient's entity lock.
     // Published under the player's cover (SetControlledCritter); also the Player->Critter sync-widen anchor.
