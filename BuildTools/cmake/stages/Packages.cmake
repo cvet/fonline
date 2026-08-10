@@ -18,6 +18,10 @@ foreach(package ${FO_PACKAGES})
         -devname "${FO_DEV_NAME}"
         -nicename "${FO_NICE_NAME}")
 
+    if(FO_WASM_SCRIPTING)
+        AppendList(packageBaseCommands -wasm-scripting)
+    endif()
+
     AddCommandTarget(MakePackage-${package}
         COMMAND_ARGS COMMAND ${CMAKE_COMMAND} -E rm -rf "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}"
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}

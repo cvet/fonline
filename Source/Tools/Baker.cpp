@@ -54,6 +54,7 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 #include "TextBaker.h"
+#include "WasmBaker.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -161,6 +162,11 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
 #if FO_ANGELSCRIPT_SCRIPTING
     if (vec_exists(request_bakers, AngelScriptBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<AngelScriptBaker>(ctx));
+    }
+#endif
+#if FO_WASM_SCRIPTING
+    if (vec_exists(request_bakers, WasmBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<WasmBaker>(ctx));
     }
 #endif
 

@@ -90,3 +90,115 @@ def test_single_zip_merge_rejects_conflicting_package_entries(tmp_path: Path) ->
 
     with pytest.raises(AssertionError, match="Conflicting zip entry while merging package parts: shared.dll"):
         _package.make_zip(archive_path, second_part, 6, "a")
+
+
+def _uleb(value: int) -> bytes:
+    data: list[int] = []
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        if value:
+            data.append(byte | 0x80)
+        else:
+            data.append(byte)
+            return bytes(data)
+
+
+def _wasm_name(value: str) -> bytes:
+    data = value.encode("utf-8")
+    return _uleb(len(data)) + data
+
+
+def _wasm_section(section_id: int, payload: bytes) -> bytes:
+    return bytes([section_id]) + _uleb(len(payload)) + payload
+
+
+def test_wasm_manifest_parser_extracts_exports_and_imports(tmp_path: Path) -> None:
+    wasm = b"\x00asm" + b"\x01\x00\x00\x00"
+    wasm += _wasm_section(1, b"\x04\x60\x01\x7f\x01\x7f\x60\x01\x7c\x00\x60\x00\x01\x7f\x60\x02\x7f\x7f\x00")
+    wasm += _wasm_section(2, b"\x03" + _wasm_name("fonline") + _wasm_name("log_f64") + b"\x00\x01" + _wasm_name("fonline") + _wasm_name("get_side") + b"\x00\x02" + _wasm_name("fonline") + _wasm_name("log_utf8") + b"\x00\x03")
+    wasm += _wasm_section(3, b"\x01\x00")
+    wasm += _wasm_section(7, b"\x01" + _wasm_name("add") + b"\x00\x03")
+
+    wasm_path = tmp_path / "math.client.wasm"
+    wasm_path.write_bytes(wasm)
+
+    manifest = _package.parse_wasm_manifest(
+        wasm_path,
+        _package.make_wasm_module_name(wasm_path.name),
+        "WasmScripts/math.client.wasm",
+        "math.client.wasm",
+    )
+
+    assert manifest == {
+        "name": "math",
+        "path": "WasmScripts/math.client.wasm",
+        "sourcePath": "math.client.wasm",
+        "imports": [
+            {
+                "module": "fonline",
+                "name": "log_f64",
+                "kind": "func",
+                "params": ["f64"],
+                "results": [],
+            },
+            {
+                "module": "fonline",
+                "name": "get_side",
+                "kind": "func",
+                "params": [],
+                "results": ["i32"],
+            },
+            {
+                "module": "fonline",
+                "name": "log_utf8",
+                "kind": "func",
+                "params": ["i32", "i32"],
+                "results": [],
+            }
+        ],
+        "exports": [
+            {
+                "name": "add",
+                "kind": "func",
+                "params": ["i32"],
+                "results": ["i32"],
+            }
+        ],
+    }
+
+
+def test_wasm_target_visibility_uses_side_suffixes() -> None:
+    assert _package.is_wasm_visible_to_target("Scripts/shared.wasm", "Client")
+    assert _package.is_wasm_visible_to_target("Scripts/shared.wasm", "Server")
+    assert _package.is_wasm_visible_to_target("Scripts/shared.wasm", "Mapper")
+
+    assert _package.is_wasm_visible_to_target("Scripts/ui.client.wasm", "Client")
+    assert not _package.is_wasm_visible_to_target("Scripts/ui.client.wasm", "Server")
+    assert not _package.is_wasm_visible_to_target("Scripts/ui.client.wasm", "Mapper")
+
+    assert _package.is_wasm_visible_to_target("Scripts/rules.server.wasm", "Server")
+    assert not _package.is_wasm_visible_to_target("Scripts/rules.server.wasm", "Client")
+
+    assert _package.is_wasm_visible_to_target("Scripts/tools.mapper.wasm", "Mapper")
+    assert not _package.is_wasm_visible_to_target("Scripts/tools.mapper.wasm", "Client")
+
+
+def test_wasm_module_name_strips_side_suffixes_only() -> None:
+    assert _package.make_wasm_module_name("math.wasm") == "math"
+    assert _package.make_wasm_module_name("math.client.wasm") == "math"
+    assert _package.make_wasm_module_name("math.server.wasm") == "math"
+    assert _package.make_wasm_module_name("math.mapper.wasm") == "math"
+    assert _package.make_wasm_module_name("math.preview.wasm") == "math.preview"
+
+
+def test_wasm_debug_sidecars_use_adjacent_source_map(tmp_path: Path) -> None:
+    wasm_path = tmp_path / "math.client.wasm"
+    wasm_path.write_bytes(b"\x00asm\x01\x00\x00\x00")
+
+    assert list(_package.iter_wasm_debug_sidecars(wasm_path)) == []
+
+    source_map_path = tmp_path / "math.client.wasm.map"
+    source_map_path.write_text("{}", encoding="utf-8")
+
+    assert list(_package.iter_wasm_debug_sidecars(wasm_path)) == [source_map_path]

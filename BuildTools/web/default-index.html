@@ -347,6 +347,7 @@
       }],
       postRun: [],
       onRuntimeInitialized: function () {
+        Module.foRuntimeInitialized = true;
         Module.setStatus('');
       },
 
@@ -472,6 +473,7 @@
     });
   </script>
   <script type="text/javascript" src="$RESOURCESJS$"></script>
+  $WASMHOSTJS$
   <script type="text/javascript" src="$MAINJS$"></script>
 </body>
 

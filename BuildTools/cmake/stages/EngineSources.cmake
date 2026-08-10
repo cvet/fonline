@@ -362,6 +362,12 @@ AppendList(FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
 
+AppendList(FO_BAKER_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tools/WasmAssemblyScriptBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/WasmAssemblyScriptBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/WasmBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/WasmBaker.cpp")
+
 AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/TimeRelated.h"
@@ -509,4 +515,5 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TwoDimensionalGrid.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_WasmBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")
