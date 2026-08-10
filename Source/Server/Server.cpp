@@ -1143,12 +1143,20 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
     TimeEventMngr.ClearDispatcherHooks();
 
+    vector<refcount_ptr<Player>> not_logged_in_players;
+
+    {
+        scoped_lock locker {_notLoggedInPlayersLocker};
+
+        not_logged_in_players = _notLoggedInPlayers;
+    }
+
     // From here teardown is single-threaded (pool and main worker are gone) and every entity lock is
-    // free: take every registered entity into the shutdown context explicitly so the remaining stages
-    // (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player disconnects) run covered.
-    // The scope-exit Release() drains the held locks.
+    // free: take every registered entity and every not-logged-in player into the shutdown context explicitly
+    // so the remaining stages (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player
+    // disconnects) run covered. The scope-exit Release() drains the held locks.
     WriteLog("Shutdown stage: lock whole world (count={})", EntityMngr.GetEntitiesCount());
-    SyncWholeWorld(shutdown_ctx.GetContext());
+    SyncWholeWorld(shutdown_ctx.GetContext(), not_logged_in_players);
 
     WriteLog("Shutdown stage: healthWriter.Clear");
     _healthWriter.Clear();
@@ -1213,16 +1221,17 @@ void ServerEngine::Shutdown()
     // NotLoggedIn players
     WriteLog("Shutdown stage: disconnect not-logged-in players");
 
+    for (auto& player : not_logged_in_players) {
+        if (player->IsDestroyed()) {
+            continue;
+        }
+
+        player->GetConnection()->HardDisconnect();
+        player->MarkAsDestroyed();
+    }
+
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
-
-        for (auto& player : _notLoggedInPlayers) {
-            // NotLoggedIn players are not in the entity registry, so the whole-world lock above did not
-            // reach them; capture each one before the validated disconnect/destroy touches.
-            EnsureEntitySynced(player);
-            player->GetConnection()->HardDisconnect();
-            player->MarkAsDestroyed();
-        }
 
         _notLoggedInPlayers.clear();
     }
@@ -1276,17 +1285,21 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     return true;
 }
 
-void ServerEngine::SyncWholeWorld(SyncContext& ctx)
+void ServerEngine::SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players)
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
 
-    vector<nptr<ServerEntity>> sync_entities;
-    sync_entities.reserve(entities.size());
+    vector<ptr<ServerEntity>> sync_entities;
+    sync_entities.reserve(entities.size() + additional_players.size());
 
     for (auto& entity : entities) {
         sync_entities.emplace_back(entity);
+    }
+
+    for (const auto& player : additional_players) {
+        sync_entities.emplace_back(player.get_no_const());
     }
 
     ctx.SyncEntities(sync_entities);
@@ -1377,6 +1390,16 @@ void ServerEngine::DrawGui()
     }
 
     auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
+
+    vector<refcount_ptr<Player>> not_logged_in_players;
+
+    {
+        scoped_lock locker {_notLoggedInPlayersLocker};
+
+        not_logged_in_players = _notLoggedInPlayers;
+    }
+
+    SyncWholeWorld(*RequireCurrentSyncContext(), not_logged_in_players);
 
     constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
@@ -1738,37 +1761,37 @@ void ServerEngine::DrawGui()
         }
     }
 
-    {
-        scoped_lock locker {_notLoggedInPlayersLocker};
+    if (ImGui::CollapsingHeader(strex("NotLoggedIn players ({})###NotLoggedInPlayers", not_logged_in_players.size()).c_str())) {
+        int32_t index = 0;
 
-        if (ImGui::CollapsingHeader(strex("NotLoggedIn players ({})###NotLoggedInPlayers", _notLoggedInPlayers.size()).c_str())) {
-            int32_t index = 0;
+        for (const auto& player : not_logged_in_players) {
+            if (player->IsDestroyed()) {
+                continue;
+            }
 
-            for (const auto& player : _notLoggedInPlayers) {
-                ImGui::PushID(index++);
+            ImGui::PushID(index++);
 
-                auto connection = player->GetConnection();
-                string label = strex("{}:{}", connection->GetHost(), connection->GetPort()).str();
+            auto connection = player->GetConnection();
+            string label = strex("{}:{}", connection->GetHost(), connection->GetPort()).str();
 
-                if (ImGui::TreeNode(label.c_str())) {
-                    if (begin_info_table("##NotLoggedInSummary")) {
-                        auto connection_diagnostics = connection->GetDiagnostics();
+            if (ImGui::TreeNode(label.c_str())) {
+                if (begin_info_table("##NotLoggedInSummary")) {
+                    auto connection_diagnostics = connection->GetDiagnostics();
 
-                        info_row("Host", connection->GetHost());
-                        info_row("Port", strex("{}", connection->GetPort()).str());
-                        info_row("Was handshake", strex("{}", connection_diagnostics.HandshakeComplete).str());
-                        info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
-                        info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
-                        info_row("Last activity", strex("{}", connection_diagnostics.LastActivityTime).str());
-                        info_row("Ping ok", strex("{}", connection_diagnostics.PingAnswerReceived).str());
-                        ImGui::EndTable();
-                    }
-
-                    ImGui::TreePop();
+                    info_row("Host", connection->GetHost());
+                    info_row("Port", strex("{}", connection->GetPort()).str());
+                    info_row("Was handshake", strex("{}", connection_diagnostics.HandshakeComplete).str());
+                    info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
+                    info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
+                    info_row("Last activity", strex("{}", connection_diagnostics.LastActivityTime).str());
+                    info_row("Ping ok", strex("{}", connection_diagnostics.PingAnswerReceived).str());
+                    ImGui::EndTable();
                 }
 
-                ImGui::PopID();
+                ImGui::TreePop();
             }
+
+            ImGui::PopID();
         }
     }
 
@@ -3161,7 +3184,12 @@ void ServerEngine::Process_Move(ptr<Player> player)
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
+
+    if (cr) {
+        sync_entities.emplace_back(cr);
+    }
+
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map->IsDestroyed()) {
@@ -3332,7 +3360,12 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
+
+    if (cr) {
+        sync_entities.emplace_back(cr);
+    }
+
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map->IsDestroyed()) {
@@ -3435,7 +3468,12 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
+
+    if (cr) {
+        sync_entities.emplace_back(cr);
+    }
+
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map->IsDestroyed()) {
@@ -4423,7 +4461,7 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     auto parent = cr->GetParentRaw();
 
     if (parent) {
-        array<nptr<ServerEntity>, 2> sync_entities {parent, cr};
+        small_vector<ptr<ServerEntity>, 2> sync_entities {parent, cr};
         ctx->SyncEntities(sync_entities);
 
         if (cr->GetParentRaw() != parent || parent->IsDestroyed() || cr->IsDestroyed()) {

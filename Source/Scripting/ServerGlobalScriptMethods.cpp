@@ -1670,49 +1670,82 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
 }
 
 // SyncScope: replaces current cover with entity plus engine auto-widen partners.
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 1> entities {entity};
-    ctx->SyncEntities(entities);
+    small_vector<ptr<ServerEntity>, 3> syncable;
+
+    if (!entity->IsDestroyed()) {
+        syncable.emplace_back(entity);
+    }
+
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: replaces current cover with both entities plus engine auto-widen partners.
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 2> entities {entity1, entity2};
-    ctx->SyncEntities(entities);
+    small_vector<ptr<ServerEntity>, 3> syncable;
+
+    if (!entity1->IsDestroyed()) {
+        syncable.emplace_back(entity1);
+    }
+
+    if (!entity2->IsDestroyed()) {
+        syncable.emplace_back(entity2);
+    }
+
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: replaces current cover with all entities plus engine auto-widen partners.
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 3> entities {entity1, entity2, entity3};
-    ctx->SyncEntities(entities);
+    small_vector<ptr<ServerEntity>, 3> syncable;
+
+    if (!entity1->IsDestroyed()) {
+        syncable.emplace_back(entity1);
+    }
+
+    if (!entity2->IsDestroyed()) {
+        syncable.emplace_back(entity2);
+    }
+
+    if (!entity3->IsDestroyed()) {
+        syncable.emplace_back(entity3);
+    }
+
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: replaces current cover with all non-null entities plus engine auto-widen partners.
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
-    vector<nptr<ServerEntity>> non_null;
-    non_null.reserve(entities.size());
+    vector<ptr<ServerEntity>> syncable;
+    syncable.reserve(entities.size());
 
     for (auto entity : entities) {
         if (!entity) {
             throw ScriptException("Entity in array arg is null");
         }
 
-        non_null.emplace_back(entity);
+        // A null argument is still a caller error, but an entity destroyed since the caller checked it
+        // is the race described above and is simply dropped.
+        if (entity->IsDestroyed()) {
+            continue;
+        }
+
+        syncable.emplace_back(entity);
     }
 
     auto ctx = server->RequireCurrentSyncContext();
-    ctx->SyncEntities(non_null);
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: releases the full held set — the entity cover AND any singleton Game.Lock entries

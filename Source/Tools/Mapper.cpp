@@ -3854,9 +3854,12 @@ void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
         }
     }
 
+    // Deleting an entity that was never selected is ordinary editing, so both selection stores are cleared
+    // tolerantly. Anything that clears the selection first - moving an entity, an undo step, a redo step -
+    // would otherwise make the very next delete fail with a lookup error.
     SelectedEntitiesSet.erase(entity);
 
-    vec_remove_unique_value(SelectedEntities, entity.hold_ref());
+    (void)vec_safe_remove_unique_value(SelectedEntities, entity.hold_ref());
 
     if (auto cr = entity.dyn_cast<CritterHexView>()) {
         cur_map->DestroyCritter(cr);

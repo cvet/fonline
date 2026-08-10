@@ -894,4 +894,20 @@ FO_SCRIPT_API void Client_Map_SetHiddenRoof(ptr<MapView> self, mpos hex)
     self->SetHiddenRoof(hex);
 }
 
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Map_GetRoofNum(ptr<MapView> self, mpos hex)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    return self->GetField(hex).RoofNum;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Map_GetHiddenRoofNum(ptr<MapView> self)
+{
+    return self->GetHiddenRoofNum();
+}
+
 FO_END_NAMESPACE

@@ -2921,8 +2921,11 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     if not is_validated_pointer_meta_type(p.arg_type):
                         continue
                     method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
+                # AllowDestroyedEntityArgs opts one export out of the blanket destroyed-entity argument
+                # rejection; it exists for the synchronization primitives (see ScriptSystem.h ConvertArg).
+                allow_destroyed_entity_args = ', true' if 'AllowDestroyedEntityArgs' in method_tag.flags else ''
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
-                    ', '.join([apply_container_element_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity', wrap_handles=True, nullable=p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+                    ', '.join([apply_container_element_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity', wrap_handles=True, nullable=p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')' + allow_destroyed_entity_args + '>(call);')
                 if not method_tag.ret_nullable and method_tag.ret != 'void' and is_validated_pointer_meta_type(method_tag.ret):
                     method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:
