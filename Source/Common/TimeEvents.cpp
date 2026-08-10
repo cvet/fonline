@@ -681,6 +681,15 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
         te = *it;
     }
 
+    nanotime dispatch_time = _engine->GameTime.GetFrameTime();
+
+    // Dispatcher delays use its own clock. A debugger pause, DeltaTimeCap, or another frame-time
+    // adjustment can therefore wake this job before the engine clock reaches the stored deadline.
+    // Keep the callback pending and ask the dispatcher to retry at the remaining engine-time delay.
+    if (te->FireTime > dispatch_time) {
+        return te->FireTime - dispatch_time;
+    }
+
     auto fired = FireTimeEvent(entity, te);
 
     nanotime next_fire_time;

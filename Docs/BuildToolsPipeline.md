@@ -114,6 +114,20 @@ Creates custom targets for script compilation and resource baking. Current respo
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.
 
+The stage exposes `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE]
+[COMMENT <text>])` for embedding-project variants. Call it directly after
+`SetupScriptsAndBaking()` instead of wrapping one declaration in a project
+function:
+
+```cmake
+SetupScriptsAndBaking()
+AddBakingTarget(BakePublicResources
+    SUB_CONFIG PublicGame
+    COMMENT "Bake public resources")
+```
+
+The helper is available after the stage has defined the standard baking targets.
+
 Related docs: [BakingPipeline.md](BakingPipeline.md) and [Scripting.md](Scripting.md).
 
 ### `Applications.cmake`

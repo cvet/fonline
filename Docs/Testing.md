@@ -127,8 +127,8 @@ masked. Notable cases:
   and those libbfd caches remain reachable — LSan does not report them.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
   cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
-- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrator` is a
-  `unique_ptr` so every `PropertyRegistrator` (and the `Property` objects it holds) is freed when
+- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a
+  `unique_ptr` so every `PropertyRegistrar` (and the `Property` objects it holds) is freed when
   `EngineMetadata`'s type maps are destroyed.
 
 ## Code coverage

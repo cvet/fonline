@@ -1091,7 +1091,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             tok_index += 2;
         }
 
-        auto registrator = ctx.Meta.GetPropertyRegistratorForEdit(entity_name);
+        auto registrar = ctx.Meta.GetPropertyRegistrarForEdit(entity_name);
         auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
         bool is_component = std::ranges::any_of(flags, [](auto&& f) { return f == "Component"; });
 
@@ -1115,7 +1115,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
                 throw MetadataBakerException("Invalid Property codegen tag: property target is incompatible with component target", tag_desc.SourceFile, tag_desc.LineNumber, name, target, component_it->second);
             }
         }
-        if (registrator->FindProperty(name)) {
+        if (registrar->FindProperty(name)) {
             throw MetadataBakerException("Invalid Property codegen tag: duplicate property", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
@@ -1175,7 +1175,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         tokens.emplace_back(name);
         tokens.insert(tokens.end(), flags.begin(), flags.end());
 
-        auto prop = registrator->RegisterProperty(span(tokens).subspan(1));
+        auto prop = registrar->RegisterProperty(span(tokens).subspan(1));
         string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
         ctx.Meta.RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
 

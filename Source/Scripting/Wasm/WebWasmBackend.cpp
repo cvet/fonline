@@ -497,7 +497,7 @@ static auto ResolveWebWasmExportEntityHandle(BaseEngine& engine, const BaseTypeD
         throw ScriptCallException(strex("Web WASM export {} entity is destroyed", role), type.Name, entity_id.underlying_value());
     }
 
-    ptr<const PropertyRegistrator> actual_registrator = entity->GetProperties()->GetRegistrator();
+    ptr<const PropertyRegistrar> actual_registrator = entity->GetProperties()->GetRegistrar();
 
     if (!IsWebWasmExportEntityTypeCompatible(type.Name, actual_registrator->GetTypeName().as_str())) {
         throw ScriptCallException(strex("Web WASM export {} entity type mismatch", role), type.Name, actual_registrator->GetTypeName());
@@ -521,7 +521,7 @@ static auto ResolveWebWasmExportProtoHandle(BaseEngine& engine, const BaseTypeDe
         throw ScriptCallException(strex("Web WASM export {} proto not found", role), type.Name, proto_id);
     }
 
-    ptr<const PropertyRegistrator> actual_registrator = proto->GetProperties()->GetRegistrator();
+    ptr<const PropertyRegistrar> actual_registrator = proto->GetProperties()->GetRegistrar();
 
     if (!IsWebWasmExportEntityTypeCompatible(type.Name, actual_registrator->GetTypeName().as_str())) {
         throw ScriptCallException(strex("Web WASM export {} proto type mismatch", role), type.Name, actual_registrator->GetTypeName());
@@ -1002,7 +1002,7 @@ static auto PackWebWasmExportBaseValue(const BaseEngine& engine, const BaseTypeD
             throw ScriptCallException("Web WASM export entity argument is destroyed", type.Name, entity->GetId().underlying_value());
         }
 
-        ptr<const PropertyRegistrator> actual_registrator = entity->GetProperties()->GetRegistrator();
+        ptr<const PropertyRegistrar> actual_registrator = entity->GetProperties()->GetRegistrar();
 
         if (!IsWebWasmExportEntityTypeCompatible(type.Name, actual_registrator->GetTypeName().as_str())) {
             throw ScriptCallException("Web WASM export entity argument type mismatch", type.Name, actual_registrator->GetTypeName());
@@ -1023,7 +1023,7 @@ static auto PackWebWasmExportBaseValue(const BaseEngine& engine, const BaseTypeD
             throw ScriptCallException("Web WASM export proto argument type mismatch", type.Name);
         }
 
-        ptr<const PropertyRegistrator> actual_registrator = proto->GetProperties()->GetRegistrator();
+        ptr<const PropertyRegistrar> actual_registrator = proto->GetProperties()->GetRegistrar();
 
         if (!IsWebWasmExportEntityTypeCompatible(type.Name, actual_registrator->GetTypeName().as_str())) {
             throw ScriptCallException("Web WASM export proto argument type mismatch", type.Name, actual_registrator->GetTypeName());

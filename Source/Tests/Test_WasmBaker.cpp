@@ -977,10 +977,10 @@ static auto ReadWasmApiTestStringStringArrayDictBlob(const vector<uint8_t>& data
 class WasmApiTestEngine final : public BaseEngine
 {
 public:
-    using MetadataRegistrator = function<void(EngineMetadata&)>;
+    using MetadataRegistrar = function<void(EngineMetadata&)>;
 
-    WasmApiTestEngine(GlobalSettings& settings, MetadataRegistrator registrator) :
-        BaseEngine(&settings, FileSystem {}, [this, registrator = std::move(registrator)] { registrator(*this); })
+    WasmApiTestEngine(GlobalSettings& settings, MetadataRegistrar registrar) :
+        BaseEngine(&settings, FileSystem {}, [this, registrar = std::move(registrar)] { registrar(*this); })
     {
         FO_STACK_TRACE_ENTRY();
     }
@@ -1009,8 +1009,8 @@ private:
 class WasmApiTestEntity final : public Entity
 {
 public:
-    WasmApiTestEntity(ptr<const PropertyRegistrator> registrator, ident_t id) noexcept :
-        Entity(registrator, nullptr, nullptr),
+    WasmApiTestEntity(ptr<const PropertyRegistrar> registrar, ident_t id) noexcept :
+        Entity(registrar, nullptr, nullptr),
         _id {id}
     {
         FO_STACK_TRACE_ENTRY();
@@ -1969,8 +1969,8 @@ TEST_CASE("WasmBackend")
                                       meta.RegisterEntityType("Game", true, true, false, false, false);
                                       meta.RegisterEntityType("ImGui", true, true, false, false, false);
                                       meta.RegisterEntityType("Critter", true, false, true, false, false);
-                                      ptr<PropertyRegistrator> item_props = meta.RegisterEntityType("Item", true, false, true, false, false);
-                                      ptr<PropertyRegistrator> rule_props = meta.RegisterFixedType("Rule", true);
+                                      ptr<PropertyRegistrar> item_props = meta.RegisterEntityType("Item", true, false, true, false, false);
+                                      ptr<PropertyRegistrar> rule_props = meta.RegisterFixedType("Rule", true);
                                       meta.RegisterEnumGroup("TestMode", "uint8", {{"None", 0}, {"Enabled", 7}});
                                       meta.RegisterValueType("ucolor");
                                       meta.RegisterValueTypeLayout("ucolor", {{"value", "uint32"}});
@@ -2008,7 +2008,7 @@ TEST_CASE("WasmBackend")
                                       meta.RegisterProto(rule_type_name, rule_proto);
                                   }};
 
-        WasmApiTestEntity critter {engine.GetPropertyRegistrator("Critter"), ident_t {4242}};
+        WasmApiTestEntity critter {engine.GetPropertyRegistrar("Critter"), ident_t {4242}};
         engine.AddResolvedEntity(&critter);
 
         BakerTests::MemoryFileSet resources {"WasmRuntimeResources"};
@@ -2808,10 +2808,10 @@ TEST_CASE("WasmApiBridge")
     {
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ServerSide);
-        ptr<PropertyRegistrator> game_props = meta.RegisterEntityType("Game", true, true, false, false, false);
-        ptr<PropertyRegistrator> critter_props = meta.RegisterEntityType("Critter", true, false, true, true, true);
+        ptr<PropertyRegistrar> game_props = meta.RegisterEntityType("Game", true, true, false, false, false);
+        ptr<PropertyRegistrar> critter_props = meta.RegisterEntityType("Critter", true, false, true, true, true);
         meta.RegisterEntityType("Item", true, false, true, true, true);
-        ptr<PropertyRegistrator> rule_props = meta.RegisterFixedType("Rule", true);
+        ptr<PropertyRegistrar> rule_props = meta.RegisterFixedType("Rule", true);
         meta.RegisterEnumGroup("TestMode", "uint8", {{"None", 0}, {"Enabled", 7}});
         meta.RegisterValueType("ident");
         meta.RegisterValueTypeLayout("ident", {{"value", "int64"}});
@@ -4424,9 +4424,9 @@ TEST_CASE("WasmApiBridge")
                                       FO_STACK_TRACE_ENTRY();
 
                                       meta.RegisterSide(EngineSideKind::ServerSide);
-                                      ptr<PropertyRegistrator> game_props = meta.RegisterEntityType("Game", true, true, false, false, false);
+                                      ptr<PropertyRegistrar> game_props = meta.RegisterEntityType("Game", true, true, false, false, false);
                                       meta.RegisterEntityType("ImGui", true, true, false, false, false);
-                                      ptr<PropertyRegistrator> rule_props = meta.RegisterFixedType("Rule", true);
+                                      ptr<PropertyRegistrar> rule_props = meta.RegisterFixedType("Rule", true);
                                       meta.RegisterEnumGroup("TestMode", "uint8", {{"None", 0}, {"Enabled", 7}});
                                       meta.RegisterValueType("timespan");
                                       meta.RegisterValueTypeLayout("timespan", {{"value", "int64"}});
@@ -6775,7 +6775,7 @@ TEST_CASE("WasmApiBridge")
         CHECK(ReadWasmApiTestU64IntArrayDictBlob(mutable_ref_key_groups_output) == map<uint64_t, vector<int32_t>> {{0xABCD, {8, 9}}, {0xDCBA, {10}}});
 
         const RefTypeDesc& point_ref_type = engine.GetRefTypes().at("PointRef");
-        auto point_ref = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(point_ref_type.FieldsRegistrator.get());
+        auto point_ref = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(point_ref_type.FieldsRegistrar.get());
         const uint64_t point_ref_handle = numeric_cast<uint64_t>(point_ref.as_uintptr());
 
         const vector<WasmApiPropertyDesc> api_properties = BuildWasmApiPropertyDescs(engine);

@@ -64,10 +64,10 @@ static void CallWasmExportRefLifecycle(const BaseTypeDesc& type, void* handle, b
     FO_STRONG_ASSERT(type.RefType != nullptr, "WASM ref-handle invariant failed");
     FO_STRONG_ASSERT(handle != nullptr, "WASM ref-handle invariant failed");
 
-    if (type.RefType->FieldsRegistrator != nullptr) {
+    if (type.RefType->FieldsRegistrar != nullptr) {
         ptr<DynamicRefTypeInstance> instance = static_cast<DynamicRefTypeInstance*>(handle);
 
-        if (instance->GetRegistrator() != type.RefType->FieldsRegistrator) {
+        if (instance->GetRegistrar() != type.RefType->FieldsRegistrar) {
             throw ScriptCallException("WASM export mutable dynamic ref handle type mismatch", type.Name);
         }
 
@@ -169,7 +169,7 @@ auto WasmExportRefHandleScope::HasLifecycle(const BaseTypeDesc& type) noexcept -
     if (!type.IsRefType || type.RefType == nullptr) {
         return false;
     }
-    if (type.RefType->FieldsRegistrator != nullptr) {
+    if (type.RefType->FieldsRegistrar != nullptr) {
         return true;
     }
 

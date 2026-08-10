@@ -72,7 +72,7 @@ class FileSystem;
 
 class Property;
 class PropertyRawData;
-class PropertyRegistrator;
+class PropertyRegistrar;
 
 class EngineMetadata;
 class BaseEngine;
@@ -84,7 +84,7 @@ using ScriptSelfEntity = Entity;
 class DynamicRefTypeInstance final : public RefCounted<DynamicRefTypeInstance>
 {
 public:
-    explicit DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept;
+    explicit DynamicRefTypeInstance(ptr<const PropertyRegistrar> registrar) noexcept;
     DynamicRefTypeInstance(const DynamicRefTypeInstance&) = delete;
     DynamicRefTypeInstance(DynamicRefTypeInstance&&) = delete;
     auto operator=(const DynamicRefTypeInstance&) -> DynamicRefTypeInstance& = delete;
@@ -93,7 +93,7 @@ public:
 
     [[nodiscard]] auto GetRawData(ptr<const Property> prop) const -> span<const uint8_t>;
     [[nodiscard]] auto GetSerializedRawData(const BaseTypeDesc& base_type) -> const_span<uint8_t>;
-    [[nodiscard]] auto GetRegistrator() const noexcept -> ptr<const PropertyRegistrator> { return _registrator; }
+    [[nodiscard]] auto GetRegistrar() const noexcept -> ptr<const PropertyRegistrar> { return _registrar; }
 
     void LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data);
     void SetValue(ptr<const Property> prop, PropertyRawData& prop_data);
@@ -102,7 +102,7 @@ private:
     [[nodiscard]] auto GetProps() noexcept -> ptr<Properties>;
     [[nodiscard]] auto GetProps() const noexcept -> ptr<const Properties>;
 
-    ptr<const PropertyRegistrator> _registrator;
+    ptr<const PropertyRegistrar> _registrar;
     optional<Properties> _props {};
     vector<uint8_t> _cachedRawData {};
     bool _cachedRawDataDirty {};

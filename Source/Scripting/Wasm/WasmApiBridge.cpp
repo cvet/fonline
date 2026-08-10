@@ -714,7 +714,7 @@ static auto ResolveWasmApiEntityHandle(BaseEngine& engine, string_view entity_na
         throw ScriptCallException(strex("WASM engine API {} entity is destroyed", role), entity_name, entity_id.underlying_value());
     }
 
-    ptr<const PropertyRegistrator> actual_registrator = entity->GetProperties()->GetRegistrator();
+    ptr<const PropertyRegistrar> actual_registrator = entity->GetProperties()->GetRegistrar();
 
     if (!IsWasmApiEntityTypeCompatible(entity_name, actual_registrator->GetTypeName().as_str())) {
         throw ScriptCallException(strex("WASM engine API {} entity type mismatch", role), entity_name, actual_registrator->GetTypeName());
@@ -745,7 +745,7 @@ static auto ResolveWasmApiProtoHandle(BaseEngine& engine, string_view proto_type
         throw ScriptCallException("WASM engine API proto argument not found", proto_type_name, proto_id);
     }
 
-    ptr<const PropertyRegistrator> actual_registrator = proto->GetProperties()->GetRegistrator();
+    ptr<const PropertyRegistrar> actual_registrator = proto->GetProperties()->GetRegistrar();
 
     if (!IsWasmApiEntityTypeCompatible(proto_type_name, actual_registrator->GetTypeName().as_str())) {
         throw ScriptCallException("WASM engine API proto argument type mismatch", proto_type_name, actual_registrator->GetTypeName());
@@ -765,7 +765,7 @@ static auto ResolveWasmApiFixedTypeReceiver(BaseEngine& engine, string_view fixe
         throw ScriptCallException("WASM engine API fixed-type receiver not found", fixed_type_name, proto_id);
     }
 
-    ptr<const PropertyRegistrator> actual_registrator = proto->GetProperties()->GetRegistrator();
+    ptr<const PropertyRegistrar> actual_registrator = proto->GetProperties()->GetRegistrar();
 
     if (!IsWasmApiEntityTypeCompatible(fixed_type_name, actual_registrator->GetTypeName().as_str())) {
         throw ScriptCallException("WASM engine API fixed-type receiver type mismatch", fixed_type_name, actual_registrator->GetTypeName());
@@ -808,7 +808,7 @@ static auto ResolveWasmApiDynamicRefReceiver(const WasmApiPropertyDesc& desc, co
 
     ptr<DynamicRefTypeInstance> instance = ResolveWasmApiRefReceiver(desc.EntityName, raw_args.front()).reinterpret_as<DynamicRefTypeInstance>();
 
-    if (instance->GetRegistrator() != desc.Prop->GetRegistrator()) {
+    if (instance->GetRegistrar() != desc.Prop->GetRegistrar()) {
         throw ScriptCallException("WASM engine API ref receiver type mismatch", desc.EntityName, desc.Prop->GetName());
     }
 
@@ -3539,7 +3539,7 @@ static auto PackWasmApiReturn(const ComplexTypeDesc& type, WasmScalarKind kind, 
             throw ScriptCallException("WASM engine API entity return has no runtime id", base_type.Name);
         }
 
-        ptr<const PropertyRegistrator> actual_registrator = entity->GetProperties()->GetRegistrator();
+        ptr<const PropertyRegistrar> actual_registrator = entity->GetProperties()->GetRegistrar();
 
         if (!IsWasmApiEntityTypeCompatible(base_type.Name, actual_registrator->GetTypeName().as_str())) {
             throw ScriptCallException("WASM engine API entity return type mismatch", base_type.Name, actual_registrator->GetTypeName());
@@ -3563,8 +3563,8 @@ static auto PackWasmApiReturn(const ComplexTypeDesc& type, WasmScalarKind kind, 
         if (!proto) {
             throw ScriptCallException("WASM engine API proto return type mismatch", base_type.Name);
         }
-        if (!IsWasmApiEntityTypeCompatible(base_type.Name, proto->GetProperties()->GetRegistrator()->GetTypeName().as_str())) {
-            throw ScriptCallException("WASM engine API proto return type mismatch", base_type.Name, proto->GetProperties()->GetRegistrator()->GetTypeName());
+        if (!IsWasmApiEntityTypeCompatible(base_type.Name, proto->GetProperties()->GetRegistrar()->GetTypeName().as_str())) {
+            throw ScriptCallException("WASM engine API proto return type mismatch", base_type.Name, proto->GetProperties()->GetRegistrar()->GetTypeName());
         }
 
         return proto->GetProtoId().as_hash();
@@ -4385,20 +4385,20 @@ static auto ResolveWasmApiPropertyEntry(const EngineMetadata& meta, const Script
     case ScriptApiReceiverKind::None:
     case ScriptApiReceiverKind::Entity: {
         const EntityTypeDesc& desc = meta.GetEntityType(meta.Hashes.ToHashedString(entry.EntityName));
-        prop = desc.PropRegistrator->GetPropertyByIndex(entry.PropertyIndex);
+        prop = desc.PropRegistrar->GetPropertyByIndex(entry.PropertyIndex);
         break;
     }
     case ScriptApiReceiverKind::FixedType: {
         const EntityTypeDesc& desc = meta.GetFixedType(meta.Hashes.ToHashedString(entry.EntityName));
-        prop = desc.PropRegistrator->GetPropertyByIndex(entry.PropertyIndex);
+        prop = desc.PropRegistrar->GetPropertyByIndex(entry.PropertyIndex);
         break;
     }
     case ScriptApiReceiverKind::RefType: {
         const auto& ref_types = meta.GetRefTypes();
         auto it = ref_types.find(entry.EntityName);
         FO_STRONG_ASSERT(it != ref_types.end(), "WASM API bridge invariant failed");
-        FO_STRONG_ASSERT(it->second.FieldsRegistrator != nullptr, "WASM API bridge invariant failed");
-        prop = it->second.FieldsRegistrator->GetPropertyByIndex(entry.PropertyIndex);
+        FO_STRONG_ASSERT(it->second.FieldsRegistrar != nullptr, "WASM API bridge invariant failed");
+        prop = it->second.FieldsRegistrar->GetPropertyByIndex(entry.PropertyIndex);
         break;
     }
     }

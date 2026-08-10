@@ -588,7 +588,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
     auto resolve_hash = [prop](const_span<uint8_t> hash_data) -> hstring {
         FO_VERIFY_AND_THROW(hash_data.size() == sizeof(hstring::hash_t), "Serialized hash payload size does not match hash storage size");
         hstring::hash_t hash = MemReadUnaligned<hstring::hash_t>(hash_data.data());
-        return hash ? prop->GetRegistrator()->GetHashResolver()->ResolveHash(hash) : hstring();
+        return hash ? prop->GetRegistrar()->GetHashResolver()->ResolveHash(hash) : hstring();
     };
 
     auto resolve_fixed_type = [prop, as_engine, &resolve_hash](const_span<uint8_t> hash_data) -> nptr<Entity> {
@@ -1823,9 +1823,9 @@ auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<co
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
 
-    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrator);
+    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrar);
     ref_instance->LoadFromRawData(base_type, raw_data);
 
     return ref_instance;
@@ -1837,7 +1837,7 @@ auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<voi
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
 
     if (!as_obj) {
         return {};

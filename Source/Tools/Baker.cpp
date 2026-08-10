@@ -691,10 +691,10 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
     size_t errors = 0;
 
-    auto registrator = props.GetRegistrator();
+    auto registrar = props.GetRegistrar();
 
-    for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-        auto prop = registrator->GetPropertyByIndexUnsafe(i);
+    for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
+        auto prop = registrar->GetPropertyByIndexUnsafe(i);
 
         if (prop->IsBaseTypeResource()) {
             if (prop->IsPlainData()) {

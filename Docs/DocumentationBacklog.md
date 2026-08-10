@@ -39,7 +39,7 @@ This backlog tracks the planned engine documentation set. It exists so documenta
 ## Runtime model
 
 - `verified` — [EntityModel.md](EntityModel.md)
-  - Verified against `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, `ProtoManager.*`, and entity/property tests on 2026-05-18.
+  - Verified against `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializer.*`, `ProtoManager.*`, and entity/property tests on 2026-05-18.
 - `verified` — [MapsMovementGeometry.md](MapsMovementGeometry.md)
   - Verified against `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, `Source/Tools/MapBaker.*`, and map/movement tests on 2026-05-18.
 - `verified` — [Networking.md](Networking.md)
