@@ -354,6 +354,75 @@ static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
     return layouts.size();
 }
 
+// The client's real atlas load is animated model sprites: around a thousand small frames live on a
+// single page, each one released and re-placed as its animation advances. The corpus above spreads its
+// sprites over several pages, so per page it holds barely a hundred allocations - an order of magnitude
+// short of the workload whose free-list cost this layout is tuned for. Free-list handling scales with
+// the per-page working set, which is why a setting can win the corpus benchmark and lose in the client.
+static auto RunAtlasProductionChurn(size_t churn_allocations) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr isize32 atlas_size = {2048, 2048};
+    constexpr size_t live_target = 1000;
+
+    auto layout = SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size);
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live;
+    uint32_t random_state = 0x5EED17u;
+
+    auto next_size = [&random_state]() -> isize32 {
+        random_state = random_state * 1664525u + 1013904223u;
+        int32_t width = 32 + numeric_cast<int32_t>(random_state % 32u);
+        random_state = random_state * 1664525u + 1013904223u;
+        int32_t height = 32 + numeric_cast<int32_t>(random_state % 32u);
+        return {width, height};
+    };
+
+    while (live.size() < live_target) {
+        auto allocation = layout->Allocate(next_size());
+
+        if (!allocation) {
+            break;
+        }
+
+        live.emplace_back(std::move(allocation));
+    }
+
+    FO_STRONG_ASSERT(live.size() == live_target, "Production churn fixture must reach its working set", live.size());
+
+    for (size_t i = 0; i < churn_allocations; i++) {
+        random_state = random_state * 1664525u + 1013904223u;
+        size_t victim = random_state % live.size();
+        live[victim].reset();
+        live[victim] = layout->Allocate(next_size());
+        FO_STRONG_ASSERT(live[victim], "Production churn fixture must keep its working set placed", i);
+    }
+
+    return layout->GetPruneCount();
+}
+
+// Pruning is the layout's one non-incremental pass, so how often it runs decides whether it is a rare
+// bounded cost or a per-allocation one. The trigger compares the list against the size the *previous*
+// prune produced; an earlier form compared it against a multiple of the live allocation count, and once
+// a page's genuine maximal free set exceeded that count-derived threshold every single allocation ran a
+// full prune that could not get back under it and removed nothing at all. That is invisible in a small
+// fixture and catastrophic here - measured at this working set it turned 140 ms of churn into 55 s, with
+// the worst single allocation at 41 ms, i.e. two dropped frames. This pins the rate, which is exact and
+// host-independent, rather than the time it takes.
+//
+// The bound separates regimes, it is not a tuning target: it fails when pruning has become a
+// per-allocation operation and passes for every sane setting of the two constants above, which land two
+// orders of magnitude below it. Read a failure as "the trigger no longer makes progress", not as
+// "the constants need nudging".
+TEST_CASE("TextureAtlasLayoutPruningStaysRareUnderProductionChurn", "[texture-atlas]")
+{
+    constexpr size_t churn_allocations = 4000;
+
+    size_t prune_count = RunAtlasProductionChurn(churn_allocations);
+    CAPTURE(prune_count);
+    CHECK(prune_count * 2 < churn_allocations);
+}
+
 TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
 {
     vector<isize32> corpus = MakeAtlasCorpus();
@@ -362,14 +431,14 @@ TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
     CAPTURE(packed_pages);
     CHECK(packed_pages <= 6);
 
-    // One page above the churn-free budget is the deliberate cost of cheap frees: Release() hands a
-    // slot straight back to the free list without coalescing it with neighbouring free space, so after
-    // churn some placements are chosen from a free list that is no longer the exact maximal set.
-    // Tightening FREE_LIST_GROWTH_FACTOR / FREE_LIST_MIN_SLACK in TextureAtlas.cpp buys the page back
-    // at roughly half the allocation throughput; the fast setting is the intended trade.
+    // Churn must not cost a page. Release() hands a slot straight back to the free list without
+    // coalescing it with neighbouring free space, so the list drifts off the exact maximal set and
+    // placements get chosen from a stale one - which did cost a seventh page while the prune trigger was
+    // keyed to the live allocation count. Keying it to the previous pruned size instead keeps the list
+    // close to maximal at any working-set size, so the page comes back at no throughput cost.
     size_t churned_pages = RunAtlasCorpus(corpus, true);
     CAPTURE(churned_pages);
-    CHECK(churned_pages <= 7);
+    CHECK(churned_pages <= 6);
 }
 
 // Long-run churn guard. Releasing a slot hands it back without coalescing it with neighbouring free
@@ -465,6 +534,13 @@ TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
     BENCHMARK("Pack and refill after runtime churn")
     {
         return RunAtlasCorpus(corpus, true);
+    };
+
+    // Enough churn to cross the free-list prune threshold several times, so the sample includes both
+    // the cheap allocations and the periodic prune they pay for.
+    BENCHMARK("Sustained churn at a production working set")
+    {
+        return RunAtlasProductionChurn(4000);
     };
 }
 

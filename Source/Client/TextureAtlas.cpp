@@ -41,10 +41,15 @@ static constexpr int32_t ATLAS_SPRITES_PADDING = 1;
 // last pruned size, so the rebuild stays linear in allocations while redundant slabs cannot pile up.
 static constexpr size_t REBUILD_PRUNE_GROWTH_FACTOR = 4;
 static constexpr size_t REBUILD_PRUNE_MIN_GROWTH = 64;
-// Free-list slack tolerated before pruning. Releases push slots back without coalescing, so the list
-// drifts away from the exact maximal set; these bound that drift without pruning on every allocation.
-static constexpr size_t FREE_LIST_GROWTH_FACTOR = 4;
-static constexpr size_t FREE_LIST_MIN_SLACK = 64;
+// Free-list slack tolerated before pruning, measured against the size the previous prune produced.
+// Releases push slots back without coalescing, so the list drifts away from the exact maximal set;
+// these bound that drift without pruning on every allocation.
+static constexpr size_t FREE_LIST_GROWTH_FACTOR = 2;
+static constexpr size_t FREE_LIST_MIN_SLACK = 32;
+// Cells per axis in the containment index a prune builds over its own keepers. Coarser means fewer
+// registrations per keeper, finer means fewer keepers to test per candidate.
+static constexpr int32_t PRUNE_GRID_RESOLUTION = 64;
+static constexpr size_t NO_GRID_ENTRY = std::numeric_limits<size_t>::max();
 static constexpr ucolor ATLAS_DUMP_QUAD_COLOR {255, 255, 0, 255};
 static constexpr ucolor ATLAS_DUMP_EMPTY_COLOR {255, 0, 0, 255};
 static constexpr ucolor ATLAS_DUMP_MESH_COLOR {255, 0, 255, 255};
@@ -120,10 +125,15 @@ auto TextureAtlasLayout::Allocate(isize32 size) -> unique_del_nptr<Allocation>
     auto allocation = AcquireAllocation();
     SplitFreeRectangles(_freeRectangles, placement->Rectangle);
 
-    // Prune only once the list has outgrown the working set. Pruning is what bounds the list, but it
-    // is a sort plus containment scan, so doing it on every allocation is the cost this design avoids.
-    if (_freeRectangles.size() > (_activeAllocations.size() + 1) * FREE_LIST_GROWTH_FACTOR + FREE_LIST_MIN_SLACK) {
+    // Prune only once the list has grown well past what the previous prune achieved, exactly as the
+    // rebuild below paces its own interim prunes. Measuring the threshold against the last pruned size
+    // is what makes it self-tuning, and the earlier form - a multiple of the live allocation count - was
+    // not: once a page's genuine maximal free set exceeded that count-derived threshold, every
+    // allocation ran a full prune that could not get the list back under it and therefore removed
+    // nothing at all.
+    if (_freeRectangles.size() > _freeRectanglesAtLastPrune * FREE_LIST_GROWTH_FACTOR + FREE_LIST_MIN_SLACK) {
         PruneFreeRectangles(_freeRectangles);
+        _freeRectanglesAtLastPrune = _freeRectangles.size();
     }
 
     allocation->_rectangle = placement->Rectangle;
@@ -305,6 +315,7 @@ void TextureAtlasLayout::DefragmentFreeRectangles()
     PruneFreeRectangles(rebuilt_free_rectangles);
 
     _freeRectangles = std::move(rebuilt_free_rectangles);
+    _freeRectanglesAtLastPrune = _freeRectangles.size();
     _freeRectanglesDirty = false;
 }
 
@@ -351,25 +362,60 @@ void TextureAtlasLayout::PruneFreeRectangles(vector<irect32>& free_rectangles)
         return GetArea(left.size()) > GetArea(right.size());
     });
 
+    // A keeper can only contain a candidate if it also covers the candidate's top-left corner, so
+    // keepers are indexed by the coarse cells they span and a candidate is tested only against the
+    // keepers registered in its own corner cell. That is exact - no containment can hide from the corner
+    // cell - so the surviving set is identical to testing every candidate against every keeper, which on
+    // a crowded page is millions of comparisons inside a single allocation, i.e. a dropped frame rather
+    // than a steady cost. The index is a per-cell singly linked chain over two flat arrays, so
+    // registering a keeper stays O(cells it spans) with no per-cell allocation.
+    int32_t cell_width = std::max(1, (_size.width + PRUNE_GRID_RESOLUTION - 1) / PRUNE_GRID_RESOLUTION);
+    int32_t cell_height = std::max(1, (_size.height + PRUNE_GRID_RESOLUTION - 1) / PRUNE_GRID_RESOLUTION);
+    size_t grid_columns = numeric_cast<size_t>((_size.width + cell_width - 1) / cell_width);
+    size_t grid_rows = numeric_cast<size_t>((_size.height + cell_height - 1) / cell_height);
+
+    vector<size_t> cell_heads;
+    cell_heads.assign(grid_columns * grid_rows, NO_GRID_ENTRY);
+    vector<size_t> entry_keeper;
+    vector<size_t> entry_next;
+
     vector<irect32> pruned_rectangles;
     pruned_rectangles.reserve(free_rectangles.size());
 
     for (const irect32& candidate : free_rectangles) {
+        size_t first_column = numeric_cast<size_t>(candidate.x / cell_width);
+        size_t first_row = numeric_cast<size_t>(candidate.y / cell_height);
         bool contained = false;
 
-        for (const irect32& keeper : pruned_rectangles) {
-            if (Contains(keeper, candidate)) {
+        for (size_t entry = cell_heads[first_row * grid_columns + first_column]; entry != NO_GRID_ENTRY; entry = entry_next[entry]) {
+            if (Contains(pruned_rectangles[entry_keeper[entry]], candidate)) {
                 contained = true;
                 break;
             }
         }
 
-        if (!contained) {
-            pruned_rectangles.emplace_back(candidate);
+        if (contained) {
+            continue;
+        }
+
+        size_t keeper_index = pruned_rectangles.size();
+        pruned_rectangles.emplace_back(candidate);
+
+        size_t last_column = numeric_cast<size_t>((candidate.x + candidate.width - 1) / cell_width);
+        size_t last_row = numeric_cast<size_t>((candidate.y + candidate.height - 1) / cell_height);
+
+        for (size_t row = first_row; row <= last_row; row++) {
+            for (size_t column = first_column; column <= last_column; column++) {
+                size_t cell = row * grid_columns + column;
+                entry_keeper.emplace_back(keeper_index);
+                entry_next.emplace_back(cell_heads[cell]);
+                cell_heads[cell] = entry_next.size() - 1;
+            }
         }
     }
 
     free_rectangles = std::move(pruned_rectangles);
+    _pruneCount++;
 }
 
 void TextureAtlasLayout::DrawAllocationOverlay(const Allocation& allocation, span<ucolor> pixels) const
