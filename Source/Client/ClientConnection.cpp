@@ -365,7 +365,7 @@ auto ClientConnection::ReceiveData() -> bool
         _netIn.ShrinkReadBuf();
 
         if (!_settings->DisableZlibCompression) {
-            _decompressor.Decompress(make_byte_span(recv_buf), _unpackedReceivedBuf);
+            _decompressor.Decompress(recv_buf, _unpackedReceivedBuf);
             _netIn.AddData(_unpackedReceivedBuf);
             _bytesReceived += recv_buf.size();
             _bytesRealReceived += _unpackedReceivedBuf.size();
