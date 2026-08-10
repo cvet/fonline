@@ -102,27 +102,22 @@ TEST_CASE("SafeArithmetics")
         CHECK(lerp(20u, 10u, 2.0f) == 10u);
     }
 
-    SECTION("IterateRange")
-    {
-        auto sum = 0;
-        for (const auto i : iterate_range(5)) {
-            sum += i;
-        }
-        CHECK(sum == 10);
-
-        const vector<int32_t> values = {4, 5, 6};
-        size_t idx_sum = 0;
-        for (const auto i : iterate_range(values)) {
-            idx_sum += i;
-        }
-        CHECK(idx_sum == 3);
-    }
-
     SECTION("IRoundAndConstCast")
     {
         CHECK(iround<int32_t>(1.4f) == 1);
         CHECK(iround<int32_t>(1.6f) == 2);
         CHECK(iround<int32_t>(-1.6f) == -2);
+        CHECK_THROWS_AS((iround<int32_t>(std::numeric_limits<float32_t>::infinity())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(-std::numeric_limits<float32_t>::infinity())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(std::numeric_limits<float32_t>::quiet_NaN())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(std::numeric_limits<float64_t>::infinity())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(-std::numeric_limits<float64_t>::infinity())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(std::numeric_limits<float64_t>::quiet_NaN())), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(1e30f)), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(-1e30f)), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(1e300)), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(-1e300)), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(std::numeric_limits<float64_t>::max())), OverflowException);
 
         constexpr int32_t casted = const_numeric_cast<int32_t>(uint16_t {42});
         STATIC_REQUIRE(casted == 42);

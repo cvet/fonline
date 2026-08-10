@@ -32,6 +32,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "ClientConnection.h"
 #include "NetworkClient.h"
 #include "Test_BakerHelpers.h"
 
@@ -45,7 +46,7 @@ namespace
     {
     public:
         explicit ThrowingNetworkClientConnection(ClientNetworkSettings& settings) :
-            NetworkClientConnection(settings)
+            NetworkClientConnection(SettingsPtr(settings))
         {
         }
 
@@ -105,6 +106,13 @@ namespace
         void DisconnectImpl() noexcept override { _disconnectCount++; }
 
     private:
+        static auto SettingsPtr(ClientNetworkSettings& settings) noexcept -> ptr<ClientNetworkSettings>
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return &settings;
+        }
+
         bool _throwOnCheck {};
         bool _throwOnSend {};
         bool _throwOnReceive {};
@@ -125,7 +133,7 @@ namespace
 TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 {
     auto settings = MakeClientNetworkSettings();
-    const auto port = TestClientPort.fetch_add(1);
+    auto port = TestClientPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     InterthreadDataCallback server_send_to_client;
@@ -145,10 +153,9 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
         };
     });
 
-    const auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
 
-    auto conn = NetworkClientConnection::CreateInterthreadConnection(settings);
-    REQUIRE(conn != nullptr);
+    auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
     REQUIRE(server_send_to_client);
 
     CHECK_FALSE(conn->IsConnecting());
@@ -156,16 +163,16 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
     CHECK(conn->CheckStatus(true));
     CHECK_FALSE(conn->CheckStatus(false));
 
-    const vector<uint8_t> incoming_data {1, 2, 3};
+    vector<uint8_t> incoming_data {1, 2, 3};
     server_send_to_client(incoming_data);
 
     CHECK(conn->CheckStatus(false));
 
-    const auto recv_data = conn->ReceiveData();
+    auto recv_data = conn->ReceiveData();
     CHECK(vector<uint8_t>(recv_data.begin(), recv_data.end()) == incoming_data);
     CHECK(conn->GetBytesReceived() == incoming_data.size());
 
-    const vector<uint8_t> outgoing_data {4, 5, 6, 7};
+    vector<uint8_t> outgoing_data {4, 5, 6, 7};
     CHECK(conn->SendData(outgoing_data) == outgoing_data.size());
     CHECK(server_received == outgoing_data);
     CHECK(conn->GetBytesSend() == outgoing_data.size());
@@ -186,7 +193,7 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
 {
     auto settings = MakeClientNetworkSettings();
-    const auto port = TestClientPort.fetch_add(1);
+    auto port = TestClientPort.fetch_add(1);
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     InterthreadDataCallback server_send_to_client;
@@ -197,10 +204,9 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
         return [](const_span<uint8_t>) { };
     });
 
-    const auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
 
-    auto conn = NetworkClientConnection::CreateInterthreadConnection(settings);
-    REQUIRE(conn != nullptr);
+    auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
     REQUIRE(server_send_to_client);
 
     server_send_to_client({});
@@ -209,6 +215,44 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
     CHECK_FALSE(conn->IsConnecting());
     CHECK_FALSE(conn->IsConnected());
     CHECK(conn->ReceiveData().empty());
+}
+
+TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
+{
+    auto settings = MakeClientNetworkSettings();
+    auto port = TestClientPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.ServerPort, port);
+    BakerTests::OverrideSetting(settings.DisableZlibCompression, false);
+
+    InterthreadDataCallback server_send_to_client;
+    size_t client_disconnect_count = 0;
+
+    InterthreadListeners.emplace(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
+        server_send_to_client = std::move(client_receive);
+
+        return [&](const_span<uint8_t> buf) {
+            if (buf.empty()) {
+                client_disconnect_count++;
+            }
+        };
+    });
+
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+
+    optional<ClientConnection::ConnectResult> connect_result;
+    ClientConnection client {&settings};
+    client.SetConnectHandler([&](ClientConnection::ConnectResult result) { connect_result = result; });
+    client.Connect();
+    REQUIRE(server_send_to_client);
+
+    vector<uint8_t> invalid = {0x00, 0x00};
+    server_send_to_client(invalid);
+
+    CHECK_NOTHROW(client.Process());
+    CHECK_FALSE(client.IsConnecting());
+    CHECK_FALSE(client.IsConnected());
+    CHECK(connect_result == ClientConnection::ConnectResult::Failed);
+    CHECK(client_disconnect_count == 1);
 }
 
 TEST_CASE("NetworkClientWrapperDisconnectsAndRethrowsOnImplExceptions")

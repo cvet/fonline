@@ -201,14 +201,22 @@ SDL_KeyboardID *SDL_GetKeyboards(int *count)
 const char *SDL_GetKeyboardNameForID(SDL_KeyboardID instance_id)
 {
     const char *name = NULL;
-    if (!SDL_FindInHashTable(SDL_keyboard_names, (const void *)(uintptr_t)instance_id, (const void **)&name)) {
-        SDL_SetError("Keyboard %" SDL_PRIu32 " not found", instance_id);
-        return NULL;
-    }
-    if (!name) {
-        // SDL_strdup() failed during insert
-        SDL_OutOfMemory();
-        return NULL;
+
+    switch (instance_id) {
+    case SDL_GLOBAL_KEYBOARD_ID:
+        name = "Keyboard";
+        break;
+    default:
+        if (!SDL_FindInHashTable(SDL_keyboard_names, (const void *)(uintptr_t)instance_id, (const void **)&name)) {
+            SDL_SetError("Keyboard %" SDL_PRIu32 " not found", instance_id);
+            return NULL;
+        }
+        if (!name) {
+            // SDL_strdup() failed during insert
+            SDL_OutOfMemory();
+            return NULL;
+        }
+        break;
     }
     return name;
 }
@@ -776,11 +784,33 @@ void SDL_SendKeyboardText(const char *text)
         event.type = SDL_EVENT_TEXT_INPUT;
         event.common.timestamp = 0;
         event.text.windowID = keyboard->focus ? keyboard->focus->id : 0;
-        event.text.text = SDL_CreateTemporaryString(text);
-        if (!event.text.text) {
-            return;
+
+        if (SDL_GetHintBoolean("SDL2_COMPAT", false)) {
+            size_t pos = 0, advance, length = SDL_strlen(text);
+
+            // Limit SDL_EVENT_TEXT_INPUT events to 32 bytes for SDL2 compatibility
+            while (pos < length) {
+                char trimmed_text[32];
+
+                advance = SDL_utf8strlcpy(trimmed_text, text + pos, SDL_arraysize(trimmed_text));
+                if (!advance) {
+                    break;
+                }
+                pos += advance;
+
+                event.text.text = SDL_CreateTemporaryString(trimmed_text);
+                if (!event.text.text) {
+                    return;
+                }
+                SDL_PushEvent(&event);
+            }
+        } else {
+            event.text.text = SDL_CreateTemporaryString(text);
+            if (!event.text.text) {
+                return;
+            }
+            SDL_PushEvent(&event);
         }
-        SDL_PushEvent(&event);
     }
 }
 

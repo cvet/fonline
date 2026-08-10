@@ -98,7 +98,7 @@ namespace SPK
 		Zone(const Vector3D& position = Vector3D());
 
         virtual void innerUpdateTransform() override;
-		static  void normalizeOrRandomize(Vector3D& v);
+		void normalizeOrRandomize(Vector3D& v) const;
 
         virtual void innerImport(const IO::Descriptor& descriptor) override;
         virtual void innerExport(IO::Descriptor& descriptor) const override;
@@ -110,7 +110,7 @@ namespace SPK
 
 		typedef bool (Zone::*checkFn)(const Particle&,Vector3D* normal) const;
 		static const size_t NB_TEST_TYPES = 6;
-		static checkFn TEST_FN[NB_TEST_TYPES];
+		static const checkFn TEST_FN[NB_TEST_TYPES];
 
 		bool checkInside(const Particle& particle,Vector3D* normal) const;
 		bool checkOutside(const Particle& particle,Vector3D* normal) const;
@@ -153,11 +153,11 @@ namespace SPK
 		transformPos(tPosition,position);
 	}
 
-	inline void Zone::normalizeOrRandomize(Vector3D& v)
+	inline void Zone::normalizeOrRandomize(Vector3D& v) const
 	{
 		while(!v.normalize())
 		{
-			do v = SPK_RANDOM(Vector3D(-1.0f,-1.0f,-1.0f),Vector3D(1.0f,1.0f,1.0f));
+			do v = SPK_RANDOM(getContext(),Vector3D(-1.0f,-1.0f,-1.0f),Vector3D(1.0f,1.0f,1.0f));
 			while (v.getSqrNorm() > 1.0f);
 		}
 	}

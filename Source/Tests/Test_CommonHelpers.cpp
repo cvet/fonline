@@ -78,38 +78,34 @@ TEST_CASE("CommonHelpers")
         CHECK(called);
     }
 
-    SECTION("DynamicPtrCastUnique")
-    {
-        unique_ptr<TestBase> base = SafeAlloc::MakeUnique<TestDerived>(42);
-        auto derived = dynamic_ptr_cast<TestDerived>(std::move(base));
-        REQUIRE(derived);
-        CHECK(derived->Value == 42);
-    }
-
     SECTION("DynamicPtrCastShared")
     {
-        shared_ptr<TestDerived> derived = SafeAlloc::MakeShared<TestDerived>(77);
+        auto derived = SafeAlloc::MakeShared<TestDerived>(77);
         shared_ptr<TestBase> base = derived;
 
-        auto casted = dynamic_ptr_cast<TestDerived>(base);
+        auto casted = base.dyn_cast<TestDerived>();
         REQUIRE(casted);
         CHECK(casted->Value == 77);
     }
 
-    SECTION("MakeIfNotExistsDestroyIfEmpty")
+    SECTION("RequireRefcountPtr")
     {
-        unique_ptr<vector<int32_t>> values;
-        make_if_not_exists(values);
-        REQUIRE(values);
-        CHECK(values->empty());
+        TestRefCounter value;
 
-        destroy_if_empty(values);
-        CHECK_FALSE(values);
+        refcount_nptr<TestRefCounter> missing;
+        CHECK_THROWS_AS(require_refcount_ptr(std::move(missing)), VerificationException);
+        CHECK(value.RefCount == 0);
 
-        make_if_not_exists(values);
-        values->emplace_back(1);
-        destroy_if_empty(values);
-        CHECK(values);
+        refcount_nptr<TestRefCounter> nullable = refcount_nptr<TestRefCounter>::from_add_ref(&value);
+        CHECK(value.RefCount == 1);
+
+        {
+            auto present = require_refcount_ptr(std::move(nullable));
+            CHECK_FALSE(nullable);
+            CHECK(value.RefCount == 1);
+        }
+
+        CHECK(value.RefCount == 0);
     }
 
     SECTION("VectorSafeHelpers")
@@ -128,23 +124,59 @@ TEST_CASE("CommonHelpers")
 
     SECTION("VectorAlgorithms")
     {
-        const vector<int32_t> values = {5, 1, 3, 2};
+        vector<int32_t> values = {5, 1, 3, 2};
 
-        const auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
         CHECK(filtered == vector<int32_t> {5, 1, 3});
 
-        const auto transformed = vec_transform(values, [](int32_t v) -> int32_t { return v * 10; });
+        auto transformed = vec_transform(values, [](int32_t v) -> int32_t { return v * 10; });
         CHECK(transformed == vector<int32_t> {50, 10, 30, 20});
 
-        const auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
         CHECK(sorted == vector<int32_t> {1, 2, 3, 5});
 
         CHECK(vec_exists(values, 3));
         CHECK_FALSE(vec_exists(values, 7));
 
-        const set<int32_t> uniq = {9, 8, 7};
-        const auto copied = to_vector(uniq);
+        set<int32_t> uniq = {9, 8, 7};
+        auto copied = to_vector(uniq);
         CHECK(copied.size() == 3);
+    }
+
+    SECTION("VectorAlgorithmsPreserveContainerKind")
+    {
+        // rebind_vector maps a container kind to a new element type
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<vector<int32_t>, int64_t>, vector<int64_t>>);
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<small_vector<int32_t, 4>, int64_t>, small_vector<int64_t, 4>>);
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<const small_vector<int32_t, 4>&, int64_t>, small_vector<int64_t, 4>>);
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<span<int32_t>, int64_t>, vector<int64_t>>);
+        STATIC_REQUIRE(std::same_as<rebind_vector_t<set<int32_t>, int64_t>, vector<int64_t>>);
+
+        // A small_vector input keeps its kind (and inline capacity) through every producing helper
+        small_vector<int32_t, 4> values = {5, 1, 3, 2};
+
+        auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(filtered)>, small_vector<int32_t, 4>>);
+        CHECK(filtered == small_vector<int32_t, 4> {5, 1, 3});
+
+        auto transformed = vec_transform(values, [](int32_t v) -> int64_t { return v * 10; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(transformed)>, small_vector<int64_t, 4>>);
+        CHECK(transformed == small_vector<int64_t, 4> {50, 10, 30, 20});
+
+        auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(sorted)>, small_vector<int32_t, 4>>);
+        CHECK(sorted == small_vector<int32_t, 4> {1, 2, 3, 5});
+
+        // A plain vector input still yields a vector (backward compatible)
+        vector<int32_t> vec_values = {5, 1, 3, 2};
+        auto vec_filtered = vec_filter(vec_values, [](int32_t v) { return v % 2 == 1; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(vec_filtered)>, vector<int32_t>>);
+
+        // A non-vector range materializes as a plain vector
+        set<int32_t> set_values = {5, 1, 3, 2};
+        auto set_sorted = vec_sorted(set_values, [](int32_t l, int32_t r) { return l < r; });
+        STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(set_sorted)>, vector<int32_t>>);
+        CHECK(set_sorted == vector<int32_t> {1, 2, 3, 5});
     }
 
     SECTION("VecTransformSupportsPointerLikeValues")
@@ -153,7 +185,7 @@ TEST_CASE("CommonHelpers")
         values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(4));
         values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(9));
 
-        const auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
+        auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
         CHECK(transformed == vector<int32_t> {4, 9});
     }
 
@@ -161,7 +193,7 @@ TEST_CASE("CommonHelpers")
     {
         TestRefCounter first;
         TestRefCounter second;
-        vector<TestRefCounter*> refs = {&first, &second};
+        vector<ptr<TestRefCounter>> refs = {&first, &second};
 
         {
             auto held = copy_hold_ref(refs);

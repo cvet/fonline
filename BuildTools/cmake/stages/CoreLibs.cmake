@@ -33,10 +33,16 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Vulkan.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-SDLGpu.cpp")
         AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
             APPEND_TO_GROUP FO_CORE_LIBS_GROUP
             LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
+        # Vulkan builds against the headers vendored with SDL3 (no external SDK); the loader is resolved
+        # dynamically at runtime, so only these headers are needed at build time. target_include_directories
+        # requires an absolute path, so anchor the relative FO_SDL_DIR at the project source root.
+        TargetIncludeDirectories(AppFrontend SYSTEM PUBLIC $<$<BOOL:${FO_HAVE_VULKAN}>:${CMAKE_SOURCE_DIR}/${FO_SDL_DIR}/src/video/khronos>)
     endif()
 
     AddCoreStaticLibrary(CommonLib FO_COMMON_SOURCE
@@ -135,21 +141,23 @@ if(FO_BUILD_SERVER_LIB)
 endif()
 
 if(FO_BUILD_MAPPER_LIB)
+    AddCoreStaticLibrary(AnimationViewerLib FO_ANIMATION_VIEWER_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS ClientLib CommonLib)
+
+    AddCoreStaticLibrary(ParticleViewerLib FO_PARTICLE_VIEWER_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS ClientLib CommonLib)
+
     AddCoreStaticLibrary(MapperLib FO_MAPPER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting> $<$<BOOL:${FO_NATIVE_SCRIPTING}>:NativeScripting>)
+        LINK_LIBS AnimationViewerLib ParticleViewerLib ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting> $<$<BOOL:${FO_NATIVE_SCRIPTING}>:NativeScripting>)
 endif()
 
 if(FO_BUILD_BAKER_LIB)
     AddCoreStaticLibrary(BakerLib FO_BAKER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting> $<$<BOOL:${FO_NATIVE_SCRIPTING}>:NativeScripting>)
-endif()
-
-if(FO_BUILD_EDITOR_LIB)
-    AddCoreStaticLibrary(EditorLib FO_EDITOR_SOURCE
-        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS BakerLib CommonLib)
+        LINK_LIBS ClientLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting> $<$<BOOL:${FO_NATIVE_SCRIPTING}>:NativeScripting>)
 endif()
 
 # Native scripting: user module files placed under ${FO_NATIVE_SCRIPTS_DIR} are

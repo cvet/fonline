@@ -370,6 +370,10 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 
 			argsPos += parmDWords;
 		}
+
+		// (FOnline Patch) even argument slots: every argument occupies an even number of DWORDs on the VM
+		// stack (see asCDataType::GetArgSlotSizeOnStackDWords), so round the position up past the slot padding.
+		argsPos = (argsPos + 1) & ~asUINT(1);
 	}
 #if defined(AS_IPHONE) || defined(AS_MAC)
 	PadAppleStack(stackArgs, numStackArgs, stackDispositionBytes, sizeof(asQWORD));

@@ -38,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 TextBaker::TextBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -66,14 +66,14 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     set<string> packs_to_complete;
 
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).get_file_extension();
+        string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (ext != "fotxt") {
             continue;
         }
 
-        const auto name_pair = strex(file_header.GetNameNoExt()).split('.');
-        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        auto name_pair = strex(file_header.GetNameNoExt()).split('.');
+        FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file_header.GetPath(), file_header.GetNameNoExt(), name_pair.size());
         const auto& text_pack_name = name_pair[0];
         const auto& lang_name = name_pair[1];
 
@@ -82,20 +82,20 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         }
 
         filtered_files.emplace_back(File::Load(file_header));
-        filtered_paths.emplace(file_header.GetPath());
+        filtered_paths.emplace(string(file_header.GetPath()));
         packs_to_complete.emplace(text_pack_name);
     }
 
     // Ensure full language set for changed text packs
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).get_file_extension();
+        string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (ext != "fotxt") {
             continue;
         }
 
-        const auto name_pair = strex(file_header.GetNameNoExt()).split('.');
-        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        auto name_pair = strex(file_header.GetNameNoExt()).split('.');
+        FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file_header.GetPath(), file_header.GetNameNoExt(), name_pair.size());
         const auto& text_pack_name = name_pair[0];
         const auto& lang_name = name_pair[1];
 
@@ -105,12 +105,12 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         if (std::ranges::find(_context->Settings->BakeLanguages, lang_name) == _context->Settings->BakeLanguages.end()) {
             continue;
         }
-        if (filtered_paths.contains(file_header.GetPath())) {
+        if (filtered_paths.contains(string(file_header.GetPath()))) {
             continue;
         }
 
         filtered_files.emplace_back(File::Load(file_header));
-        filtered_paths.emplace(file_header.GetPath());
+        filtered_paths.emplace(string(file_header.GetPath()));
     }
 
     if (filtered_files.empty()) {
@@ -123,8 +123,8 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     set<string> all_languages;
 
     for (const auto& file : filtered_files) {
-        const auto name_pair = strex(file.GetNameNoExt()).split('.');
-        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        auto name_pair = strex(file.GetNameNoExt()).split('.');
+        FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file.GetPath(), file.GetNameNoExt(), name_pair.size());
         const auto& lang_name = name_pair[1];
 
         if (all_languages.emplace(lang_name).second) {
@@ -149,13 +149,13 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         map<string, TextPack> lang_pack;
 
         for (const auto& file : filtered_files) {
-            const auto name_pair = strex(file.GetNameNoExt()).split('.');
-            FO_RUNTIME_ASSERT(name_pair.size() == 2);
+            auto name_pair = strex(file.GetNameNoExt()).split('.');
+            FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file.GetPath(), file.GetNameNoExt(), name_pair.size());
             const auto& text_pack_name = name_pair[0];
             const auto& lang_name = name_pair[1];
 
             if (lang_name == target_lang) {
-                TextPack text_pack {hashes};
+                TextPack text_pack {&hashes};
 
                 if (!text_pack.LoadFromString(file.GetStr(), text_pack_name)) {
                     throw TextPackException("Invalid text file", file.GetPath());

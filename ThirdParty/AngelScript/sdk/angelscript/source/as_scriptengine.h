@@ -529,6 +529,7 @@ public:
 		asUINT memberInitMode;
 		asUINT boolConversionMode;
 		bool   foreachSupport;
+		bool   disallowNullableToNonNullable; // (FOnline Patch) opt-in compile-time `T x = T?` rejection
 	} ep;
 
 	// Callbacks

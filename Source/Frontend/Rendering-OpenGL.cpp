@@ -48,6 +48,7 @@
 #endif
 
 #if FO_OPENGL_ES
+
 #if FO_IOS
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
@@ -55,6 +56,7 @@
 #include <GLES3/gl3.h>
 #include <GLES3/gl3platform.h>
 #endif
+
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -65,6 +67,8 @@ FO_BEGIN_NAMESPACE
     X(glAttachShader, PFNGLATTACHSHADERPROC); \
     X(glBindBuffer, PFNGLBINDBUFFERPROC); \
     X(glBindBufferBase, PFNGLBINDBUFFERBASEPROC); \
+    X(glBindBufferRange, PFNGLBINDBUFFERRANGEPROC); \
+    X(glBufferSubData, PFNGLBUFFERSUBDATAPROC); \
     X(glBindFramebuffer, PFNGLBINDFRAMEBUFFERPROC); \
     X(glBindFramebufferEXT, PFNGLBINDFRAMEBUFFEREXTPROC); \
     X(glBindRenderbuffer, PFNGLBINDRENDERBUFFERPROC); \
@@ -84,6 +88,7 @@ FO_BEGIN_NAMESPACE
     X(glCompileShader, PFNGLCOMPILESHADERPROC); \
     X(glCreateProgram, PFNGLCREATEPROGRAMPROC); \
     X(glCreateShader, PFNGLCREATESHADERPROC); \
+    X(glCullFace, PFNGLCULLFACEPROC); \
     X(glDeleteBuffers, PFNGLDELETEBUFFERSPROC); \
     X(glDeleteFramebuffers, PFNGLDELETEFRAMEBUFFERSPROC); \
     X(glDeleteFramebuffersEXT, PFNGLDELETEFRAMEBUFFERSEXTPROC); \
@@ -94,6 +99,7 @@ FO_BEGIN_NAMESPACE
     X(glDeleteTextures, PFNGLDELETETEXTURESPROC); \
     X(glDeleteVertexArrays, PFNGLDELETEVERTEXARRAYSPROC); \
     X(glDeleteVertexArraysAPPLE, PFNGLDELETEVERTEXARRAYSAPPLEPROC); \
+    X(glDepthFunc, PFNGLDEPTHFUNCPROC); \
     X(glDepthMask, PFNGLDEPTHMASKPROC); \
     X(glDetachShader, PFNGLDETACHSHADERPROC); \
     X(glDisable, PFNGLDISABLEPROC); \
@@ -141,9 +147,18 @@ FO_BEGIN_NAMESPACE
 FO_GL_FUNCTIONS(FO_GL_FUNCTION_DEF);
 #undef FO_GL_FUNCTION_DEF
 
+template<typename T>
+static auto LoadOpenGlFunction(const char* name) noexcept -> T
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    SDL_FunctionPointer function = SDL_GL_GetProcAddress(name);
+    return reinterpret_cast<T>(function); // NOLINT(clang-diagnostic-cast-function-type-strict)
+}
+
 static void LoadOpenGLFunctions() noexcept
 {
-#define FO_GL_FUNCTION_LOAD(name, type) name = reinterpret_cast<type>(SDL_GL_GetProcAddress(#name))
+#define FO_GL_FUNCTION_LOAD(name, type) name = LoadOpenGlFunction<type>(#name)
     FO_GL_FUNCTIONS(FO_GL_FUNCTION_LOAD);
 #undef FO_GL_FUNCTION_LOAD
 }
@@ -164,11 +179,11 @@ static void LoadOpenGLFunctions() noexcept
         expr; \
         if ((ctx)->RenderDebug) { \
             GLenum err__ = glGetError(); \
-            FO_RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, strex(#expr " error {}", ErrCodeToString(err__))); \
+            FO_VERIFY_AND_THROW(err__ == GL_NO_ERROR, #expr " produced OpenGL error", ErrCodeToString(err__)); \
         } \
     } while (0)
 
-#define GL(expr) GL_CTX(expr, _ctx.get())
+#define GL(expr) GL_CTX(expr, GetOpenGlContext(_ctx).get())
 
 static auto ErrCodeToString(GLenum err_code) -> string
 {
@@ -200,22 +215,36 @@ static auto ErrCodeToString(GLenum err_code) -> string
 #endif
 
 #define GL_HAS_CTX(extension, ctx) ((ctx)->OGL_##extension)
-#define GL_HAS(extension) GL_HAS_CTX(extension, _ctx.get())
+#define GL_HAS(extension) GL_HAS_CTX(extension, GetOpenGlContext(_ctx).get())
 
 struct OpenGL_Renderer::Context
 {
-    raw_ptr<GlobalSettings> Settings {};
+    nptr<GlobalSettings> Settings {};
     bool RenderDebug {};
     bool ForceGlslEsProfile {};
-    raw_ptr<SDL_Window> SdlWindow {};
+    nptr<SDL_Window> SdlWindow {};
     SDL_GLContext GlContext {};
     GLint BaseFrameBufObj {};
     bool BaseFrameBufObjBinded {};
     isize32 BaseFrameBufSize {};
     isize32 TargetSize {};
-    mat44 ProjectionMatrixColMaj {};
-    unique_ptr<RenderTexture> DummyTexture {};
+    mat44 ProjMatrix {};
+    float32_t OrthoNear {ORTHO_DEPTH_DEFAULT_NEAR};
+    float32_t OrthoFar {ORTHO_DEPTH_DEFAULT_FAR};
+    unique_nptr<RenderTexture> DummyTexture {};
     irect32 ViewPortRect {};
+
+    // SetRenderTarget elision cache; invalidated on resize and on destruction of the cached texture
+    nptr<RenderTexture> CurrentRenderTarget {};
+    bool CurrentRenderTargetValid {};
+
+    // Shared bump-allocated uniform buffer: blocks upload per draw with one glBufferSubData and
+    // bind via glBindBufferRange; orphaned once per frame in Present()
+    GLuint UniformBumpBuf {};
+    size_t UniformBumpOffset {};
+    size_t UniformBumpCapacity {};
+    GLint UniformOffsetAlignment {1};
+    vector<uint8_t> UniformScratch {};
 
     // ReSharper disable CppInconsistentNaming
     bool OGL_version_2_0 {};
@@ -227,10 +256,18 @@ struct OpenGL_Renderer::Context
     // ReSharper restore CppInconsistentNaming
 };
 
+static auto GetOpenGlContext(nptr<OpenGL_Renderer::Context> ctx) -> ptr<OpenGL_Renderer::Context>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(ctx, "OpenGL renderer context is not initialized");
+    return ctx;
+}
+
 class OpenGL_Texture final : public RenderTexture
 {
 public:
-    OpenGL_Texture(isize32 size, bool linear_filtered, bool with_depth, OpenGL_Renderer::Context* ctx) :
+    OpenGL_Texture(isize32 size, bool linear_filtered, bool with_depth, ptr<OpenGL_Renderer::Context> ctx) :
         RenderTexture(size, linear_filtered, with_depth),
         _ctx {ctx}
     {
@@ -239,20 +276,20 @@ public:
 
     [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override;
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
     GLuint DepthBuffer {};
 
 private:
-    raw_ptr<OpenGL_Renderer::Context> _ctx {};
+    ptr<OpenGL_Renderer::Context> _ctx;
 };
 
 class OpenGL_DrawBuffer final : public RenderDrawBuffer
 {
 public:
-    OpenGL_DrawBuffer(bool is_static, OpenGL_Renderer::Context* ctx);
+    OpenGL_DrawBuffer(bool is_static, ptr<OpenGL_Renderer::Context> ctx);
     ~OpenGL_DrawBuffer() override;
 
     void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override;
@@ -262,7 +299,7 @@ public:
     GLuint VertexArrObj {};
 
 private:
-    raw_ptr<OpenGL_Renderer::Context> _ctx {};
+    ptr<OpenGL_Renderer::Context> _ctx;
 };
 
 class OpenGL_Effect final : public RenderEffect
@@ -270,57 +307,75 @@ class OpenGL_Effect final : public RenderEffect
     friend class OpenGL_Renderer;
 
 public:
-    OpenGL_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, OpenGL_Renderer::Context* ctx) :
+    OpenGL_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, ptr<OpenGL_Renderer::Context> ctx) :
         RenderEffect(usage, name, loader),
         _ctx {ctx}
     {
     }
     ~OpenGL_Effect() override;
 
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex) override;
+    void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override;
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
-    GLuint Ubo_ProjBuf {};
-    GLuint Ubo_MainTexBuf {};
-    GLuint Ubo_EggBuf {};
-    GLuint Ubo_SpriteBorderBuf {};
-    GLuint Ubo_TimeBuf {};
-    GLuint Ubo_RandomValueBuf {};
-    GLuint Ubo_ScriptValueBuf {};
-#if FO_ENABLE_3D
-    GLuint Ubo_ModelBuf {};
-    GLuint Ubo_ModelTexBuf {};
-    GLuint Ubo_ModelAnimBuf {};
-#endif
-
 private:
-    raw_ptr<OpenGL_Renderer::Context> _ctx {};
+    ptr<OpenGL_Renderer::Context> _ctx;
 };
+
+static auto GetOpenGlString(GLenum name) noexcept -> nptr<const char>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto chars = make_nptr(glGetString(name));
+
+    if (!chars) {
+        return nullptr;
+    }
+
+    return chars.reinterpret_as<char>();
+}
+
+static auto OpenGlBufferOffset(size_t offset) noexcept -> nptr<const GLvoid>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return reinterpret_cast<const GLvoid*>(offset);
+}
+
+#if FO_WEB
+static auto WebGlContextHandleAsSdlContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context) noexcept -> SDL_GLContext
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return reinterpret_cast<SDL_GLContext>(context);
+}
+#endif
 
 OpenGL_Renderer::OpenGL_Renderer() = default;
 
-void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
+void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_ctx);
+    FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
+    FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
     _ctx = SafeAlloc::MakeUnique<Context>();
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     WriteLog("Used OpenGL rendering");
 
     _ctx->Settings = &settings;
     _ctx->RenderDebug = settings.RenderDebug;
     _ctx->ForceGlslEsProfile = settings.ForceGlslEsProfile;
-    _ctx->SdlWindow = static_cast<SDL_Window*>(window);
+    _ctx->SdlWindow = window.reinterpret_as<SDL_Window>();
 
     // Create context
 #if !FO_WEB
     _ctx->GlContext = SDL_GL_CreateContext(_ctx->SdlWindow.get());
-    FO_RUNTIME_ASSERT_STR(_ctx->GlContext, strex("OpenGL context not created, error '{}'", SDL_GetError()));
+    FO_VERIFY_AND_THROW(_ctx->GlContext, "OpenGL context was not created", SDL_GetError());
 
-    const auto make_current = SDL_GL_MakeCurrent(_ctx->SdlWindow.get(), _ctx->GlContext);
-    FO_RUNTIME_ASSERT_STR(make_current, strex("Can't set current context, error '{}'", SDL_GetError()));
+    bool make_current = SDL_GL_MakeCurrent(_ctx->SdlWindow.get(), _ctx->GlContext);
+    FO_VERIFY_AND_THROW(make_current, "OpenGL context could not be made current", SDL_GetError());
 
     if (settings.VSync) {
         if (!SDL_GL_SetSwapInterval(-1)) {
@@ -348,13 +403,14 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     attr.majorVersion = 2;
     attr.minorVersion = 0;
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context(WebRelated::CanvasSelector.c_str(), &attr);
-    FO_RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int32_t>(gl_context)));
+    auto canvas_selector = make_ptr(WebRelated::CanvasSelector.c_str());
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context(canvas_selector.get(), &attr);
+    FO_VERIFY_AND_THROW(gl_context > 0, "WebGL2 context creation failed", static_cast<int32_t>(gl_context));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
-    FO_RUNTIME_ASSERT_STR(r >= 0, strex("Can't set current context, error {}", r));
+    FO_VERIFY_AND_THROW(r >= 0, "WebGL context could not be made current", r);
 
-    _ctx->GlContext = reinterpret_cast<SDL_GLContext>(gl_context);
+    _ctx->GlContext = WebGlContextHandleAsSdlContext(gl_context);
 #endif
 
     // Load OpenGL function pointers via SDL and detect capabilities from GL_VERSION + extension strings
@@ -365,8 +421,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     {
         string missing_funcs;
 
-        const auto check_loaded = [&](const char* fn_name, bool is_null) {
-            const string_view sv = fn_name;
+        auto check_loaded = [&](const char* fn_name, bool is_null) {
+            string_view sv = fn_name;
             if (is_null && !sv.ends_with("EXT") && !sv.ends_with("APPLE")) {
                 if (!missing_funcs.empty()) {
                     missing_funcs += ", ";
@@ -379,14 +435,16 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         FO_GL_FUNCTIONS(FO_GL_FUNCTION_VALIDATE);
 #undef FO_GL_FUNCTION_VALIDATE
 
-        FO_RUNTIME_ASSERT_STR(missing_funcs.empty(), strex("Missing required OpenGL entry points: {}", missing_funcs));
+        FO_VERIFY_AND_THROW(missing_funcs.empty(), "Required OpenGL entry points are missing", missing_funcs);
     }
 
     int32_t gl_major = 0;
     int32_t gl_minor = 0;
 
-    if (const auto* version_str = reinterpret_cast<const char*>(glGetString(GL_VERSION)); version_str != nullptr) {
-        const auto parts = strvex(version_str).split('.');
+    auto version_str = GetOpenGlString(GL_VERSION);
+
+    if (version_str) {
+        auto parts = strvex(version_str.get()).split('.');
 
         if (parts.size() >= 1) {
             gl_major = numeric_cast<int32_t>(strvex(parts[0]).to_int64());
@@ -396,8 +454,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         }
     }
 
-    const auto has_extension = [](const char* name) noexcept -> bool { return SDL_GL_ExtensionSupported(name); };
-    const auto at_least = [&](int32_t major, int32_t minor) noexcept -> bool { return gl_major > major || (gl_major == major && gl_minor >= minor); };
+    auto has_extension = [](const char* name) noexcept -> bool { return SDL_GL_ExtensionSupported(name); };
+    auto at_least = [&](int32_t major, int32_t minor) noexcept -> bool { return gl_major > major || (gl_major == major && gl_minor >= minor); };
 
     _ctx->OGL_version_2_0 = at_least(2, 0);
     _ctx->OGL_vertex_buffer_object = at_least(2, 0) || has_extension("GL_ARB_vertex_buffer_object");
@@ -424,9 +482,9 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     // Check OpenGL extensions
     size_t extension_errors = 0;
 
-    const auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
+    auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
         if (!has_ext) {
-            const string msg = critical ? "Critical" : "Not critical";
+            string msg = critical ? "Critical" : "Not critical";
             WriteLog("OpenGL extension '{}' not supported. {}", ext_name, msg);
             if (critical) {
                 extension_errors++;
@@ -434,19 +492,19 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         }
     };
 
-    check_extension("version_2_0", GL_HAS(version_2_0), true);
-    check_extension("vertex_buffer_object", GL_HAS(vertex_buffer_object), true);
-    check_extension("uniform_buffer_object", GL_HAS(uniform_buffer_object), true);
-    check_extension("vertex_array_object", GL_HAS(vertex_array_object), false);
-    check_extension("framebuffer_object", GL_HAS(framebuffer_object), false);
-    if (!GL_HAS(framebuffer_object)) {
-        check_extension("framebuffer_object_ext", GL_HAS(framebuffer_object_ext), true);
+    check_extension("version_2_0", GL_HAS_CTX(version_2_0, _ctx.get()), true);
+    check_extension("vertex_buffer_object", GL_HAS_CTX(vertex_buffer_object, _ctx.get()), true);
+    check_extension("uniform_buffer_object", GL_HAS_CTX(uniform_buffer_object, _ctx.get()), true);
+    check_extension("vertex_array_object", GL_HAS_CTX(vertex_array_object, _ctx.get()), false);
+    check_extension("framebuffer_object", GL_HAS_CTX(framebuffer_object, _ctx.get()), false);
+    if (!GL_HAS_CTX(framebuffer_object, _ctx.get())) {
+        check_extension("framebuffer_object_ext", GL_HAS_CTX(framebuffer_object_ext, _ctx.get()), true);
     }
-    FO_RUNTIME_ASSERT(!extension_errors);
+    FO_VERIFY_AND_THROW(!extension_errors, "Extension errors is already set");
 
     // Map framebuffer_object_ext to framebuffer_object
 #if !FO_OPENGL_ES
-    if (GL_HAS(framebuffer_object_ext) && !GL_HAS(framebuffer_object)) {
+    if (GL_HAS_CTX(framebuffer_object_ext, _ctx.get()) && !GL_HAS_CTX(framebuffer_object, _ctx.get())) {
         WriteLog("Map framebuffer_object_ext pointers");
         _ctx->OGL_framebuffer_object = true;
         glGenFramebuffers = glGenFramebuffersEXT;
@@ -481,22 +539,34 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &_ctx->BaseFrameBufObj));
     _ctx->BaseFrameBufSize = {settings.ScreenWidth, settings.ScreenHeight};
 
+    // Shared bump-allocated uniform buffer (see the Context field comment)
+    if (GL_HAS_CTX(uniform_buffer_object, _ctx.get())) {
+        GL(glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &_ctx->UniformOffsetAlignment));
+        _ctx->UniformOffsetAlignment = std::max(_ctx->UniformOffsetAlignment, 1);
+        _ctx->UniformBumpCapacity = numeric_cast<size_t>(4 * 1024 * 1024); // 4 MB
+        GL(glGenBuffers(1, &_ctx->UniformBumpBuf));
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, _ctx->UniformBumpBuf));
+        GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(_ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+    }
+
     // Calculate atlas size
     GLint max_texture_size;
     GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
     GLint max_viewport_size[2];
     GL(glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_size));
-    auto atlas_w = std::min(max_texture_size, AppRender::MAX_ATLAS_SIZE);
-    auto atlas_h = atlas_w;
+    int32_t atlas_w = std::min(max_texture_size, AppRender::MAX_ATLAS_SIZE);
+    int32_t atlas_h = atlas_w;
     atlas_w = std::min(max_viewport_size[0], atlas_w);
     atlas_h = std::min(max_viewport_size[1], atlas_h);
-    FO_RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    FO_RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    FO_VERIFY_AND_THROW(atlas_w >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas width is below the required minimum", AppRender::MIN_ATLAS_SIZE);
+    FO_VERIFY_AND_THROW(atlas_h >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas height is below the required minimum", AppRender::MIN_ATLAS_SIZE);
     const_cast<int32_t&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
     const_cast<int32_t&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D
+
 #if !FO_OPENGL_ES
     GLint max_uniform_components;
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
@@ -505,6 +575,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
 #endif
+
 #endif
 
     // Dummy texture
@@ -524,7 +595,13 @@ OpenGL_Renderer::~OpenGL_Renderer()
         return;
     }
 
-    _ctx->DummyTexture = nullptr;
+    _ctx->DummyTexture.reset();
+
+    // The GL context must still be current for this delete.
+    if (_ctx->UniformBumpBuf != 0) {
+        glDeleteBuffers(1, &_ctx->UniformBumpBuf);
+        _ctx->UniformBumpBuf = 0;
+    }
 
 #if !FO_WEB
     if (_ctx->GlContext) {
@@ -545,8 +622,13 @@ OpenGL_Renderer::~OpenGL_Renderer()
     _ctx->BaseFrameBufObjBinded = false;
     _ctx->BaseFrameBufSize = {};
     _ctx->TargetSize = {};
-    _ctx->ProjectionMatrixColMaj = {};
+    _ctx->ProjMatrix = {};
     _ctx->ViewPortRect = {};
+    _ctx->CurrentRenderTarget = nullptr;
+    _ctx->CurrentRenderTargetValid = false;
+    _ctx->UniformBumpOffset = 0;
+    _ctx->UniformBumpCapacity = 0;
+    _ctx->UniformScratch.clear();
     _ctx->OGL_version_2_0 = false;
     _ctx->OGL_vertex_buffer_object = false;
     _ctx->OGL_framebuffer_object = false;
@@ -554,19 +636,29 @@ OpenGL_Renderer::~OpenGL_Renderer()
     _ctx->OGL_vertex_array_object = false;
     _ctx->OGL_uniform_buffer_object = false;
 
-    _ctx = nullptr;
+    _ctx.reset();
 }
 
 void OpenGL_Renderer::Present()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+
 #if !FO_WEB
     SDL_GL_SwapWindow(_ctx->SdlWindow.get());
 #endif
 
-    if (const auto err = glGetError(); err != GL_NO_ERROR) {
+    if (auto err = glGetError(); err != GL_NO_ERROR) {
         throw RenderingException("OpenGL error", err);
+    }
+
+    // Rewind the bump buffer with fresh (orphaned) storage; the driver keeps the old one alive
+    if (_ctx->UniformBumpBuf != 0) {
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, _ctx->UniformBumpBuf));
+        GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(_ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+        _ctx->UniformBumpOffset = 0;
     }
 }
 
@@ -574,10 +666,12 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth, _ctx.get());
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    auto opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth, _ctx);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
+    auto invalidate_target_cache = scope_fail([this]() noexcept { _ctx->CurrentRenderTargetValid = false; });
     GL(glGenTextures(1, &opengl_tex->TexId));
 
     GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
@@ -605,9 +699,18 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
 
     GLenum status;
     GL(status = glCheckFramebufferStatus(GL_FRAMEBUFFER));
-    FO_RUNTIME_ASSERT_STR(status == GL_FRAMEBUFFER_COMPLETE, strex("Framebuffer not created, status {:#X}", status));
+    FO_VERIFY_AND_THROW(status == GL_FRAMEBUFFER_COMPLETE, "OpenGL framebuffer is incomplete", status);
 
-    GL(glBindFramebuffer(GL_FRAMEBUFFER, _ctx->BaseFrameBufObj));
+    // Restore the actual current target's framebuffer (creation can happen mid-frame while a
+    // texture target is selected)
+    if (_ctx->CurrentRenderTargetValid && _ctx->CurrentRenderTarget) {
+        auto cur_target = _ctx->CurrentRenderTarget.dyn_cast<OpenGL_Texture>();
+        FO_VERIFY_AND_THROW(cur_target, "OpenGL render target texture is not of the expected backend type");
+        GL(glBindFramebuffer(GL_FRAMEBUFFER, cur_target->FramebufObj));
+    }
+    else {
+        GL(glBindFramebuffer(GL_FRAMEBUFFER, _ctx->BaseFrameBufObj));
+    }
 
     return std::move(opengl_tex);
 }
@@ -616,7 +719,8 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static, _ctx.get());
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    auto opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static, _ctx);
 
     return std::move(opengl_dbuf);
 }
@@ -625,7 +729,8 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader, _ctx.get());
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    auto opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader, _ctx);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
@@ -637,26 +742,26 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             ext = "glsl_es";
         }
 
-        const string vert_fname = strex("{}.fofx-{}-vert-{}", strex(name).erase_file_extension(), pass + 1, ext);
+        string vert_fname = strex("{}.fofx-{}-vert-{}", strex(name).erase_file_extension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
-        FO_RUNTIME_ASSERT(!vert_content.empty());
-        const string frag_fname = strex("{}.fofx-{}-frag-{}", strex(name).erase_file_extension(), pass + 1, ext);
+        FO_VERIFY_AND_THROW(!vert_content.empty(), "OpenGL effect vertex shader content is empty after loading", name, pass + 1, vert_fname);
+        string frag_fname = strex("{}.fofx-{}-frag-{}", strex(name).erase_file_extension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
-        FO_RUNTIME_ASSERT(!frag_content.empty());
+        FO_VERIFY_AND_THROW(!frag_content.empty(), "OpenGL effect fragment shader content is empty after loading", name, pass + 1, frag_fname);
 
         // Create shaders
         GLuint vs;
         GL(vs = glCreateShader(GL_VERTEX_SHADER));
-        const GLchar* vs_str = vert_content.c_str();
-        GL(glShaderSource(vs, 1, &vs_str, nullptr));
+        auto vs_source = make_nptr(vert_content.c_str());
+        GL(glShaderSource(vs, 1, vs_source.get_pp(), nullptr));
 
         GLuint fs;
         GL(fs = glCreateShader(GL_FRAGMENT_SHADER));
-        const GLchar* fs_str = frag_content.c_str();
-        GL(glShaderSource(fs, 1, &fs_str, nullptr));
+        auto fs_source = make_nptr(frag_content.c_str());
+        GL(glShaderSource(fs, 1, fs_source.get_pp(), nullptr));
 
         // Info parser
-        const auto get_shader_compile_log = [](GLuint shader) -> string {
+        auto get_shader_compile_log = [](GLuint shader) -> string {
             string result = "(no info)";
             int32_t len = 0;
             glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
@@ -664,15 +769,16 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             if (len > 0) {
                 vector<GLchar> buf;
                 buf.resize(len);
+                auto log_buf = make_nptr(buf.data());
                 int32_t chars = 0;
-                glGetShaderInfoLog(shader, len, &chars, buf.data());
-                result.assign(buf.data(), len);
+                glGetShaderInfoLog(shader, len, &chars, log_buf.get());
+                result.assign(log_buf.get(), numeric_cast<size_t>(len));
             }
 
             return result;
         };
 
-        const auto get_program_compile_log = [](GLuint program) -> string {
+        auto get_program_compile_log = [](GLuint program) -> string {
             string result = "(no info)";
             int32_t len = 0;
             glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
@@ -680,9 +786,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             if (len > 0) {
                 vector<GLchar> buf;
                 buf.resize(len);
+                auto log_buf = make_nptr(buf.data());
                 int32_t chars = 0;
-                glGetProgramInfoLog(program, len, &chars, buf.data());
-                result.assign(buf.data(), len);
+                glGetProgramInfoLog(program, len, &chars, log_buf.get());
+                result.assign(log_buf.get(), numeric_cast<size_t>(len));
             }
 
             return result;
@@ -694,7 +801,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled));
 
         if (compiled == 0) {
-            const auto vert_log = get_shader_compile_log(vs);
+            string vert_log = get_shader_compile_log(vs);
             GL(glDeleteShader(vs));
             GL(glDeleteShader(fs));
             throw EffectLoadException("Vertex shader not compiled", vert_fname, vert_content, vert_log);
@@ -705,7 +812,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled));
 
         if (compiled == 0) {
-            const auto frag_log = get_shader_compile_log(fs);
+            string frag_log = get_shader_compile_log(fs);
             GL(glDeleteShader(vs));
             GL(glDeleteShader(fs));
             throw EffectLoadException("Fragment shader not compiled", frag_fname, frag_content, frag_log);
@@ -722,9 +829,9 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glGetProgramiv(program, GL_LINK_STATUS, &linked));
 
         if (linked == 0) {
-            const auto program_log = get_program_compile_log(program);
-            const auto vert_log = get_shader_compile_log(vs);
-            const auto frag_log = get_shader_compile_log(fs);
+            string program_log = get_program_compile_log(program);
+            string vert_log = get_shader_compile_log(vs);
+            string frag_log = get_shader_compile_log(fs);
             GL(glDetachShader(program, vs));
             GL(glDetachShader(program, fs));
             GL(glDeleteShader(vs));
@@ -736,18 +843,22 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         opengl_effect->Program[pass] = program;
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto bind_ubo_block = [program, this](const char* block_name, int32_t block_pos) {
-                if (const GLuint index = glGetUniformBlockIndex(program, block_name); index != GL_INVALID_INDEX) {
-                    GL(glUniformBlockBinding(program, index, block_pos));
+            auto bind_ubo_block = [&](const char* block_name, int32_t block_pos) {
+                if (block_pos != -1) {
+                    if (GLuint index = glGetUniformBlockIndex(program, block_name); index != GL_INVALID_INDEX) {
+                        GL(glUniformBlockBinding(program, index, block_pos));
+                    }
                 }
             };
 
             bind_ubo_block("ProjBuf", opengl_effect->_posProjBuf[pass]);
             bind_ubo_block("MainTexBuf", opengl_effect->_posMainTexBuf[pass]);
             bind_ubo_block("SpriteBorderBuf", opengl_effect->_posSpriteBorderBuf[pass]);
+            bind_ubo_block("ParticleSamplingBuf", opengl_effect->_posParticleSamplingBuf[pass]);
             bind_ubo_block("TimeBuf", opengl_effect->_posTimeBuf[pass]);
             bind_ubo_block("RandomValueBuf", opengl_effect->_posRandomValueBuf[pass]);
             bind_ubo_block("ScriptValueBuf", opengl_effect->_posScriptValueBuf[pass]);
+            bind_ubo_block("CameraBuf", opengl_effect->_posCameraBuf[pass]);
 #if FO_ENABLE_3D
             bind_ubo_block("ModelBuf", opengl_effect->_posModelBuf[pass]);
             bind_ubo_block("ModelTexBuf", opengl_effect->_posModelTexBuf[pass]);
@@ -759,16 +870,16 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     return std::move(opengl_effect);
 }
 
-auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto r_l = right - left;
-    const auto t_b = top - bottom;
-    const auto f_n = farp - nearp;
-    const auto tx = -(right + left) / (right - left);
-    const auto ty = -(top + bottom) / (top - bottom);
-    const auto tz = -(farp + nearp) / (farp - nearp);
+    float32_t r_l = right - left;
+    float32_t t_b = top - bottom;
+    float32_t f_n = farp - nearp;
+    float32_t tx = -(right + left) / (right - left);
+    float32_t ty = -(top + bottom) / (top - bottom);
+    float32_t tz = -(farp + nearp) / (farp - nearp);
 
     mat44 result {1.0f};
 
@@ -795,16 +906,27 @@ auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32
     return result;
 }
 
-auto OpenGL_Renderer::GetViewPort() -> irect32
+auto OpenGL_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ViewPortRect;
 }
 
-void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
+void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+
+    // The requested target is already fully applied (bind, viewport, projection); the projection
+    // stays valid across the skip because SetOrthoDepthRange keeps OrthoNear/OrthoFar in sync.
+    if (_ctx->CurrentRenderTargetValid && tex == _ctx->CurrentRenderTarget) {
+        return;
+    }
+
+    auto invalidate_target_cache = scope_fail([this]() noexcept { _ctx->CurrentRenderTargetValid = false; });
 
     int32_t vp_ox;
     int32_t vp_oy;
@@ -813,8 +935,9 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     int32_t screen_width;
     int32_t screen_height;
 
-    if (tex != nullptr) {
-        const auto* opengl_tex = static_cast<OpenGL_Texture*>(tex);
+    if (tex) {
+        auto opengl_tex = tex.dyn_cast<OpenGL_Texture>();
+        FO_VERIFY_AND_THROW(opengl_tex, "OpenGL render target texture is not of the expected backend type");
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
         _ctx->BaseFrameBufObjBinded = false;
 
@@ -829,10 +952,10 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         GL(glBindFramebuffer(GL_FRAMEBUFFER, _ctx->BaseFrameBufObj));
         _ctx->BaseFrameBufObjBinded = true;
 
-        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width), numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height));
-        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
-        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * back_buf_aspect);
-        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / screen_aspect);
+        float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width), numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * back_buf_aspect);
+        int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / screen_aspect);
 
         vp_ox = (_ctx->BaseFrameBufSize.width - fit_width) / 2;
         vp_oy = (_ctx->BaseFrameBufSize.height - fit_height) / 2;
@@ -845,9 +968,28 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     _ctx->ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};
     GL(glViewport(vp_ox, vp_oy, vp_width, vp_height));
 
-    _ctx->ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, -10.0f, 10.0f);
+    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
 
     _ctx->TargetSize = {screen_width, screen_height};
+    _ctx->CurrentRenderTarget = tex;
+    _ctx->CurrentRenderTargetValid = true;
+}
+
+void OpenGL_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _ctx->OrthoNear = nearp;
+    _ctx->OrthoFar = farp;
+    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, nearp, farp);
+}
+
+auto OpenGL_Renderer::GetProjMatrix() const -> mat44
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    return _ctx->ProjMatrix;
 }
 
 void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -857,10 +999,10 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     GLbitfield clear_flags = 0;
 
     if (color.has_value()) {
-        const auto r = numeric_cast<float32_t>(color.value().comp.r) / 255.0f;
-        const auto g = numeric_cast<float32_t>(color.value().comp.g) / 255.0f;
-        const auto b = numeric_cast<float32_t>(color.value().comp.b) / 255.0f;
-        const auto a = numeric_cast<float32_t>(color.value().comp.a) / 255.0f;
+        float32_t r = numeric_cast<float32_t>(color.value().comp.r) / 255.0f;
+        float32_t g = numeric_cast<float32_t>(color.value().comp.g) / 255.0f;
+        float32_t b = numeric_cast<float32_t>(color.value().comp.b) / 255.0f;
+        float32_t a = numeric_cast<float32_t>(color.value().comp.a) / 255.0f;
         GL(glClearColor(r, g, b, a));
         clear_flags |= GL_COLOR_BUFFER_BIT;
     }
@@ -884,14 +1026,16 @@ void OpenGL_Renderer::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+
     int32_t l;
     int32_t t;
     int32_t r;
     int32_t b;
 
     if (_ctx->ViewPortRect.width != _ctx->TargetSize.width || _ctx->ViewPortRect.height != _ctx->TargetSize.height) {
-        const float32_t x_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.width) / numeric_cast<float32_t>(_ctx->TargetSize.width);
-        const float32_t y_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.height) / numeric_cast<float32_t>(_ctx->TargetSize.height);
+        float32_t x_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.width) / numeric_cast<float32_t>(_ctx->TargetSize.width);
+        float32_t y_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.height) / numeric_cast<float32_t>(_ctx->TargetSize.height);
 
         l = _ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x) * x_ratio);
         t = _ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y) * y_ratio);
@@ -918,7 +1062,14 @@ void OpenGL_Renderer::DisableScissor()
 
 void OpenGL_Renderer::OnResizeWindow(isize32 size)
 {
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_ctx, "Context is null");
+
     _ctx->BaseFrameBufSize = size;
+
+    // The back-buffer viewport math depends on the new size; drop the elision cache
+    _ctx->CurrentRenderTargetValid = false;
 
     if (_ctx->BaseFrameBufObjBinded) {
         SetRenderTarget(nullptr);
@@ -928,6 +1079,11 @@ void OpenGL_Renderer::OnResizeWindow(isize32 size)
 OpenGL_Texture::~OpenGL_Texture()
 {
     FO_STACK_TRACE_ENTRY();
+
+    // A new texture may reuse this address; a stale cache entry would elide its first select
+    if (_ctx->CurrentRenderTargetValid && _ctx->CurrentRenderTarget.get() == static_cast<RenderTexture*>(this)) {
+        _ctx->CurrentRenderTargetValid = false;
+    }
 
     if (DepthBuffer != 0) {
         glDeleteRenderbuffers(1, &DepthBuffer);
@@ -944,11 +1100,11 @@ auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(Size.is_valid_pos(pos));
+    FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested OpenGL texture pixel is outside texture bounds", pos, Size);
 
     ucolor result;
 
-    auto prev_fbo = 0;
+    int32_t prev_fbo = 0;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
@@ -963,12 +1119,12 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
-    FO_RUNTIME_ASSERT(pos.x >= 0);
-    FO_RUNTIME_ASSERT(pos.y >= 0);
-    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
-    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
 
     vector<ucolor> result;
     result.resize(numeric_cast<size_t>(size.width) * size.height);
@@ -984,21 +1140,28 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     return result;
 }
 
-void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch)
+void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(pos.x >= 0);
-    FO_RUNTIME_ASSERT(pos.y >= 0);
-    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
-    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Texture update rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Texture update rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
+
+    size_t src_pitch = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
+    size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch + numeric_cast<size_t>(size.width)) : 0;
+    FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size");
 
     if (use_dest_pitch) {
         GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, Size.width));
     }
 
+    auto source_data = make_nptr(data.data());
+    FO_VERIFY_AND_THROW(required_size == 0 || source_data, "Texture update source data is null for a non-empty region");
+
     GL(glBindTexture(GL_TEXTURE_2D, TexId));
-    GL(glTexSubImage2D(GL_TEXTURE_2D, 0, pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, data));
+    GL(glTexSubImage2D(GL_TEXTURE_2D, 0, pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, source_data.get()));
     GL(glBindTexture(GL_TEXTURE_2D, 0));
 
     if (use_dest_pitch) {
@@ -1006,7 +1169,7 @@ void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor*
     }
 }
 
-static void EnableVertAtribs(OpenGL_Renderer::Context* ctx, EffectUsage usage)
+static void EnableVertAtribs(ptr<OpenGL_Renderer::Context> ctx, EffectUsage usage)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1014,35 +1177,35 @@ static void EnableVertAtribs(OpenGL_Renderer::Context* ctx, EffectUsage usage)
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        GL_CTX(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Position))), ctx);
-        GL_CTX(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Normal))), ctx);
-        GL_CTX(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, TexCoord))), ctx);
-        GL_CTX(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, TexCoordBase))), ctx);
-        GL_CTX(glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Tangent))), ctx);
-        GL_CTX(glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Bitangent))), ctx);
-        GL_CTX(glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendWeights))), ctx);
-        GL_CTX(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendIndices))), ctx);
-        GL_CTX(glVertexAttribPointer(8, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Color))), ctx);
+        GL_CTX(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, Position)).get()), ctx.get());
+        GL_CTX(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, Normal)).get()), ctx.get());
+        GL_CTX(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, TexCoord)).get()), ctx.get());
+        GL_CTX(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, TexCoordBase)).get()), ctx.get());
+        GL_CTX(glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, Tangent)).get()), ctx.get());
+        GL_CTX(glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, Bitangent)).get()), ctx.get());
+        GL_CTX(glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, BlendWeights)).get()), ctx.get());
+        GL_CTX(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, BlendIndices)).get()), ctx.get());
+        GL_CTX(glVertexAttribPointer(8, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex3D), OpenGlBufferOffset(offsetof(Vertex3D, Color)).get()), ctx.get());
 
         for (GLuint i = 0; i <= 8; i++) {
-            GL_CTX(glEnableVertexAttribArray(i), ctx);
+            GL_CTX(glEnableVertexAttribArray(i), ctx.get());
         }
 
         return;
     }
 #endif
 
-    GL_CTX(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, PosX))), ctx);
-    GL_CTX(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Color))), ctx);
-    GL_CTX(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TexU))), ctx);
-    GL_CTX(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, EggFlags))), ctx);
+    GL_CTX(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), OpenGlBufferOffset(offsetof(Vertex2D, PosX)).get()), ctx.get());
+    GL_CTX(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), OpenGlBufferOffset(offsetof(Vertex2D, Color)).get()), ctx.get());
+    GL_CTX(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), OpenGlBufferOffset(offsetof(Vertex2D, TexU)).get()), ctx.get());
+    GL_CTX(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), OpenGlBufferOffset(offsetof(Vertex2D, EggFlags)).get()), ctx.get());
 
     for (GLuint i = 0; i <= 3; i++) {
-        GL_CTX(glEnableVertexAttribArray(i), ctx);
+        GL_CTX(glEnableVertexAttribArray(i), ctx.get());
     }
 }
 
-static void DisableVertAtribs(OpenGL_Renderer::Context* ctx, EffectUsage usage)
+static void DisableVertAtribs(ptr<OpenGL_Renderer::Context> ctx, EffectUsage usage)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1051,7 +1214,7 @@ static void DisableVertAtribs(OpenGL_Renderer::Context* ctx, EffectUsage usage)
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         for (GLuint i = 0; i <= 8; i++) {
-            GL_CTX(glDisableVertexAttribArray(i), ctx);
+            GL_CTX(glDisableVertexAttribArray(i), ctx.get());
         }
 
         return;
@@ -1059,11 +1222,11 @@ static void DisableVertAtribs(OpenGL_Renderer::Context* ctx, EffectUsage usage)
 #endif
 
     for (GLuint i = 0; i <= 3; i++) {
-        GL_CTX(glDisableVertexAttribArray(i), ctx);
+        GL_CTX(glDisableVertexAttribArray(i), ctx.get());
     }
 }
 
-OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static, OpenGL_Renderer::Context* ctx) :
+OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static, ptr<OpenGL_Renderer::Context> ctx) :
     RenderDrawBuffer(is_static),
     _ctx {ctx}
 {
@@ -1093,9 +1256,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         return;
     }
 
-    StaticDataChanged = false;
-
-    const auto buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
+    int32_t buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
 
     // Fill vertex buffer
     GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
@@ -1104,27 +1265,35 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        FO_RUNTIME_ASSERT(Vertices.empty());
+        FO_VERIFY_AND_THROW(Vertices.empty(), "Vertices must be empty before this operation");
         upload_vertices = custom_vertices_size.value_or(VertCount);
-        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
+        auto source_vertices = make_nptr(Vertices3D.data());
+        FO_VERIFY_AND_THROW(upload_vertices == 0 || source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
+        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), source_vertices.get(), buf_type));
     }
     else {
-        FO_RUNTIME_ASSERT(Vertices3D.empty());
+        FO_VERIFY_AND_THROW(Vertices3D.empty(), "Vertices3 d must be empty before this operation");
         upload_vertices = custom_vertices_size.value_or(VertCount);
-        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
+        auto source_vertices = make_nptr(Vertices.data());
+        FO_VERIFY_AND_THROW(upload_vertices == 0 || source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
+        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), source_vertices.get(), buf_type));
     }
 #else
     upload_vertices = custom_vertices_size.value_or(VertCount);
-    GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
+    auto source_vertices = make_nptr(Vertices.data());
+    FO_VERIFY_AND_THROW(upload_vertices == 0 || source_vertices, "Vertex upload source pointer is null for a non-empty buffer");
+    GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), source_vertices.get(), buf_type));
 #endif
 
     GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
     // Fill index buffer
-    const auto upload_indices = custom_indices_size.value_or(IndCount);
+    auto upload_indices = custom_indices_size.value_or(IndCount);
 
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
-    GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(vindex_t), Indices.data(), buf_type));
+    auto source_indices = make_nptr(Indices.data());
+    FO_VERIFY_AND_THROW(upload_indices == 0 || source_indices, "Index upload source pointer is null for a non-empty buffer");
+    GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(vindex_t), source_indices.get(), buf_type));
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 
     // Vertex array
@@ -1133,11 +1302,13 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         GL(glBindVertexArray(VertexArrObj));
         GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
-        EnableVertAtribs(_ctx.get(), usage);
+        EnableVertAtribs(_ctx, usage);
         GL(glBindVertexArray(0));
         GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
+
+    StaticDataChanged = false;
 }
 
 static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
@@ -1196,6 +1367,32 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
     FO_UNREACHABLE_PLACE();
 }
 
+static auto ConvertDepthFunc(DepthFuncType name) -> GLenum
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (name) {
+    case DepthFuncType::Always:
+        return GL_ALWAYS;
+    case DepthFuncType::Never:
+        return GL_NEVER;
+    case DepthFuncType::Less:
+        return GL_LESS;
+    case DepthFuncType::LessEqual:
+        return GL_LEQUAL;
+    case DepthFuncType::Equal:
+        return GL_EQUAL;
+    case DepthFuncType::GreaterEqual:
+        return GL_GEQUAL;
+    case DepthFuncType::Greater:
+        return GL_GREATER;
+    case DepthFuncType::NotEqual:
+        return GL_NOTEQUAL;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
 OpenGL_Effect::~OpenGL_Effect()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1205,40 +1402,28 @@ OpenGL_Effect::~OpenGL_Effect()
             glDeleteProgram(Program[i]);
         }
     }
-
-    if (GL_HAS(uniform_buffer_object)) {
-        const auto delete_ubo = [](GLuint& ubo) {
-            if (ubo != 0) {
-                glDeleteBuffers(1, &ubo);
-            }
-        };
-
-        delete_ubo(Ubo_ProjBuf);
-        delete_ubo(Ubo_MainTexBuf);
-        delete_ubo(Ubo_EggBuf);
-        delete_ubo(Ubo_SpriteBorderBuf);
-        delete_ubo(Ubo_TimeBuf);
-        delete_ubo(Ubo_RandomValueBuf);
-        delete_ubo(Ubo_ScriptValueBuf);
-#if FO_ENABLE_3D
-        delete_ubo(Ubo_ModelBuf);
-        delete_ubo(Ubo_ModelTexBuf);
-        delete_ubo(Ubo_ModelAnimBuf);
-#endif
-    }
 }
 
-void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex)
+void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
+    auto opengl_dbuf = dbuf.dyn_cast<OpenGL_DrawBuffer>();
+    FO_VERIFY_AND_THROW(opengl_dbuf, "OpenGL draw buffer is not of the expected backend type");
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] ? ModelTex[0].get() : (MainTex ? MainTex.get() : _ctx->DummyTexture.get())));
-#else
-    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex ? MainTex.get() : _ctx->DummyTexture.get()));
+    if (!custom_tex && ModelTex[0]) {
+        custom_tex = ModelTex[0];
+    }
 #endif
+    if (!custom_tex && MainTex) {
+        custom_tex = MainTex;
+    }
+
+    nptr<const RenderTexture> main_tex_source = custom_tex ? custom_tex : _ctx->DummyTexture;
+    FO_VERIFY_AND_THROW(main_tex_source, "OpenGL dummy texture is not created");
+    auto main_tex = main_tex_source.dyn_cast<const OpenGL_Texture>();
+    FO_VERIFY_AND_THROW(main_tex, "OpenGL main texture is not of the expected backend type");
 
     GLenum draw_mode = GL_TRIANGLES;
 
@@ -1269,12 +1454,19 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 #if FO_ENABLE_3D
     if (_usage == EffectUsage::Model) {
         GL(glEnable(GL_DEPTH_TEST));
-
-        if (!DisableCulling) {
-            GL(glEnable(GL_CULL_FACE));
-        }
     }
 #endif
+
+    if (_usage == EffectUsage::QuadSprite) {
+        GL(glEnable(GL_DEPTH_TEST));
+    }
+
+    CullModeType cull_mode = ResolveCullMode();
+
+    if (cull_mode != CullModeType::None) {
+        GL(glEnable(GL_CULL_FACE));
+        GL(glCullFace(cull_mode == CullModeType::Front ? GL_FRONT : GL_BACK));
+    }
 
     if (opengl_dbuf->VertexArrObj != 0) {
         GL(glBindVertexArray(opengl_dbuf->VertexArrObj));
@@ -1282,54 +1474,136 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     else {
         GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opengl_dbuf->IndexBufObj));
-        EnableVertAtribs(_ctx.get(), _usage);
+        EnableVertAtribs(_ctx, _usage);
     }
 
     // Uniforms
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_ctx->ProjectionMatrixColMaj), 16 * sizeof(float32_t));
+        auto projection_matrix = proj_buf->ProjMatrix;
+        auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
+        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float32_t));
+        auto main_texture_size = main_tex_buf->MainTexSize;
+        auto main_texture_size_data = main_tex->SizeData;
+        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
+    // Every shader-required block must be written and bound EVERY draw: a stale binding would
+    // point into the shared bump buffer, whose storage dies at the per-frame orphan — so
+    // default-initialize any required-but-unset buffer to zero (mirrors the Vulkan backend).
+    if (_needEggBuf && !EggBuf.has_value()) {
+        EggBuf = EggBuffer();
+    }
+    if (_needParticleSamplingBuf && !ParticleSamplingBuf.has_value()) {
+        ParticleSamplingBuf = ParticleSamplingBuffer();
+    }
+    if (_needSpriteBorderBuf && !SpriteBorderBuf.has_value()) {
+        SpriteBorderBuf = SpriteBorderBuffer();
+    }
+    if (_needTimeBuf && !TimeBuf.has_value()) {
+        TimeBuf = TimeBuffer();
+    }
+    if (_needRandomValueBuf && !RandomValueBuf.has_value()) {
+        RandomValueBuf = RandomValueBuffer();
+    }
+    if (_needScriptValueBuf && !ScriptValueBuf.has_value()) {
+        ScriptValueBuf = ScriptValueBuffer();
+    }
+    if (_needCameraBuf && !CameraBuf.has_value()) {
+        CameraBuf = CameraBuffer();
+    }
+#if FO_ENABLE_3D
+    if (_needModelBuf && !ModelBuf.has_value()) {
+        ModelBuf = ModelBuffer();
+    }
+    if (_needModelTexBuf && !ModelTexBuf.has_value()) {
+        ModelTexBuf = ModelTexBuffer();
+    }
+    if (_needModelAnimBuf && !ModelAnimBuf.has_value()) {
+        ModelAnimBuf = ModelAnimBuffer();
+    }
+#endif
+
+    // One slot per standard uniform block the gather below walks, used or not: the counter advances for every
+    // block so the indices stay stable across draws that declare different subsets.
+    constexpr size_t max_uniform_blocks = 12;
+    size_t block_offsets[max_uniform_blocks] = {};
+    size_t block_sizes[max_uniform_blocks] = {};
+
     if (GL_HAS(uniform_buffer_object)) {
-        const auto upload_ubo = [this](bool need_buf, auto& buf, GLuint& ubo, bool reset_buf) {
+        size_t alignment = numeric_cast<size_t>(_ctx->UniformOffsetAlignment);
+        auto& scratch = _ctx->UniformScratch;
+        scratch.clear();
+        size_t block_index = 0;
+
+        auto gather_block = [&](bool need_buf, auto& buf, bool reset_buf) {
+            FO_VERIFY_AND_THROW(block_index < max_uniform_blocks, "Too many OpenGL uniform blocks in draw");
+
             if (!need_buf || !buf.has_value()) {
+                block_index++;
                 return;
             }
 
-            if (ubo == 0) {
-                GL(glGenBuffers(1, &ubo));
-            }
-            GL(glBindBuffer(GL_UNIFORM_BUFFER, ubo));
-            GL(glBufferData(GL_UNIFORM_BUFFER, sizeof(*buf), &buf.value(), GL_DYNAMIC_DRAW));
-            GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+            const auto& buf_value = buf.value();
+            size_t aligned_offset = (scratch.size() + alignment - 1) & ~(alignment - 1);
+            scratch.resize(aligned_offset + sizeof(buf_value));
+            MemCopy(scratch.data() + aligned_offset, &buf_value, sizeof(buf_value));
+            block_offsets[block_index] = aligned_offset;
+            block_sizes[block_index] = sizeof(buf_value);
+            block_index++;
 
             if (reset_buf) {
                 buf.reset();
             }
         };
 
-        upload_ubo(_needProjBuf, ProjBuf, Ubo_ProjBuf, true);
-        upload_ubo(_needMainTexBuf, MainTexBuf, Ubo_MainTexBuf, true);
-        upload_ubo(_needEggBuf, EggBuf, Ubo_EggBuf, true);
-        upload_ubo(_needSpriteBorderBuf, SpriteBorderBuf, Ubo_SpriteBorderBuf, true);
-        upload_ubo(_needTimeBuf, TimeBuf, Ubo_TimeBuf, true);
-        upload_ubo(_needRandomValueBuf, RandomValueBuf, Ubo_RandomValueBuf, true);
-        upload_ubo(_needScriptValueBuf, ScriptValueBuf, Ubo_ScriptValueBuf, false);
+        gather_block(_needProjBuf, ProjBuf, true);
+        gather_block(_needMainTexBuf, MainTexBuf, true);
+        gather_block(_needEggBuf, EggBuf, true);
+        gather_block(_needSpriteBorderBuf, SpriteBorderBuf, true);
+        gather_block(_needParticleSamplingBuf, ParticleSamplingBuf, true);
+        gather_block(_needTimeBuf, TimeBuf, true);
+        gather_block(_needRandomValueBuf, RandomValueBuf, true);
+        gather_block(_needScriptValueBuf, ScriptValueBuf, false);
+        gather_block(_needCameraBuf, CameraBuf, true);
 #if FO_ENABLE_3D
-        upload_ubo(_needModelBuf, ModelBuf, Ubo_ModelBuf, true);
-        upload_ubo(_needModelTexBuf, ModelTexBuf, Ubo_ModelTexBuf, true);
-        upload_ubo(_needModelAnimBuf, ModelAnimBuf, Ubo_ModelAnimBuf, true);
+        gather_block(_needModelBuf, ModelBuf, true);
+        gather_block(_needModelTexBuf, ModelTexBuf, true);
+        gather_block(_needModelAnimBuf, ModelAnimBuf, true);
 #endif
+
+        if (!scratch.empty()) {
+            // Rewind and re-specify (orphan) the bump storage when the draw does not fit — the
+            // driver keeps the old storage alive for the already-issued draws that reference it.
+            size_t base_offset = (_ctx->UniformBumpOffset + alignment - 1) & ~(alignment - 1);
+
+            if (base_offset + scratch.size() > _ctx->UniformBumpCapacity) {
+                GL(glBindBuffer(GL_UNIFORM_BUFFER, _ctx->UniformBumpBuf));
+                GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(_ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
+                base_offset = 0;
+            }
+            else {
+                GL(glBindBuffer(GL_UNIFORM_BUFFER, _ctx->UniformBumpBuf));
+            }
+
+            GL(glBufferSubData(GL_UNIFORM_BUFFER, numeric_cast<GLintptr>(base_offset), numeric_cast<GLsizeiptr>(scratch.size()), scratch.data()));
+            GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+            _ctx->UniformBumpOffset = base_offset + scratch.size();
+
+            for (size_t i = 0; i < max_uniform_blocks; i++) {
+                if (block_sizes[i] != 0) {
+                    block_offsets[i] += base_offset;
+                }
+            }
+        }
     }
 
-    const auto draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
-    const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(vindex_t));
+    int32_t draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
+    size_t start_offset = start_index * sizeof(vindex_t);
 
     for (size_t pass = 0; pass < _passCount; pass++) {
 #if FO_ENABLE_3D
@@ -1337,25 +1611,33 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             continue;
         }
 #endif
+        size_t depth_slot = ResolveDepthVariantSlot(pass);
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto bind_ubo = [](GLuint ubo, int32_t pos) {
-                if (ubo != 0 && pos != -1) {
-                    GL(glBindBufferBase(GL_UNIFORM_BUFFER, pos, ubo));
+            size_t bind_block_index = 0;
+
+            auto bind_block = [&](int32_t pos) {
+                size_t block_index = bind_block_index;
+                bind_block_index++;
+
+                if (block_sizes[block_index] != 0 && pos != -1) {
+                    GL(glBindBufferRange(GL_UNIFORM_BUFFER, pos, _ctx->UniformBumpBuf, numeric_cast<GLintptr>(block_offsets[block_index]), numeric_cast<GLsizeiptr>(block_sizes[block_index])));
                 }
             };
 
-            bind_ubo(Ubo_ProjBuf, _posProjBuf[pass]);
-            bind_ubo(Ubo_MainTexBuf, _posMainTexBuf[pass]);
-            bind_ubo(Ubo_EggBuf, _posEggBuf[pass]);
-            bind_ubo(Ubo_SpriteBorderBuf, _posSpriteBorderBuf[pass]);
-            bind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
-            bind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
-            bind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
+            bind_block(_posProjBuf[pass]);
+            bind_block(_posMainTexBuf[pass]);
+            bind_block(_posEggBuf[pass]);
+            bind_block(_posSpriteBorderBuf[pass]);
+            bind_block(_posParticleSamplingBuf[pass]);
+            bind_block(_posTimeBuf[pass]);
+            bind_block(_posRandomValueBuf[pass]);
+            bind_block(_posScriptValueBuf[pass]);
+            bind_block(_posCameraBuf[pass]);
 #if FO_ENABLE_3D
-            bind_ubo(Ubo_ModelBuf, _posModelBuf[pass]);
-            bind_ubo(Ubo_ModelTexBuf, _posModelTexBuf[pass]);
-            bind_ubo(Ubo_ModelAnimBuf, _posModelAnimBuf[pass]);
+            bind_block(_posModelBuf[pass]);
+            bind_block(_posModelTexBuf[pass]);
+            bind_block(_posModelAnimBuf[pass]);
 #endif
         }
 
@@ -1367,11 +1649,34 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             GL(glActiveTexture(GL_TEXTURE0));
         }
 
+        if (_posIndoorMaskTex[pass] != -1) {
+            nptr<const RenderTexture> indoor_tex_source = IndoorMaskTex ? IndoorMaskTex : _ctx->DummyTexture;
+            FO_VERIFY_AND_THROW(indoor_tex_source, "OpenGL dummy texture is not created");
+            auto indoor_tex = indoor_tex_source.dyn_cast<const OpenGL_Texture>();
+            FO_VERIFY_AND_THROW(indoor_tex, "OpenGL indoor mask texture is not of the expected backend type");
+            GL(glActiveTexture(GL_TEXTURE0 + _posIndoorMaskTex[pass]));
+            GL(glBindTexture(GL_TEXTURE_2D, indoor_tex->TexId));
+            GL(glActiveTexture(GL_TEXTURE0));
+        }
+
+        if (_posBackgroundTex[pass] != -1) {
+            nptr<const RenderTexture> background_tex_source = BackgroundTex ? BackgroundTex : _ctx->DummyTexture;
+            FO_VERIFY_AND_THROW(background_tex_source, "OpenGL dummy texture is not created");
+            auto background_tex = background_tex_source.dyn_cast<const OpenGL_Texture>();
+            FO_VERIFY_AND_THROW(background_tex, "OpenGL background texture is not of the expected backend type");
+            GL(glActiveTexture(GL_TEXTURE0 + _posBackgroundTex[pass]));
+            GL(glBindTexture(GL_TEXTURE_2D, background_tex->TexId));
+            GL(glActiveTexture(GL_TEXTURE0));
+        }
+
 #if FO_ENABLE_3D
         if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 if (_posModelTex[pass][i] != -1) {
-                    const auto* model_tex = static_cast<OpenGL_Texture*>(ModelTex[i] ? ModelTex[i].get() : _ctx->DummyTexture.get());
+                    nptr<RenderTexture> model_tex_source = ModelTex[i] ? ModelTex[i] : _ctx->DummyTexture;
+                    FO_VERIFY_AND_THROW(model_tex_source, "OpenGL dummy texture is not created");
+                    auto model_tex = model_tex_source.dyn_cast<OpenGL_Texture>();
+                    FO_VERIFY_AND_THROW(model_tex, "OpenGL model texture is not of the expected backend type");
                     GL(glActiveTexture(GL_TEXTURE0 + _posModelTex[pass][i]));
                     GL(glBindTexture(GL_TEXTURE_2D, model_tex->TexId));
                     GL(glActiveTexture(GL_TEXTURE0));
@@ -1386,15 +1691,25 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
             GL(glBlendEquation(ConvertBlendEquation(_blendEquation[pass])));
         }
-        if (!_depthWrite[pass]) {
+
+        bool depth_write = GetDepthVariantWrite(depth_slot);
+
+        if (!depth_write) {
             GL(glDepthMask(GL_FALSE));
+        }
+        if (
+#if FO_ENABLE_3D
+            _usage == EffectUsage::Model ||
+#endif
+            _usage == EffectUsage::QuadSprite) {
+            GL(glDepthFunc(ConvertDepthFunc(GetDepthVariantFunc(pass, depth_slot))));
         }
 
         if constexpr (sizeof(vindex_t) == 2) {
-            GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_SHORT, start_pos));
+            GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_SHORT, OpenGlBufferOffset(start_offset).get()));
         }
         else {
-            GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_INT, start_pos));
+            GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_INT, OpenGlBufferOffset(start_offset).get()));
         }
 
         if (_srcBlendFunc[pass] != BlendFuncType::SrcAlpha || _destBlendFunc[pass] != BlendFuncType::InvSrcAlpha) {
@@ -1403,27 +1718,35 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
             GL(glBlendEquation(GL_FUNC_ADD));
         }
-        if (!_depthWrite[pass]) {
+        if (!depth_write) {
             GL(glDepthMask(GL_TRUE));
         }
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto unbind_ubo = [](GLuint ubo, int32_t pos) {
-                if (ubo != 0 && pos != -1) {
+            size_t unbind_block_index = 0;
+
+            auto unbind_block = [&](int32_t pos) {
+                size_t block_index = unbind_block_index;
+                unbind_block_index++;
+
+                if (block_sizes[block_index] != 0 && pos != -1) {
                     GL(glBindBufferBase(GL_UNIFORM_BUFFER, pos, 0));
                 }
             };
 
-            unbind_ubo(Ubo_ProjBuf, _posProjBuf[pass]);
-            unbind_ubo(Ubo_MainTexBuf, _posMainTexBuf[pass]);
-            unbind_ubo(Ubo_SpriteBorderBuf, _posSpriteBorderBuf[pass]);
-            unbind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
-            unbind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
-            unbind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
+            unbind_block(_posProjBuf[pass]);
+            unbind_block(_posMainTexBuf[pass]);
+            unbind_block(_posEggBuf[pass]);
+            unbind_block(_posSpriteBorderBuf[pass]);
+            unbind_block(_posParticleSamplingBuf[pass]);
+            unbind_block(_posTimeBuf[pass]);
+            unbind_block(_posRandomValueBuf[pass]);
+            unbind_block(_posScriptValueBuf[pass]);
+            unbind_block(_posCameraBuf[pass]);
 #if FO_ENABLE_3D
-            unbind_ubo(Ubo_ModelBuf, _posModelBuf[pass]);
-            unbind_ubo(Ubo_ModelTexBuf, _posModelTexBuf[pass]);
-            unbind_ubo(Ubo_ModelAnimBuf, _posModelAnimBuf[pass]);
+            unbind_block(_posModelBuf[pass]);
+            unbind_block(_posModelTexBuf[pass]);
+            unbind_block(_posModelAnimBuf[pass]);
 #endif
         }
     }
@@ -1434,7 +1757,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         GL(glBindVertexArray(0));
     }
     else {
-        DisableVertAtribs(_ctx.get(), _usage);
+        DisableVertAtribs(_ctx, _usage);
         GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
@@ -1445,13 +1768,20 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 
 #if FO_ENABLE_3D
     if (_usage == EffectUsage::Model) {
+        GL(glDepthFunc(GL_LESS)); // Restore default depth comparison
         GL(glDisable(GL_DEPTH_TEST));
-
-        if (!DisableCulling) {
-            GL(glDisable(GL_CULL_FACE));
-        }
     }
 #endif
+
+    if (CullMode != CullModeType::None) {
+        GL(glCullFace(GL_BACK)); // Restore the default culled face
+        GL(glDisable(GL_CULL_FACE));
+    }
+
+    if (_usage == EffectUsage::QuadSprite) {
+        GL(glDepthFunc(GL_LESS)); // Restore default depth comparison
+        GL(glDisable(GL_DEPTH_TEST));
+    }
 }
 
 FO_END_NAMESPACE

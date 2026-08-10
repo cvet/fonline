@@ -37,56 +37,24 @@
 
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "ParticleRuntime.h"
 #include "Rendering.h"
 #include "Settings.h"
 #include "Timer.h"
 
-namespace SPK
-{
-    class System;
-
-    namespace FO
-    {
-        class SparkQuadRenderer;
-    }
-}
-
 FO_BEGIN_NAMESPACE
 
-class ParticleSystem;
+class ParticleManager;
 
-class ParticleManager final
+// Sprite-frame layout derived from a particle's baked bounds: the atlas frame size in pixels, the root offset within
+// it, the ortho extent in world units, and the world transform that seats the effect inside the frame.
+struct ParticleSpriteFrame
 {
-    friend class ParticleSystem;
-    friend class SPK::FO::SparkQuadRenderer;
-
-public:
-    using TextureLoader = function<pair<RenderTexture*, frect32>(string_view)>;
-
-    explicit ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, IAppRender& render, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader);
-    ParticleManager(const ParticleManager&) = delete;
-    ParticleManager(ParticleManager&&) noexcept = delete;
-    auto operator=(const ParticleManager&) = delete;
-    auto operator=(ParticleManager&&) noexcept = delete;
-    ~ParticleManager();
-
-    [[nodiscard]] auto CreateParticle(string_view name) -> unique_ptr<ParticleSystem>;
-
-private:
-    struct Impl;
-    auto Random(int32_t min_value, int32_t max_value) -> int32_t;
-
-    unique_ptr<Impl> _impl;
-    raw_ptr<RenderSettings> _settings;
-    raw_ptr<EffectManager> _effectMngr;
-    raw_ptr<IAppRender> _render;
-    raw_ptr<FileSystem> _resources;
-    raw_ptr<GameTimer> _gameTime;
-    TextureLoader _textureLoader;
-    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-    int32_t _animUpdateThreshold {};
-    mat44 _projMatColMaj {};
-    mat44 _viewMatColMaj {};
+    isize32 DrawSize {};
+    ipos32 Offset {};
+    float32_t ProjWidth {};
+    float32_t ProjHeight {};
+    mat44 World {1.0f};
 };
 
 class ParticleSystem final
@@ -95,40 +63,77 @@ class ParticleSystem final
     friend class SafeAlloc;
 
 public:
-    static constexpr float32_t PREWARM_STEP = 0.5f;
-
     ParticleSystem(const ParticleSystem&) = delete;
-    ParticleSystem(ParticleSystem&&) noexcept = default;
+    ParticleSystem(ParticleSystem&&) noexcept;
     auto operator=(const ParticleSystem&) = delete;
     auto operator=(ParticleSystem&&) noexcept = delete;
     ~ParticleSystem();
 
+    [[nodiscard]] auto GetRuntimeSystem() -> ptr<ParticleRuntimeSystem>;
+    [[nodiscard]] auto GetRuntimeSystem() const -> ptr<const ParticleRuntimeSystem>;
     [[nodiscard]] auto IsActive() const -> bool;
     [[nodiscard]] auto GetElapsedTime() const -> float32_t;
-    [[nodiscard]] auto GetBaseSystem() -> SPK::System*;
-    [[nodiscard]] auto GetDrawSize() const -> isize32;
+    [[nodiscard]] auto GetDrawInScene() const -> bool;
+    [[nodiscard]] auto GetBakedBounds() const -> optional<ParticleBounds3D>;
+    [[nodiscard]] auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D>;
+    [[nodiscard]] auto ComputeSpriteFrame(const RenderSettings& settings) const -> ParticleSpriteFrame;
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
-    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset);
+    void RebaseWorldParticles(vec3 delta) noexcept;
+    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj = false);
     void Prewarm();
     void Respawn();
+    auto Respawn(int32_t seed) -> bool;
+    void Update();
+    void Update(float32_t delta_seconds);
+    void RefreshRenderTransform();
     void Draw();
-    void SetBaseSystem(SPK::System* system);
+    void SetScale(float32_t scale);
 
 private:
-    explicit ParticleSystem(ParticleManager& particle_mngr);
+    explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system);
 
     [[nodiscard]] auto GetTime() const -> nanotime;
 
-    struct Impl;
-    unique_ptr<Impl> _impl;
-    raw_ptr<ParticleManager> _particleMngr;
-    mat44 _projMat {};
-    vec3 _viewOffset {};
+    void ApplyRuntimeSetup();
+    void ResetTiming();
+
+    unique_ptr<ParticleRuntimeSystem> _runtimeSystem;
+    ptr<ParticleManager> _particleMngr;
+    optional<ParticleRuntimeSetup> _runtimeSetup {};
     float64_t _elapsedTime {};
+    float32_t _scale {1.0f};
     bool _forceDraw {};
-    nanotime _lastDrawTime {};
+    bool _renderPending {};
+    nanotime _lastUpdateTime {};
+    nanotime _lastRenderTime {};
+};
+
+class ParticleManager final
+{
+    friend class ParticleSystem;
+
+public:
+    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider = nullptr);
+    ParticleManager(const ParticleManager&) = delete;
+    ParticleManager(ParticleManager&&) noexcept = delete;
+    auto operator=(const ParticleManager&) = delete;
+    auto operator=(ParticleManager&&) noexcept = delete;
+    ~ParticleManager();
+
+    [[nodiscard]] auto GetExtensions() const -> vector<string>;
+
+    void InvalidateResource(string_view name);
+    auto CreateParticle(string_view name) -> optional<ParticleSystem>;
+
+private:
+    struct Impl;
+
+    unique_ptr<Impl> _impl;
+    ptr<RenderSettings> _settings;
+    ptr<GameTimer> _gameTime;
+    int32_t _animUpdateThreshold {};
 };
 
 FO_END_NAMESPACE

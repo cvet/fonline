@@ -59,12 +59,12 @@ public:
     ~ProtoBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32_t override { return 6; }
+    [[nodiscard]] auto GetOrder() const -> int32_t override { return 7; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    auto BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8_t>;
+    auto BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSystem> script_sys, const vector<File>& files) const -> vector<uint8_t>;
 };
 
 FO_END_NAMESPACE

@@ -35,15 +35,37 @@
 
 #if FO_ENABLE_3D
 
+#include "Application.h"
+#include "EngineBase.h"
+#include "Geometry.h"
+#include "ModelInstance.h"
+#include "ModelManager.h"
+
 FO_BEGIN_NAMESPACE
 
-ModelSprite::ModelSprite(SpriteManager& spr_mngr, ModelSpriteFactory* factory, unique_ptr<ModelInstance>&& model, AtlasType atlas_type) :
+ModelSprite::ModelSprite(ptr<SpriteManager> spr_mngr, ptr<ModelSpriteFactory> factory, unique_ptr<ModelInstance> model, AtlasType atlas_type) :
     AtlasSprite(spr_mngr, {}, {}, {}, {}, {}, {}),
     _factory {factory},
     _model {std::move(model)},
     _atlasType {atlas_type}
 {
     FO_STACK_TRACE_ENTRY();
+}
+
+ModelSprite::~ModelSprite() = default;
+
+auto ModelSprite::GetModel() -> ptr<ModelInstance>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _model;
+}
+
+auto ModelSprite::IsPlaying() const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _model->IsAnimationPlaying();
 }
 
 auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
@@ -54,10 +76,10 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
         return false;
     }
 
-    const auto atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
-    const auto atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
+    int32_t atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
+    int32_t atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
 
-    const auto alpha = _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a;
+    uint8_t alpha = _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a;
     return _sprMngr->CheckHitTest(numeric_cast<int32_t>(alpha));
 }
 
@@ -65,16 +87,67 @@ auto ModelSprite::GetViewSize() const -> optional<irect32>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto&& [view_width, view_height] = _model->GetViewSize();
+    irect32 view_rect = _model->GetViewRect();
 
-    return irect32 {0, -_offset.y + view_height / 8, view_width, view_height};
+    return irect32 {
+        view_rect.x + view_rect.width / 2 - _offset.x,
+        view_rect.y + view_rect.height - _offset.y,
+        view_rect.width,
+        view_rect.height,
+    };
+}
+
+auto ModelSprite::IsDirectDraw() const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _factory->_settings->ModelDirectDraw;
+}
+
+auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(_frameSize.width > 0 && _frameSize.height > 0 && _cropRect.x >= 0 && _cropRect.y >= 0 && _cropRect.width > 0 && _cropRect.height > 0 && numeric_cast<int64_t>(_cropRect.x) + _cropRect.width <= _frameSize.width && numeric_cast<int64_t>(_cropRect.y) + _cropRect.height <= _frameSize.height, "Model sprite crop is outside the logical frame", _cropRect, _frameSize);
+
+    isize32 lighting_size = _model->GetLightingSize();
+    FO_STRONG_ASSERT(lighting_size.width > 0, "Model sprite lighting frame width must be positive", lighting_size.width);
+
+    uint32_t color_width = numeric_cast<uint32_t>(lighting_size.width);
+    ucolor color_left = std::get<0>(colors);
+    ucolor color_right = std::get<1>(colors);
+    auto interpolate_color = [color_width, color_left, color_right](int64_t source_x) noexcept -> ucolor {
+        uint32_t color_x = numeric_cast<uint32_t>(std::clamp<int64_t>(source_x, 0, color_width));
+        auto interpolate_component = [color_x, color_width](uint8_t left_component, uint8_t right_component) noexcept -> uint8_t {
+            uint32_t weighted = numeric_cast<uint32_t>(left_component) * (color_width - color_x) + numeric_cast<uint32_t>(right_component) * color_x;
+            return numeric_cast<uint8_t>((weighted + color_width / 2) / color_width);
+        };
+
+        return {
+            interpolate_component(color_left.comp.r, color_right.comp.r),
+            interpolate_component(color_left.comp.g, color_right.comp.g),
+            interpolate_component(color_left.comp.b, color_right.comp.b),
+            interpolate_component(color_left.comp.a, color_right.comp.a),
+        };
+    };
+
+    int64_t lighting_origin = numeric_cast<int64_t>(lighting_size.width) / 2;
+    int64_t frame_origin = numeric_cast<int64_t>(_frameSize.width) / 2;
+    int64_t crop_left = lighting_origin + _cropRect.x - frame_origin;
+    ucolor crop_color_left = interpolate_color(crop_left);
+    ucolor crop_color_right = interpolate_color(crop_left + _cropRect.width);
+    return AtlasSprite::FillData(dbuf, pos, {crop_color_left, crop_color_right});
 }
 
 void ModelSprite::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
+    // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them.
+    _model->PrepareFrameLayout();
+    _model->PoseSpriteFrame(false);
     _model->PrewarmParticles();
+    _model->RequestRedraw();
 }
 
 void ModelSprite::SetDir(mdir dir)
@@ -105,7 +178,10 @@ auto ModelSprite::Update() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_model->NeedForceDraw() || _model->NeedDraw()) {
+    _model->PrepareFrameLayout();
+    bool direct_draw = IsDirectDraw();
+
+    if (_model->NeedForceDraw() || (!direct_draw && _model->NeedDraw())) {
         DrawToAtlas();
     }
 
@@ -116,31 +192,11 @@ void ModelSprite::SetSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
-    if (size == _size) {
-        return;
-    }
-
-    if (_atlasNode) {
-        _atlasNode->Free();
-        _atlasNode.reset();
-    }
-
-    _model->SetupFrame(size);
-
-    _size = size;
-    _offset.y = numeric_cast<int16_t>(size.height / 4);
-
-    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr().FindAtlasPlace(_atlasType, _size);
-
-    _atlas = atlas;
-    _atlasNode = atlas_node;
-    _atlasRect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
-    _atlasRect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
-    _atlasRect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
-    _atlasRect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
+    _requestedFrameSize = size;
+    _model->RequestRedraw();
 }
 
 void ModelSprite::DrawToAtlas()
@@ -150,13 +206,160 @@ void ModelSprite::DrawToAtlas()
     _factory->DrawModelToAtlas(this);
 }
 
-ModelSpriteFactory::ModelSpriteFactory(SpriteManager& spr_mngr, RenderSettings& settings, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver) :
-    _sprMngr {&spr_mngr}
+void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    _modelMngr = SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr.GetResources(), effect_mngr, spr_mngr.GetRender(), game_time, hash_resolver, name_resolver, anim_name_resolver, //
-        [this, &hash_resolver](string_view path) FO_DEFERRED { return LoadTexture(hash_resolver.ToHashedString(path)); });
+    const auto& settings = *_factory->_settings;
+    mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
+    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    mat44 proj_base = scene_ortho * cam_view;
+    mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
+
+    _model->DrawInScene(proj, settings.ModelProjFactor);
+}
+
+void ModelSprite::SetupFrame(isize32 frame_size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(frame_size.width > 0, "Frame width must be positive", frame_size.width);
+    FO_VERIFY_AND_THROW(frame_size.height > 0, "Frame height must be positive", frame_size.height);
+
+    if (frame_size == _frameSize) {
+        return;
+    }
+
+    if (_model->GetDrawSize() != frame_size) {
+        _model->SetupFrame(frame_size, _model->GetFramePivot());
+    }
+
+    _frameSize = frame_size;
+    _boundedCropEstablished = false;
+    _cropEnvelopeId.reset();
+}
+
+auto ModelSprite::PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds) -> PreparedFrameCrop
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(frame_size.width > 0, "Frame width must be positive", frame_size.width);
+    FO_VERIFY_AND_THROW(frame_size.height > 0, "Frame height must be positive", frame_size.height);
+
+    if (IsDirectDraw()) {
+        bounds.reset();
+    }
+
+    irect32 full_frame_crop = {0, 0, frame_size.width, frame_size.height};
+    irect32 normalized_crop = full_frame_crop;
+    bool has_bounded_crop = false;
+    optional<ModelSpriteBoundsEnvelopeId> envelope_id {};
+
+    if (bounds && bounds->Rect.width > 0 && bounds->Rect.height > 0) {
+        const irect32& crop_rect = bounds->Rect;
+        int64_t crop_left = std::clamp<int64_t>(crop_rect.x, 0, frame_size.width);
+        int64_t crop_top = std::clamp<int64_t>(crop_rect.y, 0, frame_size.height);
+        int64_t crop_right = std::clamp<int64_t>(numeric_cast<int64_t>(crop_rect.x) + crop_rect.width, 0, frame_size.width);
+        int64_t crop_bottom = std::clamp<int64_t>(numeric_cast<int64_t>(crop_rect.y) + crop_rect.height, 0, frame_size.height);
+
+        if (crop_right > crop_left && crop_bottom > crop_top) {
+            normalized_crop = {
+                numeric_cast<int32_t>(crop_left),
+                numeric_cast<int32_t>(crop_top),
+                numeric_cast<int32_t>(crop_right - crop_left),
+                numeric_cast<int32_t>(crop_bottom - crop_top),
+            };
+            has_bounded_crop = true;
+            envelope_id = bounds->EnvelopeId;
+        }
+    }
+
+    bool same_frame = frame_size == _frameSize;
+    bool same_envelope = envelope_id && _cropEnvelopeId && envelope_id->BodyAnimationIndices == _cropEnvelopeId->BodyAnimationIndices && envelope_id->MoveAnimationIndices == _cropEnvelopeId->MoveAnimationIndices && envelope_id->CombinedMeshGenerationRevision == _cropEnvelopeId->CombinedMeshGenerationRevision && envelope_id->BodyAnimationCount == _cropEnvelopeId->BodyAnimationCount && envelope_id->MoveAnimationCount == _cropEnvelopeId->MoveAnimationCount && envelope_id->ShadowEnabled == _cropEnvelopeId->ShadowEnabled && envelope_id->FullFrame == _cropEnvelopeId->FullFrame;
+
+    if (same_frame && same_envelope && has_bounded_crop && _boundedCropEstablished) {
+        // Keep the slot stable across small pose-to-pose bounds changes.
+        normalized_crop.expand(_cropRect);
+    }
+
+    // Anchor the sprite on the model origin's exact pixel inside the frame (its ground point), not a fixed
+    // centre-x / three-quarter-y fraction: X keeps the crop centred on the origin, Y hangs it from the origin row.
+    ipos32 pivot = _model->GetFramePivot();
+    int32_t offset_x = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.x) + normalized_crop.width / 2 - pivot.x);
+    int32_t offset_y = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.y) + normalized_crop.height - pivot.y);
+    PreparedFrameCrop prepared_crop {
+        .FrameSize = frame_size,
+        .CropRect = normalized_crop,
+        .Size = normalized_crop.size(),
+        .Offset = {offset_x, offset_y},
+        .BoundedCropEstablished = has_bounded_crop,
+        .CropEnvelopeId = envelope_id,
+    };
+
+    if (_atlasAllocation && same_frame && normalized_crop == _cropRect) {
+        prepared_crop.Atlas = _atlas;
+        prepared_crop.AtlasRect = _atlasRect;
+        prepared_crop.ReuseAtlasAllocation = true;
+        return prepared_crop;
+    }
+
+    auto&& [atlas, atlas_allocation, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(_atlasType, normalized_crop.size());
+
+    prepared_crop.Atlas = atlas;
+    prepared_crop.AtlasRect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
+    prepared_crop.AtlasRect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
+    prepared_crop.AtlasRect.width = numeric_cast<float32_t>(normalized_crop.width) / numeric_cast<float32_t>(atlas->GetSize().width);
+    prepared_crop.AtlasRect.height = numeric_cast<float32_t>(normalized_crop.height) / numeric_cast<float32_t>(atlas->GetSize().height);
+    prepared_crop.AtlasAllocation = std::move(atlas_allocation);
+    return prepared_crop;
+}
+
+void ModelSprite::CommitFrameCrop(PreparedFrameCrop&& prepared_crop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SetupFrame(prepared_crop.FrameSize);
+    _cropRect = prepared_crop.CropRect;
+    _size = prepared_crop.Size;
+    _offset = prepared_crop.Offset;
+    _boundedCropEstablished = prepared_crop.BoundedCropEstablished;
+    _cropEnvelopeId = prepared_crop.CropEnvelopeId;
+
+    if (!prepared_crop.ReuseAtlasAllocation) {
+        _atlas = prepared_crop.Atlas;
+        _atlasRect = prepared_crop.AtlasRect;
+        _atlasAllocation = std::move(prepared_crop.AtlasAllocation);
+    }
+}
+
+void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    CommitFrameCrop(PrepareFrameCrop(frame_size, bounds));
+}
+
+ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
+    _sprMngr {spr_mngr},
+    _settings {settings},
+    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(
+        settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
+        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.ToHashedString(path)); }, //
+        [spr_mngr]() mutable FO_DEFERRED {
+            nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
+            return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
+        })}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+ModelSpriteFactory::~ModelSpriteFactory() = default;
+
+auto ModelSpriteFactory::GetModelMngr() -> ptr<ModelManager>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _modelMngr;
 }
 
 auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
@@ -169,26 +372,28 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
         return nullptr;
     }
 
-    const auto draw_size = model->GetDrawSize();
-    auto model_spr = SafeAlloc::MakeShared<ModelSprite>(*_sprMngr, this, std::move(model), atlas_type);
-    model_spr->SetSize(draw_size);
+    model->PrepareFrameLayout();
+    isize32 draw_size = model->GetDrawSize();
+    auto model_owner = model.take_not_null();
+    auto model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
+    model_spr->ApplyFrameCrop(draw_size, model_spr->_model->GetSpriteBounds());
 
     return model_spr;
 }
 
-auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, frect32>
+auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto result = pair<RenderTexture*, frect32>();
+    auto result = pair<nptr<RenderTexture>, frect32>();
 
-    if (const auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
-        auto any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
-        auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+    if (auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
+        // Model UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset.
+        auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {
             _loadedMeshTextures[path] = atlas_spr;
-            result = pair {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
+            result = {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
         }
         else {
             BreakIntoDebugger();
@@ -197,53 +402,103 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, frect
         }
     }
     else if (auto& atlas_spr = it->second) {
-        result = pair {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
+        result = {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
     }
 
     return result;
 }
 
-void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
+void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_modelMngr);
+    auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
+    model_spr->GetModel()->PrepareFrameLayout();
+    isize32 render_frame_size = model_spr->_requestedFrameSize.value_or(model_spr->GetModel()->GetDrawSize());
 
-    // Find place for render
-    const auto frame_size = isize32 {model_spr->_size.width * ModelInstance::FRAME_SCALE, model_spr->_size.height * ModelInstance::FRAME_SCALE};
-    RenderTarget* rt_model = nullptr;
+    if (model_spr->GetModel()->GetDrawSize() != render_frame_size) {
+        model_spr->GetModel()->SetupFrame(render_frame_size, model_spr->GetModel()->GetFramePivot());
+    }
 
-    for (auto& rt : _rtIntermediate) {
-        if (rt->GetTexture()->Size == frame_size) {
-            rt_model = rt.get();
-            break;
+    // Size the sprite frame from the posed geometry before drawing anything. GetSpriteBounds derives the frame extent
+    // from the skinned skeleton and the baked particle box - there is no shader/GPU read-back - so the required size is
+    // fully known without a render. Pose the model (advancing the animation only on the first pass), measure, and grow
+    // the frame if the pose overflows it. Merge placements in root-relative coordinates instead of replacing one with
+    // the next: pixel rounding or a live world-space particle can otherwise alternate between adjacent pivots forever
+    // even though the size is unchanged. The re-poses are cheap CPU work, not renders.
+    optional<ModelSpriteBounds> bounds;
+
+    for (size_t size_pass = 0; size_pass < 3; size_pass++) {
+        model_spr->GetModel()->PoseSpriteFrame(size_pass == 0);
+        bounds = model_spr->_model->GetSpriteBounds();
+
+        if (bounds) {
+            ModelSpriteFramePlacement current_placement {
+                .Size = render_frame_size,
+                .Pivot = model_spr->GetModel()->GetFramePivot(),
+            };
+            ModelSpriteFramePlacement required_placement {.Size = bounds->RequiredFrameSize, .Pivot = bounds->Pivot};
+            optional<ModelSpriteFramePlacement> settled_placement = MergeModelSpriteFramePlacements(current_placement, required_placement);
+            FO_VERIFY_AND_THROW(settled_placement, "Model sprite frame placements could not be merged", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot);
+
+            // A full-frame particle crop may already have enough pixels but still need its root moved inside that frame.
+            if (settled_placement->Size != current_placement.Size || settled_placement->Pivot != current_placement.Pivot) {
+                FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot, settled_placement->Size, settled_placement->Pivot);
+                model_spr->_model->SetupFrame(settled_placement->Size, settled_placement->Pivot);
+                render_frame_size = settled_placement->Size;
+                continue;
+            }
         }
+
+        break;
     }
 
-    if (rt_model == nullptr) {
-        rt_model = _sprMngr->GetRtMngr().CreateRenderTarget(true, frame_size, true);
-        _rtIntermediate.emplace_back(rt_model);
-    }
+    // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop.
+    isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
+    ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
+        for (ptr<RenderTarget> rt : _rtIntermediate) {
+            if (rt->GetTexture()->Size == frame_size) {
+                return rt;
+            }
+        }
+
+        auto rt = _sprMngr->GetRtMngr().CreateRenderTarget(true, frame_size, true);
+        _rtIntermediate.emplace_back(rt);
+        return rt;
+    }();
 
     _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
+    auto pop_model_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
     _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
-
-    // Draw model
-    model_spr->GetModel()->Draw();
-
-    // Restore render target
+    model_spr->GetModel()->DrawSpriteFrame();
     _sprMngr->GetRtMngr().PopRenderTarget();
+    pop_model_rt_on_fail.release();
+
+    auto prepared_crop = model_spr->PrepareFrameCrop(render_frame_size, bounds);
 
     // Copy render
-    const int32_t l = iround<int32_t>(model_spr->GetAtlasRect().x * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
-    const int32_t t = iround<int32_t>(model_spr->GetAtlasRect().y * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().height));
-    const int32_t w = iround<int32_t>(model_spr->GetAtlasRect().width * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
-    const int32_t h = iround<int32_t>(model_spr->GetAtlasRect().height * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().height));
-    const irect32 region_to = irect32(l, t, w, h);
+    int32_t l = iround<int32_t>(prepared_crop.AtlasRect.x * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width));
+    int32_t t = iround<int32_t>(prepared_crop.AtlasRect.y * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height));
+    int32_t w = iround<int32_t>(prepared_crop.AtlasRect.width * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width));
+    int32_t h = iround<int32_t>(prepared_crop.AtlasRect.height * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height));
+    irect32 region_to = irect32(l, t, w, h);
+    float32_t frame_scale = numeric_cast<float32_t>(ModelInstance::FRAME_SCALE);
+    frect32 region_from = {
+        numeric_cast<float32_t>(prepared_crop.CropRect.x) * frame_scale,
+        numeric_cast<float32_t>(prepared_crop.CropRect.y) * frame_scale,
+        numeric_cast<float32_t>(prepared_crop.CropRect.width) * frame_scale,
+        numeric_cast<float32_t>(prepared_crop.CropRect.height) * frame_scale,
+    };
 
-    _sprMngr->GetRtMngr().PushRenderTarget(model_spr->GetAtlas()->GetRenderTarget());
-    _sprMngr->DrawRenderTarget(rt_model, false, nullptr, &region_to);
+    _sprMngr->GetRtMngr().PushRenderTarget(prepared_crop.Atlas->GetRenderTarget());
+    auto pop_atlas_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
+    prepared_crop.Atlas->GetRenderTarget()->ClearLastPixelPicks();
+    _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &region_to);
     _sprMngr->GetRtMngr().PopRenderTarget();
+    pop_atlas_rt_on_fail.release();
+    model_spr->CommitFrameCrop(std::move(prepared_crop));
+    model_spr->_requestedFrameSize.reset();
+    request_redraw_on_fail.release();
 }
 
 FO_END_NAMESPACE

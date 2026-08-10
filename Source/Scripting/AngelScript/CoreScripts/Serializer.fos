@@ -1,0 +1,761 @@
+namespace Serializer
+{
+
+// Data serialization
+
+class Serializer
+{
+    private
+    uint8[] dataArray;
+    private
+    int curPos;
+    private
+    int bufSize;
+    private
+    int dataSize;
+
+    Serializer()
+    {
+        dataArray = array<uint8>();
+        curPos = 0;
+        bufSize = 0;
+        dataSize = 0;
+    }
+
+    Serializer(int approxSize)
+    {
+        dataArray = array<uint8>();
+        curPos = 0;
+        bufSize = 0;
+        dataSize = 0;
+        GrowBuffer(approxSize);
+    }
+
+    void GrowBuffer(int size)
+    {
+        if (size <= bufSize) {
+            return;
+        }
+        if (bufSize == 0) {
+            bufSize = 1;
+        }
+        while (size > bufSize) {
+            bufSize *= 2;
+        }
+        dataArray.resize(bufSize);
+    }
+
+#if CLIENT
+    void SaveToCache(string name)
+    {
+        Game.SetCacheData(name, dataArray, dataSize);
+        Clear();
+    }
+
+    int LoadFromCache(string name)
+    {
+        Clear();
+        dataArray = Game.GetCacheData(name);
+        bufSize = dataArray.length();
+        dataSize = bufSize;
+        return bufSize;
+    }
+#endif
+
+    uint8[] GetData()
+    {
+        uint8[] data = dataArray.clone();
+        data.resize(dataSize);
+        return data;
+    }
+
+    int SetData(const uint8[] data)
+    {
+        dataArray = data.clone();
+        bufSize = data.length();
+        dataSize = data.length();
+        return dataSize;
+    }
+
+    void Clear()
+    {
+        curPos = 0;
+        bufSize = 0;
+        dataSize = 0;
+    }
+
+    Serializer SetCurPos(int pos)
+    {
+        GrowBuffer(pos);
+        curPos = pos;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Fill(uint8 value, int length)
+    {
+        GrowBuffer(curPos + length);
+        for (int i = 0; i < length; i++) {
+            dataArray[curPos++] = value;
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const int64& value)
+    {
+        GrowBuffer(curPos + 8);
+        dataArray[curPos++] = (value >> 56) & 0xFF;
+        dataArray[curPos++] = (value >> 48) & 0xFF;
+        dataArray[curPos++] = (value >> 40) & 0xFF;
+        dataArray[curPos++] = (value >> 32) & 0xFF;
+        dataArray[curPos++] = (value >> 24) & 0xFF;
+        dataArray[curPos++] = (value >> 16) & 0xFF;
+        dataArray[curPos++] = (value >> 8) & 0xFF;
+        dataArray[curPos++] = value & 0xFF;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const int& value)
+    {
+        GrowBuffer(curPos + 4);
+        dataArray[curPos++] = (value >> 24) & 0xFF;
+        dataArray[curPos++] = (value >> 16) & 0xFF;
+        dataArray[curPos++] = (value >> 8) & 0xFF;
+        dataArray[curPos++] = value & 0xFF;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const int16& value)
+    {
+        GrowBuffer(curPos + 2);
+        dataArray[curPos++] = (value >> 8) & 0xFF;
+        dataArray[curPos++] = value & 0xFF;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const int8& value)
+    {
+        GrowBuffer(curPos + 1);
+        dataArray[curPos++] = value;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const uint64& value)
+    {
+        GrowBuffer(curPos + 8);
+        dataArray[curPos++] = (value >> 56) & 0xFF;
+        dataArray[curPos++] = (value >> 48) & 0xFF;
+        dataArray[curPos++] = (value >> 40) & 0xFF;
+        dataArray[curPos++] = (value >> 32) & 0xFF;
+        dataArray[curPos++] = (value >> 24) & 0xFF;
+        dataArray[curPos++] = (value >> 16) & 0xFF;
+        dataArray[curPos++] = (value >> 8) & 0xFF;
+        dataArray[curPos++] = value & 0xFF;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const uint& value)
+    {
+        GrowBuffer(curPos + 4);
+        dataArray[curPos++] = (value >> 24) & 0xFF;
+        dataArray[curPos++] = (value >> 16) & 0xFF;
+        dataArray[curPos++] = (value >> 8) & 0xFF;
+        dataArray[curPos++] = value & 0xFF;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const uint16& value)
+    {
+        GrowBuffer(curPos + 2);
+        dataArray[curPos++] = (value >> 8) & 0xFF;
+        dataArray[curPos++] = value & 0xFF;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const uint8& value)
+    {
+        GrowBuffer(curPos + 1);
+        dataArray[curPos++] = value;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const bool& value)
+    {
+        GrowBuffer(curPos + 1);
+        dataArray[curPos++] = value ? 1 : 0;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const string& value)
+    {
+        int len = value.rawLength();
+        GrowBuffer(curPos + len + 1);
+        for (int i = 0; i < len; i++) {
+            dataArray[curPos++] = value.rawGet(i);
+        }
+        dataArray[curPos++] = 0;
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const hstring& value)
+    {
+        return Set(value.str);
+    }
+
+    Serializer Set(const ident& value)
+    {
+        return Set(value.value);
+    }
+
+    Serializer Set(const timespan& value)
+    {
+        return Set(value.nanoseconds);
+    }
+
+    Serializer Set(const synctime& value)
+    {
+        return Set(value.milliseconds);
+    }
+
+    Serializer Set(const ucolor& value)
+    {
+        return Set(value.value);
+    }
+
+    Serializer Set(const any& value)
+    {
+        return Set(string(value));
+    }
+
+    Serializer Set(const int64[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen * 8;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const int[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen * 4;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const int16[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen * 2;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const int8[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const uint64[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen * 8;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const uint[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen * 4;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const uint16[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen * 2;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const uint8[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const bool[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const string[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen; // Length and zeros
+        for (int i = 0; i < valuesLen; i++) {
+            len += values[i].length();
+        }
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const hstring[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen; // Length and zeros
+        for (int i = 0; i < valuesLen; i++) {
+            len += values[i].str.length();
+        }
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Set(const ident[] values)
+    {
+        int valuesLen = values.length();
+        int len = 4 + valuesLen * 8;
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializer Get(int64& value)
+    {
+        value = 0;
+        if (curPos + 8 > dataSize) {
+            return this;
+        }
+        value |= int64(dataArray[curPos++]) << 56;
+        value |= int64(dataArray[curPos++]) << 48;
+        value |= int64(dataArray[curPos++]) << 40;
+        value |= int64(dataArray[curPos++]) << 32;
+        value |= dataArray[curPos++] << 24;
+        value |= dataArray[curPos++] << 16;
+        value |= dataArray[curPos++] << 8;
+        value |= dataArray[curPos++];
+        return this;
+    }
+
+    Serializer Get(int& value)
+    {
+        value = 0;
+        if (curPos + 4 > dataSize) {
+            return this;
+        }
+        value |= dataArray[curPos++] << 24;
+        value |= dataArray[curPos++] << 16;
+        value |= dataArray[curPos++] << 8;
+        value |= dataArray[curPos++];
+        return this;
+    }
+
+    Serializer Get(int16& value)
+    {
+        value = 0;
+        if (curPos + 2 > dataSize) {
+            return this;
+        }
+        value |= dataArray[curPos++] << 8;
+        value |= dataArray[curPos++];
+        return this;
+    }
+
+    Serializer Get(int8& value)
+    {
+        value = 0;
+        if (curPos + 1 > dataSize) {
+            return this;
+        }
+        value = dataArray[curPos++];
+        return this;
+    }
+
+    Serializer Get(uint64& value)
+    {
+        value = 0;
+        if (curPos + 8 > dataSize) {
+            return this;
+        }
+        value |= uint64(dataArray[curPos++]) << 56;
+        value |= uint64(dataArray[curPos++]) << 48;
+        value |= uint64(dataArray[curPos++]) << 40;
+        value |= uint64(dataArray[curPos++]) << 32;
+        value |= dataArray[curPos++] << 24;
+        value |= dataArray[curPos++] << 16;
+        value |= dataArray[curPos++] << 8;
+        value |= dataArray[curPos++];
+        return this;
+    }
+
+    Serializer Get(uint& value)
+    {
+        value = 0;
+        if (curPos + 4 > dataSize) {
+            return this;
+        }
+        value |= dataArray[curPos++] << 24;
+        value |= dataArray[curPos++] << 16;
+        value |= dataArray[curPos++] << 8;
+        value |= dataArray[curPos++];
+        return this;
+    }
+
+    Serializer Get(uint16& value)
+    {
+        value = 0;
+        if (curPos + 2 > dataSize) {
+            return this;
+        }
+        value |= dataArray[curPos++] << 8;
+        value |= dataArray[curPos++];
+        return this;
+    }
+
+    Serializer Get(uint8& value)
+    {
+        value = 0;
+        if (curPos + 1 > dataSize) {
+            return this;
+        }
+        value = dataArray[curPos++];
+        return this;
+    }
+
+    Serializer Get(bool& value)
+    {
+        value = false;
+        if (curPos + 1 > dataSize) {
+            return this;
+        }
+        value = dataArray[curPos++] == 1 ? true : false;
+        return this;
+    }
+
+    Serializer Get(string& str)
+    {
+        int len = 0;
+        for (int i = curPos;; i++) {
+            if (i == dataSize) {
+                str = "";
+                return this;
+            }
+            if (dataArray[i] == 0) {
+                len = i - curPos;
+                break;
+            }
+        }
+        str.rawResize(len);
+        for (int i = 0; i < len; i++) {
+            str.rawSet(i, dataArray[curPos++]);
+        }
+        curPos++; // Skip zero
+        return this;
+    }
+
+    Serializer Get(hstring& value)
+    {
+        string str;
+        Get(str);
+        value = str.hstr();
+        return this;
+    }
+
+    Serializer Get(ident& value)
+    {
+        Get(value.value);
+        return this;
+    }
+
+    Serializer Get(timespan& value)
+    {
+        int64 i = 0;
+        Get(i);
+        value = timespan(i, Time::NanosecondsPlace);
+        return this;
+    }
+
+    Serializer Get(synctime& value)
+    {
+        int64 i = 0;
+        Get(i);
+        value = synctime(i, Time::MillisecondsPlace);
+        return this;
+    }
+
+    Serializer Get(ucolor& value)
+    {
+        Get(value.value);
+        return this;
+    }
+
+    Serializer Get(any& value)
+    {
+        string str;
+        Get(str);
+        value = str;
+        return this;
+    }
+
+    Serializer Get(int64[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(int[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(int16[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(int8[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(uint64[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(uint[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(uint16[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(uint8[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(bool[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(string[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(hstring[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializer Get(ident[] values)
+    {
+        int valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (int i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+};
+
+}

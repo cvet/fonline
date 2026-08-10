@@ -777,6 +777,7 @@ int asCContext::Prepare(asIScriptFunction *func)
 		int stackSize = m_argumentsSize + m_returnValueSize;
 		if( m_currentFunction->scriptData )
 			stackSize += m_currentFunction->scriptData->stackNeeded;
+		stackSize += 1; // (FOnline Patch) slack for 8-byte frame-base alignment rounding (below)
 
 		// Make sure there is enough space on the stack for the arguments and return value
 		if( !ReserveStackSpace(stackSize) )
@@ -802,6 +803,12 @@ int asCContext::Prepare(asIScriptFunction *func)
 
 	// Reserve space for the arguments and return value
 	m_regs.stackFramePointer = m_regs.stackPointer - m_argumentsSize - m_returnValueSize;
+	// (FOnline Patch) 8-byte align the entry frame base so 8-byte value-type stack slots land aligned. Args are
+	// written after Prepare (SetArgX use stackFramePointer), so rounding down here is safe for the entry frame;
+	// SetProgramPointer -> PrepareScriptFunction inherits this fp (fp = sp). Nested frames stay aligned via even
+	// variableSpace + even arg space. The extra DWORD was reserved as slack above.
+	((asPWORD&)m_regs.stackFramePointer) &= ~asPWORD(7);
+
 	m_originalStackPointer   = m_regs.stackPointer;
 	m_originalStackIndex     = m_stackIndex;
 	m_regs.stackPointer      = m_regs.stackFramePointer;
@@ -816,7 +823,13 @@ int asCContext::Prepare(asIScriptFunction *func)
 		if( m_currentFunction->objectType )
 			ptr += AS_PTR_SIZE;
 
-		*(void**)ptr = (void*)(m_regs.stackFramePointer + m_argumentsSize);
+		// (FOnline Patch) 8-byte align the return-value location. It sits just above the arguments at
+		// stackFramePointer + m_argumentsSize; when m_argumentsSize is odd that lands 4-mod-8, so an 8-byte
+		// value-type return (e.g. string/int64) would be constructed/destructed through a misaligned pointer.
+		// stackFramePointer is 8-aligned, so rounding the offset up to even aligns the location; the extra DWORD
+		// is covered by the alignment slack reserved in stackSize. Args stay where they are (below the return).
+		asUINT retOffset = (m_argumentsSize + 1u) & ~asUINT(1);
+		*(void**)ptr = (void*)(m_regs.stackFramePointer + retOffset);
 	}
 
 	return asSUCCESS;
@@ -1097,7 +1110,7 @@ int asCContext::SetArgByte(asUINT arg, asBYTE value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asBYTE*)&m_regs.stackFramePointer[offset] = value;
@@ -1140,7 +1153,7 @@ int asCContext::SetArgWord(asUINT arg, asWORD value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asWORD*)&m_regs.stackFramePointer[offset] = value;
@@ -1183,7 +1196,7 @@ int asCContext::SetArgDWord(asUINT arg, asDWORD value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asDWORD*)&m_regs.stackFramePointer[offset] = value;
@@ -1226,7 +1239,7 @@ int asCContext::SetArgQWord(asUINT arg, asQWORD value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asQWORD*)(&m_regs.stackFramePointer[offset]) = value;
@@ -1269,7 +1282,7 @@ int asCContext::SetArgFloat(asUINT arg, float value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(float*)(&m_regs.stackFramePointer[offset]) = value;
@@ -1312,7 +1325,7 @@ int asCContext::SetArgDouble(asUINT arg, double value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(double*)(&m_regs.stackFramePointer[offset]) = value;
@@ -1349,7 +1362,7 @@ int asCContext::SetArgAddress(asUINT arg, void *value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asPWORD*)(&m_regs.stackFramePointer[offset]) = (asPWORD)value;
@@ -1407,7 +1420,7 @@ int asCContext::SetArgObject(asUINT arg, void *obj)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asPWORD*)(&m_regs.stackFramePointer[offset]) = (asPWORD)obj;
@@ -1444,7 +1457,7 @@ int asCContext::SetArgVarType(asUINT arg, void *ptr, int typeId)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the typeId and pointer
 	*(asPWORD*)(&m_regs.stackFramePointer[offset]) = (asPWORD)ptr;
@@ -1475,7 +1488,7 @@ void *asCContext::GetAddressOfArg(asUINT arg)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// We should return the address of the location where the argument value will be placed
 
@@ -2025,12 +2038,9 @@ bool asCContext::ReserveStackSpace(asUINT size)
 		m_stackIndex = 0;
 		m_regs.stackPointer = m_stackBlocks[0] + m_stackBlockSize;
 
-#ifdef WIP_16BYTE_ALIGN
-		// Align the stack pointer. This is necessary as the m_stackBlockSize is not necessarily evenly divisable with the max alignment
-		((asPWORD&)m_regs.stackPointer) &= ~(MAX_TYPE_ALIGNMENT-1);
-
-		asASSERT( isAligned(m_regs.stackPointer, MAX_TYPE_ALIGNMENT) );
-#endif
+		// (FOnline Patch) 8-byte align the stack pointer so frame bases land aligned. m_stackBlockSize is not
+		// necessarily a multiple of the alignment, so round the top down. malloc gives >= 8-byte-aligned blocks.
+		((asPWORD&)m_regs.stackPointer) &= ~asPWORD(7);
 	}
 
 	// Check if there is enough space on the current stack block, otherwise move
@@ -2089,12 +2099,9 @@ bool asCContext::ReserveStackSpace(asUINT size)
 			                  (m_currentFunction->objectType ? AS_PTR_SIZE : 0) -
 			                  (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
 
-#ifdef WIP_16BYTE_ALIGN
-		// Align the stack pointer
-		(asPWORD&)m_regs.stackPointer &= ~(MAX_TYPE_ALIGNMENT-1);
-
-		asASSERT( isAligned(m_regs.stackPointer, MAX_TYPE_ALIGNMENT) );
-#endif
+		// (FOnline Patch) 8-byte align the stack pointer so the new-block frame base lands aligned. The args
+		// are memcpy'd to this (rounded) pointer in PrepareScriptFunction, so they stay at fp+offset.
+		(asPWORD&)m_regs.stackPointer &= ~asPWORD(7);
 	}
 
 	return true;
@@ -2126,7 +2133,7 @@ void asCContext::PrepareScriptFunction()
 
 	// Make sure there is space on the stack to execute the function
 	asDWORD *oldStackPointer = m_regs.stackPointer;
-	asUINT needSize = m_currentFunction->scriptData->stackNeeded;
+	asUINT needSize = m_currentFunction->scriptData->stackNeeded + 2; // (FOnline Patch) +2 slack for the frame-base alignment shift and the even-locals rounding below
 
 	// With a quick check we know right away that we don't need to call ReserveStackSpace and do other checks inside it
 	if (m_stackBlocks.GetLength() == 0 ||
@@ -2142,6 +2149,26 @@ void asCContext::PrepareScriptFunction()
 			                (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
 			memcpy(m_regs.stackPointer, oldStackPointer, sizeof(asDWORD)*numDwords);
 		}
+	}
+
+	// (FOnline Patch) 8-byte align the frame base of every script call. The compiler lays 8-byte locals on
+	// even DWORD offsets relative to the frame base and the entry/block-move paths already land the base
+	// aligned, but a nested script call takes the base straight from the caller's stack pointer after an
+	// argument block whose DWORD size may be odd (sizes are per-bitness: pointers are 2 DWORDs on 64-bit,
+	// 1 on 32-bit), leaving the base 4-mod-8 and every 8-byte local in the frame misaligned. Relocating the
+	// just-pushed argument block one DWORD down is safe for the same reason the block-move memcpy above is:
+	// argument slots hold values or absolute pointers fixed up before the call (GETOBJ/GETREF), the callee
+	// addresses them relative to the shifted frame base, and the caller's stack pointer is restored from the
+	// call state saved before the shift (asBC_RET does PopCallState, then pops the arguments arithmetically
+	// with l_sp += w on the restored value). Runtime-only and re-derived per target bitness - nothing baked,
+	// the serialized bytecode is untouched. The extra DWORD is covered by the +2 slack above.
+	if( (((asPWORD)m_regs.stackPointer) & 7) != 0 )
+	{
+		int numDwords = m_currentFunction->GetSpaceNeededForArguments() +
+		                (m_currentFunction->objectType ? AS_PTR_SIZE : 0) +
+		                (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
+		memmove(m_regs.stackPointer - 1, m_regs.stackPointer, sizeof(asDWORD)*numDwords);
+		m_regs.stackPointer -= 1;
 	}
 
 	// Update framepointer
@@ -2163,7 +2190,12 @@ void asCContext::PrepareScriptFunction()
 	}
 
 	// Initialize the stack pointer with the space needed for local variables
-	m_regs.stackPointer -= m_currentFunction->scriptData->variableSpace;
+	// (FOnline Patch) round the locals region up to an even (2-DWORD) size so the stack pointer below the locals
+	// keeps the frame base's 8-byte parity. Native calls made by this function push their argument block onto
+	// this dynamic stack region (sp-relative), so an even-sized locals region keeps that push base 8-aligned and
+	// the 8-byte value-type arguments/returns marshalled there land aligned. The +2 reserve slack above covers
+	// this together with the frame-base alignment shift.
+	m_regs.stackPointer -= (m_currentFunction->scriptData->variableSpace + 1) & ~asUINT(1);
 
 	// Call the line callback for each script function, to guarantee that infinitely recursive scripts can
 	// be interrupted, even if the scripts have been compiled with asEP_BUILD_WITHOUT_LINE_CUES
@@ -2302,9 +2334,9 @@ static const void *const dispatch_table[256] = {
 &&INSTRUCTION(asBC_JLowNZ),		&&INSTRUCTION(asBC_AllocMem),	&&INSTRUCTION(asBC_SetListSize),&&INSTRUCTION(asBC_PshListElmnt),
 &&INSTRUCTION(asBC_SetListType),&&INSTRUCTION(asBC_POWi),		&&INSTRUCTION(asBC_POWu),		&&INSTRUCTION(asBC_POWf),
 &&INSTRUCTION(asBC_POWd),		&&INSTRUCTION(asBC_POWdi),		&&INSTRUCTION(asBC_POWi64),		&&INSTRUCTION(asBC_POWu64),
-&&INSTRUCTION(asBC_Thiscall1),
+&&INSTRUCTION(asBC_Thiscall1),	&&INSTRUCTION(asBC_RefCpyChk), // (FOnline Patch)
 
-								&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
+																&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
 &&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
 &&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
 &&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
@@ -4680,15 +4712,24 @@ static const void *const dispatch_table[256] = {
 			//                         to use a memory pool to avoid reallocating the memory all the time
 
 			asUINT size = asBC_DWORDARG(l_bc);
+			// (FOnline Patch) A value-type element smaller than a dword is packed in the list buffer at its
+			// exact size, but its per-element asBC_COPY writes a dword-rounded number of bytes, so the copy of
+			// a trailing sub-dword element spills up to three bytes past the dense payload (heap-buffer-overflow
+			// caught by AddressSanitizer). The guard must live here at the allocation site and can never be
+			// retired: asCWriter zeroes the AllocMem size on save and asCReader::SListAdjuster::AdjustAllocMem
+			// recomputes the dense size on every bytecode load, so compile-time padding never survives into
+			// saved bytecode. Skip the pad if it would wrap, keeping a corrupt giant size failing loudly at
+			// allocation instead of silently under-allocating.
+			asUINT allocSize = size <= 0xFFFFFFFFu - 3u ? size + 3u : size;
 			asBYTE **var = (asBYTE**)(l_fp - asBC_SWORDARG0(l_bc));
 #ifndef WIP_16BYTE_ALIGN
-			*var = asNEWARRAY(asBYTE, size);
+			*var = asNEWARRAY(asBYTE, allocSize);
 #else
-			*var = asNEWARRAYALIGNED(asBYTE, size, MAX_TYPE_ALIGNMENT);
+			*var = asNEWARRAYALIGNED(asBYTE, allocSize, MAX_TYPE_ALIGNMENT);
 #endif
 
 			// Clear the buffer for the pointers that will be placed in it
-			memset(*var, 0, size);
+			memset(*var, 0, allocSize);
 		}
 		l_bc += 2;
 		NEXT_INSTRUCTION();
@@ -4904,6 +4945,10 @@ static const void *const dispatch_table[256] = {
 				// Pop the int arg from the stack
 				int arg = *(int*)l_sp;
 				l_sp++;
+				// (FOnline Patch) even argument slots: the 1-DWORD int arg occupies a 2-DWORD padded slot on
+				// every pointer size (see asCDataType::GetArgSlotSizeOnStackDWords) — the compiler bakes the
+				// padding push into the bytecode, so 32-bit must pop it too or the stack desyncs.
+				l_sp++;
 
 				// Call the method
 				m_callingSystemFunction = m_engine->scriptFunctions[i];
@@ -4956,10 +5001,51 @@ static const void *const dispatch_table[256] = {
 		}
 		NEXT_INSTRUCTION();
 
+	// (FOnline Patch) REFCPY variant: identical semantics, but raises a distinct
+	// "Null assignment to non-nullable handle" exception when the source handle is
+	// null. The compiler emits this for assignments whose destination type is a
+	// non-nullable handle (declared without the `?` suffix). The dedicated message
+	// makes it easy to tell apart from generic null-pointer dereferences when reading
+	// stack traces from production crashes.
+	INSTRUCTION(asBC_RefCpyChk):
+		{
+			asCObjectType *objType = (asCObjectType*)asBC_PTRARG(l_bc);
+			asSTypeBehaviour *beh = &objType->beh;
+
+			// Pop address of destination pointer from the stack
+			void **d = (void**)*(asPWORD*)l_sp;
+			l_sp += AS_PTR_SIZE;
+
+			// Read wanted pointer from the stack
+			void *s = (void*)*(asPWORD*)l_sp;
+
+			m_regs.programPointer    = l_bc;
+			m_regs.stackPointer      = l_sp;
+			m_regs.stackFramePointer = l_fp;
+
+			if( s == 0 )
+			{
+				SetInternalException(TXT_NULL_ASSIGN_TO_NON_NULLABLE);
+				return;
+			}
+
+			if( !(objType->flags & (asOBJ_NOCOUNT | asOBJ_VALUE)) )
+			{
+				if( *d != 0 && beh->release )
+					m_engine->CallObjectMethod(*d, beh->release);
+				if( beh->addref )
+					m_engine->CallObjectMethod(s, beh->addref);
+			}
+
+			*d = s;
+		}
+		l_bc += 1+AS_PTR_SIZE;
+		NEXT_INSTRUCTION();
+
 	// Don't let the optimizer optimize for size,
 	// since it requires extra conditions and jumps
 #if AS_USE_COMPUTED_GOTOS == 0
-	INSTRUCTION(201): l_bc = (asDWORD*)201; goto case_FAULT;
+	// (FOnline Patch) opcode 201 is now asBC_RefCpyChk and handled above
 	INSTRUCTION(202): l_bc = (asDWORD*)202; goto case_FAULT;
 	INSTRUCTION(203): l_bc = (asDWORD*)203; goto case_FAULT;
 	INSTRUCTION(204): l_bc = (asDWORD*)204; goto case_FAULT;
@@ -5303,7 +5389,9 @@ void asCContext::DetermineLiveObjects(asCArray<int> &liveObjects, asUINT stackLe
 
 	// Determine which object variables that are really live ones
 	liveObjects.SetLength(func->scriptData->variables.GetLength());
-	memset(liveObjects.AddressOf(), 0, sizeof(int)*liveObjects.GetLength());
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when there are no variables (UBSan nonnull-arg)
+	if( liveObjects.GetLength() > 0 )
+		memset(liveObjects.AddressOf(), 0, sizeof(int)*liveObjects.GetLength());
 	for( int n = 0; n < (int)func->scriptData->objVariableInfo.GetLength(); n++ )
 	{
 		// Find the first variable info with a larger position than the current
@@ -5438,7 +5526,7 @@ void asCContext::CleanArgsOnStack()
 						func = CastToFuncdefType(m_currentFunction->parameterTypes[v].GetTypeInfo())->funcdef;
 					break;
 				}
-				paramPos -= m_currentFunction->parameterTypes[v].GetSizeOnStackDWords();
+				paramPos -= m_currentFunction->parameterTypes[v].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 			}
 		}
 	}
@@ -5485,7 +5573,7 @@ void asCContext::CleanArgsOnStack()
 			}
 		}
 
-		offset += func->parameterTypes[n].GetSizeOnStackDWords();
+		offset += func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 
 	// Restore the stack pointer
@@ -5575,7 +5663,7 @@ bool asCContext::CleanStackFrame(bool catchException)
 
 		// Restore the stack pointer
 		if( !exceptionCaught )
-			m_regs.stackPointer += m_currentFunction->scriptData->variableSpace;
+			m_regs.stackPointer += (m_currentFunction->scriptData->variableSpace + 1) & ~asUINT(1); // (FOnline Patch) locals region is allocated even-rounded (see PrepareScriptFunction)
 
 		// Determine which object variables that are really live ones
 		asCArray<int> liveObjects;
@@ -5676,7 +5764,7 @@ bool asCContext::CleanStackFrame(bool catchException)
 	// If the exception was caught then move the program position and stack pointer to the catch block then stop the unwinding
 	if (exceptionCaught)
 	{
-		m_regs.stackPointer = m_regs.stackFramePointer - tryCatchInfo->stackSize - m_currentFunction->scriptData->variableSpace;
+		m_regs.stackPointer = m_regs.stackFramePointer - tryCatchInfo->stackSize - ((m_currentFunction->scriptData->variableSpace + 1) & ~asUINT(1)); // (FOnline Patch) locals region is allocated even-rounded (see PrepareScriptFunction)
 		m_regs.programPointer = m_currentFunction->scriptData->byteCode.AddressOf() + tryCatchInfo->catchPos;
 		return exceptionCaught;
 	}
@@ -5722,7 +5810,7 @@ bool asCContext::CleanStackFrame(bool catchException)
 			}
 		}
 
-		offset += m_currentFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_currentFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 
 	return exceptionCaught;
@@ -5920,12 +6008,14 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	{
 		varArgCount = *args;
 
-		args += 1;
-		popSize += 1;
+		// (FOnline Patch) even variadic count slot: the count occupies 2 DWORDs on every pointer size
+		// (the compiler bakes the padding push, so 32-bit must pop the same amount)
+		args += 2;
+		popSize += 2;
 
 		// Calculate the arguments that need to be popped
 		asCDataType variadicType = descr->parameterTypes[descr->parameterTypes.GetLength() - 1];
-		int sizeOfVariadicArg = variadicType.GetSizeOnStackDWords();
+		int sizeOfVariadicArg = variadicType.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 		// sysFunc->paramSize already added one variadic arg for the ..., but there might not actually be any
 		popSize -= sizeOfVariadicArg;
@@ -6058,7 +6148,7 @@ int asCContext::GetVar(asUINT varIndex, asUINT stackLevel, const char** name, in
 						*typeModifiers = func->inOutFlags[n];
 						break;
 					}
-					stackPos -= func->parameterTypes[n].GetSizeOnStackDWords();
+					stackPos -= func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 				}
 			}
 			else
@@ -6391,7 +6481,7 @@ int asCContext::GetArgsOnStackCount(asUINT stackLevel)
 	// Determine the highest stack position for local variables
 	// asCScriptFunction::variableSpace give this value
 	// If the stack pointer is higher than that, then there are data pushed on the stack
-	asUINT stackPos = asDWORD(sf - sp) - func->scriptData->variableSpace;
+	asUINT stackPos = asDWORD(sf - sp) - ((func->scriptData->variableSpace + 1) & ~asUINT(1)); // (FOnline Patch) locals region is allocated even-rounded (see PrepareScriptFunction)
 	if (stackPos == 0)
 		return 0;
 

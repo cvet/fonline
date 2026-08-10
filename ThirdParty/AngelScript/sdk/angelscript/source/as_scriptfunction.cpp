@@ -368,7 +368,7 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, as
 	signatureId            = 0;
 	dontCleanUpOnException = false;
 	vfTableIdx             = -1;
-	gcFlag                 = false;
+	gcFlag.store(false, std::memory_order_relaxed); // (FOnline Patch)
 	id                     = 0;
 	accessMask             = 0xFFFFFFFF;
 	nameSpace              = engine->nameSpaces[0];
@@ -510,14 +510,14 @@ int asCScriptFunction::GetId() const
 // interface
 int asCScriptFunction::AddRef() const
 {
-	gcFlag = false;
+	gcFlag.store(false, std::memory_order_relaxed); // (FOnline Patch)
 	return externalRefCount.atomicInc();
 }
 
 // interface
 int asCScriptFunction::Release() const
 {
-	gcFlag = false;
+	gcFlag.store(false, std::memory_order_relaxed); // (FOnline Patch)
 	int r = externalRefCount.atomicDec();
 	if( r == 0 &&
 		funcType != asFUNC_DUMMY )    // Dummy functions are allocated on the stack and cannot be deleted
@@ -658,7 +658,7 @@ int asCScriptFunction::GetSpaceNeededForArguments()
 	// We need to check the size for each type
 	int s = 0;
 	for( asUINT n = 0; n < parameterTypes.GetLength(); n++ )
-		s += parameterTypes[n].GetSizeOnStackDWords();
+		s += parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	return s;
 }
@@ -1208,6 +1208,7 @@ void asCScriptFunction::AddReferences()
 			case asBC_OBJTYPE:
 			case asBC_FREE:
 			case asBC_REFCPY:
+			case asBC_RefCpyChk: // (FOnline Patch)
 			case asBC_RefCpyV:
 				{
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
@@ -1368,6 +1369,7 @@ void asCScriptFunction::ReleaseReferences()
 			case asBC_OBJTYPE:
 			case asBC_FREE:
 			case asBC_REFCPY:
+			case asBC_RefCpyChk: // (FOnline Patch)
 			case asBC_RefCpyV:
 				{
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
@@ -1800,13 +1802,13 @@ int asCScriptFunction::GetRefCount()
 // internal
 void asCScriptFunction::SetFlag()
 {
-	gcFlag = true;
+	gcFlag.store(true, std::memory_order_relaxed); // (FOnline Patch)
 }
 
 // internal
 bool asCScriptFunction::GetFlag()
 {
-	return gcFlag;
+	return gcFlag.load(std::memory_order_relaxed); // (FOnline Patch)
 }
 
 // internal
@@ -1877,6 +1879,22 @@ bool asCScriptFunction::IsProperty() const
 bool asCScriptFunction::IsVariadic() const
 {
 	return traits.GetTrait(asTRAIT_VARIADIC);
+}
+
+// interface
+// (FOnline Patch) A no-return function never returns normally (it always throws
+// or exits). The compiler treats a statement ending in such a call as a control
+// flow terminator, enabling narrowing without an explicit `return`.
+bool asCScriptFunction::IsNoReturn() const
+{
+	return traits.GetTrait(asTRAIT_NORETURN);
+}
+
+// interface
+// (FOnline Patch)
+void asCScriptFunction::SetNoReturn()
+{
+	traits.SetTrait(asTRAIT_NORETURN, true);
 }
 
 // internal
@@ -1992,7 +2010,7 @@ asCScriptFunction* asCScriptFunction::GetCalledFunction(asDWORD programPos)
 				else
 					return 0;
 			}
-			paramPos -= parameterTypes[v].GetSizeOnStackDWords();
+			paramPos -= parameterTypes[v].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 

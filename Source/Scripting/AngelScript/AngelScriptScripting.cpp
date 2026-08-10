@@ -44,18 +44,6 @@
 
 FO_BEGIN_NAMESPACE
 
-struct AngelScriptThreadCleanupHelper
-{
-    ~AngelScriptThreadCleanupHelper() noexcept
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        AngelScript::asThreadCleanup();
-    }
-};
-
-[[maybe_unused]] static thread_local AngelScriptThreadCleanupHelper AngelScriptThreadCleanup {};
-
 struct AngelScriptAllocator
 {
     static auto Alloc(size_t size) -> void*
@@ -66,12 +54,18 @@ struct AngelScriptAllocator
         return allocator.allocate(size);
     }
 
-    static void Free(void* ptr)
+    static void Free(void* raw_address)
     {
         FO_NO_STACK_TRACE_ENTRY();
 
+        auto address = make_nptr(raw_address);
+
+        if (!address) {
+            return;
+        }
+
         constexpr SafeAllocator<uint8_t> allocator;
-        allocator.deallocate(static_cast<uint8_t*>(ptr), 0);
+        allocator.deallocate(address.reinterpret_as<uint8_t>().get(), 0);
     }
 };
 
@@ -84,46 +78,46 @@ static void PrepareAngelScriptRuntime()
     std::call_once(init_once, [] {
         AngelScript::asSetGlobalMemoryFunctions(&AngelScriptAllocator::Alloc, &AngelScriptAllocator::Free);
 
-        const auto prepare_result = AngelScript::asPrepareMultithread();
-        FO_RUNTIME_ASSERT(prepare_result >= 0);
+        int32_t prepare_result = AngelScript::asPrepareMultithread();
+        FO_VERIFY_AND_THROW(prepare_result >= 0, "Prepare result is negative", prepare_result);
     });
 }
 
-void InitAngelScriptScripting(EngineMetadata* meta, const ScriptSettings& settings, const FileSystem& resources)
+void InitAngelScriptScripting(ptr<EngineMetadata> meta, const ScriptSettings& settings, const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
     PrepareAngelScriptRuntime();
 
-    auto as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(settings);
-    auto* pas_backend = as_backend.get();
+    auto as_backend_holder = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
+    auto as_backend = as_backend_holder.as_ptr();
 
-    if (auto* script_sys = dynamic_cast<ScriptSystem*>(meta)) {
-        script_sys->RegisterBackend(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX, std::move(as_backend));
+    if (auto script_sys = meta.dyn_cast<ScriptSystem>()) {
+        script_sys->RegisterBackend(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX, std::move(as_backend_holder));
     }
 
-    pas_backend->RegisterMetadata(meta);
-    pas_backend->LoadBinaryScripts(resources);
-    pas_backend->BindRequiredStuff();
+    as_backend->RegisterMetadata(meta);
+    as_backend->LoadBinaryScripts(resources);
+    as_backend->BindRequiredStuff();
 }
 
-auto CompileAngelScript(EngineMetadata* meta, const ScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>
+auto CompileAngelScript(ptr<EngineMetadata> meta, const ScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     PrepareAngelScriptRuntime();
 
-    auto as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(settings);
-    auto* pas_backend = as_backend.get();
+    auto as_backend_holder = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
+    auto as_backend = as_backend_holder.as_ptr();
 
-    if (auto* script_sys = dynamic_cast<ScriptSystem*>(meta)) {
-        script_sys->RegisterBackend(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX, std::move(as_backend));
+    if (auto script_sys = meta.dyn_cast<ScriptSystem>()) {
+        script_sys->RegisterBackend(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX, std::move(as_backend_holder));
     }
 
-    pas_backend->SetMessageCallback(std::move(message_callback));
-    pas_backend->RegisterMetadata(meta);
-    auto result = pas_backend->CompileTextScripts(files);
-    pas_backend->BindRequiredStuff();
+    as_backend->SetMessageCallback(std::move(message_callback));
+    as_backend->RegisterMetadata(meta);
+    auto result = as_backend->CompileTextScripts(files);
+    as_backend->BindRequiredStuff();
     return result;
 }
 

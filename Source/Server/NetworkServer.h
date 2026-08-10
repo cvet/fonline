@@ -42,7 +42,11 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetworkServerException);
 
-class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
+#if FO_HAVE_ASIO
+extern auto GetAsioErrorText(const std::error_code& error) noexcept -> string;
+#endif
+
+class NetworkServerConnection : public enable_shared_from_this<NetworkServerConnection>
 {
 public:
     using AsyncSendCallback = function<const_span<uint8_t>()>;
@@ -64,7 +68,7 @@ public:
     void Disconnect();
 
 protected:
-    explicit NetworkServerConnection(ServerNetworkSettings& settings);
+    explicit NetworkServerConnection(ptr<ServerNetworkSettings> settings);
 
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
@@ -72,16 +76,16 @@ protected:
     auto SendCallback() -> const_span<uint8_t>;
     void ReceiveCallback(const_span<uint8_t> buf);
 
-    raw_ptr<ServerNetworkSettings> _settings;
+    ptr<ServerNetworkSettings> _settings;
     string _host {};
     uint16_t _port {};
 
 private:
     AsyncSendCallback _sendCallback {};
     std::atomic_bool _sendCallbackSet {};
-    AsyncReceiveCallback _receiveCallback {};
-    vector<uint8_t> _initReceiveBuf {};
-    std::mutex _receiveLocker {};
+    mutex _receiveLocker {};
+    AsyncReceiveCallback _receiveCallback FO_TSA_GUARDED_BY(_receiveLocker) {};
+    vector<uint8_t> _initReceiveBuf FO_TSA_GUARDED_BY(_receiveLocker) {};
     DisconnectCallback _disconnectCallback {};
     std::atomic_bool _disconnectCallbackSet {};
     std::atomic_bool _isDisconnected {};
@@ -92,25 +96,51 @@ class NetworkServer
 public:
     using NewConnectionCallback = function<void(shared_ptr<NetworkServerConnection>)>;
 
-    NetworkServer() = default;
+    enum class DummyConnectionState : uint8_t
+    {
+        Connected,
+        Disconnected,
+    };
+
+    NetworkServer();
     NetworkServer(const NetworkServer&) = delete;
     NetworkServer(NetworkServer&&) noexcept = delete;
     auto operator=(const NetworkServer&) = delete;
     auto operator=(NetworkServer&&) noexcept = delete;
     virtual ~NetworkServer() = default;
 
-    virtual void Shutdown() = 0;
+    void Shutdown();
 
-    [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
-    [[nodiscard]] static auto StartUdpSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    static auto StartInterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    static auto StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #if FO_HAVE_ASIO
-    [[nodiscard]] static auto StartAsioServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    static auto StartAsioServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif
 #if FO_HAVE_WEB_SOCKETS
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    static auto StartWebSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif
 
-    [[nodiscard]] static auto CreateDummyConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>;
+    static auto CreateDummyConnection(ptr<ServerNetworkSettings> settings, DummyConnectionState state = DummyConnectionState::Disconnected) -> shared_ptr<NetworkServerConnection>;
+
+protected:
+    class ConnectionRegistry final
+    {
+    public:
+        auto BeginShutdown() -> optional<vector<shared_ptr<NetworkServerConnection>>>;
+        auto TrackConnection(shared_ptr<NetworkServerConnection> connection) -> bool;
+
+    private:
+        mutex _connectionsLocker {};
+        vector<weak_ptr<NetworkServerConnection>> _connections FO_TSA_GUARDED_BY(_connectionsLocker) {};
+        bool _shutdownStarted FO_TSA_GUARDED_BY(_connectionsLocker) {};
+    };
+
+    auto GetConnectionRegistry() const noexcept -> shared_ptr<ConnectionRegistry>;
+    auto TrackConnection(shared_ptr<NetworkServerConnection> connection) -> bool;
+    virtual void ShutdownImpl() = 0;
+
+private:
+    shared_ptr<ConnectionRegistry> _connectionRegistry;
 };
 
 FO_END_NAMESPACE

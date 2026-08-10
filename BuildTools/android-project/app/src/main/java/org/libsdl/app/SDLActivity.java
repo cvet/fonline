@@ -57,6 +57,7 @@ import java.util.Locale;
 /**
     SDL Activity
 */
+@SuppressWarnings("deprecation")
 public class SDLActivity extends Activity implements View.OnSystemUiVisibilityChangeListener {
     private static final String TAG = "SDL";
     private static final int SDL_MAJOR_VERSION = 3;

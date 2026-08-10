@@ -94,4 +94,36 @@ auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeResult& result, string
     return result.RequestedCompatibilityVersion != nullptr && string_view(result.RequestedCompatibilityVersion) == compatibility_version;
 }
 
+auto RunClientRuntimeHostPass(const optional<ClientRuntimeHostResult>& runtime_result, ClientRuntimeHostPromoteFunc promote_runtime) -> optional<bool>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!runtime_result.has_value()) {
+        return std::nullopt;
+    }
+
+    if (runtime_result->Result.ResultKind == ClientRuntimeResultKind::ReloadRequested) {
+        FO_VERIFY_AND_THROW(promote_runtime != nullptr, "Client runtime reload promotion function is not set");
+        return promote_runtime(runtime_result->RequestedRuntimePath);
+    }
+
+    return runtime_result->Result.Success;
+}
+
+auto ClientRuntimeResultKindToString(ClientRuntimeResultKind kind) noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (kind) {
+    case ClientRuntimeResultKind::Shutdown:
+        return "Shutdown";
+    case ClientRuntimeResultKind::ReloadRequested:
+        return "ReloadRequested";
+    case ClientRuntimeResultKind::FatalError:
+        return "FatalError";
+    default:
+        return "Unknown";
+    }
+}
+
 FO_END_NAMESPACE

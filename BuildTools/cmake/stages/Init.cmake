@@ -14,6 +14,9 @@ DeclareRequiredValueOptions(
 	FO_DEV_NAME "Short name for project"
 	FO_NICE_NAME "More readable name for project"
 	FO_GEOMETRY "HEXAGONAL or SQUARE geometry mode"
+	FO_MAP_HEX_WIDTH "Map hex width in pixels"
+	FO_MAP_HEX_HEIGHT "Map hex height in pixels"
+	FO_MAP_CAMERA_ANGLE "Map camera angle in degrees"
 	FO_APP_ICON "Executable file icon"
 	FO_OUTPUT_PATH "Common output path")
 
@@ -22,25 +25,36 @@ DeclareValueOptions(
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_INTERNAL_CONFIG_CAPACITY "Capacity for embedded internal config in binaries" 10000
+	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
+	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
+	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30
+	FO_MODEL_MAX_TEXTURES "Maximum textures per 3D model" 8
+	FO_MODEL_MAX_BONES "Maximum bone matrices per 3D model" 54
+	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
+	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
+	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" ""
 	FO_NATIVE_SCRIPTS_DIR "Path to user-provided Native C++ scripting sources (Common/Server/Client/Mapper/Baker subfolders)" "")
 
 DeclareBoolOptions(
 	FO_ENABLE_3D "Supporting of 3d models" OFF
+	FO_SPARK_PARTICLES "Supporting of SPARK particles" OFF
+	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
 	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
 	FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
 	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
-	FO_DISABLE_UNQLITE "Force disable using of Unqlite" OFF
+	FO_DISABLE_SQLITE "Force disable using of SQLite" OFF
 	FO_DISABLE_ASIO "Force disable using of Asio" OFF
 	FO_DISABLE_WEB_SOCKETS "Force disable using of WebSockets" OFF
 	FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF
+	FO_DISABLE_VULKAN "Force disable using of Vulkan rendering (built by default, headers vendored with SDL3, no SDK needed)" OFF
+	FO_DISABLE_SDL_GPU "Force disable using of SDL_GPU rendering (Vulkan / Metal / D3D12 via SDL3)" OFF
 	FO_VERBOSE_BUILD "Verbose build mode" OFF
 	FO_BUILD_CLIENT "Build Client binaries" OFF
 	FO_BUILD_SERVER "Build Server binaries" OFF
 	FO_BUILD_MAPPER "Build Mapper binaries" OFF
-	FO_BUILD_EDITOR "Build Editor binaries" OFF
 	FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF
 	FO_BUILD_BAKER "Build Baker binaries" OFF
 	FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF
@@ -69,6 +83,9 @@ RequireNonEmptyVariables(
 	FO_DEV_NAME
 	FO_NICE_NAME
 	FO_GEOMETRY
+	FO_MAP_HEX_WIDTH
+	FO_MAP_HEX_HEIGHT
+	FO_MAP_CAMERA_ANGLE
 	FO_APP_ICON
 	FO_OUTPUT_PATH)
 
@@ -89,6 +106,8 @@ endif()
 
 StatusMessage("Build hash: ${FO_BUILD_HASH}")
 
+SetValue(FO_CODEGEN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codegen.py")
+
 # Some info about build
 StatusMessage("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 StatusMessage("Generator: ${CMAKE_GENERATOR}")
@@ -106,9 +125,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         AbortMessage("GCC ${CMAKE_CXX_COMPILER_VERSION} is below the required minimum 13.0")
     endif()
 elseif(MSVC)
-    # MSVC_VERSION 1930+ corresponds to Visual Studio 2022 (v143 toolset).
-    if(MSVC_VERSION LESS 1930)
-        AbortMessage("MSVC ${MSVC_VERSION} is below the required minimum 1930 (Visual Studio 2022)")
+    if(MSVC_VERSION LESS 1944)
+        AbortMessage("MSVC ${MSVC_VERSION} is below the required minimum 1944 (toolset 14.44 / Visual Studio 2022 17.14).")
     endif()
 else()
     AbortMessage("Unsupported compiler '${CMAKE_CXX_COMPILER_ID}'. Supported: Clang >= 20, GCC >= 13, MSVC >= 2022, AppleClang (any).")
@@ -196,9 +214,14 @@ if(FO_MULTICONFIG)
 	StringReplace(";" " " configs "${CMAKE_CONFIGURATION_TYPES}")
 	StatusMessage("Configurations: ${configs}")
 else()
+	if(NOT CMAKE_BUILD_TYPE)
+		SetValue(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Forced by FOnline default" FORCE)
+		StatusMessage("Configuration not set, defaulting to ${CMAKE_BUILD_TYPE}")
+	endif()
+
 	StatusMessage("Configuration: ${CMAKE_BUILD_TYPE}")
 
-	ListFind(FO_CONFIGURATION_TYPES ${CMAKE_BUILD_TYPE} configurationIndex)
+	ListFind(FO_CONFIGURATION_TYPES "${CMAKE_BUILD_TYPE}" configurationIndex)
 
 	if(configurationIndex EQUAL -1)
 		AbortMessage("Invalid requested configuration type")
@@ -217,7 +240,6 @@ SetValue(expr_PrefixConfig $<NOT:$<CONFIG:Release,RelWithDebInfo,MinSizeRel,Rele
 SetValue(expr_TracyEnabled $<CONFIG:Profiling_Total,Profiling_OnDemand,Debug_Profiling_Total,Debug_Profiling_OnDemand>)
 SetValue(expr_TracyOnDemand $<CONFIG:Profiling_OnDemand,Debug_Profiling_OnDemand>)
 SetValue(expr_RpmallocEnabled $<NOT:${expr_SanitizerConfigs}>)
-SetValue(expr_StandaloneRpmallocEnabled $<AND:${expr_RpmallocEnabled},$<NOT:${expr_TracyEnabled}>>)
 
 AddCompileDefinitionsList(
 	$<${expr_DebugBuild}:DEBUG>
@@ -226,39 +248,124 @@ AddCompileDefinitionsList(
 	$<$<NOT:${expr_DebugBuild}>:NDEBUG>
 	$<$<NOT:${expr_DebugBuild}>:FO_DEBUG=0>)
 
+# AngelScript's hand-written native calling-convention trampolines (as_callfunc_x64_gcc.cpp, ...) are
+# incompatible with sanitizer instrumentation: AddressSanitizer cannot unwind a C++ exception thrown by a
+# registered function back through the asm to AngelScript's catch (the call terminates instead of being
+# translated to a script exception), and MemorySanitizer cannot track initialization through the asm (it
+# reports false use-of-uninitialized). The engine already uses AngelScript's portable generic calling
+# convention where native support is absent (e.g. wasm), and 32-bit ARM disables exceptions for the same
+# trampoline reason. Force the portable path under ASan/MSan so the sanitizers exercise the same engine and
+# game logic over pure C++ marshalling. TSan keeps the native path (unaffected, and green there); UBSan keeps
+# it too (its value-type misalignment is stack-layout-driven, not calling-convention-driven).
+SetValue(expr_PortableScriptCallConfigs $<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Address_Undefined>)
+AddCompileDefinitionsList($<${expr_PortableScriptCallConfigs}:AS_MAX_PORTABILITY>)
+
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	AddCompileOptionsList(
 		$<$<CONFIG:San_Address>:/fsanitize=address>
 		$<$<CONFIG:Release_Debugging>:/dynamicdeopt>)
 	AddLinkOptionsList($<$<CONFIG:Release_Debugging>:/DYNAMICDEOPT>)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
-	AddCompileDefinitionsList(
-		$<$<CONFIG:San_Address>:LLVM_USE_SANITIZER=Address>
-		$<$<CONFIG:San_Memory>:LLVM_USE_SANITIZER=Memory>
-		$<$<CONFIG:San_MemoryWithOrigins>:LLVM_USE_SANITIZER=MemoryWithOrigins>
-		$<$<CONFIG:San_Undefined>:LLVM_USE_SANITIZER=Undefined>
-		$<$<CONFIG:San_Thread>:LLVM_USE_SANITIZER=Thread>
-		$<$<CONFIG:San_DataFlow>:LLVM_USE_SANITIZER=DataFlow>
-		$<$<CONFIG:San_Address_Undefined>:LLVM_USE_SANITIZER=Address$<SEMICOLON>Undefined>)
+	# Sanitizers require the real -fsanitize= flags at BOTH compile and link time (the matching runtime is
+	# linked into the image). LLVM_USE_SANITIZER is LLVM's own project build switch and has no effect on a
+	# normal project, so set the actual Clang flags per config. rpmalloc is already disabled for these
+	# configs (see expr_RpmallocEnabled) so the sanitizer allocator can interpose.
+	AddCompileOptionsList(
+		$<$<CONFIG:San_Address>:-fsanitize=address>
+		$<$<CONFIG:San_Memory>:-fsanitize=memory>
+		$<$<CONFIG:San_MemoryWithOrigins>:-fsanitize=memory>
+		$<$<CONFIG:San_MemoryWithOrigins>:-fsanitize-memory-track-origins=2>
+		$<$<CONFIG:San_Undefined>:-fsanitize=undefined>
+		$<$<CONFIG:San_Thread>:-fsanitize=thread>
+		$<$<CONFIG:San_DataFlow>:-fsanitize=dataflow>
+		$<$<CONFIG:San_Address_Undefined>:-fsanitize=address$<COMMA>undefined>)
+	AddLinkOptionsList(
+		$<$<CONFIG:San_Address>:-fsanitize=address>
+		$<$<CONFIG:San_Memory>:-fsanitize=memory>
+		$<$<CONFIG:San_MemoryWithOrigins>:-fsanitize=memory>
+		$<$<CONFIG:San_Undefined>:-fsanitize=undefined>
+		$<$<CONFIG:San_Thread>:-fsanitize=thread>
+		$<$<CONFIG:San_DataFlow>:-fsanitize=dataflow>
+		$<$<CONFIG:San_Address_Undefined>:-fsanitize=address$<COMMA>undefined>)
 endif()
 
-# Engine settings
+SetValue(expr_MemorySanitizerConfigs $<CONFIG:San_Memory,San_MemoryWithOrigins>)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC AND CMAKE_SYSTEM_NAME MATCHES "Linux")
+	if(NOT FO_MULTICONFIG AND CMAKE_BUILD_TYPE MATCHES "^San_Memory" AND "${FO_MSAN_LIBCXX_ROOT}" STREQUAL "")
+		AbortMessage("${CMAKE_BUILD_TYPE} requires FO_MSAN_LIBCXX_ROOT pointing to an MSan-instrumented libc++ install prefix. Prepare it with BuildTools msan-libcxx.")
+	endif()
+
+	if(NOT "${FO_MSAN_LIBCXX_ROOT}" STREQUAL "")
+		GetFilenameComponent(FO_MSAN_LIBCXX_ROOT "${FO_MSAN_LIBCXX_ROOT}" ABSOLUTE)
+		SetValue(FO_MSAN_LIBCXX_INCLUDE_DIR "${FO_MSAN_LIBCXX_ROOT}/include/c++/v1")
+		SetValue(FO_MSAN_LIBCXX_LIBRARY_DIR "${FO_MSAN_LIBCXX_ROOT}/lib")
+
+		if(NOT EXISTS "${FO_MSAN_LIBCXX_INCLUDE_DIR}")
+			AbortMessage("FO_MSAN_LIBCXX_ROOT does not contain include/c++/v1: ${FO_MSAN_LIBCXX_ROOT}")
+		endif()
+		if(NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libc++.so" AND NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libc++.a")
+			AbortMessage("FO_MSAN_LIBCXX_ROOT does not contain libc++ under lib/: ${FO_MSAN_LIBCXX_ROOT}")
+		endif()
+		if(NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libc++abi.so" AND NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libc++abi.a")
+			AbortMessage("FO_MSAN_LIBCXX_ROOT does not contain libc++abi under lib/: ${FO_MSAN_LIBCXX_ROOT}")
+		endif()
+		if(NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libunwind.so" AND NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libunwind.a")
+			AbortMessage("FO_MSAN_LIBCXX_ROOT does not contain libunwind under lib/: ${FO_MSAN_LIBCXX_ROOT}")
+		endif()
+
+		StatusMessage("MSan libc++ root: ${FO_MSAN_LIBCXX_ROOT}")
+		add_compile_options(
+			$<$<AND:${expr_MemorySanitizerConfigs},$<COMPILE_LANGUAGE:CXX>>:-nostdinc++>
+			$<$<AND:${expr_MemorySanitizerConfigs},$<COMPILE_LANGUAGE:CXX>>:-isystem${FO_MSAN_LIBCXX_INCLUDE_DIR}>)
+		AddLinkOptionsList(
+			$<${expr_MemorySanitizerConfigs}:-stdlib=libc++>
+			$<${expr_MemorySanitizerConfigs}:-L${FO_MSAN_LIBCXX_LIBRARY_DIR}>
+			$<${expr_MemorySanitizerConfigs}:-Wl$<COMMA>-rpath$<COMMA>${FO_MSAN_LIBCXX_LIBRARY_DIR}>
+			$<${expr_MemorySanitizerConfigs}:-lc++abi>
+			$<${expr_MemorySanitizerConfigs}:-lunwind>)
+	endif()
+
+	if(EXISTS "${FO_MSAN_IGNORELIST}")
+		AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fsanitize-ignorelist=${FO_MSAN_IGNORELIST}>)
+	endif()
+endif()
+
+# UBSan: there is no file-based ignorelist. The AngelScript value-type alignment UB was fixed at the source, so the
+# ubsan-ignorelist.txt is gone entirely. The only UBSan suppressions left are the per-target vendored-third-party
+# excuses in BuildTools/cmake/helpers/Build.cmake (DisableLibWarnings: -fno-sanitize=function,alignment for SQLite /
+# AngelScript bytecode packing / C-callback idioms) — those are genuine upstream design, not our code.
+
+# Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
+# Enforced as a hard error on every Clang toolchain (native clang, clang-cl, AppleClang, Emscripten, Android NDK).
+# FO_TSA_* annotation macros are no-ops on MSVC/GCC, and third-party code is silenced via DisableLibWarnings, so the
+# analysis is confined to first-party engine + SourceExt code. clang-cl uses the cl-style driver, so the GNU-style
+# warning flags are routed through the clang front end with /clang:.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	if(MSVC)
+		AddCompileOptionsList(/clang:-Wthread-safety /clang:-Werror=thread-safety)
+	else()
+		AddCompileOptionsList(-Wthread-safety -Werror=thread-safety)
+	endif()
+endif()
+
+# Engine feature/backend toggles. These stay -D compiler defines because they gate whole files and headers
+# and are evaluated as the first preprocessor decision — often before any engine header is included (e.g.
+# test harnesses that lead with catch_amalgamated.hpp, or headers self-guarded with #if FO_ANGELSCRIPT_SCRIPTING
+# before their own includes), so they must be defined without first pulling in EngineConfig.gen.h.
 AddCompileDefinitionsList(
-	"FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\""
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
+	FO_SPARK_PARTICLES=$<BOOL:${FO_SPARK_PARTICLES}>
+	FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
-	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>
-	FO_GEOMETRY=$<IF:$<STREQUAL:${FO_GEOMETRY},HEXAGONAL>,1,$<IF:$<STREQUAL:${FO_GEOMETRY},SQUARE>,2,0>>
-	FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}
-	FO_MAP_HEX_HEIGHT=${FO_MAP_HEX_HEIGHT}
-	FO_MAP_CAMERA_ANGLE=${FO_MAP_CAMERA_ANGLE}
-	FO_NO_EXTRA_ASSERTS=0
-	FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
-# Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors.
-AddCompileDefinitionsList(FO_NO_TEXTURE_LOOKUP=0) # Todo: FO_NO_TEXTURE_LOOKUP need option for enable
-AddCompileDefinitionsList(FO_DIRECT_SPRITES_DRAW=0) # Todo: FO_DIRECT_SPRITES_DRAW need option for enable
-AddCompileDefinitionsList(FO_RENDER_32BIT_INDEX=0) # Todo: FO_RENDER_32BIT_INDEX need option for enable
+	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
+
+# The remaining engine settings (FO_GEOMETRY, FO_MAP_*, FO_EFFECT_*, FO_MODEL_*, FO_USE_NAMESPACE, FO_NO_*,
+# FO_MAIN_CONFIG, ...) are value/shape config consumed only after an engine header is included; codegen emits
+# them into EngineConfig.gen.h (pulled in at the top of BasicCore.h) to keep the compile command clean.
+# Per-config defines (FO_DEBUG above) also stay compiler-side.
+# Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors, which would
+# make it per-config and keep it a compiler define.
 
 # Basic includes
 AddIncludeDirectories(
@@ -272,7 +379,7 @@ AddIncludeDirectories(
 	"${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Headless configuration (without video/audio/input)
-if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR)
+if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER)
 	SetValue(FO_HEADLESS_ONLY OFF)
 else()
 	SetValue(FO_HEADLESS_ONLY ON)
@@ -284,7 +391,6 @@ EnableCoreLibraryIfAny(
 	FO_BUILD_CLIENT
 	FO_BUILD_SERVER
 	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
 	FO_BUILD_ASCOMPILER
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
@@ -294,36 +400,27 @@ EnableCoreLibraryIfAny(
 	FO_BUILD_CLIENT
 	FO_BUILD_MAPPER
 	FO_BUILD_SERVER
-	FO_BUILD_EDITOR
-	FO_UNIT_TESTS
-	FO_CODE_COVERAGE)
-EnableCoreLibraryIfAny(
-	FO_BUILD_SERVER_LIB
-	FO_BUILD_SERVER
-	FO_BUILD_EDITOR
-	FO_UNIT_TESTS
-	FO_CODE_COVERAGE)
-EnableCoreLibraryIfAny(
-	FO_BUILD_MAPPER_LIB
-	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
-	FO_UNIT_TESTS
-	FO_CODE_COVERAGE)
-EnableCoreLibraryIfAny(
-	FO_BUILD_BAKER_LIB
-	FO_BUILD_SERVER
-	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
 	FO_BUILD_ASCOMPILER
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
 EnableCoreLibraryIfAny(
-	FO_BUILD_EDITOR_LIB
-	FO_BUILD_EDITOR
+	FO_BUILD_SERVER_LIB
+	FO_BUILD_SERVER
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
-
+EnableCoreLibraryIfAny(
+	FO_BUILD_MAPPER_LIB
+	FO_BUILD_MAPPER
+	FO_UNIT_TESTS
+	FO_CODE_COVERAGE)
+EnableCoreLibraryIfAny(
+	FO_BUILD_BAKER_LIB
+	FO_BUILD_MAPPER
+	FO_BUILD_ASCOMPILER
+	FO_BUILD_BAKER
+	FO_UNIT_TESTS
+	FO_CODE_COVERAGE)
 # Per OS configurations
 if(WIN32)
 	SetValue(FO_WINDOWS 1)
@@ -348,21 +445,25 @@ if(WIN32)
 	AddCompileOptionsList(
 		/permissive-
 		/Zc:__cplusplus
-		/Zc:preprocessor
 		$<${expr_DebugBuild}:/RTC1>
 		$<${expr_DebugBuild}:/GS>
 		$<$<OR:${expr_DebugBuild},$<CONFIG:RelWithDebInfo>>:/JMC>
 		$<$<NOT:${expr_DebugBuild}>:/sdl->
 		/W4
-		/MP
 		/EHsc
 		/utf-8
 		/volatile:iso
 		/GR
 		/bigobj
-		/fp:fast
+		$<${expr_FullOptimization}:/fp:fast>
+		$<$<NOT:${expr_FullOptimization}>:/fp:precise>
 		$<${expr_FullOptimization}:/GL>
 		$<${expr_DebugInfo}:/Zi>)
+
+	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		AddCompileOptionsList(/MP /Zc:preprocessor)
+	endif()
+
 	AddLinkOptionsList(
 		/INCREMENTAL:NO
 		/OPT:REF
@@ -376,11 +477,10 @@ if(WIN32)
 		AddCompileOptionsList($<${expr_DebugBuild}:/MDd> $<$<NOT:${expr_DebugBuild}>:/MD>)
 	endif()
 
-	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
+	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi")
 
 	if(NOT FO_HEADLESS_ONLY)
-		AppendList(FO_RENDER_SYSTEM_LIBS "d3d9" "gdi32" "dxgi" "windowscodecs" "dxguid")
-		AppendList(FO_RENDER_SYSTEM_LIBS "glu32" "d3d11" "d3dcompiler" "opengl32")
+		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "d3dcompiler" "opengl32")
 	endif()
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
@@ -400,10 +500,18 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
 		AddCompileOptionsList(-fPIC)
 	else()
-		AddLinkOptionsList(-no-pie)
+		AddLinkOptionsList($<$<NOT:${expr_MemorySanitizerConfigs}>:-no-pie>)
 	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		# PIC objects link into both shared libraries and PIE executables. Do not append -fPIE
+		# after the global -fPIC above: Clang uses the last relocation model and would make
+		# static Baker dependencies unsuitable for LF_BakerLib.so.
+		if(NOT FO_BUILD_BAKER AND NOT (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
+			AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fPIE>)
+		endif()
+		AddLinkOptionsList($<$<AND:${expr_MemorySanitizerConfigs},$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>>:-pie>)
+
 		# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer
 		# Bug somehow connected with rpmalloc new operators overloading
 		# add_compile_options_C_CXX(-stdlib=libc++)
@@ -495,19 +603,22 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		$<${expr_WebFullOptimization}:-O3>
 		$<${expr_WebFullOptimization}:-flto>
 		-sDISABLE_EXCEPTION_CATCHING=0
-		-sMAIN_MODULE=2
 		-sSTRICT=0)
 	AddLinkOptionsList(
 		$<${expr_WebDebugInfo}:-g3>
+		$<${expr_WebDebugInfo}:-Wno-limited-postlink-optimizations>
 		$<${expr_WebFullOptimization}:-O3>
 		$<${expr_WebFullOptimization}:-flto>
 		$<IF:${expr_DebugBuild},-O0,-O2>
 		-sASSERTIONS=$<IF:${expr_DebugBuild},2,0>
 		-sSTACK_OVERFLOW_CHECK=$<IF:${expr_DebugBuild},2,0>
+		-sSTACK_SIZE=16777216
 		-sINITIAL_MEMORY=268435456
+		-sMAXIMUM_MEMORY=4294967296
 		-sABORT_ON_WASM_EXCEPTIONS=1
 		-sERROR_ON_UNDEFINED_SYMBOLS=1
 		-sALLOW_MEMORY_GROWTH=1
+		-sLZ4=1
 		-sMIN_WEBGL_VERSION=2
 		-sMAX_WEBGL_VERSION=2
 		-sUSE_SDL=0
@@ -517,7 +628,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-sEXPORTED_RUNTIME_METHODS=${webRuntimeMethods}
 		-sDISABLE_EXCEPTION_CATCHING=0
 		-sWASM_BIGINT=1
-		-sMAIN_MODULE=2
+		-sALLOW_TABLE_GROWTH=1
 		-sSTRICT=0
 		-sSTRICT_JS=1
 		-sIGNORE_MISSING_MAIN=0
@@ -533,8 +644,32 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-lhtml5_webgl.js
 		-lidbfs.js)
 
+	if(FO_UNIT_TESTS)
+		# The wasm unit-test executable links server code (DataBase file-lock, raw NetSockets) and the
+		# mongo-c-driver, which reference POSIX functions/syscalls Emscripten does not implement (flock,
+		# getpwuid_r, setsockopt, uname, getuid/geteuid). The web-runnable tests (AngelScript / serializer /
+		# in-memory) never call those paths, so allow them as abort-if-called stubs purely so the test binary
+		# links and runs under node. The shipping web client keeps the strict defaults above.
+		AddLinkOptionsList(
+			-sERROR_ON_UNDEFINED_SYMBOLS=0
+			-sALLOW_UNIMPLEMENTED_SYSCALLS=1)
+	endif()
+
 else()
 	AbortMessage("Unknown OS")
+endif()
+
+# Vulkan support (enabled by default; opt out with FO_DISABLE_VULKAN). No external Vulkan SDK is
+# needed: the build compiles against the Vulkan headers vendored with SDL3, and the loader is resolved
+# dynamically through SDL at runtime (see Rendering-Vulkan.cpp), so vulkan-1.lib is not linked and the
+# executable keeps no load-time vulkan-1.dll import.
+if(NOT FO_DISABLE_VULKAN AND NOT FO_HEADLESS_ONLY AND NOT FO_WEB)
+	SetValue(FO_HAVE_VULKAN 1)
+endif()
+
+# SDL_GPU support (enabled by default; no external SDK: the vendored SDL3-static already carries the GPU drivers; web is excluded; opt out with FO_DISABLE_SDL_GPU)
+if(NOT FO_DISABLE_SDL_GPU AND NOT FO_HEADLESS_ONLY AND NOT FO_WEB)
+	SetValue(FO_HAVE_SDL_GPU 1)
 endif()
 
 AddCompileDefinitionsList(
@@ -549,7 +684,8 @@ AddCompileDefinitionsList(
 	FO_OPENGL_ES=${FO_OPENGL_ES}
 	FO_HAVE_DIRECT_3D=${FO_HAVE_DIRECT_3D}
 	FO_HAVE_METAL=${FO_HAVE_METAL}
-	FO_HAVE_VULKAN=${FO_HAVE_VULKAN})
+	FO_HAVE_VULKAN=${FO_HAVE_VULKAN}
+	FO_HAVE_SDL_GPU=${FO_HAVE_SDL_GPU})
 
 if(FO_CODE_COVERAGE)
 	SetValue(FO_COVERAGE_VARIANT "")
@@ -588,8 +724,9 @@ endif()
 
 SetBinaryOutputPath(FO_CLIENT_OUTPUT Client)
 SetBinaryOutputPath(FO_SERVER_OUTPUT Server)
-SetBinaryOutputPath(FO_EDITOR_OUTPUT Editor)
 SetBinaryOutputPath(FO_MAPPER_OUTPUT Mapper)
+SetBinaryOutputPath(FO_ANIMATION_VIEWER_OUTPUT AnimationViewer)
+SetBinaryOutputPath(FO_PARTICLE_VIEWER_OUTPUT ParticleViewer)
 SetBinaryOutputPath(FO_ASCOMPILER_OUTPUT ASCompiler)
 SetBinaryOutputPath(FO_BAKER_OUTPUT Baker)
 SetBinaryOutputPath(FO_TESTS_OUTPUT Tests)

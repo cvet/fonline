@@ -35,25 +35,27 @@
 
 #include "Common.h"
 
-#include "3dStuff.h"
 #include "CritterView.h"
 #include "DefaultSprites.h"
 #include "EntityProtos.h"
 #include "Geometry.h"
 #include "HexView.h"
-#include "ModelSprites.h"
 #include "Movement.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
 
 class ItemView;
+#if FO_ENABLE_3D
+class ModelInstance;
+class ModelSprite;
+#endif
 
 class CritterHexView final : public CritterView, public HexView
 {
 public:
     CritterHexView() = delete;
-    CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr);
+    CritterHexView(ptr<MapView> map, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props = nullptr);
     CritterHexView(const CritterHexView&) = delete;
     CritterHexView(CritterHexView&&) noexcept = delete;
     auto operator=(const CritterHexView&) = delete;
@@ -61,25 +63,28 @@ public:
     ~CritterHexView() override = default;
 
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !!_moving; }
-    [[nodiscard]] auto GetMoving() noexcept -> MovingContext* { return _moving.get(); }
-    [[nodiscard]] auto GetMoving() const noexcept -> const MovingContext* { return _moving.get(); }
+    [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext> { return _moving; }
+    [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext> { return _moving; }
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const noexcept -> bool { return !!_model; }
-    [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { return _model.get(); }
+    [[nodiscard]] auto GetModel() noexcept -> nptr<ModelInstance> { return _model; }
+    [[nodiscard]] auto GetModel() const noexcept -> nptr<const ModelInstance> { return _model; }
 #endif
 
     void Init();
     void ChangeDir(mdir dir);
     void ChangeLookDir(mdir dir);
     void ChangeMoveDir(mdir dir);
-    void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item = nullptr);
+    void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<Entity> context_item = nullptr);
     void StopAnim();
     void RefreshView(bool no_smooth = false);
-    void Action(CritterAction action, int32_t action_data, Entity* context_item, bool local_call);
+    void Action(CritterAction action, int32_t action_data, nptr<Entity> context_item, bool local_call);
     void Process();
+    void SynchronizeMoving();
+    void NormalizeHexOffset();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
     auto GetNameTextPos(ipos32& pos) const -> bool;
@@ -93,24 +98,35 @@ public:
 private:
     struct CritterAnim
     {
+        [[nodiscard]] auto GetContextItem() noexcept -> nptr<Entity> { return ContextItem; }
+
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
-        refcount_ptr<Entity> ContextItem {};
-        raw_ptr<const SpriteSheet> Frames {};
+        refcount_nptr<Entity> ContextItem {};
+        nptr<const SpriteSheet> Frames {};
         int32_t FrameIndex {};
         timespan FramesDuration {};
     };
 
 #if FO_ENABLE_3D
-    auto GetModelLayersData() const -> const int32_t*;
+    auto GetModelLayersData() const -> ptr<const int32_t>;
 #endif
     void OnDestroySelf() override;
-    void SetupSprite(MapSprite* mspr) override;
+    void SetupSprite(ptr<MapSprite> mspr) override;
     void ProcessMoving();
     void NextAnim();
-    void SetAnimSpr(const SpriteSheet* anim, int32_t frm_index);
+    void SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index);
 
-    refcount_ptr<MovingContext> _moving {};
+    // Integer-pixel displacement from the current MovingContext's start hex/offset to the critter's
+    // current linear position. Continuous through hex snaps because cur_hex and hex_offset jump in
+    // opposite directions by exactly one step vector.
+    [[nodiscard]] auto EvaluateMovementDisplacement() const -> ipos32;
+
+    // Picks the walk/run frame whose accumulated root motion sits closest (along T) to the current
+    // anchor-relative cycle position.
+    [[nodiscard]] auto EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) const -> int32_t;
+
+    refcount_nptr<MovingContext> _moving {};
 
     bool _needReset {};
     nanotime _resetTime {};
@@ -125,9 +141,24 @@ private:
     fpos32 _offsExtSpeed {};
     nanotime _offsExtNextTime {};
 
+    // Walk-cycle anchor used to align the per-frame root motion (NextX/NextY baked into each frame
+    // of the walk/run anim) with the engine's linear hex interpolation.
+    //
+    // The cycle's spatial reference is rel = pos - _walkAnchorDisp, where pos is the integer-pixel
+    // displacement from the start of the current MovingContext. Projecting rel onto the anim's T
+    // (sum of all per-frame deltas) gives the cycle phase used both to pick the current frame and
+    // to compute _offsAnim, so the sprite snaps to the frame's authored position while the engine
+    // tracks the actual hex motion underneath.
+    //
+    // On a direction change inside one MovingContext the anchor is shifted so the new direction's T
+    // continues at the same cycle phase as the previous one - the leg keeps walking through turns.
+    // On SetMoving / StopMoving the anchor is cleared so a fresh movement starts the cycle anew.
+    nptr<const SpriteSheet> _walkAnchorAnim {};
+    ipos32 _walkAnchorDisp {};
+
 #if FO_ENABLE_3D
     shared_ptr<ModelSprite> _modelSpr {};
-    raw_ptr<ModelInstance> _model {};
+    nptr<ModelInstance> _model {};
 #endif
 };
 

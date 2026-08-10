@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
-  <Type Name="fo::raw_ptr&lt;*&gt;">
+  <Type Name="fo::ptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::nptr&lt;*&gt;">
     <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
     <DisplayString>ptr={_ptr}</DisplayString>
     <Expand>
@@ -19,7 +28,25 @@
     </Expand>
   </Type>
 
+  <Type Name="fo::unique_nptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
   <Type Name="fo::refcount_ptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::refcount_nptr&lt;*&gt;">
     <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
     <DisplayString>ptr={_ptr}</DisplayString>
     <Expand>

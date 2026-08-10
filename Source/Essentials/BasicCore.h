@@ -33,6 +33,8 @@
 
 #pragma once
 
+#include "EngineConfig.gen.h"
+
 // Operating system (passed outside)
 #if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB == 0
 #error "Operating system not specified"
@@ -44,12 +46,16 @@
 #if __cplusplus < 202002L
 #error "Invalid __cplusplus version, must be at least C++20 (202002)"
 #endif
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
 
 // Standard API
 #include <algorithm>
 #include <any>
 #include <array>
 #include <atomic>
+#include <bit>
 #include <cassert>
 #include <cctype>
 #include <cfloat>
@@ -62,9 +68,11 @@
 #include <condition_variable>
 #include <csignal>
 #include <cstdarg>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <deque>
 #include <filesystem>
@@ -73,6 +81,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <list>
 #include <map>
@@ -81,6 +90,7 @@
 #include <numbers>
 #include <numeric>
 #include <optional>
+#include <queue>
 #include <random>
 #include <ranges>
 #include <set>
@@ -127,15 +137,52 @@
 #endif
 
 // Compiler warnings disable helper
-#if defined(_MSC_VER)
-#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0))
-#define FO_DISABLE_WARNINGS_POP() __pragma(warning(pop))
+#if defined(__clang__) && defined(_MSC_VER)
+#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0)) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")
+#define FO_DISABLE_WARNINGS_POP() _Pragma("clang diagnostic pop") __pragma(warning(pop))
 #elif defined(__clang__)
 #define FO_DISABLE_WARNINGS_PUSH() _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")
 #define FO_DISABLE_WARNINGS_POP() _Pragma("clang diagnostic pop")
+#elif defined(_MSC_VER)
+#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0))
+#define FO_DISABLE_WARNINGS_POP() __pragma(warning(pop))
 #else
 #define FO_DISABLE_WARNINGS_PUSH()
 #define FO_DISABLE_WARNINGS_POP()
+#endif
+
+// Compiler-specific single-warning suppression helpers
+#if defined(__GNUC__) && !defined(__clang__)
+#define FO_GCC_IGNORE_WARNINGS_PUSH_STRINGIFY(x) _Pragma(#x)
+#define FO_GCC_IGNORE_WARNINGS_PUSH(warning) _Pragma("GCC diagnostic push") FO_GCC_IGNORE_WARNINGS_PUSH_STRINGIFY(GCC diagnostic ignored warning)
+#define FO_GCC_IGNORE_WARNINGS_POP() _Pragma("GCC diagnostic pop")
+#else
+#define FO_GCC_IGNORE_WARNINGS_PUSH(warning)
+#define FO_GCC_IGNORE_WARNINGS_POP()
+#endif
+
+#if defined(__clang__)
+#define FO_CLANG_IGNORE_WARNINGS_PUSH_STRINGIFY(x) _Pragma(#x)
+#define FO_CLANG_IGNORE_WARNINGS_PUSH(warning) _Pragma("clang diagnostic push") FO_CLANG_IGNORE_WARNINGS_PUSH_STRINGIFY(clang diagnostic ignored warning)
+#define FO_CLANG_IGNORE_WARNINGS_POP() _Pragma("clang diagnostic pop")
+#else
+#define FO_CLANG_IGNORE_WARNINGS_PUSH(warning)
+#define FO_CLANG_IGNORE_WARNINGS_POP()
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code) __pragma(warning(push)) __pragma(warning(disable : warning_code))
+#define FO_MSVC_IGNORE_WARNINGS_POP() __pragma(warning(pop))
+#else
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code)
+#define FO_MSVC_IGNORE_WARNINGS_POP()
+#endif
+
+// Empty member storage optimization
+#if defined(_MSC_VER)
+#define FO_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+#define FO_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
 // Force inline helper
@@ -145,6 +192,15 @@
 #define FO_FORCE_INLINE __forceinline
 #else
 #define FO_FORCE_INLINE inline
+#endif
+
+// Prevent inline helper
+#if defined(__GNUC__)
+#define FO_NO_INLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define FO_NO_INLINE __declspec(noinline)
+#else
+#define FO_NO_INLINE
 #endif
 
 // Export symbol
@@ -161,6 +217,20 @@
 #define FO_KEEP_DATA_SYMBOL [[gnu::used]] alignas(uint32_t) static volatile
 #else
 #define FO_KEEP_DATA_SYMBOL alignas(uint32_t) static volatile
+#endif
+
+// Compiler instrumentation
+#if __has_feature(memory_sanitizer) || defined(__SANITIZE_MEMORY__)
+#define FO_MEMORY_SANITIZER 1
+#else
+#define FO_MEMORY_SANITIZER 0
+#endif
+#if __has_feature(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+#define FO_THREAD_SANITIZER 1
+extern "C" void __tsan_acquire(void* addr);
+extern "C" void __tsan_release(void* addr);
+#else
+#define FO_THREAD_SANITIZER 0
 #endif
 
 // Namespace management
@@ -186,6 +256,8 @@ FO_BEGIN_NAMESPACE
 using float32_t = float;
 using float64_t = double;
 
+inline constexpr size_t MAX_SERIALIZED_ALIGNMENT = 8; // Fixed cross-platform serialized-data alignment contract
+
 // Check the sizes of base types
 static_assert(sizeof(bool) == 1);
 static_assert(sizeof(size_t) >= 4);
@@ -193,6 +265,10 @@ static_assert(sizeof(int) >= 4);
 static_assert(sizeof(float32_t) == 4);
 static_assert(sizeof(float64_t) == 8);
 static_assert(CHAR_BIT == 8); // NOLINT(misc-redundant-expression)
+static_assert((MAX_SERIALIZED_ALIGNMENT & (MAX_SERIALIZED_ALIGNMENT - 1)) == 0);
+static_assert(alignof(int64_t) <= MAX_SERIALIZED_ALIGNMENT);
+static_assert(alignof(uint64_t) <= MAX_SERIALIZED_ALIGNMENT);
+static_assert(alignof(float64_t) <= MAX_SERIALIZED_ALIGNMENT);
 
 // Bind to global scope frequently used types
 using std::array;
@@ -252,6 +328,16 @@ struct fixed_string
 // Generic helpers
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 
+// Always-on assertion for Essentials modules that sit above ExceptionHandling in the include order
+// (e.g. SmartPointers) and therefore cannot use FO_STRONG_ASSERT. Defined in ExceptionHandling.cpp; it
+// produces the same StrongAssertationException report and process exit as FO_STRONG_ASSERT.
+[[noreturn]] extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept;
+
+#define FO_BASIC_STRONG_ASSERT(expr) \
+    if (!(expr)) [[unlikely]] { \
+        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+    }
+
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;
 
@@ -260,6 +346,24 @@ extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
 {
+}
+
+FO_FORCE_INLINE void TSanAcquire(void* addr) noexcept
+{
+#if FO_THREAD_SANITIZER
+    __tsan_acquire(addr);
+#else
+    ignore_unused(addr);
+#endif
+}
+
+FO_FORCE_INLINE void TSanRelease(void* addr) noexcept
+{
+#if FO_THREAD_SANITIZER
+    __tsan_release(addr);
+#else
+    ignore_unused(addr);
+#endif
 }
 
 // Explicit copying
@@ -345,27 +449,6 @@ namespace details
 
 template<typename T>
 using remove_all_pointers_t = typename details::remove_all_pointers<T>::type;
-
-template<typename T>
-    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>>)
-inline constexpr auto cast_to_void(const T ptr) -> void*
-{
-    return const_cast<void*>(static_cast<const void*>(ptr));
-}
-
-template<typename T, typename U>
-    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>> && std::is_pointer_v<U> && std::is_void_v<remove_all_pointers_t<U>>)
-inline constexpr auto cast_from_void(U ptr) -> T
-{
-    return static_cast<T>(ptr);
-}
-
-template<typename T, std::integral U>
-    requires(std::is_pointer_v<T> && std::is_void_v<remove_all_pointers_t<T>>)
-inline constexpr auto void_ptr_offset(T ptr, U offset) -> T
-{
-    return cast_to_void(cast_from_void<uint8_t*>(ptr) + offset);
-}
 
 template<bool Enabled>
 [[nodiscard]] bool build_condition() noexcept
@@ -497,14 +580,15 @@ public:
     auto operator=(RefCounted&&) noexcept = delete;
     ~RefCounted() = default;
 
+    [[nodiscard]] auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(std::memory_order_relaxed); }
+
     void AddRef() const noexcept { _refCounter.fetch_add(1, std::memory_order_relaxed); }
 
     void Release() const noexcept
     {
         if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
-            const auto* ptr = static_cast<const T*>(this);
-            delete ptr;
+            delete static_cast<const T*>(this);
         }
     }
 

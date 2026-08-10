@@ -39,7 +39,8 @@
 FO_BEGIN_NAMESPACE
 
 #if !FO_HAVE_RPMALLOC
-static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= alignof(std::max_align_t));
+// Rpmalloc guarantee 16 byte alignment
+static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= MAX_SERIALIZED_ALIGNMENT);
 #endif
 
 // Safe memory allocation
@@ -50,12 +51,17 @@ extern auto FreeBackupMemoryChunk() noexcept -> bool;
 extern void SetBadAllocCallback(BadAllocCallback callback) noexcept;
 extern void ReportBadAlloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
 [[noreturn]] extern void ReportAndExit(string_view message) noexcept;
+extern auto AllocatorGetInUseBytes() noexcept -> size_t;
 
 template<typename T>
 class SafeAllocator
 {
 public:
     using value_type = T;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+    using is_always_equal = std::true_type;
 
     SafeAllocator() noexcept = default;
     template<typename U>
@@ -71,7 +77,6 @@ public:
         return true;
     }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto allocate(size_t count) const noexcept -> T*
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
@@ -79,28 +84,62 @@ public:
             ReportAndExit("Alloc size overflow");
         }
 
-        auto* ptr = ::operator new(sizeof(T) * count, std::nothrow);
+        const size_t size = sizeof(T) * count;
+        nptr<void> mem = AllocateRaw(size);
 
-        if (ptr == nullptr) {
-            ReportBadAlloc("Safe allocator failed", typeid(T).name(), count, count * sizeof(T));
+        if (!mem) {
+            ReportBadAlloc("Safe allocator failed", typeid(T).name(), count, size);
 
-            while (ptr == nullptr && FreeBackupMemoryChunk()) {
-                ptr = ::operator new(sizeof(T) * count, std::nothrow);
+            while (!mem && FreeBackupMemoryChunk()) {
+                mem = AllocateRaw(size);
             }
 
-            if (ptr == nullptr) {
+            if (!mem) {
                 ReportAndExit("Failed to allocate from backup pool");
             }
         }
 
-        return static_cast<T*>(ptr);
+        auto typed_mem = mem.reinterpret_as<T>();
+        return typed_mem.get();
     }
 
-    // ReSharper disable once CppInconsistentNaming
+    // Size is not passed to the sized delete overload on purpose: callers such as the ImGui and zlib free
+    // callbacks receive no size from their library and must pass a placeholder count
     void deallocate(T* ptr, size_t count) const noexcept
     {
         (void)count;
-        ::operator delete(ptr);
+        DeallocateRaw(ptr);
+    }
+
+private:
+    // Plain operator new only guarantees __STDCPP_DEFAULT_NEW_ALIGNMENT__, so an element type that asks for
+    // more has to go through the aligned new/delete overloads. This has to stay a function rather than a
+    // static constexpr member: alignof(T) needs a complete T, while the allocator itself must remain usable
+    // with an incomplete one (std::vector<T> may be declared before T is defined).
+    static constexpr auto IsOverAligned() noexcept -> bool { return alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__; }
+
+    static auto AllocateRaw(size_t size) noexcept -> nptr<void>
+    {
+        if constexpr (IsOverAligned()) {
+            return ::operator new(size, std::align_val_t {alignof(T)}, std::nothrow);
+        }
+        else {
+            return ::operator new(size, std::nothrow);
+        }
+    }
+
+    static void DeallocateRaw(T* ptr) noexcept
+    {
+        FO_GCC_IGNORE_WARNINGS_PUSH("-Wfree-nonheap-object")
+
+        if constexpr (IsOverAligned()) {
+            ::operator delete(ptr, std::align_val_t {alignof(T)});
+        }
+        else {
+            ::operator delete(ptr);
+        }
+
+        FO_GCC_IGNORE_WARNINGS_POP()
     }
 };
 
@@ -111,76 +150,41 @@ public:
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
-    static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T*
+    static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> ptr<T>
     {
-        auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
-
-        if (ptr == nullptr) {
-            ReportBadAlloc("Make raw failed", typeid(T).name(), 1, sizeof(T));
-
-            while (ptr == nullptr && FreeBackupMemoryChunk()) {
-                ptr = new (std::nothrow) T(std::forward<Args>(args)...);
-            }
-
-            if (ptr == nullptr) {
-                ReportAndExit("Failed to allocate raw from backup pool");
-            }
-        }
-
-        return ptr;
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
+        return AllocWithBackupRetry<T>(alloc, "Make raw failed", "Failed to allocate raw from backup pool", 1, sizeof(T));
     }
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
     static auto MakeUnique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
-        return unique_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make unique failed", "Failed to allocate unique from backup pool", 1, sizeof(T));
+        return adopt_unique_ptr(ptr);
     }
 
     template<typename T, typename... Args>
         requires(refcountable<T>)
     static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
-        auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
-
-        if (ptr == nullptr) {
-            ReportBadAlloc("Make ref counted failed", typeid(T).name(), 1, sizeof(T));
-
-            while (ptr == nullptr && FreeBackupMemoryChunk()) {
-                ptr = new (std::nothrow) T(std::forward<Args>(args)...);
-            }
-
-            if (ptr == nullptr) {
-                ReportAndExit("Failed to allocate ref counted from backup pool");
-            }
-        }
-
-        return refcount_ptr<T>(refcount_ptr<T>::adopt, ptr);
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make ref counted failed", "Failed to allocate ref counted from backup pool", 1, sizeof(T));
+        return refcount_ptr<T>::from_adopted_ref(ptr.get());
     }
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
     static auto MakeShared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
-        try {
-            return std::make_shared<T>(std::forward<Args>(args)...);
-        }
-        catch (const std::bad_alloc&) {
-            ReportBadAlloc("Make shared ptr failed", typeid(T).name(), 1, sizeof(T));
+        auto alloc = [&]() { return nptr<shared_ptr_storage_block<T>>(new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...)); };
+        auto block = AllocWithBackupRetry<shared_ptr_storage_block<T>>(alloc, "Make shared ptr failed", "Failed to allocate shared ptr from backup pool", 1, sizeof(T));
 
-            while (true) {
-                if (!FreeBackupMemoryChunk()) {
-                    ReportAndExit("Failed to allocate shared ptr from backup pool");
-                }
-
-                try {
-                    return std::make_shared<T>(std::forward<Args>(args)...);
-                }
-                catch (const std::bad_alloc&) { // NOLINT(bugprone-empty-catch)
-                    // Release next block and try again
-                }
-            }
-        }
+        nptr<T> obj = block->stored_object();
+        shared_ptr<T> result = shared_ptr<T>(block.get(), obj.get());
+        init_shared_from_this_weak(result, obj.get());
+        return result;
     }
 
     template<typename T>
@@ -189,66 +193,107 @@ public:
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             ReportBadAlloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
-            ReportAndExit("Alloc size overflow");
+            ReportAndExit("Alloc raw size overflow");
         }
 
-        auto* ptr = new (std::nothrow) T[count]();
-
-        if (ptr == nullptr) {
-            ReportBadAlloc("Make raw array failed", typeid(T).name(), count, count * sizeof(T));
-
-            while (ptr == nullptr && FreeBackupMemoryChunk()) {
-                ptr = new (std::nothrow) T[count]();
-            }
-
-            if (ptr == nullptr) {
-                ReportAndExit("Failed to allocate from backup pool");
-            }
-        }
-
-        return ptr;
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make raw array failed", "Failed to allocate raw from backup pool", count, count * sizeof(T));
+        return ptr.get();
     }
+
+    // Raw C-style allocation carrying the same out-of-memory policy as SafeAllocator: report, drain the
+    // backup pool, retry, then exit deterministically. This is the only allocation entry point for
+    // third-party libraries whose hooks demand a realloc or an untyped byte block (SDL, spine, curl).
+    // A zero-size request is not an allocation failure and is passed through as-is.
+    [[nodiscard]] static auto MallocRaw(size_t size) noexcept -> nptr<void>;
+    [[nodiscard]] static auto CallocRaw(size_t num, size_t size) noexcept -> nptr<void>;
+    [[nodiscard]] static auto ReallocRaw(nptr<void> ptr, size_t size) noexcept -> nptr<void>;
+    static void FreeRaw(nptr<void> ptr) noexcept;
+
+    // Aligned counterparts. Freeing needs no alignment argument, which is what lets these back library
+    // callbacks that hand back only the pointer (Effekseer's AlignedFreeFunc).
+    [[nodiscard]] static auto MallocAlignedRaw(size_t size, size_t alignment) noexcept -> nptr<void>;
+    static void FreeAlignedRaw(nptr<void> ptr) noexcept;
 
     template<typename T>
         requires(!refcountable<T>)
     static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
-        return unique_arr_ptr<T>(MakeRawArr<T>(count));
+        if (count > static_cast<size_t>(-1) / sizeof(T)) {
+            ReportBadAlloc("Make unique array bad size", typeid(T).name(), count, count * sizeof(T));
+            ReportAndExit("Alloc unique size overflow");
+        }
+
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make unique array failed", "Failed to allocate unique from backup pool", count, count * sizeof(T));
+        return unique_arr_ptr<T>(ptr.get());
+    }
+
+private:
+    template<typename T, typename AllocFunc>
+    static auto AllocWithBackupRetry(AllocFunc&& alloc, string_view alloc_desc, string_view exhausted_desc, size_t count, size_t size) -> ptr<T>
+    {
+        nptr<T> ptr = alloc();
+
+        if (!ptr) {
+            ReportBadAlloc(alloc_desc, typeid(T).name(), count, size);
+
+            while (!ptr && FreeBackupMemoryChunk()) {
+                ptr = alloc();
+            }
+
+            if (!ptr) {
+                ReportAndExit(exhausted_desc);
+            }
+        }
+
+        return ptr;
     }
 };
 
-// Memory low level management
-extern auto MemMalloc(size_t size) noexcept -> void*;
-extern auto MemCalloc(size_t num, size_t size) noexcept -> void*;
-extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*;
-extern void MemFree(void* ptr) noexcept;
-
-inline void MemCopy(void* dest, const void* src, size_t size) noexcept
+// Memory block operations.
+inline void MemCopy(nptr<void> dest, nptr<const void> src, size_t size) noexcept
 {
-    // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero
-    // So check size first
+    // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero.
+    // So check size first.
     if (size != 0) {
-        std::memcpy(dest, src, size);
+        std::memcpy(dest.get(), src.get(), size);
     }
 }
 
-inline void MemMove(void* dest, const void* src, size_t size) noexcept
+inline void MemMove(nptr<void> dest, nptr<const void> src, size_t size) noexcept
 {
     if (size != 0) {
-        std::memmove(dest, src, size);
+        std::memmove(dest.get(), src.get(), size);
     }
 }
 
-inline void MemFill(void* ptr, int32_t value, size_t size) noexcept
+inline void MemFill(nptr<void> ptr, int32_t value, size_t size) noexcept
 {
     if (size != 0) {
-        std::memset(ptr, value, size);
+        std::memset(ptr.get(), value, size);
     }
 }
 
-inline auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool
+inline auto MemCompare(nptr<const void> ptr1, nptr<const void> ptr2, size_t size) noexcept -> bool
 {
-    return size == 0 || std::memcmp(ptr1, ptr2, size) == 0;
+    return size == 0 || std::memcmp(ptr1.get(), ptr2.get(), size) == 0;
+}
+
+template<typename T>
+inline auto MemReadUnaligned(nptr<const void> src) noexcept -> T
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+    T value;
+    std::memcpy(&value, src.get(), sizeof(T));
+    return value;
+}
+
+template<typename T>
+inline void MemWriteUnaligned(nptr<void> dest, const T& value) noexcept
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+    std::memcpy(dest.get(), &value, sizeof(T));
 }
 
 FO_END_NAMESPACE

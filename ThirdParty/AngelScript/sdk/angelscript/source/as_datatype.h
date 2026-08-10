@@ -80,6 +80,7 @@ public:
 	int MakeReference(bool b);
 	int MakeReadOnly(bool b);
 	int MakeHandleToConst(bool b);
+	int MakeNullable(bool b); // (FOnline Patch) `T?` nullable marker on script handles
 	void SetIfHandleThenConst(bool b) { ifHandleThenConst = b; }
 	bool HasIfHandleThenConst() const { return ifHandleThenConst; }
 
@@ -99,6 +100,7 @@ public:
 	bool IsObjectHandle()         const {return isObjectHandle;}
 	bool IsHandleToAuto()         const {return isAuto && isObjectHandle;}
 	bool IsHandleToConst()        const;
+	bool IsNullable()             const {return isNullable;} // (FOnline Patch)
 	bool IsArrayType()            const;
 	bool IsEnumType()             const;
 	bool IsAnyType()              const {return tokenType == ttQuestion;}
@@ -131,6 +133,20 @@ public:
 #ifdef WIP_16BYTE_ALIGN
 	int  GetAlignment()          const;
 #endif
+	// (FOnline Patch) 8-byte VM-stack value alignment. Required alignment (in DWORDs, 1 = 4-byte, 2 = 8-byte)
+	// of this variable's stack slot. `isInlineValue` = the slot holds a value type inline (not on heap / not a
+	// handle/reference). The single authority for stack alignment, shared by the compiler layout
+	// (GetVariableOffset/GetVariableSlot) and the bytecode serializer (asCReader/asCWriter). Returns 1 for every
+	// type until per-type 8-byte alignment is activated, so the alignment-aware layout is byte-identical (inert).
+	// See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md.
+	int  GetStackAlignmentDWords(bool isInlineValue) const;
+	// (FOnline Patch) Alignment-aware call-argument layout. Size of this parameter's slot in a call argument
+	// block, in DWORDs. The pointer-carried part keeps the platform pointer size, while the by-value part is
+	// rounded up to an even DWORD count. Shared by the compiler (argument push/fixup offsets, callee parameter
+	// offsets), the VM (argument access, cleanup), asCGeneric/asCContext argument accessors, the native
+	// marshallers, and the bytecode serializer. Native x86 calls compact the padded value slots back to the
+	// platform ABI's dense argument block before dispatch.
+	int  GetArgSlotSizeOnStackDWords() const;
 
 	void SetTokenType(eTokenType tt)         {tokenType = tt;}
 	void SetTypeInfo(asCTypeInfo *ti)       {typeInfo = ti;}
@@ -151,11 +167,18 @@ protected:
 	bool isAuto : 1;
 	bool isHandleToAsHandleType : 1; // Used by the compiler to know how to initialize the object
 	bool ifHandleThenConst : 1; // Used when creating template instances to determine if a handle should be const or not
-	char dummy : 1;
+	bool isNullable : 1; // (FOnline Patch) `T?` allows null; bare `T` rejects null writes at runtime
 
 	// Behaviour type
 	asCTypeInfo *typeInfo;
 };
+
+// (FOnline Patch) Single source of truth for the natural alignment (bytes) of an init-list buffer element of
+// the given data type and runtime size. Used by the compiler (layout), the bytecode writer/reader (offset
+// canonicalization / re-derivation), DestroySubList (cleanup walk) and the array/dict list factories so they
+// never disagree. 8-byte inline value types (ident_t/hstring/any_t/string, double/int64) land on 8-byte slots;
+// handles/ref keep the historical 4-byte packing (pointer-size-dependent, accessed unaligned).
+asUINT GetListElementAlignment(const asCDataType &dt, asUINT size);
 
 END_AS_NAMESPACE
 

@@ -34,16 +34,18 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "ConfigFile.h"
 #include "EngineBase.h"
 #include "Geometry.h"
 #include "LineTracer.h"
 #include "ScriptSystem.h"
 #include "TextPack.h"
+#include "TimeEvents.h"
 
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine)
+FO_SCRIPT_API void Common_Game_BreakIntoDebugger(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
@@ -51,7 +53,7 @@ FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_Log(BaseEngine* engine, string_view text)
+FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
 {
     ignore_unused(engine);
 
@@ -59,159 +61,105 @@ FO_SCRIPT_API void Common_Game_Log(BaseEngine* engine, string_view text)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine)
+FO_SCRIPT_API void Common_Game_RequestQuit(ptr<BaseEngine> engine, bool success = true)
 {
     ignore_unused(engine);
 
-    App->RequestQuit();
+    GetApp()->RequestQuit(success);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success)
+FO_SCRIPT_API bool Common_Game_IsResourcePresent(ptr<BaseEngine> engine, string_view resourcePath)
 {
-    ignore_unused(engine);
-
-    App->RequestQuit(success);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void> func)
-{
-    ignore_unused(engine);
-
-    return func.Call();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t> func, any_t param1)
-{
-    ignore_unused(engine);
-
-    return func.Call(param1);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t, any_t> func, any_t param1, any_t param2)
-{
-    ignore_unused(engine);
-
-    return func.Call(param1, param2);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t, any_t, any_t> func, any_t param1, any_t param2, any_t param3)
-{
-    ignore_unused(engine);
-
-    return func.Call(param1, param2, param3);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName)
-{
-    const auto func_name = engine->Hashes.ToHashedString(funcName);
-    auto func = engine->FindFunc<void>(func_name);
-
-    if (!func) {
-        throw ScriptException("Script function not found", funcName);
-    }
-
-    return func.Call();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1)
-{
-    const auto func_name = engine->Hashes.ToHashedString(funcName);
-    auto func = engine->FindFunc<void, any_t>(func_name);
-
-    if (!func) {
-        throw ScriptException("Script function not found", funcName);
-    }
-
-    return func.Call(param1);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1, any_t param2)
-{
-    const auto func_name = engine->Hashes.ToHashedString(funcName);
-    auto func = engine->FindFunc<void, any_t, any_t>(func_name);
-
-    if (!func) {
-        throw ScriptException("Script function not found", funcName);
-    }
-
-    return func.Call(param1, param2);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1, any_t param2, any_t param3)
-{
-    const auto func_name = engine->Hashes.ToHashedString(funcName);
-    auto func = engine->FindFunc<void, any_t, any_t, any_t>(func_name);
-
-    if (!func) {
-        throw ScriptException("Script function not found", funcName);
-    }
-
-    return func.Call(param1, param2, param3);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_IsResourcePresent(BaseEngine* engine, string_view resourcePath)
-{
-    ignore_unused(engine);
-
     return engine->Resources.IsFileExists(resourcePath);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Common_Game_ReadResource(BaseEngine* engine, string_view resourcePath)
+FO_SCRIPT_API string Common_Game_ReadResource(ptr<BaseEngine> engine, string_view resourcePath)
 {
-    ignore_unused(engine);
-
     return engine->Resources.ReadFileText(resourcePath);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_Random(BaseEngine* engine, int32_t minValue, int32_t maxValue)
+FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> engine, string_view resourcePath, string_view sectionName)
+{
+    string content = engine->Resources.ReadFileText(resourcePath);
+    ConfigFile config(std::move(content));
+
+    map<string, string> result;
+
+    if (!config.HasSection(sectionName)) {
+        return result;
+    }
+
+    for (const auto& [key, value] : config.GetSection(sectionName)) {
+        result.emplace(string(key), string(value));
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
+{
+#if FO_ENABLE_3D
+    auto anim_info = engine->GetAnimationInfo(modelName);
+
+    if (!anim_info) {
+        return {};
+    }
+
+    if (!anim_info->Model.has_value()) {
+        return {};
+    }
+
+    const ModelAnimationInfo& model_anim_info = *anim_info->Model;
+    auto anim_it = model_anim_info.AnimationDurations.find({stateAnim, actionAnim});
+    return anim_it != model_anim_info.AnimationDurations.end() ? anim_it->second : timespan {};
+#else
+    ignore_unused(engine, modelName, stateAnim, actionAnim);
+    return {};
+#endif
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Common_Game_Random(ptr<BaseEngine> engine, int32_t minValue, int32_t maxValue)
 {
     return engine->Random(minValue, maxValue);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(BaseEngine* engine, string_view text, int32_t& length)
+FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, string_view text, int32_t& length)
 {
     ignore_unused(engine);
 
     size_t decode_length = text.length();
-    const auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    uint32_t ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
 
     length = numeric_cast<int32_t>(decode_length);
     return ch;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Common_Game_EncodeUtf8(BaseEngine* engine, uint32_t ucs)
+FO_SCRIPT_API string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t ucs)
 {
     ignore_unused(engine);
 
     char buf[4];
-    const auto len = utf8::Encode(ucs, buf);
+    size_t len = utf8::Encode(ucs, buf);
     return {buf, len};
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_OpenLink(BaseEngine* engine, string_view link)
+FO_SCRIPT_API void Common_Game_OpenLink(ptr<BaseEngine> engine, string_view link)
 {
     ignore_unused(engine);
 
-    App->OpenLink(link);
+    GetApp()->OpenLink(link);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint64_t Common_Game_GetUnixTime(BaseEngine* engine)
+FO_SCRIPT_API uint64_t Common_Game_GetUnixTime(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
@@ -219,7 +167,7 @@ FO_SCRIPT_API uint64_t Common_Game_GetUnixTime(BaseEngine* engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpos hex2)
+FO_SCRIPT_API int32_t Common_Game_GetDistance(ptr<BaseEngine> engine, mpos hex1, mpos hex2)
 {
     ignore_unused(engine);
 
@@ -227,15 +175,7 @@ FO_SCRIPT_API int32_t Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex)
-{
-    ignore_unused(engine);
-
-    return mdir(iround<int32_t>(GeometryHelper::GetDirAngle(fromHex, toHex)));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float32_t offset)
+FO_SCRIPT_API mdir Common_Game_GetDirection(ptr<BaseEngine> engine, mpos fromHex, mpos toHex, float32_t offset = 0.0f)
 {
     ignore_unused(engine);
 
@@ -243,7 +183,7 @@ FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mp
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_GetLineDirAngle(BaseEngine* engine, ipos32 fromPos, ipos32 toPos)
+FO_SCRIPT_API mdir Common_Game_GetLineDirAngle(ptr<BaseEngine> engine, ipos32 fromPos, ipos32 toPos)
 {
     ignore_unused(engine);
 
@@ -251,11 +191,11 @@ FO_SCRIPT_API mdir Common_Game_GetLineDirAngle(BaseEngine* engine, ipos32 fromPo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_RotateDirAngle(BaseEngine* engine, mdir dir, bool clockwise, int16_t step)
+FO_SCRIPT_API mdir Common_Game_RotateDirAngle(ptr<BaseEngine> engine, mdir dir, bool clockwise, int16_t step)
 {
     ignore_unused(engine);
 
-    auto rotated = dir.angle();
+    int16_t rotated = dir.angle();
 
     if (clockwise) {
         rotated += step;
@@ -275,7 +215,7 @@ FO_SCRIPT_API mdir Common_Game_RotateDirAngle(BaseEngine* engine, mdir dir, bool
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int16_t Common_Game_GetDirAngleDiff(BaseEngine* engine, mdir dir1, mdir dir2)
+FO_SCRIPT_API int16_t Common_Game_GetDirAngleDiff(ptr<BaseEngine> engine, mdir dir1, mdir dir2)
 {
     ignore_unused(engine);
 
@@ -283,7 +223,7 @@ FO_SCRIPT_API int16_t Common_Game_GetDirAngleDiff(BaseEngine* engine, mdir dir1,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, mpos toHex, ipos32& hexOffset)
+FO_SCRIPT_API void Common_Game_GetHexInterval(ptr<BaseEngine> engine, mpos fromHex, mpos toHex, ipos32& hexOffset)
 {
     ignore_unused(engine);
 
@@ -291,7 +231,7 @@ FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize mapSize, mpos fromHex, mpos toHex, int32_t dist, float32_t dirAngleOffset, ipos32 startOffset, ipos32 targetOffset)
+FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msize mapSize, mpos fromHex, mpos toHex, int32_t dist, float32_t dirAngleOffset, ipos32 startOffset, ipos32 targetOffset)
 {
     ignore_unused(engine);
 
@@ -299,17 +239,24 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
         throw ScriptException("Trace distance must be non-negative");
     }
 
-    const auto start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
-    const auto target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
+    if (startOffset.x < std::numeric_limits<int16_t>::min() || startOffset.x > std::numeric_limits<int16_t>::max() || //
+        startOffset.y < std::numeric_limits<int16_t>::min() || startOffset.y > std::numeric_limits<int16_t>::max() || //
+        targetOffset.x < std::numeric_limits<int16_t>::min() || targetOffset.x > std::numeric_limits<int16_t>::max() || //
+        targetOffset.y < std::numeric_limits<int16_t>::min() || targetOffset.y > std::numeric_limits<int16_t>::max()) {
+        throw ScriptException("Hex offset arg out of range", startOffset, targetOffset);
+    }
+
+    ipos16 start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
+    ipos16 target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
     LineTracer tracer(fromHex, toHex, dirAngleOffset, mapSize, start_offset, target_offset);
 
     vector<mpos> line;
     line.reserve(numeric_cast<size_t>(dist));
 
-    auto cur_hex = fromHex;
+    mpos cur_hex = fromHex;
 
-    for (auto i = 0; i < dist; i++) {
-        const auto prev_hex = cur_hex;
+    for (int32_t i = 0; i < dist; i++) {
+        mpos prev_hex = cur_hex;
 
         if (!tracer.GetNextHex(cur_hex).has_value()) {
             break;
@@ -326,7 +273,7 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize mapSize, mpos fromHex, float32_t dirAngle, int32_t dist, ipos32 startOffset, ipos32 targetOffset, mpos& targetHex)
+FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msize mapSize, mpos fromHex, float32_t dirAngle, int32_t dist, ipos32 startOffset, ipos32 targetOffset, mpos& targetHex)
 {
     ignore_unused(engine);
 
@@ -334,18 +281,25 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
         throw ScriptException("Trace distance must be non-negative");
     }
 
-    const auto start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
-    const auto target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
+    if (startOffset.x < std::numeric_limits<int16_t>::min() || startOffset.x > std::numeric_limits<int16_t>::max() || //
+        startOffset.y < std::numeric_limits<int16_t>::min() || startOffset.y > std::numeric_limits<int16_t>::max() || //
+        targetOffset.x < std::numeric_limits<int16_t>::min() || targetOffset.x > std::numeric_limits<int16_t>::max() || //
+        targetOffset.y < std::numeric_limits<int16_t>::min() || targetOffset.y > std::numeric_limits<int16_t>::max()) {
+        throw ScriptException("Hex offset arg out of range", startOffset, targetOffset);
+    }
+
+    ipos16 start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
+    ipos16 target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
 
     LineTracer tracer(fromHex, dirAngle, dist, mapSize, start_offset, target_offset);
 
     vector<mpos> line;
     line.reserve(numeric_cast<size_t>(dist));
 
-    auto cur_hex = fromHex;
+    mpos cur_hex = fromHex;
 
-    for (auto i = 0; i < dist; i++) {
-        const auto prev_hex = cur_hex;
+    for (int32_t i = 0; i < dist; i++) {
+        mpos prev_hex = cur_hex;
 
         if (!tracer.GetNextHex(cur_hex).has_value()) {
             break;
@@ -363,179 +317,227 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Common_Game_GetClipboardText(BaseEngine* engine)
+FO_SCRIPT_API string Common_Game_GetClipboardText(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
-    return App->Input.GetClipboardText();
+    return string {GetApp()->Input.GetClipboardText()};
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetClipboardText(BaseEngine* engine, string_view text)
+FO_SCRIPT_API void Common_Game_SetClipboardText(ptr<BaseEngine> engine, string_view text)
 {
     ignore_unused(engine);
 
-    return App->Input.SetClipboardText(text);
+    return GetApp()->Input.SetClipboardText(text);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ProtoItem* Common_Game_GetProtoItem(BaseEngine* engine, hstring pid)
+FO_SCRIPT_API ptr<ProtoItem> Common_Game_GetProtoItem(ptr<BaseEngine> engine, hstring pid)
 {
-    return const_cast<ProtoItem*>(engine->GetProtoItem(pid));
+    auto proto = engine->GetProtoItem(pid);
+
+    if (!proto) {
+        throw ScriptException("Item proto not found (check CheckProtoItem first)", pid);
+    }
+
+    return make_ptr(const_cast<ProtoItem*>(std::addressof(*proto)));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine)
+FO_SCRIPT_API bool Common_Game_CheckProtoItem(ptr<BaseEngine> engine, hstring pid)
+{
+    return !!engine->GetProtoItem(pid);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ptr<ProtoItem>> Common_Game_GetProtoItems(ptr<BaseEngine> engine)
 {
     const auto& protos = engine->GetProtoItems();
 
-    vector<ProtoItem*> result;
+    vector<ptr<const ProtoItem>> result;
     result.reserve(protos.size());
 
-    for (const auto& proto : protos | std::views::values) {
-        result.emplace_back(const_cast<ProtoItem*>(proto.get()));
+    for (ptr<const ProtoItem> proto : protos | std::views::values) {
+        result.emplace_back(proto);
     }
 
-    return result;
+    return MakeMutableScriptHandleVector<ProtoItem>(result);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<ProtoItem>> Common_Game_GetProtoItems(ptr<BaseEngine> engine, ItemProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property);
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property);
     const auto& protos = engine->GetProtoItems();
 
-    vector<ProtoItem*> result;
+    vector<ptr<const ProtoItem>> result;
     result.reserve(protos.size());
 
-    for (const auto& proto : protos | std::views::values) {
+    for (ptr<const ProtoItem> proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(const_cast<ProtoItem*>(proto.get()));
+            result.emplace_back(proto);
         }
     }
 
-    return result;
+    return MakeMutableScriptHandleVector<ProtoItem>(result);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ProtoCritter* Common_Game_GetProtoCritter(BaseEngine* engine, hstring pid)
+FO_SCRIPT_API ptr<ProtoCritter> Common_Game_GetProtoCritter(ptr<BaseEngine> engine, hstring pid)
 {
-    return const_cast<ProtoCritter*>(engine->GetProtoCritter(pid));
+    auto proto = engine->GetProtoCritter(pid);
+
+    if (!proto) {
+        throw ScriptException("Critter proto not found (check CheckProtoCritter first)", pid);
+    }
+
+    return make_ptr(const_cast<ProtoCritter*>(std::addressof(*proto)));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* engine)
+FO_SCRIPT_API bool Common_Game_CheckProtoCritter(ptr<BaseEngine> engine, hstring pid)
+{
+    return !!engine->GetProtoCritter(pid);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ptr<ProtoCritter>> Common_Game_GetProtoCritters(ptr<BaseEngine> engine)
 {
     const auto& protos = engine->GetProtoCritters();
 
-    vector<ProtoCritter*> result;
+    vector<ptr<const ProtoCritter>> result;
     result.reserve(protos.size());
 
-    for (const auto& proto : protos | std::views::values) {
-        result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
+    for (ptr<const ProtoCritter> proto : protos | std::views::values) {
+        result.emplace_back(proto);
     }
 
-    return result;
+    return MakeMutableScriptHandleVector<ProtoCritter>(result);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* engine, CritterProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<ProtoCritter>> Common_Game_GetProtoCritters(ptr<BaseEngine> engine, CritterProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<CritterProperties>(engine, property);
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<CritterProperties>(engine, property);
     const auto& protos = engine->GetProtoCritters();
 
-    vector<ProtoCritter*> result;
+    vector<ptr<const ProtoCritter>> result;
     result.reserve(protos.size());
 
-    for (const auto& proto : protos | std::views::values) {
+    for (ptr<const ProtoCritter> proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
+            result.emplace_back(proto);
         }
     }
 
-    return result;
+    return MakeMutableScriptHandleVector<ProtoCritter>(result);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ProtoMap* Common_Game_GetProtoMap(BaseEngine* engine, hstring pid)
+FO_SCRIPT_API ptr<ProtoMap> Common_Game_GetProtoMap(ptr<BaseEngine> engine, hstring pid)
 {
-    return const_cast<ProtoMap*>(engine->GetProtoMap(pid));
+    auto proto = engine->GetProtoMap(pid);
+
+    if (!proto) {
+        throw ScriptException("Map proto not found (check CheckProtoMap first)", pid);
+    }
+
+    return make_ptr(const_cast<ProtoMap*>(std::addressof(*proto)));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine)
+FO_SCRIPT_API bool Common_Game_CheckProtoMap(ptr<BaseEngine> engine, hstring pid)
+{
+    return !!engine->GetProtoMap(pid);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ptr<ProtoMap>> Common_Game_GetProtoMaps(ptr<BaseEngine> engine)
 {
     const auto& protos = engine->GetProtoMaps();
 
-    vector<ProtoMap*> result;
+    vector<ptr<const ProtoMap>> result;
     result.reserve(protos.size());
 
-    for (const auto& proto : protos | std::views::values) {
-        result.emplace_back(const_cast<ProtoMap*>(proto.get()));
+    for (ptr<const ProtoMap> proto : protos | std::views::values) {
+        result.emplace_back(proto);
     }
 
-    return result;
+    return MakeMutableScriptHandleVector<ProtoMap>(result);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, MapProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<ProtoMap>> Common_Game_GetProtoMaps(ptr<BaseEngine> engine, MapProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property);
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property);
     const auto& protos = engine->GetProtoMaps();
 
-    vector<ProtoMap*> result;
+    vector<ptr<const ProtoMap>> result;
     result.reserve(protos.size());
 
-    for (const auto& proto : protos | std::views::values) {
+    for (ptr<const ProtoMap> proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(const_cast<ProtoMap*>(proto.get()));
+            result.emplace_back(proto);
         }
     }
 
-    return result;
+    return MakeMutableScriptHandleVector<ProtoMap>(result);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ProtoLocation* Common_Game_GetProtoLocation(BaseEngine* engine, hstring pid)
+FO_SCRIPT_API ptr<ProtoLocation> Common_Game_GetProtoLocation(ptr<BaseEngine> engine, hstring pid)
 {
-    return const_cast<ProtoLocation*>(engine->GetProtoLocation(pid));
-}
+    auto proto = engine->GetProtoLocation(pid);
 
-///@ ExportMethod
-FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* engine)
-{
-    const auto& protos = engine->GetProtoLocations();
-
-    vector<ProtoLocation*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
+    if (!proto) {
+        throw ScriptException("Location proto not found (check CheckProtoLocation first)", pid);
     }
 
-    return result;
+    return make_ptr(const_cast<ProtoLocation*>(std::addressof(*proto)));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* engine, LocationProperty property, int32_t propertyValue)
+FO_SCRIPT_API bool Common_Game_CheckProtoLocation(ptr<BaseEngine> engine, hstring pid)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<LocationProperties>(engine, property);
+    return !!engine->GetProtoLocation(pid);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ptr<ProtoLocation>> Common_Game_GetProtoLocations(ptr<BaseEngine> engine)
+{
     const auto& protos = engine->GetProtoLocations();
 
-    vector<ProtoLocation*> result;
+    vector<ptr<const ProtoLocation>> result;
     result.reserve(protos.size());
 
-    for (const auto& proto : protos | std::views::values) {
+    for (ptr<const ProtoLocation> proto : protos | std::views::values) {
+        result.emplace_back(proto);
+    }
+
+    return MakeMutableScriptHandleVector<ProtoLocation>(result);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ptr<ProtoLocation>> Common_Game_GetProtoLocations(ptr<BaseEngine> engine, LocationProperty property, int32_t propertyValue)
+{
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<LocationProperties>(engine, property);
+    const auto& protos = engine->GetProtoLocations();
+
+    vector<ptr<const ProtoLocation>> result;
+    result.reserve(protos.size());
+
+    for (ptr<const ProtoLocation> proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
+            result.emplace_back(proto);
         }
     }
 
-    return result;
+    return MakeMutableScriptHandleVector<ProtoLocation>(result);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(BaseEngine* engine)
+FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
@@ -543,7 +545,7 @@ FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(BaseEngine* engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API nanotime Common_Game_PackTime(BaseEngine* engine, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond)
+FO_SCRIPT_API nanotime Common_Game_PackTime(ptr<BaseEngine> engine, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond)
 {
     ignore_unused(engine);
 
@@ -551,11 +553,11 @@ FO_SCRIPT_API nanotime Common_Game_PackTime(BaseEngine* engine, int32_t year, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_UnpackTime(BaseEngine* engine, nanotime time, int32_t& year, int32_t& month, int32_t& day, int32_t& hour, int32_t& minute, int32_t& second, int32_t& millisecond, int32_t& microsecond, int32_t& nanosecond)
+FO_SCRIPT_API void Common_Game_UnpackTime(ptr<BaseEngine> engine, nanotime time, int32_t& year, int32_t& month, int32_t& day, int32_t& hour, int32_t& minute, int32_t& second, int32_t& millisecond, int32_t& microsecond, int32_t& nanosecond)
 {
     ignore_unused(engine);
 
-    const auto time_desc = time.desc(true);
+    time_desc_t time_desc = time.desc(true);
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;
@@ -568,19 +570,15 @@ FO_SCRIPT_API void Common_Game_UnpackTime(BaseEngine* engine, nanotime time, int
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(BaseEngine* engine, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond)
+FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(ptr<BaseEngine> engine, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond)
 {
-    ignore_unused(engine);
-
     return engine->GameTime.GetSynchronizedTime() + make_time_offset(year, month, day, hour, minute, second, millisecond, 0, 0, true);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(BaseEngine* engine, synctime time, int32_t& year, int32_t& month, int32_t& day, int32_t& hour, int32_t& minute, int32_t& second, int32_t& millisecond)
+FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(ptr<BaseEngine> engine, synctime time, int32_t& year, int32_t& month, int32_t& day, int32_t& hour, int32_t& minute, int32_t& second, int32_t& millisecond)
 {
-    ignore_unused(engine);
-
-    const auto time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime(), true);
+    time_desc_t time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime(), true);
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;
@@ -591,173 +589,207 @@ FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(BaseEngine* engine, syncti
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFunc<void> func)
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFunc<void, any_t> func, any_t data)
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, any_t> func, any_t data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, to_vector(data));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API LanguageName Common_Game_GetLanguage(BaseEngine* engine)
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, ptr<TimeEventContext>> func)
 {
-    return LanguageName {engine->Hashes.ToHashedString(engine->Settings.Language)};
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFunc<void> func)
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, ptr<TimeEventContext>> func, any_t data)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, vector<any_t> {std::move(data)});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, ptr<TimeEventContext>> func, readonly_vector<any_t> data)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, to_vector(data));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API LanguageName Common_Game_GetLanguage(ptr<BaseEngine> engine)
+{
+    return LanguageName {engine->Hashes.ToHashedString(engine->Settings->Language)};
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFunc<void, any_t> func, any_t data)
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, any_t> func, any_t data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, to_vector(data));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFunc<void> func)
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func, any_t data)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func, readonly_vector<any_t> data)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, to_vector(data));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func)
 {
     return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFunc<void, any_t> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func)
 {
     return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFunc<void, vector<any_t>> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func)
 {
     return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(BaseEngine* engine, uint32_t id)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func)
+{
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, uint32_t id)
 {
     return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, {}, id));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_StopTimeEvent(BaseEngine* engine, ScriptFunc<void> func)
+FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_StopTimeEvent(BaseEngine* engine, ScriptFunc<void, any_t> func)
+FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_StopTimeEvent(BaseEngine* engine, ScriptFunc<void, vector<any_t>> func)
+FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_StopTimeEvent(BaseEngine* engine, uint32_t id)
+FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func)
+{
+    engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, uint32_t id)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, {}, id);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatTimeEvent(BaseEngine* engine, ScriptFunc<void> func, timespan repeat)
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatTimeEvent(BaseEngine* engine, ScriptFunc<void, any_t> func, timespan repeat)
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatTimeEvent(BaseEngine* engine, ScriptFunc<void, vector<any_t>> func, timespan repeat)
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatTimeEvent(BaseEngine* engine, uint32_t id, timespan repeat)
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func, timespan repeat)
+{
+    engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, uint32_t id, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, ScriptFunc<void> func, any_t data)
+FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, ScriptFunc<void> func, any_t data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
+FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, to_vector(data));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, uint32_t id, any_t data)
+FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func, any_t data)
+{
+    engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, vector<any_t> {std::move(data)});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func, readonly_vector<any_t> data)
+{
+    engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, to_vector(data));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, uint32_t id, any_t data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, uint32_t id, readonly_vector<any_t> data)
+FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, uint32_t id, readonly_vector<any_t> data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, {}, to_vector(data));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_StopCurrentTimeEvent(BaseEngine* engine)
-{
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.StopTimeEvent(entity, {}, te->Id);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatCurrentTimeEvent(BaseEngine* engine, timespan repeat)
-{
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, repeat, std::nullopt);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, any_t data)
-{
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, std::nullopt, vector<any_t> {std::move(data)});
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, readonly_vector<any_t> data)
-{
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, std::nullopt, to_vector(data));
-    }
 }
 
 FO_END_NAMESPACE

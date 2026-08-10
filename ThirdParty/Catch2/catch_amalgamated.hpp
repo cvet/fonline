@@ -6,8 +6,8 @@
 
 // SPDX-License-Identifier: BSL-1.0
 
-//  Catch v3.14.0
-//  Generated: 2026-04-05 15:03:01.150393
+//  Catch v3.15.2
+//  Generated: 2026-07-07 20:39:49.020441
 //  ----------------------------------------------------------
 //  This file is an amalgamation of multiple different files.
 //  You probably shouldn't edit it directly.
@@ -118,16 +118,24 @@
 
 #endif // CATCH_PLATFORM_HPP_INCLUDED
 
-#ifdef __cplusplus
+#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+#  define CATCH_CPP17_OR_GREATER
+#endif
 
-#  if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
-#    define CATCH_CPP17_OR_GREATER
-#  endif
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L)
+#  define CATCH_CPP20_OR_GREATER
+#endif
 
-#  if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L)
-#    define CATCH_CPP20_OR_GREATER
-#  endif
-
+// Matchers are only constexpr-able in C++20
+#if defined( CATCH_CPP20_OR_GREATER ) && \
+    defined( __cpp_constexpr_dynamic_alloc ) && \
+    __cpp_constexpr_dynamic_alloc >= 201907L && \
+    /* GCC < 13 define the feature macro, but compiler bugs stop us from using it */ \
+    ( !defined( __GNUC__ ) || __GNUC__ >= 13 || defined(__clang__) )
+#    define CATCH_INTERNAL_CONSTEXPR_MATCHERS_ENABLED
+#    define CATCH_DESTRUCTOR_CONSTEXPR constexpr
+#else
+#    define CATCH_DESTRUCTOR_CONSTEXPR
 #endif
 
 // Only GCC compiler should be used in this block, so other compilers trying to
@@ -1053,8 +1061,6 @@ namespace Catch {
     struct AssertionInfo;
     struct SectionInfo;
     struct SectionEndInfo;
-    struct MessageInfo;
-    struct MessageBuilder;
     struct Counts;
     struct AssertionReaction;
     struct SourceLineInfo;
@@ -1094,11 +1100,6 @@ namespace Catch {
         virtual void benchmarkEnded( BenchmarkStats<> const& stats ) = 0;
         virtual void benchmarkFailed( StringRef error ) = 0;
 
-        static void pushScopedMessage( MessageInfo&& message );
-        static void popScopedMessage( unsigned int messageId );
-        static void addUnscopedMessage( MessageInfo&& message );
-        static void emplaceUnscopedMessage( MessageBuilder&& builder );
-
         virtual void handleFatalErrorCondition( StringRef message ) = 0;
 
         virtual void handleExpr
@@ -1123,9 +1124,6 @@ namespace Catch {
                 (   AssertionInfo const &info,
                     ResultWas::OfType resultType,
                     AssertionReaction &reaction ) = 0;
-
-
-        virtual bool lastAssertionPassed() = 0;
 
         // Deprecated, do not use:
         virtual std::string getCurrentTestName() const = 0;
@@ -1231,7 +1229,7 @@ namespace Catch {
     class IStream;
     struct PathFilter;
 
-    class IConfig : public Detail::NonCopyable {
+    class IConfig : Detail::NonCopyable {
     public:
         virtual ~IConfig();
 
@@ -1319,7 +1317,6 @@ namespace Catch {
         virtual void registerTranslator( Detail::unique_ptr<IExceptionTranslator>&& translator ) = 0;
         virtual void registerTagAlias( std::string const& alias, std::string const& tag, SourceLineInfo const& lineInfo ) = 0;
         virtual void registerStartupException() noexcept = 0;
-        virtual IMutableEnumValuesRegistry& getMutableEnumValuesRegistry() = 0;
     };
 
     IRegistryHub const& getRegistryHub();
@@ -1681,7 +1678,7 @@ namespace Catch {
                     callable& operator=(callable&&) = default;
                 };
                 template <typename Fun>
-                struct model : public callable {
+                struct model final : public callable {
                     model(Fun&& fun_) : fun(CATCH_MOVE(fun_)) {}
                     model(Fun const& fun_) : fun(fun_) {}
 
@@ -2469,45 +2466,46 @@ namespace Catch {
 #endif // CATCH_VOID_TYPE_HPP_INCLUDED
 
 
-#ifndef CATCH_INTERFACES_ENUM_VALUES_REGISTRY_HPP_INCLUDED
-#define CATCH_INTERFACES_ENUM_VALUES_REGISTRY_HPP_INCLUDED
+#ifndef CATCH_ENUM_INFO_HPP_INCLUDED
+#define CATCH_ENUM_INFO_HPP_INCLUDED
 
 
+#include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace Catch {
-
     namespace Detail {
+
         struct EnumInfo {
             StringRef m_name;
-            std::vector<std::pair<int, StringRef>> m_values;
+            std::vector<std::pair<int64_t, StringRef>> m_values;
 
-            ~EnumInfo();
-
-            StringRef lookup( int value ) const;
+            StringRef lookup( int64_t value ) const;
         };
-    } // namespace Detail
 
-    class IMutableEnumValuesRegistry {
-    public:
-        virtual ~IMutableEnumValuesRegistry(); // = default;
-
-        virtual Detail::EnumInfo const& registerEnum( StringRef enumName, StringRef allEnums, std::vector<int> const& values ) = 0;
-
-        template<typename E>
-        Detail::EnumInfo const& registerEnum( StringRef enumName, StringRef allEnums, std::initializer_list<E> values ) {
-            static_assert(sizeof(int) >= sizeof(E), "Cannot serialize enum to int");
-            std::vector<int> intValues;
+        EnumInfo makeEnumInfo( StringRef enumName,
+                               StringRef allValueNames,
+                               std::vector<int64_t> const& values );
+        template <typename E>
+        Detail::EnumInfo makeEnumInfo( StringRef enumName,
+                                       StringRef allEnums,
+                                       std::initializer_list<E> values ) {
+            static_assert( sizeof( int64_t ) >= sizeof( E ),
+                           "Cannot serialize enum to int64_t" );
+            std::vector<int64_t> intValues;
             intValues.reserve( values.size() );
-            for( auto enumValue : values )
-                intValues.push_back( static_cast<int>( enumValue ) );
-            return registerEnum( enumName, allEnums, intValues );
+            for ( auto enumValue : values )
+                intValues.push_back( static_cast<int64_t>( enumValue ) );
+            return makeEnumInfo( enumName, allEnums, intValues );
         }
-    };
 
-} // Catch
+        std::vector<StringRef> parseEnums( StringRef enums );
 
-#endif // CATCH_INTERFACES_ENUM_VALUES_REGISTRY_HPP_INCLUDED
+    } // namespace Detail
+} // namespace Catch
+
+#endif // CATCH_ENUM_INFO_HPP_INCLUDED
 
 #ifdef CATCH_CONFIG_CPP17_STRING_VIEW
 #include <string_view>
@@ -2872,7 +2870,10 @@ namespace Catch {
 }
 #endif // CATCH_CONFIG_ENABLE_PAIR_STRINGMAKER
 
-#if defined(CATCH_CONFIG_ENABLE_OPTIONAL_STRINGMAKER) && defined(CATCH_CONFIG_CPP17_OPTIONAL)
+#if defined( CATCH_CONFIG_ENABLE_OPTIONAL_STRINGMAKER ) && \
+    defined( CATCH_CONFIG_CPP17_OPTIONAL ) &&              \
+    /* P3168 turned optional into a range, making this ambigous with the range support */ \
+    !defined( __cpp_lib_optional_range_support )
 #include <optional>
 namespace Catch {
     template<typename T>
@@ -3119,16 +3120,21 @@ struct ratio_string<std::milli> {
     };
 }
 
-
-#define INTERNAL_CATCH_REGISTER_ENUM( enumName, ... ) \
-namespace Catch { \
-    template<> struct StringMaker<enumName> { \
-        static std::string convert( enumName value ) { \
-            static const auto& enumInfo = ::Catch::getMutableRegistryHub().getMutableEnumValuesRegistry().registerEnum( #enumName, #__VA_ARGS__, { __VA_ARGS__ } ); \
-            return static_cast<std::string>(enumInfo.lookup( static_cast<int>( value ) )); \
-        } \
-    }; \
-}
+#define INTERNAL_CATCH_REGISTER_ENUM( enumName, ... )                       \
+    namespace Catch {                                                       \
+        template <>                                                         \
+        struct StringMaker<enumName> {                                      \
+            static std::string convert( enumName value ) {                  \
+                CATCH_INTERNAL_START_WARNINGS_SUPPRESSION                   \
+                CATCH_INTERNAL_SUPPRESS_GLOBALS_WARNINGS                    \
+                static const auto enumInfo = ::Catch::Detail::makeEnumInfo( \
+                    #enumName, #__VA_ARGS__, { __VA_ARGS__ } );             \
+                CATCH_INTERNAL_STOP_WARNINGS_SUPPRESSION                    \
+                return static_cast<std::string>(                            \
+                    enumInfo.lookup( static_cast<int64_t>( value ) ) );     \
+            }                                                               \
+        };                                                                  \
+    }
 
 #define CATCH_REGISTER_ENUM( enumName, ... ) INTERNAL_CATCH_REGISTER_ENUM( enumName, __VA_ARGS__ )
 
@@ -4049,9 +4055,21 @@ namespace Catch {
 #include <vector>
 
 namespace Catch {
+    struct MessageInfo;
+    struct MessageBuilder;
+
+    namespace Detail {
+        // The message state affecting functions have to be defined in
+        // the TU where the thread-local message holders are defined.
+        // Currently this is catch_run_context.cpp
+
+        void pushScopedMessage( MessageInfo&& message );
+        void popScopedMessage( unsigned int messageId );
+        void addUnscopedMessage( MessageInfo&& message );
+        void emplaceUnscopedMessage( MessageBuilder&& builder );
+    } // namespace Detail
 
     struct SourceLineInfo;
-    class IResultCapture;
 
     struct MessageStream {
 
@@ -4141,7 +4159,7 @@ namespace Catch {
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_UNSCOPED_INFO( macroName, log ) \
-    Catch::IResultCapture::emplaceUnscopedMessage( Catch::MessageBuilder( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info ) << log )
+    Catch::Detail::emplaceUnscopedMessage( Catch::MessageBuilder( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info ) << log )
 
 
 #if defined(CATCH_CONFIG_PREFIX_MESSAGES) && !defined(CATCH_CONFIG_DISABLE)
@@ -5430,7 +5448,7 @@ namespace Catch {
     void formatReconstructedExpression( std::ostream &os, std::string const& lhs, StringRef op, std::string const& rhs );
 
     template<typename LhsT, typename RhsT>
-    class BinaryExpr  : public ITransientExpression {
+    class BinaryExpr final : public ITransientExpression {
         LhsT m_lhs;
         StringRef m_op;
         RhsT m_rhs;
@@ -5506,7 +5524,7 @@ namespace Catch {
     };
 
     template<typename LhsT>
-    class UnaryExpr : public ITransientExpression {
+    class UnaryExpr final : public ITransientExpression {
         LhsT m_lhs;
 
         void streamReconstructedExpression( std::ostream &os ) const override {
@@ -5707,6 +5725,8 @@ namespace Catch {
 
 namespace Catch {
 
+    class RunContext;
+
     struct AssertionReaction {
         bool shouldDebugBreak = false;
         bool shouldThrow = false;
@@ -5717,7 +5737,12 @@ namespace Catch {
         AssertionInfo m_assertionInfo;
         AssertionReaction m_reaction;
         bool m_completed = false;
-        IResultCapture& m_resultCapture;
+        // Since all uses are hidden in the .cpp file, we can directly use
+        // the final type and avoid going through virtual dispatch, without
+        // massive compilation time overhead.
+        RunContext& m_resultCapture;
+
+        void finishIncomplete();
 
     public:
         AssertionHandler
@@ -5726,9 +5751,9 @@ namespace Catch {
                 StringRef capturedExpression,
                 ResultDisposition::Flags resultDisposition );
         ~AssertionHandler() {
-            if ( !m_completed ) {
-                m_resultCapture.handleIncomplete( m_assertionInfo );
-            }
+            // We want the common fast path inlinable, and the virtual
+            // dispatch in a function in single TU.
+            if ( !m_completed ) { finishIncomplete(); }
         }
 
 
@@ -5770,6 +5795,13 @@ namespace Catch {
 #endif
 
 #endif // CATCH_PREPROCESSOR_INTERNAL_STRINGIFY_HPP_INCLUDED
+
+namespace Catch {
+    namespace Detail {
+        // Defined in catch_run_context.cpp, where the thread-local data lives.
+        bool lastAssertionPassed();
+    }
+}
 
 // We need this suppression to leak, because it took until GCC 10
 // for the front end to handle local suppression via _Pragma properly
@@ -5813,12 +5845,12 @@ namespace Catch {
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_IF( macroName, resultDisposition, ... ) \
     INTERNAL_CATCH_TEST( macroName, resultDisposition, __VA_ARGS__ ); \
-    if( Catch::getResultCapture().lastAssertionPassed() )
+    if( Catch::Detail::lastAssertionPassed() )
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_ELSE( macroName, resultDisposition, ... ) \
     INTERNAL_CATCH_TEST( macroName, resultDisposition, __VA_ARGS__ ); \
-    if( !Catch::getResultCapture().lastAssertionPassed() )
+    if( !Catch::Detail::lastAssertionPassed() )
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_NO_THROW( macroName, resultDisposition, ... ) \
@@ -6101,7 +6133,7 @@ namespace Catch {
 namespace Catch {
 
 template<typename C>
-class TestInvokerAsMethod : public ITestInvoker {
+class TestInvokerAsMethod final : public ITestInvoker {
     void (C::*m_testAsMethod)();
 public:
     constexpr TestInvokerAsMethod( void ( C::*testAsMethod )() ) noexcept:
@@ -6121,7 +6153,7 @@ Detail::unique_ptr<ITestInvoker> makeTestInvoker( void (C::*testAsMethod)() ) {
 }
 
 template <typename C>
-class TestInvokerFixture : public ITestInvoker {
+class TestInvokerFixture final : public ITestInvoker {
     void ( C::*m_testAsMethod )() const;
     Detail::unique_ptr<C> m_fixture = nullptr;
 
@@ -6196,7 +6228,7 @@ struct AutoReg : Detail::NonCopyable {
 namespace Catch {
     namespace Detail {
         struct DummyUse {
-            DummyUse( void ( * )( int ), Catch::NameAndTags const& );
+            DummyUse( void ( * )( int ), Catch::NameAndTags const& ) noexcept;
         };
     } // namespace Detail
 } // namespace Catch
@@ -7047,42 +7079,42 @@ namespace Catch {
         INTERNAL_CATCH_EXPAND_VARGS( INTERNAL_CATCH_TEMPLATE_TEST_CASE_METHOD_2( INTERNAL_CATCH_UNIQUE_NAME( CATCH2_INTERNAL_TEMPLATE_TEST_CLASS_ ), INTERNAL_CATCH_UNIQUE_NAME( CATCH2_INTERNAL_TEMPLATE_TEST_ ) , ClassName, Name, Tags, Signature, __VA_ARGS__ ) )
 #endif
 
-    #define INTERNAL_CATCH_TEMPLATE_PRODUCT_TEST_CASE_METHOD_2(TestNameClass, TestName, ClassName, Name, Tags, Signature, TmplTypes, TypesList)\
-        CATCH_INTERNAL_START_WARNINGS_SUPPRESSION \
-        CATCH_INTERNAL_SUPPRESS_GLOBALS_WARNINGS \
-        CATCH_INTERNAL_SUPPRESS_ZERO_VARIADIC_WARNINGS \
-        CATCH_INTERNAL_SUPPRESS_UNUSED_TEMPLATE_WARNINGS \
-        CATCH_INTERNAL_SUPPRESS_UNUSED_VARIABLE_WARNINGS \
+#define INTERNAL_CATCH_TEMPLATE_PRODUCT_TEST_CASE_METHOD_2(TestNameClass, TestName, ClassName, Name, Tags, Signature, TmplTypes, TypesList)\
+    CATCH_INTERNAL_START_WARNINGS_SUPPRESSION \
+    CATCH_INTERNAL_SUPPRESS_GLOBALS_WARNINGS \
+    CATCH_INTERNAL_SUPPRESS_ZERO_VARIADIC_WARNINGS \
+    CATCH_INTERNAL_SUPPRESS_UNUSED_TEMPLATE_WARNINGS \
+    CATCH_INTERNAL_SUPPRESS_UNUSED_VARIABLE_WARNINGS \
+    namespace {\
         template<typename TestType> \
-            struct TestName : INTERNAL_CATCH_REMOVE_PARENS(ClassName <TestType>) { \
-                void test();\
-            };\
-        namespace {\
-        namespace INTERNAL_CATCH_MAKE_NAMESPACE(TestNameClass) {\
-            INTERNAL_CATCH_TYPE_GEN                  \
-            INTERNAL_CATCH_NTTP_GEN(INTERNAL_CATCH_REMOVE_PARENS(Signature))\
-            template<typename...Types>\
-            struct TestNameClass{\
-                void reg_tests(){\
-                    std::size_t index = 0;\
-                    using expander = std::size_t[];\
-                    constexpr char const* tmpl_types[] = {CATCH_REC_LIST(INTERNAL_CATCH_STRINGIZE_WITHOUT_PARENS, INTERNAL_CATCH_REMOVE_PARENS(TmplTypes))};\
-                    constexpr char const* types_list[] = {CATCH_REC_LIST(INTERNAL_CATCH_STRINGIZE_WITHOUT_PARENS, INTERNAL_CATCH_REMOVE_PARENS(TypesList))};\
-                    constexpr auto num_types = sizeof(types_list) / sizeof(types_list[0]);\
-                    (void)expander{(Catch::AutoReg( Catch::makeTestInvoker( &TestName<Types>::test ), CATCH_INTERNAL_LINEINFO, #ClassName, Catch::NameAndTags{ Name " - " + std::string(tmpl_types[index / num_types]) + '<' + types_list[index % num_types] + '>', Tags } ), index++)... };/* NOLINT */ \
-                }\
-            };\
-            static const int INTERNAL_CATCH_UNIQUE_NAME( globalRegistrar ) = [](){\
-                using TestInit = typename create<TestNameClass, decltype(get_wrapper<INTERNAL_CATCH_REMOVE_PARENS(TmplTypes)>(Catch::Detail::priority_tag<1>{})), TypeList<INTERNAL_CATCH_MAKE_TYPE_LISTS_FROM_TYPES(INTERNAL_CATCH_REMOVE_PARENS(TypesList))>>::type;\
-                TestInit t;\
-                t.reg_tests();\
-                return 0;\
-            }(); \
-        }\
-        }\
-        CATCH_INTERNAL_STOP_WARNINGS_SUPPRESSION \
-        template<typename TestType> \
-        void TestName<TestType>::test()
+        struct TestName : INTERNAL_CATCH_REMOVE_PARENS(ClassName <TestType>) { \
+            void test();\
+        };\
+    namespace INTERNAL_CATCH_MAKE_NAMESPACE(TestNameClass) {\
+        INTERNAL_CATCH_TYPE_GEN                  \
+        INTERNAL_CATCH_NTTP_GEN(INTERNAL_CATCH_REMOVE_PARENS(Signature))\
+        template<typename...Types>\
+        struct TestNameClass{\
+            void reg_tests(){\
+                std::size_t index = 0;\
+                using expander = std::size_t[];\
+                constexpr char const* tmpl_types[] = {CATCH_REC_LIST(INTERNAL_CATCH_STRINGIZE_WITHOUT_PARENS, INTERNAL_CATCH_REMOVE_PARENS(TmplTypes))};\
+                constexpr char const* types_list[] = {CATCH_REC_LIST(INTERNAL_CATCH_STRINGIZE_WITHOUT_PARENS, INTERNAL_CATCH_REMOVE_PARENS(TypesList))};\
+                constexpr auto num_types = sizeof(types_list) / sizeof(types_list[0]);\
+                (void)expander{(Catch::AutoReg( Catch::makeTestInvoker( &TestName<Types>::test ), CATCH_INTERNAL_LINEINFO, #ClassName, Catch::NameAndTags{ Name " - " + std::string(tmpl_types[index / num_types]) + '<' + types_list[index % num_types] + '>', Tags } ), index++)... };/* NOLINT */ \
+            }\
+        };\
+        static const int INTERNAL_CATCH_UNIQUE_NAME( globalRegistrar ) = [](){\
+            using TestInit = typename create<TestNameClass, decltype(get_wrapper<INTERNAL_CATCH_REMOVE_PARENS(TmplTypes)>(Catch::Detail::priority_tag<1>{})), TypeList<INTERNAL_CATCH_MAKE_TYPE_LISTS_FROM_TYPES(INTERNAL_CATCH_REMOVE_PARENS(TypesList))>>::type;\
+            TestInit t;\
+            t.reg_tests();\
+            return 0;\
+        }(); \
+    }\
+    }\
+    CATCH_INTERNAL_STOP_WARNINGS_SUPPRESSION \
+    template<typename TestType> \
+    void TestName<TestType>::test()
 
 #ifndef CATCH_CONFIG_TRADITIONAL_MSVC_PREPROCESSOR
     #define INTERNAL_CATCH_TEMPLATE_PRODUCT_TEST_CASE_METHOD( ClassName, Name, Tags, ... )\
@@ -7100,37 +7132,37 @@ namespace Catch {
         INTERNAL_CATCH_EXPAND_VARGS( INTERNAL_CATCH_TEMPLATE_PRODUCT_TEST_CASE_METHOD_2( INTERNAL_CATCH_UNIQUE_NAME( CATCH2_INTERNAL_TEMPLATE_TEST_ ), INTERNAL_CATCH_UNIQUE_NAME( CATCH2_INTERNAL_TEMPLATE_TEST_ ), ClassName, Name, Tags, Signature,__VA_ARGS__ ) )
 #endif
 
-    #define INTERNAL_CATCH_TEMPLATE_LIST_TEST_CASE_METHOD_2( TestNameClass, TestName, ClassName, Name, Tags, TmplList) \
-        CATCH_INTERNAL_START_WARNINGS_SUPPRESSION \
-        CATCH_INTERNAL_SUPPRESS_GLOBALS_WARNINGS \
-        CATCH_INTERNAL_SUPPRESS_UNUSED_TEMPLATE_WARNINGS \
-        CATCH_INTERNAL_SUPPRESS_UNUSED_VARIABLE_WARNINGS \
-        CATCH_INTERNAL_SUPPRESS_COMMA_WARNINGS \
+#define INTERNAL_CATCH_TEMPLATE_LIST_TEST_CASE_METHOD_2( TestNameClass, TestName, ClassName, Name, Tags, TmplList) \
+    CATCH_INTERNAL_START_WARNINGS_SUPPRESSION \
+    CATCH_INTERNAL_SUPPRESS_GLOBALS_WARNINGS \
+    CATCH_INTERNAL_SUPPRESS_UNUSED_TEMPLATE_WARNINGS \
+    CATCH_INTERNAL_SUPPRESS_UNUSED_VARIABLE_WARNINGS \
+    CATCH_INTERNAL_SUPPRESS_COMMA_WARNINGS \
+    namespace {\
         template<typename TestType> \
         struct TestName : INTERNAL_CATCH_REMOVE_PARENS(ClassName <TestType>) { \
             void test();\
         };\
-        namespace {\
-        namespace INTERNAL_CATCH_MAKE_NAMESPACE(TestName){ \
-            INTERNAL_CATCH_TYPE_GEN\
-            template<typename...Types>\
-            struct TestNameClass{\
-                void reg_tests(){\
-                    size_t index = 0;\
-                    using expander = size_t[];\
-                    (void)expander{(Catch::AutoReg( Catch::makeTestInvoker( &TestName<Types>::test ), CATCH_INTERNAL_LINEINFO, #ClassName##_catch_sr, Catch::NameAndTags{ Name " - " INTERNAL_CATCH_STRINGIZE(TmplList) " - " + std::to_string(index), Tags } ), index++)... };/* NOLINT */ \
-                }\
-            };\
-            static const int INTERNAL_CATCH_UNIQUE_NAME( globalRegistrar ) = [](){\
-                using TestInit = typename convert<TestNameClass, TmplList>::type;\
-                TestInit t;\
-                t.reg_tests();\
-                return 0;\
-            }(); \
-        }}\
-        CATCH_INTERNAL_STOP_WARNINGS_SUPPRESSION \
-        template<typename TestType> \
-        void TestName<TestType>::test()
+    namespace INTERNAL_CATCH_MAKE_NAMESPACE(TestName){ \
+        INTERNAL_CATCH_TYPE_GEN\
+        template<typename...Types>\
+        struct TestNameClass{\
+            void reg_tests(){\
+                size_t index = 0;\
+                using expander = size_t[];\
+                (void)expander{(Catch::AutoReg( Catch::makeTestInvoker( &TestName<Types>::test ), CATCH_INTERNAL_LINEINFO, #ClassName##_catch_sr, Catch::NameAndTags{ Name " - " INTERNAL_CATCH_STRINGIZE(TmplList) " - " + std::to_string(index), Tags } ), index++)... };/* NOLINT */ \
+            }\
+        };\
+        static const int INTERNAL_CATCH_UNIQUE_NAME( globalRegistrar ) = [](){\
+            using TestInit = typename convert<TestNameClass, TmplList>::type;\
+            TestInit t;\
+            t.reg_tests();\
+            return 0;\
+        }(); \
+    }}\
+    CATCH_INTERNAL_STOP_WARNINGS_SUPPRESSION \
+    template<typename TestType> \
+    void TestName<TestType>::test()
 
 #define INTERNAL_CATCH_TEMPLATE_LIST_TEST_CASE_METHOD(ClassName, Name, Tags, TmplList) \
         INTERNAL_CATCH_TEMPLATE_LIST_TEST_CASE_METHOD_2( INTERNAL_CATCH_UNIQUE_NAME( CATCH2_INTERNAL_TEMPLATE_TEST_ ), INTERNAL_CATCH_UNIQUE_NAME( CATCH2_INTERNAL_TEMPLATE_TEST_ ), ClassName, Name, Tags, TmplList )
@@ -7433,7 +7465,7 @@ namespace Catch {
 
     class ExceptionTranslatorRegistrar {
         template<typename T>
-        class ExceptionTranslator : public IExceptionTranslator {
+        class ExceptionTranslator final : public IExceptionTranslator {
         public:
 
             constexpr ExceptionTranslator( std::string(*translateFunction)( T const& ) )
@@ -7452,6 +7484,8 @@ namespace Catch {
                     return m_translateFunction( ex );
                 }
 #else
+                (void)it;
+                (void)itEnd;
                 return "You should never get here!";
 #endif
             }
@@ -7537,8 +7571,8 @@ namespace Catch {
 #define CATCH_VERSION_MACROS_HPP_INCLUDED
 
 #define CATCH_VERSION_MAJOR 3
-#define CATCH_VERSION_MINOR 14
-#define CATCH_VERSION_PATCH 0
+#define CATCH_VERSION_MINOR 15
+#define CATCH_VERSION_PATCH 2
 
 #endif // CATCH_VERSION_MACROS_HPP_INCLUDED
 
@@ -7878,8 +7912,7 @@ namespace Generators {
 
         bool isFinite() const override {
             for (auto const& gen : m_generators) {
-                if (!gen.isFinite()) { return false;
-                }
+                if (!gen.isFinite()) { return false; }
             }
             return true;
         }
@@ -9842,34 +9875,6 @@ namespace Catch {
 #endif // CATCH_ENFORCE_HPP_INCLUDED
 
 
-#ifndef CATCH_ENUM_VALUES_REGISTRY_HPP_INCLUDED
-#define CATCH_ENUM_VALUES_REGISTRY_HPP_INCLUDED
-
-
-#include <vector>
-
-namespace Catch {
-
-    namespace Detail {
-
-        Catch::Detail::unique_ptr<EnumInfo> makeEnumInfo( StringRef enumName, StringRef allValueNames, std::vector<int> const& values );
-
-        class EnumValuesRegistry : public IMutableEnumValuesRegistry {
-
-            std::vector<Catch::Detail::unique_ptr<EnumInfo>> m_enumInfos;
-
-            EnumInfo const& registerEnum( StringRef enumName, StringRef allValueNames, std::vector<int> const& values) override;
-        };
-
-        std::vector<StringRef> parseEnums( StringRef enums );
-
-    } // Detail
-
-} // Catch
-
-#endif // CATCH_ENUM_VALUES_REGISTRY_HPP_INCLUDED
-
-
 #ifndef CATCH_ERRNO_GUARD_HPP_INCLUDED
 #define CATCH_ERRNO_GUARD_HPP_INCLUDED
 
@@ -9900,7 +9905,7 @@ namespace Catch {
 
 namespace Catch {
 
-    class ExceptionTranslatorRegistry : public IExceptionTranslatorRegistry {
+    class ExceptionTranslatorRegistry final : public IExceptionTranslatorRegistry {
     public:
         ~ExceptionTranslatorRegistry() override;
         void registerTranslator( Detail::unique_ptr<IExceptionTranslator>&& translator );
@@ -10653,6 +10658,8 @@ namespace TestCaseTracking {
 
         using Children = std::vector<ITrackerPtr>;
 
+        virtual bool isFilteredImpl() const = 0;
+
     protected:
         enum CycleState {
             NotStarted,
@@ -10750,6 +10757,20 @@ namespace TestCaseTracking {
          * for internal debug checks.
          */
         virtual bool isGeneratorTracker() const;
+
+        /**
+         * Returns true if the concrete tracker instance has a filter that applies to it.
+         */
+        bool isFiltered() const {
+            // Fast path: are there even filters for tracker in this position?
+            const size_t filter_depth =
+                m_newStyleFilters ? m_allTrackerDepth : m_sectionOnlyDepth;
+            if ( m_filterRef->size() <= filter_depth ) { return false; }
+
+            // Slow path: If there are filters, ask the concrete tracker.
+            //            This handles things like match-all filters for that tracker.
+            return isFilteredImpl();
+        }
     };
 
     class TrackerContext {
@@ -10805,6 +10826,8 @@ namespace TestCaseTracking {
         // to not own the name, the name still has to outlive the `ITracker` parent, so
         // this should still be safe.
         StringRef m_trimmed_name;
+
+        bool isFilteredImpl() const override;
     public:
         SectionTracker( NameAndLocation&& nameAndLocation, TrackerContext& ctx, ITracker* parent );
 
@@ -10952,8 +10975,6 @@ namespace Catch {
 
         void handleFatalErrorCondition( StringRef message ) override;
 
-        bool lastAssertionPassed() override;
-
     public:
         // !TBD We need to do this another way!
         bool aborting() const;
@@ -10975,7 +10996,7 @@ namespace Catch {
                     ITransientExpression const *expr,
                     bool negated );
 
-        void populateReaction( AssertionReaction& reaction, bool has_normal_disposition );
+        void populateReaction( AssertionReaction& reaction, bool has_normal_disposition ) const;
 
         // Creates dummy info for unexpected exceptions/fatal errors,
         // where we do not have the access to one, but we still need
@@ -11067,7 +11088,7 @@ namespace Catch {
 
 
     template<typename SingletonImplT, typename InterfaceT = SingletonImplT, typename MutableInterfaceT = InterfaceT>
-    class Singleton : SingletonImplT, public ISingleton {
+    class Singleton final : SingletonImplT, public ISingleton {
 
         static auto getInternal() -> Singleton* {
             static Singleton* s_instance = nullptr;
@@ -11198,7 +11219,7 @@ namespace Catch {
 namespace Catch {
     struct SourceLineInfo;
 
-    class TagAliasRegistry : public ITagAliasRegistry {
+    class TagAliasRegistry final : public ITagAliasRegistry {
     public:
         ~TagAliasRegistry() override;
         TagAlias const* find( std::string const& alias ) const override;
@@ -11258,7 +11279,7 @@ namespace Catch {
     std::vector<TestCaseHandle> filterTests( std::vector<TestCaseHandle> const& testCases, TestSpec const& testSpec, IConfig const& config );
     std::vector<TestCaseHandle> const& getAllTestCasesSorted( IConfig const& config );
 
-    class TestRegistry : public ITestCaseRegistry {
+    class TestRegistry final : public ITestCaseRegistry {
     public:
         void registerTest( Detail::unique_ptr<TestCaseInfo> testInfo, Detail::unique_ptr<ITestInvoker> testInvoker );
 
@@ -11897,7 +11918,7 @@ namespace Catch {
 #endif
 
     template<typename ArgT, typename MatcherT>
-    class MatchExpr : public ITransientExpression {
+    class MatchExpr final : public ITransientExpression {
         ArgT && m_arg;
         MatcherT const& m_matcher;
     public:
@@ -11984,10 +12005,10 @@ namespace Matchers {
 
     class MatcherUntypedBase {
     public:
-        MatcherUntypedBase() = default;
+        constexpr MatcherUntypedBase() = default;
 
-        MatcherUntypedBase(MatcherUntypedBase const&) = default;
-        MatcherUntypedBase(MatcherUntypedBase&&) = default;
+        constexpr MatcherUntypedBase(MatcherUntypedBase const&) = default;
+        constexpr MatcherUntypedBase(MatcherUntypedBase&&) = default;
 
         MatcherUntypedBase& operator = (MatcherUntypedBase const&) = delete;
         MatcherUntypedBase& operator = (MatcherUntypedBase&&) = delete;
@@ -11995,9 +12016,9 @@ namespace Matchers {
         std::string toString() const;
 
     protected:
-        virtual ~MatcherUntypedBase(); // = default;
-        virtual std::string describe() const = 0;
-        mutable std::string m_cachedToString;
+        CATCH_DESTRUCTOR_CONSTEXPR virtual ~MatcherUntypedBase() = default;
+        //! Should be overridden, but we provide default "undescribed" impl
+        virtual std::string describe() const;
     };
 
 
@@ -12179,6 +12200,19 @@ namespace Matchers {
   #define CATCH_CHECK_THAT( arg, matcher ) INTERNAL_CHECK_THAT( "CATCH_CHECK_THAT", matcher, Catch::ResultDisposition::ContinueOnFailure, arg )
   #define CATCH_REQUIRE_THAT( arg, matcher ) INTERNAL_CHECK_THAT( "CATCH_REQUIRE_THAT", matcher, Catch::ResultDisposition::Normal, arg )
 
+  #if !defined(CATCH_CONFIG_RUNTIME_STATIC_REQUIRE)
+    #define CATCH_STATIC_REQUIRE_THAT( arg, matcher ) \
+             static_assert( ( matcher ).match( arg ), #matcher ".match( " #arg " )"); \
+             CATCH_SUCCEED( #matcher ".match( " #arg " )" )
+    #define CATCH_STATIC_CHECK_THAT( arg, matcher )   \
+             static_assert( ( matcher ).match( arg ), #matcher ".match( " #arg " )"); \
+             CATCH_SUCCEED( #matcher ".match( " #arg " )" )
+  #else
+    #define CATCH_STATIC_REQUIRE_THAT( arg, matcher ) CATCH_REQUIRE_THAT( arg, matcher )
+    #define CATCH_STATIC_CHECK_THAT( arg, matcher ) CATCH_CHECK_THAT( arg, matcher )
+  #endif
+
+
 #elif defined(CATCH_CONFIG_PREFIX_ALL) && defined(CATCH_CONFIG_DISABLE)
 
   #define CATCH_REQUIRE_THROWS_WITH( expr, matcher )                   (void)(0)
@@ -12189,6 +12223,9 @@ namespace Matchers {
 
   #define CATCH_CHECK_THAT( arg, matcher )                             (void)(0)
   #define CATCH_REQUIRE_THAT( arg, matcher )                           (void)(0)
+
+  #define CATCH_STATIC_REQUIRE_THAT( arg, matcher )                    (void)(0)
+  #define CATCH_STATIC_CHECK_THAT( arg, matcher )                      (void)(0)
 
 #elif !defined(CATCH_CONFIG_PREFIX_ALL) && !defined(CATCH_CONFIG_DISABLE)
 
@@ -12201,6 +12238,19 @@ namespace Matchers {
   #define CHECK_THAT( arg, matcher ) INTERNAL_CHECK_THAT( "CHECK_THAT", matcher, Catch::ResultDisposition::ContinueOnFailure, arg )
   #define REQUIRE_THAT( arg, matcher ) INTERNAL_CHECK_THAT( "REQUIRE_THAT", matcher, Catch::ResultDisposition::Normal, arg )
 
+  #if !defined(CATCH_CONFIG_RUNTIME_STATIC_REQUIRE)
+    #define STATIC_REQUIRE_THAT( arg, matcher ) \
+             static_assert( ( matcher ).match( arg ), #matcher ".match( " #arg " )"); \
+             SUCCEED( #matcher ".match( " #arg " )" )
+    #define STATIC_CHECK_THAT( arg, matcher )   \
+             static_assert( ( matcher ).match( arg ), #matcher ".match( " #arg " )"); \
+             SUCCEED( #matcher ".match( " #arg " )" )
+  #else
+    #define STATIC_REQUIRE_THAT( arg, matcher ) REQUIRE_THAT( arg, matcher )
+    #define STATIC_CHECK_THAT( arg, matcher ) CHECK_THAT( arg, matcher )
+  #endif
+
+
 #elif !defined(CATCH_CONFIG_PREFIX_ALL) && defined(CATCH_CONFIG_DISABLE)
 
   #define REQUIRE_THROWS_WITH( expr, matcher )                   (void)(0)
@@ -12211,6 +12261,9 @@ namespace Matchers {
 
   #define CHECK_THAT( arg, matcher )                             (void)(0)
   #define REQUIRE_THAT( arg, matcher )                           (void)(0)
+
+  #define STATIC_REQUIRE_THAT( arg, matcher )                    (void)(0)
+  #define STATIC_CHECK_THAT( arg, matcher )                      (void)(0)
 
 #endif // end of user facing macro declarations
 
@@ -12234,12 +12287,12 @@ namespace Matchers {
 namespace Catch {
 namespace Matchers {
     class MatcherGenericBase : public MatcherUntypedBase {
+        std::string describe() const override;
     public:
-        MatcherGenericBase() = default;
-        ~MatcherGenericBase() override; // = default;
+        constexpr MatcherGenericBase() = default;
 
-        MatcherGenericBase(MatcherGenericBase const&) = default;
-        MatcherGenericBase(MatcherGenericBase&&) = default;
+        constexpr MatcherGenericBase(MatcherGenericBase const&) = default;
+        constexpr MatcherGenericBase(MatcherGenericBase&&) = default;
 
         MatcherGenericBase& operator=(MatcherGenericBase const&) = delete;
         MatcherGenericBase& operator=(MatcherGenericBase&&) = delete;
@@ -12248,7 +12301,9 @@ namespace Matchers {
 
     namespace Detail {
         template<std::size_t N, std::size_t M>
-        std::array<void const*, N + M> array_cat(std::array<void const*, N> && lhs, std::array<void const*, M> && rhs) {
+        constexpr std::array<void const*, N + M>
+        array_cat( std::array<void const*, N>&& lhs,
+                   std::array<void const*, M>&& rhs ) {
             std::array<void const*, N + M> arr{};
             std::copy_n(lhs.begin(), N, arr.begin());
             std::copy_n(rhs.begin(), M, arr.begin() + N);
@@ -12256,7 +12311,8 @@ namespace Matchers {
         }
 
         template<std::size_t N>
-        std::array<void const*, N+1> array_cat(std::array<void const*, N> && lhs, void const* rhs) {
+        constexpr std::array<void const*, N + 1>
+        array_cat( std::array<void const*, N>&& lhs, void const* rhs ) {
             std::array<void const*, N+1> arr{};
             std::copy_n(lhs.begin(), N, arr.begin());
             arr[N] = rhs;
@@ -12264,7 +12320,8 @@ namespace Matchers {
         }
 
         template<std::size_t N>
-        std::array<void const*, N+1> array_cat(void const* lhs, std::array<void const*, N> && rhs) {
+        constexpr std::array<void const*, N + 1>
+        array_cat( void const* lhs, std::array<void const*, N>&& rhs ) {
             std::array<void const*, N + 1> arr{ {lhs} };
             std::copy_n(rhs.begin(), N, arr.begin() + 1);
             return arr;
@@ -12287,23 +12344,31 @@ namespace Matchers {
 
 
         template<std::size_t N, typename Arg>
-        bool match_all_of(Arg&&, std::array<void const*, N> const&, std::index_sequence<>) {
+        constexpr bool match_all_of( Arg&&,
+                                    std::array<void const*, N> const&,
+                                    std::index_sequence<> ) {
             return true;
         }
 
         template<typename T, typename... MatcherTs, std::size_t N, typename Arg, std::size_t Idx, std::size_t... Indices>
-        bool match_all_of(Arg&& arg, std::array<void const*, N> const& matchers, std::index_sequence<Idx, Indices...>) {
+        constexpr bool match_all_of( Arg&& arg,
+                                    std::array<void const*, N> const& matchers,
+                                    std::index_sequence<Idx, Indices...> ) {
             return static_cast<T const*>(matchers[Idx])->match(arg) && match_all_of<MatcherTs...>(arg, matchers, std::index_sequence<Indices...>{});
         }
 
 
         template<std::size_t N, typename Arg>
-        bool match_any_of(Arg&&, std::array<void const*, N> const&, std::index_sequence<>) {
+        constexpr bool match_any_of( Arg&&,
+                                     std::array<void const*, N> const&,
+                                     std::index_sequence<> ) {
             return false;
         }
 
         template<typename T, typename... MatcherTs, std::size_t N, typename Arg, std::size_t Idx, std::size_t... Indices>
-        bool match_any_of(Arg&& arg, std::array<void const*, N> const& matchers, std::index_sequence<Idx, Indices...>) {
+        constexpr bool match_any_of( Arg&& arg,
+                                     std::array<void const*, N> const& matchers,
+                                     std::index_sequence<Idx, Indices...> ) {
             return static_cast<T const*>(matchers[Idx])->match(arg) || match_any_of<MatcherTs...>(arg, matchers, std::index_sequence<Indices...>{});
         }
 
@@ -12324,15 +12389,18 @@ namespace Matchers {
         public:
             MatchAllOfGeneric(MatchAllOfGeneric const&) = delete;
             MatchAllOfGeneric& operator=(MatchAllOfGeneric const&) = delete;
-            MatchAllOfGeneric(MatchAllOfGeneric&&) = default;
-            MatchAllOfGeneric& operator=(MatchAllOfGeneric&&) = default;
+            constexpr MatchAllOfGeneric( MatchAllOfGeneric&& ) = default;
+            constexpr MatchAllOfGeneric& operator=(MatchAllOfGeneric&&) = default;
 
-            MatchAllOfGeneric(MatcherTs const&... matchers CATCH_ATTR_LIFETIMEBOUND)
+            constexpr MatchAllOfGeneric(
+                MatcherTs const&... matchers CATCH_ATTR_LIFETIMEBOUND )
                 : m_matchers{ {std::addressof(matchers)...} } {}
-            explicit MatchAllOfGeneric(std::array<void const*, sizeof...(MatcherTs)> matchers) : m_matchers{matchers} {}
+            constexpr explicit MatchAllOfGeneric(
+                std::array<void const*, sizeof...( MatcherTs )> matchers ):
+                m_matchers{ matchers } {}
 
             template<typename Arg>
-            bool match(Arg&& arg) const {
+            constexpr bool match( Arg&& arg ) const {
                 return match_all_of<MatcherTs...>(arg, m_matchers, std::index_sequence_for<MatcherTs...>{});
             }
 
@@ -12348,7 +12416,7 @@ namespace Matchers {
 
             //! Avoids type nesting for `GenericAllOf && GenericAllOf` case
             template<typename... MatchersRHS>
-            friend
+            constexpr friend
             MatchAllOfGeneric<MatcherTs..., MatchersRHS...> operator && (
                 MatchAllOfGeneric<MatcherTs...>&& lhs CATCH_ATTR_LIFETIMEBOUND,
                 MatchAllOfGeneric<MatchersRHS...>&& rhs CATCH_ATTR_LIFETIMEBOUND ) {
@@ -12357,7 +12425,8 @@ namespace Matchers {
 
             //! Avoids type nesting for `GenericAllOf && some matcher` case
             template<typename MatcherRHS>
-            friend std::enable_if_t<is_matcher_v<MatcherRHS>,
+            constexpr friend std::enable_if_t<
+                is_matcher_v<MatcherRHS>,
             MatchAllOfGeneric<MatcherTs..., MatcherRHS>> operator && (
                 MatchAllOfGeneric<MatcherTs...>&& lhs CATCH_ATTR_LIFETIMEBOUND,
                 MatcherRHS const& rhs CATCH_ATTR_LIFETIMEBOUND ) {
@@ -12366,7 +12435,8 @@ namespace Matchers {
 
             //! Avoids type nesting for `some matcher && GenericAllOf` case
             template<typename MatcherLHS>
-            friend std::enable_if_t<is_matcher_v<MatcherLHS>,
+            constexpr friend std::enable_if_t<
+                is_matcher_v<MatcherLHS>,
             MatchAllOfGeneric<MatcherLHS, MatcherTs...>> operator && (
                 MatcherLHS const& lhs CATCH_ATTR_LIFETIMEBOUND,
                 MatchAllOfGeneric<MatcherTs...>&& rhs CATCH_ATTR_LIFETIMEBOUND ) {
@@ -12380,15 +12450,18 @@ namespace Matchers {
         public:
             MatchAnyOfGeneric(MatchAnyOfGeneric const&) = delete;
             MatchAnyOfGeneric& operator=(MatchAnyOfGeneric const&) = delete;
-            MatchAnyOfGeneric(MatchAnyOfGeneric&&) = default;
-            MatchAnyOfGeneric& operator=(MatchAnyOfGeneric&&) = default;
+            constexpr MatchAnyOfGeneric( MatchAnyOfGeneric&& ) = default;
+            constexpr MatchAnyOfGeneric& operator=(MatchAnyOfGeneric&&) = default;
 
-            MatchAnyOfGeneric(MatcherTs const&... matchers CATCH_ATTR_LIFETIMEBOUND)
+            constexpr MatchAnyOfGeneric(
+                MatcherTs const&... matchers CATCH_ATTR_LIFETIMEBOUND )
                 : m_matchers{ {std::addressof(matchers)...} } {}
-            explicit MatchAnyOfGeneric(std::array<void const*, sizeof...(MatcherTs)> matchers) : m_matchers{matchers} {}
+            constexpr explicit MatchAnyOfGeneric(
+                std::array<void const*, sizeof...( MatcherTs )> matchers ):
+                m_matchers{ matchers } {}
 
             template<typename Arg>
-            bool match(Arg&& arg) const {
+            constexpr bool match( Arg&& arg ) const {
                 return match_any_of<MatcherTs...>(arg, m_matchers, std::index_sequence_for<MatcherTs...>{});
             }
 
@@ -12404,7 +12477,8 @@ namespace Matchers {
 
             //! Avoids type nesting for `GenericAnyOf || GenericAnyOf` case
             template<typename... MatchersRHS>
-            friend MatchAnyOfGeneric<MatcherTs..., MatchersRHS...> operator || (
+            constexpr friend MatchAnyOfGeneric<MatcherTs..., MatchersRHS...>
+            operator||(
                 MatchAnyOfGeneric<MatcherTs...>&& lhs CATCH_ATTR_LIFETIMEBOUND,
                 MatchAnyOfGeneric<MatchersRHS...>&& rhs CATCH_ATTR_LIFETIMEBOUND ) {
                 return MatchAnyOfGeneric<MatcherTs..., MatchersRHS...>{array_cat(CATCH_MOVE(lhs.m_matchers), CATCH_MOVE(rhs.m_matchers))};
@@ -12412,7 +12486,8 @@ namespace Matchers {
 
             //! Avoids type nesting for `GenericAnyOf || some matcher` case
             template<typename MatcherRHS>
-            friend std::enable_if_t<is_matcher_v<MatcherRHS>,
+            constexpr friend std::enable_if_t<
+                is_matcher_v<MatcherRHS>,
             MatchAnyOfGeneric<MatcherTs..., MatcherRHS>> operator || (
                     MatchAnyOfGeneric<MatcherTs...>&& lhs CATCH_ATTR_LIFETIMEBOUND,
                     MatcherRHS const& rhs CATCH_ATTR_LIFETIMEBOUND ) {
@@ -12421,7 +12496,8 @@ namespace Matchers {
 
             //! Avoids type nesting for `some matcher || GenericAnyOf` case
             template<typename MatcherLHS>
-            friend std::enable_if_t<is_matcher_v<MatcherLHS>,
+            constexpr friend std::enable_if_t<
+                is_matcher_v<MatcherLHS>,
             MatchAnyOfGeneric<MatcherLHS, MatcherTs...>> operator || (
                 MatcherLHS const& lhs CATCH_ATTR_LIFETIMEBOUND,
                 MatchAnyOfGeneric<MatcherTs...>&& rhs CATCH_ATTR_LIFETIMEBOUND) {
@@ -12437,14 +12513,15 @@ namespace Matchers {
         public:
             MatchNotOfGeneric(MatchNotOfGeneric const&) = delete;
             MatchNotOfGeneric& operator=(MatchNotOfGeneric const&) = delete;
-            MatchNotOfGeneric(MatchNotOfGeneric&&) = default;
-            MatchNotOfGeneric& operator=(MatchNotOfGeneric&&) = default;
+            constexpr MatchNotOfGeneric( MatchNotOfGeneric&& ) = default;
+            constexpr MatchNotOfGeneric& operator=(MatchNotOfGeneric&&) = default;
 
-            explicit MatchNotOfGeneric(MatcherT const& matcher CATCH_ATTR_LIFETIMEBOUND)
+            constexpr explicit MatchNotOfGeneric(
+                MatcherT const& matcher CATCH_ATTR_LIFETIMEBOUND )
                 : m_matcher{matcher} {}
 
             template<typename Arg>
-            bool match(Arg&& arg) const {
+            constexpr bool match( Arg&& arg ) const {
                 return !m_matcher.match(arg);
             }
 
@@ -12453,7 +12530,7 @@ namespace Matchers {
             }
 
             //! Negating negation can just unwrap and return underlying matcher
-            friend MatcherT const&
+            constexpr friend MatcherT const&
             operator!( MatchNotOfGeneric<MatcherT> const& matcher
                            CATCH_ATTR_LIFETIMEBOUND ) {
                 return matcher.m_matcher;
@@ -12464,14 +12541,18 @@ namespace Matchers {
 
     // compose only generic matchers
     template<typename MatcherLHS, typename MatcherRHS>
-    std::enable_if_t<Detail::are_generic_matchers_v<MatcherLHS, MatcherRHS>, Detail::MatchAllOfGeneric<MatcherLHS, MatcherRHS>>
+    constexpr std::enable_if_t<
+        Detail::are_generic_matchers_v<MatcherLHS, MatcherRHS>,
+        Detail::MatchAllOfGeneric<MatcherLHS, MatcherRHS>>
     operator&&( MatcherLHS const& lhs CATCH_ATTR_LIFETIMEBOUND,
                 MatcherRHS const& rhs CATCH_ATTR_LIFETIMEBOUND ) {
         return { lhs, rhs };
     }
 
     template<typename MatcherLHS, typename MatcherRHS>
-    std::enable_if_t<Detail::are_generic_matchers_v<MatcherLHS, MatcherRHS>, Detail::MatchAnyOfGeneric<MatcherLHS, MatcherRHS>>
+    constexpr std::enable_if_t<
+        Detail::are_generic_matchers_v<MatcherLHS, MatcherRHS>,
+        Detail::MatchAnyOfGeneric<MatcherLHS, MatcherRHS>>
     operator||( MatcherLHS const& lhs CATCH_ATTR_LIFETIMEBOUND,
                 MatcherRHS const& rhs CATCH_ATTR_LIFETIMEBOUND ) {
         return { lhs, rhs };
@@ -12479,7 +12560,8 @@ namespace Matchers {
 
     //! Wrap provided generic matcher in generic negator
     template<typename MatcherT>
-    std::enable_if_t<Detail::is_generic_matcher_v<MatcherT>, Detail::MatchNotOfGeneric<MatcherT>>
+    constexpr std::enable_if_t<Detail::is_generic_matcher_v<MatcherT>,
+                               Detail::MatchNotOfGeneric<MatcherT>>
     operator!( MatcherT const& matcher CATCH_ATTR_LIFETIMEBOUND ) {
         return Detail::MatchNotOfGeneric<MatcherT>{matcher};
     }
@@ -12525,7 +12607,7 @@ namespace Catch {
         class IsEmptyMatcher final : public MatcherGenericBase {
         public:
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
 #if defined(CATCH_CONFIG_POLYFILL_NONMEMBER_CONTAINER_ACCESS)
                 using Catch::Detail::empty;
 #else
@@ -12540,12 +12622,12 @@ namespace Catch {
         class HasSizeMatcher final : public MatcherGenericBase {
             std::size_t m_target_size;
         public:
-            explicit HasSizeMatcher(std::size_t target_size):
+            constexpr explicit HasSizeMatcher(std::size_t target_size):
                 m_target_size(target_size)
             {}
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
 #if defined(CATCH_CONFIG_POLYFILL_NONMEMBER_CONTAINER_ACCESS)
                 using Catch::Detail::size;
 #else
@@ -12561,12 +12643,12 @@ namespace Catch {
         class SizeMatchesMatcher final : public MatcherGenericBase {
             Matcher m_matcher;
         public:
-            explicit SizeMatchesMatcher(Matcher m):
+            constexpr explicit SizeMatchesMatcher(Matcher m):
                 m_matcher(CATCH_MOVE(m))
             {}
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
 #if defined(CATCH_CONFIG_POLYFILL_NONMEMBER_CONTAINER_ACCESS)
                 using Catch::Detail::size;
 #else
@@ -12582,11 +12664,13 @@ namespace Catch {
 
 
         //! Creates a matcher that accepts empty ranges/containers
-        IsEmptyMatcher IsEmpty();
+        inline CATCH_DESTRUCTOR_CONSTEXPR IsEmptyMatcher IsEmpty() { return {}; }
         //! Creates a matcher that accepts ranges/containers with specific size
-        HasSizeMatcher SizeIs(std::size_t sz);
+        inline CATCH_DESTRUCTOR_CONSTEXPR HasSizeMatcher SizeIs( std::size_t sz ) {
+            return HasSizeMatcher{ sz };
+        }
         template <typename Matcher>
-        std::enable_if_t<Detail::is_matcher_v<Matcher>,
+        constexpr std::enable_if_t<Detail::is_matcher_v<Matcher>,
         SizeMatchesMatcher<Matcher>> SizeIs(Matcher&& m) {
             return SizeMatchesMatcher<Matcher>{CATCH_FORWARD(m)};
         }
@@ -12613,7 +12697,7 @@ namespace Catch {
             Equality m_eq;
         public:
             template <typename T2, typename Equality2>
-            ContainsElementMatcher(T2&& target, Equality2&& predicate):
+            constexpr ContainsElementMatcher(T2&& target, Equality2&& predicate):
                 m_desired(CATCH_FORWARD(target)),
                 m_eq(CATCH_FORWARD(predicate))
             {}
@@ -12623,7 +12707,7 @@ namespace Catch {
             }
 
             template <typename RangeLike>
-            bool match( RangeLike&& rng ) const {
+            constexpr bool match( RangeLike&& rng ) const {
                 for ( auto&& elem : rng ) {
                     if ( m_eq( elem, m_desired ) ) { return true; }
                 }
@@ -12639,12 +12723,12 @@ namespace Catch {
             // Note that we do a copy+move to avoid having to SFINAE this
             // constructor (and also avoid some perfect forwarding failure
             // cases)
-            ContainsMatcherMatcher(Matcher matcher):
+            constexpr ContainsMatcherMatcher(Matcher matcher):
                 m_matcher(CATCH_MOVE(matcher))
             {}
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
                 for (auto&& elem : rng) {
                     if (m_matcher.match(elem)) {
                         return true;
@@ -12664,14 +12748,14 @@ namespace Catch {
          * Uses `std::equal_to` to do the comparison
          */
         template <typename T>
-        std::enable_if_t<!Detail::is_matcher_v<T>,
+        constexpr std::enable_if_t<!Detail::is_matcher_v<T>,
         ContainsElementMatcher<T, std::equal_to<>>> Contains(T&& elem) {
             return { CATCH_FORWARD(elem), std::equal_to<>{} };
         }
 
         //! Creates a matcher that checks whether a range contains element matching a matcher
         template <typename Matcher>
-        std::enable_if_t<Detail::is_matcher_v<Matcher>,
+        constexpr std::enable_if_t<Detail::is_matcher_v<Matcher>,
         ContainsMatcherMatcher<Matcher>> Contains(Matcher&& matcher) {
             return { CATCH_FORWARD(matcher) };
         }
@@ -12682,7 +12766,7 @@ namespace Catch {
          * Uses `eq` to do the comparisons, the element is provided on the rhs
          */
         template <typename T, typename Equality>
-        ContainsElementMatcher<T, Equality> Contains(T&& elem, Equality&& eq) {
+        constexpr ContainsElementMatcher<T, Equality> Contains(T&& elem, Equality&& eq) {
             return { CATCH_FORWARD(elem), CATCH_FORWARD(eq) };
         }
 
@@ -12897,7 +12981,7 @@ namespace Catch {
         class AllMatchMatcher final : public MatcherGenericBase {
             Matcher m_matcher;
         public:
-            AllMatchMatcher(Matcher matcher):
+            constexpr AllMatchMatcher(Matcher matcher):
                 m_matcher(CATCH_MOVE(matcher))
             {}
 
@@ -12906,7 +12990,7 @@ namespace Catch {
             }
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
                 for (auto&& elem : rng) {
                     if (!m_matcher.match(elem)) {
                         return false;
@@ -12921,7 +13005,7 @@ namespace Catch {
         class NoneMatchMatcher final : public MatcherGenericBase {
             Matcher m_matcher;
         public:
-            NoneMatchMatcher(Matcher matcher):
+            constexpr NoneMatchMatcher(Matcher matcher):
                 m_matcher(CATCH_MOVE(matcher))
             {}
 
@@ -12930,7 +13014,7 @@ namespace Catch {
             }
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
                 for (auto&& elem : rng) {
                     if (m_matcher.match(elem)) {
                         return false;
@@ -12945,7 +13029,7 @@ namespace Catch {
         class AnyMatchMatcher final : public MatcherGenericBase {
             Matcher m_matcher;
         public:
-            AnyMatchMatcher(Matcher matcher):
+            constexpr AnyMatchMatcher(Matcher matcher):
                 m_matcher(CATCH_MOVE(matcher))
             {}
 
@@ -12954,7 +13038,7 @@ namespace Catch {
             }
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
                 for (auto&& elem : rng) {
                     if (m_matcher.match(elem)) {
                         return true;
@@ -12970,7 +13054,7 @@ namespace Catch {
             std::string describe() const override;
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
                 for (auto&& elem : rng) {
                     if (!elem) {
                         return false;
@@ -12986,7 +13070,7 @@ namespace Catch {
             std::string describe() const override;
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
                 for (auto&& elem : rng) {
                     if (elem) {
                         return false;
@@ -13002,7 +13086,7 @@ namespace Catch {
             std::string describe() const override;
 
             template <typename RangeLike>
-            bool match(RangeLike&& rng) const {
+            constexpr bool match(RangeLike&& rng) const {
                 for (auto&& elem : rng) {
                     if (elem) {
                         return true;
@@ -13012,32 +13096,35 @@ namespace Catch {
             }
         };
 
-        // Creates a matcher that checks whether all elements in a range match a matcher
+        //! Creates a matcher that checks whether all elements in a range match a matcher
         template <typename Matcher>
-        AllMatchMatcher<Matcher> AllMatch(Matcher&& matcher) {
+        constexpr AllMatchMatcher<Matcher> AllMatch(Matcher&& matcher) {
             return { CATCH_FORWARD(matcher) };
         }
 
-        // Creates a matcher that checks whether no element in a range matches a matcher.
+        //! Creates a matcher that checks whether no element in a range matches a matcher.
         template <typename Matcher>
-        NoneMatchMatcher<Matcher> NoneMatch(Matcher&& matcher) {
+        constexpr NoneMatchMatcher<Matcher> NoneMatch(Matcher&& matcher) {
             return { CATCH_FORWARD(matcher) };
         }
 
-        // Creates a matcher that checks whether any element in a range matches a matcher.
+        //! Creates a matcher that checks whether any element in a range matches a matcher.
         template <typename Matcher>
-        AnyMatchMatcher<Matcher> AnyMatch(Matcher&& matcher) {
+        constexpr AnyMatchMatcher<Matcher> AnyMatch(Matcher&& matcher) {
             return { CATCH_FORWARD(matcher) };
         }
 
-        // Creates a matcher that checks whether all elements in a range are true
-        AllTrueMatcher AllTrue();
+        //! Creates a matcher that checks whether all elements in a range are true
+        inline CATCH_DESTRUCTOR_CONSTEXPR
+        AllTrueMatcher AllTrue() { return AllTrueMatcher{}; }
 
-        // Creates a matcher that checks whether no element in a range is true
-        NoneTrueMatcher NoneTrue();
+        //! Creates a matcher that checks whether no element in a range is true
+        inline CATCH_DESTRUCTOR_CONSTEXPR
+        NoneTrueMatcher NoneTrue() { return NoneTrueMatcher{}; }
 
-        // Creates a matcher that checks whether any element in a range is true
-        AnyTrueMatcher AnyTrue();
+        //! Creates a matcher that checks whether any element in a range is true
+        inline CATCH_DESTRUCTOR_CONSTEXPR
+        AnyTrueMatcher AnyTrue() { return AnyTrueMatcher{}; }
     }
 }
 

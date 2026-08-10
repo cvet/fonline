@@ -164,3 +164,7 @@ sha1_block_shani:
 shufmask:
 .octa	0x000102030405060708090a0b0c0d0e0f
 .size	shufmask,.-shufmask
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

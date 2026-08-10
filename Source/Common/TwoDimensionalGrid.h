@@ -45,8 +45,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_VERIFY_AND_RETURN(size.width >= 0);
-        FO_RUNTIME_VERIFY_AND_RETURN(size.height >= 0);
+        FO_VERIFY_AND_RETURN(size.width >= 0, "Two-dimensional grid width is negative", size.width, size.height);
+        FO_VERIFY_AND_RETURN(size.height >= 0, "Two-dimensional grid height is negative", size.width, size.height);
 
         _size = size;
     }
@@ -59,7 +59,7 @@ public:
 
     [[nodiscard]] auto GetSize() const noexcept -> TSize { return _size; }
     [[nodiscard]] virtual auto GetCellForReading(TPos pos) const noexcept -> const TCell& = 0;
-    [[nodiscard]] virtual auto GetCellForWriting(TPos pos) -> TCell& = 0;
+    [[nodiscard]] virtual auto GetCellForWriting(TPos pos) -> ptr<TCell> = 0;
 
     virtual void Resize(TSize size) = 0;
 
@@ -87,7 +87,7 @@ public:
             return _emptyCell;
         }
 
-        const auto it = _cells.find(pos);
+        auto it = _cells.find(pos);
 
         if (it == _cells.end()) {
             return _emptyCell;
@@ -97,19 +97,19 @@ public:
         }
     }
 
-    [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell& override
+    [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
+        FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Sparse two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        const auto it = _cells.find(pos);
+        auto it = _cells.find(pos);
 
         if (it == _cells.end()) {
-            return _cells.emplace(pos, TCell {}).first->second;
+            return &(_cells.emplace(pos, TCell {}).first->second);
         }
         else {
-            return it->second;
+            return &it->second;
         }
     }
 
@@ -117,18 +117,18 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(size.width >= 0);
-        FO_RUNTIME_ASSERT(size.height >= 0);
+        FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+        FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
-        const auto prev_width = base::_size.width;
-        const auto prev_height = base::_size.height;
+        auto prev_width = base::_size.width;
+        auto prev_height = base::_size.height;
 
         base::_size = size;
 
         for (int64_t y = 0; y < std::max(prev_height, base::_size.height); y++) {
             for (int64_t x = 0; x < std::max(prev_width, base::_size.width); x++) {
                 if ((x >= base::_size.width || y >= base::_size.height) && x < prev_width && y < prev_height) {
-                    const auto it = _cells.find(TPos {numeric_cast<decltype(std::declval<TPos>().x)>(x), numeric_cast<decltype(std::declval<TPos>().y)>(y)});
+                    auto it = _cells.find(TPos {numeric_cast<decltype(std::declval<TPos>().x)>(x), numeric_cast<decltype(std::declval<TPos>().y)>(y)});
 
                     if (it != _cells.end()) {
                         _cells.erase(it);
@@ -154,7 +154,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto count = static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height);
+        size_t count = static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height);
         _preallocatedCells.resize(count);
     }
 
@@ -166,7 +166,7 @@ public:
             return _emptyCell;
         }
 
-        const auto index = static_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
+        size_t index = static_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
 
         if (!cell) {
@@ -176,43 +176,43 @@ public:
         return *cell;
     }
 
-    [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell& override
+    [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
+        FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Dense two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        const auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
+        auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
 
         if (!cell) {
-            cell = SafeAlloc::MakeUnique<TCell>();
+            cell.emplace();
         }
 
-        return *cell;
+        return &*cell;
     }
 
     void Resize(TSize size) override
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(size.width >= 0);
-        FO_RUNTIME_ASSERT(size.height >= 0);
+        FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+        FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
-        const auto prev_width = base::_size.width;
-        const auto prev_height = base::_size.height;
+        auto prev_width = base::_size.width;
+        auto prev_height = base::_size.height;
 
         base::_size = size;
 
-        vector<unique_ptr<TCell>> new_cells;
-        const auto new_count = numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height);
+        vector<optional<TCell>> new_cells;
+        auto new_count = numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height);
         new_cells.resize(new_count);
 
         for (int64_t y = 0; y < std::max(prev_height, base::_size.height); y++) {
             for (int64_t x = 0; x < std::max(prev_width, base::_size.width); x++) {
                 if (x < base::_size.width && y < base::_size.height && x < prev_width && y < prev_height) {
-                    const auto new_index = numeric_cast<size_t>(y * base::_size.width + x);
-                    const auto prev_index = numeric_cast<size_t>(y * prev_width + x);
+                    auto new_index = numeric_cast<size_t>(y * base::_size.width + x);
+                    auto prev_index = numeric_cast<size_t>(y * prev_width + x);
                     new_cells[new_index] = std::move(_preallocatedCells[prev_index]);
                 }
             }
@@ -222,7 +222,7 @@ public:
     }
 
 private:
-    vector<unique_ptr<TCell>> _preallocatedCells {};
+    vector<optional<TCell>> _preallocatedCells {};
     const TCell _emptyCell {};
 };
 

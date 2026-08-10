@@ -23,38 +23,49 @@
 
 #include <algorithm>
 #include <limits> // for max float value
+#include <optional> // conditional per-system RandomSeedScope in updateParticles
 
 #include <SPARK_Core.h>
 
 namespace SPK
 {
-	StepMode System::stepMode(STEP_MODE_REAL);
-	float System::constantStep(0.0f);
-	float System::minStep(0.0f);
-	float System::maxStep(0.0f);
-
-	bool System::clampStepEnabled(false);
-	float System::clampStep(1.0f);
-
 	System::System(bool initialize) :
 		Transformable(SHARE_POLICY_TRUE),
 		groups(),
+		stepMode(STEP_MODE_REAL),
+		constantStep(0.0f),
+		minStep(0.0f),
+		maxStep(0.0f),
+		clampStepEnabled(false),
+		clampStep(1.0f),
 		deltaStep(0.0f),		
 		initialized(initialize),
         active(true),
         AABBComputationEnabled(false),
         AABBMin(),
-        AABBMax()
+        AABBMax(),
+        bakedBillboardRadius(0.0f),
+        randomSeed(0) // per-system random stream state
 	{}
 
 	System::System(const System& system) :
 		Transformable(system),
+		stepMode(system.stepMode),
+		constantStep(system.constantStep),
+		minStep(system.minStep),
+		maxStep(system.maxStep),
+		clampStepEnabled(system.clampStepEnabled),
+		clampStep(system.clampStep),
 		deltaStep(0.0f),		
 		initialized(system.initialized),
         active(system.active),
         AABBComputationEnabled(system.AABBComputationEnabled),
         AABBMin(system.AABBMin),
-        AABBMax(system.AABBMax)
+        AABBMax(system.AABBMax),
+        bakedBoundsMin(system.bakedBoundsMin),
+        bakedBoundsMax(system.bakedBoundsMax),
+        bakedBillboardRadius(system.bakedBillboardRadius),
+        randomSeed(system.randomSeed) // per-system random stream state
 	{
 		for (std::vector<Ref<Group> >::const_iterator it = system.groups.begin(); it != system.groups.end(); ++it)
 		{
@@ -139,6 +150,12 @@ namespace SPK
 			return true;
 		}
 
+		// Run the whole update under this system's own random stream so all emission draws from
+		// the per-system seed and never consumes or perturbs the shared context stream.
+		std::optional<RandomSeedScope> randomSeedScope;
+		if (hasContext())
+			randomSeedScope.emplace(getContext(),randomSeed);
+
 		bool alive = true;
 
 		if ((clampStepEnabled)&&(deltaTime > clampStep))
@@ -221,6 +238,28 @@ namespace SPK
 			(*it)->initData();
 	}
 
+	// Per-system random stream accessors and helper. updateParticles applies the seed via an
+	// internal RandomSeedScope, and generateRandom draws one value under the same scope, so callers set the seed
+	// once instead of establishing a RandomSeedScope around every operation.
+	unsigned int System::getRandomSeed() const
+	{
+		return randomSeed;
+	}
+
+	void System::setRandomSeed(unsigned int seed)
+	{
+		randomSeed = seed;
+	}
+
+	unsigned int System::generateRandom(unsigned int minValue,unsigned int maxValue)
+	{
+		if (!hasContext())
+			return minValue;
+
+		RandomSeedScope randomSeedScope(getContext(),randomSeed);
+		return SPK_RANDOM(getContext(),minValue,maxValue);
+	}
+
 	Ref<SPKObject> System::findByName(const std::string& name)
 	{
 		Ref<SPKObject> object = SPKObject::findByName(name);
@@ -264,6 +303,17 @@ namespace SPK
             for (size_t i = 0; i < tmpGroups.size(); ++i)
                 addGroup(tmpGroups[i]);
 		}
+
+		if ((attrib = descriptor.getAttributeWithValue("bounds")))
+		{
+			const auto bounds = attrib->getValues<float>();
+			if (bounds.size() == 7)
+			{
+				bakedBoundsMin.set(bounds[0],bounds[1],bounds[2]);
+				bakedBoundsMax.set(bounds[3],bounds[4],bounds[5]);
+				bakedBillboardRadius = bounds[6];
+			}
+		}
 	}
 
 	void System::innerExport(IO::Descriptor& descriptor) const
@@ -271,6 +321,9 @@ namespace SPK
 		Transformable::innerExport(descriptor);
 		if (getNbGroups() > 0)
 			descriptor.getAttribute("groups")->setValuesRef(&groups[0],getNbGroups());
+
+		const float bounds[7] = {bakedBoundsMin.x,bakedBoundsMin.y,bakedBoundsMin.z,bakedBoundsMax.x,bakedBoundsMax.y,bakedBoundsMax.z,bakedBillboardRadius};
+		descriptor.getAttribute("bounds")->setValues(bounds,7);
 	}
 
 	void System::setGroupSystem(const Ref<Group>& group,System* system,bool remove)
@@ -284,6 +337,10 @@ namespace SPK
 				group->system->removeGroup(group);
 
 			group->system = system;
+
+			if (system && system->hasContext())
+				group->setContext(system->getContext());
+
 			group->initData(); // To initialize the group if needed
 		}
 	}

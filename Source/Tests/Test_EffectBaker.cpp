@@ -13,28 +13,11 @@
 
 FO_BEGIN_NAMESPACE
 
-TEST_CASE("EffectBaker")
-{
-    using namespace BakerTests;
-
-    TestRig rig;
-    const auto bakers = MakeRequestedBakers({string(EffectBaker::NAME)}, rig);
-
-    REQUIRE(bakers.size() == 1);
-    CHECK(bakers.front()->GetName() == EffectBaker::NAME);
-    CHECK(bakers.front()->GetOrder() == 4);
-    CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
-}
-
-TEST_CASE("EffectBakerBakesExplicitBindings")
-{
-    using namespace BakerTests;
-
-    constexpr string_view effect = R"(
+static constexpr string_view VALID_EFFECT = R"(
 [Effect]
 
 [VertexShader]
-layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -44,7 +27,7 @@ layout(location = 0) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition.xy, 0.0, 1.0);
     TexCoord = InTexCoord;
 }
 
@@ -61,14 +44,282 @@ void main(void)
 }
 )";
 
+static constexpr string_view EFFECT_WITH_AUX_BINDINGS = R"(
+[Effect]
+
+[VertexShader]
+layout(location = 0) in vec3 InPosition;
+layout(location = 2) in vec2 InTexCoord;
+layout(location = 0) out vec2 TexCoord;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy, 0.0, 1.0);
+    TexCoord = InTexCoord;
+}
+
+[FragmentShader]
+layout(binding = 2) uniform sampler2D IndoorMaskTex;
+layout(binding = 4, std140) uniform RandomValueBuf { vec4 RandomValue; };
+layout(binding = 5, std140) uniform ScriptValueBuf { vec4 ScriptValue[MAX_SCRIPT_VALUES / 4]; };
+layout(binding = 6, std140) uniform CameraBuf { vec4 MapAnchorScreenPos; vec4 ChunkScreenAnchor; };
+
+layout(location = 0) in vec2 TexCoord;
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    vec2 uv = MapAnchorScreenPos.xy + TexCoord * MapAnchorScreenPos.zw;
+    FragColor = texture(IndoorMaskTex, uv) + vec4(RandomValue.x + ScriptValue[0].x + ChunkScreenAnchor.x * 0.0);
+}
+)";
+
+static constexpr string_view MULTI_PASS_EFFECT = R"(
+[Effect]
+Passes = 2
+
+[VertexShader]
+layout(location = 0) in vec3 InPosition;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy, 0.0, 1.0);
+}
+
+[FragmentShader]
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(0.25, 0.5, 0.75, 1.0);
+}
+
+[VertexShader Pass2]
+layout(location = 0) in vec3 InPosition;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy * 0.5, 0.0, 1.0);
+}
+
+[FragmentShader Pass2]
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(0.75, 0.5, 0.25, 1.0);
+}
+)";
+
+static constexpr string_view EFFECT_WITH_BAD_PROJ_BUFFER = R"(
+[Effect]
+
+[VertexShader]
+layout(binding = 0, std140) uniform ProjBuf { vec4 OnlyOne; };
+
+layout(location = 0) in vec3 InPosition;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy + OnlyOne.xy, 0.0, 1.0);
+}
+
+[FragmentShader]
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(1.0);
+}
+)";
+
+TEST_CASE("EffectBaker")
+{
+    using namespace BakerTests;
+
     TestRig rig;
-    rig.AddSourceFile("Effects/Test.fofx", effect);
+    auto bakers = MakeRequestedBakers({string(EffectBaker::NAME)}, rig);
+
+    REQUIRE(bakers.size() == 1);
+    CHECK(bakers.front()->GetName() == EffectBaker::NAME);
+    CHECK(bakers.front()->GetOrder() == 4);
+    CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
+
+    SECTION("SkipsNonEffectSourcesAndTargets")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/Readme.txt", "not an effect");
+        local_rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
+
+        EffectBaker baker {local_rig.MakeContext()};
+        CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "skip.bin"));
+        CHECK(local_rig.Outputs.empty());
+
+        CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+        CHECK(local_rig.Outputs.contains("Effects/Test.fofx"));
+    }
+
+    SECTION("BakesWithoutBakeChecker")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
+
+        auto context = local_rig.MakeContext();
+        context->BakeChecker = {};
+
+        EffectBaker baker {std::move(context)};
+        CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+        CHECK(local_rig.Outputs.contains("Effects/Test.fofx"));
+        CHECK(local_rig.Outputs.contains("Effects/Test.fofx-1-info"));
+    }
+
+    SECTION("BakeCheckerCanSkipEffect")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT, 77);
+
+        vector<pair<string, uint64_t>> checks;
+        EffectBaker baker {local_rig.MakeContext("Effects", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+            return path != "Effects/Test.fofx";
+        })};
+        CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+
+        CHECK(local_rig.Outputs.empty());
+        CHECK(std::ranges::any_of(checks, [](const auto& check) { return check == pair<string, uint64_t> {"Effects/Test.fofx", 77}; }));
+        CHECK(std::ranges::any_of(checks, [](const auto& check) { return check == pair<string, uint64_t> {"Effects/Test.fofx-1-info", 77}; }));
+        CHECK(std::ranges::any_of(checks, [](const auto& check) { return check == pair<string, uint64_t> {"Effects/Test.fofx-1-frag-msl_ios", 77}; }));
+    }
+
+    SECTION("SkipsMissingExplicitTarget")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
+
+        EffectBaker baker {local_rig.MakeContext()};
+        CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "Effects/Missing.fofx-1-info"));
+        CHECK(local_rig.Outputs.empty());
+    }
+
+    SECTION("BakeCheckerCanSkipExplicitTarget")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT, 88);
+
+        EffectBaker baker {local_rig.MakeContext("Effects", [](string_view, uint64_t) { return false; })};
+        CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "Effects/Test.fofx-1-info"));
+        CHECK(local_rig.Outputs.empty());
+    }
+
+    SECTION("BakesExplicitTarget")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
+
+        EffectBaker baker {local_rig.MakeContext()};
+        CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "Effects/Test.fofx-1-info"));
+        CHECK(local_rig.Outputs.contains("Effects/Test.fofx"));
+        CHECK(local_rig.Outputs.contains("Effects/Test.fofx-1-info"));
+    }
+
+    SECTION("BakesPassSpecificShaders")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/Multi.fofx", MULTI_PASS_EFFECT);
+
+        EffectBaker baker {local_rig.MakeContext()};
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+
+        CHECK(local_rig.Outputs.contains("Effects/Multi.fofx"));
+        CHECK(local_rig.Outputs.contains("Effects/Multi.fofx-1-info"));
+        CHECK(local_rig.Outputs.contains("Effects/Multi.fofx-2-info"));
+        CHECK(local_rig.Outputs.contains("Effects/Multi.fofx-2-vert-spv"));
+        CHECK(local_rig.Outputs.contains("Effects/Multi.fofx-2-frag-spv"));
+    }
+
+    SECTION("RejectsInvalidEffects")
+    {
+        vector<pair<string, string>> invalid_effects = {
+            {"Effects/NoEffect.fofx", "[VertexShader]\nvoid main(void) { gl_Position = vec4(0.0); }\n"},
+            {"Effects/NoVertex.fofx", "[Effect]\n\n[FragmentShader]\nvoid main(void) { }\n"},
+            {"Effects/NoFragment.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = vec4(0.0); }\n"},
+            {"Effects/BadVertex.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = ; }\n\n[FragmentShader]\nlayout(location = 0) out vec4 FragColor;\nvoid main(void) { FragColor = vec4(1.0); }\n"},
+            {"Effects/BadFragment.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = vec4(0.0); }\n\n[FragmentShader]\nlayout(location = 0) out vec4 FragColor;\nvoid main(void) { FragColor = ; }\n"},
+        };
+
+        for (const auto& [path, content] : invalid_effects) {
+            TestRig local_rig;
+            local_rig.AddSourceFile(path, content);
+
+            EffectBaker baker {local_rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), EffectBakerException);
+        }
+    }
+
+    SECTION("ShaderCompilerDiagnosticsStayOnOneLogLine")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/BadVertex.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = ; }\n\n[FragmentShader]\nlayout(location = 0) out vec4 FragColor;\nvoid main(void) { FragColor = vec4(1.0); }\n");
+
+        vector<string> captured_messages;
+        SetLogCallback("effect-baker-diagnostic-line-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
+        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("effect-baker-diagnostic-line-test", {}); });
+
+        EffectBaker baker {local_rig.MakeContext()};
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), EffectBakerException);
+
+        auto diagnostic_it = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Failed to parse vertex shader") != string::npos; });
+        REQUIRE(diagnostic_it != captured_messages.end());
+        CHECK(diagnostic_it->find("\n- error") == string::npos);
+        CHECK(diagnostic_it->find("\n- ERROR") == string::npos);
+        CHECK(diagnostic_it->find("error :") == string::npos);
+        CHECK(diagnostic_it->find("ERROR:") == string::npos);
+        CHECK(diagnostic_it->find("Shader compiler diagnostic:") != string::npos);
+        CHECK(diagnostic_it->find("syntax error") != string::npos);
+    }
+
+    SECTION("RejectsMismatchedKnownUniformBuffer")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/BadProjBuffer.fofx", EFFECT_WITH_BAD_PROJ_BUFFER);
+
+        EffectBaker baker {local_rig.MakeContext()};
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), EffectBakerException);
+    }
+}
+
+TEST_CASE("EffectBakerBakesAuxiliaryBindings")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    rig.AddSourceFile("Effects/Aux.fofx", EFFECT_WITH_AUX_BINDINGS);
 
     EffectBaker baker {rig.MakeContext()};
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    const auto info = ConfigFile("Effects/Test.fofx-1-info", rig.GetOutputText("Effects/Test.fofx-1-info"));
+    auto info = ConfigFile(rig.GetOutputText("Effects/Aux.fofx-1-info"));
+
+    REQUIRE(info.HasSection("EffectInfo"));
+    CHECK(info.GetAsInt("EffectInfo", "IndoorMaskTex", -1) == 2);
+    CHECK(info.GetAsInt("EffectInfo", "RandomValueBuf", -1) == 4);
+    CHECK(info.GetAsInt("EffectInfo", "ScriptValueBuf", -1) == 5);
+    CHECK(info.GetAsInt("EffectInfo", "CameraBuf", -1) == 6);
+}
+
+TEST_CASE("EffectBakerBakesExplicitBindings")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
+
+    EffectBaker baker {rig.MakeContext()};
+
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    auto info = ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"));
 
     REQUIRE(info.HasSection("EffectInfo"));
     CHECK(info.GetAsInt("EffectInfo", "MainTex", -1) == 0);
@@ -76,6 +327,40 @@ void main(void)
     CHECK(info.GetAsInt("EffectInfo", "TimeBuf", -1) == 3);
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-vert-spv"));
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-frag-spv"));
+}
+
+TEST_CASE("EffectBakerBakesSdlGpuFlavors")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
+
+    EffectBaker baker {rig.MakeContext()};
+
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    // The native Vulkan SPIR-V and the SDL_GPU-convention SPIR-V are baked as separate flavors
+    CHECK(rig.Outputs.contains("Effects/Test.fofx-1-vert-spv"));
+    CHECK(rig.Outputs.contains("Effects/Test.fofx-1-vert-spv_sdl"));
+    CHECK(rig.Outputs.contains("Effects/Test.fofx-1-frag-spv_sdl"));
+
+    auto info = ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"));
+
+    REQUIRE(info.HasSection("EffectInfoSdl"));
+    // VALID_EFFECT: vertex has ProjBuf (1 UBO, no samplers); fragment has MainTex (1 sampler) + TimeBuf (1 UBO)
+    CHECK(info.GetAsInt("EffectInfoSdl", "VertexSamplers", -1) == 0);
+    CHECK(info.GetAsInt("EffectInfoSdl", "VertexUniformBuffers", -1) == 1);
+    CHECK(info.GetAsInt("EffectInfoSdl", "FragmentSamplers", -1) == 1);
+    CHECK(info.GetAsInt("EffectInfoSdl", "FragmentUniformBuffers", -1) == 1);
+    CHECK(info.GetAsInt("EffectInfoSdl", "VertProjBuf", -1) == 0);
+    CHECK(info.GetAsInt("EffectInfoSdl", "FragMainTex", -1) == 0);
+    // TimeBuf is authored at binding 3 but gets the dense SDL slot 0 within the fragment UBO set
+    CHECK(info.GetAsInt("EffectInfoSdl", "FragTimeBuf", -1) == 0);
+
+    // The native [EffectInfo] program-wide bindings are untouched by the SDL additions
+    REQUIRE(info.HasSection("EffectInfo"));
+    CHECK(info.GetAsInt("EffectInfo", "TimeBuf", -1) == 3);
 }
 
 FO_END_NAMESPACE

@@ -1390,6 +1390,17 @@
 	#endif
 #endif
 
+// (FOnline Patch): AS_MODERN_THREADS selects standard C++ threading/atomic primitives (<atomic>,
+// <mutex>, <shared_mutex>, <thread>, thread_local) instead of the platform-specific POSIX/WinAPI code.
+// It implies threading support is available; the platform thread macros are suppressed so their headers
+// and code paths are never used. Enabled via the build system (see ThirdParty.cmake).
+#ifdef AS_MODERN_THREADS
+	#undef AS_NO_THREADS
+	#undef AS_NO_ATOMIC
+	#undef AS_POSIX_THREADS
+	#undef AS_WINDOWS_THREADS
+#endif
+
 // If the platform doesn't support atomic instructions we can't allow
 // multithreading as the reference counters won't be threadsafe
 #if defined(AS_NO_ATOMIC) && !defined(AS_NO_THREADS)
@@ -1399,7 +1410,7 @@
 // If the form of threads to use hasn't been chosen
 // then the library will be compiled without support
 // for multithreading
-#if !defined(AS_POSIX_THREADS) && !defined(AS_WINDOWS_THREADS)
+#if !defined(AS_POSIX_THREADS) && !defined(AS_WINDOWS_THREADS) && !defined(AS_MODERN_THREADS)
 	#define AS_NO_THREADS
 #endif
 

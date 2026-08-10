@@ -32,6 +32,7 @@ foreach(package ${FO_PACKAGES})
         ListGet(entry 2 arch)
         ListGet(entry 3 pack)
         ListGet(entry 4 customConfig)
+        ListGet(entry 5 binaryOutputPostfix)
 
         AppendList(packageCommands -target "${target}")
         AppendList(packageCommands -platform "${platform}")
@@ -48,14 +49,8 @@ foreach(package ${FO_PACKAGES})
 
         AppendList(packageCommands -input "${FO_OUTPUT_PATH}")
 
-        if(DEFINED Package_${package}_Option_BINARY_OUTPUT_POSTFIX)
-            SetValue(packageBinaryOutputPostfix "${Package_${package}_Option_BINARY_OUTPUT_POSTFIX}")
-        else()
-            SetValue(packageBinaryOutputPostfix "${FO_BINARY_OUTPUT_POSTFIX}")
-        endif()
-
-        if(NOT "${packageBinaryOutputPostfix}" STREQUAL "")
-            AppendList(packageCommands -binary-output-postfix "${packageBinaryOutputPostfix}")
+        if(NOT "${binaryOutputPostfix}" STREQUAL "")
+            AppendList(packageCommands -binary-output-postfix "${binaryOutputPostfix}")
         endif()
 
         AppendList(packageCommands -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
@@ -64,4 +59,26 @@ foreach(package ${FO_PACKAGES})
         AddCustomCommand(TARGET MakePackage-${package} POST_BUILD
             COMMAND ${packageCommands})
     endforeach()
+
+    ListLength(Package_${package}_IncludeSourceGlobs packageIncludeCount)
+    if(packageIncludeCount GREATER 0)
+        MathExpr(packageIncludeLastIndex "${packageIncludeCount} - 1")
+
+        foreach(includeIndex RANGE 0 ${packageIncludeLastIndex})
+            ListGet(Package_${package}_IncludeSourceGlobs ${includeIndex} includeSourceGlob)
+            ListGet(Package_${package}_IncludeTargetPaths ${includeIndex} includeTargetPath)
+
+            StatusMessage("  Include ${includeSourceGlob} in ${includeTargetPath}")
+            AddCustomCommand(TARGET MakePackage-${package} POST_BUILD
+                COMMAND ${Python3_EXECUTABLE}
+                    "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/package.py"
+                    include
+                    -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}"
+                    -input "${FO_OUTPUT_PATH}"
+                    -source "${includeSourceGlob}"
+                    -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}"
+                    -target "${includeTargetPath}"
+                    -singlezip "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}.zip")
+        endforeach()
+    endif()
 endforeach()

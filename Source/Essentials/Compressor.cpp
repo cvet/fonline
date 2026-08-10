@@ -53,7 +53,7 @@ auto Compressor::Compress(const_span<uint8_t> data) -> vector<uint8_t>
     auto buf_len = numeric_cast<uLongf>(CalculateMaxCompressedBufSize(data.size()));
     auto buf = vector<uint8_t>(buf_len);
 
-    const auto result = compress2(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()), Z_BEST_SPEED);
+    int32_t result = compress2(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()), Z_BEST_SPEED);
 
     if (result != Z_OK) {
         throw CompressionException("Compression failed", result);
@@ -71,7 +71,7 @@ auto Compressor::Decompress(const_span<uint8_t> data, size_t mul_approx) -> vect
     auto buf = vector<uint8_t>(buf_len);
 
     while (true) {
-        const auto result = uncompress(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()));
+        int32_t result = uncompress(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()));
 
         if (result == Z_BUF_ERROR) {
             buf_len *= 2;
@@ -95,8 +95,20 @@ struct StreamCompressor::Impl
 };
 
 StreamCompressor::StreamCompressor() noexcept = default;
+
 StreamCompressor::StreamCompressor(StreamCompressor&&) noexcept = default;
-auto StreamCompressor::operator=(StreamCompressor&&) noexcept -> StreamCompressor& = default;
+
+auto StreamCompressor::operator=(StreamCompressor&& other) noexcept -> StreamCompressor&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (this != &other) {
+        Reset();
+        _impl = std::move(other._impl);
+    }
+
+    return *this;
+}
 
 StreamCompressor::~StreamCompressor()
 {
@@ -122,24 +134,25 @@ void StreamCompressor::Compress(const_span<uint8_t> buf, vector<uint8_t>& result
             allocator.deallocate(static_cast<uint8_t*>(address), 0);
         };
 
-        const auto deflate_init = deflateInit(&_impl->ZStream, Z_BEST_SPEED);
-        FO_RUNTIME_ASSERT(deflate_init == Z_OK);
+        int32_t deflate_init = deflateInit(&_impl->ZStream, Z_BEST_SPEED);
+        FO_VERIFY_AND_THROW(deflate_init == Z_OK, "Failed to initialize zlib deflate stream", deflate_init);
     }
 
     result.resize(std::max(result.capacity(), Compressor::CalculateMaxCompressedBufSize(buf.size())));
 
-    _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8_t*>(buf.data()));
+    _impl->ZStream.next_in = const_cast<Bytef*>(buf.data());
     _impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
-    _impl->ZStream.next_out = static_cast<Bytef*>(result.data());
+    auto output_begin = make_nptr(result.data());
+    _impl->ZStream.next_out = output_begin.get();
     _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
-    const auto deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
-    FO_RUNTIME_ASSERT(deflate_result == Z_OK);
+    int32_t deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
+    FO_VERIFY_AND_THROW(deflate_result == Z_OK, "Zlib deflate did not finish with Z_OK", deflate_result, Z_OK, buf.size(), result.size());
 
-    const auto writed_len = numeric_cast<size_t>(_impl->ZStream.next_in - buf.data());
-    FO_RUNTIME_ASSERT(writed_len == buf.size());
+    size_t writed_len = numeric_cast<size_t>(_impl->ZStream.next_in - buf.data());
+    FO_VERIFY_AND_THROW(writed_len == buf.size(), "Zlib deflate did not consume the full input buffer", writed_len, buf.size());
 
-    const auto compr_len = numeric_cast<size_t>(_impl->ZStream.next_out - result.data());
+    size_t compr_len = numeric_cast<size_t>(_impl->ZStream.next_out - output_begin.get());
     result.resize(compr_len);
 }
 
@@ -159,8 +172,20 @@ struct StreamDecompressor::Impl
 };
 
 StreamDecompressor::StreamDecompressor() noexcept = default;
+
 StreamDecompressor::StreamDecompressor(StreamDecompressor&&) noexcept = default;
-auto StreamDecompressor::operator=(StreamDecompressor&&) noexcept -> StreamDecompressor& = default;
+
+auto StreamDecompressor::operator=(StreamDecompressor&& other) noexcept -> StreamDecompressor&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (this != &other) {
+        Reset();
+        _impl = std::move(other._impl);
+    }
+
+    return *this;
+}
 
 StreamDecompressor::~StreamDecompressor()
 {
@@ -186,32 +211,44 @@ void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& re
             allocator.deallocate(static_cast<uint8_t*>(address), 0);
         };
 
-        const auto inflate_init = inflateInit(&_impl->ZStream);
-        FO_RUNTIME_ASSERT(inflate_init == Z_OK);
+        int32_t inflate_init = inflateInit(&_impl->ZStream);
+        FO_VERIFY_AND_THROW(inflate_init == Z_OK, "Failed to initialize zlib inflate stream", inflate_init);
     }
 
     result.resize(std::max(result.capacity(), buf.size() * 2));
 
-    _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8_t*>(buf.data()));
+    _impl->ZStream.next_in = const_cast<Bytef*>(buf.data());
     _impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
-    _impl->ZStream.next_out = static_cast<Bytef*>(result.data());
+    auto output_begin = make_nptr(result.data());
+    _impl->ZStream.next_out = output_begin.get();
     _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
-    const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
-    FO_RUNTIME_ASSERT(first_inflate == Z_OK);
+    int32_t first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
+    bool malformed_initial_stream = first_inflate == Z_NEED_DICT || first_inflate == Z_DATA_ERROR || first_inflate == Z_BUF_ERROR || first_inflate == Z_STREAM_END;
 
-    auto uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(result.data());
+    if (malformed_initial_stream) {
+        throw DecompressException("Malformed compressed transport stream during initial inflate", first_inflate, buf.size(), result.size());
+    }
+
+    FO_VERIFY_AND_THROW(first_inflate == Z_OK, "Initial zlib inflate step did not finish with Z_OK", first_inflate, Z_OK, buf.size(), result.size());
+    size_t uncompr_len = numeric_cast<size_t>(_impl->ZStream.next_out - output_begin.get());
 
     while (_impl->ZStream.avail_in != 0) {
         result.resize(result.size() * 2);
 
-        _impl->ZStream.next_out = static_cast<Bytef*>(result.data() + uncompr_len);
+        output_begin = result.data();
+        _impl->ZStream.next_out = output_begin.get() + uncompr_len;
         _impl->ZStream.avail_out = numeric_cast<uInt>(result.size() - uncompr_len);
 
-        const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
-        FO_RUNTIME_ASSERT(next_inflate == Z_OK);
+        int32_t next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
+        bool malformed_continuation_stream = next_inflate == Z_NEED_DICT || next_inflate == Z_DATA_ERROR || next_inflate == Z_BUF_ERROR || next_inflate == Z_STREAM_END;
 
-        uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(result.data());
+        if (malformed_continuation_stream) {
+            throw DecompressException("Malformed compressed transport stream during continuation inflate", next_inflate, _impl->ZStream.avail_in, result.size());
+        }
+
+        FO_VERIFY_AND_THROW(next_inflate == Z_OK, "Continuation zlib inflate step did not finish with Z_OK", next_inflate, Z_OK, _impl->ZStream.avail_in, result.size());
+        uncompr_len = numeric_cast<size_t>(_impl->ZStream.next_out - output_begin.get());
     }
 
     result.resize(uncompr_len);

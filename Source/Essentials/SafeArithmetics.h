@@ -56,6 +56,21 @@ template<typename T>
     return float_abs(f1 - f2) <= epsilon * std::max(float_abs(f1), float_abs(f2));
 }
 
+// Alignment, alignment must be a power of two
+template<typename T>
+    requires(std::is_unsigned_v<T>)
+[[nodiscard]] constexpr auto align_up(T value, T alignment) noexcept -> T
+{
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
+[[nodiscard]] constexpr auto alignment_for_size(size_t size) noexcept -> size_t
+{
+    static_assert((MAX_SERIALIZED_ALIGNMENT & (MAX_SERIALIZED_ALIGNMENT - 1)) == 0);
+
+    return size != 0 ? std::min(size & (~size + 1), MAX_SERIALIZED_ALIGNMENT) : 1;
+}
+
 // Numeric cast
 FO_DECLARE_EXCEPTION(OverflowException);
 FO_DECLARE_EXCEPTION(DivisionByZeroException);
@@ -235,6 +250,19 @@ template<typename T, typename U>
     requires(std::floating_point<U> && std::integral<T>)
 [[nodiscard]] constexpr auto iround(U value) -> T
 {
+    if (!std::isfinite(value)) {
+        throw OverflowException("Floating point rounding received non-finite value", typeid(U).name(), typeid(T).name(), value);
+    }
+
+    // std::llround is undefined for values outside the int64 range, so reject them before rounding.
+    // The upper bound is exclusive: casting int64 max to floating point rounds it up to 2^63, which is already unrepresentable.
+    constexpr U min_bound = static_cast<U>(std::numeric_limits<int64_t>::min());
+    constexpr U max_bound = static_cast<U>(std::numeric_limits<int64_t>::max());
+
+    if (value < min_bound || value >= max_bound) {
+        throw OverflowException("Floating point rounding received value out of integer range", typeid(U).name(), typeid(T).name(), value);
+    }
+
     return numeric_cast<T>(std::llround(value));
 }
 
@@ -360,63 +388,6 @@ template<typename T, typename U = std::decay_t<T>>
 [[nodiscard]] constexpr auto lerp(T v1, T v2, float32_t t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : iround<U>(v1 * (1 - t) + v2 * t));
-}
-
-// Foreach helper
-template<typename T>
-class irange_iterator final
-{
-public:
-    constexpr explicit irange_iterator(T v) noexcept :
-        _value {v}
-    {
-    }
-    constexpr auto operator==(const irange_iterator& other) const noexcept -> bool { return _value == other._value; }
-    constexpr auto operator*() const noexcept -> const T& { return _value; }
-    constexpr auto operator++() noexcept -> irange_iterator&
-    {
-        ++_value;
-        return *this;
-    }
-
-private:
-    T _value;
-};
-
-template<typename T>
-class irange_loop final
-{
-public:
-    constexpr explicit irange_loop(T to) noexcept :
-        _fromValue {0},
-        _toValue {to}
-    {
-    }
-    constexpr explicit irange_loop(T from, T to) noexcept :
-        _fromValue {from},
-        _toValue {to}
-    {
-    }
-    [[nodiscard]] constexpr auto begin() const noexcept -> irange_iterator<T> { return irange_iterator<T>(_fromValue); }
-    [[nodiscard]] constexpr auto end() const noexcept -> irange_iterator<T> { return irange_iterator<T>(_toValue); }
-
-private:
-    T _fromValue;
-    T _toValue;
-};
-
-template<typename T>
-    requires(std::integral<T>)
-constexpr auto iterate_range(T value) noexcept
-{
-    return irange_loop<T> {0, value};
-}
-
-template<typename T>
-    requires has_member<T, &T::size, size_t>
-constexpr auto iterate_range(const T& value) noexcept
-{
-    return irange_loop<decltype(value.size())> {0, value.size()};
 }
 
 FO_END_NAMESPACE

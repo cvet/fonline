@@ -35,12 +35,14 @@
 
 #include "Geometry.h"
 #include "Movement.h"
+#include "ScriptSystem.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
 
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, ScriptFunc<void, Critter*, bool> initFunc)
+FO_SCRIPT_API void Server_Critter_SetupScript(ptr<Critter> self, ScriptFunc<void, ptr<Critter>, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
@@ -53,8 +55,9 @@ FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, ScriptFunc<void, Cr
     self->SetInitScript(initFunc.GetName().first);
 }
 
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
+FO_SCRIPT_API void Server_Critter_SetupScriptEx(ptr<Critter> self, hstring initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -63,45 +66,93 @@ FO_SCRIPT_API void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
     self->SetInitScript(initFunc);
 }
 
+// SyncScope: requires self; reads current movement flag only.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsMoving(Critter* self)
+FO_SCRIPT_API bool Server_Critter_IsMoving(ptr<Critter> self)
 {
     return self->IsMoving();
 }
 
+// SyncScope: requires self; returned movement context is a snapshot handle for self's active move.
 ///@ ExportMethod
-FO_SCRIPT_API MovingContext* Server_Critter_GetMovingContext(Critter* self)
+FO_SCRIPT_API nptr<MovingContext> Server_Critter_GetMovingContext(ptr<Critter> self)
 {
-    return self->GetMovingContext();
+    auto moving = self->GetMovingContext();
+    return moving;
 }
 
+// SyncScope: requires self; reads current movement uid only.
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Server_Critter_GetMovingUid(Critter* self)
+FO_SCRIPT_API uint32_t Server_Critter_GetMovingUid(ptr<Critter> self)
 {
     return self->GetMovingUid();
 }
 
+// SyncScope: requires self; returns the auto-widen partner Player when one is attached.
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Critter_GetPlayer(Critter* self)
+FO_SCRIPT_API nptr<Player> Server_Critter_GetPlayer(ptr<Critter> self)
 {
-    return self->GetPlayer();
+    auto player = self->GetPlayer();
+    return player;
 }
 
-///@ ExportMethod
-FO_SCRIPT_API Map* Server_Critter_GetMap(Critter* self)
+// SyncScope: requires self; returns the current parent map handle, but does not cover it for later reads.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
 {
-    return self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+    auto map = self->GetParent<Map>();
+
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
+// SyncScope: requires self; returns the ids of self's current global-map group together with the group's
+// membership revision (empty with revision 0 when self is mapped). Group members are independent Critter roots
+// that self's cover does not include, so a caller that sends initial info to, transfers, or destroys a
+// global-map critter resolves and covers the returned ids and then re-reads ids plus revision to prove the
+// membership did not change while it was acquiring that cover.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex)
+FO_SCRIPT_API vector<ident_t> Server_Critter_GetGlobalMapCritterIds(ptr<Critter> self, uint64_t& revision)
+{
+    return self->GetGlobalMapGroupIds(revision);
+}
+
+// SyncScope: requires self + every critter of self's current global-map group; sends the other members to self's
+// player without acquiring any cover. Initial info sends only the critter itself, so a caller that attaches a
+// global-map critter to a player covers the group (Sync::WidenCritterWithGlobalMapGroup) and then calls this.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self)
+{
+    if (self->GetMapId()) {
+        throw ScriptException("Critter is not on global map");
+    }
+
+    const vector<ptr<Critter>> group = self->GetGlobalMapGroup();
+
+    // Validate the complete group before the first send so an uncovered member cannot leave the client with a
+    // half-delivered group.
+    for (ptr<Critter> group_cr : group) {
+        ValidateEntityAccess(group_cr);
+    }
+
+    for (ptr<Critter> group_cr : group) {
+        if (group_cr != self) {
+            self->Send_AddCritter(group_cr);
+        }
+    }
+}
+
+// SyncScope: requires self + current map; transfer keeps self covered and mutates current-map placement.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
 
-    auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
-    FO_RUNTIME_ASSERT(map);
+    auto map = self->GetParent<Map>();
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
+
+    ValidateEntityAccess(map);
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hexes args");
@@ -112,15 +163,18 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex)
     }
 }
 
+// SyncScope: requires self + current map; transfer keeps self covered and mutates current-map placement/dir.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, mdir dir)
+FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex, mdir dir)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
 
-    auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
-    FO_RUNTIME_ASSERT(map);
+    auto map = self->GetParent<Map>();
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
+
+    ValidateEntityAccess(map);
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hexes args");
@@ -140,40 +194,37 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, mdir di
     }
 }
 
+// SyncScope: requires self + source map if mapped + destination map + destination location; scripts should use Sync::LockForTransferToMap(self, map).
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex)
+FO_SCRIPT_API void Server_Critter_TransferToMap(ptr<Critter> self, ptr<Map> map, mpos hex)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
+
+    ValidateEntityAccess(map);
+    ValidateEntityAccess(self->GetParentRaw());
+
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid target hex arg", hex, map->GetSize());
     }
 
     self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
 }
 
+// SyncScope: requires self + source map if mapped + destination map + destination location; scripts should use Sync::LockForTransferToMap(self, map).
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir)
+FO_SCRIPT_API void Server_Critter_TransferToMap(ptr<Critter> self, ptr<Map> map, mpos hex, mdir dir, bool preciseHex = false)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
 
-    self->GetEngine()->MapMngr.TransferToMap(self, map, hex, dir, 2);
-}
+    ValidateEntityAccess(map);
+    ValidateEntityAccess(self->GetParentRaw());
 
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir, bool preciseHex)
-{
-    if (self->IsMapTransfersLocked()) {
-        throw ScriptException("Transfers locked");
-    }
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid target hex arg", hex, map->GetSize());
     }
 
     if (preciseHex) {
@@ -184,8 +235,9 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
     }
 }
 
+// SyncScope: requires self + current source map when self is mapped; mutates self to global-map state.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToGlobal(Critter* self)
+FO_SCRIPT_API void Server_Critter_TransferToGlobal(ptr<Critter> self)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
@@ -195,34 +247,46 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobal(Critter* self)
         return;
     }
 
+    ValidateEntityAccess(self->GetParentRaw());
+
     self->GetEngine()->MapMngr.TransferToGlobal(self, {});
 }
 
+// SyncScope: requires self + current source map and every group critter + its current source map before transfer.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(Critter* self, readonly_vector<Critter*> group)
+FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(ptr<Critter> self, readonly_vector<nptr<Critter>> group)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
 
+    ValidateEntityAccess(self->GetParentRaw());
+
     self->GetEngine()->MapMngr.TransferToGlobal(self, {});
 
-    for (auto* cr : group) {
-        if (cr != nullptr && !cr->IsDestroyed() && !self->IsDestroyed() && !self->GetMapId()) {
+    for (auto cr : group) {
+        if (!cr) {
+            continue;
+        }
+
+        if (!cr->IsDestroyed() && !self->IsDestroyed() && !self->GetMapId()) {
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(cr->GetParentRaw());
             self->GetEngine()->MapMngr.TransferToGlobal(cr, self->GetId());
         }
     }
 }
 
+// SyncScope: requires self + globalCr; if self is mapped also requires self's current source map.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* globalCr)
+FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(ptr<Critter> self, ptr<Critter> globalCr)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
-    if (globalCr == nullptr) {
-        throw ScriptException("Global critter arg is null");
-    }
+
+    ValidateEntityAccess(globalCr);
+
     if (globalCr->GetMapId()) {
         throw ScriptException("Global critter is not on global map");
     }
@@ -230,9 +294,10 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* 
         throw ScriptException("Cannot join own group");
     }
 
-    auto& map_mngr = self->GetEngine()->MapMngr;
+    MapManager& map_mngr = self->GetEngine()->MapMngr;
 
     if (self->GetMapId()) {
+        ValidateEntityAccess(self->GetParentRaw());
         map_mngr.TransferToGlobal(self, globalCr->GetId());
         return;
     }
@@ -240,9 +305,11 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* 
     const auto& self_group = self->GetRawGlobalMapGroup();
     const auto& target_group = globalCr->GetRawGlobalMapGroup();
 
-    if (self_group && target_group && self_group.get() == target_group.get()) {
+    if (self_group && target_group && self_group == target_group) {
         return;
     }
+
+    ValidateEntityAccess(self->GetParentRaw());
 
     map_mngr.RemoveCritterFromMap(self, nullptr);
 
@@ -256,40 +323,45 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* 
         return;
     }
 
-    for (const auto& member : self->GetGlobalMapGroup()) {
-        if (member.get() != self) {
-            self->Send_AddCritter(member.get());
+    for (auto member : self->GetGlobalMapGroup()) {
+        if (!(member == self)) {
+            self->Send_AddCritter(member);
         }
     }
 }
 
+// SyncScope: requires self; reads current condition state only.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsAlive(Critter* self)
+FO_SCRIPT_API bool Server_Critter_IsAlive(ptr<Critter> self)
 {
     return self->IsAlive();
 }
 
+// SyncScope: requires self; reads current condition state only.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsKnockout(Critter* self)
+FO_SCRIPT_API bool Server_Critter_IsKnockout(ptr<Critter> self)
 {
     return self->IsKnockout();
 }
 
+// SyncScope: requires self; reads current condition state only.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsDead(Critter* self)
+FO_SCRIPT_API bool Server_Critter_IsDead(ptr<Critter> self)
 {
     return self->IsDead();
 }
 
+// SyncScope: requires self + current map when mapped; recomputes visible critters/items.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_RefreshView(Critter* self)
+FO_SCRIPT_API void Server_Critter_RefreshView(ptr<Critter> self)
 {
     self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
     self->GetEngine()->MapMngr.ProcessVisibleItems(self);
 }
 
+// SyncScope: requires self; mutates direction and broadcasts it.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, mdir dir)
+FO_SCRIPT_API void Server_Critter_SetDir(ptr<Critter> self, mdir dir)
 {
     if (dir == self->GetDir()) {
         return;
@@ -300,104 +372,108 @@ FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, mdir dir)
     self->Broadcast_Dir();
 }
 
+// SyncScope: requires self; observer lookup may need self's map covered when self is mapped.
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Critter_GetCritter(Critter* self, ident_t id, CritterSeeType seeType)
+FO_SCRIPT_API nptr<Critter> Server_Critter_GetCritter(ptr<Critter> self, ident_t id, CritterSeeType seeType)
 {
-    return self->GetCritter(id, seeType);
+    auto cr = self->GetCritter(id, seeType);
+    return cr;
 }
 
+// SyncScope: requires self and current map when mapped; returned critters are covered only while that cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, CritterSeeType seeType, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Critter_GetCritters(ptr<Critter> self, CritterSeeType seeType, CritterFindType findType)
 {
-    auto critters = self->GetCritters(seeType, findType);
-
     if (self->GetMapId()) {
-        std::ranges::stable_sort(critters, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
-            const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-            const auto dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        auto map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+        ValidateEntityAccess(map);
+
+        vector<ptr<Critter>> critters = self->GetCritters(seeType, findType);
+
+        std::ranges::stable_sort(critters, [hex = self->GetHex()](ptr<const Critter> cr1, ptr<const Critter> cr2) {
+            int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+            int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
             return dist1 < dist2;
         });
+
+        return critters;
     }
 
-    return critters;
+    return self->GetCritters(seeType, findType);
 }
 
+// SyncScope: requires self + cr; checks self's visibility cache for a covered critter.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Critter* cr)
+FO_SCRIPT_API bool Server_Critter_IsSee(ptr<Critter> self, ptr<Critter> cr)
 {
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     if (self == cr) {
         return true;
     }
+
+    ValidateEntityAccess(cr);
 
     return self->IsSeeCritter(cr->GetId());
 }
 
+// SyncScope: requires self + cr; checks cr's visibility cache for this covered critter.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsSeenBy(Critter* self, Critter* cr)
+FO_SCRIPT_API bool Server_Critter_IsSeenBy(ptr<Critter> self, ptr<Critter> cr)
 {
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     if (self == cr) {
         return true;
     }
 
+    ValidateEntityAccess(cr);
+
     return cr->IsSeeCritter(self->GetId());
 }
 
+// SyncScope: requires self + cr; reads self's visibility-mode cache for a covered critter.
 ///@ ExportMethod
-FO_SCRIPT_API CritterVisibilityMode Server_Critter_GetVisibilityMode(Critter* self, Critter* cr)
+FO_SCRIPT_API CritterVisibilityMode Server_Critter_GetVisibilityMode(ptr<Critter> self, ptr<Critter> cr)
 {
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     if (self == cr) {
         return CritterVisibilityMode::Full;
     }
 
+    ValidateEntityAccess(cr);
+
     return self->GetVisibleCritterMode(cr->GetId());
 }
 
+// SyncScope: requires self + item; checks self's visible-item cache for a covered item.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Item* item)
+FO_SCRIPT_API bool Server_Critter_IsSee(ptr<Critter> self, ptr<Item> item)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
+    ValidateEntityAccess(item);
 
     return self->CheckVisibleItem(item->GetId());
 }
 
+// SyncScope: requires self; counts matching inventory items under self's inventory cover.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Critter_CountItem(Critter* self, hstring protoId)
+FO_SCRIPT_API int32_t Server_Critter_CountItem(ptr<Critter> self, hstring protoId)
 {
     return self->CountInvItemByPid(protoId);
 }
 
+// SyncScope: requires self; counts matching inventory items under self's inventory cover.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Critter_CountItem(Critter* self, ProtoItem* proto)
+FO_SCRIPT_API int32_t Server_Critter_CountItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     return self->CountInvItemByPid(proto->GetProtoId());
 }
 
+// SyncScope: requires self; destroys matching inventory items under self's holder cover.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
+FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, hstring pid)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
 
-    const auto count = self->CountInvItemByPid(pid);
+    int32_t count = self->CountInvItemByPid(pid);
 
     if (count == 0) {
         return;
@@ -406,14 +482,11 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
     self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
 }
 
+// SyncScope: requires self; destroys matching inventory items under self's holder cover.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto)
+FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
-    const auto count = self->CountInvItemByPid(proto->GetProtoId());
+    int32_t count = self->CountInvItemByPid(proto->GetProtoId());
 
     if (count == 0) {
         return;
@@ -422,8 +495,9 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto)
     self->GetEngine()->ItemMngr.SubItemCritter(self, proto->GetProtoId(), count);
 }
 
+// SyncScope: requires self; destroys matching inventory item count under self's holder cover.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid, int32_t count)
+FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, hstring pid, int32_t count)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
@@ -436,13 +510,10 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid, int32_
     self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
 }
 
+// SyncScope: requires self; destroys matching inventory item count under self's holder cover.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto, int32_t count)
+FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, ptr<ProtoItem> proto, int32_t count)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (count <= 0) {
         return;
     }
@@ -450,302 +521,360 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto, i
     self->GetEngine()->ItemMngr.SubItemCritter(self, proto->GetProtoId(), count);
 }
 
+// SyncScope: requires self; creates and attaches a new inventory item under self's cover.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t count)
+FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid, int32_t count)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
+    }
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
-    if (self->GetEngine()->GetProtoItem(pid) == nullptr) {
+    if (!self->GetEngine()->GetProtoItem(pid)) {
         throw ScriptException("Invalid proto", pid);
     }
-
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
-    return self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
+    auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
+    return item;
 }
 
+// SyncScope: requires self; creates and attaches a new inventory item under self's cover.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32_t count)
+FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem> proto, int32_t count)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
     }
-
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
-    return self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
+    auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
+    return item;
 }
 
+// SyncScope: requires self; returned inventory item is covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
+FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ident_t itemId)
 {
     if (!itemId) {
         return nullptr;
     }
 
-    return self->GetInvItem(itemId);
+    auto item = self->GetInvItem(itemId);
+    return item;
 }
 
+// SyncScope: requires self; returned inventory item is covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, hstring protoId)
+FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, hstring protoId)
 {
-    return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
+    return self->GetItemByPidInvPriority(protoId);
 }
 
+// SyncScope: requires self; returned inventory item is covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
+FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
-    return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, proto->GetProtoId());
+    return self->GetItemByPidInvPriority(proto->GetProtoId());
 }
 
+// SyncScope: requires self; returned inventory item is covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ItemProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    for (auto& item : self->GetInvItems()) {
+    for (auto item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item.get();
+            return item;
         }
     }
 
     return nullptr;
 }
 
+// SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self)
+FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self)
 {
-    return vec_transform(self->GetInvItems(), [](auto&& item) -> Item* { return item.get(); });
+    vector<ptr<Item>> items = self->GetInvItems();
+    return items;
 }
 
+// SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ItemProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto items = self->GetInvItems();
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    vector<ptr<Item>> items = self->GetInvItems();
 
-    vector<Item*> result;
+    vector<ptr<Item>> result;
     result.reserve(items.size());
 
-    for (auto& item : items) {
+    for (auto item : items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            result.push_back(item.get());
+            result.push_back(item);
         }
     }
 
     return result;
 }
 
+// SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, hstring protoId)
+FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, hstring protoId)
 {
-    const auto items = self->GetInvItems();
+    vector<ptr<Item>> items = self->GetInvItems();
 
-    vector<Item*> result;
+    vector<ptr<Item>> result;
     result.reserve(items.size());
 
-    for (auto& item : items) {
+    for (auto item : items) {
         if (item->GetProtoId() == protoId) {
-            result.push_back(item.get());
+            result.push_back(item);
         }
     }
 
     return result;
 }
 
+// SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ProtoItem* proto)
+FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ptr<ProtoItem> proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
+    vector<ptr<Item>> items = self->GetInvItems();
 
-    const auto items = self->GetInvItems();
-
-    vector<Item*> result;
+    vector<ptr<Item>> result;
     result.reserve(items.size());
 
-    for (auto& item : items) {
+    for (auto item : items) {
         if (item->GetProtoId() == proto->GetProtoId()) {
-            result.push_back(item.get());
+            result.push_back(item);
         }
     }
 
     return result;
 }
 
+// SyncScope: requires self + inventory item; mutates item slot and fires movement/equipment events.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, CritterItemSlot slot)
+FO_SCRIPT_API void Server_Critter_ChangeItemSlot(ptr<Critter> self, ident_t itemId, CritterItemSlot slot)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = self->GetInvItem(itemId);
+    auto self_holder = self.hold_ref();
+    ignore_unused(self_holder);
 
-    if (item == nullptr) {
+    auto item = self->GetInvItem(itemId);
+
+    if (!item) {
         throw ScriptException("Item not found");
     }
+
+    refcount_ptr item_holder = item.hold_ref();
+    ignore_unused(item_holder);
 
     // To slot arg is equal of current item slot
     if (item->GetCritterSlot() == slot) {
         return;
     }
 
-    if (static_cast<size_t>(slot) >= self->GetEngine()->Settings.CritterSlotEnabled.size() || !self->GetEngine()->Settings.CritterSlotEnabled[static_cast<size_t>(slot)]) {
+    if (static_cast<size_t>(slot) >= self->GetEngine()->Settings->CritterSlotEnabled.size() || !self->GetEngine()->Settings->CritterSlotEnabled[static_cast<size_t>(slot)]) {
         throw ScriptException("Slot is not allowed");
     }
 
-    const auto is_multi_item_allowed = static_cast<size_t>(slot) < self->GetEngine()->Settings.CritterSlotMultiItem.size() && self->GetEngine()->Settings.CritterSlotMultiItem[static_cast<size_t>(slot)];
+    bool is_multi_item_allowed = static_cast<size_t>(slot) < self->GetEngine()->Settings->CritterSlotMultiItem.size() && self->GetEngine()->Settings->CritterSlotMultiItem[static_cast<size_t>(slot)];
 
     if (is_multi_item_allowed) {
-        const auto from_slot = item->GetCritterSlot();
+        auto from_slot = item->GetCritterSlot();
 
         item->SetCritterSlot(slot);
 
         self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
+        ValidateEntityAccess(self);
+        ValidateEntityAccess(item);
         self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
     else {
-        auto* item_swap = self->GetInvItemBySlot(slot);
-        const auto from_slot = item->GetCritterSlot();
+        auto item_swap = self->GetInvItemBySlot(slot);
+        auto from_slot = item->GetCritterSlot();
 
         item->SetCritterSlot(slot);
 
-        if (item_swap != nullptr) {
+        if (item_swap) {
             item_swap->SetCritterSlot(from_slot);
         }
 
         self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
-        if (item_swap != nullptr) {
+        if (item_swap) {
+            refcount_ptr item_swap_holder = item_swap.hold_ref();
+            ignore_unused(item_swap_holder);
+
+            ValidateEntityAccess(self);
+            ValidateEntityAccess(item_swap);
             self->GetEngine()->OnCritterItemMoved.Fire(self, item_swap, slot);
         }
 
+        // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments.
+        ValidateEntityAccess(self);
+        ValidateEntityAccess(item);
         self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
 }
 
+// SyncScope: requires self + current map when mapped + context item when non-null; mutates condition and map fields.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition cond, CritterActionAnim actionAnim, AbstractItem* contextItem)
+FO_SCRIPT_API void Server_Critter_SetCondition(ptr<Critter> self, CritterCondition cond, CritterActionAnim actionAnim, nptr<AbstractItem> contextItem)
 {
-    const auto prev_cond = self->GetCondition();
+    ValidateEntityAccess(contextItem);
+
+    auto prev_cond = self->GetCondition();
 
     if (prev_cond == cond) {
         return;
     }
 
-    Map* map = nullptr;
+    refcount_nptr<Map> map {};
 
     if (self->GetMapId()) {
-        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
-        FO_RUNTIME_ASSERT(map);
+        map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+
+        ValidateEntityAccess(map);
 
         map->RemoveCritterFromField(self);
     }
 
     self->SetCondition(cond);
+    auto context_item = contextItem.dyn_cast<const Item>();
 
-    if (map != nullptr) {
+    if (map) {
         map->AddCritterToField(self);
     }
 
     if (cond == CritterCondition::Dead) {
-        self->SendAndBroadcast_Action(CritterAction::Dead, static_cast<int32_t>(actionAnim), dynamic_cast<Item*>(contextItem));
+        self->SendAndBroadcast_Action(CritterAction::Dead, static_cast<int32_t>(actionAnim), context_item);
     }
     else if (cond == CritterCondition::Knockout) {
-        self->SendAndBroadcast_Action(CritterAction::Knockout, static_cast<int32_t>(actionAnim), dynamic_cast<Item*>(contextItem));
+        self->SendAndBroadcast_Action(CritterAction::Knockout, static_cast<int32_t>(actionAnim), context_item);
     }
     else if (cond == CritterCondition::Alive) {
         if (prev_cond == CritterCondition::Knockout) {
-            self->SendAndBroadcast_Action(CritterAction::StandUp, static_cast<int32_t>(actionAnim), dynamic_cast<Item*>(contextItem));
+            self->SendAndBroadcast_Action(CritterAction::StandUp, static_cast<int32_t>(actionAnim), context_item);
         }
         else {
-            self->SendAndBroadcast_Action(CritterAction::Respawn, static_cast<int32_t>(actionAnim), dynamic_cast<Item*>(contextItem));
+            self->SendAndBroadcast_Action(CritterAction::Respawn, static_cast<int32_t>(actionAnim), context_item);
         }
     }
 }
 
+// SyncScope: requires self + context item when non-null; sends/broadcasts action only.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int32_t actionData, AbstractItem* contextItem)
+FO_SCRIPT_API void Server_Critter_Action(ptr<Critter> self, CritterAction action, int32_t actionData, nptr<AbstractItem> contextItem)
 {
-    self->SendAndBroadcast_Action(action, actionData, dynamic_cast<Item*>(contextItem));
+    ValidateEntityAccess(contextItem);
+
+    self->SendAndBroadcast_Action(action, actionData, contextItem.dyn_cast<const Item>());
 }
 
+// SyncScope: requires self + every non-null item in items; sends a network payload without changing cover.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items)
+FO_SCRIPT_API void Server_Critter_SendItems(ptr<Critter> self, readonly_vector<nptr<Item>> items, bool owned = false, bool withInnerEntities = false, any_t contextParam = any_t {})
 {
-    self->Send_SomeItems(items, false, false, {});
+    vector<ptr<const Item>> send_items;
+    send_items.reserve(items.size());
+
+    for (nptr<const Item> item : items) {
+        ValidateEntityAccess(item);
+
+        if (item) {
+            send_items.emplace_back(item);
+        }
+    }
+
+    self->Send_SomeItems(send_items, owned, withInnerEntities, contextParam);
 }
 
+// SyncScope: requires self + its auto-widened Player link; closes that player's connection.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items, bool owned, bool withInnerEntities, any_t contextParam)
-{
-    self->Send_SomeItems(items, owned, withInnerEntities, contextParam);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_Disconnect(Critter* self)
+FO_SCRIPT_API void Server_Critter_Disconnect(ptr<Critter> self)
 {
     if (!self->GetControlledByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 
-    if (auto* player = self->GetPlayer(); player != nullptr) {
+    if (auto player = self->GetPlayer()) {
         player->GetConnection()->GracefulDisconnect();
     }
 }
 
+// SyncScope: requires self + current map; changes controllable/player state and may self-sync map.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_MakeControllable(Critter* self, bool controllable)
+FO_SCRIPT_API void Server_Critter_MakeControllable(ptr<Critter> self, bool controllable)
 {
     if (controllable) {
         if (self->GetControlledByPlayer()) {
             return;
         }
-
-        self->MarkIsForPlayer();
     }
     else {
         if (!self->GetControlledByPlayer()) {
             return;
         }
 
-        if (self->GetPlayer() != nullptr) {
+        if (self->GetPlayer()) {
             self->DetachPlayer();
         }
+    }
 
+    if (self->GetMapId()) {
+        auto map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+        ValidateEntityAccess(map);
+    }
+
+    if (controllable) {
+        self->MarkIsForPlayer();
+    }
+    else {
         self->UnmarkIsForPlayer();
     }
 }
 
+// SyncScope: requires self + its auto-widened Player link; reads online state only.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsOnline(Critter* self)
+FO_SCRIPT_API bool Server_Critter_IsOnline(ptr<Critter> self)
 {
     if (!self->GetControlledByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 
-    return self->GetPlayer() != nullptr;
+    return !!self->GetPlayer();
 }
 
-static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 end_hex_offset, int32_t speed, ScriptFunc<bool, Critter*, Item*> gag_callback_func) -> MovingContext*
+static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos16 end_hex_offset, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gag_callback_func) -> refcount_ptr<MovingContext>
 {
-    auto* engine = self->GetEngine();
-    auto* map = engine->EntityMngr.GetMap(self->GetMapId());
+    FO_STACK_TRACE_ENTRY();
 
-    if (map == nullptr) {
-        throw ScriptException("Critter is not on map");
+    auto engine = self->GetEngine();
+    auto map = RequireParent<Map>(self, "Critter is not on map");
+
+    ValidateEntityAccess(map);
+
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid target hex arg", hex, map->GetSize());
+    }
+    if (speed < 0 || speed > std::numeric_limits<uint16_t>::max()) {
+        throw ScriptException("Speed arg out of range", speed);
     }
 
     self->StopMoving();
@@ -753,19 +882,19 @@ static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 e
     if (speed == 0) {
         auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
         failed_moving->Complete(MovingState::CantMove);
-        return failed_moving.release_ownership();
+        return failed_moving;
     }
 
-    function<bool(const Item*)> gag_callback;
+    function<bool(ptr<const Item>)> gag_callback;
 
     if (gag_callback_func) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gag_callback_func)), self](const Item* gag) mutable {
-            auto* gag_non_const = const_cast<Item*>(gag);
-            return gag_cb->Call(self, gag_non_const) && gag_cb->GetResult();
-        };
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gag_callback_func)), self](ptr<const Item> gag) mutable { return gag_cb->Call(self, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    const auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, std::move(gag_callback));
+    int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
+    int16_t clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
+    ipos16 clamped_offset = {clamped_ox, clamped_oy};
+    auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
 
     if (find_path.Result != FindPathOutput::ResultType::Ok) {
         auto state = MovingState::GenericError;
@@ -791,58 +920,76 @@ static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 e
         }
 
         auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+
         if (state == MovingState::HexBusy) {
             failed_moving->SetBlockHexes(self->GetHex(), hex);
         }
+
         failed_moving->Complete(state);
-        return failed_moving.release_ownership();
+        return failed_moving;
     }
 
-    const auto clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
-    const auto clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
-    const auto clamped_offset = ipos16 {clamped_ox, clamped_oy};
-
-    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), clamped_offset);
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
     engine->StartCritterMoving(self, moving, nullptr);
+    return moving;
+}
+
+// SyncScope: requires self + current map; starts movement and returns the new movement context.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck)
+{
+    auto moving = StartCritterMoveToHex(self, hex, cut, ipos16 {}, speed, std::move(gagCallabck));
+
     return moving.release_ownership();
 }
 
+// SyncScope: requires self + current map; starts movement and returns the new movement context.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
+FO_SCRIPT_API ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos16 endHexOffset, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck)
 {
-    return StartCritterMoveToHex(self, hex, cut, ipos16 {}, speed, std::move(gagCallabck));
+    auto moving = StartCritterMoveToHex(self, hex, cut, endHexOffset, speed, std::move(gagCallabck));
+
+    return moving.release_ownership();
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 endHexOffset, int32_t speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
-{
-    return StartCritterMoveToHex(self, hex, cut, endHexOffset, speed, std::move(gagCallabck));
-}
-
+// SyncScope: requires self; reads current movement state only.
 ///@ ExportMethod
-FO_SCRIPT_API MovingState Server_Critter_GetMovingState(Critter* self)
+FO_SCRIPT_API MovingState Server_Critter_GetMovingState(ptr<Critter> self)
 {
     return self->GetMovingState();
 }
 
+// SyncScope: requires self; stops current movement.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_StopMoving(Critter* self)
+FO_SCRIPT_API void Server_Critter_StopMoving(ptr<Critter> self)
 {
     self->GetEngine()->StopCritterMoving(self, MovingState::Stopped);
 }
 
+// SyncScope: requires self; changes current movement speed.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_ChangeMovingSpeed(Critter* self, int32_t speed)
+FO_SCRIPT_API void Server_Critter_ChangeMovingSpeed(ptr<Critter> self, int32_t speed)
 {
+    if (speed < 0 || speed > std::numeric_limits<uint16_t>::max()) {
+        throw ScriptException("Speed arg out of range", speed);
+    }
+
     self->GetEngine()->ChangeCritterMovingSpeed(self, numeric_cast<uint16_t>(speed));
 }
 
+// SyncScope: requires self + cr, and both must be on the same covered map.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_AttachToCritter(Critter* self, Critter* cr)
+FO_SCRIPT_API void Server_Critter_AttachToCritter(ptr<Critter> self, ptr<Critter> cr)
 {
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot attach a critter that is being destroyed", self->GetId());
     }
+    if (cr->IsDestroying()) {
+        throw ScriptException("Cannot attach to a critter that is being destroyed", cr->GetId());
+    }
+
+    ValidateEntityAccess(cr);
+
     if (cr == self) {
         throw ScriptException("Critter can't attach to itself");
     }
@@ -870,8 +1017,9 @@ FO_SCRIPT_API void Server_Critter_AttachToCritter(Critter* self, Critter* cr)
     cr->MoveAttachedCritters();
 }
 
+// SyncScope: requires self + current map; detaches self and refreshes visibility.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DetachFromCritter(Critter* self)
+FO_SCRIPT_API void Server_Critter_DetachFromCritter(ptr<Critter> self)
 {
     if (!self->GetIsAttached()) {
         return;
@@ -881,34 +1029,39 @@ FO_SCRIPT_API void Server_Critter_DetachFromCritter(Critter* self)
     self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
 }
 
+// SyncScope: requires self and attached critters; detaches each attached critter and refreshes visibility.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DetachAllCritters(Critter* self)
+FO_SCRIPT_API void Server_Critter_DetachAllCritters(ptr<Critter> self)
 {
-    for (auto* cr : copy_hold_ref(self->GetAttachedCritters())) {
+    for (auto cr : copy_hold_ref(self->GetAttachedCritters())) {
         cr->DetachFromCritter();
     }
 
     self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
 }
 
+// SyncScope: requires self; returned attached critters need their own cover before mutation.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Critter_GetAttachedCritters(ptr<Critter> self)
 {
-    return vec_transform(self->GetAttachedCritters(), [](auto&& cr) -> Critter* { return cr.get(); });
+    span<ptr<Critter>> attached_critters = self->GetAttachedCritters();
+    return vector<ptr<Critter>>(attached_critters.begin(), attached_critters.end());
 }
 
+// SyncScope: requires self; reads offline state for this critter's player link only.
 ///@ ExportMethod
-FO_SCRIPT_API timespan Server_Critter_GetPlayerOfflineTime(Critter* self)
+FO_SCRIPT_API timespan Server_Critter_GetPlayerOfflineTime(ptr<Critter> self)
 {
     return self->GetOfflineTime();
 }
 
+// SyncScope: requires self + current map when mapped; recomputes visible critters/items.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_RefreshVisibility(Critter* self)
+FO_SCRIPT_API void Server_Critter_RefreshVisibility(ptr<Critter> self)
 {
-    auto& mapMngr = self->GetEngine()->MapMngr;
-    mapMngr.ProcessVisibleCritters(self);
-    mapMngr.ProcessVisibleItems(self);
+    MapManager& map_mngr = self->GetEngine()->MapMngr;
+    map_mngr.ProcessVisibleCritters(self);
+    map_mngr.ProcessVisibleItems(self);
 }
 
 FO_END_NAMESPACE

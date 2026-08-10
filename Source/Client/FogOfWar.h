@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-class FogOfWar final
+class FogShape final
 {
 public:
     enum class TraceModeType
@@ -74,13 +74,13 @@ public:
         function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
     };
 
-    FogOfWar() = default;
-    FogOfWar(const FogOfWar&) = delete;
-    FogOfWar(FogOfWar&&) noexcept = default;
-    auto operator=(const FogOfWar&) -> FogOfWar& = delete;
-    auto operator=(FogOfWar&&) noexcept -> FogOfWar& = default;
+    FogShape() = default;
+    FogShape(const FogShape&) = delete;
+    FogShape(FogShape&&) noexcept = default;
+    auto operator=(const FogShape&) -> FogShape& = delete;
+    auto operator=(FogShape&&) noexcept -> FogShape& = default;
 
-    [[nodiscard]] auto GetPoints() const noexcept -> const vector<PrimitivePoint>& { return _points; }
+    [[nodiscard]] auto GetPoints() const noexcept -> const_span<PrimitivePoint> { return _points; }
 
     void RequestRebuild() noexcept { _rebuildFog = true; }
     void SetDrawOffset(ipos32 offset) noexcept { *_drawOffset = offset; }
@@ -89,9 +89,10 @@ public:
     void Clear();
 
 private:
-    void BuildPoints(const Input& input, vector<PrimitivePoint>& points) const;
+    void BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const;
     void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration);
-    void UpdateTransition(nanotime frame_time, int32_t duration);
+    void UpdateTransition(nanotime frame_time);
+    void FinishTransition();
     void InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points);
     auto MakeCollapsed(const vector<PrimitivePoint>& points) const -> vector<PrimitivePoint>;
 
@@ -103,7 +104,7 @@ private:
     bool _rebuildFog {};
     bool _lastEnabled {true};
     bool _transitionActive {};
-    bool _collapsingToOff {};
+    bool _collapsingToOff {}; // the active transition shrinks to center and clears the fog when it completes
     unique_ptr<ipos32> _drawOffset {SafeAlloc::MakeUnique<ipos32>()};
     unique_ptr<ipos32> _baseDrawOffset {SafeAlloc::MakeUnique<ipos32>()};
     Origin _lastOrigin {};
@@ -114,6 +115,7 @@ private:
     TraceModeType _lastTraceMode {};
     bool _lastCheckShootBlocks {true};
     nanotime _transitionTime {};
+    int32_t _transitionDuration {}; // duration (ms) of the active morph (grow/move/shrink)
     vector<PrimitivePoint> _points {};
     vector<PrimitivePoint> _startPoints {};
     vector<PrimitivePoint> _targetPoints {};

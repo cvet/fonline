@@ -39,8 +39,8 @@ static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto value_str = string(raw_value);
-    auto value = strvex(raw_value);
+    string value_str = string(raw_value);
+    strvex value = strvex(raw_value);
     value.trim();
 
     switch (value_type) {
@@ -48,23 +48,32 @@ static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType 
         if (!value.is_number()) {
             throw AnyDataException("Invalid int64 value", value_str);
         }
+
         return value.to_int64();
-    case AnyData::ValueType::Float64:
+    case AnyData::ValueType::Float64: {
         if (!value.is_number()) {
             throw AnyDataException("Invalid float64 value", value_str);
         }
-        return value.to_float64();
+
+        float64_t parsed_value = value.to_float64();
+
+        if (!std::isfinite(parsed_value)) {
+            throw AnyDataException("Invalid float64 value", value_str);
+        }
+
+        return parsed_value;
+    }
     case AnyData::ValueType::Bool:
         if (!value.is_explicit_bool() && !value.is_number()) {
             throw AnyDataException("Invalid bool value", value_str);
         }
 
         if (value.is_number()) {
-            const auto int_value = value.to_int64();
-            const auto float_value = value.to_float64();
+            int64_t int_value = value.to_int64();
+            float64_t float_value = value.to_float64();
 
             if (!is_float_equal(float_value, static_cast<float64_t>(int_value)) || (int_value != 0 && int_value != 1)) {
-                throw AnyDataException("Invalid bool numeric value", value_str);
+                throw AnyDataException("Invalid bool numeric value", raw_value);
             }
         }
 
@@ -114,7 +123,7 @@ auto AnyData::Value::Copy() const -> Value
     case ValueType::Bool:
         return AsBool();
     case ValueType::String:
-        return AsString();
+        return string(AsString());
     case ValueType::Array:
         return AsArray().Copy();
     case ValueType::Dict:
@@ -167,13 +176,20 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr auto default_buf_size = 1024;
+    constexpr int32_t default_buf_size = 1024;
 
     switch (value.Type()) {
     case ValueType::Int64:
         return strex("{}", value.AsInt64());
-    case ValueType::Float64:
-        return strex("{:f}", value.AsDouble()).rtrim("0").rtrim(".");
+    case ValueType::Float64: {
+        float64_t float_value = value.AsDouble();
+
+        if (!std::isfinite(float_value)) {
+            throw AnyDataException("Cannot serialize non-finite float64 value", float_value);
+        }
+
+        return strex("{:f}", float_value).rtrim("0").rtrim(".");
+    }
     case ValueType::Bool:
         return value.AsBool() ? "True" : "False";
     case ValueType::String:
@@ -227,7 +243,7 @@ auto AnyData::ValueToString(const Value& value) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto str = ValueToCodedString(value);
+    string str = ValueToCodedString(value);
 
     if (str.length() >= 2 && str.front() == '\"' && str.back() == '\"') {
         if (str[1] != ' ' && str[1] != '\t' && str[str.length() - 2] != ' ' && str[str.length() - 2] != '\t') {
@@ -242,32 +258,32 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(value_type == ValueType::Int64 || value_type == ValueType::Float64 || value_type == ValueType::Bool || value_type == ValueType::String);
+    FO_VERIFY_AND_THROW(value_type == ValueType::Int64 || value_type == ValueType::Float64 || value_type == ValueType::Bool || value_type == ValueType::String, "AnyData value type cannot be converted to raw payload");
 
     if (as_dict) {
         Dict dict;
 
-        const char* s = str.c_str();
+        auto s = make_nptr(str.c_str());
         string dict_key_entry;
         string dict_value_entry;
 
-        while ((s = ReadToken(s, dict_key_entry)) != nullptr) {
+        while ((s = ReadToken(s, dict_key_entry))) {
             s = ReadToken(s, dict_value_entry);
 
-            if (s == nullptr) {
+            if (!s) {
                 throw AnyDataException("Invalid dict value, missing entry for key", dict_key_entry);
             }
 
-            auto dict_key = StringEscaping::DecodeString(dict_key_entry);
+            string dict_key = StringEscaping::DecodeString(dict_key_entry);
 
             if (as_array) {
                 Array dict_arr;
 
-                const auto decoded_dict_value_entry = StringEscaping::DecodeString(dict_value_entry);
-                const char* s2 = decoded_dict_value_entry.c_str();
+                string decoded_dict_value_entry = StringEscaping::DecodeString(dict_value_entry);
+                auto s2 = make_nptr(decoded_dict_value_entry.c_str());
                 string arr_entry;
 
-                while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
+                while ((s2 = ReadToken(s2, arr_entry))) {
                     dict_arr.EmplaceBack(ParseValidatedScalarValue(arr_entry, value_type));
                 }
 
@@ -293,10 +309,10 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     else if (as_array) {
         Array arr;
 
-        const char* s = str.c_str();
+        auto s = make_nptr(str.c_str());
         string arr_entry;
 
-        while ((s = ReadToken(s, arr_entry)) != nullptr) {
+        while ((s = ReadToken(s, arr_entry))) {
             arr.EmplaceBack(ParseValidatedScalarValue(arr_entry, value_type));
         }
 
@@ -307,7 +323,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     }
 }
 
-auto AnyData::ReadToken(const char* str, string& result) -> const char*
+auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -315,15 +331,19 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
         return nullptr;
     }
 
+    auto decode_char = [str](size_t char_pos, size_t& char_len) {
+        char_len = utf8::DecodeStrNtLen(&str[char_pos]);
+        utf8::Decode(&str[char_pos], char_len);
+    };
+
     size_t pos = 0;
-    size_t length = utf8::DecodeStrNtLen(&str[pos]);
-    utf8::Decode(&str[pos], length);
+    size_t length = 0;
+    decode_char(pos, length);
 
     while (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
         pos++;
 
-        length = utf8::DecodeStrNtLen(&str[pos]);
-        utf8::Decode(&str[pos], length);
+        decode_char(pos, length);
     }
 
     if (str[pos] == 0) {
@@ -342,11 +362,10 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
                 pos++;
 
                 if (str[pos] == 0) {
-                    throw AnyDataException("Invalid escape sequence in quoted token", string(str));
+                    throw AnyDataException("Invalid escape sequence in quoted token", string(str.get()));
                 }
 
-                length = utf8::DecodeStrNtLen(&str[pos]);
-                utf8::Decode(&str[pos], length);
+                decode_char(pos, length);
 
                 pos += length;
             }
@@ -358,16 +377,15 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
                 pos += length;
             }
 
-            length = utf8::DecodeStrNtLen(&str[pos]);
-            utf8::Decode(&str[pos], length);
+            decode_char(pos, length);
         }
 
         if (!quote_closed) {
-            throw AnyDataException("Unterminated quoted token", string(str));
+            throw AnyDataException("Unterminated quoted token", string(str.get()));
         }
 
         if (str[pos + 1] != 0 && str[pos + 1] != ' ' && str[pos + 1] != '\t') {
-            throw AnyDataException("Invalid quoted token delimiter", string(str));
+            throw AnyDataException("Invalid quoted token delimiter", string(str.get()));
         }
     }
     else {
@@ -378,11 +396,10 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
                 pos++;
 
                 if (str[pos] == 0) {
-                    throw AnyDataException("Invalid escape sequence in token", string(str));
+                    throw AnyDataException("Invalid escape sequence in token", string(str.get()));
                 }
 
-                length = utf8::DecodeStrNtLen(&str[pos]);
-                utf8::Decode(&str[pos], length);
+                decode_char(pos, length);
 
                 pos += length;
             }
@@ -393,25 +410,27 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
                 pos += length;
             }
 
-            length = utf8::DecodeStrNtLen(&str[pos]);
-            utf8::Decode(&str[pos], length);
+            decode_char(pos, length);
         }
     }
 
+    auto next_token = make_ptr(&str[pos + (str[pos] != 0 ? 1 : 0)]);
     result.assign(&str[begin], pos - begin);
-    return str[pos] != 0 ? &str[pos + 1] : &str[pos];
+    return next_token;
 }
 
 void StringEscaping::AppendCodeString(string& result, string_view str)
 {
-    const bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
+    FO_STACK_TRACE_ENTRY();
+
+    bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
 
     if (protect) {
         result.append(1, '\"');
     }
 
     for (size_t i = 0; i < str.length();) {
-        const auto* s = str.data() + i;
+        auto s = make_ptr(str.data()).offset(i);
         size_t length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -429,12 +448,12 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
                 result.append("\\\\");
                 break;
             default:
-                result.append(s, 1);
+                result.append(s.get(), 1);
                 break;
             }
         }
         else {
-            result.append(s, length);
+            result.append(s.get(), length);
         }
 
         i += length;
@@ -467,15 +486,15 @@ auto StringEscaping::DecodeString(string_view str) -> string
     string result;
     result.reserve(str.length());
 
-    const auto* s = str.data();
+    auto s = make_ptr(str.data());
     size_t length = str.length();
     utf8::Decode(s, length);
 
-    const auto is_protected = length == 1 && *s == '\"';
+    bool is_protected = length == 1 && *s == '\"';
     bool closing_quote_found = false;
 
     for (size_t i = is_protected ? 1 : 0; i < str.length();) {
-        s = str.data() + i;
+        s = make_ptr(str.data()).offset(i);
         length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -495,7 +514,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
                 throw AnyDataException("Invalid escape sequence in string", string(str));
             }
 
-            s = str.data() + i;
+            s = make_ptr(str.data()).offset(i);
             length = str.length() - i;
             utf8::Decode(s, length);
 
@@ -513,12 +532,12 @@ auto StringEscaping::DecodeString(string_view str) -> string
                 break;
             default:
                 result.append(1, '\\');
-                result.append(s, length);
+                result.append(s.get(), length);
                 break;
             }
         }
         else {
-            result.append(s, length);
+            result.append(s.get(), length);
         }
 
         i += length;

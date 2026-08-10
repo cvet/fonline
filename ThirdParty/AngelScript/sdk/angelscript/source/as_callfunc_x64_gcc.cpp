@@ -311,12 +311,12 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 	for( int a = 0; a < argumentCount; ++a ) 
 	{
 		const asCDataType &parmType = descr->parameterTypes[a];
-		if( parmType.IsFloatType() && !parmType.IsReference() ) 
+		if( parmType.IsFloatType() && !parmType.IsReference() )
 		{
 			argsType[argIndex] = x64FLOATARG;
 			memcpy(paramBuffer + argIndex, stack_pointer, sizeof(float));
 			argIndex++;
-			stack_pointer++;
+			stack_pointer += 2; // (FOnline Patch) even argument slot: skip the slot padding above the value
 		}
 		else if( parmType.IsDoubleType() && !parmType.IsReference() ) 
 		{
@@ -333,7 +333,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			memcpy(paramBuffer + argIndex, stack_pointer, sizeof(void*));
 			memcpy(paramBuffer + argIndex + 1, stack_pointer + 2, sizeof(asDWORD));
 			argIndex += 2;
-			stack_pointer += 3;
+			stack_pointer += 4; // (FOnline Patch) even argument slot: 3 DWORDs of data + 1 padding
 		}
 		else if( parmType.IsPrimitive() ||
 		         parmType.IsReference() || 
@@ -343,7 +343,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			if( parmType.GetSizeOnStackDWords() == 1 )
 			{
 				memcpy(paramBuffer + argIndex, stack_pointer, sizeof(asDWORD));
-				stack_pointer++;
+				stack_pointer += 2; // (FOnline Patch) even argument slot: skip the slot padding above the value
 			}
 			else
 			{

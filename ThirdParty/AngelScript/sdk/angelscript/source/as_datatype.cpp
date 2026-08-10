@@ -56,6 +56,7 @@ asCDataType::asCDataType()
 	isConstHandle          = false;
 	isHandleToAsHandleType = false;
 	ifHandleThenConst      = false;
+	isNullable             = false; // (FOnline Patch)
 }
 
 asCDataType::asCDataType(const asCDataType &dt)
@@ -69,6 +70,7 @@ asCDataType::asCDataType(const asCDataType &dt)
 	isConstHandle          = dt.isConstHandle;
 	isHandleToAsHandleType = dt.isHandleToAsHandleType;
 	ifHandleThenConst      = dt.ifHandleThenConst;
+	isNullable             = dt.isNullable; // (FOnline Patch)
 }
 
 asCDataType::~asCDataType()
@@ -258,6 +260,9 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 			str += "const";
 	}
 
+	if( isNullable ) // (FOnline Patch)
+		str += "?";
+
 	if( isReference )
 		str += "&";
 
@@ -275,6 +280,7 @@ asCDataType &asCDataType::operator =(const asCDataType &dt)
 	isAuto                 = dt.isAuto;
 	isHandleToAsHandleType = dt.isHandleToAsHandleType;
 	ifHandleThenConst      = dt.ifHandleThenConst;
+	isNullable             = dt.isNullable; // (FOnline Patch)
 
 	return (asCDataType &)*this;
 }
@@ -338,7 +344,9 @@ int asCDataType::MakeArray(asCScriptEngine *engine, asCModule *module)
 
 	isObjectHandle = (at->flags & asOBJ_IMPLICIT_HANDLE) != 0; // (FOnline Patch) isObjectHandle = false;
 	isConstHandle = false;
-	
+	isNullable = false; // (FOnline Patch) the new array handle is non-null by default; the element's
+	                    // nullability (e.g. `Item?[]`) was already captured in the subtype pushed above
+
 	typeInfo = at;
 	tokenType = ttIdentifier;
 
@@ -369,6 +377,15 @@ int asCDataType::MakeHandleToConst(bool b)
 	if( !isObjectHandle ) return -1;
 
 	isReadOnly = b;
+	return 0;
+}
+
+// (FOnline Patch) Mark this type as nullable (`T?`). Only meaningful for handle types;
+// the builder validates placement before invoking this. Stored as an extra bit on the
+// data type so the compiler can decide whether to emit a runtime null guard on writes.
+int asCDataType::MakeNullable(bool b)
+{
+	isNullable = b;
 	return 0;
 }
 
@@ -721,6 +738,24 @@ int asCDataType::GetSizeOnStackDWords() const
 	return GetSizeInMemoryDWords() + size;
 }
 
+// (FOnline Patch) Alignment-aware call-argument layout: see the declaration comment in as_datatype.h.
+int asCDataType::GetArgSlotSizeOnStackDWords() const
+{
+	// (FOnline Patch) Argument slots use a platform-uniform layout: the pointer-carried part keeps the
+	// per-platform AS_PTR_SIZE (the VM's push instructions emit it per-target), while the by-value part
+	// (a primitive value, or the ? var-type's typeid dword) is padded up to an even dword count. The
+	// compiler bakes that padding into the bytecode as physical push instructions, so a 32-bit load of
+	// 64-bit-baked bytecode must account the same even slots; the old dense 32-bit branch made every
+	// consumer (CallGeneric popSize, generic arg walk, script-callee negative param offsets) expect fewer
+	// dwords than the caller actually pushed, desyncing the stack (e.g. global-init CALLSYS left the
+	// global's storage null -> 'Null pointer access'). On 64-bit this formula is value-for-value identical
+	// to the previous (GetSizeOnStackDWords()+1)&~1 for every parameter kind.
+	const int totalSize = GetSizeOnStackDWords();
+	const int ptrPart = (isReference || (typeInfo && !IsEnumType())) ? AS_PTR_SIZE : 0;
+	const int valuePart = totalSize - ptrPart;
+	return ptrPart + ((valuePart + 1) & ~1);
+}
+
 #ifdef WIP_16BYTE_ALIGN
 int  asCDataType::GetAlignment() const
 {
@@ -733,6 +768,65 @@ int  asCDataType::GetAlignment() const
 	return typeInfo->alignment;
 }
 #endif
+
+// (FOnline Patch) Single authority for VM-stack value alignment. Returns the required alignment of this
+// variable's stack slot in DWORDs (1 = 4-byte, 2 = 8-byte). Shared bit-for-bit by the compiler layout
+// (GetVariableOffset/GetVariableSlot) and the bytecode serializer (asCReader/asCWriter), so every 8-byte
+// value carried inline on the stack lands on an 8-byte-aligned slot. Covers inline 8-byte value types,
+// 8-byte built-in primitives (int64/uint64/double), and 8-byte object/funcdef handles (only when
+// AS_PTR_SIZE == 2). Returns 1 (no extra alignment) for everything else, including references.
+int  asCDataType::GetStackAlignmentDWords(bool isInlineValue) const
+{
+	// (FOnline Patch) Inline 8-byte value types (registered with alignment 8) need their on-stack slot aligned.
+	if( isInlineValue && typeInfo != 0 )
+	{
+		asCObjectType *ot = CastToObjectType(typeInfo);
+		if( ot != 0 && ot->alignment > 4 )
+			return (ot->alignment + 3) / 4; // bytes -> dwords (8 -> 2)
+	}
+
+	// (FOnline Patch) 8-byte built-in primitives (int64/uint64/double) are carried inline on the stack by value
+	// and are read/written as 8-byte loads/stores, so their slot must be 8-byte aligned too. They have no
+	// typeInfo, so they are handled here by size. References (pointers to the value) do not need this. The
+	// memory size is bitness-independent (always 2 dwords), so the serializer's alignment pass re-derives it
+	// identically on every target.
+	if( !isReference && typeInfo == 0 && tokenType != ttQuestion && GetSizeInMemoryDWords() == 2 )
+		return 2;
+
+	// (FOnline Patch) Object handles (and funcdef handles) held by value on the stack are a single pointer. On
+	// 64-bit targets (AS_PTR_SIZE == 2) that pointer is an 8-byte value read/written through an 8-byte load, so
+	// its slot must be 8-byte aligned. On 32-bit targets (AS_PTR_SIZE == 1) a pointer is 4 bytes and needs no
+	// alignment, so this is naturally bitness-correct: the serializer's pad pass uses AS_PTR_SIZE-derived sizes
+	// and re-derives the (zero, on 32-bit) pad per target. References (pointer-to-handle) are not aligned here.
+#if AS_PTR_SIZE == 2
+	if( !isReference && IsObjectHandle() )
+		return 2;
+#endif
+
+	return 1;
+}
+
+// (FOnline Patch) See declaration in as_datatype.h. Single authority for init-list buffer element alignment.
+asUINT GetListElementAlignment(const asCDataType &dt, asUINT size)
+{
+	// 8-byte built-in primitives (int64/uint64/double) need 8-byte alignment; smaller ones 4-byte.
+	if( dt.IsPrimitive() )
+		return size >= 8 ? 8u : 4u;
+
+	// Handles / ref types keep the historical 4-byte packing in the list buffer: their size is pointer-size
+	// dependent and the factories read/write them through unaligned accessors, so the baked layout stays
+	// bitness-stable. (This differs from the VM stack, which aligns 64-bit handles.)
+	if( dt.IsObjectHandle() || (dt.GetTypeInfo() != 0 && (dt.GetTypeInfo()->flags & asOBJ_REF)) )
+		return 4u;
+
+	// Inline value types use their registered per-type alignment (8 for 8-byte value types such as
+	// ident_t/hstring/any_t/string), matching asCDataType::GetStackAlignmentDWords and RegisterObjectType.
+	asCObjectType *ot = CastToObjectType(dt.GetTypeInfo());
+	if( ot != 0 && ot->alignment > 4 )
+		return (asUINT)ot->alignment;
+
+	return 4u;
+}
 
 asSTypeBehaviour *asCDataType::GetBehaviour() const
 {

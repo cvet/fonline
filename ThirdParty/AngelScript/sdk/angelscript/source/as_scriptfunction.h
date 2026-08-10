@@ -45,6 +45,7 @@
 #include "as_array.h"
 #include "as_datatype.h"
 #include "as_atomic.h"
+#include <atomic> // (FOnline Patch): for the atomic GC flag below
 
 BEGIN_AS_NAMESPACE
 
@@ -113,7 +114,8 @@ enum asEFuncTrait
 	asTRAIT_EXPLICIT    = 1<<9,  // method
 	asTRAIT_PROPERTY    = 1<<10, // method/function
 	asTRAIT_DELETED     = 1<<11, // method
-	asTRAIT_VARIADIC    = 1<<12  // method/function
+	asTRAIT_VARIADIC    = 1<<12, // method/function
+	asTRAIT_NORETURN    = 1<<13  // (FOnline Patch) function/method never returns normally (always throws/exits)
 };
 
 struct asSFunctionTraits
@@ -185,6 +187,8 @@ public:
 	bool                 IsExplicit() const;
 	bool                 IsProperty() const;
 	bool                 IsVariadic() const;
+	bool                 IsNoReturn() const;
+	void                 SetNoReturn();
 	asUINT               GetParamCount() const;
 	int                  GetParam(asUINT index, int *typeId, asDWORD *flags = 0, const char **name = 0, const char **defaultArg = 0) const;
 	int                  GetReturnTypeId(asDWORD *flags = 0) const;
@@ -312,7 +316,7 @@ public:
 
 	mutable asCAtomic            externalRefCount; // Used for external referneces
 	        asCAtomic            internalRefCount; // Used for internal references
-	mutable bool                 gcFlag;
+	mutable std::atomic<bool>    gcFlag; // (FOnline Patch): atomic so concurrent AddRef/Release from parallel script events don't data-race on this GC hint
 	asCScriptEngine             *engine;
 	asCModule                   *module;
 

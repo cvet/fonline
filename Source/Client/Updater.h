@@ -60,16 +60,20 @@ extern auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_vi
 extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
 extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
 extern auto GetClientRuntimeLivePath() -> string;
-extern auto GetClientRuntimeStagingPath() -> string;
+extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
+extern auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
+extern auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
+extern auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
 extern auto GetCurrentClientRuntimeLibraryName() -> string;
-extern void PromoteStagedRuntimeCompanions() noexcept;
+extern void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
 extern void ShowUpdaterFailure(UpdaterResult result);
+extern auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
 
 class Updater final
 {
 public:
     Updater() = delete;
-    Updater(GlobalSettings& settings, IAppWindow& window);
+    Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window);
     Updater(const Updater&) = delete;
     Updater(Updater&&) noexcept = delete;
     auto operator=(const Updater&) = delete;
@@ -79,6 +83,7 @@ public:
     [[nodiscard]] auto IsFinished() const noexcept -> bool { return _fileListReceived && _filesToUpdate.empty(); }
     [[nodiscard]] auto IsAborted() const noexcept -> bool { return _aborted; }
     [[nodiscard]] auto GetResult() const noexcept -> UpdaterResult { return _result.value_or(UpdaterResult::Failed); }
+    [[nodiscard]] auto GetRuntimeLivePath() const -> string;
 
     // One iteration of network processing + UI rendering. Returns true once the updater
     // reached a terminal state and the caller should inspect GetResult().
@@ -92,7 +97,7 @@ private:
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
-        bool IsRuntimeCompanion {};
+        bool IsClientBinary {};
     };
 
     void AddText(string_view text);
@@ -104,6 +109,7 @@ private:
     void Net_OnDisconnect();
     void Net_OnInitData();
     void Net_OnTimeSync();
+    void Net_OnHashList();
     void Net_OnUpdateFileData();
 
     auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
@@ -114,7 +120,7 @@ private:
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
     static auto GetClientBinaryDir() -> string;
 
-    raw_ptr<ClientSettings> _settings;
+    ptr<ClientSettings> _settings;
     ClientConnection _conn;
     CacheStorage _cache;
     string _binaryDir;
@@ -123,6 +129,7 @@ private:
     bool _aborted {};
     bool _fileListReceived {};
     bool _hasMatchingEntries {};
+    bool _restartPrompt {};
     vector<UpdateFile> _filesToUpdate {};
     std::ofstream _tempFile {};
     vector<uint8_t> _updateFileBuf {};

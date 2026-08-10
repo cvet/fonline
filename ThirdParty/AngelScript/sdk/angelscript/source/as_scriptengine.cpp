@@ -38,6 +38,18 @@
 
 #include <stdlib.h>
 
+// (FOnline Patch) MemorySanitizer unpoison helper for the value-type list-buffer construction-detection
+// heuristic in DestroySubList (see usage below).
+#if defined(__has_feature)
+#  if __has_feature(memory_sanitizer)
+#    include <sanitizer/msan_interface.h>
+#    define AS_FONLINE_MSAN_UNPOISON(ptr, sz) __msan_unpoison((ptr), (sz))
+#  endif
+#endif
+#ifndef AS_FONLINE_MSAN_UNPOISON
+#  define AS_FONLINE_MSAN_UNPOISON(ptr, sz) ((void)0)
+#endif
+
 #include "as_config.h"
 #include "as_scriptengine.h"
 #include "as_builder.h"
@@ -498,6 +510,14 @@ int asCScriptEngine::SetEngineProperty(asEEngineProp property, asPWORD value)
 		tok.InitJumpTable();
 		break;
 
+	// (FOnline Patch) opt-in stricter null-handling: reject implicit
+	// `T x = nullableExpr;` at compile time.
+	case asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE:
+		if (value > 1)
+			return asINVALID_ARG;
+		ep.disallowNullableToNonNullable = value ? true : false;
+		break;
+
 	default:
 		return asINVALID_ARG;
 	}
@@ -630,6 +650,10 @@ asPWORD asCScriptEngine::GetEngineProperty(asEEngineProp property) const
 	case asEP_FOREACH_SUPPORT:
 		return ep.foreachSupport;
 
+	// (FOnline Patch)
+	case asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE:
+		return ep.disallowNullableToNonNullable;
+
 	default:
 		return 0;
 	}
@@ -708,6 +732,7 @@ asCScriptEngine::asCScriptEngine()
 		ep.memberInitMode                = 1;         // 0 = pre 2.38.0, members with init expr in declaration are initialized after super(), 1 = all members initialized in beginning, except if explicitly initialized in body
 		ep.boolConversionMode            = 0;         // 0 = only do use opImplConv for registered value type, 1 = use also opConv in contextual conversion even for reference types
 		ep.foreachSupport                = true;
+		ep.disallowNullableToNonNullable = false; // (FOnline Patch) opt-in stricter null check
 	}
 
 	gc.engine = this;
@@ -1135,6 +1160,34 @@ int asCScriptEngine::ShutDownAndRelease()
 	// the process, and will also allow the engine to warn about invalid calls
 	shuttingDown = true;
 
+	// (FOnline Patch) Release module globals and collect destructor cascades while
+	// the modules still own the types and behaviours needed by their objects.
+	for( asUINT n = (asUINT)scriptModules.GetLength(); n-- > 0; )
+		if( scriptModules[n] )
+			scriptModules[n]->CallExit();
+
+	// (FOnline Patch)
+	const auto collectGarbageUntilStable = [this]()
+	{
+		for( ;; )
+		{
+			asUINT sizeBefore = 0;
+			asUINT destroyedBefore = 0;
+			GetGCStatistics(&sizeBefore, &destroyedBefore, 0, 0, 0);
+
+			GarbageCollect();
+
+			asUINT sizeAfter = 0;
+			asUINT destroyedAfter = 0;
+			asUINT newObjectsAfter = 0;
+			GetGCStatistics(&sizeAfter, &destroyedAfter, 0, &newObjectsAfter, 0);
+
+			if( sizeAfter == 0 || (sizeAfter == sizeBefore && destroyedAfter == destroyedBefore && newObjectsAfter == 0) )
+				break;
+		}
+	};
+	collectGarbageUntilStable();
+
 	// Clear the context callbacks. If new context's are needed for the clean-up the engine will take care of this itself.
 	// Context callbacks are normally used for pooling contexts, and if we allow new contexts to be created without being
 	// immediately destroyed afterwards it means the engine's refcount will increase. This is turn may cause memory access
@@ -1148,9 +1201,11 @@ int asCScriptEngine::ShutDownAndRelease()
 			scriptModules[n]->Discard();
 	scriptModules.SetLength(0);
 
-	// Do another full garbage collection to destroy the object types/functions
-	// that may have been placed in the gc when destroying the modules
-	GarbageCollect();
+	// (FOnline Patch) Do another full garbage collection to destroy the object types/functions
+	// that may have been placed in the gc when destroying the modules. Module
+	// discard can release the last external references to an entire object graph,
+	// and its destructors can in turn expose more collectable objects.
+	collectGarbageUntilStable();
 
 	// Do another sweep to delete discarded modules, that may not have
 	// been deleted earlier due to still having external references
@@ -1940,10 +1995,12 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 		type->name       = typeName;
 		type->nameSpace  = defaultNamespace;
 		type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-		// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-		type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+
+		// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+		// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+		// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+		type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
+
 		type->flags      = flags;
 		type->accessMask = defaultAccessMask;
 
@@ -2010,10 +2067,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 			type->name       = typeName;
 			type->nameSpace  = defaultNamespace;
 			type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-			// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+			// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+			// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+			// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
 			type->flags      = flags;
 			type->accessMask = defaultAccessMask;
 
@@ -2072,10 +2129,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 					type->templateSubTypes[s].GetTypeInfo()->AddRefInternal();
 			}
 			type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-			// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+			// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+			// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+			// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
 			type->flags      = flags;
 			type->accessMask = defaultAccessMask;
 
@@ -3657,6 +3714,21 @@ void asCScriptEngine::RemoveTemplateInstanceType(asCObjectType *t)
 }
 
 // internal
+// (FOnline Patch) Template instances must distinguish nullable element subtypes, e.g. array<T?> from
+// array<T>. asCDataType::operator== intentionally ignores isNullable (so T and T? stay compatible for
+// overload matching and assignment); instance identity, however, must keep them apart so element access
+// on array<T?> yields T? while array<T> stays non-null. This mirrors how const subtypes already form
+// distinct instances via operator==.
+static bool TemplateSubTypesNullableMatch(const asCArray<asCDataType> &a, const asCArray<asCDataType> &b)
+{
+	if( a.GetLength() != b.GetLength() )
+		return false;
+	for( asUINT n = 0; n < a.GetLength(); n++ )
+		if( a[n].IsNullable() != b[n].IsNullable() )
+			return false;
+	return true;
+}
+
 asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateType, asCArray<asCDataType> &subTypes, asCModule *requestingModule)
 {
 	asUINT n;
@@ -3668,7 +3740,8 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 		if( type &&
 			type->name == templateType->name &&
 			type->nameSpace == templateType->nameSpace &&
-			type->templateSubTypes == subTypes )
+			type->templateSubTypes == subTypes &&
+			TemplateSubTypesNullableMatch(type->templateSubTypes, subTypes) ) // (FOnline Patch) keep array<T?> distinct
 		{
 			// If the template instance is generated, then the module should hold a reference
 			// to it so the config group can determine see that the template type is in use.
@@ -6870,12 +6943,15 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 					if( ti->flags & asOBJ_VALUE )
 					{
 						asUINT size = ti->GetSize();
-
-						// Align the offset to 4 bytes boundary
-						if( size >= 4 && (asPWORD(buffer) & 0x3) )
-							buffer += 4 - (asPWORD(buffer) & 0x3);
-
 						asCObjectType *ot = CastToObjectType(ti);
+
+						// (FOnline Patch) Align to the element's natural alignment (8 for 8-byte value types),
+						// matching the shared GetListElementAlignment policy used by the compiler layout, the
+						// bytecode writer/reader and the array/dict list factories.
+						const asUINT elemAlign = GetListElementAlignment(dt, size);
+						if( size >= 4 && (asPWORD(buffer) % elemAlign) != 0 )
+							buffer += elemAlign - asUINT(asPWORD(buffer) % elemAlign);
+
 						if( ot && ot->beh.destruct )
 						{
 							// Only call the destructor if the object has been created
@@ -6886,6 +6962,12 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 							//       thrown aborting the initialization. The engine
 							//       really should be keeping track of which objects has
 							//       been successfully initialized.
+
+							// (FOnline Patch) The scan deliberately reads the raw element bytes; a value type may
+							// legitimately hold uninitialized interior bytes (e.g. std::string's small-string
+							// buffer tail copied into the list buffer). These are our own buffer bytes, so mark
+							// them defined for MemorySanitizer before scanning.
+							AS_FONLINE_MSAN_UNPOISON(buffer, size);
 
 							for( asUINT n = 0; n < size; n++ )
 							{
@@ -6918,9 +7000,10 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 				{
 					asUINT size = dt.GetSizeInMemoryBytes();
 
-					// Align the offset to 4 bytes boundary
-					if( size >= 4 && (asPWORD(buffer) & 0x3) )
-						buffer += 4 - (asPWORD(buffer) & 0x3);
+					// (FOnline Patch) align the offset to the primitive's natural alignment (8 for 8-byte primitives)
+					asUINT elemAlign = size >= 8 ? 8u : 4u;
+					if( size >= 4 && (asPWORD(buffer) % elemAlign) != 0 )
+						buffer += elemAlign - asUINT(asPWORD(buffer) % elemAlign);
 
 					// Advance the buffer
 					buffer += size;

@@ -1,0 +1,387 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "ModelSpriteLayout.h"
+
+#if FO_ENABLE_3D
+
+FO_BEGIN_NAMESPACE
+
+static constexpr float32_t MODEL_SPRITE_LAYOUT_GUARD = 2.0f;
+// Keep in sync with the default 3D_Skinned shadow pass.
+static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
+static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
+static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
+
+struct ProjectedLayoutBounds
+{
+    float32_t MinX {};
+    float32_t MinY {};
+    float32_t MaxX {};
+    float32_t MaxY {};
+    bool Initialized {};
+};
+
+static auto IsFinite(const mat44& value) -> bool;
+static auto CalculateHarmonicRange(float32_t value_0, float32_t value_90, float32_t value_180) -> optional<pair<float32_t, float32_t>>;
+static void IncludeProjectedRange(ProjectedLayoutBounds& bounds, const pair<float32_t, float32_t>& x_range, const pair<float32_t, float32_t>& y_range);
+static auto IncludeProjectedCorner(const vec3& point, const mat44& post_direction_transform, float32_t projection_factor, bool include_shadow, const vec3& ground_pos, ProjectedLayoutBounds& body_bounds, ProjectedLayoutBounds& draw_bounds) -> bool;
+static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>;
+
+auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y) -> optional<isize32>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!std::isfinite(min_x) || !std::isfinite(min_y) || !std::isfinite(max_x) || !std::isfinite(max_y) || min_x > max_x || min_y > max_y) {
+        return std::nullopt;
+    }
+
+    float64_t required_width = std::ceil(numeric_cast<float64_t>(max_x) - numeric_cast<float64_t>(min_x));
+    float64_t required_height = std::ceil(numeric_cast<float64_t>(max_y) - numeric_cast<float64_t>(min_y));
+
+    if (required_width > numeric_cast<float64_t>(std::numeric_limits<uint32_t>::max()) || required_height > numeric_cast<float64_t>(std::numeric_limits<uint32_t>::max())) {
+        return std::nullopt;
+    }
+
+    optional<int32_t> width = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_width)));
+    optional<int32_t> height = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_height)));
+
+    if (!width || !height) {
+        return std::nullopt;
+    }
+
+    return isize32 {*width, *height};
+}
+
+auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, ipos32 current_pivot, float32_t guard_padding, isize32 minimum_size) -> optional<ModelSpriteFramePlacement>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!std::isfinite(guard_padding) || guard_padding < 0.0f || minimum_size.width <= 0 || minimum_size.height <= 0) {
+        return std::nullopt;
+    }
+
+    optional<isize32> required_size = CalculateModelSpriteFrameSize(min_x - numeric_cast<float32_t>(current_pivot.x) - guard_padding, min_y - numeric_cast<float32_t>(current_pivot.y) - guard_padding, max_x - numeric_cast<float32_t>(current_pivot.x) + guard_padding, max_y - numeric_cast<float32_t>(current_pivot.y) + guard_padding);
+
+    if (!required_size) {
+        return std::nullopt;
+    }
+
+    required_size->width = std::max(required_size->width, minimum_size.width);
+    required_size->height = std::max(required_size->height, minimum_size.height);
+
+    float64_t required_pivot_x = numeric_cast<float64_t>(current_pivot.x) - std::round(std::floor(numeric_cast<float64_t>(min_x)) - numeric_cast<float64_t>(guard_padding));
+    float64_t required_pivot_y = numeric_cast<float64_t>(current_pivot.y) - std::round(std::floor(numeric_cast<float64_t>(min_y)) - numeric_cast<float64_t>(guard_padding));
+
+    return ModelSpriteFramePlacement {
+        .Size = *required_size,
+        .Pivot =
+            {
+                iround<int32_t>(std::clamp(required_pivot_x, 0.0, numeric_cast<float64_t>(required_size->width))),
+                iround<int32_t>(std::clamp(required_pivot_y, 0.0, numeric_cast<float64_t>(required_size->height))),
+            },
+    };
+}
+
+auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpriteFramePlacement required) -> optional<ModelSpriteFramePlacement>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The model origin is not required to lie inside a tight frame: an animation or attached effect may put the
+    // complete visible envelope on one side of the root. Treat the pivot as a signed root-relative interval anchor;
+    // only the frame dimensions themselves must be positive.
+    auto is_valid = [](const ModelSpriteFramePlacement& placement) noexcept { return placement.Size.width > 0 && placement.Size.height > 0; };
+
+    if (!is_valid(current) || !is_valid(required)) {
+        return std::nullopt;
+    }
+
+    int64_t left = std::max<int64_t>(current.Pivot.x, required.Pivot.x);
+    int64_t top = std::max<int64_t>(current.Pivot.y, required.Pivot.y);
+    int64_t right = std::max<int64_t>(numeric_cast<int64_t>(current.Size.width) - current.Pivot.x, numeric_cast<int64_t>(required.Size.width) - required.Pivot.x);
+    int64_t bottom = std::max<int64_t>(numeric_cast<int64_t>(current.Size.height) - current.Pivot.y, numeric_cast<int64_t>(required.Size.height) - required.Pivot.y);
+    int64_t width = left + right;
+    int64_t height = top + bottom;
+
+    if (width <= 0 || height <= 0 || width > std::numeric_limits<int32_t>::max() || height > std::numeric_limits<int32_t>::max()) {
+        return std::nullopt;
+    }
+
+    return ModelSpriteFramePlacement {
+        .Size = {numeric_cast<int32_t>(width), numeric_cast<int32_t>(height)},
+        .Pivot = {numeric_cast<int32_t>(left), numeric_cast<int32_t>(top)},
+    };
+}
+
+auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor) -> ModelBounds3D
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The view box anchors names and UI, so it is the model's stable idle silhouette rather than the pose of the moment:
+    // a raised weapon or a swung arm must not push the name up, and a box derived from the live pose would drift.
+    // A pose that puts the critter *lower* is the one case that must be followed - a corpse or a prone body would
+    // otherwise wear its name at standing height, far above itself. Compare the projected tops after the same base
+    // transforms as the eventual view layout: imported models may rotate their source Y away from screen-up, so raw
+    // model-space Max.y is not a height. Both inputs are baked per clip, so the choice is fixed for a given animation
+    // and never accumulates.
+    if (!active_animation_bounds || !IsValidModelBounds(*active_animation_bounds) || !IsValidModelBounds(idle_bounds)) {
+        return idle_bounds;
+    }
+
+    optional<ModelSpriteLayout> idle_layout = CalculateModelSpriteLayout(idle_bounds, post_direction_transform, pre_direction_transform, projection_factor, false);
+    optional<ModelSpriteLayout> active_layout = CalculateModelSpriteLayout(*active_animation_bounds, post_direction_transform, pre_direction_transform, projection_factor, false);
+
+    if (!idle_layout || !active_layout) {
+        return idle_bounds;
+    }
+
+    return active_layout->ViewRect.y > idle_layout->ViewRect.y ? *active_animation_bounds : idle_bounds;
+}
+
+auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!std::isfinite(projection_factor) || projection_factor <= 0.0f || !IsFinite(post_direction_transform) || !IsFinite(pre_direction_transform) || !IsValidModelBounds(bounds)) {
+        return std::nullopt;
+    }
+
+    glm::vec4 ground = post_direction_transform * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
+
+    if (!std::isfinite(ground.x) || !std::isfinite(ground.y) || !std::isfinite(ground.z) || ground.w != 1.0f) {
+        return std::nullopt;
+    }
+
+    vec3 ground_pos {ground};
+    ProjectedLayoutBounds body_bounds;
+    ProjectedLayoutBounds draw_bounds;
+
+    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+        vec3 corner {
+            (corner_index & 1U) != 0 ? bounds.Max.x : bounds.Min.x,
+            (corner_index & 2U) != 0 ? bounds.Max.y : bounds.Min.y,
+            (corner_index & 4U) != 0 ? bounds.Max.z : bounds.Min.z,
+        };
+        glm::vec4 transformed = pre_direction_transform * glm::vec4 {corner, 1.0f};
+
+        if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || transformed.w != 1.0f) {
+            return std::nullopt;
+        }
+
+        if (!IncludeProjectedCorner(vec3 {transformed}, post_direction_transform, projection_factor, include_shadow, ground_pos, body_bounds, draw_bounds)) {
+            return std::nullopt;
+        }
+    }
+
+    if (!body_bounds.Initialized || !draw_bounds.Initialized) {
+        return std::nullopt;
+    }
+
+    body_bounds.MinX -= MODEL_SPRITE_LAYOUT_GUARD;
+    body_bounds.MinY -= MODEL_SPRITE_LAYOUT_GUARD;
+    body_bounds.MaxX += MODEL_SPRITE_LAYOUT_GUARD;
+    body_bounds.MaxY += MODEL_SPRITE_LAYOUT_GUARD;
+    draw_bounds.MinX -= MODEL_SPRITE_LAYOUT_GUARD;
+    draw_bounds.MinY -= MODEL_SPRITE_LAYOUT_GUARD;
+    draw_bounds.MaxX += MODEL_SPRITE_LAYOUT_GUARD;
+    draw_bounds.MaxY += MODEL_SPRITE_LAYOUT_GUARD;
+
+    optional<isize32> draw_size = CalculateModelSpriteFrameSize(draw_bounds.MinX, draw_bounds.MinY, draw_bounds.MaxX, draw_bounds.MaxY);
+
+    if (!draw_size) {
+        return std::nullopt;
+    }
+
+    float64_t view_left = std::floor(numeric_cast<float64_t>(body_bounds.MinX));
+    float64_t view_top = std::floor(numeric_cast<float64_t>(body_bounds.MinY));
+    float64_t view_right = std::ceil(numeric_cast<float64_t>(body_bounds.MaxX));
+    float64_t view_bottom = std::ceil(numeric_cast<float64_t>(body_bounds.MaxY));
+    float64_t draw_left = std::floor(numeric_cast<float64_t>(draw_bounds.MinX));
+    float64_t draw_top = std::floor(numeric_cast<float64_t>(draw_bounds.MinY));
+    float64_t draw_right = std::ceil(numeric_cast<float64_t>(draw_bounds.MaxX));
+    float64_t draw_bottom = std::ceil(numeric_cast<float64_t>(draw_bounds.MaxY));
+
+    if (view_left < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || view_top < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || view_right > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || view_bottom > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || draw_left < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || draw_top < numeric_cast<float64_t>(std::numeric_limits<int32_t>::min()) || draw_right > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max()) || draw_bottom > numeric_cast<float64_t>(std::numeric_limits<int32_t>::max())) {
+        return std::nullopt;
+    }
+
+    int32_t view_rect_left = iround<int32_t>(view_left);
+    int32_t view_rect_top = iround<int32_t>(view_top);
+    int32_t view_rect_right = iround<int32_t>(view_right);
+    int32_t view_rect_bottom = iround<int32_t>(view_bottom);
+    int32_t draw_rect_left = iround<int32_t>(draw_left);
+    int32_t draw_rect_top = iround<int32_t>(draw_top);
+    int32_t draw_rect_right = iround<int32_t>(draw_right);
+    int32_t draw_rect_bottom = iround<int32_t>(draw_bottom);
+
+    if (view_rect_right <= view_rect_left || view_rect_bottom <= view_rect_top || draw_rect_right <= draw_rect_left || draw_rect_bottom <= draw_rect_top) {
+        return std::nullopt;
+    }
+
+    return ModelSpriteLayout {
+        .DrawSize = *draw_size,
+        .DrawRect = {draw_rect_left, draw_rect_top, draw_rect_right - draw_rect_left, draw_rect_bottom - draw_rect_top},
+        .ViewRect = {view_rect_left, view_rect_top, view_rect_right - view_rect_left, view_rect_bottom - view_rect_top},
+    };
+}
+
+static auto IsFinite(const mat44& value) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<const float32_t> values = glm::value_ptr(value);
+
+    for (size_t i = 0; i < 16; i++) {
+        if (!std::isfinite(values[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static auto CalculateHarmonicRange(float32_t value_0, float32_t value_90, float32_t value_180) -> optional<pair<float32_t, float32_t>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    float64_t center = (numeric_cast<float64_t>(value_0) + numeric_cast<float64_t>(value_180)) * 0.5;
+    float64_t cosine = (numeric_cast<float64_t>(value_0) - numeric_cast<float64_t>(value_180)) * 0.5;
+    float64_t sine = numeric_cast<float64_t>(value_90) - center;
+    float64_t radius = std::hypot(cosine, sine);
+    float64_t range_min = center - radius;
+    float64_t range_max = center + radius;
+
+    if (!std::isfinite(range_min) || !std::isfinite(range_max) || range_min < numeric_cast<float64_t>(std::numeric_limits<float32_t>::lowest()) || range_max > numeric_cast<float64_t>(std::numeric_limits<float32_t>::max())) {
+        return std::nullopt;
+    }
+
+    return pair<float32_t, float32_t> {numeric_cast<float32_t>(range_min), numeric_cast<float32_t>(range_max)};
+}
+
+static void IncludeProjectedRange(ProjectedLayoutBounds& bounds, const pair<float32_t, float32_t>& x_range, const pair<float32_t, float32_t>& y_range)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!bounds.Initialized) {
+        bounds.MinX = x_range.first;
+        bounds.MinY = y_range.first;
+        bounds.MaxX = x_range.second;
+        bounds.MaxY = y_range.second;
+        bounds.Initialized = true;
+    }
+    else {
+        bounds.MinX = std::min(bounds.MinX, x_range.first);
+        bounds.MinY = std::min(bounds.MinY, y_range.first);
+        bounds.MaxX = std::max(bounds.MaxX, x_range.second);
+        bounds.MaxY = std::max(bounds.MaxY, y_range.second);
+    }
+}
+
+static auto IncludeProjectedCorner(const vec3& point, const mat44& post_direction_transform, float32_t projection_factor, bool include_shadow, const vec3& ground_pos, ProjectedLayoutBounds& body_bounds, ProjectedLayoutBounds& draw_bounds) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    array<vec3, 3> world_points;
+    constexpr array<float32_t, 3> angles {0.0f, 90.0f, 180.0f};
+
+    for (size_t i = 0; i < angles.size(); i++) {
+        mat44 direction_transform = glm::rotate(mat44 {1.0f}, angles[i] * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        glm::vec4 world = post_direction_transform * direction_transform * glm::vec4 {point, 1.0f};
+
+        if (!std::isfinite(world.x) || !std::isfinite(world.y) || !std::isfinite(world.z) || world.w != 1.0f) {
+            return false;
+        }
+
+        world_points[i] = vec3 {world};
+    }
+
+    auto screen_x = [projection_factor](const vec3& value) { return value.x * projection_factor; };
+    auto screen_y = [projection_factor](const vec3& value) { return -value.y * projection_factor; };
+    optional<pair<float32_t, float32_t>> body_x_range = CalculateHarmonicRange(screen_x(world_points[0]), screen_x(world_points[1]), screen_x(world_points[2]));
+    optional<pair<float32_t, float32_t>> body_y_range = CalculateHarmonicRange(screen_y(world_points[0]), screen_y(world_points[1]), screen_y(world_points[2]));
+
+    if (!body_x_range || !body_y_range) {
+        return false;
+    }
+
+    IncludeProjectedRange(body_bounds, *body_x_range, *body_y_range);
+    IncludeProjectedRange(draw_bounds, *body_x_range, *body_y_range);
+
+    if (!include_shadow) {
+        return true;
+    }
+
+    array<vec3, 3> shadow_points = world_points;
+
+    for (vec3& shadow_pos : shadow_points) {
+        float32_t shadow_distance = (shadow_pos.y - ground_pos.y) * SHADOW_CAMERA_ANGLE_COS;
+        shadow_distance -= (ground_pos.z - shadow_pos.z) * SHADOW_CAMERA_ANGLE_SIN;
+        shadow_pos.y -= shadow_distance * SHADOW_CAMERA_ANGLE_COS;
+        shadow_distance *= SHADOW_ANGLE_TAN;
+        shadow_pos.y += shadow_distance * SHADOW_CAMERA_ANGLE_SIN;
+        shadow_pos.z -= 10.0f;
+    }
+
+    optional<pair<float32_t, float32_t>> shadow_x_range = CalculateHarmonicRange(screen_x(shadow_points[0]), screen_x(shadow_points[1]), screen_x(shadow_points[2]));
+    optional<pair<float32_t, float32_t>> shadow_y_range = CalculateHarmonicRange(screen_y(shadow_points[0]), screen_y(shadow_points[1]), screen_y(shadow_points[2]));
+
+    if (!shadow_x_range || !shadow_y_range) {
+        return false;
+    }
+
+    IncludeProjectedRange(draw_bounds, *shadow_x_range, *shadow_y_range);
+    return true;
+}
+
+static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
+
+    if (value > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
+        return std::nullopt;
+    }
+
+    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_SCALE;
+    uint64_t rounded = (std::max<uint64_t>(value, 1) + alignment - 1) / alignment * alignment;
+
+    if (rounded > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
+        return std::nullopt;
+    }
+
+    return numeric_cast<int32_t>(rounded);
+}
+
+FO_END_NAMESPACE
+
+#endif

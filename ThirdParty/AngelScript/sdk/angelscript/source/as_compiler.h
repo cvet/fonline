@@ -135,6 +135,16 @@ struct asSDeferredParam
 // TODO: refactor: asCExprContext should have indicators to inform where the value is,
 //                 i.e. if the reference to an object is pushed on the stack or not, etc
 
+// (FOnline Patch) One narrowing carried by an expression's null-check tag: the
+// stack offset of the guarded local and its narrowed (non-null) type. A compound
+// `&&` / `||` accumulates one of these per null-checked local so that ALL of them
+// narrow a following short-circuited operand, not just the nearest check.
+struct asSNullCheckNarrow
+{
+	int stackOffset;
+	asCDataType narrowedType;
+};
+
 // This class holds information about an expression that is being evaluated, e.g.
 // the current bytecode, ambiguous symbol names, property accessors, etc.
 struct asCExprContext
@@ -173,6 +183,20 @@ struct asCExprContext
 	asCString enumValue;
 	asSNameSpace *symbolNamespace; // The namespace in which the ambiguous symbol was found
 	bool isAnonymousInitList; // Set to true if the expression is an init list for which the type has not yet been determined
+
+	// (FOnline Patch) When this expression is a null-check on a local nullable
+	// handle (`x != null` / `x == null`), records x's stack offset, its narrowed
+	// (non-null) type, and whether the narrowing applies when the check is true
+	// (`!=`) or false (`==`). CompilePostFixExpression reads this to narrow x
+	// inside the operand a `&&` / `||` short-circuit guards. `nullCheckNarrowValid`
+	// gates the others: the stack offset itself cannot be the "unset" sentinel
+	// because parameter offsets are negative (a `this`/param can be 0 or below).
+	bool nullCheckNarrowValid;
+	bool nullCheckNarrowOnTrue;
+	// (FOnline Patch) All locals narrowed by this expression's (possibly compound)
+	// null-check, sharing the polarity in nullCheckNarrowOnTrue. A single `x != null`
+	// holds one entry; `a != null && b != null` holds both.
+	asCArray<asSNullCheckNarrow> nullCheckNarrowList;
 };
 
 struct asSOverloadCandidate
@@ -492,6 +516,57 @@ protected:
 	bool isCompilingDefaultArg;
 	bool isProcessingDeferredParams;
 	int  noCodeOutput;
+
+	// (FOnline Patch) Smart-cast narrowing stack: when an `if (x != null)` /
+	// `Assert(x != null)` / `if (x == null) return;` guard establishes that a
+	// nullable handle is non-null in some region, we push an entry here so a
+	// later read of `x` in that region sees the narrowed (non-nullable) type.
+	// Reads consult the latest entry for a given stack offset. Entries are
+	// popped when the enclosing region ends; assignments to the variable
+	// invalidate any active narrowing for that offset.
+	struct sSmartCast
+	{
+		int stackOffset;
+		asCDataType narrowedType;
+	};
+	asCArray<sSmartCast> smartCasts;
+	const asCDataType *GetNarrowedTypeForLocal(int stackOffset) const;
+	void InvalidateNarrowingForLocal(int stackOffset);
+
+	// (FOnline Patch) The function whose call bytecode was emitted most recently.
+	// Because arguments are compiled before the enclosing call, the outermost
+	// call of an expression is the last one recorded - so after compiling an
+	// expression statement this holds its top-level call. Used to detect a
+	// statement that ends in a no-return call (`ThrowException(...)`) and treat
+	// it as a control-flow terminator for smart-cast narrowing.
+	asCScriptFunction *m_lastEmittedCall;
+
+	// (FOnline Patch) Set whenever a no-return call is emitted while compiling the
+	// current expression statement. Sticky (not cleared by trailing argument
+	// cleanup), so a no-return `throw(...)` is detected even when an argument
+	// expression - e.g. `throw("...", cr.Prop)` - emits its own cleanup calls
+	// after the throw. Reset per expression statement.
+	bool m_emittedNoReturnCall;
+
+	// (FOnline Patch) Outcome of analysing an if-condition for null-check
+	// smart-casts. `narrowsInThen` is the (legacy single-var) local that the
+	// then-branch can treat as non-null when the condition is a bare
+	// `x != null` / `x !is null`; the corresponding else field is symmetric
+	// for `x == null` / `x is null`. -1 means "no narrowing on that side".
+	// `thenNarrowList`/`elseNarrowList` are the full sets of narrowed locals
+	// for compound `&&`/`||` shapes (and are populated in addition to the
+	// single-slot fields for the simple shape so older consumers keep
+	// working).
+	struct sNullCheckPattern
+	{
+		int narrowsInThenStackOffset;
+		int narrowsInElseStackOffset;
+		asCDataType narrowedTypeThen;
+		asCDataType narrowedTypeElse;
+		asCArray<sSmartCast> thenNarrowList;
+		asCArray<sSmartCast> elseNarrowList;
+	};
+	void DetectNullCheckPattern(asCScriptNode *condition, sNullCheckPattern &out);
 };
 
 END_AS_NAMESPACE

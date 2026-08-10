@@ -624,14 +624,14 @@ int asCScriptObject::AddRef() const
 	}
 
 	// Increase counter and clear flag set by GC
-	gcFlag = false;
+	gcFlag.store(false, std::memory_order_relaxed); // (FOnline Patch)
 	return refCount.atomicInc();
 }
 
 int asCScriptObject::Release() const
 {
 	// Clear the flag set by the GC
-	gcFlag = false;
+	gcFlag.store(false, std::memory_order_relaxed); // (FOnline Patch)
 
 	// If the weak ref flag exists it is because someone held a weak ref
 	// and that someone may add a reference to the object at any time. It
@@ -781,12 +781,12 @@ int asCScriptObject::GetRefCount()
 
 void asCScriptObject::SetFlag()
 {
-	gcFlag = true;
+	gcFlag.store(true, std::memory_order_relaxed); // (FOnline Patch)
 }
 
 bool asCScriptObject::GetFlag()
 {
-	return gcFlag;
+	return gcFlag.load(std::memory_order_relaxed); // (FOnline Patch)
 }
 
 // interface

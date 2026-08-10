@@ -41,62 +41,27 @@ TEST_CASE("GenericUtils")
 {
     SECTION("WyHash")
     {
-        const auto* data = reinterpret_cast<const uint8_t*>("abcdefg");
-        const auto* data2 = reinterpret_cast<const uint8_t*>("abcdefh");
+        auto data = make_ptr("abcdefg").reinterpret_as<uint8_t>();
+        auto data2 = make_ptr("abcdefh").reinterpret_as<uint8_t>();
 
-        CHECK(hashing_ex::hash(data, 4) != 0);
-        CHECK(hashing_ex::hash(data, 4) != hashing_ex::hash(data, 5));
-        CHECK(hashing_ex::hash(data, 7) != hashing_ex::hash(data2, 7));
+        CHECK(hashing_ex::hash(data.get(), 4) != 0);
+        CHECK(hashing_ex::hash(data.get(), 4) != hashing_ex::hash(data.get(), 5));
+        CHECK(hashing_ex::hash(data.get(), 7) != hashing_ex::hash(data2.get(), 7));
     }
 
     SECTION("StdRandom")
     {
         std::mt19937 rnd32; // NOLINT(cert-msc51-cpp)
-        for (auto i = 1; i < 10000; i++) {
+        for (int32_t i = 1; i < 10000; i++) {
             (void)rnd32();
         }
         CHECK(rnd32() == 4123659995);
 
         std::mt19937_64 rnd64; // NOLINT(cert-msc51-cpp)
-        for (auto i = 1; i < 10000; i++) {
+        for (int32_t i = 1; i < 10000; i++) {
             (void)rnd64();
         }
         CHECK(rnd64() == 9981545732273789042UL);
-    }
-
-    SECTION("iterate_range")
-    {
-        auto t1 = 0;
-        auto t2 = 0;
-        for (const auto i : iterate_range(5)) {
-            t1++;
-            t2 += i;
-        }
-        CHECK(t1 == 5);
-        CHECK(t2 == 10);
-
-        const auto v = vector<int32_t> {3, 4, 5, 6, 7};
-        auto t3 = 0;
-        auto t4 = 0;
-        for (const auto i : iterate_range(v)) {
-            t3++;
-            t4 += v[i];
-        }
-        CHECK(t3 == 5);
-        CHECK(t4 == 25);
-
-        auto t5 = 0;
-        for ([[maybe_unused]] const auto i : iterate_range(0)) {
-            t5++;
-        }
-        CHECK(t5 == 0);
-
-        const vector<int32_t> empty_v;
-        auto t6 = 0;
-        for ([[maybe_unused]] const auto i : iterate_range(empty_v)) {
-            t6++;
-        }
-        CHECK(t6 == 0);
     }
 
     SECTION("lerp")

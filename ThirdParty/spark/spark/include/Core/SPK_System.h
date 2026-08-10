@@ -66,6 +66,7 @@ namespace SPK
 	SPK_START_DESCRIPTION
 	SPK_PARENT_ATTRIBUTES(Transformable)
 	SPK_ATTRIBUTE("groups",ATTRIBUTE_TYPE_REFS)
+	SPK_ATTRIBUTE("bounds",ATTRIBUTE_TYPE_FLOATS)
 	SPK_END_DESCRIPTION
 
 	public :
@@ -74,7 +75,7 @@ namespace SPK
 		// Constructor/Desctructor //
 		/////////////////////////////
 
-		static Ref<System> create(bool initialize = true);
+		static Ref<System> create(SPKContext& context,bool initialize = true);
 		~System();
 
 		///////////////////////
@@ -184,6 +185,18 @@ namespace SPK
 		*/
 		const Vector3D& getAABBMax() const;
 
+		// Baked bounds: the extent the effect reaches over its lifecycle, computed once at bake time and serialized
+		// into every particle system, so the runtime frames an emitting system from this precomputed extent instead
+		// of enabling per-frame AABB computation. The box holds the particle positions only; the billboard radius is
+		// the largest half-extent a single particle's quad reaches, which the renderer sizes from the group radius in
+		// absolute world units and never scales by the system transform, so it stays a separate scalar. Kept apart
+		// from the runtime AABBMin/AABBMax (which updateParticles overwrites). Baking these bounds is mandatory, so a
+		// loaded particle system always carries them.
+		void setBakedBounds(const Vector3D& minBounds,const Vector3D& maxBounds,float billboardRadius);
+		const Vector3D& getBakedBoundsMin() const;
+		const Vector3D& getBakedBoundsMax() const;
+		float getBakedBillboardRadius() const;
+
 		/////////////////////
 		// Camera position //
 		/////////////////////
@@ -223,7 +236,7 @@ namespace SPK
 		* @param useClampStep : true to use a clamp value on the step, false not to
 		* @param clamp : the clamp value
 		*/
-		static void setClampStep(bool useClampStep,float clamp = 1.0f);
+		void setClampStep(bool useClampStep,float clamp = 1.0f);
 
 		/**
 		* @brief Uses a constant step to update the systems
@@ -236,7 +249,7 @@ namespace SPK
 		* 
 		* @param constantStep : the value of the step
 		*/
-		static void useConstantStep(float constantStep);
+		void useConstantStep(float constantStep);
 
 		/**
 		* @brief Uses an adaptive step to update the systems
@@ -252,7 +265,7 @@ namespace SPK
 		* @param minStep : the minimal time step
 		* @param maxStep : the maximal time step
 		*/
-		static void useAdaptiveStep(float minStep,float maxStep);
+		void useAdaptiveStep(float minStep,float maxStep);
 
 		/**
 		* @brief Uses the real step to update the systems
@@ -263,13 +276,13 @@ namespace SPK
 		* This mode is the simpler and the one that allows best performance on low end systems.<br>
 		* However the update may be inaccurate (due to too big deltaTime) and it performs badly with frame rate variation.
 		*/
-		static void useRealStep();
+		void useRealStep();
 
 		/**
 		* @brief Gets the current step mode
 		* @return the current step mode
 		*/
-		static StepMode getStepMode();
+		StepMode getStepMode() const;
 
 		//////////
 		// Misc //
@@ -285,6 +298,13 @@ namespace SPK
 
 		void initialize();
 		bool isInitialized() const;
+
+		// Per-system random stream: the system owns its seed and applies it inside updateParticles and
+		// generateRandom, so emission is deterministic from this seed and isolated from the shared context stream
+		// without an external RandomSeedScope at each call site.
+		unsigned int getRandomSeed() const;
+		void setRandomSeed(unsigned int seed);
+		unsigned int generateRandom(unsigned int minValue,unsigned int maxValue);
 
 		virtual Ref<SPKObject> findByName(const std::string& name) override;
 
@@ -305,13 +325,13 @@ namespace SPK
 		Vector3D cameraPosition;
 
 		// Step mode
-		static StepMode stepMode;
-		static float constantStep;
-		static float minStep;
-		static float maxStep;
+		StepMode stepMode;
+		float constantStep;
+		float minStep;
+		float maxStep;
 
-		static bool clampStepEnabled;
-		static float clampStep;
+		bool clampStepEnabled;
+		float clampStep;
 
 		float deltaStep;
 
@@ -323,14 +343,24 @@ namespace SPK
 		Vector3D AABBMin;
 		Vector3D AABBMax;
 
+		// Bake-time extent, kept separate from the runtime AABBMin/AABBMax (which updateParticles overwrites when
+		// AABB computation is off) so the precomputed box survives every update.
+		Vector3D bakedBoundsMin;
+		Vector3D bakedBoundsMax;
+		float bakedBillboardRadius;
+
+		unsigned int randomSeed; // per-system random stream state
+
 		bool innerUpdate(float deltaTime);
 
 		static void setGroupSystem(const Ref<Group>& group,System* system,bool remove = true);
 	};
 
-	inline Ref<System> System::create(bool initialize) 
+	inline Ref<System> System::create(SPKContext& context,bool initialize)
 	{ 
-		return SPK_NEW(System,initialize); 
+		Ref<System> system = SPK_NEW(System,initialize);
+		system->setContext(context);
+		return system;
 	}
 
 	inline const Ref<Group>& System::getGroup(size_t index) const
@@ -369,6 +399,28 @@ namespace SPK
 		return AABBMax;
 	}
 
+	inline void System::setBakedBounds(const Vector3D& minBounds,const Vector3D& maxBounds,float billboardRadius)
+	{
+		bakedBoundsMin = minBounds;
+		bakedBoundsMax = maxBounds;
+		bakedBillboardRadius = billboardRadius;
+	}
+
+	inline const Vector3D& System::getBakedBoundsMin() const
+	{
+		return bakedBoundsMin;
+	}
+
+	inline const Vector3D& System::getBakedBoundsMax() const
+	{
+		return bakedBoundsMax;
+	}
+
+	inline float System::getBakedBillboardRadius() const
+	{
+		return bakedBillboardRadius;
+	}
+
 	inline void System::setCameraPosition(const Vector3D& cameraPosition)
 	{
 		this->cameraPosition = cameraPosition;
@@ -388,14 +440,14 @@ namespace SPK
 	inline void System::useConstantStep(float constantStep)
 	{
 		stepMode = STEP_MODE_CONSTANT;
-		System::constantStep = constantStep;
+		this->constantStep = constantStep;
 	}
 
 	inline void System::useAdaptiveStep(float minStep,float maxStep)
 	{
 		stepMode = STEP_MODE_ADAPTIVE;
-		System::minStep = minStep;
-		System::maxStep = maxStep;
+		this->minStep = minStep;
+		this->maxStep = maxStep;
 	}
 
 	inline void System::useRealStep()
@@ -403,7 +455,7 @@ namespace SPK
 		stepMode = STEP_MODE_REAL;
 	}
 
-	inline StepMode System::getStepMode()
+	inline StepMode System::getStepMode() const
 	{
 		return stepMode;
 	}

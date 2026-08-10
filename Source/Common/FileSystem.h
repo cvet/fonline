@@ -45,7 +45,7 @@ class FileHeader
 {
 public:
     FileHeader() noexcept = default;
-    explicit FileHeader(string_view path, size_t size, uint64_t write_time, const DataSource* ds);
+    explicit FileHeader(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds);
     FileHeader(const FileHeader&) = delete;
     FileHeader(FileHeader&&) noexcept = default;
     auto operator=(const FileHeader&) = delete;
@@ -54,11 +54,11 @@ public:
     ~FileHeader() = default;
 
     [[nodiscard]] auto GetNameNoExt() const -> string_view;
-    [[nodiscard]] auto GetPath() const -> const string&;
+    [[nodiscard]] auto GetPath() const -> string_view;
     [[nodiscard]] auto GetDiskPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64_t;
-    [[nodiscard]] auto GetDataSource() const -> const DataSource*;
+    [[nodiscard]] auto GetDataSource() const -> ptr<const DataSource>;
     [[nodiscard]] auto Copy() const -> FileHeader;
 
 protected:
@@ -66,7 +66,7 @@ protected:
     string _filePath {};
     size_t _fileSize {};
     uint64_t _writeTime {};
-    raw_ptr<const DataSource> _dataSource {};
+    nptr<const DataSource> _dataSource {};
 };
 
 class FileReader final
@@ -81,9 +81,9 @@ public:
 
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetData() const -> vector<uint8_t>;
-    [[nodiscard]] auto GetBuf() const -> const uint8_t*;
+    [[nodiscard]] auto GetDataSpan() const -> const_span<uint8_t>;
     [[nodiscard]] auto GetSize() const -> size_t;
-    [[nodiscard]] auto GetCurBuf() const -> const uint8_t*;
+    [[nodiscard]] auto GetCurDataSpan(size_t size) const -> const_span<uint8_t>;
     [[nodiscard]] auto GetCurPos() const -> size_t;
     // ReSharper disable CppInconsistentNaming
     [[nodiscard]] auto GetStrNT() -> string; // Null terminated
@@ -100,10 +100,26 @@ public:
     // ReSharper restore CppInconsistentNaming
 
     auto SeekFragment(string_view fragment) -> bool;
-    void CopyData(void* ptr, size_t size);
+    void CopyData(span<uint8_t> buf);
+    void ReadBytes(span<uint8_t> out);
     void SetCurPos(size_t pos);
     void GoForward(size_t offs);
     void GoBack(size_t offs);
+
+    template<typename T>
+        requires(std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>)
+    void ReadObject(T& out)
+    {
+        CopyData(make_span(&out, sizeof(T)));
+    }
+    template<typename T>
+        requires(std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>)
+    void ReadObjectArray(span<T> out)
+    {
+        if (!out.empty()) {
+            CopyData(make_span(out.data(), out.size() * sizeof(T)));
+        }
+    }
 
 private:
     const_span<uint8_t> _buf;
@@ -114,7 +130,7 @@ class File final : public FileHeader
 {
 public:
     File() noexcept = default;
-    explicit File(string_view path, size_t size, uint64_t write_time, const DataSource* ds, unique_del_ptr<const uint8_t>&& buf);
+    explicit File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;
@@ -123,13 +139,13 @@ public:
 
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetData() const -> vector<uint8_t>;
-    [[nodiscard]] auto GetBuf() const -> const uint8_t*;
+    [[nodiscard]] auto GetDataSpan() const -> const_span<uint8_t>;
     [[nodiscard]] auto GetReader() const -> FileReader;
 
     static auto Load(const FileHeader& fh) -> File;
 
 protected:
-    unique_del_ptr<const uint8_t> _fileBuf {};
+    unique_del_nptr<const uint8_t> _fileBuf {};
 };
 
 class FileCollection final
@@ -171,6 +187,7 @@ public:
 
     [[nodiscard]] auto GetAllFiles() const -> FileCollection;
     [[nodiscard]] auto FilterFiles(string_view ext, string_view dir = "", bool recursive = true) const -> FileCollection;
+    [[nodiscard]] auto FilterFiles(const_span<string> include_patterns, const_span<string> exclude_patterns) const -> FileCollection;
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool;
     [[nodiscard]] auto ReadFile(string_view path) const -> File;
     [[nodiscard]] auto ReadFileText(string_view path) const -> string;
@@ -180,6 +197,7 @@ public:
     void AddPackSource(string_view dir, string_view pack, bool maybe_not_available = false);
     void AddPacksSource(string_view dir, const vector<string>& packs);
     void AddCustomSource(unique_ptr<DataSource> data_source);
+    auto ReindexDataSources() -> bool;
     void CleanDataSources();
 
 private:

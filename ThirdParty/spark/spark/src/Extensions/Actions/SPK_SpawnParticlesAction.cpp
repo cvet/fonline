@@ -83,7 +83,7 @@ namespace SPK
 		zone->getTransform().setPosition(particle.position());
 		zone->updateTransform();
 
-		targetGroup->addParticles(SPK_RANDOM(minNb,maxNb + 1),emitter);
+		targetGroup->addParticles(SPK_RANDOM(getContext(),minNb,maxNb + 1),emitter);
 	}
 
 	bool SpawnParticlesAction::checkValidity() const

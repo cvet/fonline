@@ -117,7 +117,7 @@ asBYTE asCGeneric::GetArgByte(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Get the value
 	return *(asBYTE*)&stackPointer[offset];
@@ -140,7 +140,7 @@ asWORD asCGeneric::GetArgWord(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Get the value
 	return *(asWORD*)&stackPointer[offset];
@@ -163,7 +163,7 @@ asDWORD asCGeneric::GetArgDWord(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Get the value
 	return *(asDWORD*)&stackPointer[offset];
@@ -186,7 +186,7 @@ asQWORD asCGeneric::GetArgQWord(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Get the value
 	return *(asQWORD*)(&stackPointer[offset]);
@@ -209,7 +209,7 @@ float asCGeneric::GetArgFloat(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Get the value
 	return *(float*)(&stackPointer[offset]);
@@ -232,7 +232,7 @@ double asCGeneric::GetArgDouble(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Get the value
 	return *(double*)(&stackPointer[offset]);
@@ -252,7 +252,7 @@ void *asCGeneric::GetArgAddress(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Get the value
 	return (void*)*(asPWORD*)(&stackPointer[offset]);
@@ -272,7 +272,7 @@ void *asCGeneric::GetArgObject(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Get the value
 	return *(void**)(&stackPointer[offset]);
@@ -287,7 +287,7 @@ void *asCGeneric::GetAddressOfArg(asUINT arg)
 	// Determine the position of the argument
 	int offset = 0;
 	for( asUINT n = 0; n < arg; n++ )
-		offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// For object variables it's necessary to dereference the pointer to get the address of the value
 	if( !sysFunction->parameterTypes[arg].IsReference() && 
@@ -318,7 +318,7 @@ int asCGeneric::GetArgTypeId(asUINT arg, asDWORD *flags) const
 	{
 		int offset = 0;
 		for( asUINT n = 0; n < arg; n++ )
-			offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+			offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 		// Skip the actual value to get to the type id
 		offset += AS_PTR_SIZE;
@@ -778,10 +778,10 @@ int asCGenericVariadic::GetArgOffsetOnStack(asUINT arg) const
 		if (n >= sysFunction->parameterTypes.GetLength() - 1)
 		{
 			asUINT idx = sysFunction->parameterTypes.GetLength() - 1;
-			offset += sysFunction->parameterTypes[idx].GetSizeOnStackDWords();
+			offset += sysFunction->parameterTypes[idx].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 		else
-			offset += sysFunction->parameterTypes[n].GetSizeOnStackDWords();
+			offset += sysFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 
 	return offset;

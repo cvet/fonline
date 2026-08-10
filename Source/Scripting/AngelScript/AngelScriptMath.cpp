@@ -63,7 +63,7 @@ static auto CloseTo(float64_t a, float64_t b, float64_t epsilon) -> bool
     return is_float_equal(a, b, epsilon);
 }
 
-void RegisterAngelScriptMath(AngelScript::asIScriptEngine* as_engine)
+void RegisterAngelScriptMath(ptr<AngelScript::asIScriptEngine> as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 

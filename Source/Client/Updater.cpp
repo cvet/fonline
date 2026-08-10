@@ -34,43 +34,56 @@
 #include "Updater.h"
 #include "Application.h"
 #include "DefaultSprites.h"
-#include "NetCommand.h"
 
 FO_BEGIN_NAMESPACE
 
-static auto* StrCheckUpdates = "Check updates";
-static auto* StrConnectToServer = "Connect to the server";
-static auto* StrCantConnectToServer = "Can't connect to the server!";
-static auto* StrConnectionEstablished = "Connection established";
-static auto* StrConnectionFailure = "Connection failure!";
-static auto* StrFilesystemError = "File system error!";
-static auto* StrUpdaterOutdated = "Client updater outdated, please update the base client";
+static constexpr string_view StrCheckUpdates = "Check updates";
+static constexpr string_view StrConnectToServer = "Connect to the server";
+static constexpr string_view StrCantConnectToServer = "Can't connect to the server!";
+static constexpr string_view StrConnectionEstablished = "Connection established";
+static constexpr string_view StrConnectionFailure = "Connection failure!";
+static constexpr string_view StrFilesystemError = "File system error!";
+static constexpr string_view StrServerMissingNativeUpdate = "Server doesn't provide a native client update for binary target {}. Please update the client manually";
+static constexpr string_view StrUpdaterOutdated = "Client updater is incompatible with this server. Please install the latest full client package.";
+static constexpr string_view StrPlatformUnsupported = "Client outdated, please update via your app store";
+static constexpr string_view StrNativeUpdateFailed = "Failed to update native client modules for binary target {}. Please update the client manually";
+static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
+static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
+static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
 
-Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
-    _settings {&settings},
-    _conn(*_settings),
-    _cache(settings.CacheResources),
-    _binaryDir {GetClientBinaryDir()},
+static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
+
+Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
+    _settings {settings},
+    _conn(settings),
+    _cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    _binaryDir {settings->UserWritablePath.empty() ? GetClientBinaryDir() : string(settings->UserWritablePath)},
     _gameTime(settings),
-    _effectMngr(settings, _resources, window.GetRender()),
-    _sprMngr(settings, window, _resources, _gameTime, _effectMngr, _hashStorage),
-    _fontMngr(_sprMngr)
+    _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
+    _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
+    _fontMngr(make_ptr(&_sprMngr))
 {
     FO_STACK_TRACE_ENTRY();
 
+    WriteLog("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ServerHost, _settings->ServerPort, _settings->CompatibilityVersion, _binaryDir, _settings->ClientResources);
+
     _startTime = nanotime::now();
 
-    _resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Embedded");
+    _resources.AddPackSource(IsPackaged() ? settings->ClientResources : settings->BakeOutput, "Embedded");
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
+    if (!settings->UserWritablePath.empty()) {
+        _resources.AddDirSource(fs_make_writable_path(settings->UserWritablePath, settings->ClientResources), false, true, true);
+    }
     if (!_settings->DefaultSplashPack.empty()) {
         _resources.AddPackSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
     }
 
     _effectMngr.LoadMinimalEffects();
-    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(_sprMngr));
+
+    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&_sprMngr));
 
     // Wait screen
     if (!_settings->DefaultSplash.empty()) {
@@ -82,9 +95,11 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     }
 
     _sprMngr.BeginScene();
+
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_NEUTRAL);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
+
     _sprMngr.EndScene();
 
     // Load font
@@ -95,6 +110,7 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     _conn.SetDisconnectHandler([this]() FO_DEFERRED { Net_OnDisconnect(); });
     _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::TimeSync, [this]() FO_DEFERRED { Net_OnTimeSync(); });
+    _conn.AddMessageHandler(NetMessage::HashList, [this]() FO_DEFERRED { Net_OnHashList(); });
     _conn.AddMessageHandler(NetMessage::UpdateFileData, [this]() FO_DEFERRED { Net_OnUpdateFileData(); });
 
     // Connect
@@ -114,10 +130,10 @@ auto Updater::Process() -> bool
     _gameTime.FrameAdvance(IsRunInDebugger());
 
     InputEvent ev;
-    while (_sprMngr.GetInput().PollEvent(ev)) {
+    while (_sprMngr.GetInput()->PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             if (ev.KeyDown.Code == KeyCode::Escape) {
-                App->RequestQuit();
+                GetApp()->RequestQuit();
             }
         }
     }
@@ -134,15 +150,15 @@ auto Updater::Process() -> bool
         update_text += "\n";
 
         for (const auto& update_file : _filesToUpdate) {
-            auto cur_bytes = update_file.Size - update_file.RemaningSize;
+            uint64_t cur_bytes = update_file.Size - update_file.RemaningSize;
 
             if (&update_file == &_filesToUpdate.front()) {
                 cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
             }
 
-            const auto cur = numeric_cast<float32_t>(cur_bytes) / (1024.0f * 1024.0f);
-            const auto max = std::max(numeric_cast<float32_t>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
-            const string name = strex(update_file.Name).format_path();
+            float32_t cur = numeric_cast<float32_t>(cur_bytes) / (1024.0f * 1024.0f);
+            float32_t max = std::max(numeric_cast<float32_t>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
+            string name = strex(update_file.Name).format_path();
 
             update_text += strex("{} {:.2f} / {:.2f} MB\n", name, cur, max);
         }
@@ -150,10 +166,10 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32_t>();
-    const auto dots = iround<int32_t>(std::fmod((nanotime::now() - _startTime).to_ms<float64_t>() / 100.0, 50.0)) + 1;
+    int32_t elapsed_time = (nanotime::now() - _startTime).to_ms<int32_t>();
+    int32_t dots = iround<int32_t>(std::fmod((nanotime::now() - _startTime).to_ms<float64_t>() / 100.0, 50.0)) + 1;
 
-    for ([[maybe_unused]] const auto i : iterate_range(dots)) {
+    for (int32_t i = 0; i < dots; i++) {
         update_text += ".";
     }
 
@@ -162,25 +178,29 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_NEUTRAL);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {
-        const auto text_format = TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
+        auto text_format = TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
 
         if (_settings->UpdaterInfoPos < 0) {
-            _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, COLOR_TEXT_WHITE, text_format);
+            _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
         }
         else if (_settings->UpdaterInfoPos == 0) {
-            _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight}, update_text, COLOR_TEXT_WHITE, text_format);
+            _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight}, update_text, Color::TextWhite, text_format);
         }
         else {
-            _fontMngr.DrawText(irect32 {0, _settings->ScreenHeight / 2, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, COLOR_TEXT_WHITE, text_format);
+            _fontMngr.DrawText(irect32 {0, _settings->ScreenHeight / 2, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
         }
     }
 
     _sprMngr.EndScene();
     _conn.Process();
+
+    if (_restartPrompt && !GetApp()->IsQuitRequested()) {
+        return false;
+    }
 
     return _result.has_value() || IsFinished();
 }
@@ -214,12 +234,18 @@ void Updater::GetNextFile()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file_uses_binary_dir = [&](const UpdateFile& f) { return _binariesMode || f.IsRuntimeCompanion; };
-    const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : string(_settings->ClientResources); };
-    const auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
-    const auto make_final_path = [&](const UpdateFile& f) -> string {
-        const auto live_path = strex(file_output_dir(f)).combine_path(f.Name).str();
+    auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
+    auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
+    auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
+    auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
+    auto make_final_path = [&](const UpdateFile& f) -> string {
+        string live_path = make_live_path(f);
         return file_uses_binary_dir(f) ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
+    };
+    auto try_promote_staged_binary = [&](const UpdateFile& f, string_view staged_path) {
+        if (file_uses_binary_dir(f)) {
+            ReplaceFileSafely(staged_path, make_live_path(f));
+        }
     };
 
     if (_tempFile.is_open()) {
@@ -231,44 +257,53 @@ void Updater::GetNextFile()
         }
 
         const auto& prev_update_file = _filesToUpdate.front();
-        const auto prev_path_str = make_final_path(prev_update_file);
-        const auto temp_path_str = make_temp_path(prev_update_file);
+        string prev_path_str = make_final_path(prev_update_file);
+        string temp_path_str = make_temp_path(prev_update_file);
 
         if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
+            WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
             Abort(StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
+            WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
             Abort(StrFilesystemError);
             return;
         }
 
+        WriteLog("Client updater: promoted downloaded file to {}, binary {}", prev_path_str, prev_update_file.IsClientBinary ? "yes" : "no");
+        try_promote_staged_binary(prev_update_file, prev_path_str);
         _filesToUpdate.erase(_filesToUpdate.begin());
     }
 
     if (!_filesToUpdate.empty()) {
         auto& next_update_file = _filesToUpdate.front();
-        const auto prev_path_str = make_final_path(next_update_file);
-        const auto temp_path = make_temp_path(next_update_file);
-        const auto temp_file_size = GetDiskFileSize(temp_path);
+        string prev_path_str = make_final_path(next_update_file);
+        string temp_path = make_temp_path(next_update_file);
+        auto temp_file_size = GetDiskFileSize(temp_path);
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
+                WriteLog("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
                 fs_remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDiskFileHashMatch(temp_path, next_update_file.Size, next_update_file.Hash)) {
+                    WriteLog("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
                     fs_remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
+                        WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
                         Abort(StrFilesystemError);
                         return;
                     }
 
+                    WriteLog("Client updater: promoted existing temp file to {}, binary {}", prev_path_str, next_update_file.IsClientBinary ? "yes" : "no");
+                    try_promote_staged_binary(next_update_file, prev_path_str);
                     _filesToUpdate.erase(_filesToUpdate.begin());
                     GetNextFile();
                     return;
@@ -276,10 +311,11 @@ void Updater::GetNextFile()
             }
             else {
                 next_update_file.RemaningSize = next_update_file.Size - *temp_file_size;
+                WriteLog("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
             }
         }
 
-        const auto dir = strex(temp_path).extract_dir().str();
+        string dir = strex(temp_path).extract_dir().str();
 
         if (!dir.empty()) {
             if (!fs_create_directories(dir)) {
@@ -288,23 +324,31 @@ void Updater::GetNextFile()
             }
         }
 
-        const auto open_mode = std::ios::binary | (next_update_file.RemaningSize != next_update_file.Size ? std::ios::app : std::ios::trunc);
+        std::ios_base::openmode open_mode = std::ios::binary | (next_update_file.RemaningSize != next_update_file.Size ? std::ios::app : std::ios::trunc);
         _tempFile.open(std::filesystem::path {fs_make_path(temp_path)}, open_mode);
 
         if (!_tempFile) {
+            WriteLog("Client updater: failed to open temp file {}", temp_path);
             Abort(StrFilesystemError);
             return;
         }
 
+        WriteLog("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, prev_path_str);
         RequestUpdateFile(next_update_file);
     }
     else {
         if (_binariesMode) {
-            WriteLog("Binary update staged for reload");
+            WriteLog("Client updater: finished binary update, binaries staged for reload");
             _result = UpdaterResult::BinariesStaged;
+
+            // Headless clients have no UI / no user to dismiss it, so they finish immediately (no hold).
+            if (!GetApp()->IsHeadless()) {
+                AddText(StrRestartRequired);
+                _restartPrompt = true;
+            }
         }
         else {
-            WriteLog("Resources sync complete");
+            WriteLog("Client updater: finished resource update, resources ready");
             _result = UpdaterResult::ResourcesReady;
         }
     }
@@ -316,7 +360,7 @@ void Updater::RequestUpdateFile(const UpdateFile& update_file)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto start_offset = update_file.Size - update_file.RemaningSize;
+    uint64_t start_offset = update_file.Size - update_file.RemaningSize;
 
     _conn.OutBuf->StartMsg(NetMessage::GetUpdateFile);
     _conn.OutBuf->Write(update_file.Index);
@@ -328,16 +372,42 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
 {
     FO_STACK_TRACE_ENTRY();
 
+    string_view result_str;
+
+    switch (result) {
+    case ClientConnection::ConnectResult::Success:
+        result_str = "Success";
+        break;
+    case ClientConnection::ConnectResult::CompatibilityOutdated:
+        result_str = "CompatibilityOutdated";
+        break;
+    case ClientConnection::ConnectResult::UpdaterOutdated:
+        result_str = "UpdaterOutdated";
+        break;
+    case ClientConnection::ConnectResult::Failed:
+        result_str = "Failed";
+        break;
+    default:
+        result_str = "Unknown";
+        break;
+    }
+
+    WriteLog("Client updater: server answered {}, client compatibility {}", result_str, _settings->CompatibilityVersion);
+
     if (result == ClientConnection::ConnectResult::Success) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
         _binariesMode = false;
+        WriteLog("Client updater: client is compatible, checking resources");
     }
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
 
-        if (!CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())) {
+        bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+        WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", can_self_update_binaries ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
+
+        if (!can_self_update_binaries) {
             _result = UpdaterResult::PlatformUnsupported;
             _fileListReceived = true;
             _conn.Disconnect();
@@ -345,12 +415,15 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         }
 
         _binariesMode = true;
+        WriteLog("Client updater: switched to native binary update mode");
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
         _result = UpdaterResult::UpdaterOutdated;
+        WriteLog("Client updater: protocol is outdated, aborting");
         Abort(StrUpdaterOutdated);
     }
     else {
+        WriteLog("Client updater: connection failed");
         Abort(StrCantConnectToServer);
     }
 }
@@ -368,33 +441,36 @@ void Updater::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf->Read<uint32_t>();
+    auto data_size = _conn.InBuf->Read<uint32_t>();
 
     vector<uint8_t> data;
     data.resize(data_size);
+
     _conn.InBuf->Pop(data.data(), data_size);
 
     vector<vector<uint8_t>> globals_properties_data;
     _conn.InBuf->ReadPropsData(globals_properties_data);
-    const auto time = _conn.InBuf->Read<synctime>();
+    auto time = _conn.InBuf->Read<synctime>();
     ignore_unused(globals_properties_data);
 
     _gameTime.SetSynchronizedTime(time);
 
-    FO_RUNTIME_ASSERT(!_fileListReceived);
+    FO_VERIFY_AND_THROW(!_fileListReceived, "Update file list was already received");
     _fileListReceived = true;
 
-    const auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
+    auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
+    WriteLog("Client updater: received update list, bytes {}, mode {}, target {}", data_size, _binariesMode ? "binaries" : "resources", _binariesMode ? "ClientBinaries" : "ClientResources");
 
     if (data.empty()) {
         if (_binariesMode) {
-            WriteLog("Server returned empty native update list for this target");
+            WriteLog("Client updater: native update list is empty");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
         else {
-            WriteLog("Resources sync complete");
+            WriteLog("Client updater: resource update list is empty, resources ready");
             _result = UpdaterResult::ResourcesReady;
         }
+
         return;
     }
 
@@ -405,10 +481,8 @@ void Updater::Net_OnInitData()
     }
 
     auto reader = DataReader(data);
-    const auto companion_resync_enabled = !_binariesMode && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
-    const auto accept_binaries = _binariesMode || companion_resync_enabled;
-    const string runtime_primary_name = accept_binaries ? strex(GetClientRuntimeLivePath()).extract_file_name().str() : string {};
-    const string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
+    bool accept_binaries = _binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+    string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
 
     string runtime_server_prefix;
 
@@ -418,14 +492,16 @@ void Updater::Net_OnInitData()
         if (runtime_server_prefix.empty()) {
             runtime_server_prefix = runtime_local_prefix;
         }
+
+        WriteLog("Client updater: binary name remap from server prefix {} to local prefix {}", runtime_server_prefix, runtime_local_prefix);
     }
 
-    const auto remap_runtime_name = [&](const string& fname_basename) -> optional<string> {
+    auto remap_runtime_name = [&](const string& fname_basename) -> optional<string> {
         if (!fname_basename.starts_with(runtime_server_prefix)) {
             return std::nullopt;
         }
 
-        const string_view rest = string_view(fname_basename).substr(runtime_server_prefix.size());
+        string_view rest = string_view(fname_basename).substr(runtime_server_prefix.size());
 
         if (!rest.empty() && rest[0] != '.') {
             return std::nullopt;
@@ -434,54 +510,62 @@ void Updater::Net_OnInitData()
         return strex("{}{}", runtime_local_prefix, rest).str();
     };
 
-    for (int32_t file_index = 0;; file_index++) {
-        const auto name_len = reader.Read<int16_t>();
+    while (true) {
+        int16_t name_len = reader.Read<int16_t>();
 
         if (name_len == -1) {
             break;
         }
 
-        FO_RUNTIME_ASSERT(name_len > 0);
-        const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-        const auto size = reader.Read<uint64_t>();
-        const auto hash = reader.Read<uint64_t>();
-        const auto target = reader.Read<UpdateFileTarget>();
-        const auto data_index = reader.Read<uint32_t>();
+        FO_VERIFY_AND_THROW(name_len > 0, "Update file name length must be positive", name_len);
+        size_t fname_size = numeric_cast<size_t>(name_len);
+        string fname;
+        fname.resize(fname_size);
+        reader.ReadStringBytes(fname);
+        auto size = reader.Read<uint64_t>();
+        auto hash = reader.Read<uint64_t>();
+        auto target = reader.Read<UpdateFileTarget>();
+        auto data_index = reader.Read<uint32_t>();
 
         string local_name = fname;
-        bool is_runtime_companion = false;
+        bool is_client_binary = false;
 
         if (target == UpdateFileTarget::ClientBinaries) {
             if (!accept_binaries) {
                 continue;
             }
 
-            const auto fname_basename = strex(fname).extract_file_name().str();
-            const auto remapped = remap_runtime_name(fname_basename);
+            string fname_basename = strex(fname).extract_file_name().str();
+            auto remapped = remap_runtime_name(fname_basename);
 
             if (!remapped.has_value()) {
                 continue;
             }
 
-            const auto remapped_basename = *remapped;
-            const auto fname_dir = strex(fname).extract_dir().str();
+            auto remapped_basename = *remapped;
+            string fname_dir = strex(fname).extract_dir().str();
             local_name = fname_dir.empty() ? remapped_basename : strex(fname_dir).combine_path(remapped_basename).str();
 
-            const auto is_primary = remapped_basename == runtime_primary_name;
+            string file_path = strex(_binaryDir).combine_path(local_name).str();
 
-            if (_binariesMode) {
-                _hasMatchingEntries = true;
-            }
-            else if (is_primary) {
-                continue;
+            if (remapped_basename == strex("{}.pdb", runtime_local_prefix).str()) {
+                if (fs_exists(file_path)) {
+                    continue;
+                }
             }
             else {
-                is_runtime_companion = true;
+                if (!_binariesMode) {
+                    continue;
+                }
+
+                _hasMatchingEntries = true;
+                WriteLog("Client updater: matched binary entry {}, local {}, size {}, hash {}", fname, local_name, size, hash);
             }
 
-            const auto file_path = strex(_binaryDir).combine_path(local_name).str();
+            is_client_binary = true;
 
             if (IsDiskFileHashMatch(file_path, size, hash)) {
+                WriteLog("Client updater: binary already matches {}", file_path);
                 continue;
             }
         }
@@ -494,7 +578,7 @@ void Updater::Net_OnInitData()
                         continue;
                     }
 
-                    const auto file = resources.ReadFile(fname);
+                    auto file = resources.ReadFile(fname);
 
                     if (file && IsDataHashMatch(file.GetData(), size, hash)) {
                         continue;
@@ -512,27 +596,28 @@ void Updater::Net_OnInitData()
         update_file.Size = size;
         update_file.RemaningSize = size;
         update_file.Hash = hash;
-        update_file.IsRuntimeCompanion = is_runtime_companion;
+        update_file.IsClientBinary = is_client_binary;
         _filesToUpdate.emplace_back(std::move(update_file));
     }
 
     reader.VerifyEnd();
 
     if (!_filesToUpdate.empty()) {
+        WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
         GetNextFile();
     }
     else if (_binariesMode) {
         if (_hasMatchingEntries) {
-            WriteLog("Binary update staged for reload");
+            WriteLog("Client updater: binaries already match, requesting reload");
             _result = UpdaterResult::BinariesStaged;
         }
         else {
-            WriteLog("Server has no native update payload for this target");
+            WriteLog("Client updater: server has no matching native update payload");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
     }
     else {
-        WriteLog("Resources sync complete");
+        WriteLog("Client updater: resources ready");
         _result = UpdaterResult::ResourcesReady;
     }
 }
@@ -541,24 +626,42 @@ void Updater::Net_OnTimeSync()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto time = _conn.InBuf->Read<synctime>();
+    auto time = _conn.InBuf->Read<synctime>();
     _gameTime.SetSynchronizedTimeMonotonic(time);
+}
+
+void Updater::Net_OnHashList()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    uint32_t count = _conn.InBuf->Read<uint32_t>();
+
+    for (uint32_t i = 0; i < count; i++) {
+        string str = _conn.InBuf->Read<string>();
+
+        _hashStorage.ToHashedString(str);
+    }
+
+    if (count != 0) {
+        WriteLog("Client updater: learned {} previously unresolved hash(es) from server", count);
+    }
 }
 
 void Updater::Net_OnUpdateFileData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size_raw = _conn.InBuf->Read<int32_t>();
+    int32_t data_size_raw = _conn.InBuf->Read<int32_t>();
 
     if (data_size_raw < 0) {
         Abort(StrFilesystemError);
         return;
     }
 
-    const auto data_size = numeric_cast<size_t>(data_size_raw);
+    auto data_size = numeric_cast<size_t>(data_size_raw);
 
     _updateFileBuf.resize(data_size);
+
     _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
 
     if (_filesToUpdate.empty() || !_tempFile.is_open()) {
@@ -574,10 +677,10 @@ void Updater::Net_OnUpdateFileData()
     }
 
     // Write data to temp file
-    const auto write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
+    size_t write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
 
     if (write_size != 0) {
-        _tempFile.write(reinterpret_cast<const char*>(_updateFileBuf.data()), numeric_cast<std::streamsize>(write_size));
+        _tempFile.write(make_ptr(_updateFileBuf.data()).reinterpret_as<char>().get(), numeric_cast<std::streamsize>(write_size));
     }
 
     if (!_tempFile) {
@@ -605,7 +708,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto local_size = fs_file_size(file_path);
+    auto local_size = fs_file_size(file_path);
 
     if (!local_size.has_value() || *local_size != expected_size) {
         return false;
@@ -619,14 +722,19 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     };
     static_assert(std::is_trivially_copyable_v<CachedHash>);
 
-    const auto local_mtime = fs_last_write_time(file_path);
+    uint64_t local_mtime = fs_last_write_time(file_path);
 
-    if (_cache.HasEntry(file_path)) {
-        const auto data = _cache.GetData(file_path);
+    // Keyed by the whole path: two same-named files in different directories would otherwise share one
+    // entry, and a size plus write-time collision would answer this check with the other file's hash.
+    string cache_key = strex("{}-{:016x}.hash", strex(file_path).extract_file_name(), hashing::hash<string_view> {}(file_path)).str();
+
+    if (_cache.HasEntry(cache_key)) {
+        auto data = _cache.GetData(cache_key);
 
         if (data.size() == sizeof(CachedHash)) {
-            CachedHash cached;
-            MemCopy(&cached, data.data(), sizeof(cached));
+            CachedHash cached {};
+            auto target = make_ptr(&cached).reinterpret_as<uint8_t>();
+            MemCopy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
                 return cached.Hash == expected_hash;
@@ -634,14 +742,14 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
         }
     }
 
-    const auto local_hash = fs_hash_file(file_path);
+    auto local_hash = fs_hash_file(file_path);
 
     if (!local_hash.has_value()) {
         return false;
     }
 
-    const CachedHash entry {*local_size, local_mtime, *local_hash};
-    _cache.SetData(file_path, {reinterpret_cast<const uint8_t*>(&entry), sizeof(entry)});
+    CachedHash entry {*local_size, local_mtime, *local_hash};
+    _cache.SetData(cache_key, const_span<uint8_t> {make_ptr(&entry).reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
 }
@@ -650,7 +758,7 @@ auto Updater::IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_siz
 {
     FO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_data(data.data(), data.size()) == expected_hash;
+    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_data(data) == expected_hash;
 }
 
 auto Updater::GetDiskFileSize(string_view file_path) -> optional<uint64_t>
@@ -671,8 +779,8 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto backup_path = strex("{}.bak", final_path).str();
-    const auto final_exists = fs_exists(final_path);
+    string backup_path = strex("{}.bak", final_path).str();
+    bool final_exists = fs_exists(final_path);
 
     fs_remove_file(backup_path);
 
@@ -699,14 +807,27 @@ auto Updater::GetClientBinaryDir() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto exe_path = Platform::GetExePath();
-    FO_RUNTIME_ASSERT(exe_path.has_value());
-    return strex(exe_path.value()).extract_dir().str();
+    if constexpr (FO_WEB) {
+        // The web client runs from the virtual filesystem root and has no on-disk exe path.
+        return "/";
+    }
+    else {
+        auto exe_path = Platform::GetExePath();
+        FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
+        return strex(exe_path.value()).extract_dir().str();
+    }
+}
+
+auto Updater::GetRuntimeLivePath() const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex("{}{}", strex(_binaryDir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
 }
 
 auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     return UpdatePlatform::Windows;
@@ -727,7 +848,7 @@ auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform
 
 auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (platform) {
     case UpdatePlatform::Windows:
@@ -750,9 +871,10 @@ auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view
 
 auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
+
 #if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
     return "Windows-win64";
 #elif defined(_M_IX86) || defined(__i386__)
@@ -762,7 +884,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Windows-unknown";
 #endif
+
 #elif FO_LINUX
+
 #if defined(__x86_64__)
     return "Linux-x64";
 #elif defined(__aarch64__)
@@ -774,7 +898,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Linux-unknown";
 #endif
+
 #elif FO_ANDROID
+
 #if defined(__aarch64__)
     return "Android-arm64";
 #elif defined(__i386__)
@@ -784,7 +910,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Android-unknown";
 #endif
+
 #elif FO_MAC
+
 #if defined(__aarch64__)
     return "macOS-arm64";
 #elif defined(__x86_64__)
@@ -792,7 +920,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "macOS-unknown";
 #endif
+
 #elif FO_IOS
+
 #if defined(__aarch64__)
     return "iOS-arm64";
 #elif defined(__x86_64__)
@@ -800,6 +930,7 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "iOS-unknown";
 #endif
+
 #elif FO_WEB
     return "Web-wasm";
 #else
@@ -825,63 +956,124 @@ auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
     }
 }
 
-static auto GetClientRuntimeLibraryExtension() noexcept -> string_view
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-#if FO_WINDOWS
-    return ".dll";
-#elif FO_LINUX
-    return ".so";
-#elif FO_MAC
-    return ".dylib";
-#else
-    return {};
-#endif
-}
-
 auto GetClientRuntimeLivePath() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto exe_path = Platform::GetExePath();
-    FO_RUNTIME_ASSERT(exe_path.has_value());
-    return strex("{}{}", strex(exe_path.value()).extract_dir().combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+    string binary_dir;
+
+    if constexpr (FO_WEB) {
+        // No on-disk runtime companion on web; the runtime lives at the virtual filesystem root.
+        binary_dir = "/";
+    }
+    else {
+        auto exe_path = Platform::GetExePath();
+        FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
+        binary_dir = strex(exe_path.value()).extract_dir().str();
+    }
+
+    return strex("{}{}", strex(binary_dir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
 }
 
-auto GetClientRuntimeStagingPath() -> string
+auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex("{}{}", GetClientRuntimeLivePath(), ClientBinaryStagingSuffix).str();
+    return strex("{}{}", runtime_live_path, ClientBinaryStagingSuffix).str();
 }
 
-void PromoteStagedRuntimeCompanions() noexcept
+auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
+
+    if (!target.has_value()) {
+        return string(fallback_runtime_path);
+    }
+
+    string staging_path = MakeClientRuntimeStagingPath(target.value());
+    bool live_exists = fs_exists(target.value()) && !fs_is_dir(target.value());
+    bool staging_exists = fs_exists(staging_path) && !fs_is_dir(staging_path);
+    return live_exists || staging_exists ? target.value() : string(fallback_runtime_path);
+}
+
+auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!fs_is_absolute_path(bootstrap_file_path)) {
+        return std::nullopt;
+    }
+
+    optional<uint64_t> file_size = fs_file_size(bootstrap_file_path);
+
+    if (!file_size.has_value() || file_size.value() == 0 || file_size.value() > ClientRuntimeBootstrapMaxSize) {
+        return std::nullopt;
+    }
+
+    optional<string> content = fs_read_file(bootstrap_file_path);
+
+    if (!content.has_value() || content->size() > ClientRuntimeBootstrapMaxSize) {
+        return std::nullopt;
+    }
+
+    return NormalizeClientRuntimeBootstrapTarget(content.value(), expected_runtime_file_name);
+}
+
+auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!fs_is_absolute_path(bootstrap_file_path)) {
+        return false;
+    }
+
+    optional<string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
+
+    if (!normalized_path.has_value() || normalized_path->size() + 1 > ClientRuntimeBootstrapMaxSize) {
+        return false;
+    }
+
+    // Write-then-rename so a crash or a concurrent reader never observes a partially written selector
+    string temp_path = strex("{}.tmp", bootstrap_file_path).str();
+
+    if (!fs_write_file(temp_path, strex("{}\n", normalized_path.value()).str())) {
+        return false;
+    }
+
+    if (!fs_rename(temp_path, bootstrap_file_path)) {
+        fs_remove_file(temp_path);
+        return false;
+    }
+
+    return true;
+}
+
+void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const auto runtime_live = GetClientRuntimeLivePath();
-        const auto binary_dir = strex(runtime_live).extract_dir().str();
-        const auto runtime_primary_name = strex(runtime_live).extract_file_name().str();
-        const auto runtime_name = GetCurrentClientRuntimeLibraryName();
+        string runtime_name = GetCurrentClientRuntimeLibraryName();
+        string runtime_primary_name = strex("{}{}", runtime_name, GetClientRuntimeLibraryExtension()).str();
 
         vector<pair<string, string>> renames;
 
         fs_iterate_dir(binary_dir, false, [&](string_view path, size_t, uint64_t) {
-            const auto file_name = strex(path).extract_file_name().str();
+            string file_name = strex(path).extract_file_name().str();
 
             if (!file_name.ends_with(ClientBinaryStagingSuffix)) {
                 return;
             }
 
-            const auto unstaged_name = file_name.substr(0, file_name.size() - ClientBinaryStagingSuffix.size());
+            auto unstaged_name = file_name.substr(0, file_name.size() - ClientBinaryStagingSuffix.size());
 
             if (unstaged_name == runtime_primary_name) {
                 return;
             }
 
-            const bool matches_runtime = unstaged_name == runtime_name || (unstaged_name.size() > runtime_name.size() && unstaged_name.starts_with(runtime_name) && unstaged_name[runtime_name.size()] == '.');
+            bool matches_runtime = unstaged_name == runtime_name || (unstaged_name.size() > runtime_name.size() && unstaged_name.starts_with(runtime_name) && unstaged_name[runtime_name.size()] == '.');
 
             if (!matches_runtime) {
                 return;
@@ -904,8 +1096,8 @@ auto GetCurrentClientRuntimeLibraryName() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
-        const auto name = strex(exe_path.value()).extract_file_name().erase_file_extension().str();
+    if (auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
+        string name = strex(exe_path.value()).extract_file_name().erase_file_extension().str();
 
         if (!name.empty()) {
             return name;
@@ -919,26 +1111,58 @@ void ShowUpdaterFailure(UpdaterResult result)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto target_name = GetCurrentBinaryUpdateTargetName();
+    string_view target_name = GetCurrentBinaryUpdateTargetName();
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:
-        Application::ShowErrorMessage(strex("Server doesn't provide a native client update for binary target {}. Please update the client manually", target_name).str(), "", true);
+        Application::ShowErrorMessage(strex(strex::dynamic_format, StrServerMissingNativeUpdate, target_name).str(), StrErrorMessageCaption, true);
         break;
     case UpdaterResult::UpdaterOutdated:
-        Application::ShowErrorMessage("Client updater outdated, please update the base client", "", true);
+        Application::ShowErrorMessage(StrUpdaterOutdated, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::PlatformUnsupported:
-        Application::ShowErrorMessage("Client outdated, please update via your app store", "", true);
+        Application::ShowErrorMessage(StrPlatformUnsupported, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::Failed:
-        Application::ShowErrorMessage(strex("Failed to update native client modules for binary target {}. Please update the client manually", target_name).str(), "", true);
+        Application::ShowErrorMessage(strex(strex::dynamic_format, StrNativeUpdateFailed, target_name).str(), StrErrorMessageCaption, true);
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:
     default:
         break;
     }
+}
+
+auto GetClientRuntimeLibraryExtension() noexcept -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return ".dll";
+#elif FO_LINUX
+    return ".so";
+#elif FO_MAC
+    return ".dylib";
+#else
+    return {};
+#endif
+}
+
+static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string trimmed_path = strex(runtime_path).trim().str();
+
+    if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs_is_absolute_path(trimmed_path) || trimmed_path.find('\0') != string::npos || trimmed_path.find('\r') != string::npos || trimmed_path.find('\n') != string::npos) {
+        return std::nullopt;
+    }
+
+    if (strex(trimmed_path).extract_file_name().str() != expected_runtime_file_name) {
+        return std::nullopt;
+    }
+
+    return fs_resolve_path(trimmed_path);
 }
 
 FO_END_NAMESPACE

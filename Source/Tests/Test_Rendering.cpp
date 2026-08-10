@@ -54,6 +54,17 @@ ProjBuf = 2
 )";
         }
 
+        if (name == "Effects/Test_DepthVariants.fofx") {
+            return R"([Effect]
+Passes = 1
+DepthVariants = True
+)";
+        }
+
+        if (name == "Effects/Test_DepthVariants.fofx-1-info") {
+            return "[EffectInfo]\n";
+        }
+
         throw GenericException("Unexpected test effect request", name);
     };
 }
@@ -69,15 +80,14 @@ TEST_CASE("NullRenderer")
     SECTION("TextureReadWriteAndClear")
     {
         auto tex = renderer.CreateTexture({4, 4}, false, false);
-        REQUIRE(tex != nullptr);
 
-        const array<ucolor, 4> row_data {{ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}, ucolor {9, 10, 11, 12}, ucolor {13, 14, 15, 16}}};
-        tex->UpdateTextureRegion({0, 0}, {4, 1}, row_data.data());
+        array<ucolor, 4> row_data {{ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}, ucolor {9, 10, 11, 12}, ucolor {13, 14, 15, 16}}};
+        tex->UpdateTextureRegion({0, 0}, {4, 1}, row_data);
 
         CHECK(tex->GetTexturePixel({0, 0}) == row_data[0]);
         CHECK(tex->GetTexturePixel({3, 0}) == row_data[3]);
 
-        renderer.SetRenderTarget(tex.get());
+        renderer.SetRenderTarget(tex);
         renderer.ClearRenderTarget(ucolor {20, 30, 40, 50});
 
         CHECK(tex->GetTexturePixel({1, 1}) == ucolor {20, 30, 40, 50});
@@ -89,10 +99,6 @@ TEST_CASE("NullRenderer")
         auto dbuf = renderer.CreateDrawBuffer(false);
         auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader());
 
-        REQUIRE(tex != nullptr);
-        REQUIRE(dbuf != nullptr);
-        REQUIRE(effect != nullptr);
-
         dbuf->Vertices.resize(4);
         dbuf->VertCount = 4;
         dbuf->Indices = {0, 1, 2, 2, 3, 0};
@@ -101,9 +107,25 @@ TEST_CASE("NullRenderer")
         REQUIRE_NOTHROW(dbuf->Upload(EffectUsage::QuadSprite));
 
         effect->MainTex = tex.get();
-        REQUIRE_NOTHROW(effect->DrawBuffer(dbuf.get()));
+        REQUIRE_NOTHROW(effect->DrawBuffer(dbuf));
         CHECK(effect->MainTexBuf.has_value());
         CHECK(effect->ProjBuf.has_value());
+    }
+
+    SECTION("DepthVariantRequiresBuiltState")
+    {
+        auto dbuf = renderer.CreateDrawBuffer(false);
+        auto fixed_effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader());
+        auto variant_effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_DepthVariants.fofx", MakeTestEffectLoader());
+
+        CHECK(fixed_effect->ResolveDepthVariantSlot(0) == 3);
+
+        fixed_effect->DepthVariant = DepthVariantType::TestNoWrite;
+        CHECK_THROWS_WITH(fixed_effect->DrawBuffer(dbuf), Catch::Matchers::ContainsSubstring("depth state the effect did not build"));
+
+        variant_effect->DepthVariant = DepthVariantType::TestNoWrite;
+        CHECK(variant_effect->ResolveDepthVariantSlot(0) == 2);
+        CHECK_NOTHROW(variant_effect->DrawBuffer(dbuf));
     }
 }
 

@@ -32,6 +32,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "CommonHelpers.h"
 #include "DiskFileSystem.h"
 #include "SafeArithmetics.h"
 
@@ -39,7 +40,7 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTempTestDir(string_view name) -> string
 {
-    const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
     return fs_path_to_string(base);
 }
 
@@ -47,12 +48,12 @@ TEST_CASE("DiskFileSystem")
 {
     SECTION("ReadWriteRenameAndRemoveRoundtrip")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_roundtrip");
-        const auto file_path = strex(temp_dir).combine_path("nested/data.txt").str();
-        const auto renamed_path = strex(temp_dir).combine_path("nested/renamed.txt").str();
-        const string_view content {"hello filesystem"};
+        string temp_dir = MakeTempTestDir("diskfs_roundtrip");
+        string file_path = strex(temp_dir).combine_path("nested/data.txt").str();
+        string renamed_path = strex(temp_dir).combine_path("nested/renamed.txt").str();
+        string_view content {"hello filesystem"};
 
-        const auto removed_before_roundtrip = fs_remove_dir_tree(temp_dir);
+        bool removed_before_roundtrip = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before_roundtrip);
 
         REQUIRE(fs_write_file(file_path, content));
@@ -74,11 +75,11 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("IterateDirRespectsRecursiveFlag")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_iterate");
-        const auto top_file = strex(temp_dir).combine_path("top.txt").str();
-        const auto nested_file = strex(temp_dir).combine_path("sub/nested.txt").str();
+        string temp_dir = MakeTempTestDir("diskfs_iterate");
+        string top_file = strex(temp_dir).combine_path("top.txt").str();
+        string nested_file = strex(temp_dir).combine_path("sub/nested.txt").str();
 
-        const auto removed_before_iterate = fs_remove_dir_tree(temp_dir);
+        bool removed_before_iterate = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before_iterate);
         REQUIRE(fs_write_file(top_file, string_view {"top"}));
         REQUIRE(fs_write_file(nested_file, string_view {"nested"}));
@@ -99,10 +100,10 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("TouchAndStreamHelpersWork")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_stream");
-        const auto file_path = strex(temp_dir).combine_path("touch.bin").str();
+        string temp_dir = MakeTempTestDir("diskfs_stream");
+        string file_path = strex(temp_dir).combine_path("touch.bin").str();
 
-        const auto removed_before_stream = fs_remove_dir_tree(temp_dir);
+        bool removed_before_stream = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before_stream);
         REQUIRE(fs_create_directories(temp_dir));
         REQUIRE(fs_touch_file(file_path));
@@ -114,12 +115,13 @@ TEST_CASE("DiskFileSystem")
         CHECK(stream_get_read_pos(stream) == 0);
 
         array<char, 3> buf {};
-        REQUIRE(stream_read_exact(stream, buf.data(), buf.size()));
+        auto buf_data = make_nptr(buf.data());
+        REQUIRE(stream_read_exact(stream, make_span(buf_data, buf.size())));
         CHECK(string_view {buf.data(), buf.size()} == "abc");
         CHECK(stream_get_read_pos(stream) == 3);
         REQUIRE(stream_set_read_pos(stream, 1, std::ios_base::cur));
         CHECK(stream_get_read_pos(stream) == 4);
-        REQUIRE(stream_read_exact(stream, buf.data(), 2));
+        REQUIRE(stream_read_exact(stream, make_span(buf_data, 2)));
         CHECK(string_view {buf.data(), 2} == "ef");
 
         CHECK(fs_remove_dir_tree(temp_dir));
@@ -127,12 +129,12 @@ TEST_CASE("DiskFileSystem")
 
     SECTION("FileHashMatchesInMemoryReference")
     {
-        const auto temp_dir = MakeTempTestDir("diskfs_hash");
-        const auto file_path = strex(temp_dir).combine_path("hash.bin").str();
-        const auto removed_before_hash = fs_remove_dir_tree(temp_dir);
+        string temp_dir = MakeTempTestDir("diskfs_hash");
+        string file_path = strex(temp_dir).combine_path("hash.bin").str();
+        bool removed_before_hash = fs_remove_dir_tree(temp_dir);
         ignore_unused(removed_before_hash);
 
-        const auto check_hash = [&file_path](size_t size) {
+        auto check_hash = [&file_path](size_t size) {
             vector<uint8_t> data(size);
 
             for (size_t index = 0; index < size; index++) {
@@ -141,14 +143,34 @@ TEST_CASE("DiskFileSystem")
 
             REQUIRE(fs_write_file(file_path, data));
             REQUIRE(fs_hash_file(file_path).has_value());
-            CHECK(*fs_hash_file(file_path) == fs_hash_data(data.data(), data.size()));
+            CHECK(*fs_hash_file(file_path) == fs_hash_data(data));
         };
 
-        for (const auto size : {size_t(0), size_t(1), size_t(3), size_t(4), size_t(15), size_t(16), size_t(17), size_t(47), size_t(48), size_t(49), size_t(63), size_t(64), size_t(65), size_t(96), size_t(97), size_t(70000)}) {
+        for (auto size : {size_t(0), size_t(1), size_t(3), size_t(4), size_t(15), size_t(16), size_t(17), size_t(47), size_t(48), size_t(49), size_t(63), size_t(64), size_t(65), size_t(96), size_t(97), size_t(70000)}) {
             check_hash(size);
         }
 
         CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
+    SECTION("MakeWritablePathLayersRelativeUnderRoot")
+    {
+        string root = strex("/data").combine_path("user").str();
+        string nested_relative = strex("Resources").combine_path("Sub").str();
+
+        // Portable layout (empty root): the relative path is returned unchanged, written next to the exe.
+        CHECK(fs_make_writable_path("", "Cache") == "Cache");
+        CHECK(fs_make_writable_path("", nested_relative) == nested_relative);
+
+        // Installed layout: the relative path is layered under the writable root.
+        CHECK(fs_make_writable_path(root, "Cache") == strex(root).combine_path("Cache").str());
+        CHECK(fs_make_writable_path(root, nested_relative) == strex(root).combine_path(nested_relative).str());
+
+        // An already-absolute relative path is never relocated under the root, in either layout.
+        string absolute_input = MakeTempTestDir("diskfs_writable_abs");
+        CHECK(fs_is_absolute_path(absolute_input));
+        CHECK(fs_make_writable_path(root, absolute_input) == absolute_input);
+        CHECK(fs_make_writable_path("", absolute_input) == absolute_input);
     }
 }
 

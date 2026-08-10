@@ -52,9 +52,9 @@ FO_BEGIN_NAMESPACE
 
 class EngineMetadata;
 
-void RegisterAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine);
-void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine);
-auto ValidateAngelScriptRemoteCallAttributes(AngelScript::asIScriptModule* mod, const EngineMetadata& meta, const Preprocessor::LineNumberTranslator* lnt = nullptr) -> string;
+void RegisterAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine);
+void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine);
+auto ValidateAngelScriptRemoteCallAttributes(ptr<const AngelScript::asIScriptModule> mod, const EngineMetadata& meta, nptr<const Preprocessor::LineNumberTranslator> lnt = nullptr) -> string;
 
 FO_END_NAMESPACE
 

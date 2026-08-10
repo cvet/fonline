@@ -17,6 +17,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 
+@SuppressWarnings("deprecation")
 public class SDLControllerManager
 {
 
@@ -489,6 +490,7 @@ class SDLJoystickHandler_API19 extends SDLJoystickHandler_API16 {
     }
 }
 
+@SuppressWarnings("deprecation")
 class SDLHapticHandler_API31 extends SDLHapticHandler {
     @Override
     public void run(int device_id, float intensity, int length) {
@@ -541,6 +543,7 @@ class SDLHapticHandler_API31 extends SDLHapticHandler {
     }
 }
 
+@SuppressWarnings("deprecation")
 class SDLHapticHandler_API26 extends SDLHapticHandler {
     @Override
     public void run(int device_id, float intensity, int length) {
@@ -572,6 +575,7 @@ class SDLHapticHandler_API26 extends SDLHapticHandler {
     }
 }
 
+@SuppressWarnings("deprecation")
 class SDLHapticHandler {
 
     static class SDLHaptic {

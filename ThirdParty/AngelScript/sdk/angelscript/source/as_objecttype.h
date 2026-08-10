@@ -136,9 +136,12 @@ public:
 	asCObjectProperty *AddPropertyToClass(const asCString &name, const asCDataType &dt, bool isPrivate, bool isProtected, bool isInherited);
 	void ReleaseAllProperties();
 
-#ifdef WIP_16BYTE_ALIGN
+	// (FOnline Patch) Required alignment (in bytes) of this value type on the VM stack / in memory. Always
+	// present (was previously gated behind WIP_16BYTE_ALIGN). 4 by default; set to 8 for 8-byte value types so
+	// the alignment-aware stack layout (asCDataType::GetStackAlignmentDWords) can pad their slots. See
+	// Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md.
 	int                          alignment;
-#endif
+
 	asCArray<asCObjectProperty*> properties;
 	asCArray<int>                methods;
 

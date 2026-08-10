@@ -42,7 +42,7 @@ TEST_CASE("GameTimer")
 
     SECTION("SynchronizedTimeThrowsBeforeInitialization")
     {
-        GameTimer timer {settings};
+        GameTimer timer {&settings};
 
         CHECK_FALSE(timer.IsTimeSynchronized());
         CHECK_THROWS_AS(timer.GetSynchronizedTime(), TimeNotSyncException);
@@ -50,8 +50,8 @@ TEST_CASE("GameTimer")
 
     SECTION("FrameAdvanceUpdatesTimeAndDelta")
     {
-        GameTimer timer {settings};
-        const nanotime initial_time = timer.GetFrameTime();
+        GameTimer timer {&settings};
+        nanotime initial_time = timer.GetFrameTime();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         timer.FrameAdvance(false);
@@ -62,8 +62,8 @@ TEST_CASE("GameTimer")
 
     SECTION("SynchronizedTimeMovesForwardAfterAdvance")
     {
-        GameTimer timer {settings};
-        const synctime sync_base {123456};
+        GameTimer timer {&settings};
+        synctime sync_base {123456};
 
         timer.SetSynchronizedTime(sync_base);
         CHECK(timer.IsTimeSynchronized());
@@ -77,16 +77,16 @@ TEST_CASE("GameTimer")
 
     SECTION("MonotonicSynchronizedTimeDoesNotRollbackAndCatchesUp")
     {
-        GameTimer timer {settings};
-        const synctime sync_base {123456};
+        GameTimer timer {&settings};
+        synctime sync_base {123456};
 
         timer.SetSynchronizedTime(sync_base);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         timer.FrameAdvance(false);
 
-        const auto current_time = timer.GetSynchronizedTime();
-        const synctime older_time {current_time.milliseconds() - 100};
+        synctime current_time = timer.GetSynchronizedTime();
+        synctime older_time {current_time.milliseconds() - 100};
 
         timer.SetSynchronizedTimeMonotonic(older_time);
         CHECK(timer.GetSynchronizedTime() == current_time);
@@ -98,7 +98,7 @@ TEST_CASE("GameTimer")
 
     SECTION("FramesPerSecondBecomesAvailableAfterOneSecondWindow")
     {
-        GameTimer timer {settings};
+        GameTimer timer {&settings};
 
         timer.FrameAdvance(false);
         CHECK(timer.GetFramesPerSecond() == 0);

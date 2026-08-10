@@ -1,7 +1,14 @@
+# Flush_Map — blits the map render target straight to the frame.
+# Where: engine default for the FlushMap slot (plain blit of the map render target).
+# How: passes the projected vertex position through, copies sampled MainTex RGB, and writes opaque alpha
+# because a completed map viewport must not expose intermediate sprite coverage.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
+DepthWrite = False
 
 [VertexShader]
-layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -12,12 +19,12 @@ layout(location = 0) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition.xy, 0.0, 1.0);
     TexCoord = InTexCoord;
 }
 
 [FragmentShader]
-layout(binding = 0) uniform sampler2D MainTex;
+layout(set = 1, binding = 0) uniform sampler2D MainTex;
 
 layout(location = 0) in vec2 TexCoord;
 
@@ -25,5 +32,5 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-    FragColor = texture(MainTex, TexCoord);
+    FragColor = vec4(texture(MainTex, TexCoord).rgb, 1.0);
 }

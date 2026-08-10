@@ -43,6 +43,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ImageBakerException);
 
+struct SpriteInfoFileEntry;
+
 class ImageBaker final : public BaseBaker
 {
 public:
@@ -94,7 +96,7 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    void BakeCollection(string_view fname, const FrameCollection& collection) const;
+    [[nodiscard]] auto BakeCollection(string_view fname, const FrameCollection& collection) const -> SpriteInfoFileEntry;
 
     [[nodiscard]] auto LoadAny(string_view fname_with_opt, const FileCollection& files) const -> FrameCollection;
     [[nodiscard]] auto LoadFofrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;

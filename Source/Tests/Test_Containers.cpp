@@ -55,29 +55,51 @@ TEST_CASE("Containers")
 
     SECTION("VectorFormatterInt")
     {
-        const vector<int32_t> values = {1, 2, 3};
-        const auto text = std::format("{}", values);
+        vector<int32_t> values = {1, 2, 3};
+        auto text = std::format("{}", values);
         CHECK(text == "1 2 3");
+    }
+
+    SECTION("VectorFormatterChar")
+    {
+        vector<char> values = {'A', ' '};
+        std::string text = std::format("{}", values);
+        CHECK(text == "65 32");
+    }
+
+    SECTION("VectorFormatterByte")
+    {
+        vector<uint8_t> values = {0, 65, 255};
+        std::string text = std::format("{}", values);
+        CHECK(text == "0 65 255");
     }
 
     SECTION("VectorFormatterString")
     {
-        const vector<string> values = {"one", "two", "three"};
-        const auto text = std::format("{}", values);
+        vector<string> values = {"one", "two", "three"};
+        auto text = std::format("{}", values);
         CHECK(text == "one two three");
     }
 
     SECTION("VectorFormatterBool")
     {
-        const vector<bool> values = {true, false, true};
-        const auto text = std::format("{}", values);
+        vector<bool> values = {true, false, true};
+        auto text = std::format("{}", values);
         CHECK(text == "True False True");
+    }
+
+    SECTION("VectorFormatterFloat")
+    {
+        // Pins the printf("%f") output the formatter produced while it went through std::to_string
+        vector<float32_t> values = {1.5f, -2.0f, 0.0f};
+        auto text = std::format("{}", values);
+        CHECK(text == "1.500000 -2.000000 0.000000");
     }
 
     SECTION("VectorFormatterEmpty")
     {
-        const vector<int32_t> values;
-        const auto text = std::format("{}", values);
+        vector<int32_t> values;
+        auto text = std::format("{}", values);
         CHECK(text.empty());
     }
 
@@ -88,7 +110,7 @@ TEST_CASE("Containers")
         values.push_back(8);
         values.push_back(9);
 
-        const auto text = std::format("{}", values);
+        auto text = std::format("{}", values);
         CHECK(text == "7 8 9");
     }
 }

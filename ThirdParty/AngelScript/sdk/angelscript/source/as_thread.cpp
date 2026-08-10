@@ -109,6 +109,10 @@ AS_API void asReleaseSharedLock()
 
 //======================================================================
 
+#if defined(AS_MODERN_THREADS) // (FOnline Patch): standard C++ thread_local tld storage
+	thread_local asCThreadLocalData *asCThreadManager::tld = 0;
+#endif
+
 #if !defined(AS_NO_THREADS) && defined(AS_WINDOWS_THREADS)
 	#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 		__declspec(thread) asCThreadLocalData *asCThreadManager::tld = 0;
@@ -132,7 +136,7 @@ asCThreadManager::asCThreadManager()
 {
 	// We're already in the critical section when this function is called
 
-#ifdef AS_NO_THREADS
+#if defined(AS_NO_THREADS) || defined(AS_MODERN_THREADS) // (FOnline Patch): thread_local tld needs no key setup
 	tld = 0;
 #else
 	// Allocate the thread local storage
@@ -221,7 +225,7 @@ void asCThreadManager::Unprepare()
 
 asCThreadManager::~asCThreadManager()
 {
-#ifndef AS_NO_THREADS
+#if !defined(AS_NO_THREADS) && !defined(AS_MODERN_THREADS) // (FOnline Patch): thread_local tld freed per-thread in CleanupLocalData
 	// Deallocate the thread local storage
 	#if defined AS_POSIX_THREADS
 		pthread_key_delete((pthread_key_t)mtlsKey);
@@ -257,7 +261,7 @@ int asCThreadManager::CleanupLocalData()
 	if( threadManager == 0 )
 		return 0;
 
-#ifndef AS_NO_THREADS
+#if !defined(AS_NO_THREADS) && !defined(AS_MODERN_THREADS) // (FOnline Patch): modern path uses thread_local tld (below)
 #if defined AS_POSIX_THREADS
 	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->mtlsKey);
 #elif defined AS_WINDOWS_THREADS
@@ -307,7 +311,7 @@ asCThreadLocalData *asCThreadManager::GetLocalData()
 	if( threadManager == 0 )
 		return 0;
 
-#ifndef AS_NO_THREADS
+#if !defined(AS_NO_THREADS) && !defined(AS_MODERN_THREADS) // (FOnline Patch): modern path uses thread_local tld (below)
 #if defined AS_POSIX_THREADS
 	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->mtlsKey);
 	if( tld == 0 )
@@ -350,7 +354,7 @@ asCThreadLocalData::~asCThreadLocalData()
 
 //=========================================================================
 
-#ifndef AS_NO_THREADS
+#if !defined(AS_NO_THREADS) && !defined(AS_MODERN_THREADS) // (FOnline Patch): modern branch is inline in as_criticalsection.h
 asCThreadCriticalSection::asCThreadCriticalSection()
 {
 #if defined AS_POSIX_THREADS

@@ -513,7 +513,7 @@ if(LIBRESSL_APPS)
 	add_subdirectory(apps)
 endif()
 add_subdirectory(tls)
-if(NOT MSVC)
+if(NOT MSVC AND ENABLE_LIBRESSL_INSTALL) # (FOnline Patch) man pages are pruned from the vendored engine copy.
 	add_subdirectory(man)
 endif()
 # Tests require the openssl executable and are unavailable when building shared libraries

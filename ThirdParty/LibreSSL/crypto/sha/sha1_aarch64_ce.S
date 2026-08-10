@@ -213,3 +213,7 @@ sha1_block_ce:
 	str	hc1s, [ctx, #(4*4)]
 
 	ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

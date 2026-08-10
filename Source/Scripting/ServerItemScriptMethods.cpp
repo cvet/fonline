@@ -34,12 +34,18 @@
 #include "Common.h"
 
 #include "Geometry.h"
+#include "ScriptSystem.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
 
+static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>;
+static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>;
+static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
+
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, bool> initFunc)
+FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, ptr<Item>, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
@@ -52,8 +58,9 @@ FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, b
     self->SetInitScript(initFunc.GetName().first);
 }
 
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
+FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -62,215 +69,171 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
     self->SetInitScript(initFunc);
 }
 
+// SyncScope: requires self; creates and attaches a new inner item under the container cover.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count)
+FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t count, any_t stackId = any_t {})
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
+    }
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
-    return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, {});
+    auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
+    return item;
 }
 
+// SyncScope: requires self; creates and attaches a new inner item under the container cover.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count)
+FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, int32_t count, any_t stackId = any_t {})
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
     }
-
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
-    return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, {});
+    auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
+    return item;
 }
 
+// SyncScope: requires self; returns inner item handles covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, any_t stackId)
+FO_SCRIPT_API vector<ptr<Item>> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
 {
-    if (count <= 0) {
-        return nullptr;
+    vector<ptr<Item>> items = self->GetInnerItems(stackId);
+
+    return items;
+}
+
+// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
+{
+    auto map = ResolveItemMap(self);
+
+    return map ? map.take_not_null().release_ownership() : nullptr;
+}
+
+// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
+{
+    auto map = ResolveItemMapPosition(self, hex);
+
+    return map ? map.take_not_null().release_ownership() : nullptr;
+}
+
+// SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
+{
+    auto cr = ResolveItemCritter(self);
+
+    return cr ? cr.take_not_null().release_ownership() : nullptr;
+}
+
+// SyncScope: requires self + current map when map-owned; refreshes map visibility/blocking caches.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
+{
+    if (self->GetOwnership() == ItemOwnership::MapHex) {
+        auto map = RequireParent<Map>(self, "Missing map instance");
+        map->ChangeViewItem(self);
+        map->RecacheHexFlags(self->GetHex());
     }
-
-    return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
 }
 
-///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId)
+static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
+    FO_STACK_TRACE_ENTRY();
 
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self)
-{
-    return self->GetInnerItems({});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, any_t stackId)
-{
-    return self->GetInnerItems(stackId);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API Map* Server_Item_GetMap(Item* self)
-{
-    Map* map;
-
-    switch (self->GetOwnership()) {
+    switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
-
-        if (cr == nullptr) {
-            throw ScriptException("Critter ownership, critter not found");
-        }
+        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
 
         if (!cr->GetMapId()) {
             return nullptr;
         }
 
-        map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
-
-        if (map == nullptr) {
-            throw ScriptException("Critter ownership, map not found");
-        }
+        auto map = RequireParent<Map, Critter>(cr, "Critter ownership, map not found");
+        return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
-        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
-
-        if (map == nullptr) {
-            throw ScriptException("Hex ownership, map not found");
-        }
+        auto map = RequireParent<Map>(item, "Hex ownership, map not found");
+        return std::move(map);
     } break;
     case ItemOwnership::ItemContainer: {
-        if (self->GetId() == self->GetContainerId()) {
+        if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
-
-        if (cont == nullptr) {
-            throw ScriptException("Container ownership, container not found");
-        }
-
-        map = Server_Item_GetMap(cont);
+        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
+        return ResolveItemMap(cont);
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
-
-    return map;
 }
 
-///@ ExportMethod
-FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
+static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>
 {
-    Map* map;
+    FO_STACK_TRACE_ENTRY();
 
-    switch (self->GetOwnership()) {
+    switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
-
-        if (cr == nullptr) {
-            throw ScriptException("Critter ownership, critter not found");
-        }
+        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
 
         if (!cr->GetMapId()) {
             hex = {};
             return nullptr;
         }
 
-        map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
-
-        if (map == nullptr) {
-            throw ScriptException("Critter ownership, map not found");
-        }
-
+        auto map = RequireParent<Map, Critter>(cr, "Critter ownership, map not found");
         hex = cr->GetHex();
+        return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
-        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
-
-        if (map == nullptr) {
-            throw ScriptException("Hex ownership, map not found");
-        }
-
-        hex = self->GetHex();
+        auto map = RequireParent<Map>(item, "Hex ownership, map not found");
+        hex = item->GetHex();
+        return std::move(map);
     } break;
     case ItemOwnership::ItemContainer: {
-        if (self->GetId() == self->GetContainerId()) {
+        if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
-
-        if (cont == nullptr) {
-            throw ScriptException("Container ownership, container not found");
-        }
-
-        map = Server_Item_GetMapPosition(cont, hex);
+        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
+        return ResolveItemMapPosition(cont, hex);
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
-
-    return map;
 }
 
-///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Item_GetCritter(Item* self)
+static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
 {
-    Critter* cr;
+    FO_STACK_TRACE_ENTRY();
 
-    switch (self->GetOwnership()) {
+    switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
-
-        if (cr == nullptr) {
-            throw ScriptException("Critter ownership, critter not found");
-        }
+        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
+        return std::move(cr);
     } break;
-    case ItemOwnership::MapHex: {
-        cr = nullptr;
-    } break;
+    case ItemOwnership::MapHex:
+        return nullptr;
     case ItemOwnership::ItemContainer: {
-        if (self->GetId() == self->GetContainerId()) {
+        if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
-
-        if (cont == nullptr) {
-            throw ScriptException("Container ownership, container not found");
-        }
-
-        cr = Server_Item_GetCritter(cont);
+        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
+        return ResolveItemCritter(cont);
     } break;
     default:
         throw ScriptException("Invalid ownership");
-    }
-
-    return cr;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
-{
-    if (self->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
-        FO_RUNTIME_ASSERT(map);
-        map->ChangeViewItem(self);
-        map->RecacheHexFlags(self->GetHex());
     }
 }
 

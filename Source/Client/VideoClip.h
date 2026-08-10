@@ -44,7 +44,7 @@ class VideoClip
 public:
     explicit VideoClip(vector<uint8_t> video_data);
     VideoClip(const VideoClip&) = delete;
-    VideoClip(VideoClip&&) noexcept = default;
+    VideoClip(VideoClip&&) noexcept;
     auto operator=(const VideoClip&) = delete;
     auto operator=(VideoClip&&) noexcept = delete;
     ~VideoClip();
@@ -65,10 +65,9 @@ public:
 
 private:
     struct Impl;
-
     auto DecodePacket() -> int32_t;
 
-    unique_ptr<Impl> _impl;
+    unique_nptr<Impl> _impl {};
 };
 
 FO_END_NAMESPACE

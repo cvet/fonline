@@ -4,11 +4,14 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_DECLARE_EXCEPTION(ExceptionHandlingTestBaseException);
+FO_DECLARE_EXCEPTION_EXT(ExceptionHandlingTestDerivedException, ExceptionHandlingTestBaseException);
+
 TEST_CASE("ExceptionHandling")
 {
     SECTION("BaseEngineExceptionCapturesMessageAndParams")
     {
-        const GenericException ex {"Failure happened", 42, "tail"};
+        GenericException ex {"Failure happened", 42, "tail"};
 
         CHECK(string_view {ex.name()} == "GenericException");
         CHECK(ex.message() == "Failure happened");
@@ -34,7 +37,7 @@ TEST_CASE("ExceptionHandling")
         StackTraceData st {};
         st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
 
-        const auto formatted = FormatStackTrace(st);
+        auto formatted = FormatStackTrace(st);
 
         CHECK(formatted.find("Stack trace (most recent call first):") == 0);
         CHECK(formatted.find("- [Script] SecondFunc (second.cpp line 22)") != string::npos);
@@ -44,16 +47,16 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("FormatStackTraceWithNoCallsReturnsHeaderOnly")
     {
-        const StackTraceData st {};
+        StackTraceData st {};
 
-        const auto formatted = FormatStackTrace(st);
+        auto formatted = FormatStackTrace(st);
 
         CHECK(formatted == "Stack trace (most recent call first):");
     }
 
     SECTION("SetExceptionCallbackReplacesAndClearsCallback")
     {
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
 
         string message;
         bool has_origin = false;
@@ -65,9 +68,9 @@ TEST_CASE("ExceptionHandling")
             fatal = is_fatal;
         });
 
-        const auto callback = GetExceptionCallback();
+        auto callback = GetExceptionCallback();
         REQUIRE(callback);
-        const CatchedStackTraceData st {std::nullopt, {}};
+        CatchedStackTraceData st {std::nullopt, {}};
         callback("Msg", st, true);
 
         CHECK(message == "Msg");
@@ -80,10 +83,30 @@ TEST_CASE("ExceptionHandling")
         SetExceptionCallback(std::move(prev_callback));
     }
 
+    SECTION("DerivedExceptionPreservesOwnNameMessageAndParams")
+    {
+        // Regression: a macro exception derived from another macro exception (not BaseEngineException
+        // directly) must still report its own name/message/params, with no stray null pushed into params.
+        static_assert(std::is_base_of_v<ExceptionHandlingTestBaseException, ExceptionHandlingTestDerivedException>);
+        static_assert(std::is_base_of_v<BaseEngineException, ExceptionHandlingTestDerivedException>);
+
+        ExceptionHandlingTestDerivedException ex {"Derived failure", 7, "extra"};
+
+        CHECK(string_view {ex.name()} == "ExceptionHandlingTestDerivedException");
+        CHECK(ex.message() == "Derived failure");
+        REQUIRE(ex.params().size() == 2);
+        CHECK(ex.params()[0] == "7");
+        CHECK(ex.params()[1] == "extra");
+        CHECK(string_view {ex.what()}.find("ExceptionHandlingTestDerivedException: Derived failure") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("- 7") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("- extra") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("0x0") == string_view::npos);
+    }
+
     SECTION("BaseEngineExceptionCopyPreservesPayload")
     {
-        const InvalidOperationException original {"Operation failed", 99};
-        const InvalidOperationException copy {original};
+        InvalidOperationException original {"Operation failed", 99};
+        InvalidOperationException copy {original};
 
         CHECK(string_view {copy.name()} == "InvalidOperationException");
         CHECK(copy.message() == "Operation failed");
@@ -94,7 +117,7 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("ReportExceptionAndContinueInvokesNonFatalCallback")
     {
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
 
         string message;
         bool trace_received = false;
@@ -108,7 +131,7 @@ TEST_CASE("ExceptionHandling")
             fatal = is_fatal;
         });
 
-        const GenericException ex {"Continue please"};
+        GenericException ex {"Continue please"};
         ReportExceptionAndContinue(ex);
 
         CHECK(message == ex.what());
@@ -119,37 +142,77 @@ TEST_CASE("ExceptionHandling")
         SetExceptionCallback(std::move(prev_callback));
     }
 
-    SECTION("ReportVerifyFailedUsesVerifyFailedException")
+    SECTION("VerifyAndThrowUsesVerificationExceptionWithSeparateParams")
     {
-        const auto prev_callback = GetExceptionCallback();
+        try {
+            FO_VERIFY_AND_THROW(false, "Throw context", 42);
+            FAIL("Verify throw message form did not throw");
+        }
+        catch (const VerificationException& ex) {
+            CHECK(string_view {ex.name()} == "VerificationException");
+            CHECK(ex.message() == "Throw context");
+            REQUIRE(ex.params().size() == 1);
+            CHECK(ex.params()[0] == "42");
+            CHECK(string_view {ex.what()}.find("VerificationException: Throw context") != string_view::npos);
+            CHECK(string_view {ex.what()}.find("- 42") != string_view::npos);
+        }
+    }
 
-        string message;
-        bool trace_received = false;
-        bool trace_has_origin = false;
-        bool fatal = true;
+    SECTION("VerifyAndContinueSupportsMessageForm")
+    {
+        auto prev_callback = GetExceptionCallback();
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
-            message = string(msg);
-            trace_received = true;
-            trace_has_origin = st.Origin.has_value();
-            fatal = is_fatal;
+        vector<string> messages;
+
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool is_fatal) {
+            messages.emplace_back(msg);
+            CHECK_FALSE(is_fatal);
         });
 
-        ReportVerifyFailed("CheckInput", "unit_test.cpp", 77);
+        FO_VERIFY_AND_CONTINUE(false, "Continue context", 42);
 
-        CHECK(message.find("VerifyFailedException: CheckInput") != string::npos);
-        CHECK(message.find("- unit_test.cpp") != string::npos);
-        CHECK(message.find("- 77") != string::npos);
-        CHECK(trace_received);
-        CHECK(trace_has_origin);
-        CHECK_FALSE(fatal);
+        REQUIRE(messages.size() == 1);
+        CHECK(messages[0].find("VerificationException: Continue context") != string::npos);
+        CHECK(messages[0].find("- 42") != string::npos);
+
+        SetExceptionCallback(std::move(prev_callback));
+    }
+
+    SECTION("VerifyAndReturnSupportsMessageForms")
+    {
+        auto prev_callback = GetExceptionCallback();
+
+        vector<string> messages;
+
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool is_fatal) {
+            messages.emplace_back(msg);
+            CHECK_FALSE(is_fatal);
+        });
+
+        auto return_void_msg = [&] {
+            FO_VERIFY_AND_RETURN(false, "Return context", 42);
+            FAIL("Verify return message form did not return");
+        };
+        auto return_value_msg = [&]() -> int32_t {
+            FO_VERIFY_AND_RETURN_VALUE(false, 22, "Return value context", 43);
+            return 0;
+        };
+
+        return_void_msg();
+        CHECK(return_value_msg() == 22);
+
+        REQUIRE(messages.size() == 2);
+        CHECK(messages[0].find("VerificationException: Return context") != string::npos);
+        CHECK(messages[0].find("- 42") != string::npos);
+        CHECK(messages[1].find("VerificationException: Return value context") != string::npos);
+        CHECK(messages[1].find("- 43") != string::npos);
 
         SetExceptionCallback(std::move(prev_callback));
     }
 
     SECTION("CatchedStackTraceDataIncludesOriginForEngineExceptions")
     {
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
 
         bool trace_received = false;
         bool trace_has_origin = false;
@@ -174,7 +237,7 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("CatchedStackTraceDataForNonEngineExceptionPrefixesCatchedAt")
     {
-        const auto prev_callback = GetExceptionCallback();
+        auto prev_callback = GetExceptionCallback();
 
         bool trace_received = false;
         bool trace_has_origin = true;

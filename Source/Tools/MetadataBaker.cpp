@@ -40,7 +40,7 @@ extern auto GetServerSettings() -> unordered_set<string>;
 extern auto GetClientSettings() -> unordered_set<string>;
 
 MetadataBaker::MetadataBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -71,7 +71,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).get_file_extension();
+        string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (ext != "fos" && ext != "cpp" && ext != "h" && ext != "cppm" && ext != "ixx") {
             continue;
@@ -85,9 +85,9 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
         return;
     }
 
-    const bool bake_server = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-server", max_write_time);
-    const bool bake_client = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-client", max_write_time);
-    const bool bake_mapper = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-mapper", max_write_time);
+    bool bake_server = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-server", max_write_time);
+    bool bake_client = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-client", max_write_time);
+    bool bake_mapper = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-mapper", max_write_time);
 
     if (!bake_server && !bake_client && !bake_mapper) {
         return;
@@ -99,19 +99,19 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     std::ranges::stable_sort(filtered_files, [](auto&& a, auto&& b) { return a.GetPath() < b.GetPath(); });
 
     if (bake_server) {
-        file_bakings.emplace_back(async(GetAsyncMode(), [&]() FO_DEFERRED {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Server", [&]() FO_DEFERRED {
             auto data = BakeMetadata(filtered_files, "Server");
             _context->WriteData(_context->PackName + ".fometa-server", data);
         }));
     }
     if (bake_client) {
-        file_bakings.emplace_back(async(GetAsyncMode(), [&]() FO_DEFERRED {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Client", [&]() FO_DEFERRED {
             auto data = BakeMetadata(filtered_files, "Client");
             _context->WriteData(_context->PackName + ".fometa-client", data);
         }));
     }
     if (bake_mapper) {
-        file_bakings.emplace_back(async(GetAsyncMode(), [&]() FO_DEFERRED {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Mapper", [&]() FO_DEFERRED {
             auto data = BakeMetadata(filtered_files, "Mapper");
             _context->WriteData(_context->PackName + ".fometa-mapper", data);
         }));
@@ -143,7 +143,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
     FO_STACK_TRACE_ENTRY();
 
     // Read codegen tags
-    const unordered_set<string_view> valid_codegen_tags = {"Entity", "EntityHolder", "FixedType", "ValueType", "RefType", "Enum", "Property", "Event", "RemoteCall", "Setting", "MigrationRule"};
+    unordered_set<string_view> valid_codegen_tags = {"Entity", "EntityHolder", "FixedType", "ValueType", "RefType", "Enum", "Property", "Event", "RemoteCall", "Setting", "MigrationRule"};
 
     // Tags that may appear in native script `.cpp` / `.h` files. The
     // language-level surface (Event / Setting / RemoteCall / Enum /
@@ -172,8 +172,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
         readed_files.emplace_back(file.GetStr());
     }
 
-    TagsParsingContext ctx;
-    ctx.Target = target;
+    TagsParsingContext ctx {.Target = target};
     ctx.ResultTags["Target"].emplace_back(vector<string> {string(target)});
 
     for (size_t i = 0; i < files.size(); i++) {
@@ -182,15 +181,15 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
         size_t line_number = 1;
 
         while (true) {
-            const size_t prev_pos = pos;
+            size_t prev_pos = pos;
             pos = file_str.find("///@", pos);
 
             if (pos == string::npos) {
                 break;
             }
 
-            const auto it_begin = file_str.begin() + numeric_cast<ptrdiff_t>(prev_pos);
-            const auto it_end = file_str.begin() + numeric_cast<ptrdiff_t>(pos);
+            auto it_begin = file_str.begin() + numeric_cast<ptrdiff_t>(prev_pos);
+            auto it_end = file_str.begin() + numeric_cast<ptrdiff_t>(pos);
             line_number += std::count(it_begin, it_end, '\n');
 
             string_view line;
@@ -209,7 +208,32 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
                 pos = file_str.size();
             }
 
-            const size_t comment_pos = line.find("//");
+            string normalized_line;
+
+            if (line.find('\\') != string_view::npos) {
+                normalized_line.reserve(line.size());
+
+                for (size_t line_pos = 0; line_pos < line.size(); line_pos++) {
+                    char ch = line[line_pos];
+
+                    if (ch == '\\' && line_pos + 1 < line.size() && (line[line_pos + 1] == '\n' || line[line_pos + 1] == '\r')) {
+                        normalized_line += ' ';
+
+                        while (line_pos + 1 < line.size() && (line[line_pos + 1] == '\n' || line[line_pos + 1] == '\r')) {
+                            line_pos++;
+                        }
+
+                        continue;
+                    }
+
+                    normalized_line += ch;
+                }
+
+                ctx.NormalizedLines.emplace_back(SafeAlloc::MakeUnique<string>(std::move(normalized_line)));
+                line = *ctx.NormalizedLines.back();
+            }
+
+            size_t comment_pos = line.find("//");
 
             if (comment_pos != string::npos) {
                 line = line.substr(0, comment_pos);
@@ -253,23 +277,23 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
             }
 
             CodeGenTagDesc tag_desc;
-            tag_desc.SourceFile = files[i].GetPath();
+            tag_desc.SourceFile = string(files[i].GetPath());
             tag_desc.LineNumber = line_number;
             tag_desc.Tokens = std::move(tokens);
             ctx.CodeGenTags[string(tag_name)].emplace_back(std::move(tag_desc));
         }
     }
 
-    ctx.Meta = SafeAlloc::MakeUnique<EngineMetadata>([] { });
+    nptr<const FileSystem> resources = nullptr;
 
     if (target == "Server") {
-        RegisterServerStubMetadata(ctx.Meta.get(), nullptr);
+        RegisterServerStubMetadata(&ctx.Meta, resources);
     }
     else if (target == "Client") {
-        RegisterClientStubMetadata(ctx.Meta.get(), nullptr);
+        RegisterClientStubMetadata(&ctx.Meta, resources);
     }
     else if (target == "Mapper") {
-        RegisterMapperStubMetadata(ctx.Meta.get(), nullptr);
+        RegisterMapperStubMetadata(&ctx.Meta, resources);
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -287,7 +311,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
     ParseRemoteCall(ctx);
     ParseSetting(ctx);
     ParseMigrationRule(ctx);
-    ctx.Meta->FinalizeRegistration();
+    ctx.Meta.FinalizeRegistration();
 
     // Serialize data
     vector<uint8_t> data;
@@ -297,7 +321,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
     for (const auto& [tag_name, tag_values] : ctx.ResultTags) {
         writer.Write<uint16_t>(numeric_cast<uint16_t>(tag_name.size()));
-        writer.WritePtr(tag_name.data(), tag_name.size());
+        writer.WriteStringBytes(tag_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(tag_values.size()));
 
         for (const auto& tag_value : tag_values) {
@@ -305,7 +329,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
             for (const auto& tag_value_part : tag_value) {
                 writer.Write<uint16_t>(numeric_cast<uint16_t>(tag_value_part.size()));
-                writer.WritePtr(tag_value_part.data(), tag_value_part.size());
+                writer.WriteStringBytes(tag_value_part);
             }
         }
     }
@@ -328,10 +352,10 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
     map<string, EnumDesc> enums;
 
     // Fill engine enums
-    const auto& engine_enums = ctx.Meta->GetAllEnums();
+    const auto& engine_enums = ctx.Meta.GetAllEnums();
 
     for (const auto& engine_enum : engine_enums) {
-        const auto& engine_enum_type = ctx.Meta->GetBaseType(engine_enum.first);
+        const auto& engine_enum_type = ctx.Meta.GetBaseType(engine_enum.first);
 
         EnumDesc enum_desc;
         enum_desc.IsEngine = true;
@@ -347,9 +371,9 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid Enum codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto enum_name = tag_desc.Tokens[0];
+        auto enum_name = tag_desc.Tokens[0];
         auto& enum_desc = enums[string(enum_name)];
-        const auto enum_entry = tag_desc.Tokens[1];
+        auto enum_entry = tag_desc.Tokens[1];
 
         if (std::ranges::any_of(enum_desc.Entries, [&](auto&& e) { return e.first == enum_entry; })) {
             throw MetadataBakerException("Invalid Enum codegen tag: duplicate enum entry", tag_desc.SourceFile, tag_desc.LineNumber, enum_entry);
@@ -454,7 +478,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
                 }
             }
 
-            FO_RUNTIME_ASSERT(max_value >= min_value);
+            FO_VERIFY_AND_THROW(max_value >= min_value, "Enum metadata did not collect any value before choosing an underlying type", enum_name, min_value, max_value);
 
             if (min_value < 0) {
                 if (max_value > std::numeric_limits<int32_t>::max()) {
@@ -518,11 +542,11 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
                 key_values.emplace(string(entry.first), numeric_cast<int32_t>(entry.second.value()));
             }
 
-            ctx.Meta->RegisterEnumGroup(enum_name, enum_desc.UnderlyingType, std::move(key_values));
+            ctx.Meta.RegisterEnumGroup(enum_name, enum_desc.UnderlyingType, std::move(key_values));
         }
         else {
             for (const auto& entry : enum_desc.Entries) {
-                ctx.Meta->RegisterEnumEntry(enum_name, entry.first, numeric_cast<int32_t>(entry.second.value()));
+                ctx.Meta.RegisterEnumEntry(enum_name, entry.first, numeric_cast<int32_t>(entry.second.value()));
             }
         }
 
@@ -543,20 +567,20 @@ void MetadataBaker::ParseEntity(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid Entity codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
-        const auto name = tag_desc.Tokens[1];
+        auto target = tag_desc.Tokens[0];
+        auto name = tag_desc.Tokens[1];
 
         if (!(ctx.Target == "Common" || target == "Common" || target == ctx.Target)) {
             ctx.OtherEntityTypes.emplace(name);
             continue;
         }
 
-        const auto hname = ctx.Meta->Hashes.ToHashedString(name);
-        const auto flags = span(tag_desc.Tokens).subspan(2);
-        const auto is_global = std::ranges::any_of(flags, [](auto&& f) { return f == "Global"; });
-        const auto has_protos = std::ranges::any_of(flags, [](auto&& f) { return f == "HasProtos"; });
-        const auto has_statics = std::ranges::any_of(flags, [](auto&& f) { return f == "HasStatics"; });
-        const auto has_abstract = std::ranges::any_of(flags, [](auto&& f) { return f == "HasAbstract"; });
+        hstring hname = ctx.Meta.Hashes.ToHashedString(name);
+        auto flags = span(tag_desc.Tokens).subspan(2);
+        bool is_global = std::ranges::any_of(flags, [](auto&& f) { return f == "Global"; });
+        bool has_protos = std::ranges::any_of(flags, [](auto&& f) { return f == "HasProtos"; });
+        bool has_statics = std::ranges::any_of(flags, [](auto&& f) { return f == "HasStatics"; });
+        bool has_abstract = std::ranges::any_of(flags, [](auto&& f) { return f == "HasAbstract"; });
 
         if (name.starts_with("Proto")) {
             throw MetadataBakerException("Invalid Entity codegen tag: entity name cannot start with 'Proto'", tag_desc.SourceFile, tag_desc.LineNumber, name);
@@ -567,17 +591,17 @@ void MetadataBaker::ParseEntity(TagsParsingContext& ctx) const
         if (name.starts_with("Static")) {
             throw MetadataBakerException("Invalid Entity codegen tag: entity name cannot start with 'Static'", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (ctx.Meta->IsValidEntityType(hname) || ctx.Meta->IsFixedType(hname)) {
+        if (ctx.Meta.IsValidEntityType(hname) || ctx.Meta.IsFixedType(hname)) {
             throw MetadataBakerException("Invalid Entity codegen tag: duplicate entity type", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (ctx.Meta->IsValidBaseType(name)) {
+        if (ctx.Meta.IsValidBaseType(name)) {
             throw MetadataBakerException("Invalid Entity codegen tag: entity name conflict with another type", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (ctx.Meta->IsValidBaseType(strex("{}Property", name))) {
+        if (ctx.Meta.IsValidBaseType(strex("{}Property", name))) {
             throw MetadataBakerException("Invalid Entity codegen tag: entity property enum conflict with another type", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
-        ctx.Meta->RegisterEntityType(name, false, is_global, has_protos, has_statics, has_abstract);
+        ctx.Meta.RegisterEntityType(name, false, is_global, has_protos, has_statics, has_abstract);
 
         auto tokens = vec_transform(tag_desc.Tokens, [](auto&& e) -> string { return string(e); });
         tokens.erase(tokens.begin()); // Remove target
@@ -598,21 +622,21 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid EntityHolder codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
+        auto target = tag_desc.Tokens[0];
 
-        const auto holder_entity_name = tag_desc.Tokens[1];
-        const auto holder_entity_hname = ctx.Meta->Hashes.ToHashedString(holder_entity_name);
-        const auto target_entity_name = tag_desc.Tokens[2];
-        const auto target_entity_hname = ctx.Meta->Hashes.ToHashedString(target_entity_name);
-        const auto entry_name = tag_desc.Tokens[3];
-        const auto flags = span(tag_desc.Tokens).subspan(4);
-        const auto has_no_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "NoSync"; });
-        const auto has_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
-        const auto has_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
-        const auto has_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
-        const auto sync = has_public_sync ? EntityHolderEntrySync::PublicSync : (has_owner_sync ? EntityHolderEntrySync::OwnerSync : EntityHolderEntrySync::NoSync);
+        auto holder_entity_name = tag_desc.Tokens[1];
+        hstring holder_entity_hname = ctx.Meta.Hashes.ToHashedString(holder_entity_name);
+        auto target_entity_name = tag_desc.Tokens[2];
+        hstring target_entity_hname = ctx.Meta.Hashes.ToHashedString(target_entity_name);
+        auto entry_name = tag_desc.Tokens[3];
+        auto flags = span(tag_desc.Tokens).subspan(4);
+        bool has_no_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "NoSync"; });
+        bool has_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
+        bool has_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
+        bool has_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
+        auto sync = has_public_sync ? EntityHolderEntrySync::PublicSync : (has_owner_sync ? EntityHolderEntrySync::OwnerSync : EntityHolderEntrySync::NoSync);
 
-        if (!ctx.Meta->IsValidEntityType(holder_entity_hname)) {
+        if (!ctx.Meta.IsValidEntityType(holder_entity_hname)) {
             throw MetadataBakerException("Invalid EntityHolder codegen tag: unknown holder entity type", tag_desc.SourceFile, tag_desc.LineNumber, holder_entity_name);
         }
         if (target == "Server" && (has_no_sync || has_owner_sync || has_public_sync)) {
@@ -621,7 +645,7 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
 
         if (!(ctx.Target == "Common" || target == "Common" || target == ctx.Target)) {
             // Stub for entry property
-            if (ctx.Meta->IsValidEntityType(holder_entity_name)) {
+            if (ctx.Meta.IsValidEntityType(holder_entity_name)) {
                 vector<string> stub;
                 stub.emplace_back("Stub");
                 stub.emplace_back(holder_entity_name);
@@ -638,7 +662,7 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
             continue;
         }
 
-        if (!ctx.Meta->IsValidEntityType(target_entity_hname)) {
+        if (!ctx.Meta.IsValidEntityType(target_entity_hname)) {
             throw MetadataBakerException("Invalid EntityHolder codegen tag: unknown target entity type", tag_desc.SourceFile, tag_desc.LineNumber, target_entity_name);
         }
         if (static_cast<int32_t>(has_no_sync) + static_cast<int32_t>(has_owner_sync) + static_cast<int32_t>(has_public_sync) > 1) {
@@ -648,13 +672,13 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid EntityHolder codegen tag: Common target requires sync flag", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto& target_entity_type = ctx.Meta->GetEntityType(target_entity_hname);
+        const auto& target_entity_type = ctx.Meta.GetEntityType(target_entity_hname);
 
         if (target_entity_type.Exported) {
             throw MetadataBakerException("Invalid EntityHolder codegen tag: cannot hold exported entity type", tag_desc.SourceFile, tag_desc.LineNumber, target_entity_name);
         }
 
-        ctx.Meta->RegsiterEntityHolderEntry(holder_entity_name, target_entity_name, entry_name, sync, has_persistent);
+        ctx.Meta.RegsiterEntityHolderEntry(holder_entity_name, target_entity_name, entry_name, sync, has_persistent);
 
         auto tokens = vec_transform(tag_desc.Tokens, [](auto&& e) -> string { return string(e); });
         result_tag_entity_holder.emplace_back(tokens);
@@ -674,8 +698,8 @@ void MetadataBaker::ParseFixedType(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid FixedType codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
-        const auto name = tag_desc.Tokens[1];
+        auto target = tag_desc.Tokens[0];
+        auto name = tag_desc.Tokens[1];
 
         if (!(ctx.Target == "Common" || target == "Common" || target == ctx.Target)) {
             ctx.OtherEntityTypes.emplace(name);
@@ -685,19 +709,19 @@ void MetadataBaker::ParseFixedType(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid FixedType codegen tag: flags are not supported", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
-        const auto hname = ctx.Meta->Hashes.ToHashedString(name);
+        hstring hname = ctx.Meta.Hashes.ToHashedString(name);
 
-        if (ctx.Meta->IsValidEntityType(hname) || ctx.Meta->IsFixedType(hname)) {
+        if (ctx.Meta.IsValidEntityType(hname) || ctx.Meta.IsFixedType(hname)) {
             throw MetadataBakerException("Invalid FixedType codegen tag: duplicate fixed type", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (ctx.Meta->IsValidBaseType(name)) {
+        if (ctx.Meta.IsValidBaseType(name)) {
             throw MetadataBakerException("Invalid FixedType codegen tag: type name conflict with another type", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (ctx.Meta->IsValidBaseType(strex("{}Property", name))) {
+        if (ctx.Meta.IsValidBaseType(strex("{}Property", name))) {
             throw MetadataBakerException("Invalid FixedType codegen tag: property enum conflict with another type", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
-        ctx.Meta->RegisterFixedType(name, false);
+        ctx.Meta.RegisterFixedType(name, false);
 
         auto tokens = vec_transform(tag_desc.Tokens, [](auto&& e) -> string { return string(e); });
         tokens.erase(tokens.begin()); // Remove target
@@ -718,7 +742,7 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid ValueType codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
+        auto target = tag_desc.Tokens[0];
 
         if (target != "Common" && target != "Server" && target != "Client") {
             throw MetadataBakerException("Invalid ValueType codegen tag: invalid target", tag_desc.SourceFile, tag_desc.LineNumber, target);
@@ -728,12 +752,12 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
             continue;
         }
 
-        const auto type_name = tag_desc.Tokens[1];
+        auto type_name = tag_desc.Tokens[1];
 
         if (tag_desc.Tokens[2] != "Layout" || tag_desc.Tokens[3] != "=") {
             throw MetadataBakerException("Invalid ValueType codegen tag: expected 'Layout ='", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
         }
-        if (ctx.Meta->IsValidBaseType(type_name)) {
+        if (ctx.Meta.IsValidBaseType(type_name)) {
             throw MetadataBakerException("Invalid ValueType codegen tag: duplicate type name", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
         }
 
@@ -744,7 +768,7 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
 
         size_t tok_index = 4;
         while (tok_index < tag_desc.Tokens.size()) {
-            const size_t type_begin = tok_index;
+            size_t type_begin = tok_index;
 
             while (tok_index < tag_desc.Tokens.size() && tag_desc.Tokens[tok_index] != "-") {
                 tok_index++;
@@ -757,7 +781,7 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
             size_t type_tokens = 0;
 
             try {
-                std::tie(field_type, type_tokens) = ctx.Meta->ResolveComplexType(span(tag_desc.Tokens).subspan(type_begin, tok_index - type_begin));
+                std::tie(field_type, type_tokens) = ctx.Meta.ResolveComplexType(span(tag_desc.Tokens).subspan(type_begin, tok_index - type_begin));
             }
             catch (TypeResolveException& ex) {
                 throw MetadataBakerException("Invalid ValueType codegen tag: cannot resolve field type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
@@ -773,14 +797,14 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
                 throw MetadataBakerException("Invalid ValueType codegen tag: unsupported field type", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
             }
 
-            const string merged_type = string(field_type.BaseType.Name);
+            string merged_type = string(field_type.BaseType.Name);
             tok_index++;
 
             if (tok_index >= tag_desc.Tokens.size()) {
                 throw MetadataBakerException("Invalid ValueType codegen tag: missing field name", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
             }
 
-            const auto field_name = tag_desc.Tokens[tok_index++];
+            auto field_name = tag_desc.Tokens[tok_index++];
 
             if (field_name.empty() || field_name == ",") {
                 throw MetadataBakerException("Invalid ValueType codegen tag: invalid field name", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
@@ -813,8 +837,8 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
             layout.emplace_back(field_name, field_type);
         }
 
-        ctx.Meta->RegisterValueType(type_name);
-        ctx.Meta->RegisterValueTypeLayout(type_name, layout);
+        ctx.Meta.RegisterValueType(type_name);
+        ctx.Meta.RegisterValueTypeLayout(type_name, layout);
         result_tag_value_type.emplace_back(std::move(result_entry));
     }
 
@@ -830,17 +854,13 @@ void MetadataBaker::ParseRefType(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid RefType codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
+        auto target = tag_desc.Tokens[0];
 
         if (target != "Common" && target != "Server" && target != "Client") {
             throw MetadataBakerException("Invalid RefType codegen tag: invalid target", tag_desc.SourceFile, tag_desc.LineNumber, target);
         }
 
-        if (target != "Common" && target != ctx.Target) {
-            continue;
-        }
-
-        const auto type_name = tag_desc.Tokens[1];
+        auto type_name = tag_desc.Tokens[1];
 
         if (tag_desc.Tokens.size() != 2) {
             if (tag_desc.Tokens.size() >= 4 && tag_desc.Tokens[2] == "Layout" && tag_desc.Tokens[3] == "=") {
@@ -849,7 +869,7 @@ void MetadataBaker::ParseRefType(TagsParsingContext& ctx) const
 
             throw MetadataBakerException("Invalid RefType codegen tag: unexpected parameters", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
         }
-        if (ctx.Meta->IsValidBaseType(type_name) || ctx.RefTypes.contains(string(type_name))) {
+        if (ctx.Meta.IsValidBaseType(type_name) || ctx.RefTypes.contains(string(type_name))) {
             throw MetadataBakerException("Invalid RefType codegen tag: duplicate type name", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
         }
 
@@ -859,9 +879,7 @@ void MetadataBaker::ParseRefType(TagsParsingContext& ctx) const
         ref_type.LineNumber = tag_desc.LineNumber;
         ctx.RefTypeRegistrationOrder.emplace_back(type_name);
 
-        if (target == "Common" || target == ctx.Target) {
-            ctx.Meta->RegisterRefType(type_name);
-        }
+        ctx.Meta.RegisterRefType(type_name);
     }
 }
 
@@ -872,20 +890,20 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
     vector<vector<string>> result_tag_property;
     vector<vector<string>> result_tag_ref_type;
 
-    const auto is_active_ref_type = [&ctx](const RefTypeState& ref_type) { return ref_type.Target == "Common" || ref_type.Target == ctx.Target; };
-
+    // Pass 1: detect Component declarations for both entity and RefType properties so the order of
+    // tags inside a script doesn't matter (a `Foo.Bar` field can appear before its `Foo Component`
+    // marker in source code).
     for (const auto& tag_desc : ctx.CodeGenTags["Property"]) {
         if (tag_desc.Tokens.size() < 4) {
             throw MetadataBakerException("Invalid Property codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto entity_name = tag_desc.Tokens[0];
-        const auto target = tag_desc.Tokens[1];
+        auto entity_name = tag_desc.Tokens[0];
+        auto target = tag_desc.Tokens[1];
 
         if (ctx.OtherEntityTypes.contains(entity_name)) {
             continue;
         }
-
         // Cross-cutting filter for Property tags from native script
         // sources: only Property tags targeting a native-declared
         // RefType are the baker's responsibility (RefType fields live
@@ -902,89 +920,27 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         }
 
         if (target != "Common" && target != "Server" && target != "Client") {
-            throw MetadataBakerException("Invalid Property codegen tag: invalid target", tag_desc.SourceFile, tag_desc.LineNumber, target);
-        }
-
-        const auto ref_type_it = ctx.RefTypes.find(string(entity_name));
-
-        if (ref_type_it == ctx.RefTypes.end() && !ctx.Meta->IsValidEntityType(ctx.Meta->Hashes.ToHashedString(entity_name)) && !ctx.Meta->IsFixedType(entity_name)) {
-            if (ctx.Meta->IsValidBaseType(entity_name)) {
-                throw MetadataBakerException("Invalid Property codegen tag: only RefType supports script metadata properties", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
-            }
-
-            throw MetadataBakerException("Invalid Property codegen tag: unknown entity type", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
-        }
-
-        if (ref_type_it != ctx.RefTypes.end()) {
-            auto& ref_type = ref_type_it->second;
-
-            if (target != ref_type.Target) {
-                throw MetadataBakerException("Invalid Property codegen tag: RefType field target must match RefType target", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
-            }
-            if (!is_active_ref_type(ref_type)) {
-                continue;
-            }
-
-            ComplexTypeDesc type;
-            size_t type_tokens = 0;
-
-            try {
-                std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tag_desc.Tokens).subspan(2));
-            }
-            catch (TypeResolveException& ex) {
-                throw MetadataBakerException("Invalid Property codegen tag: cannot resolve property type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
-            }
-
-            size_t tok_index = 2 + type_tokens;
-            auto name = string(tag_desc.Tokens[tok_index]);
-
-            if (tok_index < tag_desc.Tokens.size() - 2 && tag_desc.Tokens[tok_index + 1] == ".") {
-                name += ".";
-                name += tag_desc.Tokens[tok_index + 2];
-                tok_index += 2;
-            }
-
-            const auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
-
-            if (type.IsMutable) {
-                throw MetadataBakerException("Invalid Property codegen tag: RefType field type can't be ref", tag_desc.SourceFile, tag_desc.LineNumber, name);
-            }
-            if (type.Kind == ComplexTypeKind::Callback) {
-                throw MetadataBakerException("Invalid Property codegen tag: RefType callback fields are unsupported", tag_desc.SourceFile, tag_desc.LineNumber, name);
-            }
-            if (type.BaseType.IsEntity && !type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) {
-                throw MetadataBakerException("Invalid Property codegen tag: RefType entity fields must be fixed or proto references", tag_desc.SourceFile, tag_desc.LineNumber, name);
-            }
-            if (type.KeyType.has_value() && type.KeyType->IsEntity) {
-                throw MetadataBakerException("Invalid Property codegen tag: RefType entity dict keys are unsupported", tag_desc.SourceFile, tag_desc.LineNumber, name);
-            }
-            if (name.find('.') != string::npos) {
-                throw MetadataBakerException("Invalid Property codegen tag: RefType fields can't be nested or component properties", tag_desc.SourceFile, tag_desc.LineNumber, name);
-            }
-            if (!flags.empty()) {
-                throw MetadataBakerException("Invalid Property codegen tag: RefType fields don't support property flags", tag_desc.SourceFile, tag_desc.LineNumber, name);
-            }
-            if (std::ranges::any_of(ref_type.Fields, [&](const auto& entry) { return entry.first == name; })) {
-                throw MetadataBakerException("Invalid Property codegen tag: duplicate RefType field name", tag_desc.SourceFile, tag_desc.LineNumber, name);
-            }
-
-            const string merged_type = strex("").join(span(tag_desc.Tokens).subspan(2, type_tokens));
-            ref_type.Fields.emplace_back(name, merged_type);
-            continue;
+            continue; // Re-validated in pass 2
         }
 
         ComplexTypeDesc type;
         size_t type_tokens = 0;
 
         try {
-            std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tag_desc.Tokens).subspan(2));
+            std::tie(type, type_tokens) = ctx.Meta.ResolveComplexType(span(tag_desc.Tokens).subspan(2));
         }
-        catch (TypeResolveException& ex) {
-            throw MetadataBakerException("Invalid Property codegen tag: cannot resolve property type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
+        catch (TypeResolveException&) {
+            continue; // Re-validated in pass 2
         }
 
-        size_t tok_index = 2 + type_tokens;
-        auto name = string(tag_desc.Tokens[tok_index]);
+        size_t name_index = 2 + type_tokens;
+
+        if (name_index >= tag_desc.Tokens.size()) {
+            continue;
+        }
+
+        string name = string(tag_desc.Tokens[name_index]);
+        size_t tok_index = name_index;
 
         if (tok_index < tag_desc.Tokens.size() - 2 && tag_desc.Tokens[tok_index + 1] == ".") {
             name += ".";
@@ -992,8 +948,8 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             tok_index += 2;
         }
 
-        const auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
-        const bool is_component = std::ranges::any_of(flags, [](auto&& f) { return f == "Component"; });
+        auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
+        bool is_component = std::ranges::any_of(flags, [](auto&& f) { return f == "Component"; });
 
         if (name.find('.') == string::npos && is_component) {
             if (!type.BaseType.IsBool || type.Kind != ComplexTypeKind::Simple) {
@@ -1010,30 +966,145 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         }
     }
 
-    FO_RUNTIME_ASSERT(ctx.RefTypeRegistrationOrder.size() == ctx.RefTypes.size());
+    // Pass 2: process RefType field properties.
+    for (const auto& tag_desc : ctx.CodeGenTags["Property"]) {
+        if (tag_desc.Tokens.size() < 4) {
+            throw MetadataBakerException("Invalid Property codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
+        }
+
+        auto entity_name = tag_desc.Tokens[0];
+        auto target = tag_desc.Tokens[1];
+
+        if (ctx.OtherEntityTypes.contains(entity_name)) {
+            continue;
+        }
+
+        if (target != "Common" && target != "Server" && target != "Client") {
+            throw MetadataBakerException("Invalid Property codegen tag: invalid target", tag_desc.SourceFile, tag_desc.LineNumber, target);
+        }
+
+        auto ref_type_it = ctx.RefTypes.find(string(entity_name));
+
+        if (ref_type_it == ctx.RefTypes.end() && !ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.ToHashedString(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
+            if (ctx.Meta.IsValidBaseType(entity_name)) {
+                throw MetadataBakerException("Invalid Property codegen tag: only RefType supports script metadata properties", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
+            }
+
+            throw MetadataBakerException("Invalid Property codegen tag: unknown entity type", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
+        }
+
+        if (ref_type_it == ctx.RefTypes.end()) {
+            continue;
+        }
+
+        auto& ref_type = ref_type_it->second;
+
+        if (target != ref_type.Target) {
+            throw MetadataBakerException("Invalid Property codegen tag: RefType field target must match RefType target", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
+        }
+
+        // Fields are collected for every target so off-target metadata also has the layout — its
+        // properties get registered as IsServerOnly/IsClientOnly and disabled at runtime, but they
+        // still need a known layout for serialization.
+
+        ComplexTypeDesc type;
+        size_t type_tokens = 0;
+
+        try {
+            std::tie(type, type_tokens) = ctx.Meta.ResolveComplexType(span(tag_desc.Tokens).subspan(2));
+        }
+        catch (TypeResolveException& ex) {
+            throw MetadataBakerException("Invalid Property codegen tag: cannot resolve property type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
+        }
+
+        size_t tok_index = 2 + type_tokens;
+        string name = string(tag_desc.Tokens[tok_index]);
+
+        if (tok_index < tag_desc.Tokens.size() - 2 && tag_desc.Tokens[tok_index + 1] == ".") {
+            name += ".";
+            name += tag_desc.Tokens[tok_index + 2];
+            tok_index += 2;
+        }
+
+        auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
+        bool is_component = std::ranges::any_of(flags, [](auto&& f) { return f == "Component"; });
+
+        if (type.IsMutable) {
+            throw MetadataBakerException("Invalid Property codegen tag: RefType field type can't be ref", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        }
+        if (type.Kind == ComplexTypeKind::Callback) {
+            throw MetadataBakerException("Invalid Property codegen tag: RefType callback fields are unsupported", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        }
+        if (type.BaseType.IsEntity && !type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) {
+            throw MetadataBakerException("Invalid Property codegen tag: RefType entity fields must be fixed or proto references", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        }
+        if (type.KeyType.has_value() && type.KeyType->IsEntity) {
+            throw MetadataBakerException("Invalid Property codegen tag: RefType entity dict keys are unsupported", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        }
+
+        if (auto dot_pos = name.find('.'); dot_pos != string::npos) {
+            if (is_component) {
+                throw MetadataBakerException("Invalid Property codegen tag: component property cannot be nested", tag_desc.SourceFile, tag_desc.LineNumber, name);
+            }
+
+            auto component_name = name.substr(0, dot_pos);
+            auto entity_components_it = ctx.ComponentScopes.find(string(entity_name));
+
+            if (entity_components_it == ctx.ComponentScopes.end() || !entity_components_it->second.contains(component_name)) {
+                throw MetadataBakerException("Invalid Property codegen tag: RefType component is not declared", tag_desc.SourceFile, tag_desc.LineNumber, name);
+            }
+        }
+
+        for (const auto& flag : flags) {
+            if (flag != "Component") {
+                throw MetadataBakerException("Invalid Property codegen tag: RefType fields only allow the 'Component' flag", tag_desc.SourceFile, tag_desc.LineNumber, name);
+            }
+        }
+
+        if (std::ranges::any_of(ref_type.Fields, [&](const auto& entry) { return entry.Name == name; })) {
+            throw MetadataBakerException("Invalid Property codegen tag: duplicate RefType field name", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        }
+
+        string merged_type = strex("").join(span(tag_desc.Tokens).subspan(2, type_tokens));
+        ref_type.Fields.emplace_back(RefTypeFieldState {.Name = name, .Type = merged_type, .Flags = vector<string>(flags.begin(), flags.end())});
+    }
+
+    FO_VERIFY_AND_THROW(ctx.RefTypeRegistrationOrder.size() == ctx.RefTypes.size(), "RefType registration order does not cover every parsed RefType", ctx.RefTypeRegistrationOrder.size(), ctx.RefTypes.size());
 
     for (const auto& ref_type_name : ctx.RefTypeRegistrationOrder) {
         auto& ref_type = ctx.RefTypes.at(ref_type_name);
 
-        if (!is_active_ref_type(ref_type)) {
-            continue;
-        }
         if (ref_type.Fields.empty()) {
             throw MetadataBakerException("Invalid RefType codegen tag: no fields declared via Property", ref_type.SourceFile, ref_type.LineNumber, ref_type_name);
         }
 
-        vector<pair<string_view, string_view>> layout;
+        vector<vector<string_view>> layout;
         vector<string> result_entry;
         result_entry.emplace_back(ref_type_name);
         layout.reserve(ref_type.Fields.size());
 
-        for (const auto& [field_name, field_type] : ref_type.Fields) {
-            layout.emplace_back(field_name, field_type);
-            result_entry.emplace_back(field_name);
-            result_entry.emplace_back(field_type);
+        for (const auto& field : ref_type.Fields) {
+            vector<string_view> field_tokens;
+            field_tokens.reserve(2 + field.Flags.size());
+            field_tokens.emplace_back(field.Name);
+            field_tokens.emplace_back(field.Type);
+
+            for (const auto& flag : field.Flags) {
+                field_tokens.emplace_back(flag);
+            }
+
+            layout.emplace_back(std::move(field_tokens));
+
+            result_entry.emplace_back(field.Name);
+            result_entry.emplace_back(field.Type);
+            result_entry.emplace_back(strex("{}", field.Flags.size()).str());
+
+            for (const auto& flag : field.Flags) {
+                result_entry.emplace_back(flag);
+            }
         }
 
-        ctx.Meta->RegisterRefTypeLayout(ref_type_name, layout);
+        ctx.Meta.RegisterRefTypeLayout(ref_type_name, layout);
         result_tag_ref_type.emplace_back(std::move(result_entry));
     }
 
@@ -1046,8 +1117,8 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid Property codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto entity_name = tag_desc.Tokens[0];
-        const auto target = tag_desc.Tokens[1];
+        auto entity_name = tag_desc.Tokens[0];
+        auto target = tag_desc.Tokens[1];
 
         if (ctx.OtherEntityTypes.contains(entity_name)) {
             continue;
@@ -1073,7 +1144,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             continue;
         }
 
-        if (!ctx.Meta->IsValidEntityType(ctx.Meta->Hashes.ToHashedString(entity_name)) && !ctx.Meta->IsFixedType(entity_name)) {
+        if (!ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.ToHashedString(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
             throw MetadataBakerException("Invalid Property codegen tag: unknown entity type", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
         }
 
@@ -1085,7 +1156,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         size_t type_tokens = 0;
 
         try {
-            std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tag_desc.Tokens).subspan(2));
+            std::tie(type, type_tokens) = ctx.Meta.ResolveComplexType(span(tag_desc.Tokens).subspan(2));
         }
         catch (TypeResolveException& ex) {
             throw MetadataBakerException("Invalid Property codegen tag: cannot resolve property type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
@@ -1096,7 +1167,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         }
 
         size_t tok_index = 2 + type_tokens;
-        auto name = string(tag_desc.Tokens[tok_index]);
+        string name = string(tag_desc.Tokens[tok_index]);
 
         if (tok_index < tag_desc.Tokens.size() - 2 && tag_desc.Tokens[tok_index + 1] == ".") {
             name += ".";
@@ -1104,13 +1175,13 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             tok_index += 2;
         }
 
-        auto* registrator = ctx.Meta->GetPropertyRegistratorForEdit(entity_name);
-        const auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
-        const bool is_component = std::ranges::any_of(flags, [](auto&& f) { return f == "Component"; });
+        auto registrar = ctx.Meta.GetPropertyRegistrarForEdit(entity_name);
+        auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
+        bool is_component = std::ranges::any_of(flags, [](auto&& f) { return f == "Component"; });
 
-        if (const auto dot_pos = name.find('.'); dot_pos != string::npos) {
-            const auto component_name = name.substr(0, dot_pos);
-            const auto entity_it = ctx.ComponentScopes.find(string(entity_name));
+        if (auto dot_pos = name.find('.'); dot_pos != string::npos) {
+            auto component_name = name.substr(0, dot_pos);
+            auto entity_it = ctx.ComponentScopes.find(string(entity_name));
 
             if (is_component) {
                 throw MetadataBakerException("Invalid Property codegen tag: component property cannot be nested", tag_desc.SourceFile, tag_desc.LineNumber, name);
@@ -1119,7 +1190,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
                 throw MetadataBakerException("Invalid Property codegen tag: unknown component for property", tag_desc.SourceFile, tag_desc.LineNumber, name);
             }
 
-            const auto component_it = entity_it->second.find(component_name);
+            auto component_it = entity_it->second.find(component_name);
 
             if (component_it == entity_it->second.end()) {
                 throw MetadataBakerException("Invalid Property codegen tag: unknown component for property", tag_desc.SourceFile, tag_desc.LineNumber, name);
@@ -1128,23 +1199,23 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
                 throw MetadataBakerException("Invalid Property codegen tag: property target is incompatible with component target", tag_desc.SourceFile, tag_desc.LineNumber, name, target, component_it->second);
             }
         }
-        if (registrator->FindProperty(name) != nullptr) {
+        if (registrar->FindProperty(name)) {
             throw MetadataBakerException("Invalid Property codegen tag: duplicate property", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
-        const bool is_common = target == "Common";
-        const bool is_client_only = target == "Client";
-        const bool is_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
-        const bool is_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
-        const bool is_no_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "NoSync"; });
-        const bool is_mutable = std::ranges::any_of(flags, [](auto&& f) { return f == "Mutable"; });
-        const bool is_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
-        const bool is_virtual = std::ranges::any_of(flags, [](auto&& f) { return f == "Virtual"; });
-        const bool is_modifiable_by_client = std::ranges::any_of(flags, [](auto&& f) { return f == "ModifiableByClient"; });
-        const bool is_modifiable_by_any_client = std::ranges::any_of(flags, [](auto&& f) { return f == "ModifiableByAnyClient"; });
-        const bool is_null_getter_for_proto = std::ranges::any_of(flags, [](auto&& f) { return f == "NullGetterForProto"; });
-        const bool is_maybe_null = std::ranges::any_of(flags, [](auto&& f) { return f == "MaybeNull"; });
-        const bool is_synced = is_common && is_mutable && (is_owner_sync || is_public_sync);
+        bool is_common = target == "Common";
+        bool is_client_only = target == "Client";
+        bool is_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
+        bool is_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
+        bool is_no_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "NoSync"; });
+        bool is_mutable = std::ranges::any_of(flags, [](auto&& f) { return f == "Mutable"; });
+        bool is_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
+        bool is_virtual = std::ranges::any_of(flags, [](auto&& f) { return f == "Virtual"; });
+        bool is_modifiable_by_client = std::ranges::any_of(flags, [](auto&& f) { return f == "ModifiableByClient"; });
+        bool is_modifiable_by_any_client = std::ranges::any_of(flags, [](auto&& f) { return f == "ModifiableByAnyClient"; });
+        bool is_null_getter_for_proto = std::ranges::any_of(flags, [](auto&& f) { return f == "NullGetterForProto"; });
+        bool is_nullable = std::ranges::any_of(flags, [](auto&& f) { return f == "Nullable"; });
+        bool is_synced = is_common && is_mutable && (is_owner_sync || is_public_sync);
 
         if (is_mutable && is_common && !is_virtual && !is_owner_sync && !is_public_sync && !is_no_sync) {
             throw MetadataBakerException("Invalid Property codegen tag: common mutable property must have sync type", tag_desc.SourceFile, tag_desc.LineNumber, name);
@@ -1173,8 +1244,8 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         if (is_null_getter_for_proto && !is_virtual) {
             throw MetadataBakerException("Invalid Property codegen tag: null getter can only be on virtual property", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (is_maybe_null && !type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) {
-            throw MetadataBakerException("Invalid Property codegen tag: MaybeNull can only be used on FixedType or Proto entity properties", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        if (is_nullable && !type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) {
+            throw MetadataBakerException("Invalid Property codegen tag: Nullable can only be used on FixedType or Proto entity properties", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
         if (is_persistent && is_client_only) {
             throw MetadataBakerException("Invalid Property codegen tag: persistent property can't be client only", tag_desc.SourceFile, tag_desc.LineNumber, name);
@@ -1183,19 +1254,42 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         vector<string_view> tokens;
         tokens.emplace_back(entity_name);
         tokens.emplace_back(target);
-        const string merged_type = strex("").join(span(tag_desc.Tokens).subspan(2, type_tokens));
+        string merged_type = strex("").join(span(tag_desc.Tokens).subspan(2, type_tokens));
         tokens.emplace_back(merged_type);
         tokens.emplace_back(name);
         tokens.insert(tokens.end(), flags.begin(), flags.end());
 
-        const auto* prop = registrator->RegisterProperty(span(tokens).subspan(1));
-        const auto prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()) : prop->GetName();
-        ctx.Meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
+        auto prop = registrar->RegisterProperty(span(tokens).subspan(1));
+        string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
+        ctx.Meta.RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
 
         result_tag_property.emplace_back(vec_transform(tokens, [](auto&& e) -> string { return string(e); }));
     }
 
     ctx.ResultTags["Property"] = std::move(result_tag_property);
+}
+
+// Split any tag token whose last character is '?' into two tokens:
+// the original token without the trailing '?' followed by a literal "?".
+// This lets `///@ Event` / `///@ RemoteCall` declarations carry per-arg
+// nullable markers (`Type? name`) without requiring `?` to be a token
+// separator globally in strvex::tokenize.
+static auto SplitTrailingQuestionMarks(span<const string_view> tokens) -> vector<string_view>
+{
+    vector<string_view> result;
+    result.reserve(tokens.size());
+
+    for (string_view tok : tokens) {
+        if (tok.size() > 1 && tok.back() == '?') {
+            result.emplace_back(tok.substr(0, tok.size() - 1));
+            result.emplace_back(tok.substr(tok.size() - 1));
+        }
+        else {
+            result.emplace_back(tok);
+        }
+    }
+
+    return result;
 }
 
 void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
@@ -1205,39 +1299,41 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
     vector<vector<string>> result_tag_event;
 
     for (const auto& tag_desc : ctx.CodeGenTags["Event"]) {
-        if (tag_desc.Tokens.size() < 5) {
+        auto tokens = SplitTrailingQuestionMarks(tag_desc.Tokens);
+
+        if (tokens.size() < 5) {
             throw MetadataBakerException("Invalid Event codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
+        auto target = tokens[0];
 
         if (!(ctx.Target == "Common" || target == "Common" || target == ctx.Target)) {
             continue;
         }
 
-        const auto entity_name = tag_desc.Tokens[1];
-        const auto entity_hname = ctx.Meta->Hashes.ToHashedString(entity_name);
+        auto entity_name = tokens[1];
+        hstring entity_hname = ctx.Meta.Hashes.ToHashedString(entity_name);
 
-        if (!ctx.Meta->IsValidEntityType(entity_hname)) {
+        if (!ctx.Meta.IsValidEntityType(entity_hname)) {
             throw MetadataBakerException("Invalid Event codegen tag: invalid entity type", tag_desc.SourceFile, tag_desc.LineNumber, entity_hname);
         }
 
         EntityEventDesc event_desc;
-        const auto event_name = tag_desc.Tokens[2];
-        event_desc.Name = ctx.Meta->Hashes.ToHashedString(event_name);
+        auto event_name = tokens[2];
+        event_desc.Name = ctx.Meta.Hashes.ToHashedString(event_name);
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(entity_name);
         tag_tokens.emplace_back(event_name);
 
-        if (tag_desc.Tokens[3] != "(") {
+        if (tokens[3] != "(") {
             throw MetadataBakerException("Invalid Event codegen tag: expected '(' after event name", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
         size_t cur_token = 4;
 
         while (true) {
-            if (cur_token == 4 && tag_desc.Tokens[cur_token] == ")") {
+            if (cur_token == 4 && tokens[cur_token] == ")") {
                 cur_token++;
                 break;
             }
@@ -1246,33 +1342,42 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 
             try {
                 size_t type_tokens = 0;
-                std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tag_desc.Tokens).subspan(cur_token));
-                tag_tokens.emplace_back(strex(" ").join(span(tag_desc.Tokens).subspan(cur_token, type_tokens)));
+                std::tie(type, type_tokens) = ctx.Meta.ResolveComplexType(span(tokens).subspan(cur_token));
+                tag_tokens.emplace_back(strex(" ").join(span(tokens).subspan(cur_token, type_tokens)));
                 cur_token += type_tokens;
             }
             catch (TypeResolveException& ex) {
                 throw MetadataBakerException("Invalid Event codegen tag: cannot resolve arg type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
             }
 
-            if (cur_token == tag_desc.Tokens.size()) {
+            bool nullable = false;
+
+            if (cur_token < tokens.size() && tokens[cur_token] == "?") {
+                nullable = true;
+                cur_token++;
+            }
+
+            tag_tokens.emplace_back(nullable ? "?" : "");
+
+            if (cur_token == tokens.size()) {
                 throw MetadataBakerException("Invalid Event codegen tag: expected arg name after it's type", tag_desc.SourceFile, tag_desc.LineNumber);
             }
 
-            const auto name = tag_desc.Tokens[cur_token];
+            auto name = tokens[cur_token];
             tag_tokens.emplace_back(name);
-            event_desc.Args.emplace_back(string(name), std::move(type));
+            event_desc.Args.emplace_back(string(name), std::move(type), nullable);
             cur_token++;
 
-            if (cur_token == tag_desc.Tokens.size() || (tag_desc.Tokens[cur_token] != "," && tag_desc.Tokens[cur_token] != ")")) {
+            if (cur_token == tokens.size() || (tokens[cur_token] != "," && tokens[cur_token] != ")")) {
                 throw MetadataBakerException("Invalid Event codegen tag: expected ')' or ',' after arg", tag_desc.SourceFile, tag_desc.LineNumber);
             }
 
-            if (tag_desc.Tokens[cur_token++] == ")") {
+            if (tokens[cur_token++] == ")") {
                 break;
             }
         }
 
-        if (cur_token < tag_desc.Tokens.size()) {
+        if (cur_token < tokens.size()) {
             throw MetadataBakerException("Invalid Event codegen tag: unexpected tokens after ')'", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
@@ -1289,25 +1394,27 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
     vector<vector<string>> result_tag_remote_call;
 
     for (const auto& tag_desc : ctx.CodeGenTags["RemoteCall"]) {
-        if (tag_desc.Tokens.size() < 4) {
+        auto tokens = SplitTrailingQuestionMarks(tag_desc.Tokens);
+
+        if (tokens.size() < 4) {
             throw MetadataBakerException("Invalid RemoteCall codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
+        auto target = tokens[0];
 
         if (target != "Server" && target != "Client") {
             throw MetadataBakerException("Invalid RemoteCall codegen tag: expected 'Server' or 'Client' as target", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const bool inbound = target == ctx.Target;
-        const auto remote_call_name = tag_desc.Tokens[1];
+        bool inbound = target == ctx.Target;
+        auto remote_call_name = tokens[1];
 
-        if (tag_desc.Tokens[2] != "(") {
+        if (tokens[2] != "(") {
             throw MetadataBakerException("Invalid RemoteCall codegen tag: expected '(' after remote call name", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
         RemoteCallDesc recote_call_desc;
-        recote_call_desc.Name = ctx.Meta->Hashes.ToHashedString(remote_call_name);
+        recote_call_desc.Name = ctx.Meta.Hashes.ToHashedString(remote_call_name);
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(remote_call_name);
@@ -1317,7 +1424,7 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
         size_t cur_token = 3;
 
         while (true) {
-            if (cur_token == 3 && tag_desc.Tokens[cur_token] == ")") {
+            if (cur_token == 3 && tokens[cur_token] == ")") {
                 break;
             }
 
@@ -1325,28 +1432,37 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
 
             try {
                 size_t type_tokens = 0;
-                std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tag_desc.Tokens).subspan(cur_token));
-                tag_tokens.emplace_back(strex(" ").join(span(tag_desc.Tokens).subspan(cur_token, type_tokens)));
+                std::tie(type, type_tokens) = ctx.Meta.ResolveComplexType(span(tokens).subspan(cur_token));
+                tag_tokens.emplace_back(strex(" ").join(span(tokens).subspan(cur_token, type_tokens)));
                 cur_token += type_tokens;
             }
             catch (TypeResolveException& ex) {
                 throw MetadataBakerException("Invalid RemoteCall codegen tag: cannot resolve arg type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
             }
 
-            if (cur_token == tag_desc.Tokens.size()) {
+            bool nullable = false;
+
+            if (cur_token < tokens.size() && tokens[cur_token] == "?") {
+                nullable = true;
+                cur_token++;
+            }
+
+            tag_tokens.emplace_back(nullable ? "?" : "");
+
+            if (cur_token == tokens.size()) {
                 throw MetadataBakerException("Invalid RemoteCall codegen tag: expected arg name after it's type", tag_desc.SourceFile, tag_desc.LineNumber);
             }
 
-            const auto name = tag_desc.Tokens[cur_token];
+            auto name = tokens[cur_token];
             tag_tokens.emplace_back(name);
-            recote_call_desc.Args.emplace_back(string(name), std::move(type));
+            recote_call_desc.Args.emplace_back(string(name), std::move(type), nullable);
             cur_token++;
 
-            if (cur_token == tag_desc.Tokens.size() || (tag_desc.Tokens[cur_token] != "," && tag_desc.Tokens[cur_token] != ")")) {
+            if (cur_token == tokens.size() || (tokens[cur_token] != "," && tokens[cur_token] != ")")) {
                 throw MetadataBakerException("Invalid RemoteCall codegen tag: expected ')' or ',' after arg", tag_desc.SourceFile, tag_desc.LineNumber);
             }
 
-            if (tag_desc.Tokens[cur_token++] == ")") {
+            if (tokens[cur_token++] == ")") {
                 break;
             }
         }
@@ -1362,9 +1478,9 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
     FO_STACK_TRACE_ENTRY();
 
     vector<vector<string>> result_tag_setting;
-    const auto known_settings = ctx.Target == "Server" ? GetServerSettings() : GetClientSettings();
+    auto known_settings = ctx.Target == "Server" ? GetServerSettings() : GetClientSettings();
 
-    const auto resolve_setting_name = [&](const CodeGenTagDesc& tag_desc, string_view name) -> string {
+    auto resolve_setting_name = [&](const CodeGenTagDesc& tag_desc, string_view name) -> string {
         if (name.find('.') != string_view::npos) {
             return string(name);
         }
@@ -1393,7 +1509,7 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid Setting codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
+        auto target = tag_desc.Tokens[0];
 
         if (!(target == "Common" || target == "Server" || target == "Client")) {
             throw MetadataBakerException("Invalid Setting codegen tag: expected 'Common', 'Server' or 'Client' as target", tag_desc.SourceFile, tag_desc.LineNumber, target);
@@ -1403,11 +1519,11 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
             continue;
         }
 
-        const auto type_str = tag_desc.Tokens[1];
+        auto type_str = tag_desc.Tokens[1];
         string raw_name;
 
         for (size_t i = 2; i < tag_desc.Tokens.size(); i++) {
-            const auto token = tag_desc.Tokens[i];
+            auto token = tag_desc.Tokens[i];
 
             if (token == ".") {
                 if (!raw_name.empty() && raw_name.back() != '.') {
@@ -1424,13 +1540,13 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
             raw_name += token;
         }
 
-        const auto name = resolve_setting_name(tag_desc, raw_name);
+        string name = resolve_setting_name(tag_desc, raw_name);
 
-        if (!ctx.Meta->IsValidBaseType(type_str)) {
+        if (!ctx.Meta.IsValidBaseType(type_str)) {
             throw MetadataBakerException("Invalid Setting codegen tag: invalid type", tag_desc.SourceFile, tag_desc.LineNumber, type_str);
         }
 
-        const auto type = ctx.Meta->GetBaseType(type_str);
+        auto type = ctx.Meta.GetBaseType(type_str);
 
         if (!type.IsPrimitive && !type.IsEnum && !type.IsString) {
             throw MetadataBakerException("Invalid Setting codegen tag: type must be primitive or enum or string or any", tag_desc.SourceFile, tag_desc.LineNumber, type.Name);
@@ -1456,7 +1572,7 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto merge_dotted_tokens = [&](const auto tokens) -> string {
+        auto merge_dotted_tokens = [&](const auto tokens) -> string {
             if (tokens.empty()) {
                 throw MetadataBakerException("Invalid MigrationRule codegen tag: empty rule argument", tag_desc.SourceFile, tag_desc.LineNumber);
             }
@@ -1464,7 +1580,7 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             string value;
             bool expect_token = true;
 
-            for (const auto token : tokens) {
+            for (auto token : tokens) {
                 if (token == ".") {
                     if (expect_token) {
                         throw MetadataBakerException("Invalid MigrationRule codegen tag: malformed dotted name", tag_desc.SourceFile, tag_desc.LineNumber);
@@ -1500,12 +1616,12 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto rule_name = string(tag_desc.Tokens[0]);
-        const auto extra_info = string(tag_desc.Tokens[1]);
-        const auto target = merge_dotted_tokens(span(tag_desc.Tokens).subspan(2, last_arg_begin - 2));
-        const auto replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
+        string rule_name = string(tag_desc.Tokens[0]);
+        string extra_info = string(tag_desc.Tokens[1]);
+        string target = merge_dotted_tokens(span(tag_desc.Tokens).subspan(2, last_arg_begin - 2));
+        string replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
 
-        ctx.Meta->RegisterMigrationRule(rule_name, extra_info, target, replacement);
+        ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(rule_name);

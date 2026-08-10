@@ -35,8 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
-NetworkClientConnection::NetworkClientConnection(ClientNetworkSettings& settings) :
-    _settings {&settings}
+NetworkClientConnection::NetworkClientConnection(ptr<ClientNetworkSettings> settings) :
+    _settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -70,7 +70,7 @@ auto NetworkClientConnection::SendData(const_span<uint8_t> buf) -> size_t
     }
 
     try {
-        const auto send_len = SendDataImpl(buf);
+        size_t send_len = SendDataImpl(buf);
         _bytesSend += send_len;
         return send_len;
     }
@@ -82,13 +82,22 @@ auto NetworkClientConnection::SendData(const_span<uint8_t> buf) -> size_t
 
 auto NetworkClientConnection::ReceiveData() -> const_span<uint8_t>
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (!_isConnecting && !_isConnected) {
         return {};
     }
 
     try {
-        const auto recv_len = ReceiveDataImpl(_incomeBuf);
+        size_t recv_len = ReceiveDataImpl(_incomeBuf);
         _bytesReceived += recv_len;
+
+        if (recv_len == 0) {
+            return {};
+        }
+
+        FO_VERIFY_AND_THROW(recv_len <= _incomeBuf.size(), "Received byte count exceeds the income buffer size");
+
         return {_incomeBuf.data(), recv_len};
     }
     catch (...) {

@@ -4,13 +4,13 @@
 
 # News
 
-1. Building glslang as a DLL or shared library is now possible and supported.
+1. The HLSL front-end is deprecated as of April 2026 and will be removed at the next major version of glslang. See [issue #4210](https://github.com/KhronosGroup/glslang/issues/4210) for rationale and migration guidance.
 
-2. The `GenericCodeGen`, `MachineIndependent`, `OSDependent`, and `SPIRV` libraries have been integrated into the main `glslang` library. The old separate libraries have replaced with empty stubs for a temporary compatibility period, and they will be removed entirely in the future.
+2. The --shift-texture-binding\[s\] option no longer affects combined samplers. The new --shift-combined-sampler-binding\[s\] option should be used to control combined sampler bindings independently from separate textures. The old behavior can be achieved by setting both options to the same value.
 
-3. A new CMake `ENABLE_SPIRV` option has been added to control whether glslang is built with SPIR-V support. Its default value is `ON`.
+3. The spirv-remap utility from glslang has been ported to the SPIRV-Tools repository as a new optimization pass called canonicalize-ids, available in spirv-opt. See spirv-opt --help for usage details.
 
-4. `OGLCompiler` and `HLSL` stub libraries have been fully removed from the build.
+4. Building glslang as a DLL or shared library is now possible and supported.
 
 # Glslang Components and Status
 
@@ -26,10 +26,11 @@ An OpenGL GLSL and OpenGL|ES GLSL (ESSL) front-end for reference validation and 
 
 An HLSL front-end for translation of an approximation of HLSL to glslang's AST form.
 
-**Status**: Partially complete. Semantics are not reference quality and input is not validated.
-This is in contrast to the [DXC project](https://github.com/Microsoft/DirectXShaderCompiler), which receives a much larger investment and attempts to have definitive/reference-level semantics.
+**Status**: Deprecated as of April 2026. The HLSL front-end will be removed at the next major version of glslang, with at least 18 months of notice from this announcement.
 
-See [issue 362](https://github.com/KhronosGroup/glslang/issues/362) and [issue 701](https://github.com/KhronosGroup/glslang/issues/701) for current status.
+Bug reports for the HLSL front-end will no longer be accepted. Security issues will be assessed on a case-by-case basis. Projects that require continued HLSL support should maintain a fork of glslang at the tag corresponding to the deprecation announcement.
+
+See [issue #4210](https://github.com/KhronosGroup/glslang/issues/4210) for the rationale and migration guidance.
 
 ### AST -> SPIR-V Back End
 
@@ -219,6 +220,24 @@ bison --defines=MachineIndependent/glslang_tab.cpp.h
 
 The above command is also available in the bash script in `updateGrammar`,
 when executed from the glslang subdirectory of the glslang repository.
+
+### If you need to update the NonSemantic instruction headers
+
+`SPIRV/NonSemanticShaderDebugInfo.h` and `SPIRV/NonSemanticDebugPrintf.h` are
+local copies of the canonical headers from SPIRV-Headers.  They are kept here
+because the SPIRV-Headers include path is not unconditionally available in all
+glslang build configurations (it is only present when `ENABLE_OPT` is on).
+
+When SPIRV-Headers publishes a new version of either header, copy the updated
+file from
+
+```
+External/spirv-tools/external/spirv-headers/include/spirv/unified1/
+```
+
+over the corresponding file in `SPIRV/`.  After copying, verify that the build
+still compiles and update the golden test output if instruction names or opcode
+numbers changed.
 
 ### Building to WASM for the Web and Node
 ### Building a standalone JS/WASM library for the Web and Node

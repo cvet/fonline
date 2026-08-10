@@ -1,9 +1,0 @@
-# CMake / Make / Build
-/CMakeFiles/
-cmake_install.cmake
-CMakeCache.txt
-Makefile
-
-# Binary
-libunqlite.a
-

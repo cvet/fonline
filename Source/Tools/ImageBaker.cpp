@@ -36,13 +36,29 @@
 #include "ConfigFile.h"
 #include "FileSystem.h"
 #include "Settings.h"
+#include "SpriteMeshing.h"
+#include "SpriteResource.h"
 
 #include "png.h"
 
 FO_BEGIN_NAMESPACE
 
-[[nodiscard]] static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
-[[nodiscard]] static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
+static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
+static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
+
+static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot;
+static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t;
+static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageBaker::FrameShot& shot);
+static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const ImageBaker::FrameShot& source_shot, int32_t padding, BakedSpriteMesh& mesh) -> optional<ImageBaker::FrameShot>;
+
+struct SpriteInfoBakingStats
+{
+    uint64_t Collections {};
+    uint64_t Directions {};
+    uint64_t FrameSlots {};
+    uint64_t UniqueFrames {};
+    uint64_t SharedFrameReferences {};
+};
 
 // clang-format off
 alignas(ucolor) static uint8_t FoPalette[] = {
@@ -101,7 +117,7 @@ static_assert(sizeof(FoPalette) == 1024);
 // clang-format on
 
 ImageBaker::ImageBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -133,18 +149,53 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (IsBakingReportEnabled()) {
+        SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
+        RecordSpriteMeshBakingSettings(SpriteMeshBakingReportSettings {
+            .Enabled = mesh_config.Enabled,
+            .AlphaThreshold = mesh_config.AlphaThreshold,
+            .MaxTriangles = mesh_config.MaxTriangles,
+            .AreaSavingsWeight = mesh_config.AreaSavingsWeight,
+            .BaseDilation = SPRITE_MESH_DILATION,
+            .MaximumPadding = SPRITE_MESH_MAXIMUM_PADDING,
+        });
+    }
+
     vector<pair<File, LoadFunc>> files_to_bake;
     files_to_bake.reserve(files.GetFilesCount());
+    string sprite_info_path = strex("{}/{}.foinfo", SPRITE_INFO_DIRECTORY, _context->PackName);
+    bool scan_mode = target_path.empty();
+    bool sprite_info_target = target_path == sprite_info_path;
+    bool bake_sprite_info = scan_mode || sprite_info_target;
+    bool sprite_info_needs_write = !_context->BakeChecker;
+    map<string, SpriteInfoFileEntry> sprite_info_entries;
+    set<string> current_sprite_sources;
+    uint64_t maximum_source_write_time = 0;
 
-    if (target_path.empty()) {
+    nptr<const FileSystem> sprite_info_files = _context->PackBakedFiles ? _context->PackBakedFiles : _context->BakedFiles;
+    FO_VERIFY_AND_THROW(sprite_info_files, "Baker context has no baked file registry");
+
+    if (scan_mode && sprite_info_files->IsFileExists(sprite_info_path)) {
+        File sprite_info_file = sprite_info_files->ReadFile(sprite_info_path);
+        FO_VERIFY_AND_THROW(sprite_info_file, "Baked sprite info resource is not readable", sprite_info_path);
+
+        for (SpriteInfoFileEntry& entry : ReadSpriteInfoFile(sprite_info_path, sprite_info_file.GetStr())) {
+            bool inserted = sprite_info_entries.emplace(entry.SourcePath, std::move(entry)).second;
+            FO_VERIFY_AND_THROW(inserted, "Baked sprite info resource contains a duplicate source path", sprite_info_path);
+        }
+    }
+
+    if (bake_sprite_info) {
         for (auto&& [ext, loader] : _fileLoaders) {
             for (const auto& file_header : files) {
-                const string file_ext = strex(file_header.GetPath()).get_file_extension();
+                string file_ext = strex(file_header.GetPath()).get_file_extension();
 
                 if (file_ext != ext) {
                     continue;
                 }
-                if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+                current_sprite_sources.emplace(file_header.GetPath());
+                maximum_source_write_time = std::max(maximum_source_write_time, file_header.GetWriteTime());
+                if (scan_mode && _context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
                     continue;
                 }
 
@@ -153,7 +204,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         }
     }
     else {
-        const string ext = strex(target_path).get_file_extension();
+        string ext = strex(target_path).get_file_extension();
 
         if (!_fileLoaders.contains(ext)) {
             return;
@@ -171,13 +222,19 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         files_to_bake.emplace_back(std::move(file), _fileLoaders.at(ext));
     }
 
-    vector<std::future<void>> file_bakings;
+    if (bake_sprite_info && !current_sprite_sources.empty() && _context->BakeChecker) {
+        sprite_info_needs_write = _context->BakeChecker(sprite_info_path, maximum_source_write_time);
+    }
 
-    for (auto& file_to_bake : files_to_bake) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
-            const auto& path = file_to_bake.first.GetPath();
-            const auto collection = file_to_bake.second(path, "", file_to_bake.first.GetReader(), files);
-            BakeCollection(path, collection);
+    vector<std::future<SpriteInfoFileEntry>> file_bakings;
+
+    for (size_t file_index = 0; file_index < files_to_bake.size(); file_index++) {
+        string task_name = strex("BakeImage-{}", files_to_bake[file_index].first.GetPath()).str();
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &files_to_bake, file_index]() FO_DEFERRED -> SpriteInfoFileEntry {
+            auto& file_to_bake = files_to_bake[file_index];
+            string_view path = file_to_bake.first.GetPath();
+            auto collection = file_to_bake.second(path, "", file_to_bake.first.GetReader(), files);
+            return BakeCollection(path, collection);
         }));
     }
 
@@ -185,7 +242,8 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     for (auto& file_baking : file_bakings) {
         try {
-            file_baking.get();
+            SpriteInfoFileEntry entry = file_baking.get();
+            sprite_info_entries[entry.SourcePath] = std::move(entry);
         }
         catch (const std::exception& ex) {
             WriteLog("Image baking error: {}", ex.what());
@@ -196,73 +254,399 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (errors != 0) {
         throw ImageBakerException("Errors during images baking", errors);
     }
+
+    if (!bake_sprite_info || _context->OutputDiscovery) {
+        return;
+    }
+
+    size_t sprite_info_entry_count = sprite_info_entries.size();
+    std::erase_if(sprite_info_entries, [&current_sprite_sources](const auto& entry) { return !current_sprite_sources.contains(entry.first); });
+    bool removed_sprite_info_entries = sprite_info_entries.size() != sprite_info_entry_count;
+    FO_VERIFY_AND_THROW(sprite_info_entries.size() == current_sprite_sources.size(), "Sprite info index is incomplete; perform a full resource rebake", _context->PackName, sprite_info_entries.size(), current_sprite_sources.size());
+
+    if (!sprite_info_needs_write && files_to_bake.empty() && !removed_sprite_info_entries) {
+        return;
+    }
+
+    if (!sprite_info_entries.empty()) {
+        vector<SpriteInfoFileEntry> entries;
+        entries.reserve(sprite_info_entries.size());
+
+        for (auto& [source_path, entry] : sprite_info_entries) {
+            ignore_unused(source_path);
+            entries.emplace_back(std::move(entry));
+        }
+
+        string sprite_info = WriteSpriteInfoFile(entries);
+        vector<uint8_t> sprite_info_data(sprite_info.begin(), sprite_info.end());
+        _context->WriteData(sprite_info_path, sprite_info_data);
+    }
 }
 
-void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection) const
+auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection) const -> SpriteInfoFileEntry
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
     auto writer = DataWriter(data);
 
-    constexpr auto check_number = numeric_cast<uint8_t>(42);
-    const auto dirs = numeric_cast<uint8_t>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
-
-    writer.Write<uint8_t>(check_number);
+    auto dirs = numeric_cast<uint8_t>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
+    SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
+    string output_path = collection.NewName.empty() ? string(fname) : collection.NewName;
+    SpriteInfoFileEntry sprite_info_entry {
+        .SourcePath = string(fname),
+        .ResourcePath = output_path,
+        .Info =
+            {
+                .FrameCount = collection.SequenceSize,
+                .Duration = std::chrono::milliseconds {collection.AnimTicks},
+                .Directions = vector<SpriteDirInfo>(dirs),
+            },
+    };
+    bool report_enabled = IsBakingReportEnabled();
+    vector<SpriteMeshBakingFrameReport> frame_reports;
+    SpriteInfoBakingStats stats {
+        .Collections = 1,
+        .Directions = dirs,
+    };
+    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.Write<uint16_t>(collection.SequenceSize);
     writer.Write<uint16_t>(collection.AnimTicks);
     writer.Write<uint8_t>(dirs);
 
-    for (const auto dir : iterate_range(dirs)) {
+    for (uint8_t dir = 0; dir < dirs; dir++) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        writer.Write<int16_t>(sequence.OffsX);
-        writer.Write<int16_t>(sequence.OffsY);
+        SpriteDirInfo& direction_info = sprite_info_entry.Info.Directions[dir];
+        direction_info.Frames.resize(collection.SequenceSize);
+        vector<optional<BakedSpriteMesh>> prepared_meshes(sequence.Frames.size());
+        vector<int32_t> mesh_build_paddings(sequence.Frames.size());
+        vector<int32_t> frame_paddings(sequence.Frames.size());
+
+        if (mesh_config.Enabled) {
+            for (size_t frame_index = 0; frame_index < sequence.Frames.size(); frame_index++) {
+                const FrameShot& shot = sequence.Frames[frame_index];
+                if (shot.Shared) {
+                    continue;
+                }
+
+                optional<FrameShot> maximum_padded_shot;
+                ptr<const FrameShot> mesh_shot = &shot;
+
+                if (shot.Width > 0 && shot.Height > 0) {
+                    maximum_padded_shot = PadSpriteFrame(shot, SPRITE_MESH_MAXIMUM_PADDING);
+                    mesh_shot = &*maximum_padded_shot;
+                    mesh_build_paddings[frame_index] = SPRITE_MESH_MAXIMUM_PADDING;
+                }
+
+                int64_t reference_quad_double_area = numeric_cast<int64_t>(shot.Width) * shot.Height * 2;
+                prepared_meshes[frame_index] = BuildSpriteMesh(mesh_shot->Data, {mesh_shot->Width, mesh_shot->Height}, mesh_config, reference_quad_double_area);
+                frame_paddings[frame_index] = ResolveSpriteFramePadding(shot, *prepared_meshes[frame_index], mesh_build_paddings[frame_index]);
+            }
+        }
 
         for (int32_t i = 0; i < collection.SequenceSize; i++) {
             const auto& shot = sequence.Frames[i];
+            SpriteFrameInfo& frame_info = direction_info.Frames[numeric_cast<size_t>(i)];
+            stats.FrameSlots++;
             writer.Write<bool>(shot.Shared);
 
             if (!shot.Shared) {
-                writer.Write<uint16_t>(shot.Width);
-                writer.Write<uint16_t>(shot.Height);
-                writer.Write<int16_t>(shot.NextX);
-                writer.Write<int16_t>(shot.NextY);
-                writer.WritePtr(shot.Data.data(), shot.Data.size());
-                FO_RUNTIME_ASSERT(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4);
+                stats.UniqueFrames++;
+                int32_t frame_padding = frame_paddings[numeric_cast<size_t>(i)];
+                optional<FrameShot> padded_shot;
+                ptr<const FrameShot> bake_shot = &shot;
+
+                if (frame_padding > 0) {
+                    padded_shot = PadSpriteFrame(shot, frame_padding);
+                    bake_shot = &*padded_shot;
+                }
+
+                FO_VERIFY_AND_THROW(bake_shot->Data.size() == numeric_cast<size_t>(bake_shot->Width) * bake_shot->Height * 4, "Animation frame RGBA payload size does not match frame dimensions", bake_shot->Data.size(), bake_shot->Width, bake_shot->Height);
+                BakedSpriteMesh mesh;
+
+                if (prepared_meshes[numeric_cast<size_t>(i)].has_value() && prepared_meshes[numeric_cast<size_t>(i)]->Kind != SpriteMeshKind::Quad) {
+                    mesh = std::move(*prepared_meshes[numeric_cast<size_t>(i)]);
+                    TranslateSpriteMesh(mesh, frame_padding - mesh_build_paddings[numeric_cast<size_t>(i)], *bake_shot);
+                }
+                else {
+                    int64_t reference_quad_double_area = numeric_cast<int64_t>(shot.Width) * shot.Height * 2;
+                    mesh = BuildSpriteMesh(bake_shot->Data, {bake_shot->Width, bake_shot->Height}, mesh_config, reference_quad_double_area);
+                }
+
+                optional<FrameShot> cropped_shot;
+
+                if (mesh.Kind == SpriteMeshKind::Mesh) {
+                    cropped_shot = CropSpriteFrameToMeshBounds(*bake_shot, shot, frame_padding, mesh);
+
+                    if (cropped_shot.has_value()) {
+                        bake_shot = &*cropped_shot;
+                    }
+                }
+
+                ipos32 source_offset {sequence.OffsX, sequence.OffsY};
+                isize32 source_size {shot.Width, shot.Height};
+                isize32 cropped_size {bake_shot->Width, bake_shot->Height};
+                FO_VERIFY_AND_THROW(mesh.Kind != SpriteMeshKind::Mesh || (source_size.width > 0 && source_size.height > 0 && cropped_size.width > 0 && cropped_size.height > 0), "Sprite frame offset resolution requires positive dimensions", source_size, cropped_size);
+
+                ipos32 frame_offset = mesh.Kind == SpriteMeshKind::Mesh ?
+                    ipos32 {
+                        source_offset.x + cropped_size.width / 2 - source_size.width / 2 + mesh.Data.SourceOffset.x,
+                        source_offset.y + cropped_size.height - source_size.height + mesh.Data.SourceOffset.y,
+                    } :
+                    source_offset;
+
+                if (report_enabled) {
+                    optional<SpriteMeshBakingCandidateReport> best_rejected_candidate;
+
+                    if (mesh.BestRejectedCandidate.has_value()) {
+                        const SpriteMeshCandidateSummary& candidate = *mesh.BestRejectedCandidate;
+                        best_rejected_candidate = SpriteMeshBakingCandidateReport {
+                            .SelectionOrigin = string(SpriteMeshCandidateSourceName(candidate.Source)),
+                            .TriangleCount = candidate.TriangleCount,
+                            .VertexCount = candidate.VertexCount,
+                            .SubmittedGeometryDoubleArea = candidate.DoubleArea,
+                            .Score = candidate.Score,
+                            .SimplifyTolerance = candidate.SimplifyTolerance,
+                            .ActualDilation = candidate.ActualDilation,
+                        };
+                    }
+
+                    frame_reports.emplace_back(SpriteMeshBakingFrameReport {
+                        .SourcePath = string(fname),
+                        .OutputPath = output_path,
+                        .Direction = dir,
+                        .FrameIndex = numeric_cast<uint32_t>(i),
+                        .Form = mesh.Kind == SpriteMeshKind::Mesh ? "mesh" :
+                            mesh.Kind == SpriteMeshKind::Empty    ? "empty" :
+                                                                    "quad",
+                        .SelectionOrigin = string(SpriteMeshCandidateSourceName(mesh.Source)),
+                        .QuadReason = string(SpriteMeshQuadReasonName(mesh.QuadReason)),
+                        .TriangleCount = numeric_cast<uint32_t>(mesh.Data.Indices.size() / 3),
+                        .VertexCount = numeric_cast<uint32_t>(mesh.Data.Vertices.size()),
+                        .SourceComponentCount = mesh.SourceComponentCount,
+                        .DilatedComponentCount = mesh.DilatedComponentCount,
+                        .Padding = frame_padding,
+                        .SimplifyTolerance = mesh.SimplifyTolerance,
+                        .ActualDilation = mesh.ActualDilation,
+                        .SourceFramePixels = numeric_cast<uint64_t>(shot.Width) * shot.Height,
+                        .BakedCanvasPixels = numeric_cast<uint64_t>(bake_shot->Width) * bake_shot->Height,
+                        .VisiblePixels = mesh.VisiblePixels,
+                        .SubmittedGeometryDoubleArea = mesh.DoubleArea,
+                        .SelectionScore = mesh.SelectionScore,
+                        .BestRejectedCandidate = std::move(best_rejected_candidate),
+                    });
+                }
+
+                writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.x));
+                writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.y));
+                writer.Write<uint16_t>(bake_shot->Width);
+                writer.Write<uint16_t>(bake_shot->Height);
+                writer.Write<int16_t>(bake_shot->NextX);
+                writer.Write<int16_t>(bake_shot->NextY);
+                frame_info.Offset = frame_offset;
+                frame_info.Size = cropped_size;
+                frame_info.NextOffset = {bake_shot->NextX, bake_shot->NextY};
+
+                if (!bake_shot->Data.empty()) {
+                    writer.WriteBytes({bake_shot->Data.data(), bake_shot->Data.size()});
+                }
+
+                writer.Write<uint8_t>(static_cast<uint8_t>(mesh.Kind));
+
+                if (mesh.Kind == SpriteMeshKind::Mesh) {
+                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.Vertices.size()));
+                    writer.Write<uint32_t>(numeric_cast<uint32_t>(mesh.Data.Indices.size()));
+                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.SourceSize.width));
+                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.SourceSize.height));
+                    writer.Write<int32_t>(mesh.Data.SourceOffset.x);
+                    writer.Write<int32_t>(mesh.Data.SourceOffset.y);
+
+                    for (ipos32 vertex : mesh.Data.Vertices) {
+                        writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
+                        writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
+                    }
+                    for (uint16_t index : mesh.Data.Indices) {
+                        writer.Write<uint16_t>(index);
+                    }
+                }
             }
             else {
+                stats.SharedFrameReferences++;
                 writer.Write<uint16_t>(shot.SharedIndex);
+                FO_VERIFY_AND_THROW(shot.SharedIndex < i, "Shared sprite frame points outside previously baked frames", fname, dir, i, shot.SharedIndex);
+                frame_info = direction_info.Frames[shot.SharedIndex];
+                frame_info.SharedFrameIndex = shot.SharedIndex;
             }
         }
     }
 
-    writer.Write<uint8_t>(check_number);
+    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
-    if (!collection.NewName.empty()) {
-        _context->WriteData(collection.NewName, data);
+    _context->WriteData(output_path, data);
+
+    if (!report_enabled) {
+        return sprite_info_entry;
     }
-    else {
-        _context->WriteData(fname, data);
+
+    AddBakingReportCounter("collections", stats.Collections);
+    AddBakingReportCounter("directions", stats.Directions);
+    AddBakingReportCounter("frameSlots", stats.FrameSlots);
+    AddBakingReportCounter("uniqueFrames", stats.UniqueFrames);
+    AddBakingReportCounter("sharedFrameReferences", stats.SharedFrameReferences);
+    AddBakingReportHistogramValue("sourceFormats", strex(fname).get_file_extension());
+
+    for (const SpriteMeshBakingFrameReport& frame_report : frame_reports) {
+        RecordSpriteMeshBakingFrame(frame_report);
     }
+    if (stats.SharedFrameReferences != 0) {
+        RecordSharedSpriteMeshBakingFrames(stats.SharedFrameReferences);
+    }
+
+    return sprite_info_entry;
+}
+
+static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(padding > 0, "Sprite frame padding must be positive", padding);
+    FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
+
+    int32_t padded_width = numeric_cast<int32_t>(shot.Width) + padding * 2;
+    int32_t padded_height = numeric_cast<int32_t>(shot.Height) + padding * 2;
+    FO_VERIFY_AND_THROW(padded_width <= std::numeric_limits<uint16_t>::max() && padded_height <= std::numeric_limits<uint16_t>::max(), "Sprite frame padding exceeds the serialized dimension range", shot.Width, shot.Height, padding);
+
+    ImageBaker::FrameShot result;
+    result.Width = numeric_cast<uint16_t>(padded_width);
+    result.Height = numeric_cast<uint16_t>(padded_height);
+    result.NextX = shot.NextX;
+    result.NextY = shot.NextY;
+    result.Data.resize(numeric_cast<size_t>(result.Width) * result.Height * 4);
+
+    size_t source_row_size = numeric_cast<size_t>(shot.Width) * 4;
+    size_t destination_row_size = numeric_cast<size_t>(result.Width) * 4;
+    size_t destination_x_offset = numeric_cast<size_t>(padding) * 4;
+
+    for (uint16_t y = 0; y < shot.Height; y++) {
+        size_t source_offset = numeric_cast<size_t>(y) * source_row_size;
+        size_t destination_offset = numeric_cast<size_t>(numeric_cast<int32_t>(y) + padding) * destination_row_size + destination_x_offset;
+        MemCopy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
+    }
+
+    return result;
+}
+
+static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (mesh.Kind != SpriteMeshKind::Mesh || mesh.Data.Indices.empty()) {
+        return 0;
+    }
+
+    int32_t required_padding = 0;
+
+    for (ipos32 vertex : mesh.Data.Vertices) {
+        int32_t relative_x = vertex.x - build_padding;
+        int32_t relative_y = vertex.y - build_padding;
+        required_padding = std::max({required_padding, -relative_x, relative_x - shot.Width, -relative_y, relative_y - shot.Height});
+    }
+
+    FO_VERIFY_AND_THROW(required_padding <= SPRITE_MESH_MAXIMUM_PADDING, "Resolved sprite mesh padding exceeds the internal maximum", required_padding, SPRITE_MESH_MAXIMUM_PADDING);
+    return required_padding;
+}
+
+static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageBaker::FrameShot& shot)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (mesh.Kind != SpriteMeshKind::Mesh || offset == 0) {
+        return;
+    }
+
+    for (ipos32 vertex : mesh.Data.Vertices) {
+        int64_t translated_x = numeric_cast<int64_t>(vertex.x) + offset;
+        int64_t translated_y = numeric_cast<int64_t>(vertex.y) + offset;
+        FO_VERIFY_AND_THROW(translated_x >= 0 && translated_x <= shot.Width && translated_y >= 0 && translated_y <= shot.Height, "Translated sprite mesh vertex lies outside the baked frame", vertex, shot.Width, shot.Height, offset);
+    }
+
+    for (ipos32& vertex : mesh.Data.Vertices) {
+        vertex.x = numeric_cast<int32_t>(numeric_cast<int64_t>(vertex.x) + offset);
+        vertex.y = numeric_cast<int32_t>(numeric_cast<int64_t>(vertex.y) + offset);
+    }
+}
+
+static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const ImageBaker::FrameShot& source_shot, int32_t padding, BakedSpriteMesh& mesh) -> optional<ImageBaker::FrameShot>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(mesh.Kind == SpriteMeshKind::Mesh && !mesh.Data.Vertices.empty() && !mesh.Data.Indices.empty(), "Sprite frame cropping requires a non-empty mesh");
+    FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
+
+    ipos32 minimum_vertex {shot.Width, shot.Height};
+    ipos32 maximum_vertex {};
+
+    for (ipos32 vertex : mesh.Data.Vertices) {
+        FO_VERIFY_AND_THROW(vertex.x >= 0 && vertex.x <= shot.Width && vertex.y >= 0 && vertex.y <= shot.Height, "Sprite mesh vertex lies outside the frame selected for cropping", vertex, shot.Width, shot.Height);
+        minimum_vertex.x = std::min(minimum_vertex.x, vertex.x);
+        minimum_vertex.y = std::min(minimum_vertex.y, vertex.y);
+        maximum_vertex.x = std::max(maximum_vertex.x, vertex.x);
+        maximum_vertex.y = std::max(maximum_vertex.y, vertex.y);
+    }
+
+    isize32 cropped_size = {maximum_vertex.x - minimum_vertex.x, maximum_vertex.y - minimum_vertex.y};
+    FO_VERIFY_AND_THROW(cropped_size.width > 0 && cropped_size.height > 0, "Sprite mesh bounds must have positive dimensions", minimum_vertex, maximum_vertex);
+
+    mesh.Data.SourceSize = {source_shot.Width, source_shot.Height};
+    mesh.Data.SourceOffset = {minimum_vertex.x - padding, minimum_vertex.y - padding};
+
+    for (ipos32& vertex : mesh.Data.Vertices) {
+        vertex -= minimum_vertex;
+    }
+
+    if (minimum_vertex == ipos32 {} && cropped_size == isize32 {shot.Width, shot.Height}) {
+        return std::nullopt;
+    }
+
+    ImageBaker::FrameShot result;
+    result.Width = numeric_cast<uint16_t>(cropped_size.width);
+    result.Height = numeric_cast<uint16_t>(cropped_size.height);
+    result.NextX = shot.NextX;
+    result.NextY = shot.NextY;
+    result.Data.resize(numeric_cast<size_t>(result.Width) * result.Height * 4);
+
+    size_t source_row_size = numeric_cast<size_t>(shot.Width) * 4;
+    size_t cropped_row_size = numeric_cast<size_t>(result.Width) * 4;
+    size_t source_x_offset = numeric_cast<size_t>(minimum_vertex.x) * 4;
+
+    for (uint16_t y = 0; y < result.Height; y++) {
+        size_t source_y = numeric_cast<size_t>(numeric_cast<int32_t>(y) + minimum_vertex.y);
+        size_t source_offset = source_y * source_row_size + source_x_offset;
+        size_t destination_offset = numeric_cast<size_t>(y) * cropped_row_size;
+        MemCopy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
+    }
+
+    return optional<ImageBaker::FrameShot> {std::move(result)};
 }
 
 auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ext = strex(fname_with_opt).get_file_extension();
-    const string dir = strex(fname_with_opt).extract_dir();
-    const string_view name = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
-    const string fname = strex("{}/{}.{}", dir, name, ext);
-    const string_view opt = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$');
+    string ext = strex(fname_with_opt).get_file_extension();
+    string dir = strex(fname_with_opt).extract_dir();
+    string_view name = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
+    string fname = strex("{}/{}.{}", dir, name, ext);
+    string_view opt = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$');
 
-    const auto file = files.FindFileByPath(fname);
+    auto file = files.FindFileByPath(fname);
 
     if (!file) {
         throw ImageBakerException("Image file not found", fname, fname_with_opt, dir, name, ext);
     }
 
-    if (const auto it = _fileLoaders.find(ext); it != _fileLoaders.end()) {
+    if (auto it = _fileLoaders.find(ext); it != _fileLoaders.end()) {
         return it->second(fname, opt, file.GetReader(), files);
     }
     else {
@@ -278,13 +662,13 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
 
     FrameCollection collection;
 
-    ConfigFile fofrm("Image.fofrm", reader.GetStr());
+    ConfigFile fofrm(reader.GetStr());
 
     int32_t frm_fps = fofrm.GetAsInt("", "fps", 10);
     frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
     int32_t frm_count = fofrm.GetAsInt("", "count", 1);
     frm_count = fofrm.GetAsInt("", "Count", frm_count);
-    FO_RUNTIME_ASSERT(frm_count > 0);
+    FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
     int32_t ox = fofrm.GetAsInt("", "offs_x", 0);
     ox = fofrm.GetAsInt("", "OffsetX", ox);
@@ -294,7 +678,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
     collection.EffectName = fofrm.GetAsStr("", "effect");
     collection.EffectName = fofrm.GetAsStr("", "Effect", collection.EffectName);
 
-    for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         vector<tuple<FrameCollection, int32_t, int32_t>> sub_collections;
         sub_collections.reserve(10);
 
@@ -331,7 +715,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
         bool load_fail = false;
 
         for (int32_t frm = 0; frm < frm_count; frm++) {
-            auto frm_name = fofrm.GetAsStr(dir_str, strex("frm_{}", frm));
+            string_view frm_name = fofrm.GetAsStr(dir_str, strex("frm_{}", frm));
 
             if (frm_name.empty()) {
                 frm_name = fofrm.GetAsStr(dir_str, strex("Frm_{}", frm), frm_name);
@@ -414,11 +798,11 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
     ignore_unused(opt);
 
     reader.SetCurPos(0x4);
-    auto frm_fps = reader.GetBEUInt16();
+    uint16_t frm_fps = reader.GetBEUInt16();
 
     reader.SetCurPos(0x8);
-    auto frm_count = reader.GetBEUInt16();
-    FO_RUNTIME_ASSERT(frm_count > 0);
+    uint16_t frm_count = reader.GetBEUInt16();
+    FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
     FrameCollection collection;
     collection.SequenceSize = frm_count;
@@ -439,11 +823,11 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
     uint32_t anim_pix_type = 0;
     const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
-    for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         sequence.Frames.resize(collection.SequenceSize);
 
-        auto dir_frm = dir;
+        int32_t dir_frm = dir;
 
         if constexpr (GameSettings::SQUARE_GEOMETRY) {
             if (dir >= 3) {
@@ -460,7 +844,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         sequence.OffsY = reader.GetBEInt16();
 
         reader.SetCurPos(0x22 + dir_frm * 4);
-        auto offset = 0x3E + reader.GetBEUInt32();
+        uint32_t offset = 0x3E + reader.GetBEUInt32();
 
         if (offset == 0x3E && dir_frm != 0) {
             if (dir > 1) {
@@ -475,7 +859,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Make palette
-        auto* palette = reinterpret_cast<ucolor*>(FoPalette);
+        span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
         ucolor custom_palette[256];
         File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
@@ -490,15 +874,15 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
             }
 
             custom_palette[0] = ucolor {0};
-            palette = custom_palette;
+            palette = span<ucolor> {custom_palette};
         }
 
         for (uint16_t frm = 0; frm < frm_count; frm++) {
             auto& shot = sequence.Frames[frm];
 
             reader.SetCurPos(offset);
-            auto w = reader.GetBEUInt16();
-            auto h = reader.GetBEUInt16();
+            uint16_t w = reader.GetBEUInt16();
+            uint16_t h = reader.GetBEUInt16();
             shot.Width = w;
             shot.Height = h;
             reader.GoForward(4); // Frame size
@@ -507,17 +891,17 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
 
             // Allocate data
             shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
-            auto* ptr = reinterpret_cast<ucolor*>(shot.Data.data());
+            span<ucolor> pixels = bytes_to_objects<ucolor>(span {shot.Data});
             reader.SetCurPos(offset + 12);
 
             if (anim_pix_type == 0) {
                 for (size_t i = 0, j = numeric_cast<size_t>(w * h); i < j; i++) {
-                    *(ptr + i) = palette[reader.GetUInt8()];
+                    pixels[i] = palette[reader.GetUInt8()];
                 }
             }
             else {
                 for (size_t i = 0, j = numeric_cast<size_t>(w * h); i < j; i++) {
-                    auto index = reader.GetUInt8();
+                    uint8_t index = reader.GetUInt8();
 
                     if (index >= 229 && index < 255) {
                         if (index >= 229 && index <= 232) {
@@ -556,21 +940,21 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
                             }
                         }
                         else {
-                            *(ptr + i) = ucolor {blinking_red_vals[frm % 10], 0, 0};
+                            pixels[i] = ucolor {blinking_red_vals[frm % 10], 0, 0};
                             continue;
                         }
                     }
 
-                    *(ptr + i) = palette[index];
+                    pixels[i] = palette[index];
                 }
             }
 
             // Check for animate pixels
-            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette == reinterpret_cast<ucolor*>(FoPalette)) {
+            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette.data() != custom_palette) {
                 reader.SetCurPos(offset + 12);
 
-                for (auto i = 0, j = w * h; i < j; i++) {
-                    auto index = reader.GetUInt8();
+                for (int32_t i = 0; i < w * h; i++) {
+                    uint8_t index = reader.GetUInt8();
 
                     if (index < 229 || index == 255) {
                         continue;
@@ -639,7 +1023,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
 
                     frm_count = 4;
 
-                    for (auto i = 0; i < 4; i++) {
+                    for (int32_t i = 0; i < 4; i++) {
                         if (frm_count % divs[i] == 0) {
                             continue;
                         }
@@ -673,11 +1057,11 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
 
     // Load from frm
     reader.SetCurPos(0x4);
-    auto frm_fps = reader.GetBEUInt16();
+    uint16_t frm_fps = reader.GetBEUInt16();
 
     reader.SetCurPos(0x8);
-    auto frm_count = reader.GetBEUInt16();
-    FO_RUNTIME_ASSERT(frm_count > 0);
+    uint16_t frm_count = reader.GetBEUInt16();
+    FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
     FrameCollection collection;
     collection.SequenceSize = frm_count;
@@ -701,11 +1085,11 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
     uint32_t anim_pix_type = 0;
     const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
-    for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         sequence.Frames.resize(collection.SequenceSize);
 
-        auto dir_frm = dir;
+        int32_t dir_frm = dir;
 
         if constexpr (GameSettings::SQUARE_GEOMETRY) {
             if (dir >= 3) {
@@ -717,7 +1101,8 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         }
 
         if (dir_frm != 0) {
-            string next_fname = strex("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
+            string next_fname {fname.substr(0, fname.size() - 1)};
+            next_fname += numeric_cast<char>('0' + dir_frm);
 
             dir_file = files.FindFileByPath(next_fname);
 
@@ -739,14 +1124,14 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         sequence.OffsY = reader.GetBEInt16();
 
         reader.SetCurPos(0x22 + dir_frm * 4);
-        auto offset = 0x3E + reader.GetBEUInt32();
+        uint32_t offset = 0x3E + reader.GetBEUInt32();
 
         if (dir == 1) {
             collection.HaveDirs = true;
         }
 
         // Make palette
-        auto* palette = reinterpret_cast<ucolor*>(FoPalette);
+        span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
         ucolor custom_palette[256];
         File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
@@ -761,15 +1146,15 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
             }
 
             custom_palette[0] = ucolor {0};
-            palette = custom_palette;
+            palette = span<ucolor> {custom_palette};
         }
 
         for (uint16_t frm = 0; frm < frm_count; frm++) {
             auto& shot = sequence.Frames[frm];
 
             reader.SetCurPos(offset);
-            auto w = reader.GetBEUInt16();
-            auto h = reader.GetBEUInt16();
+            uint16_t w = reader.GetBEUInt16();
+            uint16_t h = reader.GetBEUInt16();
 
             shot.Width = w;
             shot.Height = h;
@@ -781,17 +1166,17 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
 
             // Allocate data
             shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
-            auto* ptr = reinterpret_cast<ucolor*>(shot.Data.data());
+            span<ucolor> pixels = bytes_to_objects<ucolor>(span {shot.Data});
             reader.SetCurPos(offset + 12);
 
             if (anim_pix_type == 0) {
                 for (size_t i = 0, j = numeric_cast<size_t>(w * h); i < j; i++) {
-                    *(ptr + i) = palette[reader.GetUInt8()];
+                    pixels[i] = palette[reader.GetUInt8()];
                 }
             }
             else {
                 for (size_t i = 0, j = numeric_cast<size_t>(w * h); i < j; i++) {
-                    auto index = reader.GetUInt8();
+                    uint8_t index = reader.GetUInt8();
 
                     if (index >= 229 && index < 255) {
                         if (index >= 229 && index <= 232) {
@@ -829,21 +1214,21 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
                             }
                         }
                         else {
-                            *(ptr + i) = ucolor {blinking_red_vals[frm % 10], 0, 0};
+                            pixels[i] = ucolor {blinking_red_vals[frm % 10], 0, 0};
                             continue;
                         }
                     }
 
-                    *(ptr + i) = palette[index];
+                    pixels[i] = palette[index];
                 }
             }
 
             // Check for animate pixels
-            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette == reinterpret_cast<ucolor*>(FoPalette)) {
+            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette.data() != custom_palette) {
                 reader.SetCurPos(offset + 12);
 
-                for (auto i = 0, j = w * h; i < j; i++) {
-                    auto index = reader.GetUInt8();
+                for (int32_t i = 0; i < w * h; i++) {
+                    uint8_t index = reader.GetUInt8();
 
                     if (index < 229 || index == 255) {
                         continue;
@@ -916,7 +1301,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
 
                     frm_count = 4;
 
-                    for (auto i = 0; i < 4; i++) {
+                    for (int32_t i = 0; i < 4; i++) {
                         if (frm_count % divs[i] == 0) {
                             continue;
                         }
@@ -950,23 +1335,23 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader, 
 
     reader.SetCurPos(0x4);
     uint16_t w = 0;
-    reader.CopyData(&w, 2);
+    reader.ReadObject(w);
     uint16_t h = 0;
-    reader.CopyData(&h, 2);
+    reader.ReadObject(h);
 
     reader.SetCurPos(0xA);
-    const auto* palette = reader.GetCurBuf();
+    const_span<uint8_t> palette = reader.GetCurDataSpan(256 * 3);
 
     vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
-    auto* ptr = reinterpret_cast<ucolor*>(data.data());
+    span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
     reader.SetCurPos(0xA + 256 * 3);
 
-    for (auto i = 0, j = w * h; i < j; i++) {
-        const auto index = numeric_cast<int32_t>(reader.GetUInt8()) * 3;
-        const auto r = numeric_cast<uint8_t>(*(palette + index + 2) * 4);
-        const auto g = numeric_cast<uint8_t>(*(palette + index + 1) * 4);
-        const auto b = numeric_cast<uint8_t>(*(palette + index + 0) * 4);
-        *(ptr + i) = ucolor {r, g, b};
+    for (int32_t i = 0; i < w * h; i++) {
+        int32_t index = numeric_cast<int32_t>(reader.GetUInt8()) * 3;
+        auto r = numeric_cast<uint8_t>(palette[index + 2] * 4);
+        auto g = numeric_cast<uint8_t>(palette[index + 1] * 4);
+        auto b = numeric_cast<uint8_t>(palette[index + 0] * 4);
+        pixels[i] = ucolor {r, g, b};
     }
 
     FrameCollection collection;
@@ -985,10 +1370,10 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
     ignore_unused(files);
 
-    auto palette_index = 0; // 0..3
-    auto transparent = false;
-    auto mirror_hor = false;
-    auto mirror_ver = false;
+    int32_t palette_index = 0; // 0..3
+    bool transparent = false;
+    bool mirror_hor = false;
+    bool mirror_ver = false;
     int32_t frm_from = 0;
     int32_t frm_to = 100000;
 
@@ -1021,18 +1406,32 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
         case 'F':
         case 'f': {
             // name$1vf5-7.art
-            auto f = string(opt.substr(i));
-            istringstream idelim(f);
-            char ch = 0;
+            size_t frame_spec_len = 0;
 
-            if (f.find('-') != string::npos) {
-                idelim >> frm_from >> ch >> frm_to;
-                i += 3;
+            while (i + 1 + frame_spec_len < opt.length()) {
+                char ch = opt[i + 1 + frame_spec_len];
+
+                if (!((ch >= '0' && ch <= '9') || ch == '-')) {
+                    break;
+                }
+
+                frame_spec_len++;
             }
-            else {
-                idelim >> frm_from;
-                frm_to = frm_from;
-                i += 1;
+
+            if (frame_spec_len != 0) {
+                string frame_spec {opt.substr(i + 1, frame_spec_len)};
+                istringstream idelim(frame_spec);
+                char ch = 0;
+
+                if (frame_spec.find('-') != string::npos) {
+                    idelim >> frm_from >> ch >> frm_to;
+                }
+                else {
+                    idelim >> frm_from;
+                    frm_to = frm_from;
+                }
+
+                i += frame_spec_len;
             }
         } break;
         default:
@@ -1056,7 +1455,8 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
         int32_t InfoList[8] {};
         int32_t SizeList[8] {};
         int32_t DataList[8] {};
-    } header;
+    };
+    ArtHeader header;
 
     struct ArtFrameInfo
     {
@@ -1072,18 +1472,18 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
     using ArtPalette = uint32_t[256];
     ArtPalette palette[4];
 
-    reader.CopyData(&header, sizeof(header));
+    reader.ReadObject(header);
 
     if ((header.Flags & 0x00000001) != 0) {
         header.RotationCount = 1;
     }
 
     // Load palettes
-    auto palette_count = 0;
+    int32_t palette_count = 0;
 
-    for (auto i = 0; i < 4; i++) {
+    for (int32_t i = 0; i < 4; i++) {
         if (header.PaletteList[i] != 0) {
-            reader.CopyData(&palette[i], sizeof(ArtPalette));
+            reader.ReadObjectArray<uint32_t>(palette[i]);
             palette_count++;
         }
     }
@@ -1091,9 +1491,9 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
         palette_index = 0;
     }
 
-    auto frm_fps = header.FrameRate;
-    auto frm_count = header.FrameCount;
-    FO_RUNTIME_ASSERT(frm_count > 0);
+    int32_t frm_fps = header.FrameRate;
+    int32_t frm_count = header.FrameCount;
+    FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
     if (frm_from >= frm_count) {
         frm_from = frm_count - 1;
@@ -1102,7 +1502,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
         frm_to = frm_count - 1;
     }
 
-    auto frm_count_target = std::max(frm_from, frm_to) - std::min(frm_from, frm_to) + 1;
+    int32_t frm_count_target = std::max(frm_from, frm_to) - std::min(frm_from, frm_to) + 1;
 
     // Create animation
     FrameCollection collection;
@@ -1110,11 +1510,11 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
     collection.AnimTicks = numeric_cast<uint16_t>(frm_fps != 0 ? 1000 / frm_fps * frm_count_target : 0);
     collection.HaveDirs = header.RotationCount == 8;
 
-    for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         sequence.Frames.resize(collection.SequenceSize);
 
-        auto dir_art = dir;
+        int32_t dir_art = dir;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             switch (dir_art) {
@@ -1145,18 +1545,18 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Read data
-        auto frm_read = frm_from;
+        int32_t frm_read = frm_from;
         int32_t frm_write = 0;
 
         while (true) {
             reader.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + sizeof(ArtFrameInfo) * frm_read);
 
-            reader.CopyData(&frame_info, sizeof(frame_info));
+            reader.ReadObject(frame_info);
 
-            auto w = frame_info.FrameWidth;
-            auto h = frame_info.FrameHeight;
+            int32_t w = frame_info.FrameWidth;
+            int32_t h = frame_info.FrameHeight;
             vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
-            auto* ptr = reinterpret_cast<uint32_t*>(data.data());
+            span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
 
             auto& shot = sequence.Frames[frm_write];
             shot.Width = numeric_cast<uint16_t>(w);
@@ -1167,9 +1567,9 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
             uint32_t color = 0;
 
             auto art_get_color = [&color, &reader, &palette, &palette_index, &transparent]() {
-                const auto index = reader.GetUInt8();
+                uint8_t index = reader.GetUInt8();
                 color = palette[palette_index][index];
-                std::swap(reinterpret_cast<uint8_t*>(&color)[0], reinterpret_cast<uint8_t*>(&color)[2]);
+                swap_object_bytes(color, 0, 2);
 
                 if (index == 0) {
                     color = 0;
@@ -1178,7 +1578,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
                     color |= std::max((color >> 16) & 0xFF, std::max((color >> 8) & 0xFF, color & 0xFF)) << 24;
                 }
                 else {
-                    color |= 0xFF00000;
+                    color |= 0xFF000000;
                 }
             };
 
@@ -1187,9 +1587,9 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
             int32_t y = 0;
             bool mirror = mirror_hor || mirror_ver;
 
-            auto art_write_color = [&color, &pos, &x, &y, &w, &h, ptr, &mirror, &mirror_hor, &mirror_ver]() {
+            auto art_write_color = [&color, &pos, &x, &y, &w, &h, &pixels, &mirror, &mirror_hor, &mirror_ver]() {
                 if (mirror) {
-                    *(ptr + ((mirror_ver ? h - y - 1 : y) * w + (mirror_hor ? w - x - 1 : x))) = color;
+                    pixels[(mirror_ver ? h - y - 1 : y) * w + (mirror_hor ? w - x - 1 : x)] = color;
                     x++;
                     if (x >= w) {
                         x = 0;
@@ -1197,7 +1597,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
                     }
                 }
                 else {
-                    *(ptr + pos) = color;
+                    pixels[pos] = color;
                     pos++;
                 }
             };
@@ -1210,7 +1610,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
             }
             else {
                 for (int32_t i = 0; i < frame_info.FrameSize; i++) {
-                    auto cmd = reader.GetUInt8();
+                    uint8_t cmd = reader.GetUInt8();
 
                     if (cmd > 128) {
                         cmd -= 128;
@@ -1262,8 +1662,10 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
     FrameCollection collection;
 
-    for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
-        auto dir_spr = dir;
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        reader.SetCurPos(0);
+
+        int32_t dir_spr = dir;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             switch (dir_spr) {
@@ -1303,12 +1705,24 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
         // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
         auto first = opt.find_first_of('[');
-        auto last = opt.find_last_of(']', first);
+        auto last = opt.find_last_of(']');
         auto seq_name = last != string::npos ? opt.substr(last + 1) : opt;
 
-        while (first != string::npos && last != string::npos) {
+        while (first != string::npos) {
             last = opt.find_first_of(']', first);
-            auto entry = string(opt.substr(first, last - first - 1));
+
+            if (last == string::npos) {
+                break;
+            }
+
+            string entry = string(opt.substr(first + 1, last - first - 1));
+
+            for (char& ch : entry) {
+                if (ch == ',') {
+                    ch = ' ';
+                }
+            }
+
             istringstream ientry(entry);
 
             // Parse numbers
@@ -1331,48 +1745,50 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 }
             }
 
-            first = opt.find_first_of('[', last);
+            first = opt.find_first_of('[', last + 1);
         }
 
         // Read header
         char head[11];
-        reader.CopyData(head, 11);
+        reader.ReadObjectArray<char>(head);
 
         if (head[8] != 0 || strcmp(head, "<sprite>") != 0) {
             throw ImageBakerException("Invalid SPR header", fname);
         }
 
-        const auto dimension_left = numeric_cast<float32_t>(reader.GetUInt8()) * 6.7f;
-        const auto dimension_up = numeric_cast<float32_t>(reader.GetUInt8()) * 7.6f;
+        float32_t dimension_left = numeric_cast<float32_t>(reader.GetUInt8()) * 6.7f;
+        float32_t dimension_up = numeric_cast<float32_t>(reader.GetUInt8()) * 7.6f;
         ignore_unused(dimension_up);
-        const auto dimension_right = numeric_cast<float32_t>(reader.GetUInt8()) * 6.7f;
-        const auto center_x = reader.GetLEInt32();
-        const auto center_y = reader.GetLEInt32();
+        float32_t dimension_right = numeric_cast<float32_t>(reader.GetUInt8()) * 6.7f;
+        int32_t center_x = reader.GetLEInt32();
+        int32_t center_y = reader.GetLEInt32();
         reader.GoForward(2); // uint16 unknown1  sometimes it is 0, and sometimes it is 3
         reader.GoForward(1); // CHAR unknown2  0x64, other values were not observed
 
-        auto ta = (127.0f / 2.0f) * DEG_TO_RAD_FLOAT; // Tactics grid angle
-        auto center_x_ex = iround<int32_t>((dimension_left * sinf(ta) + dimension_right * sinf(ta)) / 2.0f - dimension_left * sinf(ta));
-        auto center_y_ex = iround<int32_t>((dimension_left * cosf(ta) + dimension_right * cosf(ta)) / 2.0f);
+        float32_t ta = (127.0f / 2.0f) * DEG_TO_RAD_FLOAT; // Tactics grid angle
+        int32_t center_x_ex = iround<int32_t>((dimension_left * sinf(ta) + dimension_right * sinf(ta)) / 2.0f - dimension_left * sinf(ta));
+        int32_t center_y_ex = iround<int32_t>((dimension_left * cosf(ta) + dimension_right * cosf(ta)) / 2.0f);
 
         int32_t anim_index = 0;
         vector<int32_t> anim_frames;
         anim_frames.reserve(1000);
 
         // Find sequence
-        auto seq_founded = false;
-        auto seq_cnt = reader.GetLEInt32();
+        bool seq_founded = false;
+        int32_t seq_cnt = reader.GetLEInt32();
 
         for (int32_t seq = 0; seq < seq_cnt; seq++) {
             // Find by name
-            auto item_cnt = reader.GetLEInt32();
+            int32_t item_cnt = reader.GetLEInt32();
             reader.GoForward(sizeof(int16_t) * item_cnt);
             reader.GoForward(sizeof(int32_t) * item_cnt);
 
-            auto name_len = reader.GetLEInt32();
-            auto name = string(reinterpret_cast<const char*>(reader.GetCurBuf()), name_len);
-            reader.GoForward(name_len);
-            auto index = reader.GetLEUInt16();
+            int32_t name_len = reader.GetLEInt32();
+            FO_VERIFY_AND_THROW(name_len >= 0, "ART sequence name length is negative", name_len);
+            const_span<uint8_t> name_data = reader.GetCurDataSpan(numeric_cast<size_t>(name_len));
+            string name = string(!name_data.empty() ? make_ptr(name_data.data()).reinterpret_as<const char>().get() : "", name_data.size());
+            reader.GoForward(name_data.size());
+            uint16_t index = reader.GetLEUInt16();
 
             if (seq_name.empty() || strvex(seq_name).compare_ignore_case(name)) {
                 anim_index = index;
@@ -1413,13 +1829,15 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             reader.GoForward(12);
         }
 
-        auto file_offset = reader.GetLEInt32();
+        int32_t file_offset = reader.GetLEInt32();
         reader.GoForward(reader.GetLEInt32()); // Collection name
-        auto frame_cnt = reader.GetLEInt32();
-        auto dir_cnt = reader.GetLEInt32();
+        int32_t frame_cnt = reader.GetLEInt32();
+        int32_t dir_cnt = reader.GetLEInt32();
         vector<int32_t> bboxes;
         bboxes.resize(numeric_cast<size_t>(frame_cnt) * dir_cnt * 4);
-        reader.CopyData(bboxes.data(), sizeof(int32_t) * frame_cnt * dir_cnt * 4);
+        if (!bboxes.empty()) {
+            reader.ReadObjectArray(span<int32_t> {bboxes.data(), bboxes.size()});
+        }
 
         // Fix dir
         if (dir_cnt != 8) {
@@ -1442,11 +1860,11 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         // Get images file
         reader.SetCurPos(file_offset);
         reader.GoForward(14); // <spranim_img>\0
-        auto type = reader.GetUInt8();
+        uint8_t type = reader.GetUInt8();
         reader.GoForward(1); // \0
 
         size_t data_len = 0;
-        auto cur_pos = reader.GetCurPos();
+        size_t cur_pos = reader.GetCurPos();
 
         if (reader.SeekFragment("<spranim_img>")) {
             data_len = reader.GetCurPos() - cur_pos;
@@ -1457,13 +1875,15 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
         reader.SetCurPos(cur_pos);
 
-        auto packed = type == 0x32;
+        bool packed = type == 0x32;
         vector<uint8_t> data;
 
         if (packed) {
             // Unpack with zlib
-            auto unpacked_len = reader.GetLEUInt32();
-            auto unpacked_data = Compressor::Decompress({reader.GetCurBuf(), data_len}, unpacked_len / data_len + 1);
+            uint32_t unpacked_len = reader.GetLEUInt32();
+            FO_VERIFY_AND_THROW(data_len != 0, "Packed SPR frame has zero data length");
+            const_span<uint8_t> spr_data = reader.GetCurDataSpan(data_len);
+            auto unpacked_data = Compressor::Decompress(spr_data, unpacked_len / data_len + 1);
 
             if (unpacked_data.empty()) {
                 throw ImageBakerException("Can't unpack SPR data", fname);
@@ -1473,7 +1893,11 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         }
         else {
             data.resize(data_len);
-            MemCopy(data.data(), reader.GetCurBuf(), data_len);
+            const_span<uint8_t> spr_data = reader.GetCurDataSpan(data_len);
+
+            if (!spr_data.empty()) {
+                MemCopy(data.data(), spr_data.data(), spr_data.size());
+            }
         }
 
         auto fm_images = FileReader(data);
@@ -1483,10 +1907,10 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         Palette palette[4];
 
         for (auto& i : palette) {
-            auto palette_count = fm_images.GetLEUInt32();
+            uint32_t palette_count = fm_images.GetLEUInt32();
 
             if (palette_count <= 256) {
-                fm_images.CopyData(&i, numeric_cast<size_t>(palette_count) * 4);
+                fm_images.ReadObjectArray(span<ucolor> {i, numeric_cast<size_t>(palette_count)});
             }
         }
 
@@ -1495,7 +1919,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         image_indices.resize(numeric_cast<size_t>(frame_cnt) * dir_cnt * 4);
 
         for (size_t cur = 0; fm_images.GetCurPos() != fm_images.GetSize();) {
-            auto tag = fm_images.GetUInt8();
+            uint8_t tag = fm_images.GetUInt8();
 
             if (tag == 1) {
                 // Valid index
@@ -1532,7 +1956,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
         for (size_t anim_frame = 0; anim_frame < anim_frames.size(); anim_frame++) {
             auto& shot = sequence.Frames[anim_frame];
-            auto frm = anim_frames[anim_frame];
+            int32_t frm = anim_frames[anim_frame];
 
             // Optimization, share frames
             bool founded = false;
@@ -1555,7 +1979,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             int32_t whole_height = 0;
 
             for (int32_t part = 0; part < 4; part++) {
-                const int32_t frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
+                int32_t frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
 
                 if (image_indices[frm_index] == 0) {
                     continue;
@@ -1563,11 +1987,11 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
                 fm_images.SetCurPos(image_indices[frm_index]);
 
-                auto posx = fm_images.GetLEInt32();
-                auto posy = fm_images.GetLEInt32();
+                int32_t posx = fm_images.GetLEInt32();
+                int32_t posy = fm_images.GetLEInt32();
                 fm_images.GoForward(8);
-                auto width = fm_images.GetLEInt32();
-                auto height = fm_images.GetLEInt32();
+                int32_t width = fm_images.GetLEInt32();
+                int32_t height = fm_images.GetLEInt32();
                 whole_width = std::max(width + posx, whole_width);
                 whole_height = std::max(height + posy, whole_height);
             }
@@ -1581,9 +2005,10 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
             // Allocate data
             vector<uint8_t> whole_data(numeric_cast<size_t>(whole_width) * whole_height * 4);
+            span<ucolor> whole_pixels = bytes_to_objects<ucolor>(span {whole_data});
 
             for (int32_t part = 0; part < 4; part++) {
-                const int32_t frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
+                int32_t frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
 
                 if (image_indices[frm_index] == 0) {
                     continue;
@@ -1591,19 +2016,19 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
                 fm_images.SetCurPos(image_indices[frm_index]);
 
-                auto posx = fm_images.GetLEInt32();
-                auto posy = fm_images.GetLEInt32();
+                int32_t posx = fm_images.GetLEInt32();
+                int32_t posy = fm_images.GetLEInt32();
 
                 char zar[8] = {0};
-                fm_images.CopyData(zar, 8);
+                fm_images.ReadObjectArray<char>(zar);
                 uint8_t subtype = zar[6];
 
-                auto width = fm_images.GetLEInt32();
-                auto height = fm_images.GetLEInt32();
+                int32_t width = fm_images.GetLEInt32();
+                int32_t height = fm_images.GetLEInt32();
                 ignore_unused(height);
-                auto palette_present = fm_images.GetUInt8();
-                auto rle_size = fm_images.GetLEUInt32();
-                const auto* rle_buf = fm_images.GetCurBuf();
+                uint8_t palette_present = fm_images.GetUInt8();
+                uint32_t rle_size = fm_images.GetLEUInt32();
+                const_span<uint8_t> rle_data = fm_images.GetCurDataSpan(numeric_cast<size_t>(rle_size));
                 fm_images.GoForward(rle_size);
                 uint8_t def_color = 0;
 
@@ -1611,33 +2036,33 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                     throw ImageBakerException("Invalid SPR file innded ZAR header", fname);
                 }
 
-                auto* ptr = reinterpret_cast<ucolor*>(whole_data.data()) + numeric_cast<size_t>(posy) * whole_width + posx;
-                auto x = posx;
-                auto y = posy;
+                size_t pixel_pos = numeric_cast<size_t>(posy) * whole_width + posx;
+                int32_t x = posx;
+                int32_t y = posy;
+                size_t rle_pos = 0;
 
-                while (rle_size != 0) {
-                    int32_t control = *rle_buf;
-                    rle_buf++;
-                    rle_size--;
+                while (rle_pos < rle_data.size()) {
+                    int32_t control = rle_data[rle_pos];
+                    rle_pos++;
 
-                    auto control_mode = control & 3;
-                    auto control_count = control >> 2;
+                    int32_t control_mode = control & 3;
+                    int32_t control_count = control >> 2;
 
                     for (int32_t i = 0; i < control_count; i++) {
                         ucolor col;
 
                         switch (control_mode) {
                         case 1:
-                            col = palette[part][rle_buf[i]];
-                            reinterpret_cast<uint8_t*>(&col)[3] = 0xFF;
+                            col = palette[part][rle_data[rle_pos + numeric_cast<size_t>(i)]];
+                            set_object_byte(col, 3, 0xFF);
                             break;
                         case 2:
-                            col = palette[part][rle_buf[numeric_cast<size_t>(2) * i]];
-                            reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
+                            col = palette[part][rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i)]];
+                            set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
                             break;
                         case 3:
                             col = palette[part][def_color];
-                            reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[i];
+                            set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
                             break;
                         default:
                             break;
@@ -1645,36 +2070,35 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
                         for (int32_t j = 0; j < 3; j++) {
                             if (rgb_offs[part][j] != 0) {
-                                auto val = numeric_cast<int32_t>(reinterpret_cast<uint8_t*>(&col)[2 - j]) + rgb_offs[part][j];
-                                reinterpret_cast<uint8_t*>(&col)[2 - j] = numeric_cast<uint8_t>(std::clamp(val, 0, 255));
+                                size_t color_byte_index = numeric_cast<size_t>(2 - j);
+                                int32_t val = numeric_cast<int32_t>(get_object_byte(col, color_byte_index)) + rgb_offs[part][j];
+                                set_object_byte(col, color_byte_index, numeric_cast<uint8_t>(std::clamp(val, 0, 255)));
                             }
                         }
 
-                        std::swap(reinterpret_cast<uint8_t*>(&col)[0], reinterpret_cast<uint8_t*>(&col)[2]);
+                        swap_object_bytes(col, 0, 2);
 
                         if (part == 0) {
-                            *ptr = col;
+                            whole_pixels[pixel_pos] = col;
                         }
                         else if (col.comp.a >= 128) {
-                            *ptr = col;
+                            whole_pixels[pixel_pos] = col;
                         }
 
-                        ptr++;
+                        pixel_pos++;
 
                         if (++x >= width + posx) {
                             x = posx;
                             y++;
-                            ptr = reinterpret_cast<ucolor*>(whole_data.data()) + numeric_cast<size_t>(y) * whole_width + x;
+                            pixel_pos = numeric_cast<size_t>(y) * whole_width + x;
                         }
                     }
 
                     if (control_mode != 0) {
-                        rle_size -= control_count;
-                        rle_buf += control_count;
+                        rle_pos += numeric_cast<size_t>(control_count);
 
                         if (control_mode == 2) {
-                            rle_size -= control_count;
-                            rle_buf += control_count;
+                            rle_pos += numeric_cast<size_t>(control_count);
                         }
                     }
                 }
@@ -1704,30 +2128,30 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
 
     // Read header
     char head[6];
-    reader.CopyData(head, 6);
+    reader.ReadObjectArray<char>(head);
 
     if (head[5] != 0 || strcmp(head, "<zar>") != 0) {
         throw ImageBakerException("Invalid ZAR header", fname);
     }
 
-    const auto type = reader.GetUInt8();
+    uint8_t type = reader.GetUInt8();
     reader.GoForward(1); // \0
-    const auto width = reader.GetLEInt32();
-    const auto height = reader.GetLEInt32();
-    const auto palette_present = reader.GetUInt8();
+    int32_t width = reader.GetLEInt32();
+    int32_t height = reader.GetLEInt32();
+    uint8_t palette_present = reader.GetUInt8();
 
     // Read palette
     uint32_t palette[256] = {};
     uint8_t def_color = 0;
 
     if (palette_present != 0) {
-        const auto palette_count = reader.GetLEInt32();
+        int32_t palette_count = reader.GetLEInt32();
 
         if (palette_count > 256) {
             throw ImageBakerException("Invalid ZAR palette count", fname);
         }
 
-        reader.CopyData(palette, sizeof(uint32_t) * palette_count);
+        reader.ReadObjectArray(span<uint32_t> {palette, numeric_cast<size_t>(palette_count)});
 
         if (type == 0x34) {
             def_color = reader.GetUInt8();
@@ -1735,53 +2159,53 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
     }
 
     // Read image
-    auto rle_size = reader.GetLEUInt32();
-    const auto* rle_buf = reader.GetCurBuf();
+    uint32_t rle_size = reader.GetLEUInt32();
+    const_span<uint8_t> rle_data = reader.GetCurDataSpan(numeric_cast<size_t>(rle_size));
     reader.GoForward(rle_size);
 
     // Allocate data
     vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
-    auto* ptr = reinterpret_cast<uint32_t*>(data.data());
+    span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
+    size_t pixel_pos = 0;
+    size_t rle_pos = 0;
 
     // Decode
-    while (rle_size != 0) {
-        const auto control = *rle_buf;
-        rle_buf++;
-        rle_size--;
+    while (rle_pos < rle_data.size()) {
+        auto control = rle_data[rle_pos];
+        rle_pos++;
 
-        const auto control_mode = control & 3;
-        const auto control_count = control >> 2;
+        int32_t control_mode = control & 3;
+        int32_t control_count = control >> 2;
 
-        for (auto i = 0; i < control_count; i++) {
+        for (int32_t i = 0; i < control_count; i++) {
             uint32_t col = 0;
 
             switch (control_mode) {
             case 1:
-                col = palette[rle_buf[i]];
-                reinterpret_cast<uint8_t*>(&col)[3] = 0xFF;
+                col = palette[rle_data[rle_pos + numeric_cast<size_t>(i)]];
+                set_object_byte(col, 3, 0xFF);
                 break;
             case 2:
-                col = palette[rle_buf[numeric_cast<size_t>(2) * i]];
-                reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
+                col = palette[rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i)]];
+                set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
                 break;
             case 3:
                 col = palette[def_color];
-                reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[i];
+                set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
                 break;
             default:
                 break;
             }
 
-            *ptr++ = col;
+            pixels[pixel_pos] = col;
+            pixel_pos++;
         }
 
         if (control_mode != 0) {
-            rle_size -= control_count;
-            rle_buf += control_count;
+            rle_pos += numeric_cast<size_t>(control_count);
 
             if (control_mode == 2) {
-                rle_size -= control_count;
-                rle_buf += control_count;
+                rle_pos += numeric_cast<size_t>(control_count);
             }
         }
     }
@@ -1805,7 +2229,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
 
     // Read header
     char head[7];
-    reader.CopyData(head, 7);
+    reader.ReadObjectArray<char>(head);
     if (head[6] != 0 || strcmp(head, "<tile>") != 0) {
         throw ImageBakerException("Invalid TIL file header", fname);
     }
@@ -1816,9 +2240,9 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
 
     reader.GoForward(7 + 4); // Unknown
 
-    const auto width = reader.GetLEInt32();
+    int32_t width = reader.GetLEInt32();
     ignore_unused(width);
-    const auto height = reader.GetLEInt32();
+    int32_t height = reader.GetLEInt32();
     ignore_unused(height);
 
     if (!reader.SeekFragment("<tiledata>")) {
@@ -1826,7 +2250,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
     }
 
     reader.GoForward(10 + 3); // Signature
-    const auto frames_count = reader.GetLEInt32();
+    int32_t frames_count = reader.GetLEInt32();
 
     FrameCollection collection;
     collection.SequenceSize = numeric_cast<uint16_t>(frames_count);
@@ -1836,30 +2260,30 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
     for (int32_t frm = 0; frm < frames_count; frm++) {
         // Read header
         char zar_head[6];
-        reader.CopyData(zar_head, 6);
+        reader.ReadObjectArray<char>(zar_head);
 
         if (zar_head[5] != 0 || strcmp(zar_head, "<zar>") != 0) {
             throw ImageBakerException("ZAR header in TIL file not found", fname);
         }
 
-        const auto type = reader.GetUInt8();
+        uint8_t type = reader.GetUInt8();
         reader.GoForward(1); // \0
-        const auto zar_width = reader.GetLEInt32();
-        const auto zar_height = reader.GetLEInt32();
-        const auto palette_present = reader.GetUInt8();
+        int32_t zar_width = reader.GetLEInt32();
+        int32_t zar_height = reader.GetLEInt32();
+        uint8_t palette_present = reader.GetUInt8();
 
         // Read palette
         ucolor palette[256] = {};
         uint8_t def_color = 0;
 
         if (palette_present != 0) {
-            const auto palette_count = reader.GetLEUInt32();
+            uint32_t palette_count = reader.GetLEUInt32();
 
             if (palette_count > 256) {
                 throw ImageBakerException("TIL file invalid palettes", fname);
             }
 
-            reader.CopyData(palette, sizeof(uint32_t) * palette_count);
+            reader.ReadObjectArray(span<ucolor> {palette, numeric_cast<size_t>(palette_count)});
 
             if (type == 0x34) {
                 def_color = reader.GetUInt8();
@@ -1867,54 +2291,54 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Read image
-        auto rle_size = reader.GetLEUInt32();
-        const auto* rle_buf = reader.GetCurBuf();
+        uint32_t rle_size = reader.GetLEUInt32();
+        const_span<uint8_t> rle_data = reader.GetCurDataSpan(numeric_cast<size_t>(rle_size));
         reader.GoForward(rle_size);
 
         // Allocate data
         vector<uint8_t> data(numeric_cast<size_t>(zar_width) * zar_height * 4);
-        auto* ptr = reinterpret_cast<ucolor*>(data.data());
+        span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
+        size_t pixel_pos = 0;
+        size_t rle_pos = 0;
 
         // Decode
-        while (rle_size != 0) {
-            const int32_t control = *rle_buf;
-            rle_buf++;
-            rle_size--;
+        while (rle_pos < rle_data.size()) {
+            int32_t control = rle_data[rle_pos];
+            rle_pos++;
 
-            const auto control_mode = control & 3;
-            const auto control_count = control >> 2;
+            int32_t control_mode = control & 3;
+            int32_t control_count = control >> 2;
 
-            for (auto i = 0; i < control_count; i++) {
+            for (int32_t i = 0; i < control_count; i++) {
                 ucolor col;
 
                 switch (control_mode) {
                 case 1:
-                    col = palette[rle_buf[i]];
-                    reinterpret_cast<uint8_t*>(&col)[3] = 0xFF;
+                    col = palette[rle_data[rle_pos + numeric_cast<size_t>(i)]];
+                    set_object_byte(col, 3, 0xFF);
                     break;
                 case 2:
-                    col = palette[rle_buf[numeric_cast<size_t>(2) * i]];
-                    reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
+                    col = palette[rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i)]];
+                    set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
                     break;
                 case 3:
                     col = palette[def_color];
-                    reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[i];
+                    set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
                     break;
                 default:
                     break;
                 }
 
                 std::swap(col.comp.r, col.comp.b);
-                *ptr++ = col;
+                pixels[pixel_pos] = col;
+                pixel_pos++;
             }
 
             if (control_mode != 0) {
-                rle_size -= control_count;
-                rle_buf += control_count;
+                rle_pos += numeric_cast<size_t>(control_count);
 
                 if (control_mode == 2) {
-                    rle_size -= control_count;
-                    rle_buf += control_count;
+                    rle_pos += numeric_cast<size_t>(control_count);
                 }
             }
         }
@@ -1937,7 +2361,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
 
     // Read signature
     char head[8];
-    reader.CopyData(head, 8);
+    reader.ReadObjectArray<char>(head);
 
     if (head[0] != 'M' || head[1] != 'O' || head[2] != 'S') {
         throw ImageBakerException("Invalid MOS file header", fname);
@@ -1947,20 +2371,23 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     vector<uint8_t> unpacked_data;
 
     if (head[3] == 'C') {
-        const auto unpacked_len = reader.GetLEUInt32();
-        auto data_len = reader.GetSize() - 12;
+        uint32_t unpacked_len = reader.GetLEUInt32();
+        size_t data_len = reader.GetSize() - 12;
 
-        auto* buf = const_cast<uint8_t*>(reader.GetBuf());
-        *reinterpret_cast<uint16_t*>(buf) = 0x9C78;
+        vector<uint8_t> packed_data = reader.GetData();
+        packed_data.resize(data_len);
+        FO_VERIFY_AND_THROW(packed_data.size() >= 2, "Packed data is too small to hold a zlib header", packed_data.size());
+        packed_data[0] = 0x78;
+        packed_data[1] = 0x9C;
 
-        unpacked_data = Compressor::Decompress({buf, data_len}, unpacked_len / reader.GetSize() + 1);
+        unpacked_data = Compressor::Decompress(packed_data, unpacked_len / reader.GetSize() + 1);
 
         if (unpacked_data.empty()) {
             throw ImageBakerException("Can't unpack MOS file", fname);
         }
 
         reader = FileReader(unpacked_data);
-        reader.CopyData(head, 8);
+        reader.ReadObjectArray<char>(head);
 
         if (head[0] != 'M' || head[1] != 'O' || head[2] != 'S') {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
@@ -1968,19 +2395,19 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     }
 
     // Read header
-    const int32_t width = reader.GetLEUInt16(); // Width (pixels)
-    const int32_t height = reader.GetLEUInt16(); // Height (pixels)
-    const int32_t col = reader.GetLEUInt16(); // Columns (blocks)
-    const int32_t row = reader.GetLEUInt16(); // Rows (blocks)
-    const auto block_size = reader.GetLEUInt32(); // Block size (pixels)
+    int32_t width = reader.GetLEUInt16(); // Width (pixels)
+    int32_t height = reader.GetLEUInt16(); // Height (pixels)
+    int32_t col = reader.GetLEUInt16(); // Columns (blocks)
+    int32_t row = reader.GetLEUInt16(); // Rows (blocks)
+    uint32_t block_size = reader.GetLEUInt32(); // Block size (pixels)
     ignore_unused(block_size);
-    const auto palette_offset = reader.GetLEUInt32(); // Offset (from start of file) to palettes
-    const auto tiles_offset = palette_offset + col * row * 256 * 4;
-    const auto data_offset = tiles_offset + col * row * 4;
+    uint32_t palette_offset = reader.GetLEUInt32(); // Offset (from start of file) to palettes
+    uint32_t tiles_offset = palette_offset + col * row * 256 * 4;
+    uint32_t data_offset = tiles_offset + col * row * 4;
 
     // Allocate data
     vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
-    auto* ptr = reinterpret_cast<uint32_t*>(data.data());
+    span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
 
     // Read image data
     uint32_t palette[256] = {0};
@@ -1990,15 +2417,15 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
         for (int32_t x = 0; x < col; x++) {
             // Get palette for current block
             reader.SetCurPos(palette_offset + block * 256 * 4);
-            reader.CopyData(palette, numeric_cast<size_t>(256) * 4);
+            reader.ReadObjectArray<uint32_t>(palette);
 
             // Set initial position
             reader.SetCurPos(tiles_offset + block * 4);
             reader.SetCurPos(data_offset + reader.GetLEUInt32());
 
             // Calculate current block size
-            auto block_w = x == col - 1 ? width % 64 : 64;
-            auto block_h = y == row - 1 ? height % 64 : 64;
+            int32_t block_w = x == col - 1 ? width % 64 : 64;
+            int32_t block_h = y == row - 1 ? height % 64 : 64;
 
             if (block_w == 0) {
                 block_w = 64;
@@ -2008,10 +2435,10 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
             }
 
             // Read data
-            auto pos = y * 64 * width + x * 64;
+            int32_t pos = y * 64 * width + x * 64;
             for (int32_t yy = 0; yy < block_h; yy++) {
                 for (int32_t xx = 0; xx < block_w; xx++) {
-                    auto color = palette[reader.GetUInt8()];
+                    uint32_t color = palette[reader.GetUInt8()];
 
                     if (color == 0xFF00) {
                         color = 0; // Green is transparent
@@ -2020,7 +2447,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
                         color |= 0xFF000000;
                     }
 
-                    *(ptr + pos) = color;
+                    pixels[pos] = color;
                     pos++;
                 }
 
@@ -2048,8 +2475,8 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
     ignore_unused(files);
 
-    // Format: fileName$5-6.spr
-    auto opt_str = string(opt);
+    // Format: fileName$5-6.bam
+    string opt_str = string(opt);
     istringstream idelim(opt_str);
     int32_t need_cycle = 0;
     int32_t specific_frame = -1;
@@ -2066,7 +2493,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
     // Read signature
     char head[8];
-    reader.CopyData(head, 8);
+    reader.ReadObjectArray<char>(head);
 
     if (head[0] != 'B' || head[1] != 'A' || head[2] != 'M') {
         throw ImageBakerException("Invalid BAM file header", fname);
@@ -2076,20 +2503,23 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     vector<uint8_t> unpacked_data;
 
     if (head[3] == 'C') {
-        auto unpacked_len = reader.GetLEUInt32();
-        auto data_len = reader.GetSize() - 12;
+        uint32_t unpacked_len = reader.GetLEUInt32();
+        size_t data_len = reader.GetSize() - 12;
 
-        auto* buf = const_cast<uint8_t*>(reader.GetBuf());
-        *reinterpret_cast<uint16_t*>(buf) = 0x9C78;
+        vector<uint8_t> packed_data = reader.GetData();
+        packed_data.resize(data_len);
+        FO_VERIFY_AND_THROW(packed_data.size() >= 2, "Packed data is too small to hold a zlib header", packed_data.size());
+        packed_data[0] = 0x78;
+        packed_data[1] = 0x9C;
 
-        unpacked_data = Compressor::Decompress({buf, data_len}, unpacked_len / reader.GetSize() + 1);
+        unpacked_data = Compressor::Decompress(packed_data, unpacked_len / reader.GetSize() + 1);
 
         if (unpacked_data.empty()) {
             throw ImageBakerException("Cab't unpack BAM file", fname);
         }
 
         reader = FileReader(unpacked_data);
-        reader.CopyData(head, 8);
+        reader.ReadObjectArray<char>(head);
 
         if (head[0] != 'B' || head[1] != 'A' || head[2] != 'M') {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
@@ -2099,10 +2529,10 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     // Read header
     int32_t frames_count = reader.GetLEUInt16();
     int32_t cycles_count = reader.GetUInt8();
-    auto compr_color = reader.GetUInt8();
-    auto frames_offset = reader.GetLEUInt32();
-    auto palette_offset = reader.GetLEUInt32();
-    auto lookup_table_offset = reader.GetLEUInt32();
+    uint8_t compr_color = reader.GetUInt8();
+    uint32_t frames_offset = reader.GetLEUInt32();
+    uint32_t palette_offset = reader.GetLEUInt32();
+    uint32_t lookup_table_offset = reader.GetLEUInt32();
 
     // Count whole frames
     if (need_cycle >= cycles_count) {
@@ -2126,18 +2556,17 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     // Palette
     ucolor palette[256] = {};
     reader.SetCurPos(palette_offset);
-    reader.CopyData(palette, numeric_cast<size_t>(256) * 4);
+    reader.ReadObjectArray<ucolor>(palette);
 
     // Find in lookup table
     for (int32_t i = 0; i < cycle_frames; i++) {
-        if (specific_frame != -1 && specific_frame != numeric_cast<int32_t>(i)) {
-            continue;
-        }
-
-        // Get need index
         reader.SetCurPos(lookup_table_offset + table_index * 2);
         table_index++;
         int32_t frame_index = reader.GetLEUInt16();
+
+        if (specific_frame != -1 && specific_frame != numeric_cast<int32_t>(i)) {
+            continue;
+        }
 
         // Get frame data
         reader.SetCurPos(frames_offset + frame_index * 12);
@@ -2145,20 +2574,21 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
         int32_t height = reader.GetLEUInt16();
         int32_t ox = reader.GetLEUInt16();
         int32_t oy = reader.GetLEUInt16();
-        auto data_offset = reader.GetLEUInt32();
-        auto rle = (data_offset & 0x80000000) == 0;
+        uint32_t data_offset = reader.GetLEUInt32();
+        bool rle = (data_offset & 0x80000000) == 0;
         data_offset &= 0x7FFFFFFF;
 
         // Allocate data
         vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
-        auto* ptr = reinterpret_cast<ucolor*>(data.data());
+        span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
+        size_t pixel_pos = 0;
 
         // Fill it
         reader.SetCurPos(data_offset);
 
         for (int32_t k = 0, l = width * height; k < l;) {
-            auto index = reader.GetUInt8();
-            auto color = palette[index];
+            uint8_t index = reader.GetUInt8();
+            ucolor color = palette[index];
 
             if (color.comp.b == 255) {
                 color = ucolor::clear;
@@ -2173,11 +2603,13 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
                 int32_t copies = reader.GetUInt8();
 
                 for (int32_t m = 0; m <= copies; m++, k++) {
-                    *ptr++ = color;
+                    pixels[pixel_pos] = color;
+                    pixel_pos++;
                 }
             }
             else {
-                *ptr++ = color;
+                pixels[pixel_pos] = color;
+                pixel_pos++;
                 k++;
             }
         }
@@ -2208,7 +2640,10 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader, 
 
     int32_t width = 0;
     int32_t height = 0;
-    auto data = PngLoad(reader.GetBuf(), width, height);
+    const_span<uint8_t> png_data = reader.GetDataSpan();
+    FO_VERIFY_AND_THROW(!png_data.empty(), "PNG file has no data to load");
+    auto png_data_ptr = make_ptr(png_data.data());
+    auto data = PngLoad(png_data_ptr, width, height);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
@@ -2231,7 +2666,8 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader, 
 
     int32_t width = 0;
     int32_t height = 0;
-    auto data = TgaLoad(reader.GetBuf(), reader.GetSize(), width, height);
+    const_span<uint8_t> tga_data = reader.GetDataSpan();
+    auto data = TgaLoad(tga_data, width, height);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
@@ -2244,12 +2680,30 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader, 
     return collection;
 }
 
-static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
+static auto PngMalloc(png_structp png_ptr, png_alloc_size_t size) -> png_voidp
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(png_ptr);
+    return SafeAlloc::MallocRaw(size).get();
+}
+
+static void PngFree(png_structp png_ptr, png_voidp mem)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(png_ptr);
+    SafeAlloc::FreeRaw(mem);
+}
+
+static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    FO_RUNTIME_ASSERT(png_ptr);
+    // Created through the _2 form so libpng allocates from the engine memory system rather than the CRT heap
+    auto png_ptr = make_nptr(png_create_read_struct_2(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr, nullptr, &PngMalloc, &PngFree));
+    FO_VERIFY_AND_THROW(png_ptr, "Failed to create PNG read structure");
+    nptr<png_info> info_ptr;
 
     try {
         struct PngMessage
@@ -2268,47 +2722,56 @@ static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_
             }
         };
 
-        png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
+        png_set_error_fn(png_ptr.get(), png_get_error_ptr(png_ptr.get()), &PngMessage::Error, &PngMessage::Warning);
 
-        auto* info_ptr = png_create_info_struct(png_ptr);
-        FO_RUNTIME_ASSERT(info_ptr);
+        info_ptr = png_create_info_struct(png_ptr.get());
+        FO_VERIFY_AND_THROW(info_ptr, "Failed to create PNG info structure");
 
         struct PngReader
         {
             static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
             {
-                auto** io_ptr = cast_from_void<uint8_t**>(png_get_io_ptr(png_ptr));
-                MemCopy(png_data, *io_ptr, length);
-                *io_ptr += length;
+                if (length == 0) {
+                    return;
+                }
+
+                auto io_ptr = cast_from_void<const uint8_t**>(png_get_io_ptr(png_ptr));
+                FO_VERIFY_AND_THROW(io_ptr, "PNG read cursor is null");
+                auto source = make_ptr(*io_ptr);
+                auto target = make_ptr(png_data);
+                MemCopy(target, source, length);
+                auto next_source = source.offset(length);
+                *io_ptr = next_source.get();
             }
         };
 
         // Get info
-        png_set_read_fn(png_ptr, cast_to_void(&data), &PngReader::Read);
-        png_read_info(png_ptr, info_ptr);
+        nptr<const uint8_t> png_data_cursor = data;
+        png_set_read_fn(png_ptr.get(), make_nptr(png_data_cursor.get_pp()).void_cast(), &PngReader::Read);
+        png_read_info(png_ptr.get(), info_ptr.get());
 
         png_uint_32 width = 0;
         png_uint_32 height = 0;
-        auto bit_depth = 0;
-        auto color_type = 0;
-        png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
+        int32_t bit_depth = 0;
+        int32_t color_type = 0;
+        png_get_IHDR(png_ptr.get(), info_ptr.get(), &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
 
         // Settings
-        png_set_strip_16(png_ptr);
-        png_set_packing(png_ptr);
+        png_set_strip_16(png_ptr.get());
+        png_set_packing(png_ptr.get());
 
         if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
-            png_set_expand(png_ptr);
+            png_set_expand(png_ptr.get());
         }
         if (color_type == PNG_COLOR_TYPE_PALETTE) {
-            png_set_expand(png_ptr);
+            png_set_expand(png_ptr.get());
         }
-        if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS) != 0) {
-            png_set_expand(png_ptr);
+        if (png_get_valid(png_ptr.get(), info_ptr.get(), PNG_INFO_tRNS) != 0) {
+            png_set_expand(png_ptr.get());
         }
 
-        png_set_filler(png_ptr, 0x000000ff, PNG_FILLER_AFTER);
-        png_read_update_info(png_ptr, info_ptr);
+        png_set_filler(png_ptr.get(), 0x000000ff, PNG_FILLER_AFTER);
+        png_read_update_info(png_ptr.get(), info_ptr.get());
 
         // Read
         vector<png_bytep> row_pointers;
@@ -2318,12 +2781,14 @@ static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_
         result.resize(numeric_cast<size_t>(width) * height * 4);
 
         for (png_uint_32 i = 0; i < height; i++) {
-            row_pointers[i] = result.data() + numeric_cast<size_t>(i) * width * 4;
+            auto row = make_ptr(result.data() + numeric_cast<size_t>(i) * numeric_cast<size_t>(width) * 4);
+            row_pointers[i] = row.get();
         }
 
-        png_read_image(png_ptr, row_pointers.data());
-        png_read_end(png_ptr, info_ptr);
-        png_destroy_read_struct(&png_ptr, &info_ptr, static_cast<png_infopp>(nullptr));
+        auto rows = make_ptr(row_pointers.data());
+        png_read_image(png_ptr.get(), rows.get());
+        png_read_end(png_ptr.get(), info_ptr.get());
+        png_destroy_read_struct(png_ptr.get_pp(), info_ptr.get_pp(), static_cast<png_infopp>(nullptr));
 
         result_width = numeric_cast<int32_t>(width);
         result_height = numeric_cast<int32_t>(height);
@@ -2331,21 +2796,25 @@ static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_
         return result;
     }
     catch (...) {
-        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+        png_destroy_read_struct(png_ptr.get_pp(), info_ptr.get_pp(), static_cast<png_infopp>(nullptr));
 
         throw;
     }
 }
 
-static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
+static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     size_t cur_pos = 0;
 
-    const auto read_tga = [&](void* ptr, size_t len) {
-        if (cur_pos + len <= data_size) {
-            MemCopy(ptr, data + cur_pos, len);
+    auto read_tga = [&](ptr<void> out, size_t len) {
+        if (cur_pos + len <= data.size()) {
+            if (len != 0) {
+                auto source = make_ptr(data.data() + cur_pos);
+                MemCopy(out, source, len);
+            }
+
             cur_pos += (len);
         }
         else {
@@ -2389,13 +2858,16 @@ static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width
     }
 
     // Read
-    const auto bpp = pixel_depth / 8;
-    const int32_t read_size = height * width * bpp;
+    int32_t bpp = pixel_depth / 8;
+    int32_t read_size = height * width * bpp;
     vector<uint8_t> read_data;
     read_data.resize(read_size);
 
     if (type == 2) {
-        read_tga(read_data.data(), read_size);
+        if (read_size != 0) {
+            auto read_data_begin = make_ptr(read_data.data());
+            read_tga(make_nptr(read_data_begin.get()).void_cast(), numeric_cast<size_t>(read_size));
+        }
     }
     else {
         int32_t bytes_read = 0;
@@ -2408,10 +2880,10 @@ static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width
             if ((header & 0x00000080) != 0) {
                 header &= ~0x00000080;
                 read_tga(color, bpp);
-                const int32_t run_len = (header + 1) * bpp;
+                int32_t run_len = (header + 1) * bpp;
 
                 for (int32_t i = 0; i < run_len; i += bpp) {
-                    for (auto c = 0; c < bpp && bytes_read + i + c < read_size; c++) {
+                    for (int32_t c = 0; c < bpp && bytes_read + i + c < read_size; c++) {
                         read_data[bytes_read + i + c] = color[c];
                     }
                 }
@@ -2419,7 +2891,7 @@ static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width
                 bytes_read += run_len;
             }
             else {
-                const int32_t run_len = (header + 1) * bpp;
+                int32_t run_len = (header + 1) * bpp;
                 int32_t to_read;
 
                 if (bytes_read + run_len > read_size) {
@@ -2429,7 +2901,10 @@ static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width
                     to_read = run_len;
                 }
 
-                read_tga(read_data.data() + bytes_read, to_read);
+                if (to_read != 0) {
+                    auto read_data_pos = make_ptr(read_data.data() + numeric_cast<size_t>(bytes_read));
+                    read_tga(make_nptr(read_data_pos.get()).void_cast(), numeric_cast<size_t>(to_read));
+                }
                 bytes_read += run_len;
 
                 if (bytes_read + run_len > read_size) {
@@ -2445,8 +2920,8 @@ static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width
 
     for (int16_t y = 0; y < height; y++) {
         for (int16_t x = 0; x < width; x++) {
-            const auto i = (height - y - 1) * width + x;
-            const auto j = y * width + x;
+            int32_t i = (height - y - 1) * width + x;
+            int32_t j = y * width + x;
             result[i * 4 + 0] = read_data[j * bpp + 2];
             result[i * 4 + 1] = read_data[j * bpp + 1];
             result[i * 4 + 2] = read_data[j * bpp + 0];

@@ -35,6 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
+#include "SmartPointers.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -80,6 +81,7 @@ public:
     [[nodiscard]] auto length_utf8() const noexcept -> size_t;
 
     [[nodiscard]] auto is_number() const noexcept -> bool;
+    [[nodiscard]] auto is_non_finite_number() const noexcept -> bool;
     [[nodiscard]] auto is_explicit_bool() const noexcept -> bool;
     [[nodiscard]] auto to_int32() const noexcept -> int32_t;
     [[nodiscard]] auto to_uint32() const noexcept -> uint32_t;
@@ -140,11 +142,14 @@ public:
         _sv = _s;
     }
 
+    // Formatting writes straight into the engine-allocated buffer. Do not switch these to std::format /
+    // std::vformat: those return a std::string built with std::allocator, which both bypasses the
+    // SafeAllocator out-of-memory contract and costs an extra copy into _s on every formatted call.
     template<typename... Args>
     explicit strex(std::format_string<Args...>&& format, Args&&... args) :
-        strvex(),
-        _s {std::format(std::move(format), std::forward<Args>(args)...)}
+        strvex()
     {
+        (void)std::format_to(std::back_inserter(_s), std::move(format), std::forward<Args>(args)...);
         _sv = _s;
     }
 
@@ -153,12 +158,14 @@ public:
         strvex()
     {
         try {
-            _s = std::format(std::move(format), std::forward<Args>(args)...);
+            (void)std::format_to(std::back_inserter(_s), std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
             BreakIntoDebugger();
 
             try {
+                // Formatting appends incrementally, so drop whatever partial output was produced
+                _s.clear();
                 _s.append("Format error: ");
                 _s.append(ex.what());
             }
@@ -166,17 +173,20 @@ public:
                 // Bad alloc
             }
         }
-        catch (...) { // NOLINT(bugprone-empty-catch)
+        catch (...) {
+            _s.clear();
         }
 
         _sv = _s;
     }
 
+    // std::make_format_args binds its arguments as non-const lvalue references, so the pack is passed by
+    // name rather than forwarded; forwarding turns a caller's temporary into an xvalue that cannot bind
     template<typename... Args>
     explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
-        strvex(),
-        _s {std::vformat(format, std::make_format_args(std::forward<Args>(args)...))}
+        strvex()
     {
+        (void)std::vformat_to(std::back_inserter(_s), format, std::make_format_args(args...));
         _sv = _s;
     }
 
@@ -211,6 +221,7 @@ public:
     [[nodiscard]] auto length_utf8() const noexcept -> size_t { return strvex::length_utf8(); }
 
     [[nodiscard]] auto is_number() const noexcept -> bool { return strvex::is_number(); }
+    [[nodiscard]] auto is_non_finite_number() const noexcept -> bool { return strvex::is_non_finite_number(); }
     [[nodiscard]] auto is_explicit_bool() const noexcept -> bool { return strvex::is_explicit_bool(); }
     [[nodiscard]] auto to_int32() const noexcept -> int32_t { return strvex::to_int32(); }
     [[nodiscard]] auto to_uint32() const noexcept -> uint32_t { return strvex::to_uint32(); }
@@ -232,32 +243,32 @@ public:
     auto ltrim(string_view chars) noexcept -> strex&;
     auto rtrim(string_view chars) noexcept -> strex&;
 
-    auto erase(char what) -> strex&;
-    auto erase(char begin, char end) -> strex&;
-    auto replace(char from, char to) -> strex&;
-    auto replace(char from1, char from2, char to) -> strex&;
-    auto replace(string_view from, string_view to) -> strex&;
-    auto lower() -> strex&;
-    auto lower_utf8() -> strex&;
-    auto upper() -> strex&;
-    auto upper_utf8() -> strex&;
-    auto assignVolatile(const volatile char* str, size_t len) -> strex&;
-    auto join(const_span<string_view> parts) -> strex&;
-    auto join(const_span<string> parts) -> strex&;
+    auto erase(char what) noexcept -> strex&;
+    auto erase(char begin, char end) noexcept -> strex&;
+    auto replace(char from, char to) noexcept -> strex&;
+    auto replace(char from1, char from2, char to) noexcept -> strex&;
+    auto replace(string_view from, string_view to) noexcept -> strex&;
+    auto lower() noexcept -> strex&;
+    auto lower_utf8() noexcept -> strex&;
+    auto upper() noexcept -> strex&;
+    auto upper_utf8() noexcept -> strex&;
+    auto assignVolatile(const volatile char* str, size_t len) noexcept -> strex&;
+    auto join(const_span<string_view> parts) noexcept -> strex&;
+    auto join(const_span<string> parts) noexcept -> strex&;
 
-    auto format_path() -> strex&;
-    auto extract_dir() -> strex&;
+    auto format_path() noexcept -> strex&;
+    auto extract_dir() noexcept -> strex&;
     auto extract_file_name() noexcept -> strex&;
-    auto get_file_extension() -> strex&; // Extension without dot and lowered
+    auto get_file_extension() noexcept -> strex&; // Extension without dot and lowered
     auto erase_file_extension() noexcept -> strex&; // Erase extension with dot
     auto change_file_name(string_view new_name) -> strex&;
-    auto change_file_extension(string_view new_ext) -> strex&;
-    auto combine_path(string_view path) -> strex&;
-    auto normalize_path_slashes() -> strex&;
-    auto normalize_line_endings() -> strex&;
+    auto change_file_extension(string_view new_ext) noexcept -> strex&;
+    auto combine_path(string_view path) noexcept -> strex&;
+    auto normalize_path_slashes() noexcept -> strex&;
+    auto normalize_line_endings() noexcept -> strex&;
 
 #if FO_WINDOWS
-    auto parse_wide_char(const wchar_t* str) noexcept -> strex&;
+    auto parse_wide_char(ptr<const wchar_t> str) noexcept -> strex&;
     [[nodiscard]] auto to_wide_char() const noexcept -> wstring;
 #endif
 
@@ -273,8 +284,8 @@ static_assert(!std::is_polymorphic_v<strex>);
 namespace utf8
 {
     auto IsValid(uint32_t ucs) noexcept -> bool;
-    auto DecodeStrNtLen(const char* str) noexcept -> size_t;
-    auto Decode(const char* str, size_t& length) noexcept -> uint32_t;
+    auto DecodeStrNtLen(ptr<const char> str) noexcept -> size_t;
+    auto Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
     auto Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
     auto Lower(uint32_t ucs) noexcept -> uint32_t;
     auto Upper(uint32_t ucs) noexcept -> uint32_t;

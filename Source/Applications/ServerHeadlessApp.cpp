@@ -40,39 +40,56 @@
 
 FO_USING_NAMESPACE();
 
-static void ServerWithClientLoop(ServerEngine* server, refcount_ptr<ClientEngine>& client);
+FO_BEGIN_NAMESPACE
+extern void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
+FO_END_NAMESPACE
+
+static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<GlobalSettings>>& client_settings, vector<refcount_ptr<ClientEngine>>& clients);
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
-[[maybe_unused]] static auto ServerHeadlessApp(int argc, char** argv) -> int
+[[maybe_unused]] static auto ServerHeadlessApp(CommandLineArgs args) -> int
 #endif
 {
     FO_STACK_TRACE_ENTRY();
 
+#if !FO_TESTING_APP
+    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+#endif
+
     try {
-        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::PrebakeResources);
+        InitApp(args, AppInitFlags::PrebakeResources);
 
         {
-            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(App->Settings, GetServerResources(App->Settings));
-            refcount_ptr<ClientEngine> client;
+            auto server_settings = make_ptr(&GetApp()->Settings);
+            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
+            vector<unique_ptr<GlobalSettings>> client_settings;
+            vector<refcount_ptr<ClientEngine>> clients;
 
-            if (App->Settings.AutoStartClientOnServer != 0) {
-                ServerWithClientLoop(server.get(), client);
+            if (GetApp()->Settings.AutoStartClientOnServer != 0) {
+                ServerWithClientsLoop(server, client_settings, clients);
             }
             else {
-                App->WaitForRequestedQuit();
+                while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds {10});
+                }
             }
 
-            if (client) {
+            if (server->IsStartingError()) {
+                WriteLog(LogType::Error, "Server startup failed, shutting down");
+                GetApp()->RequestQuit(false);
+            }
+
+            for (auto& client : std::exchange(clients, {})) {
                 client->Shutdown();
-                client.reset();
             }
 
+            client_settings.clear();
             server->Shutdown();
         }
 
-        ExitApp(App->GetRequestedQuitSuccess());
+        ExitApp(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
@@ -82,29 +99,38 @@ int main(int argc, char** argv)
     }
 }
 
-static void ServerWithClientLoop(ServerEngine* server, refcount_ptr<ClientEngine>& client)
+static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<GlobalSettings>>& client_settings, vector<refcount_ptr<ClientEngine>>& clients)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(server);
-
-    WriteLog("Auto start embedded headless client");
+    WriteLog("Auto start embedded headless client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
 
     FrameBalancer balancer {false, 0, 100}; // 100 fps
 
-    while (!App->IsQuitRequested()) {
+    while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
         balancer.StartLoop();
-        App->BeginFrame();
+        GetApp()->BeginFrame();
 
-        if (server->IsStarted() && !client) {
-            client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), App->MainWindow);
+        int32_t target_client_count = std::max(GetApp()->Settings.AutoStartClientOnServer, 0);
+
+        while (server->IsStarted() && clients.size() < numeric_cast<size_t>(target_client_count)) {
+            int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
+            auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
+            settings->CopyFrom(GetApp()->Settings);
+            ClientStartupSettingsHook(*settings, client_index, true);
+
+            ptr<GlobalSettings> settings_ptr = settings.get();
+            auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, GetClientResources(*settings), &GetApp()->MainWindow);
+            client->Connect();
+            client_settings.emplace_back(std::move(settings));
+            clients.emplace_back(std::move(client));
         }
 
-        if (client) {
+        for (auto& client : clients) {
             client->MainLoop();
         }
 
-        App->EndFrame();
+        GetApp()->EndFrame();
         balancer.EndLoop();
     }
 }

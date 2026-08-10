@@ -100,8 +100,8 @@ namespace SPK
 	void RandomForce::initParticle(const Particle& particle,DataSet* dataSet) const
 	{
 		size_t index = particle.getIndex();
-		*SPK_GET_DATA(Vector3DArrayData,dataSet,FORCE_VECTOR_INDEX).getParticleData(index) = SPK_RANDOM(tMinVector,tMaxVector);
-		*SPK_GET_DATA(FloatArrayData,dataSet,REMAINING_TIME_INDEX).getParticleData(index) = SPK_RANDOM(minPeriod,maxPeriod);
+		*SPK_GET_DATA(Vector3DArrayData,dataSet,FORCE_VECTOR_INDEX).getParticleData(index) = SPK_RANDOM(getContext(),tMinVector,tMaxVector);
+		*SPK_GET_DATA(FloatArrayData,dataSet,REMAINING_TIME_INDEX).getParticleData(index) = SPK_RANDOM(getContext(),minPeriod,maxPeriod);
 	}
 
 	void RandomForce::modify(Group& group,DataSet* dataSet,float deltaTime) const

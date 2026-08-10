@@ -5,13 +5,16 @@ from __future__ import annotations
 import argparse
 import glob
 import io
+import json
 import os
+import re
 import shutil
 import stat
 import struct
 import subprocess
 import sys
 import tarfile
+import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,12 +24,18 @@ import buildtools
 import foconfig
 
 
-TARGET_CHOICES = ['Server', 'Client', 'Editor', 'Mapper', 'Baker']
+TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
 INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
 INTERNAL_CONFIG_END_MARKER = b'###InternalConfigEnd###'
+ANDROID_RELEASE_STORE_PASSWORD_ENV = 'FO_ANDROID_RELEASE_STORE_PASSWORD'
+ANDROID_RELEASE_KEY_PASSWORD_ENV = 'FO_ANDROID_RELEASE_KEY_PASSWORD'
+ANDROID_MANIFEST_METADATA_CONFIG_PREFIX = 'Android.ManifestMetaData.'
+ANDROID_GRADLE_MAVEN_REPOSITORY_CONFIG_PREFIX = 'Android.GradleMavenRepository.'
+ANDROID_GRADLE_DEPENDENCY_CONFIG_PREFIX = 'Android.GradleDependency.'
+ANDROID_JAVA_SOURCE_CONFIG_PREFIX = 'Android.JavaSource.'
 ANDROID_ARCH_ALIASES = {
 	'arm': 'arm32',
 	'arm32': 'arm32',
@@ -70,7 +79,6 @@ PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('Web', 'wasm'): 'wasm',
 }
 
-
 def parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description='FOnline packager')
 	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
@@ -80,7 +88,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-target', dest='target', required=True, choices=TARGET_CHOICES, help='package target type')
 	parser.add_argument('-platform', dest='platform', required=True, choices=PLATFORM_CHOICES, help='platform type')
 	parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
-	# Windows: win32 win64
+	# Windows: win32 win64 win32-win7 win64-win7
 	# Linux: x64
 	# Android: arm32 arm64 x86
 	# macOS: x64
@@ -99,6 +107,17 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
 	return parser.parse_args()
+
+
+def parse_include_args(arguments: Sequence[str]) -> argparse.Namespace:
+	parser = argparse.ArgumentParser(description='Include external files in an assembled FOnline package')
+	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
+	parser.add_argument('-input', dest='input', required=True, type=Path, help='root used to resolve the source glob')
+	parser.add_argument('-source', dest='source', required=True, help='source path glob relative to the input root')
+	parser.add_argument('-output', dest='output', required=True, type=Path, help='assembled package root')
+	parser.add_argument('-target', dest='target', required=True, help='target directory relative to the package root')
+	parser.add_argument('-singlezip', dest='singlezip', required=True, type=Path, help='package SingleZip path; updated only when it exists')
+	return parser.parse_args(arguments)
 
 
 def log(*text: object) -> None:
@@ -161,9 +180,9 @@ def patch_pe_pdb_path(file_path: str | Path, new_pdb_name: str) -> bool:
 	debug_offset: int | None = None
 	for i in range(num_sections):
 		section_offset = section_table_offset + i * 40
-		vsize, vaddr, _, raw_ptr = struct.unpack_from('<IIII', content, section_offset + 8)
+		vsize, vaddr, _, raw_data_ptr = struct.unpack_from('<IIII', content, section_offset + 8)
 		if vaddr <= debug_rva < vaddr + vsize:
-			debug_offset = raw_ptr + (debug_rva - vaddr)
+			debug_offset = raw_data_ptr + (debug_rva - vaddr)
 			break
 	if debug_offset is None:
 		return False
@@ -195,6 +214,88 @@ def escape_groovy_string(value: str) -> str:
 	return value.replace('\\', '\\\\').replace("'", "\\'").replace('\r', '\\r').replace('\n', '\\n')
 
 
+def escape_android_manifest_attribute(value: str) -> str:
+	return value.replace('&', '&amp;').replace('"', '&quot;').replace("'", '&apos;').replace('<', '&lt;').replace('>', '&gt;')
+
+
+def build_android_manifest_meta_data(config: foconfig.ConfigSection) -> str:
+	entries: list[str] = []
+
+	for key, value in sorted(config.content.items()):
+		if not key.startswith(ANDROID_MANIFEST_METADATA_CONFIG_PREFIX):
+			continue
+
+		name = key[len(ANDROID_MANIFEST_METADATA_CONFIG_PREFIX):].strip()
+		assert name, 'Android.ManifestMetaData.* key must include a manifest meta-data name'
+		assert value, 'Android.ManifestMetaData.' + name + ' must not be empty'
+
+		entries.append(
+			'        <meta-data\n'
+			'            android:name="' + escape_android_manifest_attribute(name) + '"\n'
+			'            android:value="' + escape_android_manifest_attribute(value) + '" />'
+		)
+
+	return '\n'.join(entries)
+
+
+def build_android_gradle_maven_repositories(config: foconfig.ConfigSection) -> str:
+	entries: list[str] = []
+
+	for key, value in sorted(config.content.items()):
+		if not key.startswith(ANDROID_GRADLE_MAVEN_REPOSITORY_CONFIG_PREFIX):
+			continue
+
+		name = key[len(ANDROID_GRADLE_MAVEN_REPOSITORY_CONFIG_PREFIX):].strip()
+		assert name, 'Android.GradleMavenRepository.* key must include a repository name'
+		if not value:
+			continue
+
+		entries.append("        maven { url = uri('" + escape_groovy_string(value) + "') }")
+
+	return '\n'.join(entries)
+
+
+def build_android_gradle_dependencies(config: foconfig.ConfigSection) -> str:
+	entries: list[str] = []
+
+	for key, value in sorted(config.content.items()):
+		if not key.startswith(ANDROID_GRADLE_DEPENDENCY_CONFIG_PREFIX):
+			continue
+
+		name = key[len(ANDROID_GRADLE_DEPENDENCY_CONFIG_PREFIX):].strip()
+		assert name, 'Android.GradleDependency.* key must include a dependency name'
+		if not value:
+			continue
+
+		entries.append('    ' + value)
+
+	return '\n'.join(entries)
+
+
+def read_android_ndk_revision(android_ndk_root: str) -> str:
+	if not android_ndk_root:
+		return ''
+
+	source_properties = Path(android_ndk_root) / 'source.properties'
+	try:
+		lines = source_properties.read_text(encoding='utf-8').splitlines()
+	except OSError:
+		return ''
+
+	for line in lines:
+		key, separator, value = line.partition('=')
+		if separator and key.strip() == 'Pkg.Revision':
+			return value.strip()
+
+	return ''
+
+
+def load_config_from_data(config_data: bytes) -> foconfig.ConfigParser:
+	config = foconfig.ConfigParser()
+	config.loadFromLines(config_data.decode('utf-8-sig').splitlines())
+	return config
+
+
 def is_png_data(data: bytes) -> bool:
 	return data.startswith(PNG_FILE_SIGNATURE)
 
@@ -209,11 +310,162 @@ def resolve_android_abi(arch: str) -> str:
 	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
 
 
+def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipInfo, file_path: str) -> bool:
+	if archive_info.file_size != os.path.getsize(file_path):
+		return False
+
+	with archive.open(archive_info) as archive_file, open(file_path, 'rb') as source_file:
+		while True:
+			archive_chunk = archive_file.read(1024 * 1024)
+			source_chunk = source_file.read(1024 * 1024)
+			if archive_chunk != source_chunk:
+				return False
+			if not archive_chunk:
+				return True
+
+
 def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
 	with zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
+		existing_entries = {entry.filename: entry for entry in archive.infolist()}
+
 		for root, _, files in os.walk(path):
 			for file_name in files:
-				archive.write(os.path.join(root, file_name), os.path.join(os.path.relpath(root, path), file_name))
+				file_path = os.path.join(root, file_name)
+				archive_name = os.path.relpath(file_path, path).replace(os.sep, '/')
+				existing_entry = existing_entries.get(archive_name)
+				if existing_entry is not None:
+					assert zip_entry_matches_file(archive, existing_entry, file_path), 'Conflicting zip entry while merging package parts: ' + archive_name
+					continue
+
+				archive.write(file_path, archive_name)
+				existing_entries[archive_name] = archive.getinfo(archive_name)
+
+
+def resolve_safe_relative_path(root: Path, relative_path: str, description: str) -> Path:
+	path = Path(relative_path)
+	assert not path.is_absolute(), f'{description} must be relative: {relative_path}'
+	assert '..' not in path.parts, f'{description} must not escape its root: {relative_path}'
+	resolved_root = root.resolve()
+	resolved_path = (resolved_root / path).resolve()
+	assert resolved_path == resolved_root or resolved_root in resolved_path.parents, f'{description} escapes its root: {relative_path}'
+	return resolved_path
+
+
+def iter_package_include_files(target_root: Path) -> list[Path]:
+	return sorted(path for path in target_root.rglob('*') if path.is_file())
+
+
+def make_package_include_zip_info(archive_name: str, file_path: Path) -> zipfile.ZipInfo:
+	info = zipfile.ZipInfo(filename=archive_name, date_time=(1980, 1, 1, 0, 0, 0))
+	info.create_system = 3
+	info.compress_type = zipfile.ZIP_DEFLATED
+	info.external_attr = stat.S_IMODE(file_path.stat().st_mode) << 16
+	return info
+
+
+def write_package_include_entries(
+	archive: zipfile.ZipFile,
+	package_root: Path,
+	target_root: Path,
+) -> None:
+	for file_path in iter_package_include_files(target_root):
+		archive_name = file_path.relative_to(package_root).as_posix()
+		info = make_package_include_zip_info(archive_name, file_path)
+		with file_path.open('rb') as source, archive.open(info, 'w') as destination:
+			shutil.copyfileobj(source, destination)
+
+
+def update_package_include_single_zip(
+	archive_path: Path,
+	package_root: Path,
+	target_root: Path,
+	compress_level: int,
+) -> None:
+	if not archive_path.is_file():
+		log('SingleZip not present; included files remain in package root only', archive_path)
+		return
+
+	target_archive_path = target_root.relative_to(package_root).as_posix()
+	target_archive_prefix = target_archive_path.rstrip('/') + '/'
+	with zipfile.ZipFile(archive_path, 'r') as archive:
+		has_previous_entries = any(
+			info.filename == target_archive_path or info.filename.startswith(target_archive_prefix)
+			for info in archive.infolist()
+		)
+
+	if not has_previous_entries:
+		with zipfile.ZipFile(archive_path, 'a', zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
+			write_package_include_entries(archive, package_root, target_root)
+		return
+
+	file_descriptor, temporary_name = tempfile.mkstemp(prefix=archive_path.name + '.', suffix='.tmp', dir=archive_path.parent)
+	os.close(file_descriptor)
+	temporary_path = Path(temporary_name)
+	try:
+		with zipfile.ZipFile(archive_path, 'r') as source_archive, zipfile.ZipFile(
+			temporary_path,
+			'w',
+			zipfile.ZIP_DEFLATED,
+			compresslevel=compress_level,
+		) as target_archive:
+			target_archive.comment = source_archive.comment
+			for info in source_archive.infolist():
+				if info.filename == target_archive_path or info.filename.startswith(target_archive_prefix):
+					continue
+				target_archive.writestr(info, source_archive.read(info))
+			write_package_include_entries(target_archive, package_root, target_root)
+		os.replace(temporary_path, archive_path)
+	finally:
+		if temporary_path.exists():
+			temporary_path.unlink()
+
+
+def include_package_files(
+	input_root: Path,
+	source_glob: str,
+	package_root: Path,
+	target_path: str,
+	single_zip_path: Path,
+	compress_level: int,
+) -> None:
+	input_root = input_root.resolve()
+	package_root = package_root.resolve()
+	single_zip_path = single_zip_path.resolve()
+	assert input_root.is_dir(), f'Package include input root not found: {input_root}'
+	assert package_root.is_dir(), f'Assembled package root not found: {package_root}'
+	assert source_glob and not Path(source_glob).is_absolute(), f'Package include source glob must be relative: {source_glob}'
+	assert '..' not in Path(source_glob).parts, f'Package include source glob must not escape its root: {source_glob}'
+	assert target_path not in ('', '.'), 'Package include target path must name a package subdirectory'
+	target_root = resolve_safe_relative_path(package_root, target_path, 'Package include target path')
+
+	matches = sorted(
+		(path for path in input_root.glob(source_glob) if path.is_file() or path.is_dir()),
+		key=lambda path: path.as_posix(),
+	)
+	assert matches, f'Package include source glob matched no files: {source_glob}'
+	for source_path in matches:
+		resolved_source_path = source_path.resolve()
+		assert resolved_source_path == input_root or input_root in resolved_source_path.parents, f'Package include source escapes input root: {source_path}'
+		assert (
+			resolved_source_path != package_root
+			and resolved_source_path not in package_root.parents
+			and package_root not in resolved_source_path.parents
+		), f'Package include source overlaps package output: {source_path}'
+
+	if target_root.exists():
+		shutil.rmtree(target_root)
+	target_root.mkdir(parents=True)
+
+	for source_path in matches:
+		destination_path = target_root / source_path.name
+		if source_path.is_dir():
+			shutil.copytree(source_path, destination_path, dirs_exist_ok=True)
+		elif source_path.is_file():
+			destination_path.parent.mkdir(parents=True, exist_ok=True)
+			shutil.copy2(source_path, destination_path)
+
+	log('Include', source_glob, '=>', target_root)
+	update_package_include_single_zip(single_zip_path, package_root, target_root, compress_level)
 
 
 def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> None:
@@ -261,6 +513,7 @@ class Packager:
 	baking_path: str | None = field(init=False, default=None)
 	embedded_data: bytes = field(init=False, default=b'')
 	config_data: bytes = field(init=False, default=b'')
+	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
 
 	def __post_init__(self) -> None:
 		self.pack_args = set(self.args.pack.split('+'))
@@ -279,7 +532,10 @@ class Packager:
 		path = os.path.join(self.output_path, self.args.devname + '-' + self.args.target)
 		if self.args.target != self.args.config:
 			path += '-' + self.args.config
-		if self.args.platform != 'Windows':
+		if self.args.platform == 'Windows':
+			if self.args.binary_output_postfix and self.args.binary_output_postfix != self.args.config:
+				path += '-' + self.args.binary_output_postfix
+		else:
 			path += '-' + self.args.platform
 		return path
 
@@ -296,7 +552,12 @@ class Packager:
 		return normalized_arches
 
 	def build_binary_entry(self, arch: str, variant: BinaryVariant) -> str:
-		entry_arch = resolve_android_abi(arch) if self.args.platform == 'Android' else arch
+		if self.args.platform == 'Android':
+			entry_arch = resolve_android_abi(arch)
+		elif self.args.platform == 'Windows':
+			entry_arch = buildtools.resolve_windows_binary_arch(arch)
+		else:
+			entry_arch = arch
 		entry = self.args.target + '-' + self.args.platform + '-' + entry_arch
 		if variant.profiling == 'TotalProfiling':
 			entry += '-Profiling_Total'
@@ -346,6 +607,37 @@ class Packager:
 		if best_platform is None or best_cxx_arch is None:
 			return None
 		return best_platform + '-' + best_cxx_arch
+
+	@staticmethod
+	def extract_binary_entry_postfix(binary_entry_name: str) -> str | None:
+		# Mirror of build_binary_entry(): {target}-{platform}-{arch}[-Profiling_X][-Debug][-{binary_output_postfix}].
+		# Returns the FO_BINARY_OUTPUT_POSTFIX segment (empty if absent), or None when the entry
+		# doesn't match any known platform/arch. The server-side runtime payload packager uses
+		# this to tag each PlatformBinaries/{target}/{name}.{ext} payload with its variant's
+		# postfix so multiple FO_BINARY_OUTPUT_POSTFIX builds (e.g. Steam vs non-Steam) can
+		# coexist under one binary_target_name and a client picks its own by PACKAGED_BUILD_NAME.
+		if not binary_entry_name.startswith('Client-'):
+			return None
+		after_client = binary_entry_name[len('Client-'):]
+		best_prefix_len = -1
+		for (platform, arch_in_entry), _ in PACKAGER_TO_CXX_BINARY_TARGET_ARCH.items():
+			prefix = platform + '-' + arch_in_entry
+			if after_client == prefix or after_client.startswith(prefix + '-'):
+				if len(prefix) > best_prefix_len:
+					best_prefix_len = len(prefix)
+		if best_prefix_len < 0:
+			return None
+		remainder = after_client[best_prefix_len:]
+		for opt in ('-Profiling_Total', '-Profiling_OnDemand'):
+			if remainder.startswith(opt):
+				remainder = remainder[len(opt):]
+				break
+		if remainder.startswith('-Debug'):
+			remainder = remainder[len('-Debug'):]
+		if not remainder:
+			return ''
+		assert remainder.startswith('-'), 'Unexpected binary entry layout: ' + binary_entry_name
+		return remainder[1:]
 
 	def resolve_binary_input_dir(self, arch: str, variant: BinaryVariant, bin_name: str) -> str:
 		return self.get_input(os.path.join('Binaries', self.build_binary_entry(arch, variant)), bin_name)
@@ -408,6 +700,10 @@ class Packager:
 				if request_target_name is None:
 					continue
 
+				entry_postfix = self.extract_binary_entry_postfix(entry_name)
+				if entry_postfix is None:
+					continue
+
 				parts = request_target_name.split('-', 1)
 				if len(parts) != 2:
 					continue
@@ -433,13 +729,21 @@ class Packager:
 				if '-Profiling_' in entry_name:
 					suffix = '_Profiling'
 
+				# binary_output_postfix is appended to the staged payload name so two
+				# binary entries that map to the same request_target_name (e.g.
+				# Client-Linux-x64 vs Client-Linux-x64-Steam) do not collide. Each
+				# client variant patches its own PACKAGED_BUILD_NAME to match the
+				# resulting suffixed payload, so updater's remap_runtime_name picks
+				# the right file.
+				postfix_suffix = '_' + entry_postfix if entry_postfix else ''
+
 				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
-				variant_specs.append((self.args.nicename + suffix, None, default_runtime_variant))
+				variant_specs.append((self.args.nicename + suffix + postfix_suffix, None, default_runtime_variant))
 				if platform == 'Windows':
-					variant_specs.append((self.args.nicename + suffix + '_OpenGL', 'ForceOpenGL=1', default_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'ForceOpenGL=1', default_runtime_variant))
 				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
 				if os.path.isfile(headless_runtime_path):
-					variant_specs.append((self.args.nicename + suffix + '_Headless', None, headless_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
 
 				for output_name, variant_config_data, runtime_variant in variant_specs:
 					payload_key = (request_target_name, output_name)
@@ -475,6 +779,16 @@ class Packager:
 						log('Client runtime update payload PDB', pdb_out_path)
 						shutil.copy(pdb_input_path, pdb_out_path)
 						assert patch_pe_pdb_path(output_path, pdb_out_name), 'Client runtime update payload RSDS not patched: ' + output_path
+
+						# Stage the host executable's PDB (`<name>.pdb`) so a client that lost it can
+						# re-download it. The client fetches it only when its local copy is missing and
+						# never overwrites a present one (see Updater.cpp): an up-to-date host recovers a
+						# matching PDB, while an older host (whose PDB is build-specific) is never clobbered.
+						host_pdb_input = os.path.join(entry_path, self.build_client_runtime_alias_name(runtime_variant) + '.pdb')
+						if os.path.isfile(host_pdb_input):
+							host_pdb_out = os.path.join(payload_dir, output_name + '.pdb')
+							log('Client host PDB included', host_pdb_out)
+							shutil.copy(host_pdb_input, host_pdb_out)
 
 					copied_payloads.add(payload_key)
 
@@ -560,7 +874,7 @@ class Packager:
 	def collect_resource_files(self, pack_name: str, target: str) -> list[str]:
 		assert self.baking_path, 'Baking path is not initialized'
 		pattern = os.path.join(self.baking_path, pack_name, '**')
-		files = [file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path)]
+		files = sorted(file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path))
 		assert files, 'No files in pack ' + pack_name
 		return files
 
@@ -583,14 +897,24 @@ class Packager:
 
 	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
 		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for file_path in files:
-				archive.write(file_path, os.path.relpath(file_path, base_path))
+			zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+			for arcname, file_path in zip_entries:
+				self.write_stable_zip_entry(archive, file_path, arcname)
+
+	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
+		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
+		info.create_system = 3
+		info.compress_type = zipfile.ZIP_DEFLATED
+		info.external_attr = 0o644 << 16
+		with open(file_path, 'rb') as src, archive.open(info, 'w') as dst:
+			shutil.copyfileobj(src, dst)
 
 	def make_embedded_pack(self, files: Sequence[str], base_path: str) -> bytes:
 		embedded_buffer = io.BytesIO()
 		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
 			for file_path in files:
-				archive.write(file_path, os.path.relpath(file_path, base_path))
+				arcname = os.path.relpath(file_path, base_path).replace(os.sep, '/')
+				self.write_stable_zip_entry(archive, file_path, arcname)
 		data = embedded_buffer.getvalue()
 		return struct.pack('I', len(data)) + data
 
@@ -610,9 +934,13 @@ class Packager:
 
 	def load_config_data(self) -> None:
 		config_name, self.config_data = self.read_config_data(self.args.target)
+		self.target_config = load_config_from_data(self.config_data)
 		log('Config', config_name)
 		log('Embedded data length', len(self.embedded_data))
 		log('Embedded config length', len(self.config_data))
+
+	def get_effective_config_section(self) -> foconfig.ConfigSection:
+		return self.target_config.mainSection() if self.target_config else self.fomain.mainSection()
 
 	def prepare_resources(self) -> None:
 		bake_output = self.fomain.mainSection().getStr('Baking.BakeOutput')
@@ -724,12 +1052,18 @@ class Packager:
 			self.package_all_client_runtime_update_payloads()
 
 		for arch in self.iter_arches():
+			# Mirror of the suffix appended to server-side payloads in
+			# package_all_client_runtime_update_payloads: tagging the client output
+			# name keeps PACKAGED_BUILD_NAME aligned with what the server stages
+			# under PlatformBinaries/<target>/<name>.dll for this variant.
+			binary_output_postfix = self.args.binary_output_postfix
+			client_postfix_suffix = '_' + binary_output_postfix if binary_output_postfix else ''
 			for variant in self.iter_windows_variants():
 				is_lib = self.has_pack('Lib')
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
 				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + self.build_output_variant_suffix(variant, is_windows=True)
+				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + ('_' + variant.role if variant.role else '') + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
@@ -740,15 +1074,21 @@ class Packager:
 					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.dll')
 
 				if self.args.target == 'Client' and not is_lib:
-					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_input_name = self.build_client_runtime_input_name(variant)
 					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
 					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
 					self.copy_runtime_pdb(bin_path, runtime_input_name, runtime_dll_path)
 					excluded_companions.add(runtime_input_name + '.dll')
 
-				self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
+				main_binary_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
 				self.copy_pdb(bin_path, bin_name, bin_out_name)
+				if bin_ext == '.exe':
+					# Point the frozen host exe at its sibling `<name>.pdb` (renamed from the
+					# build's `<bin_name>.pdb`). Otherwise the exe keeps the build-machine
+					# CodeView path and only resolves symbols via a debugger's module-adjacent
+					# basename heuristic.
+					assert patch_pe_pdb_path(main_binary_path, bin_out_name + '.pdb'), 'Host exe RSDS not patched: ' + main_binary_path
 
 	def package_linux(self) -> None:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
@@ -761,6 +1101,11 @@ class Packager:
 				cross_variant_excluded.add(self.build_client_runtime_alias_name(other_variant) + '.so')
 				cross_variant_excluded.add(self.build_client_runtime_input_name(other_variant) + '.so')
 
+		# Mirrors the postfix tagging in package_all_client_runtime_update_payloads
+		# so the Linux client's PACKAGED_BUILD_NAME matches the server-staged payload
+		# for this binary_output_postfix variant.
+		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.target == 'Client' and self.args.binary_output_postfix else ''
+
 		for arch in self.iter_arches():
 			for variant in all_linux_variants:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role
@@ -768,7 +1113,7 @@ class Packager:
 					bin_out_name_base = self.args.nicename + ('_' + variant.role if variant.role else '')
 				else:
 					bin_out_name_base = bin_name
-				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False)
+				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False) + client_postfix_suffix
 				log('Setup', arch, bin_name, variant.log_name())
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
@@ -842,6 +1187,7 @@ class Packager:
 			'--preload',
 			os.path.join(self.target_output_path, self.client_res_dir).replace('\\', '/') + '@' + self.client_res_dir,
 			'--js-output=' + os.path.join(self.target_output_path, 'Resources.js').replace('\\', '/'),
+			'--lz4',
 		]
 		log('Call emscripten packager:')
 		for arg in packager_args:
@@ -886,6 +1232,31 @@ class Packager:
 		shutil.rmtree(os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template'), True)
 		log('Android activity', activity_path)
 
+	def copy_android_java_sources(self, android_config: foconfig.ConfigSection, package_name: str) -> None:
+		output_java_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'java', self.build_android_java_package_path(package_name))
+		os.makedirs(output_java_dir, exist_ok=True)
+
+		for key, value in sorted(android_config.content.items()):
+			if not key.startswith(ANDROID_JAVA_SOURCE_CONFIG_PREFIX):
+				continue
+
+			name = key[len(ANDROID_JAVA_SOURCE_CONFIG_PREFIX):].strip()
+			assert name, 'Android.JavaSource.* key must include a source name'
+			if not value:
+				continue
+
+			source_path = self.resolve_config_relative_path(value)
+			assert os.path.isfile(source_path), 'Android Java source file not found: ' + source_path
+			source_name = os.path.basename(source_path)
+			assert source_name.endswith('.java'), 'Android.JavaSource.' + name + ' must point to a .java file: ' + source_path
+			assert source_name != ANDROID_ACTIVITY_CLASS + '.java', 'Android.JavaSource.* must not override ' + ANDROID_ACTIVITY_CLASS + '.java'
+
+			output_path = os.path.join(output_java_dir, source_name)
+			shutil.copy(source_path, output_path)
+			patch_file(output_path, '$PACKAGE$', package_name)
+			patch_file(output_path, '$CONFIG$', self.args.config)
+			log('Android Java source', source_path, '=>', output_path)
+
 	def try_read_android_icon_png(self, icon_path: str) -> bytes | None:
 		with open(icon_path, 'rb') as file:
 			icon_data = file.read()
@@ -893,7 +1264,7 @@ class Packager:
 		return icon_data if is_png_data(icon_data) else None
 
 	def patch_android_icon(self) -> None:
-		configured_icon = self.fomain.mainSection().getStr('Android.Icon', 'Engine/Resources/Radiation.png')
+		configured_icon = self.get_effective_config_section().getStr('Android.Icon', 'Engine/Resources/Radiation.png')
 		icon_path = self.resolve_config_relative_path(configured_icon)
 		assert os.path.isfile(icon_path), 'Android icon file not found: ' + icon_path
 
@@ -948,18 +1319,23 @@ class Packager:
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
 
-		# Read Android config from fomain
-		package_name = self.fomain.mainSection().getStr('Android.PackageName', 'com.fonline.app')
-		version_code = self.fomain.mainSection().getStr('Android.VersionCode', '1')
+		# Read Android config from the baked target config so SubConfig overrides affect APK metadata.
+		android_config = self.get_effective_config_section()
+		package_name = android_config.getStr('Android.PackageName', 'com.fonline.app')
+		version_code = android_config.getStr('Android.VersionCode', '1')
 		version_name = self.args.buildhash[:8] if self.args.buildhash else '1.0'
-		min_sdk = self.fomain.mainSection().getStr('Android.MinSdk', '23')
-		target_sdk = self.fomain.mainSection().getStr('Android.TargetSdk', '35')
-		compile_sdk = self.fomain.mainSection().getStr('Android.CompileSdk', '35')
-		screen_orientation = self.fomain.mainSection().getStr('Android.ScreenOrientation', 'landscape')
-		release_store_file = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Android.Keystore', ''))
-		release_store_password = self.fomain.mainSection().getStr('Android.KeystorePassword', '')
-		release_key_alias = self.fomain.mainSection().getStr('Android.KeyAlias', '')
-		release_key_password = self.fomain.mainSection().getStr('Android.KeyPassword', '')
+		min_sdk = android_config.getStr('Android.MinSdk', '23')
+		target_sdk = android_config.getStr('Android.TargetSdk', '35')
+		compile_sdk = android_config.getStr('Android.CompileSdk', '35')
+		screen_orientation = android_config.getStr('Android.ScreenOrientation', 'landscape')
+		release_store_file = self.resolve_optional_config_relative_path(android_config.getStr('Android.Keystore', ''))
+		release_store_password = android_config.getStr('Android.KeystorePassword', '')
+		release_key_alias = android_config.getStr('Android.KeyAlias', '')
+		release_key_password = android_config.getStr('Android.KeyPassword', '')
+		android_env = buildtools.resolve_env()
+		android_home = android_env.get('FO_ANDROID_HOME', '') or android_env.get('FO_ANDROID_SDK_ROOT', '')
+		android_ndk_root = android_env.get('FO_ANDROID_NDK_ROOT', '')
+		android_ndk_version = read_android_ndk_revision(android_ndk_root)
 
 		has_release_signing = any((release_store_file, release_store_password, release_key_alias, release_key_password))
 		if has_release_signing:
@@ -979,11 +1355,14 @@ class Packager:
 		patch_file(app_build_gradle, '$VERSION_NAME$', version_name)
 		patch_file(app_build_gradle, '$ABI_FILTERS$', abi_filters)
 		patch_file(app_build_gradle, '$RELEASE_STORE_FILE$', escape_groovy_string(release_store_file))
-		patch_file(app_build_gradle, '$RELEASE_STORE_PASSWORD$', escape_groovy_string(release_store_password))
 		patch_file(app_build_gradle, '$RELEASE_KEY_ALIAS$', escape_groovy_string(release_key_alias))
-		patch_file(app_build_gradle, '$RELEASE_KEY_PASSWORD$', escape_groovy_string(release_key_password))
+		patch_file(app_build_gradle, '$NDK_VERSION$', escape_groovy_string(android_ndk_version))
+		patch_file(app_build_gradle, '$NDK_PATH$', escape_groovy_string(Path(android_ndk_root).as_posix() if android_ndk_root else ''))
+		patch_file(app_build_gradle, '$ANDROID_GRADLE_DEPENDENCIES$', build_android_gradle_dependencies(android_config))
+		patch_file(os.path.join(self.target_output_path, 'build.gradle'), '$ANDROID_GRADLE_MAVEN_REPOSITORIES$', build_android_gradle_maven_repositories(android_config))
 		patch_file(os.path.join(self.target_output_path, 'app', 'proguard-rules.pro'), '$PACKAGE$', package_name)
 		self.patch_android_activity(package_name)
+		self.copy_android_java_sources(android_config, package_name)
 
 		# Patch AndroidManifest.xml
 		manifest_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'AndroidManifest.xml')
@@ -991,35 +1370,45 @@ class Packager:
 		patch_file(manifest_path, '$VERSION_NAME$', version_name)
 		patch_file(manifest_path, '$APP_NAME$', self.args.nicename)
 		patch_file(manifest_path, '$SCREEN_ORIENTATION$', screen_orientation)
+		patch_file(manifest_path, '$ANDROID_MANIFEST_META_DATA$', build_android_manifest_meta_data(android_config))
 
 		# Patch strings.xml
 		strings_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'res', 'values', 'strings.xml')
 		patch_file(strings_path, '$APP_NAME$', self.args.nicename)
 		self.patch_android_icon()
 
-		android_env = buildtools.resolve_env()
-		android_home = android_env.get('FO_ANDROID_HOME', '') or android_env.get('FO_ANDROID_SDK_ROOT', '')
-		android_ndk_root = android_env.get('FO_ANDROID_NDK_ROOT', '')
-
 		if android_home:
 			local_properties_path = os.path.join(self.target_output_path, 'local.properties')
 			with open(local_properties_path, 'w', encoding='utf-8', newline='\n') as file:
 				file.write('sdk.dir=' + Path(android_home).as_posix() + '\n')
-				if android_ndk_root:
-					file.write('ndk.dir=' + Path(android_ndk_root).as_posix() + '\n')
 			log('Android local.properties', local_properties_path)
 
 		# Build APK if requested
 		if self.has_pack('Apk'):
 			log('Building APK...')
-			gradlew = os.path.join(self.target_output_path, 'gradlew')
-			st = os.stat(gradlew)
-			os.chmod(gradlew, st.st_mode | stat.S_IEXEC)
+			gradlew_name = 'gradlew.bat' if os.name == 'nt' else 'gradlew'
+			gradlew = os.path.join(self.target_output_path, gradlew_name)
+			if os.name != 'nt':
+				st = os.stat(gradlew)
+				os.chmod(gradlew, st.st_mode | stat.S_IEXEC)
 
 			gradle_env = os.environ.copy()
 			if android_home:
 				gradle_env['ANDROID_HOME'] = android_home
 				gradle_env['ANDROID_SDK_ROOT'] = android_home
+			if release_store_password:
+				gradle_env[ANDROID_RELEASE_STORE_PASSWORD_ENV] = release_store_password
+			if release_key_password:
+				gradle_env[ANDROID_RELEASE_KEY_PASSWORD_ENV] = release_key_password
+
+			gradle_user_home = os.path.join(
+				os.path.dirname(self.output_path),
+				'.gradle-user-home',
+				os.path.basename(self.target_output_path),
+			)
+			os.makedirs(gradle_user_home, exist_ok=True)
+			gradle_env['GRADLE_USER_HOME'] = gradle_user_home
+			log('Android Gradle user home', gradle_user_home)
 
 			build_task = 'assembleDebug' if self.has_pack('Debug') else 'assembleRelease'
 			result = subprocess.call([gradlew, '--no-daemon', build_task], cwd=self.target_output_path, env=gradle_env)
@@ -1044,7 +1433,45 @@ class Packager:
 	def package_ios(self) -> None:
 		assert False, 'iOS packaging is not supported in this repository state'
 
+	def sign_windows_binaries(self) -> None:
+		# Optional release-time code signing of the staged Windows PE artifacts: launcher exes, runtime DLLs, and
+		# the client-runtime update payloads (the downloaded-and-executed DLL is what makes signing matter for
+		# antivirus reputation — see the H1 finding in the project's client-AV audit). Runs before any
+		# archiving/installer step so every downstream artifact (Zip/Wix/Raw) carries the signature, and after
+		# all binary patching so the signature covers the final bytes. Tool-agnostic by design:
+		# Packaging.CodeSigningHook is an owner-provided executable script called once per PE as `<hook> <abs-path>`;
+		# the script owns the tool (osslsigncode / signtool / Azure Trusted Signing / SSL.com eSigner), the
+		# certificate, the timestamp URL and any secrets (kept out of the repo and the main config). Empty hook =
+		# unsigned (today's behavior). A signing failure is fatal so a release that asked to be signed never ships
+		# unsigned.
+		if self.args.platform != 'Windows':
+			return
+
+		hook = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Packaging.CodeSigningHook', ''))
+		if not hook:
+			log('Code signing: skipped (Packaging.CodeSigningHook not set)')
+			return
+
+		assert os.path.isfile(hook), 'Packaging.CodeSigningHook script not found: ' + hook
+
+		binaries = sorted({
+			str(path)
+			for pattern in ('*.exe', '*.dll')
+			for path in Path(self.target_output_path).rglob(pattern)
+		})
+		if not binaries:
+			log('Code signing: no .exe/.dll found under', self.target_output_path)
+			return
+
+		log('Code signing', len(binaries), 'Windows binaries via', hook)
+		for binary in binaries:
+			result = subprocess.call([hook, binary])
+			assert result == 0, 'Packaging.CodeSigningHook failed (exit ' + str(result) + ') for: ' + binary
+		log('Code signing: done')
+
 	def finalize_output(self) -> None:
+		self.sign_windows_binaries()
+
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
 			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level)
@@ -1065,8 +1492,125 @@ class Packager:
 		if self.has_pack('Root'):
 			shutil.copytree(self.target_output_path, self.output_path, dirs_exist_ok=True)
 
+		if self.has_pack('Wix'):
+			self.make_wix_installer()
+
 		if not self.has_pack('Raw'):
 			shutil.rmtree(self.target_output_path, True)
+
+	def resolve_game_version(self) -> str:
+		# Resolve Common.GameVersion to a concrete value. The main config commonly points it at a file
+		# (e.g. `Common.GameVersion = $FILE{VERSION}`); foconfig keeps directives verbatim, so resolve the
+		# `$FILE{...}` indirection here relative to the main config directory.
+		raw = self.fomain.mainSection().getStr('Common.GameVersion', '0.0.0').strip()
+		file_match = re.match(r'^\$FILE\{(.+)\}$', raw)
+		if file_match:
+			version_path = self.resolve_config_relative_path(file_match.group(1).strip())
+			assert os.path.isfile(version_path), 'Common.GameVersion $FILE not found: ' + version_path
+			with open(version_path, 'r', encoding='utf-8-sig') as version_file:
+				raw = version_file.read().strip()
+		return raw
+
+	def ensure_msi_toolset(self) -> None:
+		# The MSI is required when the Wix pack is requested, so verify the toolset up front and fail with a
+		# clear message instead of a cryptic subprocess error. The host OS decides the toolset: WiX
+		# (candle/light) on Windows, GNOME wixl elsewhere — matching msicreator/createmsi.py. On
+		# Debian/Ubuntu wixl ships in its own "wixl" apt package (the "msitools" package carries only
+		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl).
+		if os.name == 'nt':
+			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
+			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
+		else:
+			assert shutil.which('wixl') is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
+
+	def make_wix_installer(self) -> None:
+		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register
+		# the deep-link URI scheme so site login works without the client editing the registry at
+		# runtime (installer-time registration is the AV-friendly path; the runtime self-register in
+		# SourceExt/DeepLink.cpp stays as the fallback for the portable/zip/Steam builds). The MSI is a
+		# required artifact: a missing toolset or a generator/build error fails the package. All
+		# game-specific values come from the project config, so the engine packager stays game-agnostic.
+		assert self.args.platform == 'Windows' and self.args.target == 'Client', 'Wix pack is only valid for the Windows Client target'
+
+		self.ensure_msi_toolset()
+
+		scheme = self.fomain.mainSection().getStr('Auth.UriScheme', '').strip()
+		assert scheme, 'Wix pack requires Auth.UriScheme to register the deep-link URI scheme'
+
+		game_name = self.fomain.mainSection().getStr('Common.GameName', self.args.nicename).strip() or self.args.nicename
+
+		upgrade_code = self.fomain.mainSection().getStr('Packaging.MsiUpgradeCode', '').strip()
+		assert re.match(r'^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$', upgrade_code), 'Wix pack requires Packaging.MsiUpgradeCode to be a stable GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)'
+		upgrade_code = upgrade_code.upper()
+
+		version = self.resolve_game_version()
+		assert re.match(r'^\d+(\.\d+){1,3}$', version), 'Wix pack requires a numeric Common.GameVersion (x.y.z[.w]), got: ' + version
+
+		icon_path = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Packaging.AppIcon', ''))
+		if icon_path:
+			assert os.path.isfile(icon_path), 'Packaging.AppIcon file not found: ' + icon_path
+
+		arches = self.iter_arches()
+		assert len(arches) == 1, 'Wix pack requires exactly one Windows architecture per package entry'
+		input_arch = buildtools.resolve_windows_binary_arch(arches[0])
+		binary_output_postfix = self.args.binary_output_postfix
+		name_base = self.args.nicename + ('_' + binary_output_postfix if binary_output_postfix else '')
+
+		exe_name = name_base + '.exe'
+		command_value = '"[INSTALLDIR]%s" --DeepLinkUri "%%1"' % exe_name
+		registry_entries = [
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': '', 'type': 'string', 'value': 'URL:%s Protocol' % scheme, 'key_path': 'yes'},
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': 'URL Protocol', 'type': 'string', 'value': '', 'key_path': 'no'},
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s\\shell\\open\\command' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': '', 'type': 'string', 'value': command_value, 'key_path': 'no'},
+		]
+
+		staged_dir = os.path.basename(self.target_output_path)
+		work_dir = os.path.dirname(self.target_output_path)
+		config: dict[str, object] = {
+			'product_name': game_name,
+			'manufacturer': game_name,
+			'name': game_name,
+			'name_base': name_base,
+			'version': version,
+			'comments': game_name + ' game client',
+			'installdir': self.args.nicename,
+			'license_file': '',
+			'upgrade_guid': upgrade_code,
+			'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
+			'arch': 32 if input_arch == 'win32' else 64,
+			'registry_entries': registry_entries,
+			'startmenu_shortcut': exe_name,
+			'desktop_shortcut': exe_name,
+			'parts': [{'id': 'MainProgram', 'title': game_name, 'description': 'Game client', 'staged_dir': staged_dir}],
+		}
+		if icon_path:
+			config['addremove_icon'] = icon_path
+
+		config_path = os.path.join(work_dir, name_base + '.wix.json')
+		with open(config_path, 'w', encoding='utf-8') as config_file:
+			json.dump(config, config_file)
+
+		# Drop the installed-build marker into the staged payload so the MSI-installed client uses
+		# the per-user writable data dir (cache/logs/self-update overlay) instead of the read-only
+		# install dir. Added only for the MSI and removed afterwards, so the sibling Raw/Zip
+		# portable artifacts (already finalized earlier in finalize_output) stay portable.
+		marker_path = os.path.join(self.target_output_path, 'INSTALLED')
+		try:
+			with open(marker_path, 'w', encoding='utf-8') as marker_file:
+				marker_file.write('installed\n')
+
+			createmsi = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'msicreator', 'createmsi.py')
+			log('Wix: building MSI installer', config_path)
+			# createmsi.py requires a bare json filename (no path segment) and resolves it plus the staged
+			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir.
+			subprocess.run([sys.executable, createmsi, os.path.basename(config_path)], cwd=work_dir, check=True)
+			log('Wix: MSI built (registers %s:// URI scheme, Start Menu + Desktop shortcuts, installs writable-data marker)' % scheme)
+		finally:
+			if os.path.exists(marker_path):
+				os.remove(marker_path)
 
 	def run(self) -> None:
 		log(f'Make {self.args.target} ({self.args.config}) for {self.args.platform}')
@@ -1085,6 +1629,14 @@ class Packager:
 
 
 def main() -> None:
+	if len(sys.argv) > 1 and sys.argv[1] == 'include':
+		args = parse_include_args(sys.argv[2:])
+		fomain = foconfig.ConfigParser()
+		fomain.loadFromFile(args.maincfg)
+		compress_level = fomain.mainSection().getInt('Baking.ZipCompressLevel')
+		include_package_files(args.input, args.source, args.output, args.target, args.singlezip, compress_level)
+		return
+
 	args = parse_args()
 	fomain = foconfig.ConfigParser()
 	fomain.loadFromFile(args.maincfg)

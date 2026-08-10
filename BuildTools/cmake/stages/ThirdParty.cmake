@@ -32,9 +32,12 @@ RegisterFindPackageHandler(Utf8Proc  PassThroughFindPackage)
 # Host runtime libs we deliberately use through SDL3 and engine code.
 if(FO_LINUX)
 	# X11 for display, OpenGL for rendering, ALSA for audio backend.
-	RegisterFindPackageHandler(X11    PassThroughFindPackage)
-	RegisterFindPackageHandler(OpenGL PassThroughFindPackage)
-	RegisterFindPackageHandler(ALSA   PassThroughFindPackage)
+	# CMake's FindX11 also probes Freetype and Fontconfig for Xft support.
+	RegisterFindPackageHandler(X11        PassThroughFindPackage)
+	RegisterFindPackageHandler(Freetype   PassThroughFindPackage)
+	RegisterFindPackageHandler(Fontconfig PassThroughFindPackage)
+	RegisterFindPackageHandler(OpenGL     PassThroughFindPackage)
+	RegisterFindPackageHandler(ALSA       PassThroughFindPackage)
 endif()
 if(FO_MAC)
 	# OpenGL framework on macOS (Init.cmake also probes it via RequirePackage,
@@ -76,10 +79,17 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
         SOURCE_LIST FO_RPMALLOC_SOURCE
         APPEND_TO FO_ESSENTIALS_LIBS
         INCLUDE_DIRS "${FO_RPMALLOC_DIR}/rpmalloc")
-    AddCompileDefinitionsList(
-        FO_HAVE_RPMALLOC=${expr_RpmallocEnabled}
-        ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
+    AddCompileDefinitionsList(FO_HAVE_RPMALLOC=${expr_RpmallocEnabled})
+    # The engine routes all allocation through its own global operator new/delete
+    # overrides in MemorySystem.cpp; rpmalloc must not emit its malloc/operator
+    # replacements (ENABLE_OVERRIDE defaults to 1 since rpmalloc 2.0).
+    TargetCompileDefinitions(rpmalloc PRIVATE ENABLE_OVERRIDE=0)
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
+    TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
+    # rpmalloc.c uses <stdatomic.h> unconditionally; MSVC compiles C sources without C11 by
+    # default and keeps C atomics behind an extra switch (still experimental as of VS 17.14).
+    SetTargetProperty(rpmalloc C_STANDARD 11)
+    TargetCompileOptions(rpmalloc PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:MSVC>>:/experimental:c11atomics>")
 else()
     AddCompileDefinitionsList(FO_HAVE_RPMALLOC=0)
 endif()
@@ -149,8 +159,8 @@ macro(_FoEngineHandleZlibFindPackage _fo_zlib_pkg)
     set(ZLIB_LIBRARIES ZLIB::ZLIB)
     set(ZLIB_INCLUDE_DIR "${FO_ZLIB_INCLUDE_DIR_ABS}")
     set(ZLIB_INCLUDE_DIRS "${FO_ZLIB_INCLUDE_DIR_ABS}")
-    set(ZLIB_VERSION_STRING "1.3.1")
-    set(ZLIB_VERSION "1.3.1")
+    set(ZLIB_VERSION_STRING "1.3.2")
+    set(ZLIB_VERSION "1.3.2")
 endmacro()
 RegisterFindPackageHandler(ZLIB _FoEngineHandleZlibFindPackage)
 
@@ -177,15 +187,55 @@ if(FO_BUILD_BAKER_LIB)
     DisableLibWarnings(png_static)
 endif()
 
+# earcut.hpp
+if(FO_BUILD_BAKER_LIB)
+    StatusMessage("+ earcut.hpp")
+    SetValue(FO_EARCUT_DIR "${FO_ENGINE_ROOT}/ThirdParty/earcut")
+    AddIncludeDirectories("${FO_EARCUT_DIR}/include")
+endif()
+
+# Clipper2
+if(FO_BUILD_BAKER_LIB)
+    SetValue(FO_CLIPPER2_DIR "${FO_ENGINE_ROOT}/ThirdParty/clipper2")
+    SetValue(FO_CLIPPER2_SOURCE
+        "${FO_CLIPPER2_DIR}/src/clipper.engine.cpp"
+        "${FO_CLIPPER2_DIR}/src/clipper.offset.cpp")
+    AddStaticThirdPartyLibrary(Clipper2
+        SOURCE_LIST FO_CLIPPER2_SOURCE
+        APPEND_TO FO_BAKER_LIBS
+        INCLUDE_DIRS "${FO_CLIPPER2_DIR}/include")
+    DisableLibWarnings(Clipper2)
+endif()
+
 # Ogg
 SetValue(FO_OGG_DIR "${FO_ENGINE_ROOT}/ThirdParty/ogg")
+SetValue(FO_OGG_CONFIG_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/ThirdParty/ogg/include")
+include(CheckIncludeFiles)
+check_include_files(inttypes.h INCLUDE_INTTYPES_H)
+check_include_files(stdint.h INCLUDE_STDINT_H)
+check_include_files(sys/types.h INCLUDE_SYS_TYPES_H)
+foreach(oggIncludeVar IN ITEMS INCLUDE_INTTYPES_H INCLUDE_STDINT_H INCLUDE_SYS_TYPES_H)
+    if(NOT DEFINED ${oggIncludeVar} OR "${${oggIncludeVar}}" STREQUAL "")
+        SetValue(${oggIncludeVar} 0)
+    endif()
+endforeach()
+SetValue(SIZE16 int16_t)
+SetValue(USIZE16 uint16_t)
+SetValue(SIZE32 int32_t)
+SetValue(USIZE32 uint32_t)
+SetValue(SIZE64 int64_t)
+SetValue(USIZE64 uint64_t)
+include("${FO_OGG_DIR}/cmake/CheckSizes.cmake")
+# (FOnline Patch) The engine builds Ogg through a custom static target instead
+# of upstream CMake, so generate the Unix type header that os_types.h includes.
+configure_file("${FO_OGG_DIR}/include/ogg/config_types.h.in" "${FO_OGG_CONFIG_INCLUDE_DIR}/ogg/config_types.h" @ONLY)
 SetValue(FO_OGG_SOURCE
     "${FO_OGG_DIR}/src/bitwise.c"
     "${FO_OGG_DIR}/src/framing.c")
 AddStaticThirdPartyLibrary(Ogg
     SOURCE_LIST FO_OGG_SOURCE
     APPEND_TO FO_CLIENT_LIBS
-    INCLUDE_DIRS "${FO_OGG_DIR}/include")
+    INCLUDE_DIRS "${FO_OGG_DIR}/include" "${FO_OGG_CONFIG_INCLUDE_DIR}")
 
 # Vorbis
 SetValue(FO_VORBIS_DIR "${FO_ENGINE_ROOT}/ThirdParty/Vorbis")
@@ -223,7 +273,6 @@ SetValue(FO_THEORA_DIR "${FO_ENGINE_ROOT}/ThirdParty/Theora")
 SetValue(FO_THEORA_SOURCE
     "${FO_THEORA_DIR}/lib/apiwrapper.c"
     "${FO_THEORA_DIR}/lib/bitpack.c"
-    "${FO_THEORA_DIR}/lib/cpu.c"
     "${FO_THEORA_DIR}/lib/decapiwrapper.c"
     "${FO_THEORA_DIR}/lib/decinfo.c"
     "${FO_THEORA_DIR}/lib/decode.c"
@@ -264,6 +313,88 @@ AddStaticThirdPartyLibrary(AcmDecoder
 StatusMessage("+ GLM")
 AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")
 AppendList(FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/glm/util/glm.natvis>")
+
+# ozz-animation
+if(FO_ENABLE_3D AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    SetValue(FO_OZZ_DIR "${FO_ENGINE_ROOT}/ThirdParty/ozz-animation")
+    SetValue(FO_OZZ_BASE_SOURCE
+        "${FO_OZZ_DIR}/src/base/containers/string_archive.cc"
+        "${FO_OZZ_DIR}/src/base/encode/group_varint.cc"
+        "${FO_OZZ_DIR}/src/base/io/archive.cc"
+        "${FO_OZZ_DIR}/src/base/io/stream.cc"
+        "${FO_OZZ_DIR}/src/base/log.cc"
+        "${FO_OZZ_DIR}/src/base/maths/box.cc"
+        "${FO_OZZ_DIR}/src/base/maths/math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/maths/simd_math.cc"
+        "${FO_OZZ_DIR}/src/base/maths/simd_math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/maths/soa_math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/memory/allocator.cc"
+        "${FO_OZZ_DIR}/src/base/platform.cc")
+    SetValue(FO_OZZ_ANIMATION_SOURCE
+        "${FO_OZZ_DIR}/src/animation/runtime/animation.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/animation_utils.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/blending_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/ik_aim_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/ik_two_bone_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/local_to_model_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/motion_blending_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/sampling_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/skeleton.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/skeleton_utils.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track_sampling_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track_triggering_job.cc")
+
+    AddStaticThirdPartyLibrary(ozz_base
+        SOURCE_LIST FO_OZZ_BASE_SOURCE
+        INCLUDE_DIRS "${FO_OZZ_DIR}/include")
+    AppendList(FO_COMMON_LIBS ozz_base)
+    AddStaticThirdPartyLibrary(ozz_animation
+        SOURCE_LIST FO_OZZ_ANIMATION_SOURCE
+        LINK_LIBS ozz_base)
+    TargetIncludeDirectories(ozz_animation PRIVATE "${FO_OZZ_DIR}/src")
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS ozz_animation)
+    endif()
+
+    if(FO_BUILD_BAKER_LIB)
+        SetValue(FO_OZZ_ANIMATION_OFFLINE_SOURCE
+            "${FO_OZZ_DIR}/src/animation/offline/additive_animation_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/animation_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/animation_optimizer.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/motion_extractor.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation_archive.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation_utils.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_skeleton.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_skeleton_archive.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_track.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_track_utils.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/skeleton_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/track_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/track_optimizer.cc")
+        AddStaticThirdPartyLibrary(ozz_animation_offline
+            SOURCE_LIST FO_OZZ_ANIMATION_OFFLINE_SOURCE
+            APPEND_TO FO_BAKER_LIBS
+            LINK_LIBS ozz_animation)
+        TargetIncludeDirectories(ozz_animation_offline PRIVATE "${FO_OZZ_DIR}/src")
+    endif()
+endif()
+
+# meshoptimizer
+if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
+    SetValue(FO_MESHOPTIMIZER_DIR "${FO_ENGINE_ROOT}/ThirdParty/meshoptimizer")
+    SetValue(FO_MESHOPTIMIZER_SOURCE
+        "${FO_MESHOPTIMIZER_DIR}/src/meshoptimizer.h"
+        "${FO_MESHOPTIMIZER_DIR}/src/allocator.cpp"
+        "${FO_MESHOPTIMIZER_DIR}/src/vcacheoptimizer.cpp"
+        "${FO_MESHOPTIMIZER_DIR}/src/vfetchoptimizer.cpp")
+    AddStaticThirdPartyLibrary(meshoptimizer
+        SOURCE_LIST FO_MESHOPTIMIZER_SOURCE
+        APPEND_TO FO_BAKER_LIBS)
+    TargetIncludeDirectories(meshoptimizer INTERFACE "${FO_MESHOPTIMIZER_DIR}/src")
+endif()
 
 # ufbx
 if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
@@ -318,7 +449,7 @@ if(FO_BUILD_OPENSSL_LIB)
 endif()
 
 # Asio & Websockets
-if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND FO_BUILD_SERVER_LIB)
+if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
     StatusMessage("+ Asio")
     SetValue(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
     AddIncludeDirectories("${FO_ASIO_DIR}/include")
@@ -394,18 +525,35 @@ if(FO_BUILD_SERVER_LIB)
     endif()
 endif()
 
-# Unqlite
-if(NOT FO_DISABLE_UNQLITE AND NOT FO_WEB)
-    StatusMessage("+ Unqlite")
-    SetValue(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
-    AddSubdirectory("${FO_UNQLITE_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-    AddIncludeDirectories("${FO_UNQLITE_DIR}")
-    AppendList(FO_COMMON_LIBS unqlite)
-    DisableLibWarnings(unqlite)
-    TargetCompileDefinitions(unqlite PRIVATE "JX9_DISABLE_BUILTIN_FUNC")
-    AddCompileDefinitionsList(FO_HAVE_UNQLITE=1)
+# SQLite
+if(NOT FO_DISABLE_SQLITE AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
+    StatusMessage("+ SQLite")
+    SetValue(FO_SQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/sqlite")
+    SetValue(FO_SQLITE_SOURCE
+        "${FO_SQLITE_DIR}/sqlite3.c"
+        "${FO_SQLITE_DIR}/sqlite3.h")
+    AddStaticThirdPartyLibrary(sqlite
+        SOURCE_LIST FO_SQLITE_SOURCE
+        INCLUDE_DIRS "${FO_SQLITE_DIR}")
+    AddIncludeDirectories("${FO_SQLITE_DIR}")
+    AppendList(FO_SERVER_LIBS sqlite)
+    DisableLibWarnings(sqlite)
+    # Serialized threading mode: the engine already serializes access per connection, and this keeps
+    # SQLite's own mutexes available for the shared allocator the engine installs.
+    # The omitted subsystems are ones a key-value store never reaches; leaving them in would only
+    # grow the binary and the attack surface.
+    TargetCompileDefinitions(sqlite PRIVATE
+        "SQLITE_THREADSAFE=1"
+        "SQLITE_DEFAULT_MEMSTATUS=0"
+        "SQLITE_OMIT_LOAD_EXTENSION"
+        "SQLITE_OMIT_DEPRECATED"
+        "SQLITE_OMIT_SHARED_CACHE"
+        "SQLITE_OMIT_AUTOINIT"
+        "SQLITE_DQS=0"
+        "SQLITE_USE_URI=0")
+    AddCompileDefinitionsList(FO_HAVE_SQLITE=1)
 else()
-    AddCompileDefinitionsList(FO_HAVE_UNQLITE=0)
+    AddCompileDefinitionsList(FO_HAVE_SQLITE=0)
 endif()
 
 # Dear ImGui
@@ -414,7 +562,6 @@ SetValue(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imconfig.h"
     "${FO_DEAR_IMGUI_DIR}/imgui.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui.h"
-    "${FO_DEAR_IMGUI_DIR}/imgui_demo.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui_draw.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui_internal.h"
     "${FO_DEAR_IMGUI_DIR}/imgui_tables.cpp"
@@ -465,15 +612,45 @@ if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
     endif()
 endif()
 
-# Spark
-StatusMessage("+ Spark")
-SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
-SetCacheValues(SPARK_STATIC_BUILD ON)
-AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
-AppendList(FO_CLIENT_LIBS SPARK_Core PugiXML)
-DisableLibWarnings(SPARK_Core PugiXML)
+# SPARK particle simulation runtime and XML/binary serializer.
+if(FO_SPARK_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    StatusMessage("+ SPARK particle runtime")
+    SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
+    SetCacheValues(SPARK_STATIC_BUILD ON)
+    AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
+    DisableLibWarnings(SPARK_Core PugiXML)
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS SPARK_Core PugiXML)
+    endif()
+    if(FO_BUILD_BAKER_LIB)
+        AppendList(FO_BAKER_LIBS SPARK_Core PugiXML)
+    endif()
+endif()
+
+# Effekseer CPU simulation runtime. FOnline owns geometry generation and all
+# graphics backends, so RendererCommon and the upstream renderer libraries are
+# deliberately absent from the vendored tree and build graph.
+if(FO_EFFEKSEER_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    StatusMessage("+ Effekseer particle runtime")
+    SetValue(FO_EFFEKSEER_DIR "${FO_ENGINE_ROOT}/ThirdParty/Effekseer")
+    include("${FO_EFFEKSEER_DIR}/FOnline.cmake")
+    find_package(Threads REQUIRED)
+    AddStaticThirdPartyLibrary(EffekseerCore
+        SOURCE_LIST FO_EFFEKSEER_SOURCE
+        INCLUDE_DIRS "${FO_EFFEKSEER_DIR}/Dev/Cpp/Effekseer"
+        LINK_LIBS Threads::Threads)
+    target_compile_features(EffekseerCore PUBLIC cxx_std_17)
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS EffekseerCore)
+    endif()
+    if(FO_BUILD_BAKER_LIB)
+        AppendList(FO_BAKER_LIBS EffekseerCore)
+    endif()
+endif()
 
 # glslang & SPIRV-Cross
 if(FO_BUILD_BAKER_LIB)
@@ -484,13 +661,9 @@ if(FO_BUILD_BAKER_LIB)
         GLSLANG_ENABLE_INSTALL OFF
         BUILD_EXTERNAL OFF
         BUILD_WERROR OFF
-        SKIP_GLSLANG_INSTALL ON
         ENABLE_SPIRV ON
         ENABLE_HLSL OFF
         ENABLE_GLSLANG_BINARIES OFF
-        ENABLE_SPVREMAPPER OFF
-        ENABLE_AMD_EXTENSIONS OFF
-        ENABLE_NV_EXTENSIONS OFF
         ENABLE_RTTI ON
         ENABLE_EXCEPTIONS ON
         ENABLE_OPT OFF
@@ -499,8 +672,6 @@ if(FO_BUILD_BAKER_LIB)
 
     if(FO_WEB)
         SetCacheValues(
-            ENABLE_GLSLANG_WEB ON
-            ENABLE_GLSLANG_WEB_DEVEL ON
             ENABLE_EMSCRIPTEN_SINGLE_FILE ON
             ENABLE_EMSCRIPTEN_ENVIRONMENT_NODE OFF)
     endif()
@@ -537,7 +708,7 @@ if(FO_BUILD_BAKER_LIB)
         SPIRV_CROSS_ENABLE_REFLECT OFF
         SPIRV_CROSS_ENABLE_C_API OFF
         SPIRV_CROSS_ENABLE_UTIL OFF
-        SPIRV_SKIP_TESTS ON)
+        SPIRV_CROSS_SKIP_INSTALL ON)
     AddSubdirectory("${FO_SPIRV_CROSS_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     AddIncludeDirectories("${FO_SPIRV_CROSS_DIR}" "${FO_SPIRV_CROSS_DIR}/include")
     AppendList(FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
@@ -564,11 +735,12 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     SetCacheValues(AS_DISABLE_INSTALL ON)
     AddSubdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     TargetCompileDefinitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
+    TargetCompileDefinitions(AngelScriptCore PUBLIC AS_MODERN_THREADS)
     TargetCompileDefinitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
     TargetCompileDefinitions(
         AngelScriptCore PUBLIC
         $<$<OR:$<BOOL:${FO_WEB}>,$<BOOL:${FO_MAC}>,$<BOOL:${FO_IOS}>,$<BOOL:${FO_ANDROID}>>:AS_MAX_PORTABILITY>)
-    TargetIncludeDirectories(AngelScriptCore PUBLIC
+    TargetIncludeDirectories(AngelScriptCore SYSTEM PUBLIC
         "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/include"
         "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/source")
     AppendList(FO_COMMON_LIBS AngelScriptCore)
@@ -582,7 +754,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     AddStaticThirdPartyLibrary(AngelScriptPreprocessor
         SOURCE_LIST FO_ANGELSCRIPT_PREPROCESSOR_SOURCE
         APPEND_TO FO_COMMON_LIBS)
-    TargetIncludeDirectories(AngelScriptCore PUBLIC
+    TargetIncludeDirectories(AngelScriptCore SYSTEM PUBLIC
         "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
 endif()
 

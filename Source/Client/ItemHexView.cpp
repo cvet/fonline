@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props) :
+ItemHexView::ItemHexView(ptr<MapView> map, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props) :
     ItemView(map->GetEngine(), id, proto, props),
     HexView(map)
 {
@@ -51,22 +51,26 @@ void ItemHexView::Init()
     FO_STACK_TRACE_ENTRY();
 
     if (GetIsTile()) {
-        SetDrawEffect(GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof.get() : _engine->EffectMngr.Effects.Tile.get());
+        SetDrawEffect(GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof : _engine->EffectMngr.Effects.Tile);
+    }
+    else if (GetDrawFlatten()) {
+        SetDrawEffect(_engine->EffectMngr.Effects.Flat.get());
     }
     else {
-        SetDrawEffect(_engine->EffectMngr.Effects.Generic.get());
+        SetDrawEffect(_engine->EffectMngr.Effects.Generic);
     }
 
     RefreshAnim();
     RefreshAlpha();
 }
 
-void ItemHexView::SetupSprite(MapSprite* mspr)
+void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
 {
     FO_STACK_TRACE_ENTRY();
 
     HexView::SetupSprite(mspr);
 
+    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->MapRoofElevation) : GetElevation());
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 
@@ -79,6 +83,14 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
     }
 }
 
+auto ItemHexView::GetAnim() const -> ptr<const Sprite>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_anim, "Item has no animation sprite");
+    return _anim;
+}
+
 void ItemHexView::Process()
 {
     FO_STACK_TRACE_ENTRY();
@@ -88,24 +100,24 @@ void ItemHexView::Process()
     }
 
     if (_isMoving) {
-        const auto time = _engine->GameTime.GetFrameTime();
-        const auto dt = (time - _moveUpdateLastTime).to_ms<float32_t>();
+        nanotime time = _engine->GameTime.GetFrameTime();
+        float32_t dt = (time - _moveUpdateLastTime).to_ms<float32_t>();
         _moveUpdateLastTime = time;
 
         _moveCurOffset += _moveStepOffset * _moveSpeed * dt;
         RefreshOffs();
 
-        const auto dist = (_moveCurOffset - _moveStartOffset).dist();
+        float32_t dist = (_moveCurOffset - _moveStartOffset).dist();
 
         if (dist >= _moveWholeDist) {
             _moveCurOffset = (_moveStartOffset + _moveStepOffset) * _moveWholeDist;
             _isMoving = false;
         }
 
-        const auto proc = iround<int32_t>(dist / _moveWholeDist * 100.0f);
-        const auto step_hex = _moveSteps[_moveSteps.size() * std::min(proc, 99) / 100];
+        int32_t proc = _moveWholeDist > 0.0f ? iround<int32_t>(dist / _moveWholeDist * 100.0f) : 100;
+        auto step_hex = _moveSteps[_moveSteps.size() * std::min(proc, 99) / 100];
 
-        if (const auto hex = GetHex(); hex != step_hex) {
+        if (auto hex = GetHex(); hex != step_hex) {
             const auto [x, y] = GeometryHelper::GetHexOffset(hex, step_hex);
 
             _moveStartOffset.x -= numeric_cast<float32_t>(x);
@@ -123,7 +135,7 @@ void ItemHexView::MoveToHex(mpos hex, float32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cur_hex = GetHex();
+    auto cur_hex = GetHex();
 
     if (cur_hex == hex) {
         _isMoving = false;
@@ -137,7 +149,7 @@ void ItemHexView::MoveToHex(mpos hex, float32_t speed)
     _moveSteps.emplace_back(cur_hex);
     _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_moveSteps, false);
 
-    auto pos_offset = GeometryHelper::GetHexOffset(cur_hex, hex);
+    ipos32 pos_offset = GeometryHelper::GetHexOffset(cur_hex, hex);
     pos_offset.y += _engine->Random(5, 25); // Center of body
 
     _moveStepOffset = GeometryHelper::GetStepsCoords({}, pos_offset);
@@ -208,8 +220,8 @@ void ItemHexView::RefreshAnim()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool is_anim_init = !_anim;
-    const auto pic_name = GetPicMap();
+    bool is_anim_init = !_anim;
+    auto pic_name = GetPicMap();
 
     if (pic_name) {
         _anim = _engine->SprMngr.LoadSprite(pic_name, AtlasType::MapSprites);
@@ -219,7 +231,11 @@ void ItemHexView::RefreshAnim()
     }
 
     if (_anim) {
-        if (is_anim_init) {
+        if (_map->IsMapperMode()) {
+            _anim->Stop();
+            _anim->SetTime(0.0f);
+        }
+        else if (is_anim_init) {
             _anim->PlayDefault();
         }
         else {
@@ -235,7 +251,7 @@ void ItemHexView::RefreshAnim()
         _anim = _engine->ResMngr.GetItemDefaultSpr();
     }
 
-    _spr = _anim.get();
+    _spr = _anim;
     RefreshOffs();
 }
 
@@ -267,20 +283,9 @@ void ItemHexView::RefreshOffs()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto offset = GetOffset();
-
+    auto offset = GetOffset();
     _sprOffset = ipos32 {offset.x, offset.y};
-
-    if (GetIsTile()) {
-        if (GetIsRoofTile()) {
-            _sprOffset.x += _engine->Settings.MapRoofOffsX;
-            _sprOffset.y += _engine->Settings.MapRoofOffsY;
-        }
-        else {
-            _sprOffset.x += _engine->Settings.MapTileOffsX;
-            _sprOffset.y += _engine->Settings.MapTileOffsY;
-        }
-    }
+    _rootOffset = ipos32 {offset.x, offset.y};
 
     if (_isMoving) {
         _sprOffset.x += iround<int32_t>(_moveCurOffset.x);
@@ -293,7 +298,10 @@ void ItemHexView::SetMultihexEntries(vector<mpos> entries)
     FO_STACK_TRACE_ENTRY();
 
     if (!entries.empty()) {
-        make_if_not_exists(_multihexEntries);
+        if (!_multihexEntries) {
+            _multihexEntries.emplace();
+        }
+
         *_multihexEntries = std::move(entries);
     }
     else {

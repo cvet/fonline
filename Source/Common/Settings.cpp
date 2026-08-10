@@ -35,9 +35,16 @@
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"
-#include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE
+
+template<typename T>
+static auto FixedSettingForEdit(const T& value) noexcept -> ptr<T>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return const_cast<T*>(&value);
+}
 
 template<typename T>
 static void SetEntry(T& entry, string_view value, bool append)
@@ -53,32 +60,32 @@ static void SetEntry(T& entry, string_view value, bool append)
             entry += " ";
         }
 
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
+        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
         entry += any_value.AsString();
     }
     else if constexpr (std::same_as<T, bool>) {
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Bool);
+        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Bool);
         entry |= any_value.AsBool();
     }
     else if constexpr (std::floating_point<T>) {
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Float64);
+        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Float64);
         entry += numeric_cast<float32_t>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry = static_cast<T>(static_cast<int64_t>(entry) | any_value.AsInt64());
     }
     else if constexpr (some_strong_type<T>) {
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry = T {numeric_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
     else if constexpr (some_property_plain_type<T>) {
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
-        istringstream istr(any_value.AsString());
+        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
+        istringstream istr {string(any_value.AsString())};
         istr >> entry;
     }
     else {
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry += numeric_cast<T>(any_value.AsInt64());
     }
 }
@@ -93,7 +100,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
     }
 
     if constexpr (std::same_as<T, string>) {
-        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::String);
+        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::String);
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
@@ -101,7 +108,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         }
     }
     else if constexpr (std::same_as<T, bool>) {
-        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Bool);
+        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Bool);
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
@@ -109,7 +116,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         }
     }
     else if constexpr (std::floating_point<T>) {
-        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Float64);
+        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Float64);
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
@@ -117,7 +124,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         }
     }
     else if constexpr (std::is_enum_v<T>) {
-        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
+        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
@@ -125,7 +132,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         }
     }
     else {
-        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
+        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
@@ -151,24 +158,6 @@ static void DrawEditableEntry(string_view name, T& entry)
 }
 
 GlobalSettings::GlobalSettings(bool baking_mode) :
-    Common {static_cast<CommonSettings&>(*this)},
-    Network {static_cast<NetworkSettings&>(*this)},
-    ServerNetwork {static_cast<ServerNetworkSettings&>(*this)},
-    ClientNetwork {static_cast<ClientNetworkSettings&>(*this)},
-    Audio {static_cast<AudioSettings&>(*this)},
-    View {static_cast<ViewSettings&>(*this)},
-    Geometry {static_cast<GeometrySettings&>(*this)},
-    Render {static_cast<RenderSettings&>(*this)},
-    Timer {static_cast<TimerSettings&>(*this)},
-    Baking {static_cast<BakingSettings&>(*this)},
-    Critter {static_cast<CritterSettings&>(*this)},
-    CritterView {static_cast<CritterViewSettings&>(*this)},
-    Hex {static_cast<HexSettings&>(*this)},
-    Platform {static_cast<PlatformSettings&>(*this)},
-    Input {static_cast<InputSettings&>(*this)},
-    Mapper {static_cast<MapperSettings&>(*this)},
-    Client {static_cast<ClientSettings&>(*this)},
-    Server {static_cast<ServerSettings&>(*this)},
     _bakingMode {baking_mode}
 {
     FO_STACK_TRACE_ENTRY();
@@ -203,6 +192,7 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Baking.MapperResourceEntries");
         _appliedSettings.emplace("Baking.ServerResourceEntries");
         _appliedSettings.emplace("ClientNetwork.Ping");
+        _appliedSettings.emplace("Client.UserWritablePath");
         _appliedSettings.emplace("Hex.ScrollMouseUp");
         _appliedSettings.emplace("Hex.ScrollMouseDown");
         _appliedSettings.emplace("Hex.ScrollMouseLeft");
@@ -222,12 +212,12 @@ void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view conf
         return;
     }
 
-    const string config_path = strex(config_dir).combine_path(config_name);
+    string config_path = strex(config_dir).combine_path(config_name);
 
-    if (const auto settings_content = fs_read_file(config_path)) {
+    if (auto settings_content = fs_read_file(config_path)) {
         _appliedConfigs.emplace_back(config_path);
 
-        auto config = ConfigFile(config_name, *settings_content);
+        auto config = ConfigFile(*settings_content);
         ApplyConfigFile(config, config_dir);
     }
     else {
@@ -247,21 +237,31 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
     AddSubConfigs(config.GetSections("SubConfig"), config_dir);
 }
 
-void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv)
+void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (int32_t i = 0; i < argc; i++) {
-        if (i == 0 && argv[0][0] != '-') {
+    for (size_t i = 0; i < args.size(); i++) {
+        string_view arg = args.Get(i);
+
+        if (arg.empty()) {
             continue;
         }
 
-        if (argv[i][0] == '-') {
-            const string key = strex("{}", argv[i]).trim().str().substr(argv[i][1] == '-' ? 2 : 1);
-            const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? strex("{}", argv[i + 1]).trim().str() : "1";
+        if (i == 0 && !CommandLineArgs::IsOption(arg)) {
+            continue;
+        }
+
+        if (CommandLineArgs::IsOption(arg)) {
+            bool has_next_arg = i + 1 < args.size();
+            string_view next_arg = args.Get(i + 1);
+            string arg_text = strex("{}", arg).trim().str();
+            string key = arg_text.substr(arg_text.starts_with("--") ? 2 : 1);
+            string value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? strex("{}", next_arg).trim().str() : "1";
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
-                WriteLog(LogType::Info, "Set {} to {}", key, value);
+                string shown = IsSecretSettingName(key) ? string("***") : value;
+                WriteLog(LogType::Info, "Set {} to {}", key, shown);
                 SetValue(key, value);
             }
         }
@@ -272,15 +272,15 @@ void GlobalSettings::ApplyInternalConfig()
 {
     FO_STACK_TRACE_ENTRY();
 
-#include "InternalConfig-Include.h"
+#include "InternalConfig.gen.inc"
 
-    const auto config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
+    string config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
 
     if (strvex(config_str).starts_with("###InternalConfig###")) {
         throw SettingsException("Internal config not patched");
     }
 
-    auto config = ConfigFile("InternalConfig.fomain", config_str);
+    auto config = ConfigFile(config_str);
     ApplyConfigFile(config, "");
 }
 
@@ -291,9 +291,9 @@ void GlobalSettings::ApplyDefaultSettings()
     FO_DISABLE_WARNINGS_PUSH()
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#define FIXED_SETTING(type, group, name, ...) const_cast<type&>(name) = {__VA_ARGS__}
+#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(name)) = {__VA_ARGS__}
 #define VARIABLE_SETTING(type, group, name, ...) name = {__VA_ARGS__}
-#include "Settings-Include.h"
+#include "Settings.inc"
     FO_DISABLE_WARNINGS_POP()
 }
 
@@ -301,64 +301,57 @@ void GlobalSettings::ApplyAutoSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_cast<bool&>(Packaged) = IsPackaged();
+    *FixedSettingForEdit(Packaged) = IsPackaged();
 
 #if FO_WEB
-    const_cast<bool&>(WebBuild) = true;
+    *FixedSettingForEdit(WebBuild) = true;
 #else
-    const_cast<bool&>(WebBuild) = false;
+    *FixedSettingForEdit(WebBuild) = false;
 #endif
 #if FO_WINDOWS
-    const_cast<bool&>(WindowsBuild) = true;
+    *FixedSettingForEdit(WindowsBuild) = true;
 #else
-    const_cast<bool&>(WindowsBuild) = false;
+    *FixedSettingForEdit(WindowsBuild) = false;
 #endif
 #if FO_LINUX
-    const_cast<bool&>(LinuxBuild) = true;
+    *FixedSettingForEdit(LinuxBuild) = true;
 #else
-    const_cast<bool&>(LinuxBuild) = false;
+    *FixedSettingForEdit(LinuxBuild) = false;
 #endif
 #if FO_MAC
-    const_cast<bool&>(MacOsBuild) = true;
+    *FixedSettingForEdit(MacOsBuild) = true;
 #else
-    const_cast<bool&>(MacOsBuild) = false;
+    *FixedSettingForEdit(MacOsBuild) = false;
 #endif
 #if FO_ANDROID
-    const_cast<bool&>(AndroidBuild) = true;
+    *FixedSettingForEdit(AndroidBuild) = true;
 #else
-    const_cast<bool&>(AndroidBuild) = false;
+    *FixedSettingForEdit(AndroidBuild) = false;
 #endif
 #if FO_IOS
-    const_cast<bool&>(IOsBuild) = true;
+    *FixedSettingForEdit(IOsBuild) = true;
 #else
-    const_cast<bool&>(IOsBuild) = false;
+    *FixedSettingForEdit(IOsBuild) = false;
 #endif
-    const_cast<bool&>(DesktopBuild) = WindowsBuild || LinuxBuild || MacOsBuild;
-    const_cast<bool&>(TabletBuild) = AndroidBuild || IOsBuild;
+    *FixedSettingForEdit(DesktopBuild) = WindowsBuild || LinuxBuild || MacOsBuild;
+    *FixedSettingForEdit(TabletBuild) = AndroidBuild || IOsBuild;
 
-#if FO_WINDOWS
-    if (::GetSystemMetrics(SM_TABLETPC) != 0) {
-        const_cast<bool&>(DesktopBuild) = false;
-        const_cast<bool&>(TabletBuild) = true;
-    }
-#endif
-
-    const_cast<bool&>(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
-    const_cast<bool&>(MapSquare) = GameSettings::SQUARE_GEOMETRY;
-    const_cast<int32_t&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
+    *FixedSettingForEdit(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
+    *FixedSettingForEdit(MapSquare) = GameSettings::SQUARE_GEOMETRY;
+    *FixedSettingForEdit(MapDirCount) = GameSettings::MAP_DIR_COUNT;
 
 #if FO_DEBUG
-    const_cast<bool&>(DebugBuild) = true;
-    const_cast<bool&>(RenderDebug) = true;
+    *FixedSettingForEdit(DebugBuild) = true;
+    *FixedSettingForEdit(RenderDebug) = true;
 #endif
 
     if (MapDirectDraw) {
-        const_cast<bool&>(MapZoomEnabled) = false;
+        *FixedSettingForEdit(MapZoomEnabled) = false;
     }
 
-    const_cast<string&>(GitBranch) = FO_GIT_BRANCH;
-    const_cast<string&>(GitCommit) = FO_BUILD_HASH;
-    const_cast<string&>(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
+    *FixedSettingForEdit(GitBranch) = FO_GIT_BRANCH;
+    *FixedSettingForEdit(GitCommit) = FO_BUILD_HASH;
+    *FixedSettingForEdit(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 
 void GlobalSettings::CopyFrom(const GlobalSettings& other)
@@ -375,17 +368,17 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
 
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#define FIXED_SETTING(type, group, name, ...) const_cast<type&>(name) = other.name
+#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(name)) = other.name
 #define VARIABLE_SETTING(type, group, name, ...) name = other.name
-#include "Settings-Include.h"
+#include "Settings.inc"
 }
 
 void GlobalSettings::ApplySubConfigSection(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
-    const auto it = std::ranges::find_if(_subConfigs, find_predicate);
+    auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
+    auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
     if (it == _subConfigs.end()) {
         throw SettingsException("Sub config not found", name);
@@ -400,13 +393,26 @@ auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _customSettings.find(name);
+    auto it = _customSettings.find(name);
 
     if (it == _customSettings.end()) {
         return _emptySetting;
     }
 
     return it->second;
+}
+
+auto GlobalSettings::FindCustomSetting(string_view name) const -> nptr<const any_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto it = _customSettings.find(name);
+
+    if (it == _customSettings.end()) {
+        return nullptr;
+    }
+
+    return &it->second;
 }
 
 void GlobalSettings::SetCustomSetting(string_view name, any_t value)
@@ -420,7 +426,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool append = !setting_value.empty() && setting_value[0] == '+';
+    bool append = !setting_value.empty() && setting_value[0] == '+';
     string_view value = append ? string_view(setting_value).substr(1) : setting_value;
 
     // Resolve environment variables and files
@@ -430,24 +436,24 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 
     if (pos != string::npos) {
         while (pos != string::npos) {
-            const bool is_env = setting_value.compare(pos, "$ENV{"_len, "$ENV{") == 0;
-            const bool is_file = setting_value.compare(pos, "$FILE{"_len, "$FILE{") == 0;
-            const bool is_target_env = setting_value.compare(pos, "$TARGET_ENV{"_len, "$TARGET_ENV{") == 0;
-            const bool is_target_file = setting_value.compare(pos, "$TARGET_FILE{"_len, "$TARGET_FILE{") == 0;
-            const size_t len = is_env ? "$ENV{"_len : (is_file ? "$FILE{"_len : (is_target_env ? "$TARGET_ENV{"_len : "$TARGET_FILE{"_len));
+            bool is_env = setting_value.compare(pos, "$ENV{"_len, "$ENV{") == 0;
+            bool is_file = setting_value.compare(pos, "$FILE{"_len, "$FILE{") == 0;
+            bool is_target_env = setting_value.compare(pos, "$TARGET_ENV{"_len, "$TARGET_ENV{") == 0;
+            bool is_target_file = setting_value.compare(pos, "$TARGET_FILE{"_len, "$TARGET_FILE{") == 0;
+            size_t len = is_env ? "$ENV{"_len : (is_file ? "$FILE{"_len : (is_target_env ? "$TARGET_ENV{"_len : "$TARGET_FILE{"_len));
 
             if (is_env || is_file || (!_bakingMode && (is_target_env || is_target_file))) {
                 pos += len;
                 size_t end_pos = setting_value.find('}', pos);
 
                 if (end_pos != string::npos) {
-                    const string name = setting_value.substr(pos, end_pos - pos);
+                    string name = setting_value.substr(pos, end_pos - pos);
 
                     if (is_env || is_target_env) {
-                        const char* env = !name.empty() ? std::getenv(name.c_str()) : nullptr;
+                        auto env = make_nptr(!name.empty() ? std::getenv(name.c_str()) : nullptr);
 
-                        if (env != nullptr) {
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(env);
+                        if (env) {
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(env.get());
                             end_pos++;
                         }
                         else {
@@ -456,7 +462,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                         }
                     }
                     else {
-                        const string file_path = fs_is_absolute_path(name) ? name : strex(config_dir).combine_path(name);
+                        string file_path = fs_is_absolute_path(name) ? name : strex(config_dir).combine_path(name);
                         if (auto file_content = fs_read_file(file_path)) {
                             *file_content = strvex(*file_content).trim();
 
@@ -494,7 +500,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 #define FIXED_SETTING(type, group, name, ...) \
     case const_hash(#name): \
     case const_hash(#group "." #name): \
-        SET_SETTING(const_cast<type&>(name))
+        SET_SETTING(*FixedSettingForEdit(name))
 #define VARIABLE_SETTING(type, group, name, ...) \
     case const_hash(#name): \
     case const_hash(#group "." #name): \
@@ -503,7 +509,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 #define SETTING_GROUP_END()
 
     switch (const_hash(setting_name.c_str())) {
-#include "Settings-Include.h"
+#include "Settings.inc"
     default:
         _customSettings[setting_name] = any_t(string(value));
         break;
@@ -516,69 +522,72 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     }
 }
 
-void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir)
+void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_view>>>& res_packs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto* res_pack : res_packs) {
-        const auto get_map_value = [&](string_view key) -> string {
-            const auto it = res_pack->find(key);
+    for (ptr<const map<string_view, string_view>> res_pack : res_packs) {
+        auto get_map_value = [&](string_view key) -> string {
+            auto it = res_pack->find(key);
             return it != res_pack->end() ? string(it->second) : string();
         };
 
         ResourcePackInfo pack_info;
 
-        if (auto name = get_map_value("Name"); !name.empty()) {
+        if (string name = get_map_value("Name"); !name.empty()) {
             pack_info.Name = std::move(name);
         }
         else {
             throw SettingsException("Resource pack name not specifed");
         }
 
-        if (auto server_only = get_map_value("ServerOnly"); !server_only.empty()) {
+        if (string server_only = get_map_value("ServerOnly"); !server_only.empty()) {
             pack_info.ServerOnly = strvex(server_only).to_bool();
         }
-        if (auto client_only = get_map_value("ClientOnly"); !client_only.empty()) {
+        if (string client_only = get_map_value("ClientOnly"); !client_only.empty()) {
             pack_info.ClientOnly = strvex(client_only).to_bool();
         }
-        if (auto mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
+        if (string mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
             pack_info.MapperOnly = strvex(mapper_only).to_bool();
         }
         if (std::bit_cast<int8_t>(pack_info.ServerOnly) + std::bit_cast<int8_t>(pack_info.ClientOnly) + std::bit_cast<int8_t>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
         }
 
-        if (auto inpurt_dirs = get_map_value("InputDirs"); !inpurt_dirs.empty()) {
+        if (string inpurt_dirs = get_map_value("InputDirs"); !inpurt_dirs.empty()) {
             for (auto& inpurt_dir : strex(inpurt_dirs).split(' ')) {
                 inpurt_dir = strex(config_dir).combine_path(inpurt_dir);
                 pack_info.InputDirs.emplace_back(std::move(inpurt_dir));
             }
         }
-        if (auto input_files = get_map_value("InputFiles"); !input_files.empty()) {
+        if (string input_files = get_map_value("InputFiles"); !input_files.empty()) {
             for (auto& path : strex(input_files).split(' ')) {
                 path = strex(config_dir).combine_path(path);
                 pack_info.InputFiles.emplace_back(std::move(path));
             }
         }
-        if (auto recursive_input = get_map_value("RecursiveInput"); !recursive_input.empty()) {
-            pack_info.RecursiveInput = strvex(recursive_input).to_bool();
+        if (string include_patterns = get_map_value("IncludePatterns"); !include_patterns.empty()) {
+            pack_info.IncludePatterns = strex(include_patterns).split(' ');
+        }
+        if (string exclude_patterns = get_map_value("ExcludePatterns"); !exclude_patterns.empty()) {
+            pack_info.ExcludePatterns = strex(exclude_patterns).split(' ');
         }
 
         if (pack_info.ServerOnly) {
-            const_cast<vector<string>&>(ServerResourceEntries).emplace_back(pack_info.Name);
+            FixedSettingForEdit(ServerResourceEntries)->emplace_back(pack_info.Name);
         }
         else if (pack_info.ClientOnly) {
-            const_cast<vector<string>&>(ClientResourceEntries).emplace_back(pack_info.Name);
+            FixedSettingForEdit(ClientResourceEntries)->emplace_back(pack_info.Name);
         }
         else if (pack_info.MapperOnly) {
-            const_cast<vector<string>&>(MapperResourceEntries).emplace_back(pack_info.Name);
+            FixedSettingForEdit(MapperResourceEntries)->emplace_back(pack_info.Name);
         }
         else {
-            const_cast<vector<string>&>(ServerResourceEntries).emplace_back(pack_info.Name);
-            const_cast<vector<string>&>(ClientResourceEntries).emplace_back(pack_info.Name);
+            FixedSettingForEdit(ServerResourceEntries)->emplace_back(pack_info.Name);
+            FixedSettingForEdit(ClientResourceEntries)->emplace_back(pack_info.Name);
         }
 
-        if (auto bakers = get_map_value("Bakers"); !bakers.empty()) {
+        if (string bakers = get_map_value("Bakers"); !bakers.empty()) {
             for (auto& baker : strex(bakers).split(' ')) {
                 pack_info.Bakers.emplace_back(std::move(baker));
             }
@@ -588,20 +597,20 @@ void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>
     }
 }
 
-void GlobalSettings::AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir)
+void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view>>>& sub_configs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto* sub_config : sub_configs) {
-        const auto get_map_value = [&](string_view key) -> string {
-            const auto it = sub_config->find(key);
+    for (ptr<const map<string_view, string_view>> sub_config : sub_configs) {
+        auto get_map_value = [&](string_view key) -> string {
+            auto it = sub_config->find(key);
             return it != sub_config->end() ? string(it->second) : string();
         };
 
         SubConfigInfo config_info;
         config_info.ConfigDir = config_dir;
 
-        if (auto name = get_map_value("Name"); !name.empty()) {
+        if (string name = get_map_value("Name"); !name.empty()) {
             config_info.Name = std::move(name);
         }
         else {
@@ -610,14 +619,18 @@ void GlobalSettings::AddSubConfigs(const vector<map<string_view, string_view>*>&
 
         if (auto parents = strex(get_map_value("Parent")).split(' '); !parents.empty()) {
             for (const auto& parent : parents) {
-                const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == parent; };
-                const auto it = std::ranges::find_if(_subConfigs, find_predicate);
+                auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == parent; };
+                auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
                 if (it == _subConfigs.end()) {
                     throw SettingsException("Parent sub config not found", parent);
                 }
 
-                config_info.Settings = it->Settings;
+                // Merge, not assign: with multiple parents (Parent = A B) later parents override earlier
+                // ones per key, and the section's own settings (below) override all parents.
+                for (auto&& [key, value] : it->Settings) {
+                    config_info.Settings[key] = value;
+                }
             }
         }
 
@@ -635,7 +648,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_bakingMode);
+    FO_VERIFY_AND_THROW(_bakingMode, "Settings can only be saved in baking mode");
 
     map<string, string> result;
 
@@ -645,7 +658,7 @@ auto GlobalSettings::Save() const -> map<string, string>
         }
     }
 
-    const auto add_setting = [&](string_view name, const auto& value) {
+    auto add_setting = [&](string_view name, const auto& value) {
         if (_appliedSettings.count(name) != 0) {
             result.emplace(name, strex("{}", value));
         }
@@ -655,7 +668,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 #define VARIABLE_SETTING(type, group, name, ...) add_setting(#group "." #name, name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#include "Settings-Include.h"
+#include "Settings.inc"
 
     return result;
 }
@@ -666,7 +679,7 @@ void GlobalSettings::Draw(bool editable)
 
 #define FIXED_SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#group "." #name, const_cast<type&>(name)); \
+        DrawEditableEntry(#group "." #name, *FixedSettingForEdit(name)); \
     } \
     else { \
         DrawEntry(#group "." #name, name); \
@@ -680,7 +693,7 @@ void GlobalSettings::Draw(bool editable)
     }
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#include "Settings-Include.h"
+#include "Settings.inc"
 }
 
 auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
@@ -692,6 +705,21 @@ auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
     }
 
     return _resourcePacks;
+}
+
+bool GlobalSettings::IsSecretSettingName(string_view name) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string lower_name = strex(name).lower().str();
+
+    for (const auto& token : SecretSettingTokens) {
+        if (!token.empty() && lower_name.find(strex(token).lower().str()) != string::npos) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 FO_END_NAMESPACE

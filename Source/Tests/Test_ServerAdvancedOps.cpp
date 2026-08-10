@@ -59,7 +59,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        const auto script_source = string(R"(
+        auto script_source = string(R"(
 
 namespace AdvOps
 {
@@ -68,7 +68,7 @@ namespace AdvOps
     int TestCreateLocation()
     {
         // Create location with no maps
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
+        Location loc = Game.CreateLocation("TestLocation".hstr());
         if (loc is null) return -1;
 
         // Check basic properties
@@ -85,12 +85,12 @@ namespace AdvOps
     int TestLocationLifecycle()
     {
         // Create and destroy
-        Location@ loc1 = Game.CreateLocation("TestLocation".hstr());
+        Location loc1 = Game.CreateLocation("TestLocation".hstr());
         if (loc1 is null) return -1;
 
         int64 id1 = loc1.Id.value;
 
-        Location@ loc2 = Game.CreateLocation("TestLocation".hstr());
+        Location loc2 = Game.CreateLocation("TestLocation".hstr());
         if (loc2 is null) return -2;
 
         // Two distinct locations
@@ -110,25 +110,13 @@ namespace AdvOps
         return 0;
     }
 
-    int TestDestroyLocationById()
-    {
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
-        if (loc is null) return -1;
-
-        ident locId = loc.Id;
-        Game.DestroyLocation(locId);
-        if (!loc.IsDestroyed) return -2;
-
-        return 0;
-    }
-
     int TestGetLocationById()
     {
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
+        Location loc = Game.CreateLocation("TestLocation".hstr());
         if (loc is null) return -1;
 
         ident locId = loc.Id;
-        Location@ found = Game.GetLocation(locId);
+        Location? found = Game.GetLocation(locId);
         if (found is null) return -2;
         if (!(found is loc)) return -3;
 
@@ -141,17 +129,17 @@ namespace AdvOps
     int TestEntityCounts()
     {
         // Create some entities
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
 
         if (cr1 is null || cr2 is null) return -1;
 
         // Get all NPCs
-        array<Critter@> allNpc = Game.GetAllNpc();
+        array<Critter> allNpc = Game.GetAllNpc();
         if (allNpc.length() < 2) return -2;
 
         // Get all NPCs by proto
-        array<Critter@> npcByProto = Game.GetAllNpc("TestCritter".hstr());
+        array<Critter> npcByProto = Game.GetAllNpc("TestCritter".hstr());
         if (npcByProto.length() < 2) return -3;
 
         // Destroy and verify count decreases
@@ -166,13 +154,13 @@ namespace AdvOps
 
     int TestBulkDestroyCritters()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr3 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr3 = Game.CreateCritter("TestCritter".hstr(), false);
 
         if (cr1 is null || cr2 is null || cr3 is null) return -1;
 
-        array<Critter@> toDestroy = {cr1, cr2, cr3};
+        array<Critter> toDestroy = {cr1, cr2, cr3};
         Game.DestroyCritters(toDestroy);
 
         if (!cr1.IsDestroyed || !cr2.IsDestroyed || !cr3.IsDestroyed) return -2;
@@ -182,16 +170,16 @@ namespace AdvOps
 
     int TestBulkDestroyItems()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item@ item2 = cr.AddItem("TestItem".hstr(), 1);
-        Item@ item3 = cr.AddItem("TestItem".hstr(), 1);
+        Item item1 = cr.AddItem("TestItem".hstr(), 1);
+        Item item2 = cr.AddItem("TestItem".hstr(), 1);
+        Item item3 = cr.AddItem("TestItem".hstr(), 1);
 
         if (item1 is null || item2 is null || item3 is null) return -2;
 
-        array<Item@> toDestroy = {item1, item2, item3};
+        array<Item> toDestroy = {item1, item2, item3};
         Game.DestroyItems(toDestroy);
 
         if (!item1.IsDestroyed || !item2.IsDestroyed || !item3.IsDestroyed) return -3;
@@ -202,11 +190,11 @@ namespace AdvOps
 
     int TestGetCritterById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         ident crId = cr.Id;
-        Critter@ found = Game.GetCritter(crId);
+        Critter? found = Game.GetCritter(crId);
         if (found is null) return -2;
         if (!(found is cr)) return -3;
 
@@ -218,7 +206,7 @@ namespace AdvOps
 
     int TestCritterCondition()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Default state is alive
@@ -232,7 +220,7 @@ namespace AdvOps
 
     int TestCritterDirection()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Get initial direction angle
@@ -254,12 +242,12 @@ namespace AdvOps
 
     int TestCritterMultipleItems()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Add multiple items
-        Item@ item1 = cr.AddItem("TestItem".hstr(), 5);
-        Item@ item2 = cr.AddItem("TestItem".hstr(), 3);
+        Item item1 = cr.AddItem("TestItem".hstr(), 5);
+        Item item2 = cr.AddItem("TestItem".hstr(), 3);
 
         if (item1 is null || item2 is null) return -2;
 
@@ -268,7 +256,7 @@ namespace AdvOps
         if (count < 2) return -3;
 
         // Get all items
-        array<Item@> items = cr.GetItems();
+        array<Item> items = cr.GetItems();
         if (items.length() < 2) return -4;
 
         // Destroy items via Game API
@@ -281,14 +269,14 @@ namespace AdvOps
 
     int TestCritterItemByPid()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         // Find item by pid
-        Item@ found = cr.GetItem("TestItem".hstr());
+        Item? found = cr.GetItem("TestItem".hstr());
         if (found is null) return -3;
         if (!(found is item)) return -4;
 
@@ -305,14 +293,14 @@ namespace AdvOps
 
     int TestCritterItemById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         ident itemId = item.Id;
-        Item@ found = cr.GetItem(itemId);
+        Item? found = cr.GetItem(itemId);
         if (found is null) return -3;
         if (!(found is item)) return -4;
 
@@ -325,10 +313,10 @@ namespace AdvOps
     int TestItemCreation()
     {
         // Create item via critter
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
         if (item.IsDestroyed) return -3;
         if (item.Id.value == 0) return -4;
@@ -343,25 +331,9 @@ namespace AdvOps
         return 0;
     }
 
-    int TestItemDestroyById()
-    {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
-        if (item is null) return -2;
-
-        ident itemId = item.Id;
-        Game.DestroyItem(itemId);
-        if (!item.IsDestroyed) return -3;
-
-        Game.DestroyCritter(cr);
-        return 0;
-    }
-
     int TestItemDestroyPartial()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         cr.AddItem("TestItem".hstr(), 10);
@@ -379,14 +351,14 @@ namespace AdvOps
 
     int TestItemGetById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         ident id = item.Id;
-        Item@ found = Game.GetItem(id);
+        Item? found = Game.GetItem(id);
         if (found is null) return -3;
         if (!(found is item)) return -4;
 
@@ -397,11 +369,11 @@ namespace AdvOps
 
     int TestMoveItemBetweenCritters()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item@ item = cr1.AddItem("TestItem".hstr(), 1);
+        Item item = cr1.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         // Move item from cr1 to cr2
@@ -421,11 +393,11 @@ namespace AdvOps
 
     int TestMoveItemPartial()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item@ item = cr1.AddItem("TestItem".hstr(), 10);
+        Item item = cr1.AddItem("TestItem".hstr(), 10);
         if (item is null) return -2;
 
         // Move partial count
@@ -445,7 +417,7 @@ namespace AdvOps
 
     int TestPlayerLookup()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         if (cr.GetPlayer() !is null) return -2;
@@ -687,8 +659,8 @@ namespace AdvOps
     {
         dict<ident, string> d = {};
 
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
         d.set(cr1.Id, "first");
@@ -867,16 +839,16 @@ namespace AdvOps
     int TestGetAllNpcOverloads()
     {
         // Create some critters
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
         // GetAllNpc()
-        array<Critter@> all = Game.GetAllNpc();
+        array<Critter> all = Game.GetAllNpc();
         if (all.length() < 2) return -2;
 
         // GetAllNpc(pid)
-        array<Critter@> byPid = Game.GetAllNpc("TestCritter".hstr());
+        array<Critter> byPid = Game.GetAllNpc("TestCritter".hstr());
         if (byPid.length() < 2) return -3;
 
         Game.DestroyCritter(cr1);
@@ -888,7 +860,7 @@ namespace AdvOps
 
     int TestEntityPersistence()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Initially not persistent (for test critters)
@@ -983,21 +955,21 @@ namespace AdvOps
 
     int TestGetProtoCritter()
     {
-        ProtoCritter@ proto = Game.GetProtoCritter("TestCritter".hstr());
+        ProtoCritter? proto = Game.GetProtoCritter("TestCritter".hstr());
         if (proto is null) return -1;
         return 0;
     }
 
     int TestGetProtoItem()
     {
-        ProtoItem@ proto = Game.GetProtoItem("TestItem".hstr());
+        ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
         if (proto is null) return -1;
         return 0;
     }
 
     int TestGetProtoLocation()
     {
-        ProtoLocation@ proto = Game.GetProtoLocation("TestLocation".hstr());
+        ProtoLocation? proto = Game.GetProtoLocation("TestLocation".hstr());
         if (proto is null) return -1;
         return 0;
     }
@@ -1009,7 +981,7 @@ namespace AdvOps
                 {"Scripts/AdvOps.fos", script_source},
             },
             [](string_view message) {
-                const auto message_str = string(message);
+                string message_str = string(message);
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -1019,7 +991,7 @@ namespace AdvOps
 
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1028,13 +1000,13 @@ namespace AdvOps
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
-        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1049,10 +1021,8 @@ namespace AdvOps
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_RUNTIME_ASSERT(server);
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -1066,11 +1036,16 @@ namespace AdvOps
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+    }
 }
 
 #define MAKE_SERVER() \
     auto settings = MakeSettings(); \
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources()); \
+    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -1078,12 +1053,12 @@ namespace AdvOps
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server.get()); \
+    string startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
 
 #define RUN_SCRIPT_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("AdvOps::" func_name)); \
@@ -1105,11 +1080,6 @@ TEST_CASE("LocationCreation")
     SECTION("Lifecycle")
     {
         RUN_SCRIPT_FUNC("TestLocationLifecycle");
-    }
-
-    SECTION("DestroyById")
-    {
-        RUN_SCRIPT_FUNC("TestDestroyLocationById");
     }
 
     SECTION("GetById")
@@ -1186,11 +1156,6 @@ TEST_CASE("AdvancedItemOperations")
     SECTION("Creation")
     {
         RUN_SCRIPT_FUNC("TestItemCreation");
-    }
-
-    SECTION("DestroyById")
-    {
-        RUN_SCRIPT_FUNC("TestItemDestroyById");
     }
 
     SECTION("DestroyPartial")

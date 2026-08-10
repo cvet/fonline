@@ -102,7 +102,7 @@ struct tiny_allocator
   : std::allocator<T> 
 { 
   using size_type = std::uint16_t;
-  
+
   using std::allocator<T>::allocator;
 
   // You don't need either of the following when compiling for C++20.
@@ -332,7 +332,7 @@ namespace gch
     small_vector (size_type count, const_reference value,
                   const allocator_type& alloc = allocator_type ())
       requires CopyInsertable;
-    
+
     template <std::copy_constructible Generator>
     requires std::invocable<Generator&>
          &&  EmplaceConstructible<std::invoke_result_t<Generator&>>
@@ -551,7 +551,7 @@ namespace gch
     constexpr
     iterator
     insert (const_iterator pos, InputIt first, InputIt last);
-    
+
     constexpr
     iterator
     insert (const_iterator pos, std::initializer_list<value_type> ilist)

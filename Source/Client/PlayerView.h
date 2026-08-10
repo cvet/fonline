@@ -45,7 +45,7 @@ class PlayerView final : public ClientEntity, public PlayerProperties
 {
 public:
     PlayerView() = delete;
-    PlayerView(ClientEngine* engine, ident_t id, const Properties* props = nullptr);
+    PlayerView(ptr<ClientEngine> engine, ident_t id, nptr<const Properties> props = nullptr);
     PlayerView(const PlayerView&) = delete;
     PlayerView(PlayerView&&) noexcept = delete;
     auto operator=(const PlayerView&) = delete;

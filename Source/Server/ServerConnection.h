@@ -43,50 +43,53 @@ FO_BEGIN_NAMESPACE
 class ServerConnection final
 {
 public:
-    class OutBufAccessor
+    using DataArrivedCallback = function<void()>;
+
+    class FO_TSA_SCOPED_CAPABILITY OutBufAccessor
     {
     public:
-        explicit OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg);
+        explicit OutBufAccessor(ptr<ServerConnection> owner, optional<NetMessage> msg) FO_TSA_ACQUIRE(owner->_outBufLocker);
         OutBufAccessor() = delete;
         OutBufAccessor(const OutBufAccessor&) = delete;
-        OutBufAccessor(OutBufAccessor&&) noexcept = default;
+        OutBufAccessor(OutBufAccessor&&) noexcept FO_TSA_NO_ANALYSIS = default;
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
-        ~OutBufAccessor() noexcept(false);
-        auto operator->() noexcept -> NetOutBuffer* { return _outBuf.get(); }
+        ~OutBufAccessor() noexcept(false) FO_TSA_RELEASE();
+        auto operator->() noexcept -> ptr<NetOutBuffer> { return _outBuf; }
         auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
 
     private:
-        raw_ptr<ServerConnection> _owner;
-        raw_ptr<NetOutBuffer> _outBuf;
+        ptr<ServerConnection> _owner;
+        nptr<NetOutBuffer> _outBuf {};
         optional<NetMessage> _msg;
         stack_unwind_detector _isStackUnwinding {};
     };
 
-    class InBufAccessor
+    class FO_TSA_SCOPED_CAPABILITY InBufAccessor
     {
     public:
-        explicit InBufAccessor(ServerConnection* owner);
+        explicit InBufAccessor(ptr<ServerConnection> owner) FO_TSA_ACQUIRE(owner->_inBufLocker);
         InBufAccessor() = delete;
         InBufAccessor(const InBufAccessor&) = delete;
-        InBufAccessor(InBufAccessor&&) noexcept = default;
+        InBufAccessor(InBufAccessor&&) noexcept FO_TSA_NO_ANALYSIS = default;
         auto operator=(const InBufAccessor&) = delete;
         auto operator=(InBufAccessor&&) noexcept = delete;
-        ~InBufAccessor();
-        auto operator->() noexcept -> NetInBuffer* { return _inBuf.get(); }
+        ~InBufAccessor() FO_TSA_RELEASE();
+        auto operator->() noexcept -> ptr<NetInBuffer> { return _inBuf; }
         auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
-        void Lock();
-        void Unlock() noexcept;
+        void Lock() FO_TSA_ACQUIRE();
+        void Unlock() noexcept FO_TSA_RELEASE();
 
     private:
-        raw_ptr<ServerConnection> _owner;
-        raw_ptr<NetInBuffer> _inBuf {};
+        ptr<ServerConnection> _owner;
+        nptr<NetInBuffer> _inBuf {};
     };
 
     struct Diagnostics
     {
         bool HandshakeComplete {};
         nanotime LastActivityTime {};
+        nanotime LastLoginProgressTime {};
         bool PingAnswerReceived {true};
         int32_t PendingUpdateFileIndex {-1};
         int32_t PendingUpdateFilePortion {};
@@ -99,7 +102,7 @@ public:
     };
 
     ServerConnection() = delete;
-    explicit ServerConnection(ServerNetworkSettings& settings, shared_ptr<NetworkServerConnection> net_connection);
+    explicit ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection);
     ServerConnection(const ServerConnection&) = delete;
     ServerConnection(ServerConnection&&) noexcept = delete;
     auto operator=(const ServerConnection&) = delete;
@@ -113,21 +116,26 @@ public:
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
+    [[nodiscard]] auto IsLoginTimedOut(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto NeedPing(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
 
+    void SetDataArrivedCallback(DataArrivedCallback callback);
     void MarkHandshakeComplete() noexcept;
     void EnsureActivityTime(nanotime time) noexcept;
     void RegisterActivity(nanotime time) noexcept;
+    void RegisterLoginProgress(nanotime time) noexcept;
     void RegisterPingRequest(nanotime time) noexcept;
     void RegisterPingAnswer(nanotime time) noexcept;
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
-    auto WriteMsg(NetMessage msg) -> OutBufAccessor { return OutBufAccessor(this, msg); }
-    auto WriteBuf() -> OutBufAccessor { return OutBufAccessor(this, std::nullopt); }
-    auto ReadBuf() -> InBufAccessor { return InBufAccessor(this); }
+    // These factories deliberately return a guard that still holds the buffer lock (released when the caller's
+    // accessor leaves scope); TSA cannot express "returns holding a lock", so the trivial bodies are exempt.
+    OutBufAccessor WriteMsg(NetMessage msg) FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), msg); }
+    OutBufAccessor WriteBuf() FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), std::nullopt); }
+    InBufAccessor ReadBuf() FO_TSA_NO_ANALYSIS { return InBufAccessor(make_ptr(this)); }
 
     void HardDisconnect();
     void GracefulDisconnect();
@@ -139,6 +147,7 @@ private:
         nanotime NextPingTime {};
         bool PingAnswerReceived {true};
         nanotime LastActivityTime {};
+        nanotime LastLoginProgressTime {};
     };
 
     struct UpdateFileTransferState
@@ -151,16 +160,17 @@ private:
     auto AsyncSendData() -> const_span<uint8_t>;
     void AsyncReceiveData(const_span<uint8_t> buf);
 
-    raw_ptr<ServerNetworkSettings> _settings;
+    ptr<ServerNetworkSettings> _settings;
     shared_ptr<NetworkServerConnection> _netConnection;
+    mutex _inBufLocker {};
     NetInBuffer _inBuf;
-    std::mutex _inBufLocker {};
+    mutex _outBufLocker {};
     NetOutBuffer _outBuf;
-    std::mutex _outBufLocker {};
     vector<uint8_t> _sendBuf {};
     StreamCompressor _compressor {};
     ActivityState _activity {};
     UpdateFileTransferState _updateFileTransfer {};
+    DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
 };
 

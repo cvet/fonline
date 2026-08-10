@@ -41,13 +41,13 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MetadataNotFoundException);
 
-void RegisterServerMetadata(EngineMetadata* meta, const FileSystem* resources);
-void RegisterClientMetadata(EngineMetadata* meta, const FileSystem* resources);
-void RegisterMapperMetadata(EngineMetadata* meta, const FileSystem* resources);
-void RegisterServerStubMetadata(EngineMetadata* meta, const FileSystem* resources);
-void RegisterClientStubMetadata(EngineMetadata* meta, const FileSystem* resources);
-void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resources);
-void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8_t> metadata_bin);
-auto ReadMetadataBin(const FileSystem* resources, string_view target) -> vector<uint8_t>;
+void RegisterServerMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
+void RegisterClientMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
+void RegisterMapperMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
+void RegisterServerStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
+void RegisterClientStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
+void RegisterMapperStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
+void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin);
+auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vector<uint8_t>;
 
 FO_END_NAMESPACE

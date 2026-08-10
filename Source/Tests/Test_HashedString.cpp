@@ -41,7 +41,7 @@ TEST_CASE("HashedString")
 {
     SECTION("EmptyHash")
     {
-        const hstring empty {};
+        hstring empty {};
         CHECK_FALSE(static_cast<bool>(empty));
         CHECK(empty.as_hash() == 0);
         CHECK(empty.as_str().empty());
@@ -51,14 +51,14 @@ TEST_CASE("HashedString")
     {
         HashStorage storage {};
 
-        const auto hs = storage.ToHashedString("EssentialsTest");
+        hstring hs = storage.ToHashedString("EssentialsTest");
         CHECK(static_cast<bool>(hs));
         CHECK(hs.as_hash() != 0);
         CHECK(hs.as_uint64() == hs.as_hash());
-        CHECK(hs.as_hash() == hashing_ex::hash(hs.as_str().data(), hs.as_str().length()));
+        CHECK(hs.as_hash() == HashStorage::DefaultHash(make_const_span(hs.as_str())));
         CHECK(hs.as_str() == "EssentialsTest");
 
-        const auto resolved = storage.ResolveHash(hs.as_hash());
+        hstring resolved = storage.ResolveHash(hs.as_hash());
         CHECK(resolved == hs);
         CHECK(resolved.as_str() == "EssentialsTest");
     }
@@ -67,8 +67,8 @@ TEST_CASE("HashedString")
     {
         HashStorage storage {};
 
-        const auto hs1 = storage.ToHashedString("same_value");
-        const auto hs2 = storage.ToHashedString("same_value");
+        hstring hs1 = storage.ToHashedString("same_value");
+        hstring hs2 = storage.ToHashedString("same_value");
 
         CHECK(hs1 == hs2);
         CHECK(hs1.as_hash() == hs2.as_hash());
@@ -80,8 +80,8 @@ TEST_CASE("HashedString")
         HashStorage storage {};
 
         bool failed = false;
-        const auto unresolved_hash = hashing_ex::hash("missing", 7);
-        const auto unresolved = storage.ResolveHash(unresolved_hash, &failed);
+        auto unresolved_hash = hashing_ex::hash("missing", 7);
+        hstring unresolved = storage.ResolveHash(unresolved_hash, &failed);
 
         CHECK(failed);
         CHECK_FALSE(static_cast<bool>(unresolved));
@@ -91,9 +91,9 @@ TEST_CASE("HashedString")
     {
         HashStorage storage {};
 
-        const auto hs = storage.ToHashedString("known_value");
+        hstring hs = storage.ToHashedString("known_value");
         bool failed = true;
-        const auto resolved = storage.ResolveHash(hs.as_hash(), &failed);
+        hstring resolved = storage.ResolveHash(hs.as_hash(), &failed);
 
         CHECK(failed);
         CHECK(resolved == hs);
@@ -104,16 +104,49 @@ TEST_CASE("HashedString")
     {
         HashStorage storage {};
 
-        const auto hs = storage.ToHashedString("known");
+        hstring hs = storage.ToHashedString("known");
         CHECK_NOTHROW(storage.ResolveHash(hs.as_hash()));
         CHECK_THROWS_AS(storage.ResolveHash(hashing_ex::hash("unknown", 7)), HashResolveException);
+    }
+
+    SECTION("ResolveHashFailureHandler")
+    {
+        HashStorage storage {};
+
+        hstring::hash_t reported_hash = 0;
+        int32_t reports = 0;
+
+        storage.SetResolveHashFailureHandler([&reported_hash, &reports](hstring::hash_t hash) {
+            reported_hash = hash;
+            reports++;
+        });
+
+        auto no_throw_unresolved_hash = hashing_ex::hash("unknown", 7);
+        bool failed = false;
+        CHECK_FALSE(static_cast<bool>(storage.ResolveHash(no_throw_unresolved_hash, &failed)));
+        CHECK(failed);
+        CHECK(reported_hash == no_throw_unresolved_hash);
+        CHECK(reports == 1);
+
+        hstring hs = storage.ToHashedString("known");
+        CHECK_NOTHROW(storage.ResolveHash(hs.as_hash()));
+        CHECK(reports == 1);
+
+        auto throwing_unresolved_hash = hashing_ex::hash("unknown_throwing", 16);
+        CHECK_THROWS_AS(storage.ResolveHash(throwing_unresolved_hash), HashResolveException);
+        CHECK(reported_hash == throwing_unresolved_hash);
+        CHECK(reports == 2);
+
+        storage.SetResolveHashFailureHandler({});
+        CHECK_THROWS_AS(storage.ResolveHash(hashing_ex::hash("missing", 7)), HashResolveException);
+        CHECK(reports == 2);
     }
 
     SECTION("ResolveHashNoThrowNullFailed")
     {
         HashStorage storage {};
 
-        const auto unresolved = storage.ResolveHash(hashing_ex::hash("missing", 7), nullptr);
+        hstring unresolved = storage.ResolveHash(hashing_ex::hash("missing", 7), nullptr);
         CHECK_FALSE(static_cast<bool>(unresolved));
     }
 
@@ -122,7 +155,7 @@ TEST_CASE("HashedString")
         HashStorage storage {};
 
         bool failed = true;
-        const auto resolved = storage.ResolveHash(0, &failed);
+        hstring resolved = storage.ResolveHash(0, &failed);
 
         CHECK(failed);
         CHECK_FALSE(static_cast<bool>(resolved));
@@ -132,17 +165,17 @@ TEST_CASE("HashedString")
     {
         HashStorage storage {};
 
-        const auto hs = storage.ToHashedString("known_flow");
+        hstring hs = storage.ToHashedString("known_flow");
         bool failed = false;
 
         CHECK_FALSE(static_cast<bool>(storage.ResolveHash(hashing_ex::hash("missing", 7), &failed)));
         CHECK(failed);
 
-        const auto resolved = storage.ResolveHash(hs.as_hash(), &failed);
+        hstring resolved = storage.ResolveHash(hs.as_hash(), &failed);
         CHECK(failed);
         CHECK(resolved == hs);
 
-        const auto zero_resolved = storage.ResolveHash(0, &failed);
+        hstring zero_resolved = storage.ResolveHash(0, &failed);
         CHECK(failed);
         CHECK_FALSE(static_cast<bool>(zero_resolved));
     }
@@ -151,10 +184,28 @@ TEST_CASE("HashedString")
     {
         HashStorage storage {};
 
-        const auto hs = storage.ToHashedString("");
+        hstring hs = storage.ToHashedString("");
         CHECK_FALSE(static_cast<bool>(hs));
         CHECK(hs.as_hash() == 0);
         CHECK(hs.as_str().empty());
+    }
+
+    SECTION("CheckHashedStringChecksWithoutInserting")
+    {
+        HashStorage storage {};
+
+        storage.ToHashedString("registered_value");
+        CHECK(storage.CheckHashedString("registered_value"));
+
+        // An unregistered string is reported missing and must NOT be inserted
+        CHECK_FALSE(storage.CheckHashedString("never_registered_value"));
+
+        bool still_failed = false;
+        (void)storage.ResolveHash(hashing_ex::hash("never_registered_value", 22), &still_failed);
+        CHECK(still_failed);
+
+        // Empty string is the zero hash, never a registered entry
+        CHECK_FALSE(storage.CheckHashedString(""));
     }
 }
 

@@ -99,7 +99,7 @@ public:
         [[nodiscard]] auto AsInt64() const -> int64_t { return std::get<int64_t>(_value); }
         [[nodiscard]] auto AsDouble() const -> float64_t { return std::get<float64_t>(_value); }
         [[nodiscard]] auto AsBool() const -> bool { return std::get<bool>(_value); }
-        [[nodiscard]] auto AsString() const -> const string& { return std::get<string>(_value); }
+        [[nodiscard]] auto AsString() const -> string_view { return std::get<string>(_value); }
         [[nodiscard]] auto AsArray() const -> const Array& { return *std::get<unique_ptr<Array>>(_value); }
         [[nodiscard]] auto AsDict() const -> const Dict& { return *std::get<unique_ptr<Dict>>(_value); }
         [[nodiscard]] auto Copy() const -> Value;
@@ -179,7 +179,7 @@ public:
 
 private:
     [[nodiscard]] static auto ValueToCodedString(const Value& value) -> string;
-    [[nodiscard]] static auto ReadToken(const char* str, string& result) -> const char*;
+    [[nodiscard]] static auto ReadToken(nptr<const char> str, string& result) -> nptr<const char>;
 };
 
 class StringEscaping final

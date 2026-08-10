@@ -18,7 +18,10 @@
 *.focfg    text
 *.fodlg    text
 *.fogui    text
-*.fopts    text
+*.spark    text
+*.efkproj  text
+*.spk      binary
+*.efk      binary
 
 # Syntax highlighting
 *.fos      linguist-language=AngelScript
@@ -29,7 +32,8 @@
 *.foloc    linguist-language=INI
 *.fofrm    linguist-language=INI
 *.focfg    linguist-language=INI
-*.fopts    linguist-language=XML
+*.spark    linguist-language=XML
+*.efkproj  linguist-language=XML
 
 # Documents
 *.cmake    text

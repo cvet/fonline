@@ -22,27 +22,6 @@ TEST_CASE("MemorySystem")
         CHECK(FreeBackupMemoryChunk());
     }
 
-    SECTION("MemCallocAndReallocPreservePrefix")
-    {
-        auto* ptr = static_cast<uint32_t*>(MemCalloc(3, sizeof(uint32_t)));
-        REQUIRE(ptr != nullptr);
-        CHECK(ptr[0] == 0);
-        CHECK(ptr[1] == 0);
-        CHECK(ptr[2] == 0);
-
-        ptr[0] = 11;
-        ptr[1] = 22;
-        ptr[2] = 33;
-
-        auto* grown = static_cast<uint32_t*>(MemRealloc(ptr, sizeof(uint32_t) * 5));
-        REQUIRE(grown != nullptr);
-        CHECK(grown[0] == 11);
-        CHECK(grown[1] == 22);
-        CHECK(grown[2] == 33);
-
-        MemFree(grown);
-    }
-
     SECTION("SafeAllocConstructsObjectsAndZeroInitializedArrays")
     {
         struct TestValue
@@ -55,15 +34,14 @@ TEST_CASE("MemorySystem")
             int32_t Value {};
         };
 
-        const auto unique_value = SafeAlloc::MakeUnique<TestValue>(123);
-        REQUIRE(unique_value);
+        auto unique_value = SafeAlloc::MakeUnique<TestValue>(123);
         CHECK(unique_value->Value == 123);
 
-        const auto shared_value = SafeAlloc::MakeShared<TestValue>(321);
+        auto shared_value = SafeAlloc::MakeShared<TestValue>(321);
         REQUIRE(shared_value);
         CHECK(shared_value->Value == 321);
 
-        const auto zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
+        auto zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
         REQUIRE(zero_array);
         CHECK(zero_array[0] == 0);
         CHECK(zero_array[1] == 0);
@@ -71,32 +49,89 @@ TEST_CASE("MemorySystem")
         CHECK(zero_array[3] == 0);
     }
 
+    SECTION("SafeAllocRawTierAllocatesZeroesAndGrows")
+    {
+        auto values = SafeAlloc::CallocRaw(3, sizeof(uint32_t)).reinterpret_as<uint32_t>();
+        REQUIRE(values);
+        CHECK(values[0] == 0);
+        CHECK(values[1] == 0);
+        CHECK(values[2] == 0);
+
+        values[0] = 11;
+        values[1] = 22;
+        values[2] = 33;
+
+        auto grown = SafeAlloc::ReallocRaw(values, sizeof(uint32_t) * 5).reinterpret_as<uint32_t>();
+        REQUIRE(grown);
+        CHECK(grown[0] == 11);
+        CHECK(grown[1] == 22);
+        CHECK(grown[2] == 33);
+
+        SafeAlloc::FreeRaw(grown);
+
+        auto bytes = SafeAlloc::MallocRaw(64);
+        REQUIRE(bytes);
+        SafeAlloc::FreeRaw(bytes);
+    }
+
+    SECTION("SafeAllocAlignedRawHonoursRequestedAlignment")
+    {
+        for (size_t alignment : {size_t {8}, size_t {16}, size_t {64}, size_t {256}}) {
+            auto block = SafeAlloc::MallocAlignedRaw(1000, alignment);
+            REQUIRE(block);
+            CHECK(block.as_uintptr() % alignment == 0);
+            SafeAlloc::FreeAlignedRaw(block);
+        }
+    }
+
+    SECTION("SafeAllocatorHonoursOverAlignedElements")
+    {
+        FO_MSVC_IGNORE_WARNINGS_PUSH(4324) // Padding from the alignment specifier is the point of this type
+
+        struct alignas(64) OverAlignedValue
+        {
+            int32_t Value {};
+        };
+
+        FO_MSVC_IGNORE_WARNINGS_POP()
+
+        static_assert(alignof(OverAlignedValue) > __STDCPP_DEFAULT_NEW_ALIGNMENT__);
+
+        constexpr SafeAllocator<OverAlignedValue> over_aligned_allocator;
+        ptr<OverAlignedValue> over_aligned = over_aligned_allocator.allocate(8);
+        CHECK(over_aligned.as_uintptr() % alignof(OverAlignedValue) == 0);
+        over_aligned_allocator.deallocate(over_aligned.get(), 8);
+
+        constexpr SafeAllocator<uint8_t> byte_allocator;
+        ptr<uint8_t> bytes = byte_allocator.allocate(24);
+        CHECK(bytes.as_uintptr() % alignof(std::max_align_t) == 0);
+        byte_allocator.deallocate(bytes.get(), 24);
+    }
+
     SECTION("MakeRefCountedPreservesInitialOwnership")
     {
         struct TestRefCounted final : RefCounted<TestRefCounted>
         {
-            TestRefCounted(int32_t value_, int32_t* destroyed_) noexcept :
+            TestRefCounted(int32_t value_, ptr<int32_t> destroyed) noexcept :
                 Value {value_},
-                Destroyed {destroyed_}
+                Destroyed {destroyed}
             {
             }
 
             ~TestRefCounted() { ++*Destroyed; }
 
             int32_t Value {};
-            int32_t* Destroyed {};
+            ptr<int32_t> Destroyed;
         };
 
         int32_t destroyed = 0;
 
         {
             auto ptr = SafeAlloc::MakeRefCounted<TestRefCounted>(42, &destroyed);
-            REQUIRE(ptr);
             CHECK(ptr->Value == 42);
 
             {
                 auto copy = ptr;
-                REQUIRE(copy);
                 CHECK(copy->Value == 42);
             }
 

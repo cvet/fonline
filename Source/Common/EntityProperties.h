@@ -79,7 +79,7 @@ public:
     }
 
     ///@ ExportProperty Server
-    FO_ENTITY_PROPERTY(bool, Logined);
+    FO_ENTITY_PROPERTY(bool, LoggedIn);
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(ident_t, ControlledCritterId);
     ///@ ExportProperty Server Persistent
@@ -109,6 +109,8 @@ public:
     FO_ENTITY_PROPERTY(ident_t, MapId);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(mpos, Hex);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(int16_t, Elevation);
     ///@ MigrationRule Property Item CritId CritterId
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ident_t, CritterId);
@@ -169,9 +171,9 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int8_t, LightIntensity);
     ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(uint8_t, LightDistance);
+    FO_ENTITY_PROPERTY(int16_t, LightDistance);
     ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(uint8_t, LightFlags);
+    FO_ENTITY_PROPERTY(uint16_t, LightFlags);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(ucolor, LightColor);
     ///@ ExportProperty Common Mutable PublicSync Persistent
@@ -211,8 +213,6 @@ public:
     ///@ MigrationRule Property Item IsColorize Colorize
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, Colorize);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(string, Lexems);
 };
 
 class CritterProperties : public EntityProperties
@@ -236,6 +236,8 @@ public:
     FO_ENTITY_PROPERTY(mpos, Hex);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ipos16, HexOffset);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(int16_t, Elevation);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(mdir, Dir);
     ///@ ExportProperty Server Persistent
@@ -278,11 +280,19 @@ public:
     FO_ENTITY_PROPERTY(int16_t, NameOffset);
     ///@ ExportProperty Common Mutable OwnerSync Persistent
     FO_ENTITY_PROPERTY(int32_t, LookDistance);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(string, Lexems);
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(bool, LightSource);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(int8_t, LightIntensity);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(int16_t, LightDistance);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(uint16_t, LightFlags);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(ucolor, LightColor);
 };
 
 class MapProperties : public EntityProperties
@@ -326,6 +336,14 @@ public:
     FO_ENTITY_PROPERTY(vector<int32_t>, DayColorTime);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(vector<uint8_t>, DayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(ucolor, MapDayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(ucolor, GlobalDayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(int32_t, MapDayLightCapacity);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(int32_t, GlobalDayLightCapacity);
 };
 
 class LocationProperties : public EntityProperties

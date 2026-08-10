@@ -46,8 +46,8 @@ FO_BEGIN_NAMESPACE
 
 class EngineMetadata;
 
-void RegisterAngelScriptEnums(AngelScript::asIScriptEngine* as_engine);
-void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine);
+void RegisterAngelScriptEnums(ptr<AngelScript::asIScriptEngine> as_engine);
+void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine);
 
 FO_END_NAMESPACE
 

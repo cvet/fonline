@@ -31,9 +31,50 @@ set(CMAKE_SKIP_INSTALL_RULES ON CACHE BOOL "Forced by FOnline" FORCE)
 # Disable warnings in third-party libs
 function(DisableLibWarnings)
 	foreach(lib ${ARGV})
+		# -w suppresses ordinary warnings, but Clang 20+ promoted several legacy-C diagnostics to errors BY DEFAULT
+		# (the C23 transition); -w does not downgrade those, so vendored C code (LibreSSL, mongo-c, ...) would fail to
+		# build under clang/clang-cl. Demote that family back to warnings (then -w hides them) so third-party stays
+		# silent on every toolchain.
+		# Every flag below is a C/CXX compiler flag, so it is gated on $<COMPILE_LANGUAGE:C,CXX>. Without that gate the
+		# flags also reach ASM_MASM sources (e.g. AngelScript's as_callfunc_x64_msvc_asm.asm under clang-cl), and the
+		# MASM assembler (llvm-ml) rejects the warning flags with "ignoring unsupported 'w'/'W' option" — a warning that
+		# our own warning-silencing was the sole cause of. Keeping the gate makes vendored ASM assemble cleanly while the
+		# C/CXX warning suppression is unchanged.
 		target_compile_options(${lib} PRIVATE
-			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>
-			$<$<CXX_COMPILER_ID:MSVC>:/W0>)
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>>:-w>
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-Wno-error=incompatible-pointer-types
+				-Wno-error=incompatible-function-pointer-types
+				-Wno-error=int-conversion
+				-Wno-error=implicit-function-declaration
+				-Wno-error=implicit-int>
+			# UBSan's -fsanitize=function (part of -fsanitize=undefined) flags calls made through a generic /
+			# mismatched function-pointer type as undefined behaviour. Several vendored libraries do this by design
+			# (AngelScript's whole script-call dispatch invokes registered C functions through bool(*)(void*,void*)
+			# and friends; mongo-c/zlib-style C callbacks do the same), so it is a third-party idiom, not a bug in
+			# our code. Exclude vendored libs from this one check on the San_Undefined configs; every other UBSan
+			# check stays active, and the flag is a harmless no-op on non-sanitizer builds.
+			#
+			# -fsanitize=alignment is excluded for the same reason — but ONLY genuine third-party packing remains here:
+			#   * SQLite (the embedded DB) casts page-cache bytes to its own record/page structs by design; fixing it
+			#     would mean rewriting a vendored amalgamation we do not own.
+			#   * AngelScript packs pointer-sized asPWORD operands into its asDWORD[] (4-byte) bytecode buffer at 4-byte
+			#     slots by design (asBC_PTRARG/asBC_QWORDARG = `*(asPWORD*)((asDWORD*)bc+1)`, plus the serializer's
+			#     WriteByteCode/ReadByteCode pointer operands), ~136 sites — upstream bytecode encoding, not our patches.
+			# Both are correct on every architecture the engine targets; this is third-party design, not a bug in our
+			# code, so vendored libs are excused from the alignment check. NOTE: the FOnline-side AngelScript value-type
+			# alignment (8-byte value types / primitives / handles on the VM stack, init-list buffers, return slots) was
+			# fixed at the SOURCE — our own code (Engine/Source/...) reports 0 alignment errors with this exclusion off.
+			#
+			# -fsanitize=pointer-overflow is excluded for the same reason, and again ONLY third-party VM design remains:
+			# AngelScript's bytecode interpreter addresses a local variable as `framePointer - unsignedVariableOffset`
+			# (asBC_GETOBJREF/asBC_GETREF: `*(asPWORD**)a = *(asPWORD**)(l_fp - *a)` at as_context.cpp), so the offset is
+			# subtracted from the frame pointer as an unsigned value. UBSan's pointer-overflow check reports that as
+			# "subtraction of unsigned offset overflowed" even though the result stays inside the VM stack frame — upstream
+			# interpreter addressing, correct on every target architecture, not our patch. A full gameplay San_Undefined
+			# run reports this at exactly one site (the AngelScript VM) and 0 pointer-overflow sites in Engine/Source, so
+			# keeping the check active for our own code (this exclusion is vendored-libs-only) loses no coverage.
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow>
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()
 endfunction()
 
@@ -142,10 +183,42 @@ macro(SetOptionValues)
 
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
-		if(NOT DEFINED ${optionName} OR "${${optionName}}" STREQUAL "")
-			set(${optionName} "${optionValue}")
+		set(_soptShadow "_FO_OPTION_DEFAULT_${optionName}")
+		get_property(_soptHasCache CACHE ${optionName} PROPERTY VALUE SET)
+		get_property(_soptCacheType CACHE ${optionName} PROPERTY TYPE)
+
+		# Shadow default: if the current cache value differs from the default we last applied, the value
+		# was explicitly overridden (-D / preset cacheVariables / gui) -> keep it. On a first configure,
+		# untyped -D / preset cache entries have no shadow yet, so preserve those as initial overrides too.
+		# Otherwise (unset, or still our default) -> (re)apply the current cmake-file default with FORCE.
+		# This keeps the cmake file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no
+		# longer sticks at an old number) while still honoring real overrides.
+		if(DEFINED ${optionName} AND DEFINED ${_soptShadow} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
+			set(_soptResolved "${${optionName}}")
+		elseif(_soptHasCache AND _soptCacheType STREQUAL "UNINITIALIZED" AND NOT DEFINED ${_soptShadow})
+			set(_soptResolved "${${optionName}}")
+		else()
+			set(_soptResolved "${optionValue}")
 		endif()
+
+		string(TOUPPER "${_soptResolved}" _soptUpper)
+		if(_soptUpper STREQUAL "ON" OR _soptUpper STREQUAL "OFF" OR _soptUpper STREQUAL "TRUE" OR
+			_soptUpper STREQUAL "FALSE" OR _soptUpper STREQUAL "YES" OR _soptUpper STREQUAL "NO" OR
+			_soptUpper STREQUAL "1" OR _soptUpper STREQUAL "0")
+			set(${optionName} ${_soptResolved} CACHE BOOL "Forced by FOnline (override via -D / preset / gui)" FORCE)
+		else()
+			set(${optionName} "${_soptResolved}" CACHE STRING "Forced by FOnline (override via -D / preset / gui)" FORCE)
+		endif()
+
+		set(${_soptShadow} "${optionValue}" CACHE INTERNAL "Last FOnline-applied default for ${optionName}")
+		set(${optionName} "${_soptResolved}")
 	endwhile()
+
+	unset(_soptShadow)
+	unset(_soptHasCache)
+	unset(_soptCacheType)
+	unset(_soptResolved)
+	unset(_soptUpper)
 endmacro()
 
 # Force-set a list of CMake cache variables, auto-detecting BOOL vs STRING entries:
@@ -258,10 +331,28 @@ macro(CreatePackage package)
 	AppendList(FO_PACKAGES ${package})
 	set(Package_${package}_Config "")
 	set(Package_${package}_Parts "")
+	set(Package_${package}_IncludeSourceGlobs "")
+	set(Package_${package}_IncludeTargetPaths "")
 endmacro()
 
 macro(AddToPackage package binary platform arch packType)
-	AppendList(Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}")
+	set(addToPackageCustomConfig "")
+	set(addToPackageBinaryOutputPostfix "")
+
+	if(${ARGC} GREATER 5)
+		set(addToPackageCustomConfig "${ARGV5}")
+	endif()
+
+	if(${ARGC} GREATER 6)
+		set(addToPackageBinaryOutputPostfix "${ARGV6}")
+	endif()
+
+	AppendList(Package_${package}_Parts "${binary},${platform},${arch},${packType},${addToPackageCustomConfig},${addToPackageBinaryOutputPostfix}")
+endmacro()
+
+macro(AddIncludeToPackage package sourceGlob targetPath)
+	AppendList(Package_${package}_IncludeSourceGlobs "${sourceGlob}")
+	AppendList(Package_${package}_IncludeTargetPaths "${targetPath}")
 endmacro()
 
 macro(AddPackageOption package optionName optionValue)
@@ -289,7 +380,30 @@ macro(DefinePackage package)
 			endif()
 
 			ListPopFront(packageArgs binary platform arch packType)
-			AddToPackage(${package} ${binary} ${platform} ${arch} ${packType})
+			set(binaryOutputPostfix "")
+
+			if(packageArgs)
+				ListGet(packageArgs 0 binaryOption)
+
+				if(binaryOption STREQUAL "POSTFIX")
+					ListLength(packageArgs packageArgsCount)
+					if(packageArgsCount LESS 2)
+						AbortMessage("DefinePackage ${package} BINARY POSTFIX expects a value")
+					endif()
+
+					ListPopFront(packageArgs binaryOption binaryOutputPostfix)
+				endif()
+			endif()
+
+			AddToPackage(${package} ${binary} ${platform} ${arch} ${packType} "" "${binaryOutputPostfix}")
+		elseif(packageKeyword STREQUAL "INCLUDE")
+			ListLength(packageArgs packageArgsCount)
+			if(packageArgsCount LESS 2)
+				AbortMessage("DefinePackage ${package} INCLUDE expects source path glob and target path")
+			endif()
+
+			ListPopFront(packageArgs includeSourceGlob includeTargetPath)
+			AddIncludeToPackage(${package} "${includeSourceGlob}" "${includeTargetPath}")
 		elseif(packageKeyword STREQUAL "OPTION")
 			ListLength(packageArgs packageArgsCount)
 			if(packageArgsCount LESS 2)
@@ -546,6 +660,14 @@ macro(AddExecutableApplication target sourceFile)
 	endif()
 	set(CMAKE_FOLDER "${_fo_prev_folder}")
 
+	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		# ASan instrumentation inflates stack frames well past the 1 MiB Windows executable default, so
+		# sanitizer configs get the same 8 MiB reserve that Linux runs already have from the default rlimit.
+		# Production configs deliberately keep the 1 MiB default: this is ASan-overhead parity, not a
+		# statement that the engine needs a bigger stack.
+		TargetLinkOptions(${target} PRIVATE $<${expr_SanitizerConfigs}:/STACK:8388608>)
+	endif()
+
 	set(appExecArgs
 		PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY ${APP_EXEC_OUTPUT_DIR}
@@ -595,6 +717,14 @@ macro(AddSharedApplication target sourceFile)
 
 	SetupApplicationTarget(${target} ${appSharedArgs})
 
+	if(FO_LINUX)
+		# Runtime modules are dlopen'ed by an engine host executable that exports its own engine
+		# symbols (-rdynamic for stack traces). Bind the module's global references to its own
+		# definitions so it keeps private global data and allocator state instead of interposing
+		# on the host's copies; the host/runtime C ABI never transfers ownership across modules.
+		TargetLinkOptions(${target} PRIVATE -Wl,-Bsymbolic)
+	endif()
+
 	if(APP_SHARED_NO_PREFIX)
 		set_target_properties(${target} PROPERTIES PREFIX "")
 	endif()
@@ -620,7 +750,7 @@ endfunction()
 # binary as a POST_BUILD step, and ensure the producer is built first. Useful
 # for shared libraries / plugins that must sit next to a host executable
 # (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
-# to the editor, ...). Silently does nothing if either target is missing.
+# to a tool host, ...). Silently does nothing if either target is missing.
 function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
 	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
 		return()

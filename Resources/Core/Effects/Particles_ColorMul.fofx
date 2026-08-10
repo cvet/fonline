@@ -1,9 +1,16 @@
+# Particles_ColorMul — alpha-blended (over) particles using the full texture colour.
+# Where: a particle-system blend shader.
+# How: BlendFunc SrcAlpha InvSrcAlpha (standard over-blend); the fragment multiplies the per-particle vertex colour by the full texture sample (RGB and alpha), so the texture's colour is used, not just its alpha mask.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 BlendFunc = SrcAlpha InvSrcAlpha
 DepthWrite = False
+DepthFunc = LessEqual
+DepthVariants = True
 
 [VertexShader]
-layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -14,13 +21,15 @@ layout(location = 1) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
 }
 
 [FragmentShader]
-layout(binding = 0) uniform sampler2D MainTex;
+layout(set = 0, binding = 1, std140) uniform ParticleSamplingBuf { vec4 ParticleSampling; };
+layout(set = 0, binding = 2, std140) uniform MainTexBuf { vec4 MainTexSize; };
+layout(set = 1, binding = 0) uniform sampler2D MainTex;
 
 layout(location = 0) in vec4 Color;
 layout(location = 1) in vec2 TexCoord;
@@ -29,5 +38,6 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-    FragColor = Color * texture(MainTex, TexCoord);
+    vec2 snapped = (floor(TexCoord * MainTexSize.xy) + 0.5) * MainTexSize.zw;
+    FragColor = Color * texture(MainTex, mix(TexCoord, snapped, ParticleSampling.x));
 }

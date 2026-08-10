@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, const DataSource* ds) :
+FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds) :
     _isLoaded {true},
     _filePath {path},
     _fileSize {size},
@@ -44,15 +44,15 @@ FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, const
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_dataSource);
+    FO_VERIFY_AND_THROW(_dataSource, "Missing required data source");
 }
 
 auto FileHeader::GetNameNoExt() const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(!_filePath.empty());
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while extracting the resource name", _fileSize, _writeTime);
 
     string_view name = _filePath;
     auto pos = name.find_last_of("/\\");
@@ -70,12 +70,12 @@ auto FileHeader::GetNameNoExt() const -> string_view
     return name;
 }
 
-auto FileHeader::GetPath() const -> const string&
+auto FileHeader::GetPath() const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(!_filePath.empty());
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while returning the resource path", _fileSize, _writeTime);
 
     return _filePath;
 }
@@ -84,9 +84,9 @@ auto FileHeader::GetDiskPath() const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(!_filePath.empty());
-    FO_RUNTIME_ASSERT(_dataSource->IsDiskDir());
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", _dataSource->GetPackName(), _fileSize, _writeTime);
+    FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, _dataSource->GetPackName());
 
     return strex(_dataSource->GetPackName()).combine_path(_filePath);
 }
@@ -95,7 +95,7 @@ auto FileHeader::GetSize() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
     return _fileSize;
 }
@@ -104,30 +104,30 @@ auto FileHeader::GetWriteTime() const -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
     return _writeTime;
 }
 
-auto FileHeader::GetDataSource() const -> const DataSource*
+auto FileHeader::GetDataSource() const -> ptr<const DataSource>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
-    return _dataSource.get();
+    return _dataSource;
 }
 
 auto FileHeader::Copy() const -> FileHeader
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
-    return FileHeader(_filePath, _fileSize, _writeTime, _dataSource.get());
+    return FileHeader(_filePath, _fileSize, _writeTime, _dataSource);
 }
 
-File::File(string_view path, size_t size, uint64_t write_time, const DataSource* ds, unique_del_ptr<const uint8_t>&& buf) :
+File::File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf) :
     FileHeader(path, size, write_time, ds),
     _fileBuf {std::move(buf)}
 {
@@ -138,56 +138,69 @@ auto File::Load(const FileHeader& fh) -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(fh);
-    auto size = fh.GetSize();
-    auto write_time = fh.GetWriteTime();
-    auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), size, write_time);
-    FO_RUNTIME_ASSERT(buf);
+    FO_VERIFY_AND_THROW(fh, "File header is null");
+    size_t size = fh.GetSize();
+    uint64_t write_time = fh.GetWriteTime();
+    auto data_source = fh.GetDataSource();
+    auto buf = data_source->OpenFile(fh.GetPath(), size, write_time);
+    FO_VERIFY_AND_THROW(buf, "Missing required buffer", fh.GetPath(), data_source->GetPackName(), size, write_time);
 
-    return File(fh.GetPath(), size, write_time, fh.GetDataSource(), std::move(buf));
+    return File(fh.GetPath(), size, write_time, data_source, take_not_null(buf));
 }
 
 auto File::GetStr() const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(_fileBuf);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    return {reinterpret_cast<const char*>(_fileBuf.get()), _fileSize};
+    string result;
+    result.resize(_fileSize);
+
+    if (!result.empty()) {
+        MemCopy(result.data(), _fileBuf, result.size());
+    }
+
+    return result;
 }
 
 auto File::GetData() const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(_fileBuf);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
     vector<uint8_t> result;
     result.resize(_fileSize);
-    MemCopy(result.data(), _fileBuf.get(), _fileSize);
+
+    if (!result.empty()) {
+        MemCopy(result.data(), _fileBuf, result.size());
+    }
+
     return result;
 }
 
-auto File::GetBuf() const -> const uint8_t*
+auto File::GetDataSpan() const -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(_fileBuf);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    return _fileBuf.get();
+    return const_span<uint8_t> {_fileBuf.get(), _fileSize};
 }
 
 auto File::GetReader() const -> FileReader
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(_fileBuf);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    return FileReader({_fileBuf.get(), _fileSize});
+    const_span<uint8_t> file_span = {_fileBuf.get(), _fileSize};
+    return FileReader(file_span);
 }
 
 FileReader::FileReader(const_span<uint8_t> buf) :
@@ -200,7 +213,15 @@ auto FileReader::GetStr() const -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return {reinterpret_cast<const char*>(_buf.data()), _buf.size()};
+    string result;
+    result.resize(_buf.size());
+
+    if (!result.empty()) {
+        auto source = make_ptr(_buf.data());
+        MemCopy(result.data(), source, result.size());
+    }
+
+    return result;
 }
 
 auto FileReader::GetData() const -> vector<uint8_t>
@@ -209,15 +230,20 @@ auto FileReader::GetData() const -> vector<uint8_t>
 
     vector<uint8_t> result;
     result.resize(_buf.size());
-    MemCopy(result.data(), _buf.data(), _buf.size());
+
+    if (!result.empty()) {
+        auto source = make_ptr(_buf.data());
+        MemCopy(result.data(), source, result.size());
+    }
+
     return result;
 }
 
-auto FileReader::GetBuf() const -> const uint8_t*
+auto FileReader::GetDataSpan() const -> const_span<uint8_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _buf.data();
+    return _buf;
 }
 
 auto FileReader::GetSize() const -> size_t
@@ -227,11 +253,20 @@ auto FileReader::GetSize() const -> size_t
     return _buf.size();
 }
 
-auto FileReader::GetCurBuf() const -> const uint8_t*
+auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    return _buf.data() + _curPos;
+    if (size == 0) {
+        return {};
+    }
+
+    if (size > _buf.size() - _curPos) {
+        throw FileSystemExeption("Invalid read size");
+    }
+
+    auto data = make_ptr(_buf.data()).offset(_curPos);
+    return const_span<uint8_t> {data.get(), size};
 }
 
 auto FileReader::GetCurPos() const -> size_t
@@ -245,7 +280,7 @@ void FileReader::SetCurPos(size_t pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(pos <= _buf.size());
+    FO_VERIFY_AND_THROW(pos <= _buf.size(), "File reader seek position is outside the loaded buffer", pos, _buf.size(), _curPos);
 
     _curPos = pos;
 }
@@ -254,7 +289,7 @@ void FileReader::GoForward(size_t offs)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curPos + offs <= _buf.size());
+    FO_VERIFY_AND_THROW(_curPos + offs <= _buf.size(), "File reader forward seek would move past the loaded buffer", _curPos, offs, _buf.size());
 
     _curPos += offs;
 }
@@ -263,7 +298,7 @@ void FileReader::GoBack(size_t offs)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(offs <= _curPos);
+    FO_VERIFY_AND_THROW(offs <= _curPos, "File reader cannot move back before the beginning of the buffer", offs, _curPos);
 
     _curPos -= offs;
 }
@@ -272,7 +307,7 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!fragment.empty());
+    FO_VERIFY_AND_THROW(!fragment.empty(), "File reader fragment search received an empty pattern", _curPos, _buf.size());
 
     if (_curPos + fragment.size() > _buf.size()) {
         return false;
@@ -299,19 +334,31 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
     return false;
 }
 
-void FileReader::CopyData(void* ptr, size_t size)
+void FileReader::CopyData(span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (size == 0) {
+    if (buf.empty()) {
         return;
     }
-    if (_curPos + size > _buf.size()) {
+    if (_curPos + buf.size() > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    MemCopy(ptr, _buf.data() + _curPos, size);
-    _curPos += size;
+    auto source = make_ptr(_buf.data()).offset(_curPos);
+    MemCopy(buf.data(), source, buf.size());
+    _curPos += buf.size();
+}
+
+void FileReader::ReadBytes(span<uint8_t> out)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (out.empty()) {
+        return;
+    }
+
+    CopyData(out);
 }
 
 // ReSharper disable once CppInconsistentNaming
@@ -325,15 +372,28 @@ auto FileReader::GetStrNT() -> string
 
     uint32_t len = 0;
 
-    while (*(_buf.data() + _curPos + len) != 0) {
-        len++;
-
-        if (_curPos + len > _buf.size()) {
+    while (true) {
+        if (_curPos + len >= _buf.size()) {
             throw FileSystemExeption("Invalid null terminated string length");
         }
+
+        auto cur_byte = make_ptr(_buf.data()).offset(_curPos + len);
+
+        if (*cur_byte == 0) {
+            break;
+        }
+
+        len++;
     }
 
-    string str(reinterpret_cast<const char*>(_buf.data() + _curPos), len);
+    string str;
+    str.resize(numeric_cast<size_t>(len));
+
+    if (!str.empty()) {
+        auto source = make_ptr(_buf.data()).offset(_curPos);
+        MemCopy(str.data(), source, str.size());
+    }
+
     _curPos += len + 1;
     return str;
 }
@@ -358,11 +418,9 @@ auto FileReader::GetBEUInt16() -> uint16_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint16_t res = 0;
-    auto* cres = reinterpret_cast<uint8_t*>(&res);
-    cres[1] = _buf[_curPos++];
-    cres[0] = _buf[_curPos++];
-    return res;
+    uint32_t high_byte = _buf[_curPos++];
+    uint32_t low_byte = _buf[_curPos++];
+    return numeric_cast<uint16_t>((high_byte << 8) | low_byte);
 }
 
 // ReSharper disable once CppInconsistentNaming
@@ -374,11 +432,9 @@ auto FileReader::GetLEUInt16() -> uint16_t
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint16_t res = 0;
-    auto* cres = reinterpret_cast<uint8_t*>(&res);
-    cres[0] = _buf[_curPos++];
-    cres[1] = _buf[_curPos++];
-    return res;
+    uint32_t low_byte = _buf[_curPos++];
+    uint32_t high_byte = _buf[_curPos++];
+    return numeric_cast<uint16_t>(low_byte | (high_byte << 8));
 }
 
 // ReSharper disable once CppInconsistentNaming
@@ -391,10 +447,9 @@ auto FileReader::GetBEUInt32() -> uint32_t
     }
 
     uint32_t res = 0;
-    auto* cres = reinterpret_cast<uint8_t*>(&res);
 
-    for (auto i = 3; i >= 0; i--) {
-        cres[i] = _buf[_curPos++];
+    for (size_t i = 0; i != sizeof(uint32_t); i++) {
+        res = (res << 8) | _buf[_curPos++];
     }
 
     return res;
@@ -410,10 +465,9 @@ auto FileReader::GetLEUInt32() -> uint32_t
     }
 
     uint32_t res = 0;
-    auto* cres = reinterpret_cast<uint8_t*>(&res);
 
-    for (auto i = 0; i <= 3; i++) {
-        cres[i] = _buf[_curPos++];
+    for (size_t i = 0; i != sizeof(uint32_t); i++) {
+        res |= numeric_cast<uint32_t>(_buf[_curPos++]) << (i * 8);
     }
 
     return res;
@@ -430,7 +484,7 @@ FileCollection::FileCollection(initializer_list<FileHeader> files)
     for (const auto& fh : files) {
         _files.emplace_back(fh.Copy());
         _nameToIndex.emplace(_files.back().GetNameNoExt(), _files.size() - 1);
-        _pathToIndex.emplace(_files.back().GetPath(), _files.size() - 1);
+        _pathToIndex.emplace(string(_files.back().GetPath()), _files.size() - 1);
     }
 }
 
@@ -446,7 +500,7 @@ FileCollection::FileCollection(vector<FileHeader> files) :
 
     for (const auto& fh : _files) {
         _nameToIndex.emplace(fh.GetNameNoExt(), index);
-        _pathToIndex.emplace(fh.GetPath(), index);
+        _pathToIndex.emplace(string(fh.GetPath()), index);
         ++index;
     }
 }
@@ -462,7 +516,7 @@ auto FileCollection::GetFileByIndex(size_t index) const -> const FileHeader&
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(index < _files.size());
+    FO_VERIFY_AND_THROW(index < _files.size(), "File collection index is outside the collected file list", index, _files.size());
     return _files[index];
 }
 
@@ -470,7 +524,7 @@ auto FileCollection::FindFileByName(string_view name_no_ext) const -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _nameToIndex.find(name_no_ext); it != _nameToIndex.end()) {
+    if (auto it = _nameToIndex.find(name_no_ext); it != _nameToIndex.end()) {
         const auto& fh = _files[it->second];
         return File::Load(fh);
     }
@@ -482,7 +536,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = _pathToIndex.find(path); it != _pathToIndex.end()) {
+    if (auto it = _pathToIndex.find(path); it != _pathToIndex.end()) {
         const auto& fh = _files[it->second];
         return File::Load(fh);
     }
@@ -528,6 +582,19 @@ void FileSystem::AddCustomSource(unique_ptr<DataSource> data_source)
     _dataSources.emplace(_dataSources.begin(), std::move(data_source));
 }
 
+auto FileSystem::ReindexDataSources() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool changed = false;
+
+    for (auto& data_source : _dataSources) {
+        changed |= data_source->Reindex();
+    }
+
+    return changed;
+}
+
 void FileSystem::CleanDataSources()
 {
     FO_STACK_TRACE_ENTRY();
@@ -549,7 +616,9 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
     vector<FileHeader> files;
     unordered_set<string> processed_files;
 
-    for (const auto& ds : _dataSources) {
+    for (size_t i = 0; i != _dataSources.size(); ++i) {
+        auto ds = _dataSources[i].as_ptr();
+
         for (const auto& path : ds->GetFileNames(dir, recursive, ext)) {
             if (!processed_files.emplace(path).second) {
                 continue;
@@ -557,9 +626,9 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
 
             size_t size = 0;
             uint64_t write_time = 0;
-            const auto ok = ds->GetFileInfo(path, size, write_time);
-            FO_RUNTIME_ASSERT(ok);
-            auto file_header = FileHeader(path, size, write_time, ds.get());
+            bool ok = ds->GetFileInfo(path, size, write_time);
+            FO_VERIFY_AND_THROW(ok, "Data source listed a file but did not return its metadata", ds->GetPackName(), path);
+            auto file_header = FileHeader(path, size, write_time, ds);
             files.emplace_back(std::move(file_header));
         }
     }
@@ -567,15 +636,113 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
     return FileCollection(std::move(files));
 }
 
+static auto MatchResourcePathGlob(string_view path, string_view pattern) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t path_length = path.length();
+    size_t pattern_length = pattern.length();
+    vector<int8_t> memo((path_length + 1) * (pattern_length + 1), -1);
+
+    auto match = [&](auto&& self, size_t pattern_pos, size_t path_pos) -> bool {
+        int8_t& cached = memo[pattern_pos * (path_length + 1) + path_pos];
+
+        if (cached != -1) {
+            return cached != 0;
+        }
+
+        bool result = false;
+
+        if (pattern_pos == pattern_length) {
+            result = path_pos == path_length;
+        }
+        else if (pattern[pattern_pos] == '*') {
+            size_t next_pattern_pos = pattern_pos;
+
+            while (next_pattern_pos < pattern_length && pattern[next_pattern_pos] == '*') {
+                ++next_pattern_pos;
+            }
+
+            bool is_globstar = next_pattern_pos - pattern_pos >= 2;
+
+            if (is_globstar) {
+                if (next_pattern_pos < pattern_length && pattern[next_pattern_pos] == '/') {
+                    result = self(self, next_pattern_pos + 1, path_pos);
+
+                    for (size_t next_path_pos = path_pos; !result && next_path_pos < path_length; ++next_path_pos) {
+                        if (path[next_path_pos] == '/') {
+                            result = self(self, pattern_pos, next_path_pos + 1);
+                        }
+                    }
+                }
+                else {
+                    result = self(self, next_pattern_pos, path_pos) || (path_pos < path_length && self(self, pattern_pos, path_pos + 1));
+                }
+            }
+            else {
+                result = self(self, next_pattern_pos, path_pos) || (path_pos < path_length && path[path_pos] != '/' && self(self, pattern_pos, path_pos + 1));
+            }
+        }
+        else if (pattern[pattern_pos] == '?') {
+            result = path_pos < path_length && path[path_pos] != '/' && self(self, pattern_pos + 1, path_pos + 1);
+        }
+        else {
+            result = path_pos < path_length && pattern[pattern_pos] == path[path_pos] && self(self, pattern_pos + 1, path_pos + 1);
+        }
+
+        cached = result ? 1 : 0;
+        return result;
+    };
+
+    return match(match, 0, 0);
+}
+
+auto FileSystem::FilterFiles(const_span<string> include_patterns, const_span<string> exclude_patterns) const -> FileCollection
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> normalized_include_patterns;
+    normalized_include_patterns.reserve(include_patterns.size());
+
+    for (const string& pattern : include_patterns) {
+        normalized_include_patterns.emplace_back(strex(pattern).normalize_path_slashes());
+    }
+
+    vector<string> normalized_exclude_patterns;
+    normalized_exclude_patterns.reserve(exclude_patterns.size());
+
+    for (const string& pattern : exclude_patterns) {
+        normalized_exclude_patterns.emplace_back(strex(pattern).normalize_path_slashes());
+    }
+
+    auto matches_any = [](string_view path, const vector<string>& patterns) -> bool { return std::ranges::any_of(patterns, [path](const string& pattern) { return MatchResourcePathGlob(path, pattern); }); };
+
+    FileCollection all_files = GetAllFiles();
+    vector<FileHeader> filtered_files;
+    filtered_files.reserve(all_files.GetFilesCount());
+
+    for (const FileHeader& file : all_files) {
+        string_view path = file.GetPath();
+        bool included = normalized_include_patterns.empty() || matches_any(path, normalized_include_patterns);
+        bool excluded = matches_any(path, normalized_exclude_patterns);
+
+        if (included && !excluded) {
+            filtered_files.emplace_back(file.Copy());
+        }
+    }
+
+    return FileCollection {std::move(filtered_files)};
+}
+
 auto FileSystem::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!path.empty());
-    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    FO_VERIFY_AND_THROW(!path.empty(), "File existence check received an empty resource path", _dataSources.size());
+    FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File existence check received a non-relative resource path", path);
 
-    for (const auto& ds : _dataSources) {
-        if (ds->IsFileExists(path)) {
+    for (size_t i = 0; i != _dataSources.size(); ++i) {
+        if (_dataSources[i]->IsFileExists(path)) {
             return true;
         }
     }
@@ -587,15 +754,16 @@ auto FileSystem::ReadFile(string_view path) const -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!path.empty());
-    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    FO_VERIFY_AND_THROW(!path.empty(), "File read requested an empty resource path", _dataSources.size());
+    FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File read requested a non-relative resource path", path);
 
-    for (const auto& ds : _dataSources) {
+    for (size_t i = 0; i != _dataSources.size(); ++i) {
+        auto ds = _dataSources[i].as_ptr();
         size_t size = 0;
         uint64_t write_time = 0;
 
         if (auto buf = ds->OpenFile(path, size, write_time)) {
-            return File(path, size, write_time, ds.get(), std::move(buf));
+            return File(path, size, write_time, ds, take_not_null(buf));
         }
     }
 
@@ -606,7 +774,7 @@ auto FileSystem::ReadFileText(string_view path) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = ReadFile(path);
+    auto file = ReadFile(path);
     return file ? file.GetStr() : string();
 }
 
@@ -614,15 +782,16 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!path.empty());
-    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    FO_VERIFY_AND_THROW(!path.empty(), "File header read requested an empty resource path", _dataSources.size());
+    FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File header read requested a non-relative resource path", path);
 
-    for (const auto& ds : _dataSources) {
+    for (size_t i = 0; i != _dataSources.size(); ++i) {
+        auto ds = _dataSources[i].as_ptr();
         size_t size = 0;
         uint64_t write_time = 0;
 
         if (ds->GetFileInfo(path, size, write_time)) {
-            return FileHeader(path, size, write_time, ds.get());
+            return FileHeader(path, size, write_time, ds);
         }
     }
 

@@ -35,54 +35,52 @@
 
 FO_BEGIN_NAMESPACE
 
-ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
-    Entity(registrator, props, nullptr),
+ProtoEntity::ProtoEntity(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) noexcept :
+    Entity(registrar, props, nullptr),
     _protoId {proto_id}
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_protoId);
+    FO_STRONG_ASSERT(_protoId, "Proto entity id is empty");
 }
 
-EntityWithProto::EntityWithProto(const ProtoEntity* proto) noexcept :
-    _proto {proto}
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_proto);
-}
-
-ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
-    ProtoEntity(proto_id, registrator, props),
-    ItemProperties(GetInitRef())
+EntityWithProto::EntityWithProto(ptr<const ProtoEntity> proto) noexcept :
+    _proto {proto.hold_ref()}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoCritter::ProtoCritter(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
-    ProtoEntity(proto_id, registrator, props),
-    CritterProperties(GetInitRef())
+ProtoItem::ProtoItem(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
+    ItemProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoMap::ProtoMap(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
-    ProtoEntity(proto_id, registrator, props),
-    MapProperties(GetInitRef())
+ProtoCritter::ProtoCritter(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
+    CritterProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoLocation::ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
-    ProtoEntity(proto_id, registrator, props),
-    LocationProperties(GetInitRef())
+ProtoMap::ProtoMap(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
+    MapProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoCustomEntity::ProtoCustomEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
-    ProtoEntity(proto_id, registrator, props),
-    EntityProperties(GetInitRef())
+ProtoLocation::ProtoLocation(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
+    LocationProperties(*GetInitRef())
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+ProtoCustomEntity::ProtoCustomEntity(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
+    EntityProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }

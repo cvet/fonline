@@ -1,189 +1,129 @@
 # FOnline Engine
 
-> Engine currently in semi-usable state due to heavy refactoring
-
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
-[![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
 [![Commit](https://img.shields.io/github/last-commit/cvet/fonline.svg)](https://github.com/cvet/fonline/commits/master)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cvet/fonline)
 
-## Table of Content
+**FOnline** is an open-source (MIT) C++20 engine for building online multiplayer RPGs in the classic isometric style of Fallout 1/2/Tactics and Arcanum. One codebase gives you the authoritative server, the game client, the map editor, the content pipeline, and packaging for desktop, mobile, and the browser — you bring the game: content, scripts, and rules live in your own repository that embeds the engine.
 
-- [Features](#features)
-- [Usage](#usage)
-  * [Public API](#public-api)
-  * [Setup](#setup)
-  * [Package dependencies](#package-dependencies)
-  * [Statically linked packages](#statically-linked-packages)
-  * [Footprint](#footprint)
-  * [Tutorial](#tutorial)
-- [Work in progress](#work-in-progress)
-  * [Roadmap](#roadmap)
-- [Repository structure](#repository-structure)
-- [Frequently Asked Questions](frequently-asked-questions)
-- [About](#about)
+In continuous development since 2006, the engine powers community multiplayer RPGs; a current example is [Last Frontier](https://lastfrontier.ru/), a post-apocalyptic MMO built on it.
 
-## Features
+## Why FOnline?
 
-* Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
-* Supporting of hexagonal and square map tiling
-* Prerendered sprites for environment but with possibility of using 3D models for characters
-* Engine core written in modern C++ (up to C++20)
-* Flexible scripting system with varies supporting languages:
-  + Native C++ coding
-  + AngelScript
-  + Mono C#
-* Cross-platform with target platforms:
-  + Windows
-  + Linux
-  + macOS
-  + iOS
-  + Android
-  + Web
-* Supporting of following asset file formats:
-  + Fallout 1/2
-  + Fallout Tactics
-  + Arcanum
-  + FBX (3D characters)
-  + and common graphics formats like PNG or TGA
+- **Multiplayer first.** Not a single-player engine with networking bolted on: an authoritative server, replicated entity state, and client/server separation are the core design, all the way down to the entity model.
+- **Complete vertical.** Server, client, mapper, editor, resource baker, script compiler, test runner, auto-updater — all built from the same sources by one CMake pipeline.
+- **Engine/game split that stays clean.** The engine is a reusable submodule; your game owns content, scripts, configuration, branding, and release policy. Engine updates don't drag game policy with them.
+- **Data-driven content.** Prototypes, maps, dialogs, localization, and GUI are authored as plain-text assets and baked into runtime packs — friendly to diffs, reviews, and tooling.
+- **Runs where players are.** Native Windows/Linux/macOS, Android and iOS, and a WebAssembly client that plays in the browser over WebSockets.
 
-Important note: *Not all from described above features are already implemented, for additional information look at 'Work in progress' section below*.
+## Feature highlights
 
-## Usage
+### Multiplayer core
 
-Engine doesn't targeting to use directly but by as part (submodule) to your own project (git repo).  
-Repository contains source code of engine, third-party sources and build tools for composing all this and your stuff into final platform-specific bundles.  
-You build your game fully from source, there is no prebuilt binaries, full control over the process.  
-*Todo: write about cmake workflow*
+- Authoritative server runtime with entity managers, client validation, and hardened parsing of untrusted client input.
+- Shared entity/property/prototype model with generated type-safe property wrappers and automatic property replication to clients.
+- Pluggable network transports: TCP sockets (including an Asio-based server), WebSockets for browser play, an ordered-UDP channel, and an in-process transport for tests and embedded clients.
+- Pluggable persistence backends — JSON files, SQLite, MongoDB, or in-memory — behind one database facade with an async commit queue and recovery logs.
+- Built-in client auto-updater: a thin client host plus a replaceable runtime, resumable file transfer, and a server-side update backend.
 
-### Public API
+### Scripting
 
-Documents related to public API:
-* [Public API](https://fonline.ru/PUBLIC_API)
-* [Scripting API](https://fonline.ru/SCRIPTING_API)
+- AngelScript gameplay scripting over a backend-neutral script system.
+- The native API is exported to scripts by code generation from `///@` annotations — methods, properties, events, remote calls, and enums stay in sync with the C++ source automatically.
+- Nullability is enforced across the script/native boundary: script `T?` maps to native `ptr<T>`/`nptr<T>` contracts, checked by analyzers and runtime asserts.
+- Script debugging support alongside native debugging.
 
-Scripting api automaticly generated for each project individually and api described in [Scripting API](https://fonline.ru/SCRIPTING_API) is only basic.  
-See example of extended scripting api at [FOnline TLA Scripting API](https://tla.fonline.ru/SCRIPTING_API).
+### Rendering and presentation
 
-### Setup
+- Renderer backends: OpenGL, Direct3D, Vulkan, and SDL_GPU, plus headless/null modes for servers and CI.
+- Effects are written once in GLSL and compiled through glslang to SPIR-V, then translated to each backend via SPIRV-Cross.
+- Sprite-based isometric worlds with 3D character models (FBX), particle effects, video playback, and audio in both modern (Ogg/Vorbis) and classic Fallout formats.
+- Windowed, borderless-fullscreen, and multi-client virtual-window modes with a consistent resolution/letterbox model; ImGui-powered developer overlay.
 
-General steps:
-* Create your own project repo and link this repo as submodule
-* Setup your own .cmake file with your game configuration
-* Use main CMakeLists.txt jointly with your .cmake to build game
+### World and maps
 
-Reference project:
-* FOnline: The Life After https://github.com/cvet/fonline-tla
+- Hexagonal and square grid geometry modes with shared helpers for distance, direction, and neighborhoods.
+- Path finding, line tracing, movement contexts, and a blocking model designed for multiplayer server authority.
 
-### Package dependencies
+### Content pipeline and tools
 
-Following Linux packages need to build game for target platforms:
-* Common: `clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
-* Building for Linux: `libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
-* Building for Web: `nodejs` `default-jre`
-* Building for Android: `openjdk-17-jdk`
+- A baking pipeline turns authored sources — prototypes, maps, dialogs, localized texts, effects, images, models, scripts — into versioned runtime resource packs.
+- Imports classic 2D asset formats (Fallout FRM, Arcanum ART, and other legacy formats) alongside PNG/TGA.
+- Interactive tools built on the engine itself: map editor (with headless automation), content editor, asset explorer, and particle editor.
 
-Build scripts will download and install following packages:
-* [Emscripten](https://emscripten.org) - for building Web apps
-* [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
+### Engineering quality
 
-List of tools for Windows operating system *(some optional)*:
-* [CMake](https://cmake.org) - utility that helps build program from source on any platform for any platform without much pain
-* [Python](https://python.org) - needed for additional game code generation
-* [Visual Studio 2022](https://visualstudio.microsoft.com) - IDE for Windows
-* [Build Tools for Visual Studio 2022](https://visualstudio.microsoft.com) - just build tools without full IDE
+- Unit tests (Catch2) with generated per-suite targets, sanitizer runs, and code coverage.
+- Clang Thread Safety Analysis enforced as `-Werror` on every Clang toolchain; strict smart-pointer and nullability vocabularies audited across the codebase.
+- Always-on stack traces, deterministic exception-safety rules, and a terminate-on-OOM allocation model instead of half-mutated states.
+- Tracy profiler integration for client and server captures.
 
-List of tools for Mac operating system:
-* [CMake](https://cmake.org)
-* [Python](https://python.org) - needed for additional game code generation
-* [Xcode](https://developer.apple.com/xcode)
+## Architecture at a glance
 
-Other stuff used in the build pipeline:
-* [iOS CMake Toolchain](https://github.com/cristeab/ios-cmake)
-* [msicreator](https://github.com/jpakkane/msicreator)
+```text
+Your game repository                      FOnline engine (this repo, embedded as Engine/)
+────────────────────                      ────────────────────────────────────────────────
+content: protos, maps,            ┌──►    Applications — client/server/tool entry points
+dialogs, texts, GUI               │       Client & Server runtimes — views vs. authority
+AngelScript game logic     embeds │       Common model — entities, properties, protos,
+.fomain configuration      ───────┤                      maps, networking, config
+native extensions                 │       Frontend — windows, input, audio, renderers
+CMake presets, CI,                │       Scripting — AngelScript bridge + generated API
+release policy                    └──►    Tools & BuildTools — bakers, mapper, editor,
+                                                     CMake stages, codegen, packaging
+```
 
-SAST tools:
-* [PVS-Studio](https://pvs-studio.com/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - static analyzer for C, C++, C#, and Java code
+The engine owns reusable technology; the game owns the product. A game repository adds the engine as an `Engine/` submodule, points the engine's staged CMake pipeline at its own configuration, and gets project-named build targets for every application. The full layer map is in [Docs/Architecture.md](Docs/Architecture.md), and the embedding contract in [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md):
 
-### Statically linked packages
+```text
+GameProject/
+├── Engine/                 # this repository as a git submodule
+├── CMakeLists.txt          # project entry point that includes engine build logic
+├── CMakePresets.json       # project presets and platform variants
+├── GameName.fomain         # master project configuration
+├── Scripts/                # game AngelScript modules
+├── SourceExt/              # optional project-native C++ extensions
+├── Critters/ Items/ Maps/  # game content and prototypes
+└── Dialogs/ Texts/         # dialogs and localization
+```
 
-These packages included to this repository, will compile and link statically to our binaries.  
-They are located in ThirdParty directory (except dotnet, it's downladed by demand).
+## Getting started
 
-* AcmDecoder by Abel - ACM sound format reader
-* [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
-* [Asio](https://think-async.com/Asio/) - networking library
-* [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
-* [Catch2](https://github.com/catchorg/Catch2) - test framework
-* [GLM](https://github.com/g-truc/glm) - mathematics library for vectors, matrices and quaternions
-* [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
-* [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
-* [SDL](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
-* [small_vector](https://github.com/gharveymn/small_vector) - vector with a small buffer optimization
-* [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
-* [tracy](https://github.com/wolfpld/tracy) - profiler
-* [Theora](https://www.theora.org/downloads/) - video library
-* [Vorbis](https://xiph.org/vorbis/) - audio library
-* [Dear ImGui](https://github.com/ocornut/imgui) - gui library
-* [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver + bson lib
-* [libogg](https://xiph.org/ogg/) - audio library
-* [libpng](https://github.com/pnggroup/libpng) - png image loader
-* [LibreSSL](https://www.libressl.org/) - library for network transport security
-* [rpmalloc](https://github.com/mjansson/rpmalloc) - general purpose memory allocator
-* [ufbx](https://github.com/ufbx/ufbx) - fbx file format loader
-* [unordered_dense](https://github.com/martinus/unordered_dense) - fast and densely stored hashmap and hashse
-* [unqlite](https://unqlite.org/) - nosql database engine
-* [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
-* [zlib](https://www.zlib.net/) - compression library
+- **New to the engine:** [Docs/GettingStarted.md](Docs/GettingStarted.md) — the first route: what to read, what to build, what belongs where.
+- **Starting or inspecting a game project:** [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) — expected repository shape and ownership rules.
+- **Building:** [Docs/BuildWorkflow.md](Docs/BuildWorkflow.md) — prerequisites, presets, and validation strategy. Builds are normally driven from the embedding game repository, not from the engine checkout.
+- **AI-maintainer instructions:** [AGENTS.md](AGENTS.md) — read before changing engine code or docs.
 
-### Footprint
+Supported target platforms: Windows, Linux, macOS, Android, iOS, and Web (WebAssembly). Not every feature is equally mature on every platform — prefer the maintained docs and a real embedding project's presets over assumptions.
 
-Despite on many third-party libraries that consumed by the whole engine one of the main goal is small final footprint of client output.  
-Aim to shift most of things of loading specific image/model/sound/ect file formats at pre publishing steps and later use intermediate binary representation for loading resources in runtime as fast as possible and without additional library dependencies.  
-This process in terms of fonline engine called `Baking`.  
-Also as you can see all third-party dependencies linked statically to final executable and this frees up end user from installing additional runtime to play in your game.  
-*Todo: write about memory footprint*  
-*Todo: write about network footprint*
+## Repository layout
 
-### Tutorial
+- [`Source/`](Source/) — engine source: `Applications/` entry points, `Client/` and `Server/` runtimes, `Common/` shared model, `Frontend/` platform/render layer, `Scripting/` bridge, `Tools/` bakers and editors, `Essentials/` low-level core, `Tests/` unit tests.
+- [`BuildTools/`](BuildTools/) — staged CMake pipeline, code generation, platform toolchains, workspace and package preparation.
+- [`Resources/`](Resources/) — engine-owned runtime and build resources.
+- [`ThirdParty/`](ThirdParty/) — vendored dependencies (SDL, AngelScript, Asio, ImGui, glslang, SPIRV-Cross, Tracy, and more); maintenance workflow in [Docs/ThirdPartyMaintenance.md](Docs/ThirdPartyMaintenance.md).
+- [`Docs/`](Docs/) — maintained engine documentation.
 
-Please follow these instructions to understand how to use this engine by design:
-* [Tutorial document](https://fonline.ru/TUTORIAL)
+## Documentation
 
-## Work in progress
+The maintained index is [Docs/README.md](Docs/README.md). Deep dives by theme:
 
-### Roadmap
+| Theme | Docs |
+|-------|------|
+| Architecture & navigation | [Architecture](Docs/Architecture.md) · [SourceTree](Docs/SourceTree.md) · [Applications](Docs/Applications.md) · [Essentials](Docs/Essentials.md) |
+| Runtime model | [EntityModel](Docs/EntityModel.md) · [MapsMovementGeometry](Docs/MapsMovementGeometry.md) · [Networking](Docs/Networking.md) · [Persistence](Docs/Persistence.md) |
+| Client & server | [ClientRuntime](Docs/ClientRuntime.md) · [ServerRuntime](Docs/ServerRuntime.md) · [FrontendAndRendering](Docs/FrontendAndRendering.md) · [ClientUpdater](Docs/ClientUpdater.md) |
+| Scripting | [Scripting](Docs/Scripting.md) · [ScriptMethodsMap](Docs/ScriptMethodsMap.md) · [Nullability](Docs/Nullability.md) · [GeneratedApiAndMetadata](Docs/GeneratedApiAndMetadata.md) |
+| Build & content pipeline | [BuildWorkflow](Docs/BuildWorkflow.md) · [BuildToolsPipeline](Docs/BuildToolsPipeline.md) · [BakingPipeline](Docs/BakingPipeline.md) · [ConfigurationAndDataSources](Docs/ConfigurationAndDataSources.md) |
+| Tools | [Tools](Docs/Tools.md) · [MapperTools](Docs/MapperTools.md) |
+| Quality & conventions | [Testing](Docs/Testing.md) · [ExceptionSafety](Docs/ExceptionSafety.md) · [SmartPointers](Docs/SmartPointers.md) · [ThreadSafetyAnalysis](Docs/ThreadSafetyAnalysis.md) |
+| Platform debugging | [Debugging](Docs/Debugging.md) · [WebDebugging](Docs/WebDebugging.md) · [AndroidDebugging](Docs/AndroidDebugging.md) |
 
-* [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game [done]
-* Code refactoring [95%]
-  + Clean up errors handling (error code based + exception based)
-  + Preprocessor defines to constants and enums
-  + Eliminate raw pointers, use raii and smart pointers for control objects lifetime
-  + Fix all warnings from PVS Studio and other static analyzer tools
-* AngelScript scripting layer [done]
-* Documentation for public API [10%]
-* API freezing and continuing development with it's backward compatibility [85%]
-* Native C++ scripting layer [20%]
-* Improve more unit tests and gain code coverage to at least 80% [15%]
-* C#/Mono scripting layer [30%]
-* DirectX rendering [done]
-* Particle system [done]
-* Metal rendering for macOS/iOS [1%]
-  
-## Repository structure
+When behavior changes in a noticeable way, the owning document is updated in the same change — the docs are maintained as a source-grounded reference, not an afterthought.
 
-* [BuildTools](https://github.com/cvet/fonline/tree/master/BuildTools) - scripts for automatical build in command line or any ci/cd system
-* [Resources](https://github.com/cvet/fonline/tree/master/Resources) - resources for build applications but not related to code
-* [Source](https://github.com/cvet/fonline/tree/master/Source) - fonline engine specific code
-* [ThirdParty](https://github.com/cvet/fonline/tree/master/ThirdParty) - external dependencies of engine, included to repository
+## Project and community
 
-## Frequently Asked Questions
-
-*Todo: write FAQ*
-
-## About
-
-* Site: [fonline.ru](https://fonline.ru)
-* GitHub: [github.com/cvet/fonline](https://github.com/cvet/fonline)
-* E-Mail: <cvet@tut.by>
+- Site: <https://fonline.ru>
+- GitHub: <https://github.com/cvet/fonline>
+- License: [MIT](LICENSE)

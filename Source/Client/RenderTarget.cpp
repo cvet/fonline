@@ -38,63 +38,73 @@ FO_BEGIN_NAMESPACE
 
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
 
-RenderTargetManager::RenderTargetManager(IAppRender& render, FlushCallback flush) :
-    _render {&render},
+RenderTarget::RenderTarget(isize32 size, unique_ptr<RenderTexture> texture) :
+    _texture {std::move(texture)},
+    _size {size}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+RenderTargetManager::RenderTargetManager(ptr<IAppRender> render, FlushCallback flush) :
+    _render {render},
     _flush {std::move(flush)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_flush);
+    FO_VERIFY_AND_THROW(_flush, "Flush callback is null");
 }
 
-auto RenderTargetManager::GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&
+auto RenderTargetManager::GetRenderTargetStack() const -> const_span<ptr<RenderTarget>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _rtStack;
 }
 
-auto RenderTargetManager::GetCurrentRenderTarget() -> RenderTarget*
+auto RenderTargetManager::GetCurrentRenderTarget() -> nptr<RenderTarget>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return !_rtStack.empty() ? _rtStack.back().get() : nullptr;
+    if (_rtStack.empty()) {
+        return nullptr;
+    }
+
+    return _rtStack.back();
 }
 
-auto RenderTargetManager::GetCurrentRenderTarget() const -> const RenderTarget*
+auto RenderTargetManager::GetCurrentRenderTarget() const -> nptr<const RenderTarget>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return !_rtStack.empty() ? _rtStack.back().get() : nullptr;
+    if (_rtStack.empty()) {
+        return nullptr;
+    }
+
+    return _rtStack.back();
 }
 
-auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> RenderTarget*
+auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> ptr<RenderTarget>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width >= 0);
-    FO_RUNTIME_ASSERT(size.height >= 0);
+    FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+    FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
     _flush();
 
-    auto rt = SafeAlloc::MakeUnique<RenderTarget>();
-
-    rt->_size = size;
+    auto rt = SafeAlloc::MakeUnique<RenderTarget>(size, CreateRenderTargetTexture(size, linear_filtered, with_depth));
     rt->_lastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
 
-    AllocateRenderTargetTexture(rt.get(), linear_filtered, with_depth);
-
     _rtAll.push_back(std::move(rt));
-    return _rtAll.back().get();
+    return _rtAll.back();
 }
 
-void RenderTargetManager::ResizeRenderTarget(RenderTarget* rt, isize32 size)
+void RenderTargetManager::ResizeRenderTarget(ptr<RenderTarget> rt, isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(rt);
-    FO_RUNTIME_ASSERT(size.width >= 0);
-    FO_RUNTIME_ASSERT(size.height >= 0);
+    FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+    FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
     if (rt->_size == size) {
         return;
@@ -102,70 +112,71 @@ void RenderTargetManager::ResizeRenderTarget(RenderTarget* rt, isize32 size)
 
     _flush();
 
+    bool linear_filtered = rt->_texture->LinearFiltered;
+    bool with_depth = rt->_texture->WithDepth;
+
+    rt->_texture = CreateRenderTargetTexture(size, linear_filtered, with_depth);
     rt->_size = size;
-    AllocateRenderTargetTexture(rt, rt->_texture->LinearFiltered, rt->_texture->WithDepth);
 }
 
-void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth)
+auto RenderTargetManager::CreateRenderTargetTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    auto tex_size = rt->_size;
+    isize32 tex_size = size;
     tex_size.width = std::max(tex_size.width, 1);
     tex_size.height = std::max(tex_size.height, 1);
 
-    rt->_texture = _render->CreateTexture(tex_size, linear_filtered, with_depth);
-    rt->_texture->FlippedHeight = _render->IsRenderTargetFlipped();
+    auto texture = _render->CreateTexture(tex_size, linear_filtered, with_depth);
+    texture->FlippedHeight = _render->IsRenderTargetFlipped();
 
-    auto* prev_tex = _render->GetRenderTarget();
-    _render->SetRenderTarget(rt->_texture.get());
+    auto prev_tex = _render->GetRenderTarget();
+    auto restore_target = scope_fail([&]() noexcept { safe_call([&] { _render->SetRenderTarget(prev_tex); }); });
+    _render->SetRenderTarget(texture);
     _render->ClearRenderTarget(ucolor::clear, with_depth);
     _render->SetRenderTarget(prev_tex);
+
+    return texture;
 }
 
-void RenderTargetManager::PushRenderTarget(RenderTarget* rt)
+void RenderTargetManager::PushRenderTarget(ptr<RenderTarget> rt)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto redundant = !_rtStack.empty() && _rtStack.back() == rt;
+    bool redundant = !_rtStack.empty() && _rtStack.back() == rt;
 
     if (!redundant) {
         _flush();
+        _render->SetRenderTarget(rt->_texture);
+        rt->_lastPixelPicks.clear();
     }
 
     _rtStack.emplace_back(rt);
-
-    if (!redundant) {
-        _render->SetRenderTarget(rt->_texture.get());
-        rt->_lastPixelPicks.clear();
-    }
 }
 
 void RenderTargetManager::PopRenderTarget()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
+    bool redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
 
     if (!redundant) {
         _flush();
-    }
 
-    _rtStack.pop_back();
-
-    if (!redundant) {
-        if (!_rtStack.empty()) {
-            _render->SetRenderTarget(_rtStack.back()->_texture.get());
+        // Bind the target that will become the new stack top (the entry under the current top) before
+        // the pop, so a SetRenderTarget throw leaves both _rtStack and the backend unchanged.
+        if (_rtStack.size() >= 2) {
+            _render->SetRenderTarget(_rtStack[_rtStack.size() - 2]->_texture);
         }
         else {
             _render->SetRenderTarget(nullptr);
         }
     }
+
+    _rtStack.pop_back();
 }
 
-auto RenderTargetManager::GetRenderTargetPixel(const RenderTarget* rt, ipos32 pos) const -> ucolor
+auto RenderTargetManager::GetRenderTargetPixel(ptr<const RenderTarget> rt, ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -185,7 +196,7 @@ auto RenderTargetManager::GetRenderTargetPixel(const RenderTarget* rt, ipos32 po
     }
 
     // Read one pixel
-    const auto color = rt->_texture->GetTexturePixel(pos);
+    ucolor color = rt->_texture->GetTexturePixel(pos);
 
     // Refresh picks
     rt->_lastPixelPicks.emplace(rt->_lastPixelPicks.begin(), pos, color);
@@ -202,21 +213,22 @@ void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _render->ClearRenderTarget(color, with_depth);
 }
 
-void RenderTargetManager::DeleteRenderTarget(RenderTarget* rt)
+void RenderTargetManager::DeleteRenderTarget(nptr<RenderTarget> rt)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (rt == nullptr) {
+    if (!rt) {
         return;
     }
 
-    const auto it = std::ranges::find_if(_rtAll, [rt](auto&& check_rt) { return check_rt.get() == rt; });
-    FO_RUNTIME_ASSERT(it != _rtAll.end());
+    auto it = std::ranges::find_if(_rtAll, [&rt](auto&& check_rt) {
+        auto check_rt_ptr = check_rt.as_ptr();
+        return check_rt_ptr == rt;
+    });
+    FO_VERIFY_AND_THROW(it != _rtAll.end(), "Lookup failed in rt all");
     _rtAll.erase(it);
 }
 
@@ -233,27 +245,26 @@ void RenderTargetManager::DumpTextures() const
 
     size_t atlases_memory_size = 0;
 
-    for (const auto& rt : _rtAll) {
+    for (size_t i = 0; i < _rtAll.size(); i++) {
+        auto rt = _rtAll[i].as_ptr();
         atlases_memory_size += numeric_cast<size_t>(rt->_texture->Size.width) * rt->_texture->Size.height * 4;
     }
 
-    const auto time = nanotime::now().desc(true);
-    const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    time_desc_t time = nanotime::now().desc(true);
+    string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
-    const auto write_rt = [&dir](string_view name, const RenderTarget* rt) {
-        if (rt != nullptr) {
-            const string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
-            auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
-            WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
-        }
+    auto write_rt = [&dir](string_view name, ptr<const RenderTarget> rt) {
+        string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
+        auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
+        WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
     };
 
     size_t num = 1;
 
-    for (const auto& rt : _rtAll) {
-        write_rt(strex("All_{}", num), rt.get());
+    for (size_t i = 0; i < _rtAll.size(); i++) {
+        write_rt(strex("All_{}", num), _rtAll[i]);
         num++;
     }
 }

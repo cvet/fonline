@@ -377,6 +377,7 @@
 
 #define TXT_STACK_OVERFLOW                "Stack overflow"
 #define TXT_NULL_POINTER_ACCESS           "Null pointer access"
+#define TXT_NULL_ASSIGN_TO_NON_NULLABLE   "Null assignment to non-nullable handle" // (FOnline Patch)
 #define TXT_DIVIDE_BY_ZERO                "Divide by zero"
 #define TXT_DIVIDE_OVERFLOW               "Overflow in integer division"
 #define TXT_POW_OVERFLOW                  "Overflow in exponent operation"

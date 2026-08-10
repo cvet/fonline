@@ -36,10 +36,11 @@
 
 FO_USING_NAMESPACE();
 
-ScriptImGui::ScriptImGui(BaseEngine* engine) :
-    Entity(engine->GetPropertyRegistratorForEdit("ImGui"), nullptr, nullptr),
+ScriptImGui::ScriptImGui(ptr<BaseEngine> engine) :
+    Entity(engine->GetPropertyRegistrarForEdit("ImGui"), nullptr, nullptr),
     _engine {engine}
 {
+    FO_STACK_TRACE_ENTRY();
 }
 
 static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
@@ -49,17 +50,24 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
     ignore_unused(user_data);
 
     constexpr SafeAllocator<uint8_t> allocator;
-    return allocator.allocate(sz);
+    ptr<uint8_t> bytes = allocator.allocate(sz);
+    return bytes.get();
 }
 
-static void ImGuiFree(void* ptr, void* user_data)
+static void ImGuiFree(void* raw_mem, void* user_data)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     ignore_unused(user_data);
 
+    auto bytes = cast_from_void<uint8_t*>(raw_mem);
+
+    if (!bytes) {
+        return;
+    }
+
     constexpr SafeAllocator<uint8_t> allocator;
-    allocator.deallocate(static_cast<uint8_t*>(ptr), 0);
+    allocator.deallocate(bytes.get(), 0);
 }
 
 void ImGuiExt::Init()
@@ -69,4 +77,17 @@ void ImGuiExt::Init()
     IMGUI_CHECKVERSION();
     ImGui::SetAllocatorFunctions(&ImGuiAlloc, &ImGuiFree, nullptr);
     ImGui::CreateContext();
+}
+
+auto ImGuiExt::LoadIniSettingsIfContext(std::string_view ini_data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (ini_data.empty() || ImGui::GetCurrentContext() == nullptr) {
+        return false;
+    }
+
+    ImGui::LoadIniSettingsFromMemory(ini_data.data(), ini_data.size());
+    ImGui::GetIO().WantSaveIniSettings = false;
+    return true;
 }

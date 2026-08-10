@@ -83,7 +83,7 @@ struct MovingRawProgress
     bool Found {};
 };
 
-///@ ExportRefType Common RefCounted Export = GetSpeed, GetStartHex, GetEndHex, GetPreBlockHex, GetBlockHex, GetWholeTime, GetWholeDist, GetElapsedTime, IsCompleted, GetCompleteReason, EvaluateProjectedHex, EvaluateNearestPathHex, EvaluatePathHexes
+///@ ExportRefType Common RefCounted Export = GetSpeed, GetStartHex, GetEndHex, GetStartHexOffset, GetEndHexOffset, GetPreBlockHex, GetBlockHex, GetWholeTime, GetWholeDist, GetElapsedTime, IsCompleted, GetCompleteReason, EvaluateProjectedHex, EvaluateNearestPathHex, EvaluatePathHexes
 class MovingContext final : public RefCounted<MovingContext>
 {
 public:
@@ -97,8 +97,8 @@ public:
 
     [[nodiscard]] auto GetMapSize() const noexcept -> msize { return _mapSize; }
     [[nodiscard]] auto GetSpeed() const noexcept -> uint16_t { return _speed; }
-    [[nodiscard]] auto GetSteps() const noexcept -> const vector<mdir>& { return _steps; }
-    [[nodiscard]] auto GetControlSteps() const noexcept -> const vector<uint16_t>& { return _controlSteps; }
+    [[nodiscard]] auto GetSteps() const noexcept -> const_span<mdir> { return _steps; }
+    [[nodiscard]] auto GetControlSteps() const noexcept -> const_span<uint16_t> { return _controlSteps; }
     [[nodiscard]] auto GetStartHex() const noexcept -> mpos { return _startHex; }
     [[nodiscard]] auto GetEndHex() const noexcept -> mpos { return _endHex; }
     [[nodiscard]] auto GetPreBlockHex() const noexcept -> mpos { return _preBlockHex; }

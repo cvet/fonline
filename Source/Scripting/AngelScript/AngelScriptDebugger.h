@@ -58,7 +58,7 @@ enum class DebuggerStepMode : uint8_t
 class DebuggerEndpointServer final
 {
 public:
-    explicit DebuggerEndpointServer(const AngelScriptBackend* backend);
+    explicit DebuggerEndpointServer(ptr<const AngelScriptBackend> backend);
     DebuggerEndpointServer(const DebuggerEndpointServer&) = delete;
     auto operator=(const DebuggerEndpointServer&) = delete;
     DebuggerEndpointServer(DebuggerEndpointServer&&) noexcept = delete;
@@ -67,15 +67,13 @@ public:
 
     [[nodiscard]] auto IsPaused() const noexcept -> bool;
 
-    void SetupContext(AngelScript::asIScriptContext* ctx, AngelScriptContextSetupReason reason);
+    void SetupContext(ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason);
     void EmitEvent(string_view event_name, string_view body_json = "{}");
     void Stop();
 
 private:
-    static void AngelScriptLine(AngelScript::asIScriptContext* ctx, void* param);
-
     class Impl;
-    unique_ptr<Impl> _impl {};
+    unique_ptr<Impl> _impl;
 };
 
 FO_END_NAMESPACE

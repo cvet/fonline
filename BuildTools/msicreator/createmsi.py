@@ -275,12 +275,14 @@ class PackageGenerator:
             'Key': reg['key'],
             'Action': reg['action'],
         })
-        ET.SubElement(reg_key, 'RegistryValue', {
-            'Name': reg['name'],
+        value_attrs = {
             'Type': reg['type'],
             'Value': reg['value'],
             'KeyPath': reg['key_path'],
-          })
+        }
+        if reg['name'] != '':
+            value_attrs['Name'] = reg['name']
+        ET.SubElement(reg_key, 'RegistryValue', value_attrs)
 
     def scan_feature(self, top_feature: ET.Element, installdir: ET.Element, depth: int, feature: dict[str, Any]) -> None:
         _ = depth

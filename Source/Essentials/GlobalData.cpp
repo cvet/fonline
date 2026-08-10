@@ -42,20 +42,17 @@ int32_t GlobalDataCallbacksCount;
 extern void CreateGlobalData()
 {
     static std::once_flag once;
-    bool first_call = false;
-    std::call_once(once, [&first_call] { first_call = true; });
-    if (!first_call) {
-        return;
-    }
 
-    for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
-        CreateGlobalDataCallbacks[i]();
-    }
+    std::call_once(once, [] {
+        for (int32_t i = 0; i < GlobalDataCallbacksCount; i++) {
+            CreateGlobalDataCallbacks[i]();
+        }
+    });
 }
 
 extern void DeleteGlobalData()
 {
-    for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
+    for (int32_t i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
     }
 }

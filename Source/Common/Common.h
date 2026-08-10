@@ -43,22 +43,98 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 5
-
-#include "Version-Include.h"
+///@ MigrationRule Version 0 0 34
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
-#define FO_NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
-#define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
-#define FO_NON_NULL // Pointer annotation
 #define FO_DEFERRED // Lambda annotation
+
+// Entity method-call validation.
+// Each entity method declares the preconditions it requires with FO_VALIDATE_ENTITY(<flags>), so a method is
+// explicitly checked against being called at an incorrect time (wrong sync scope, or during/after destruction).
+// Flags (combine as needed, order-independent; they expand to the matching check on `this`):
+//   LOCKED         - the calling thread's sync context covers this entity. Throws the regular recoverable
+//                    ScriptException on an uncovered access, so at the script/job frontier the violation is
+//                    reported and the job continues instead of killing the server. An exception escaping a
+//                    noexcept method still terminates the process, so uncovered access to a noexcept-declared
+//                    accessor remains fatal — but the frontier-reachable throwing surface recovers.
+//   NOT_DESTROYED  - this entity is not already destroyed. The script access boundary already rejects a
+//                    destroyed receiver, so reaching a method on one means a stale pointer was dereferenced —
+//                    a corrupt-state invariant violation -> FO_STRONG_ASSERT (deterministic exit). noexcept-safe.
+//   NOT_DESTROYING - this entity is not mid-destruction. Recoverable (the FO_SCRIPT_API frontier rejects this
+//                    with a ScriptException; this is the internal backstop) -> FO_VERIFY_AND_THROW. NOTE: this
+//                    throws, so use it only where an exception may legally propagate; a noexcept method that
+//                    must stay alive on a destroying entity handles that case itself with FO_VERIFY_AND_RETURN*.
+//   NONE           - no precondition (explicitly validated as callable at any time). Replaces the old
+//                    FO_NO_VALIDATE_ENTITY_ACCESS marker.
+// Example: FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);
+class Entity;
+inline void ValidateEntityAccess(nptr<const Entity> entity);
+
+#define FO_VE_CHECK_LOCKED ValidateEntityAccess(this);
+#define FO_VE_CHECK_NOT_DESTROYING FO_VERIFY_AND_THROW(!this->IsDestroying(), "Entity method called while the entity is being destroyed", this->GetName());
+#define FO_VE_CHECK_NOT_DESTROYED FO_STRONG_ASSERT(!this->IsDestroyed(), "Entity method called on an already destroyed entity", this->GetName());
+#define FO_VE_CHECK_NONE
+#define FO_VE_DISPATCH(flag) FO_CONCAT(FO_VE_CHECK_, flag)
+
+// Bounded variadic dispatch (1..3 flags); the FO_VE_EXPAND wrapper keeps it correct on the MSVC preprocessor.
+#define FO_VE_EXPAND(x) x
+#define FO_VE_NARGS(...) FO_VE_EXPAND(FO_VE_NARGS_IMPL(__VA_ARGS__, 3, 2, 1))
+#define FO_VE_NARGS_IMPL(_1, _2, _3, N, ...) N
+#define FO_VE_FOREACH_1(m, a) m(a)
+#define FO_VE_FOREACH_2(m, a, b) m(a) m(b)
+#define FO_VE_FOREACH_3(m, a, b, c) m(a) m(b) m(c)
+#define FO_VE_FOREACH(m, ...) FO_VE_EXPAND(FO_CONCAT(FO_VE_FOREACH_, FO_VE_NARGS(__VA_ARGS__))(m, __VA_ARGS__))
+
+#define FO_VALIDATE_ENTITY(...) FO_VE_FOREACH(FO_VE_DISPATCH, __VA_ARGS__)
+
+// Explicit-entity access check (validates a passed-in entity argument rather than `this`).
+#define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccess(entity)
 
 ///@ ExportValueType Name = ident Layout = int64-value
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
+
+// Command line arguments
+using CommandLineArg = nptr<char>;
+
+class CommandLineArgs
+{
+public:
+    CommandLineArgs() = default;
+    explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
+    {
+        size_t arg_count = numeric_cast<size_t>(argc);
+        FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
+
+        _args.resize(arg_count);
+
+        for (size_t i = 0; i < arg_count; ++i) {
+            FO_VERIFY_AND_THROW(argv[i] != nullptr, "Command line argument string is null");
+            _args[i] = argv[i];
+        }
+    }
+    explicit CommandLineArgs(const_span<CommandLineArg> args) :
+        _args(args.begin(), args.end())
+    {
+        for (CommandLineArg arg : _args) {
+            FO_VERIFY_AND_THROW(arg, "Command line argument string is null");
+        }
+    }
+
+    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool { return arg.starts_with('-'); }
+    [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
+    [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
+    [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
+    [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
+    [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
+    [[nodiscard]] auto end() const noexcept { return _args.end(); }
+
+private:
+    vector<CommandLineArg> _args {};
+};
 
 // Custom any as string
 class any_t : public string
@@ -166,7 +242,7 @@ public:
 
     void Unsubscribe() noexcept
     {
-        const auto callbacks = std::move(_unsubscribeCallbacks);
+        auto callbacks = std::move(_unsubscribeCallbacks);
         _unsubscribeCallbacks.clear();
 
         for (const auto& cb : callbacks) {
@@ -229,7 +305,7 @@ public:
     using ObserverType = EventObserver<Args...>;
 
     EventDispatcher() = delete;
-    explicit EventDispatcher(ObserverType& obs) :
+    explicit EventDispatcher(ptr<ObserverType> obs) :
         _observer {obs}
     {
     }
@@ -241,16 +317,16 @@ public:
 
     auto operator()(Args&&... args) -> EventDispatcher&
     {
-        if (!_observer._subscriberCallbacks.empty()) {
-            for (auto& cb : _observer._subscriberCallbacks) {
-                cb(std::forward<Args>(args)...);
+        if (!_observer->_subscriberCallbacks.empty()) {
+            for (auto& cb : _observer->_subscriberCallbacks) {
+                cb(args...);
             }
         }
         return *this;
     }
 
 private:
-    ObserverType& _observer;
+    ptr<ObserverType> _observer;
 };
 
 // Valid plain data for properties
@@ -299,7 +375,7 @@ struct GameSettings
     static constexpr int32_t MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
     static constexpr int32_t MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
     static constexpr int32_t MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
-    static constexpr float32_t MAP_CAMERA_ANGLE = FO_MAP_CAMERA_ANGLE;
+    static constexpr float32_t MAP_CAMERA_ANGLE = const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE);
     static constexpr float32_t MIN_ZOOM = 0.05f;
     static constexpr float32_t MAX_ZOOM = 20.0f;
     static constexpr int32_t DEFAULT_MAP_SIZE = 200;
@@ -354,7 +430,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 1;
+static constexpr uint32_t FO_UPDATER_VERSION = 2;
 
 enum class UpdatePlatform : uint8_t
 {
@@ -387,7 +463,6 @@ enum class NetMessage : uint8_t
     UpdateFileData = 23,
     AddCritter = 25,
     RemoveCritter = 27,
-    SendCommand = 28,
     InfoMessage = 32,
     SendCritterDir = 41,
     CritterDir = 42,
@@ -414,6 +489,8 @@ enum class NetMessage : uint8_t
     RemoveCustomEntity = 117,
     Property = 120,
     SendProperty = 121,
+    HashList = 122,
+    UnresolvedHash = 123,
 };
 
 enum class EngineSideKind : uint8_t
@@ -427,7 +504,7 @@ static constexpr size_t MAX_CALL_ARGS = 16;
 
 struct StructLayoutDesc;
 struct RefTypeDesc;
-class PropertyRegistrator;
+class PropertyRegistrar;
 
 struct BaseTypeDesc
 {
@@ -462,9 +539,9 @@ struct BaseTypeDesc
     bool IsSingleton {};
     bool IsFixedType {};
     bool IsEntityProto {};
-    raw_ptr<const BaseTypeDesc> EnumUnderlyingType {};
-    raw_ptr<const StructLayoutDesc> StructLayout {};
-    raw_ptr<const RefTypeDesc> RefType {};
+    nptr<const BaseTypeDesc> EnumUnderlyingType {};
+    nptr<const StructLayoutDesc> StructLayout {};
+    nptr<const RefTypeDesc> RefType {};
     size_t Size {};
 };
 
@@ -493,6 +570,8 @@ struct ArgDesc
 {
     string Name {};
     ComplexTypeDesc Type {};
+    bool Nullable {};
+    string DefaultValue {};
 };
 
 struct FieldDesc
@@ -525,6 +604,8 @@ struct MethodDesc
     // the method wasn't sourced from an `///@ ExportMethod` tag
     // (e.g. AS-bound only).
     string Target {};
+    bool ReturnNullable {};
+    bool Async {};
 };
 
 struct StructLayoutDesc
@@ -545,7 +626,7 @@ struct StructLayoutDesc
 struct RefTypeDesc
 {
     vector<MethodDesc> Methods {};
-    raw_ptr<const PropertyRegistrator> FieldsRegistrator {};
+    nptr<const PropertyRegistrar> FieldsRegistrar {};
     bool IsDynamicLayout {};
     // Target role from `///@ ExportRefType <Target> <Name>` — Common /
     // Server / Client / Mapper. NativeScriptSynth uses this to filter
@@ -561,10 +642,12 @@ struct RemoteCallDesc
     string SubsystemHint {}; // File extension: fos, cs
 };
 
+auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t;
+
 template<typename Fn>
 void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
 {
-    FO_RUNTIME_ASSERT(p);
+    FO_VERIFY_AND_THROW(p, "Value pointer is null");
 
     if (type.IsBool) {
         fn(*cast_from_void<bool*>(p));
@@ -634,7 +717,7 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            VisitBaseTypePrimitive(cast_from_void<uint8_t*>(p) + field.Offset, field.Type, fn);
+            VisitBaseTypePrimitive(cast_from_void<uint8_t*>(p).get() + field.Offset, field.Type, fn);
         }
 
         return;
@@ -646,7 +729,7 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
 template<typename Fn>
 void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& fn)
 {
-    FO_RUNTIME_ASSERT(p);
+    FO_VERIFY_AND_THROW(p, "Value pointer is null");
 
     if (type.IsBool) {
         fn(*cast_from_void<const bool*>(p));
@@ -716,7 +799,7 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            VisitBaseTypePrimitive(cast_from_void<const uint8_t*>(p) + field.Offset, field.Type, fn);
+            VisitBaseTypePrimitive(cast_from_void<const uint8_t*>(p).get() + field.Offset, field.Type, fn);
         }
 
         return;
@@ -726,27 +809,24 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
 }
 
 template<typename Fn>
-decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTypeDesc& type, Fn&& fn)
+decltype(auto) VisitBaseTypePrimitive(ptr<const void> a, ptr<const void> b, const BaseTypeDesc& type, Fn&& fn)
 {
-    FO_RUNTIME_ASSERT(a);
-    FO_RUNTIME_ASSERT(b);
-
     if (type.IsBool) {
-        return fn(*cast_from_void<const bool*>(a), *cast_from_void<const bool*>(b));
+        return fn(*cast_from_void<const bool*>(a.get()), *cast_from_void<const bool*>(b.get()));
     }
     else if (type.IsInt && type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            return fn(*cast_from_void<const int8_t*>(a), *cast_from_void<const int8_t*>(b));
+            return fn(*cast_from_void<const int8_t*>(a.get()), *cast_from_void<const int8_t*>(b.get()));
         }
         case 2: {
-            return fn(*cast_from_void<const int16_t*>(a), *cast_from_void<const int16_t*>(b));
+            return fn(*cast_from_void<const int16_t*>(a.get()), *cast_from_void<const int16_t*>(b.get()));
         }
         case 4: {
-            return fn(*cast_from_void<const int32_t*>(a), *cast_from_void<const int32_t*>(b));
+            return fn(*cast_from_void<const int32_t*>(a.get()), *cast_from_void<const int32_t*>(b.get()));
         }
         case 8: {
-            return fn(*cast_from_void<const int64_t*>(a), *cast_from_void<const int64_t*>(b));
+            return fn(*cast_from_void<const int64_t*>(a.get()), *cast_from_void<const int64_t*>(b.get()));
         }
         default:
             break;
@@ -755,16 +835,16 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
     else if (type.IsInt && !type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            return fn(*cast_from_void<const uint8_t*>(a), *cast_from_void<const uint8_t*>(b));
+            return fn(*cast_from_void<const uint8_t*>(a.get()), *cast_from_void<const uint8_t*>(b.get()));
         }
         case 2: {
-            return fn(*cast_from_void<const uint16_t*>(a), *cast_from_void<const uint16_t*>(b));
+            return fn(*cast_from_void<const uint16_t*>(a.get()), *cast_from_void<const uint16_t*>(b.get()));
         }
         case 4: {
-            return fn(*cast_from_void<const uint32_t*>(a), *cast_from_void<const uint32_t*>(b));
+            return fn(*cast_from_void<const uint32_t*>(a.get()), *cast_from_void<const uint32_t*>(b.get()));
         }
         case 8: {
-            return fn(*cast_from_void<const uint64_t*>(a), *cast_from_void<const uint64_t*>(b));
+            return fn(*cast_from_void<const uint64_t*>(a.get()), *cast_from_void<const uint64_t*>(b.get()));
         }
         default:
             break;
@@ -772,14 +852,14 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
-            return fn(*cast_from_void<const float32_t*>(a), *cast_from_void<const float32_t*>(b));
+            return fn(*cast_from_void<const float32_t*>(a.get()), *cast_from_void<const float32_t*>(b.get()));
         }
         else if (type.IsDoubleFloat) {
-            return fn(*cast_from_void<const float64_t*>(a), *cast_from_void<const float64_t*>(b));
+            return fn(*cast_from_void<const float64_t*>(a.get()), *cast_from_void<const float64_t*>(b.get()));
         }
     }
     else if (type.IsHashedString) {
-        return fn(*cast_from_void<const hstring*>(a), *cast_from_void<const hstring*>(b));
+        return fn(*cast_from_void<const hstring*>(a.get()), *cast_from_void<const hstring*>(b.get()));
     }
     else if (type.IsEnum) {
         return VisitBaseTypePrimitive(a, b, *type.EnumUnderlyingType, std::forward<Fn>(fn));
@@ -802,11 +882,11 @@ class NameResolver
 public:
     [[nodiscard]] virtual auto GetBaseType(string_view type_str) const -> const BaseTypeDesc& = 0;
     [[nodiscard]] virtual auto ResolveComplexType(string_view type_str) const -> ComplexTypeDesc = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32_t = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32_t = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, bool* failed = nullptr) const -> const string& = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, nptr<bool> failed = nullptr) const -> int32_t = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, nptr<bool> failed = nullptr) const -> int32_t = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed = nullptr) const -> string_view = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
-    [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* = 0;
+    [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> = 0;
     virtual ~NameResolver() = default;
 };
 
@@ -815,8 +895,6 @@ class FrameBalancer
 public:
     FrameBalancer() = default;
     FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps);
-
-    [[nodiscard]] auto GetLoopDuration() const -> timespan { return _loopDuration; }
 
     void StartLoop();
     void EndLoop();
@@ -830,36 +908,12 @@ private:
     timespan _idleTimeBalance {};
 };
 
-FO_DECLARE_EXCEPTION(InfinityLoopException);
-
-class InfinityLoopDetector
-{
-public:
-    explicit InfinityLoopDetector(size_t max_count = 10) :
-        _maxCount {max_count + 10}
-    {
-    }
-
-    auto AddLoop() -> bool
-    {
-        if (++_counter >= _maxCount) {
-            throw InfinityLoopException("Detected infinity loop", _counter);
-        }
-
-        return true;
-    }
-
-private:
-    size_t _maxCount;
-    size_t _counter {};
-};
-
 extern auto MakeSeededRandomGenerator() -> std::mt19937;
 extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
-extern std::mutex InterthreadListenersLocker;
+extern mutex InterthreadListenersLocker;
 extern map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 ///@ ExportEnum

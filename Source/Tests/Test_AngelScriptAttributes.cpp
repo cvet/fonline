@@ -34,6 +34,7 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 #include "AngelScriptAttributes.h"
+#include "AngelScriptHelpers.h"
 #include "AngelScriptRemoteCalls.h"
 #include "Common.h"
 #include "EngineBase.h"
@@ -53,36 +54,56 @@ namespace
     {
     public:
         explicit BytecodeStream(vector<asBYTE>& buf) :
-            _buf {buf}
+            _buf {BufferPtr(buf)}
         {
+            FO_NO_STACK_TRACE_ENTRY();
         }
 
-        int Read(void* ptr, asUINT size) override
+        int Read(void* raw_data, asUINT size) override
         {
-            if (ptr == nullptr || size == 0) {
+            if (size == 0) {
                 return 0;
             }
 
-            REQUIRE(_readPos + size <= _buf.size());
-            MemCopy(ptr, _buf.data() + _readPos, size);
+            if (raw_data == nullptr) {
+                return 0;
+            }
+
+            REQUIRE(_readPos + size <= _buf->size());
+            auto target = make_ptr(raw_data);
+            auto source = make_ptr(&_buf->at(_readPos));
+            MemCopy(target, source, size);
             _readPos += size;
             return 0;
         }
 
-        int Write(const void* ptr, asUINT size) override
+        int Write(const void* raw_data, asUINT size) override
         {
-            if (ptr == nullptr || size == 0) {
+            if (size == 0) {
                 return 0;
             }
 
-            _buf.resize(_writePos + size);
-            MemCopy(_buf.data() + _writePos, ptr, size);
+            if (raw_data == nullptr) {
+                return 0;
+            }
+
+            _buf->resize(_writePos + size);
+            auto target = make_ptr(&_buf->at(_writePos));
+            auto source = make_ptr(raw_data);
+            MemCopy(target, source, size);
             _writePos += size;
             return 0;
         }
 
     private:
-        vector<asBYTE>& _buf;
+        static auto BufferPtr(vector<asBYTE>& buf) noexcept -> ptr<vector<asBYTE>>
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return &buf;
+        }
+
+        ptr<vector<asBYTE>> _buf;
         size_t _readPos {};
         size_t _writePos {};
     };
@@ -175,25 +196,29 @@ namespace
         ignore_unused(obj);
     }
 
-    static void RegisterDummyPlayerType(asIScriptEngine* engine)
+    static void RegisterDummyPlayerType(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterObjectType("Player", 0, asOBJ_REF) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
-    static void RegisterDummyCritterType(asIScriptEngine* engine)
+    static void RegisterDummyCritterType(ptr<asIScriptEngine> engine)
     {
-        REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
+        // Critter is registered as an implicit-handle ref type so the
+        // game-side `Critter` / `Critter?` syntax (without explicit `@`) matches the
+        // production engine's `asEP_ALLOW_IMPLICIT_HANDLE_TYPES` setup.
+        CHECK(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
+        REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF | asOBJ_IMPLICIT_HANDLE) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
-    static void RegisterDummyRouteSnapshotType(asIScriptEngine* engine)
+    static void RegisterDummyRouteSnapshotType(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterObjectType("RouteSnapshot", 0, asOBJ_REF) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
     static void DummyScheduler_StartTimeEvent(asIScriptGeneric* gen)
@@ -252,13 +277,6 @@ namespace
         (void)gen->GetAddressOfArg(1);
     }
 
-    static void DummyProperty_AddPropertyDeferredSetter(asIScriptGeneric* gen)
-    {
-        (void)gen->GetObject();
-        (void)gen->GetAddressOfArg(0);
-        (void)gen->GetAddressOfArg(1);
-    }
-
     static void DummyCritter_AddAnimCallback(asIScriptGeneric* gen)
     {
         (void)gen->GetObject();
@@ -274,10 +292,13 @@ namespace
 
         static void Callback(const asSMessageInfo* msg, void* param)
         {
-            auto* self = static_cast<ScriptMessages*>(param);
-            FO_RUNTIME_ASSERT(self != nullptr);
+            ptr<const asSMessageInfo> message = msg;
+            auto self = cast_from_void<ScriptMessages*>(param);
+            FO_VERIFY_AND_THROW(self, "Script object instance is null");
+            nptr<const char> section = message->section;
+            nptr<const char> text = message->message;
 
-            self->Entries.emplace_back(strex("{}({},{}): {}", msg->section != nullptr ? msg->section : "<unknown>", msg->row, msg->col, msg->message != nullptr ? msg->message : "<no message>").str());
+            self->Entries.emplace_back(strex("{}({},{}): {}", section ? section.get() : "<unknown>", message->row, message->col, text ? text.get() : "<no message>").str());
         }
     };
 
@@ -288,28 +309,25 @@ namespace
         string Errors {};
     };
 
-    struct PreprocessorContextDeleter
-    {
-        void operator()(Preprocessor::Context* ctx) const noexcept { Preprocessor::DeleteContext(ctx); }
-    };
-
     static auto ParseScript(string_view path, string_view script, std::initializer_list<string_view> defines = {}) -> ParsedScript
     {
-        auto pp_ctx = std::unique_ptr<Preprocessor::Context, PreprocessorContextDeleter> {Preprocessor::CreateContext()};
-        for (const auto define : defines) {
+        auto pp_ctx = make_unique_del_ptr(ptr<Preprocessor::Context>(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
+        REQUIRE(nptr<Preprocessor::Context> {pp_ctx});
+
+        for (auto define : defines) {
             Preprocessor::Define(pp_ctx.get(), std::string(define));
         }
         Preprocessor::StringOutStream pp_errors;
         Preprocessor::LexemList lexems;
         auto loader = SingleScriptLoader {string(path), string(script)};
-        const auto std_path = std::string {path};
+        auto std_path = std::string {path};
 
-        const auto pp_errors_count = Preprocessor::PreprocessToLexems(pp_ctx.get(), std_path, lexems, &pp_errors, &loader);
+        int32_t pp_errors_count = Preprocessor::PreprocessToLexems(pp_ctx.get(), std_path, lexems, &pp_errors, &loader);
         REQUIRE(pp_errors_count == 0);
         REQUIRE(pp_errors.String.empty());
 
         ParsedScript result;
-        result.Records = ParseFunctionAttributeRecords(pp_ctx.get(), lexems, result.Errors);
+        result.Records = ParseFunctionAttributeRecords(pp_ctx, lexems, result.Errors);
 
         Preprocessor::StringOutStream out;
         Preprocessor::PrintLexemList(pp_ctx.get(), lexems, out);
@@ -317,17 +335,35 @@ namespace
         return result;
     }
 
-    static auto MakeEngine(ScriptMessages& messages) -> asIScriptEngine*
+    static auto MessageCallbackUserData(ScriptMessages& messages) noexcept -> ptr<ScriptMessages>
     {
-        auto* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-        REQUIRE(engine != nullptr);
+        FO_NO_STACK_TRACE_ENTRY();
 
-        REQUIRE(engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false) >= 0);
-        REQUIRE(engine->SetMessageCallback(asFUNCTION(ScriptMessages::Callback), &messages, asCALL_CDECL) >= 0);
-        return engine;
+        return &messages;
     }
 
-    static void RegisterDummyEventApi(asIScriptEngine* engine)
+    static void ReleaseScriptEngine(ptr<asIScriptEngine> engine) noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        engine->ShutDownAndRelease();
+    }
+
+    static auto MakeEngine(ScriptMessages& messages) -> unique_del_ptr<asIScriptEngine>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        auto created_engine = make_nptr(asCreateScriptEngine(ANGELSCRIPT_VERSION));
+        REQUIRE(created_engine);
+        auto engine = make_unique_del_ptr(created_engine, ReleaseScriptEngine);
+
+        REQUIRE(engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false) >= 0);
+        auto message_callback_user_data = MessageCallbackUserData(messages);
+        REQUIRE(engine->SetMessageCallback(asFUNCTION(ScriptMessages::Callback), message_callback_user_data.get(), asCALL_CDECL) >= 0);
+        return take_not_null(engine);
+    }
+
+    static void RegisterDummyEventApi(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterFuncdef("void DummyEventFunc()") >= 0);
         REQUIRE(engine->RegisterEnum("EventResult") >= 0);
@@ -335,18 +371,18 @@ namespace
         REQUIRE(engine->RegisterEnumValue("EventResult", "StopChain", 1) >= 0);
         REQUIRE(engine->RegisterFuncdef("EventResult DummyEventFuncResult()") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyEvent", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
-        REQUIRE(engine->RegisterGlobalFunction("DummyEvent@ GetDummyEvent()", asFUNCTION(GetDummyEvent), asCALL_CDECL) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("DummyEvent@ GetDummyEvent()", FO_SCRIPT_FUNC(GetDummyEvent), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Subscribe(DummyEventFunc@+ func, int priority = 0)", asFUNCTION(DummyEvent_Subscribe), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Subscribe(DummyEventFuncResult@+ func, int priority = 0)", asFUNCTION(DummyEvent_Subscribe), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Unsubscribe(DummyEventFunc@+ func)", asFUNCTION(DummyEvent_Unsubscribe), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Unsubscribe(DummyEventFuncResult@+ func)", asFUNCTION(DummyEvent_Unsubscribe), asCALL_GENERIC) >= 0);
     }
 
-    static void RegisterDummySchedulerApi(asIScriptEngine* engine)
+    static void RegisterDummySchedulerApi(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterFuncdef("void TimeEventFunc()") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyScheduler", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
-        REQUIRE(engine->RegisterGlobalFunction("DummyScheduler@ GetDummyScheduler()", asFUNCTION(GetDummyScheduler), asCALL_CDECL) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("DummyScheduler@ GetDummyScheduler()", FO_SCRIPT_FUNC(GetDummyScheduler), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyScheduler", "void StartTimeEvent(int delay, TimeEventFunc@+ func)", asFUNCTION(DummyScheduler_StartTimeEvent), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyScheduler", "void StartTimeEvent(int delay, int repeat, TimeEventFunc@+ func)", asFUNCTION(DummyScheduler_StartTimeEventRepeat), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyScheduler", "void StopTimeEvent(TimeEventFunc@+ func)", asFUNCTION(DummyScheduler_StopTimeEvent), asCALL_GENERIC) >= 0);
@@ -355,56 +391,61 @@ namespace
         REQUIRE(engine->RegisterObjectMethod("DummyScheduler", "void SetTimeEventData(TimeEventFunc@+ func, int data)", asFUNCTION(DummyScheduler_SetTimeEventData), asCALL_GENERIC) >= 0);
     }
 
-    static void RegisterDummyPropertyApi(asIScriptEngine* engine)
+    static void RegisterDummyPropertyApi(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterFuncdef("int PropertyGetterFunc(int entity)") >= 0);
         REQUIRE(engine->RegisterFuncdef("void PropertySetterFunc(int entity)") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyPropertyApi", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
-        REQUIRE(engine->RegisterGlobalFunction("DummyPropertyApi@ GetDummyPropertyApi()", asFUNCTION(GetDummyPropertyApi), asCALL_CDECL) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("DummyPropertyApi@ GetDummyPropertyApi()", FO_SCRIPT_FUNC(GetDummyPropertyApi), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void SetPropertyGetter(int prop, PropertyGetterFunc@+ func)", asFUNCTION(DummyProperty_SetPropertyGetter), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void AddPropertySetter(int prop, PropertySetterFunc@+ func)", asFUNCTION(DummyProperty_AddPropertySetter), asCALL_GENERIC) >= 0);
-        REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void AddPropertyDeferredSetter(int prop, PropertySetterFunc@+ func)", asFUNCTION(DummyProperty_AddPropertyDeferredSetter), asCALL_GENERIC) >= 0);
     }
 
-    static void RegisterDummyAnimCallbackApi(asIScriptEngine* engine)
+    static void RegisterDummyAnimCallbackApi(ptr<asIScriptEngine> engine)
     {
         RegisterDummyCritterType(engine);
         REQUIRE(engine->RegisterFuncdef("void AnimCallbackFunc(Critter@+ cr)") >= 0);
-        REQUIRE(engine->RegisterGlobalFunction("Critter@ GetDummyCritter()", asFUNCTION(GetDummyCritter), asCALL_CDECL) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("Critter@ GetDummyCritter()", FO_SCRIPT_FUNC(GetDummyCritter), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(engine->RegisterObjectMethod("Critter", "void AddAnimCallback(int stateAnim, int actionAnim, float normalizedTime, AnimCallbackFunc@+ func)", asFUNCTION(DummyCritter_AddAnimCallback), asCALL_GENERIC) >= 0);
     }
 
-    static auto BuildModule(asIScriptEngine* engine, string_view module_name, string_view source, ScriptMessages& messages) -> asIScriptModule*
+    static auto BuildModule(ptr<asIScriptEngine> engine, string_view module_name, string_view source, ScriptMessages& messages) -> ptr<asIScriptModule>
     {
-        auto* mod = engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE);
-        REQUIRE(mod != nullptr);
-        REQUIRE(mod->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
-        REQUIRE(mod->Build() >= 0);
+        auto module = make_nptr(engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE));
+        REQUIRE(module);
+        REQUIRE(module->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
+        int32_t build_result = module->Build();
+        if (build_result < 0) {
+            for (const auto& entry : messages.Entries) {
+                INFO("AS message: " << entry);
+            }
+        }
+        REQUIRE(build_result >= 0);
         if (!messages.Entries.empty()) {
             INFO(messages.Entries.front());
         }
         CHECK(messages.Entries.empty());
-        return mod;
+        return module;
     }
 
-    static auto FindScriptFunction(asIScriptModule* mod, string_view decl) -> asIScriptFunction*
+    static auto FindScriptFunction(ptr<asIScriptModule> mod, string_view decl) -> nptr<asIScriptFunction>
     {
         for (asUINT i = 0; i < mod->GetFunctionCount(); i++) {
-            auto* func = mod->GetFunctionByIndex(i);
-            if ((func->GetFuncType() == asFUNC_SCRIPT || func->GetFuncType() == asFUNC_VIRTUAL) && string_view(func->GetDeclaration(true, true, false)) == decl) {
+            nptr<asIScriptFunction> func = mod->GetFunctionByIndex(i);
+            if (func && (func->GetFuncType() == asFUNC_SCRIPT || func->GetFuncType() == asFUNC_VIRTUAL) && string_view(func->GetDeclaration(true, true, false)) == decl) {
                 return func;
             }
         }
 
         for (asUINT i = 0; i < mod->GetObjectTypeCount(); i++) {
-            auto* object_type = mod->GetObjectTypeByIndex(i);
-            if (object_type == nullptr) {
+            nptr<asITypeInfo> object_type = mod->GetObjectTypeByIndex(i);
+            if (!object_type) {
                 continue;
             }
 
             for (asUINT j = 0; j < object_type->GetMethodCount(); j++) {
-                auto* func = object_type->GetMethodByIndex(j, false);
-                if ((func->GetFuncType() == asFUNC_SCRIPT || func->GetFuncType() == asFUNC_VIRTUAL) && string_view(func->GetDeclaration(true, true, false)) == decl) {
+                nptr<asIScriptFunction> func = object_type->GetMethodByIndex(j, false);
+                if (func && (func->GetFuncType() == asFUNC_SCRIPT || func->GetFuncType() == asFUNC_VIRTUAL) && string_view(func->GetDeclaration(true, true, false)) == decl) {
                     return func;
                 }
             }
@@ -413,21 +454,21 @@ namespace
         return nullptr;
     }
 
-    static void CheckAttributes(const asIScriptFunction* func, std::initializer_list<string_view> expected)
+    static void CheckAttributes(nptr<const asIScriptFunction> func, std::initializer_list<string_view> expected)
     {
-        REQUIRE(func != nullptr);
+        REQUIRE(func);
 
-        const auto* user_data = GetFunctionAttributesUserData(func);
+        auto user_data = GetFunctionAttributesUserData(func);
         if (expected.size() == 0) {
-            CHECK(user_data == nullptr);
+            CHECK_FALSE(static_cast<bool>(user_data));
             return;
         }
 
-        REQUIRE(user_data != nullptr);
+        REQUIRE(static_cast<bool>(user_data));
         REQUIRE(user_data->Attributes.size() == expected.size());
 
         size_t index = 0;
-        for (const auto attr : expected) {
+        for (auto attr : expected) {
             CHECK(user_data->Attributes[index] == attr);
             index++;
         }
@@ -436,6 +477,11 @@ namespace
     static auto MakeSimpleRemoteCallArg(const BaseTypeDesc& type, string_view name = "value") -> ArgDesc
     {
         return ArgDesc {.Name = string(name), .Type = ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = type}};
+    }
+
+    static auto MakeComplexType(const BaseTypeDesc& type) -> ComplexTypeDesc
+    {
+        return {.Kind = ComplexTypeKind::Simple, .BaseType = type};
     }
 
     static auto MakeInboundRemoteCall(EngineMetadata& meta, string_view name, string_view subsystem_hint, std::initializer_list<ArgDesc> args) -> RemoteCallDesc
@@ -624,12 +670,85 @@ void UsePtr()
 }
 )";
 
+    static constexpr string_view InvokeEntryDirectCallScript = R"(
+namespace AttrTest
+{
+[[InvokeEntry]]
+void SceneEntry(int playerRef, int param)
+{
+}
+
+void CallDirect()
+{
+    SceneEntry(1, 2);
+}
+}
+)";
+
+    static constexpr string_view InvokeEntryReferenceScript = R"(
+namespace AttrTest
+{
+funcdef void SceneEntryFunc(int playerRef, int param);
+
+[[InvokeEntry]]
+void SceneEntry(int playerRef, int param)
+{
+}
+
+void RegisterEntry()
+{
+    SceneEntryFunc@ fn = @SceneEntry;
+}
+}
+)";
+
     static constexpr string_view AttributeParametersScript = R"(
 namespace AttrTest
 {
 [[Primary(2)]][[Secondary]]
 void WithPriority()
 {
+}
+}
+)";
+
+    // `?` is no longer stripped by the preprocessor — AngelScript itself
+    // parses the suffix on handle types. The script uses the project's implicit-handle
+    // syntax (`Critter?`) since Critter is registered with `asOBJ_IMPLICIT_HANDLE`;
+    // ternary uses inside function bodies stay disambiguated by the AS parser.
+    static constexpr string_view NullableStripScript = R"(
+namespace AttrTest
+{
+Critter? Returns(Critter? a, Critter? b)
+{
+    return a;
+}
+
+[[Primary]]
+void Mixed(Critter? arg)
+{
+}
+
+void Plain(Critter? x)
+{
+}
+
+int TernaryStaysIntact(int cond, int a, int b)
+{
+    return cond > 0 ? a : b;
+}
+
+[[Primary]]
+void RequestTargetInfo(int player, int targetCritterId)
+{
+    int crBool = 1;
+    int x = crBool > 0 ? player : targetCritterId;
+}
+
+int TernaryNestedInsideBody(int v)
+{
+    int s = v > 0 ? 1 : (v < 0 ? 2 : 3);
+    return s;
 }
 }
 )";
@@ -918,7 +1037,7 @@ void OnAnim(Critter@+ cr)
 
 void StoreHandler()
 {
-    AnimCallbackFunc@ fn = @OnAnim;
+    AnimCallbackFunc fn = @OnAnim;
 }
 )";
 
@@ -1006,11 +1125,6 @@ void OnSet(int entity)
 void RegisterSetter()
 {
     GetDummyPropertyApi().AddPropertySetter(1, OnSet);
-}
-
-void RegisterDeferredSetter()
-{
-    GetDummyPropertyApi().AddPropertyDeferredSetter(1, OnSet);
 }
 )";
 
@@ -1239,6 +1353,271 @@ void Activate(Player@+ player, int value)
 TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
 {
 #if FO_ANGELSCRIPT_SCRIPTING
+    SECTION("RendersDefaultValuesForMetadataArgs")
+    {
+        EngineMetadata meta {[] { }};
+        vector<ArgDesc> args = {
+            {.Name = "value", .Type = meta.ResolveComplexType("int32"), .DefaultValue = "42"},
+            {.Name = "label", .Type = meta.ResolveComplexType("string"), .DefaultValue = "\"fresh\""},
+        };
+
+        CHECK(MakeScriptArgsName(args) == "int value = 42, string label = \"fresh\"");
+    }
+
+    SECTION("RendersComplexScriptTypeDeclarations")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterEntityType("Critter", true, false, true, true, true);
+        meta.RegisterEntityType("Player", true, true, false, false, false);
+        meta.RegisterRefType("RouteSnapshot");
+
+        const auto& int_type = meta.GetBaseType("int32");
+        const auto& uint_type = meta.GetBaseType("uint32");
+        const auto& float_type = meta.GetBaseType("float32");
+        const auto& string_type = meta.GetBaseType("string");
+        const auto& critter_type = meta.GetBaseType("Critter");
+        const auto& player_type = meta.GetBaseType("Player");
+        const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
+
+        ComplexTypeDesc simple_int = MakeComplexType(int_type);
+        ComplexTypeDesc mutable_int {.Kind = ComplexTypeKind::Simple, .BaseType = int_type, .IsMutable = true};
+        ComplexTypeDesc critter_arg = MakeComplexType(critter_type);
+        ComplexTypeDesc player_arg = MakeComplexType(player_type);
+        ComplexTypeDesc ref_arg = MakeComplexType(route_snapshot_type);
+        ComplexTypeDesc mutable_ref_arg {.Kind = ComplexTypeKind::Simple, .BaseType = route_snapshot_type, .IsMutable = true};
+        ComplexTypeDesc string_array {.Kind = ComplexTypeKind::Array, .BaseType = string_type};
+        ComplexTypeDesc int_dict {.Kind = ComplexTypeKind::Dict, .BaseType = int_type, .KeyType = string_type};
+        ComplexTypeDesc int_array_dict {.Kind = ComplexTypeKind::DictOfArray, .BaseType = int_type, .KeyType = string_type};
+
+        auto callback_args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
+        callback_args->emplace_back();
+        callback_args->emplace_back(int_array_dict);
+        callback_args->emplace_back(int_dict);
+        callback_args->emplace_back(string_array);
+        callback_args->emplace_back(MakeComplexType(float_type));
+        ComplexTypeDesc callback_type;
+        callback_type.Kind = ComplexTypeKind::Callback;
+        callback_type.CallbackArgs = callback_args;
+
+        CHECK(MakeScriptTypeName(int_type) == "int");
+        CHECK(MakeScriptTypeName(uint_type) == "uint");
+        CHECK(MakeScriptTypeName(float_type) == "float");
+        CHECK(MakeScriptTypeName(player_type) == "PlayerSingleton");
+        CHECK(MakeScriptTypeName(string_array) == "array<string>");
+        CHECK(MakeScriptTypeName(int_dict) == "dict<string,int>");
+        CHECK(MakeScriptTypeName(int_array_dict) == "dict<string,array<int>>");
+        CHECK(MakeScriptTypeName(callback_type) == "callback_void_string_to_int32_arr_string_to_int32_string_arr_float32");
+
+        CHECK(MakeScriptArgName(simple_int) == "int");
+        CHECK(MakeScriptArgName(mutable_int) == "int&");
+        CHECK(MakeScriptArgName(critter_arg) == "Critter@+");
+        CHECK(MakeScriptArgName(critter_arg, true) == "Critter@?+");
+        CHECK(MakeScriptArgName(player_arg) == "PlayerSingleton@");
+        CHECK(MakeScriptArgName(player_arg, true) == "PlayerSingleton@?");
+        CHECK(MakeScriptArgName(ref_arg) == "RouteSnapshot@+");
+        CHECK(MakeScriptArgName(mutable_ref_arg, true) == "RouteSnapshot@?&");
+        CHECK(MakeScriptArgName(string_array, true) == "array<string>@?+");
+        CHECK(MakeScriptArgName(int_array_dict) == "dict<string,array<int>>@+");
+
+        CHECK(MakeScriptReturnName({}) == "void");
+        CHECK(MakeScriptReturnName(simple_int) == "int");
+        CHECK(MakeScriptReturnName(critter_arg) == "Critter@+");
+        CHECK(MakeScriptReturnName(critter_arg, true) == "Critter@");
+        CHECK(MakeScriptReturnName(player_arg, false, true) == "PlayerSingleton@?");
+        CHECK(MakeScriptReturnName(ref_arg, true) == "RouteSnapshot@");
+        CHECK(MakeScriptReturnName(string_array) == "array<string>@");
+
+        vector<ArgDesc> args = {
+            {.Name = "targets", .Type = string_array, .Nullable = true},
+            {.Name = "lookup", .Type = int_array_dict},
+            {.Name = "snapshot", .Type = ref_arg, .DefaultValue = "null"},
+        };
+
+        CHECK(MakeScriptArgsName(args) == "array<string>@?+ targets, dict<string,array<int>>@+ lookup, RouteSnapshot@+ snapshot = null");
+    }
+
+    SECTION("NormalizesScriptPropertyDeclarations")
+    {
+        CHECK(NormalizeScriptPropertyDecl("int") == "int");
+        CHECK(NormalizeScriptPropertyDecl("Critter@[]@") == "array<Critter@>");
+        CHECK(NormalizeScriptPropertyDecl("array<string>@") == "array<string>");
+        CHECK(NormalizeScriptPropertyDecl("dict<string,Critter@[]@>@") == "dict<string,array<Critter@>>");
+        CHECK(NormalizeScriptPropertyDecl("dict<string,array<int>[]@>@") == "dict<string,array<array<int>>>");
+        CHECK(NormalizeScriptPropertyDecl("Game::Thing@[]@") == "array<Game::Thing@>");
+    }
+
+    SECTION("RendersScriptPropertyNames")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterEntityType("Critter", true, false, true, true, true);
+        meta.RegisterRefType("RouteSnapshot");
+
+        PropertyRegistrar registrar("ScriptPropertyNameEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
+        auto int_prop = registrar.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+        auto string_array_prop = registrar.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+        auto counter_dict_prop = registrar.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
+        auto proto_array_dict_prop = registrar.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
+        auto ref_prop = registrar.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+        auto ref_array_prop = registrar.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+        auto ref_dict_prop = registrar.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+
+        CHECK(MakeScriptPropertyName(int_prop) == "int");
+        CHECK(MakeScriptPropertyName(string_array_prop) == "array<string>");
+        CHECK(MakeScriptPropertyName(counter_dict_prop) == "dict<string,int>");
+        CHECK(MakeScriptPropertyName(proto_array_dict_prop) == "dict<int,array<ProtoCritter>>");
+        CHECK(MakeScriptPropertyName(ref_prop) == "RouteSnapshot");
+        CHECK(MakeScriptPropertyName(ref_array_prop) == "array<RouteSnapshot>");
+        CHECK(MakeScriptPropertyName(ref_dict_prop) == "dict<string,RouteSnapshot>");
+    }
+
+    SECTION("ChecksAllowedScriptNamespaces")
+    {
+        vector<string> allowed_namespaces = {"Server", "", "Quest::"};
+
+        CHECK(IsScriptNamespaceAllowed("Server", allowed_namespaces));
+        CHECK(IsScriptNamespaceAllowed("ServerTools", allowed_namespaces));
+        CHECK(IsScriptNamespaceAllowed("Quest::Intro", allowed_namespaces));
+        CHECK_FALSE(IsScriptNamespaceAllowed("Client", allowed_namespaces));
+        CHECK_FALSE(IsScriptNamespaceAllowed("", allowed_namespaces));
+        CHECK_FALSE(IsScriptNamespaceAllowed("Server", {}));
+        CHECK_FALSE(IsScriptNamespaceAllowed("Any", {""}));
+    }
+
+    SECTION("ReadsAndWritesEnumValuesAcrossBackingSizes")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterEnumGroup("EnumI8", "int8", {{"None", 0}, {"Negative", -7}});
+        meta.RegisterEnumGroup("EnumI16", "int16", {{"None", 0}, {"Negative", -1234}});
+        meta.RegisterEnumGroup("EnumI32", "int32", {{"None", 0}, {"Negative", -123456}});
+        meta.RegisterEnumGroup("EnumU8", "uint8", {{"None", 0}, {"High", 250}});
+        meta.RegisterEnumGroup("EnumU16", "uint16", {{"None", 0}, {"High", 65000}});
+        meta.RegisterEnumGroup("EnumU32", "uint32", {{"None", 0}, {"High", 2000000000}});
+        meta.RegisterEnumGroup("EnumU64", "uint64", {{"None", 0}});
+
+        int8_t signed_byte = -7;
+        int16_t signed_short = -1234;
+        int32_t signed_int = -123456;
+        uint8_t unsigned_byte = 250;
+        uint16_t unsigned_short = 65000;
+        uint32_t unsigned_int = 2000000000;
+        uint64_t unsupported_unsigned_long = 7;
+
+        CHECK(ReadEnumValueAsInt32(&signed_byte, meta.GetBaseType("EnumI8")) == -7);
+        CHECK(ReadEnumValueAsInt32(&signed_short, meta.GetBaseType("EnumI16")) == -1234);
+        CHECK(ReadEnumValueAsInt32(&signed_int, meta.GetBaseType("EnumI32")) == -123456);
+        CHECK(ReadEnumValueAsInt32(&unsigned_byte, meta.GetBaseType("EnumU8")) == 250);
+        CHECK(ReadEnumValueAsInt32(&unsigned_short, meta.GetBaseType("EnumU16")) == 65000);
+        CHECK(ReadEnumValueAsInt32(&unsigned_int, meta.GetBaseType("EnumU32")) == 2000000000);
+
+        WriteEnumValueFromInt32(&signed_byte, meta.GetBaseType("EnumI8"), -3);
+        WriteEnumValueFromInt32(&signed_short, meta.GetBaseType("EnumI16"), -4567);
+        WriteEnumValueFromInt32(&signed_int, meta.GetBaseType("EnumI32"), -765432);
+        WriteEnumValueFromInt32(&unsigned_byte, meta.GetBaseType("EnumU8"), 240);
+        WriteEnumValueFromInt32(&unsigned_short, meta.GetBaseType("EnumU16"), 64000);
+        WriteEnumValueFromInt32(&unsigned_int, meta.GetBaseType("EnumU32"), 1900000000);
+
+        CHECK(signed_byte == -3);
+        CHECK(signed_short == -4567);
+        CHECK(signed_int == -765432);
+        CHECK(unsigned_byte == 240);
+        CHECK(unsigned_short == 64000);
+        CHECK(unsigned_int == 1900000000);
+
+        CHECK_THROWS(ReadEnumValueAsInt32(&signed_int, meta.GetBaseType("int32")));
+        CHECK_THROWS(ReadEnumValueAsInt32(&unsupported_unsigned_long, meta.GetBaseType("EnumU64")));
+        CHECK_THROWS(WriteEnumValueFromInt32(&unsupported_unsigned_long, meta.GetBaseType("EnumU64"), 7));
+    }
+
+    SECTION("DescribesPrimitiveScriptObjects")
+    {
+        bool bool_value = true;
+        int8_t int8_value = -8;
+        int16_t int16_value = -1600;
+        int32_t int32_value = -320000;
+        int64_t int64_value = -64000000;
+        uint8_t uint8_value = 8;
+        uint16_t uint16_value = 1600;
+        uint32_t uint32_value = 320000;
+        uint64_t uint64_value = 64000000;
+        float32_t float_value = 1.5f;
+        float64_t double_value = 2.25;
+
+        CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_VOID) == "void");
+        CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_BOOL) == "bool: true");
+        CHECK(GetScriptObjectInfo(&int8_value, asTYPEID_INT8) == "int8: -8");
+        CHECK(GetScriptObjectInfo(&int16_value, asTYPEID_INT16) == "int16: -1600");
+        CHECK(GetScriptObjectInfo(&int32_value, asTYPEID_INT32) == "int32: -320000");
+        CHECK(GetScriptObjectInfo(&int64_value, asTYPEID_INT64) == "int64: -64000000");
+        CHECK(GetScriptObjectInfo(&uint8_value, asTYPEID_UINT8) == "uint8: 8");
+        CHECK(GetScriptObjectInfo(&uint16_value, asTYPEID_UINT16) == "uint16: 1600");
+        CHECK(GetScriptObjectInfo(&uint32_value, asTYPEID_UINT32) == "uint32: 320000");
+        CHECK(GetScriptObjectInfo(&uint64_value, asTYPEID_UINT64) == "uint64: 64000000");
+        CHECK(GetScriptObjectInfo(&float_value, asTYPEID_FLOAT) == "float32: 1.5");
+        CHECK(GetScriptObjectInfo(&double_value, asTYPEID_DOUBLE) == "float64: 2.25");
+    }
+
+    SECTION("CreatesScriptArrayAndDictByDeclaration")
+    {
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+
+        RegisterAngelScriptArray(engine);
+        RegisterAngelScriptDict(engine);
+
+        auto arr = CreateScriptArray(engine, "array<int>");
+        CHECK(arr->IsEmpty());
+        CHECK(arr->GetSize() == 0);
+
+        arr->Resize(2);
+        int32_t arr_value = 42;
+        arr->SetValue(1, &arr_value);
+        CHECK(arr->GetSize() == 2);
+        CHECK(*arr->AtAs<int32_t>(1) == 42);
+
+        auto cached_arr = CreateScriptArray(engine, "array<int>");
+        CHECK(cached_arr->IsEmpty());
+
+        auto dict = CreateScriptDict(engine, "dict<int,int>");
+        CHECK(dict->IsEmpty());
+        CHECK(dict->GetSize() == 0);
+
+        int32_t dict_key = 7;
+        int32_t dict_value = 9;
+        dict->Set(&dict_key, &dict_value);
+
+        CHECK(dict->GetSize() == 1);
+        CHECK(dict->Exists(&dict_key));
+        CHECK(*cast_from_void<int32_t*>(dict->Get(&dict_key).get()) == 9);
+    }
+
+    SECTION("RendersScriptFunctionNames")
+    {
+        static constexpr string_view Script = R"(
+void FreeCall()
+{
+}
+
+namespace HelperNs
+{
+void NamespacedCall()
+{
+}
+}
+)";
+
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+        auto mod = BuildModule(engine, "HelperFuncNames", Script, messages);
+
+        EngineMetadata meta {[] { }};
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void FreeCall()"), meta.Hashes) == meta.Hashes.ToHashedString("FreeCall"));
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void HelperNs::NamespacedCall()"), meta.Hashes) == meta.Hashes.ToHashedString("HelperNs::NamespacedCall"));
+    }
+
     SECTION("BindsAndStripsAttributes")
     {
         auto parsed = ParseScript("AttributesPositive.fos", PositiveScript);
@@ -1250,11 +1629,11 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         CHECK(parsed.Source.find("[Two]") == string::npos);
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrTestModule", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrTestModule", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
         CHECK(ValidateAttributedFunctionUsage(mod).empty());
@@ -1274,11 +1653,11 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Records.size() == 1);
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrAfterClass", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrAfterClass", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -1293,15 +1672,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Records.size() == 1);
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrWithParameters", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrWithParameters", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        auto* func = FindScriptFunction(mod, "void AttrTest::WithPriority()");
+        auto func = FindScriptFunction(mod, "void AttrTest::WithPriority()");
         CheckAttributes(func, {"Primary(2)", "Secondary"});
         CHECK(HasFunctionAttribute(func, "Primary"));
         CHECK(FindFunctionAttribute(func, "Primary") == "Primary(2)");
@@ -1357,10 +1736,10 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrRoundtripSave", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrRoundtripSave", parsed.Source, messages);
 
         vector<asBYTE> bytecode;
         auto stream = BytecodeStream {bytecode};
@@ -1371,20 +1750,20 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         SerializeFunctionAttributeRecords(writer, parsed.Records);
 
         ScriptMessages load_messages;
-        auto* load_engine = MakeEngine(load_messages);
-        auto release_load_engine = scope_exit([&load_engine]() noexcept { safe_call([&load_engine] { load_engine->ShutDownAndRelease(); }); });
+        auto load_engine_holder = MakeEngine(load_messages);
+        ptr<asIScriptEngine> load_engine = load_engine_holder.get();
 
-        auto* load_mod = load_engine->GetModule("AttrRoundtripLoad", asGM_ALWAYS_CREATE);
-        REQUIRE(load_mod != nullptr);
+        nptr<asIScriptModule> load_mod = load_engine->GetModule("AttrRoundtripLoad", asGM_ALWAYS_CREATE);
+        REQUIRE(load_mod);
 
         auto load_stream = BytecodeStream {bytecode};
         REQUIRE(load_mod->LoadByteCode(&load_stream) >= 0);
 
         auto reader = DataReader {payload};
-        const auto records = DeserializeFunctionAttributeRecords(reader);
+        auto records = DeserializeFunctionAttributeRecords(reader);
         reader.VerifyEnd();
 
-        const auto bind_error = BindFunctionAttributeRecords(load_mod, records);
+        string bind_error = BindFunctionAttributeRecords(load_mod, records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
         CHECK(ValidateAttributedFunctionUsage(load_mod).empty());
@@ -1406,21 +1785,86 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         CHECK(parsed.Errors.find("AttributesInvalidPlacement.fos") != string::npos);
     }
 
+    SECTION("ParsesNullableTypeSuffix")
+    {
+        // `?` now passes through the preprocessor untouched and is parsed
+        // by AngelScript itself as a first-class nullable handle marker. The `?` suffix
+        // must survive into the AS source; ternary `cond ? a : b` inside function bodies
+        // must continue to parse normally.
+        auto parsed = ParseScript("AttributesNullableStrip.fos", NullableStripScript);
+
+        INFO(parsed.Errors);
+        CHECK(parsed.Errors.empty());
+        CHECK(parsed.Source.find("Critter?") != string::npos);
+        CHECK(parsed.Source.find("? a") != string::npos);
+
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+        RegisterDummyCritterType(engine);
+
+        auto mod = BuildModule(engine, "AttrNullableStrip", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        CheckAttributes(FindScriptFunction(mod, "Critter@? AttrTest::Returns(Critter@?, Critter@?)"), {});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Mixed(Critter@?)"), {"Primary"});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Plain(Critter@?)"), {});
+        CheckAttributes(FindScriptFunction(mod, "int AttrTest::TernaryStaysIntact(int, int, int)"), {});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::RequestTargetInfo(int, int)"), {"Primary"});
+        CheckAttributes(FindScriptFunction(mod, "int AttrTest::TernaryNestedInsideBody(int)"), {});
+    }
+
+    SECTION("RejectsNullableSuffixOnPrimitive")
+    {
+        // `?` is only meaningful on handle types — applying it to a
+        // primitive must produce a parse / type-check error.
+        static constexpr string_view PrimitiveNullableScript = R"(
+namespace AttrTest
+{
+void TakesIntPlease(int? value)
+{
+}
+}
+)";
+        auto parsed = ParseScript("AttributesNullablePrimitive.fos", PrimitiveNullableScript);
+        CHECK(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+
+        nptr<asIScriptModule> mod = engine->GetModule("AttrNullablePrimitive", asGM_ALWAYS_CREATE);
+        REQUIRE(mod);
+        REQUIRE(mod->AddScriptSection("AttrNullablePrimitive", parsed.Source.data(), parsed.Source.length()) >= 0);
+        CHECK(mod->Build() < 0);
+
+        bool found_message = false;
+        for (const auto& entry : messages.Entries) {
+            if (entry.find("Nullable marker '?' is only allowed on handle types") != string::npos) {
+                found_message = true;
+                break;
+            }
+        }
+        CHECK(found_message);
+    }
+
     SECTION("RejectsInvalidModuleInitPriorityArgument")
     {
         auto parsed = ParseScript("AttributesInvalidModuleInitPriority.fos", InvalidModuleInitAttributeScript);
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrInvalidModuleInitPriority", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrInvalidModuleInitPriority", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto special_attr_error = ValidateSpecialFunctionAttributes(mod);
+        string special_attr_error = ValidateSpecialFunctionAttributes(mod);
         CHECK(!special_attr_error.empty());
         CHECK(special_attr_error.find("[[ModuleInit(bad)]]") != string::npos);
         CHECK(special_attr_error.find("optional single integer priority") != string::npos);
@@ -1432,19 +1876,67 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrDirectCall", parsed.Source, messages);
+        // The script uses `[[EngineOnly]]` as a placeholder blocking attribute; declare it via
+        // the project-extras list so the validator treats it as direct-call-blocking (Rule 1)
+        // rather than as a viral marker (Rule 2 default for unknown attributes).
+        vector<string> project_blocking_extras {"EngineOnly"};
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records, &project_blocking_extras);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        string usage_error = ValidateAttributedFunctionUsage(mod, nullptr, nullptr, &project_blocking_extras);
+        CHECK(!usage_error.empty());
+        CHECK(usage_error.find("void AttrTest::Hidden()") != string::npos);
+        CHECK(usage_error.find("void AttrTest::User()") != string::npos);
+        CHECK(usage_error.find("cannot be called") != string::npos);
+    }
+
+    SECTION("RejectsDirectCallsToInvokeEntryFunctions")
+    {
+        // `[[InvokeEntry]]` marks a function that is dispatched only through the engine's dynamic
+        // `Invoke(name, ...)` global, so it is a built-in direct-call-blocking attribute: no
+        // project-extras list is passed here, proving the engine blocks the direct call on its own.
+        auto parsed = ParseScript("AttributesInvokeEntryDirectCall.fos", InvokeEntryDirectCallScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+
+        auto mod = BuildModule(engine, "AttrInvokeEntryDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         const auto usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
-        CHECK(usage_error.find("void AttrTest::Hidden()") != string::npos);
-        CHECK(usage_error.find("void AttrTest::User()") != string::npos);
+        CHECK(usage_error.find("SceneEntry") != string::npos);
+        CHECK(usage_error.find("CallDirect") != string::npos);
         CHECK(usage_error.find("cannot be called") != string::npos);
+    }
+
+    SECTION("AllowsFunctionReferencesToInvokeEntryFunctions")
+    {
+        // Registering the entry by name (`NameOf(SceneEntry)`) compiles to a function reference, so
+        // referencing an `[[InvokeEntry]]` function must stay legal - only calling it is blocked.
+        auto parsed = ParseScript("AttributesInvokeEntryReference.fos", InvokeEntryReferenceScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+
+        auto mod = BuildModule(engine, "AttrInvokeEntryReference", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        CHECK(usage_error.empty());
     }
 
     SECTION("AllowsFunctionPointersToAttributedFunctions")
@@ -1453,15 +1945,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrFuncPtr", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrFuncPtr", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(usage_error.empty());
     }
 
@@ -1471,16 +1963,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrEventPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1490,16 +1982,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventResultPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrEventResultPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1509,16 +2001,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrEventNegative", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to Subscribe/Unsubscribe must be marked [[Event]]") != string::npos);
         CHECK(event_error.find("void OnEvent()") != string::npos);
@@ -1530,18 +2022,18 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventMethodPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrEventMethodPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CheckAttributes(FindScriptFunction(mod, "void Listener::OnEvent()"), {"Event"});
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1551,16 +2043,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventMethodNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrEventMethodNegative", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to Subscribe/Unsubscribe must be marked [[Event]]") != string::npos);
         CHECK(event_error.find("void Listener::OnEvent()") != string::npos);
@@ -1572,15 +2064,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrEventDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrEventDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void OnEvent()") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -1593,16 +2085,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrEventWrongUsage", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[Event]] can only be passed to Subscribe/Unsubscribe") != string::npos);
         CHECK(event_error.find("void OnEvent()") != string::npos);
@@ -1614,18 +2106,18 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummySchedulerApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrTimeEventPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrTimeEventPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CheckAttributes(FindScriptFunction(mod, "void OnTick()"), {"TimeEvent"});
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1635,16 +2127,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummySchedulerApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrTimeEventNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrTimeEventNegative", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to time-event APIs (StartTimeEvent, StopTimeEvent, CountTimeEvent, RepeatTimeEvent, SetTimeEventData) must be marked [[TimeEvent]]") != string::npos);
         CHECK(event_error.find("void OnTick()") != string::npos);
@@ -1656,15 +2148,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrTimeEventDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrTimeEventDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void OnTick()") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -1677,16 +2169,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummySchedulerApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrTimeEventWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrTimeEventWrongUsage", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[TimeEvent]] can only be passed to time-event APIs") != string::npos);
         CHECK(event_error.find("void OnTick()") != string::npos);
@@ -1698,16 +2190,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummySchedulerApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventUsedForTimeEvent", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrEventUsedForTimeEvent", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[Event]] can only be passed to Subscribe/Unsubscribe") != string::npos);
         CHECK(event_error.find("void OnEvent()") != string::npos);
@@ -1719,16 +2211,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrTimeEventUsedForEvent", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrTimeEventUsedForEvent", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[TimeEvent]] can only be passed to time-event APIs") != string::npos);
         CHECK(event_error.find("void OnTick()") != string::npos);
@@ -1740,16 +2232,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyAnimCallbackApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrAnimCallbackPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrAnimCallbackPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1759,16 +2251,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyAnimCallbackApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrAnimCallbackNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrAnimCallbackNegative", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to AddAnimCallback must be marked [[AnimCallback]]") != string::npos);
         CHECK(event_error.find("void OnAnim(Critter@)") != string::npos);
@@ -1780,16 +2272,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyAnimCallbackApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrAnimCallbackDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrAnimCallbackDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void OnAnim(Critter@)") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -1802,16 +2294,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyAnimCallbackApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrAnimCallbackWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrAnimCallbackWrongUsage", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[AnimCallback]] can only be passed to AddAnimCallback") != string::npos);
         CHECK(event_error.find("void OnAnim(Critter@)") != string::npos);
@@ -1823,18 +2315,18 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertyGetterPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrPropertyGetterPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CheckAttributes(FindScriptFunction(mod, "int OnGet(int)"), {"PropertyGetter"});
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1844,16 +2336,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertyGetterNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrPropertyGetterNegative", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions passed to property getter APIs (SetPropertyGetter) must be marked [[PropertyGetter]]") != string::npos);
         CHECK(event_error.find("int OnGet(int)") != string::npos);
@@ -1865,15 +2357,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrPropertyGetterDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrPropertyGetterDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("int OnGet(int)") != string::npos);
         CHECK(usage_error.find("int CallDirect()") != string::npos);
@@ -1886,16 +2378,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertyGetterWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrPropertyGetterWrongUsage", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
         CHECK(event_error.find("Functions marked [[PropertyGetter]] can only be passed to property getter APIs (SetPropertyGetter)") != string::npos);
         CHECK(event_error.find("int OnGet(int)") != string::npos);
@@ -1907,18 +2399,18 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertySetterPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrPropertySetterPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CheckAttributes(FindScriptFunction(mod, "void OnSet(int)"), {"PropertySetter"});
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(event_error.empty());
     }
 
@@ -1928,18 +2420,18 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertySetterNegative", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrPropertySetterNegative", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
-        CHECK(event_error.find("Functions passed to property setter APIs (AddPropertySetter, AddPropertyDeferredSetter) must be marked [[PropertySetter]]") != string::npos);
+        CHECK(event_error.find("Functions passed to property setter API (AddPropertySetter) must be marked [[PropertySetter]]") != string::npos);
         CHECK(event_error.find("void OnSet(int)") != string::npos);
     }
 
@@ -1949,15 +2441,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrPropertySetterDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrPropertySetterDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void OnSet(int)") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -1970,18 +2462,18 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertySetterWrongUsage", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrPropertySetterWrongUsage", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto event_error = ValidateEventSubscriptions(mod);
+        string event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
-        CHECK(event_error.find("Functions marked [[PropertySetter]] can only be passed to property setter APIs (AddPropertySetter, AddPropertyDeferredSetter)") != string::npos);
+        CHECK(event_error.find("Functions marked [[PropertySetter]] can only be passed to property setter API (AddPropertySetter)") != string::npos);
         CHECK(event_error.find("void OnSet(int)") != string::npos);
     }
 
@@ -1991,13 +2483,13 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
         RegisterDummyCritterType(engine);
 
-        auto* mod = BuildModule(engine, "AttrAdminRemoteCallPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrAdminRemoteCallPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2015,16 +2507,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrAdminRemoteCallDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrAdminRemoteCallDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
         CHECK(ValidateAdminRemoteCallAttributes(mod).empty());
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void Run()") != string::npos);
         CHECK(usage_error.find("void CallDirect()") != string::npos);
@@ -2037,16 +2529,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallServerDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void RemoteCallTest::Activate(Player@, int)") != string::npos);
         CHECK(usage_error.find("void RemoteCallTest::CallDirect(Player@)") != string::npos);
@@ -2059,15 +2551,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "RemoteCallClientDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallClientDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void RemoteCallTest::Activate(int)") != string::npos);
         CHECK(usage_error.find("void RemoteCallTest::CallDirect()") != string::npos);
@@ -2080,15 +2572,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "ItemTriggerDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "ItemTriggerDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void ItemTriggerTest::Triggered()") != string::npos);
         CHECK(usage_error.find("void ItemTriggerTest::CallDirect()") != string::npos);
@@ -2101,15 +2593,15 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "ItemStaticDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "ItemStaticDirectCall", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void ItemStaticTest::StaticCall()") != string::npos);
         CHECK(usage_error.find("void ItemStaticTest::CallDirect()") != string::npos);
@@ -2122,16 +2614,16 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "AttrAdminRemoteCallWrongSignature", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "AttrAdminRemoteCallWrongSignature", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod);
+        string admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod);
         CHECK(!admin_remote_call_error.empty());
         CHECK(admin_remote_call_error.find("[[AdminRemoteCall]]") != string::npos);
         CHECK(admin_remote_call_error.find("~run entrypoint") != string::npos);
@@ -2144,12 +2636,12 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallServerPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2157,7 +2649,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
     }
 
@@ -2167,11 +2659,11 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "RemoteCallClientPositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallClientPositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2179,7 +2671,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterSide(EngineSideKind::ClientSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
     }
 
@@ -2189,13 +2681,13 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
         RegisterDummyRouteSnapshotType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerRefTypePositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallServerRefTypePositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2205,7 +2697,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterRefTypeLayout("RouteSnapshot", {{"Note", "string"}});
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("RouteSnapshot"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
     }
 
@@ -2215,12 +2707,12 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyRouteSnapshotType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallClientRefTypePositive", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallClientRefTypePositive", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2230,7 +2722,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterRefTypeLayout("RouteSnapshot", {{"Note", "string"}});
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("RouteSnapshot"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
     }
 
@@ -2241,12 +2733,12 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         CHECK(parsed.Records.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "LegacyRemoteCallServerComment", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "LegacyRemoteCallServerComment", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2254,10 +2746,10 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        auto* func = FindScriptFunction(mod, "void RemoteCallTest::Activate(Player@, int)");
+        auto func = FindScriptFunction(mod, "void RemoteCallTest::Activate(Player@, int)");
         CheckAttributes(func, {});
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("must be marked [[ServerRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("void RemoteCallTest::Activate(Player@, int)") != string::npos);
@@ -2269,12 +2761,12 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerWrongSignature", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallServerWrongSignature", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2282,7 +2774,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("[[ServerRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("has no matching ///@ RemoteCall declaration") != string::npos);
@@ -2295,12 +2787,12 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerWrongSide", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallServerWrongSide", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2308,7 +2800,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("[[ClientRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("uses the wrong remote-call attribute for this engine side") != string::npos);
@@ -2321,11 +2813,11 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "RemoteCallClientExtra", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallClientExtra", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2333,7 +2825,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterSide(EngineSideKind::ClientSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("[[ClientRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("has no matching ///@ RemoteCall declaration") != string::npos);
@@ -2346,12 +2838,12 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerMissingAttribute", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        auto mod = BuildModule(engine, "RemoteCallServerMissingAttribute", parsed.Source, messages);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
@@ -2359,7 +2851,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(!remote_call_error.empty());
         CHECK(remote_call_error.find("must be marked [[ServerRemoteCall]]") != string::npos);
         CHECK(remote_call_error.find("void RemoteCallTest::Activate(Player@, int)") != string::npos);

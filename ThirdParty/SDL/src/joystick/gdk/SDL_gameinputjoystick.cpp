@@ -34,11 +34,6 @@
 #define SDL_GAMEINPUT_DEFAULT false
 #endif
 
-// Enable sensor support in GameInput 2.0, once we have a device that can be used for testing
-#if GAMEINPUT_API_VERSION >= 2
-//#define GAMEINPUT_SENSOR_SUPPORT
-#endif
-
 enum
 {
     SDL_GAMEPAD_BUTTON_GAMEINPUT_SHARE = 11
@@ -130,7 +125,7 @@ static Uint8 GAMEINPUT_GetDeviceRawType(const GameInputDeviceInfo *info)
                 break;
             case USB_VENDOR_CRKD:
                 switch (info->productId) {
-                    case USB_PRODUCT_PDP_XB1_JAGUAR_GUITAR:
+                    case USB_PRODUCT_RED_OCTANE_XB1_STAGE_TOUR_GUITAR:
                         return SDL_GAMEINPUT_RAWTYPE_ROCK_BAND_GUITAR;
                     default:
                         break;
@@ -140,6 +135,16 @@ static Uint8 GAMEINPUT_GetDeviceRawType(const GameInputDeviceInfo *info)
                 switch (info->productId) {
                     case USB_PRODUCT_RED_OCTANE_XB1_GUITAR_HERO_LIVE_GUITAR:
                         return SDL_GAMEINPUT_RAWTYPE_GUITAR_HERO_LIVE_GUITAR;
+                    default:
+                        break;
+                }
+                break;
+            case USB_VENDOR_RED_OCTANE_GAMES:
+                switch (info->productId) {
+                    case USB_PRODUCT_RED_OCTANE_XB1_STAGE_TOUR_GUITAR:
+                        return SDL_GAMEINPUT_RAWTYPE_ROCK_BAND_GUITAR;
+                    case USB_PRODUCT_RED_OCTANE_XB1_STAGE_TOUR_DRUMS:
+                        return SDL_GAMEINPUT_RAWTYPE_ROCK_BAND_DRUM_KIT;
                     default:
                         break;
                 }
@@ -419,9 +424,11 @@ static bool GAMEINPUT_JoystickInit(void)
     if (SDL_GetHintBoolean(SDL_HINT_JOYSTICK_GAMEINPUT, SDL_GAMEINPUT_DEFAULT)) {
         kind |= GameInputKindController;
     }
+#if GAMEINPUT_API_VERSION >= 3
     if (GAMEINPUT_IsRawGameInputEnabled()) {
         kind |= GameInputKindRawDeviceReport;
     }
+#endif
 
     hr = g_pGameInput->RegisterDeviceCallback(NULL,
                                            kind,
@@ -647,17 +654,17 @@ static bool GAMEINPUT_JoystickOpen(SDL_Joystick *joystick, int device_index)
         SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN, true);
     }
 
-#ifdef GAMEINPUT_SENSOR_SUPPORT
+#if GAMEINPUT_API_VERSION >= 3
     if (info->supportedInput & GameInputKindSensors) {
-        // FIXME: What's the sensor update rate?
         if (info->sensorsInfo->supportedSensors & GameInputSensorsGyrometer) {
-            SDL_PrivateJoystickAddSensor(joystick, SDL_SENSOR_GYRO, 250.0f);
+            SDL_PrivateJoystickAddSensor(joystick, SDL_SENSOR_GYRO, 60.0f);
         }
         if (info->sensorsInfo->supportedSensors & GameInputSensorsAccelerometer) {
-            SDL_PrivateJoystickAddSensor(joystick, SDL_SENSOR_ACCEL, 250.0f);
+            SDL_PrivateJoystickAddSensor(joystick, SDL_SENSOR_ACCEL, 60.0f);
         }
     }
-#endif
+#endif // GAMEINPUT_API_VERSION >= 3
+
     return true;
 }
 
@@ -701,7 +708,8 @@ static bool GAMEINPUT_JoystickSetSensorsEnabled(SDL_Joystick *joystick, bool ena
 
 static void GAMEINPUT_GuitarUpdate(SDL_Joystick *joystick, IGameInputReading *reading, Uint64 timestamp)
 {
-    IGameInputRawDeviceReport* rawState;
+#if GAMEINPUT_API_VERSION >= 3
+    IGameInputRawDeviceReport *rawState;
     if (reading->GetRawReport(&rawState)) {
         static WORD s_GuitarButtons[] = {
             0x0010,  // SDL_GAMEPAD_BUTTON_SOUTH
@@ -753,6 +761,7 @@ static void GAMEINPUT_GuitarUpdate(SDL_Joystick *joystick, IGameInputReading *re
             SDL_SendJoystickAxis(timestamp, joystick, SDL_GAMEPAD_AXIS_RIGHTY, effects_mappings[rawData[4] >> 4]);
         }
     }
+#endif // GAMEINPUT_API_VERSION >= 3
 }
 
 static void GAMEINPUT_GamepadUpdate(SDL_Joystick *joystick, IGameInputReading *reading, Uint64 timestamp) {
@@ -901,7 +910,7 @@ static void GAMEINPUT_JoystickUpdate(SDL_Joystick *joystick)
         GAMEINPUT_ControllerUpdate(joystick, reading, timestamp);
     }
 
-#ifdef GAMEINPUT_SENSOR_SUPPORT
+#if GAMEINPUT_API_VERSION >= 3
     if (hwdata->report_sensors) {
         GameInputSensorsState sensor_state;
 
@@ -924,7 +933,7 @@ static void GAMEINPUT_JoystickUpdate(SDL_Joystick *joystick)
             }
         }
     }
-#endif // GAMEINPUT_SENSOR_SUPPORT
+#endif // GAMEINPUT_API_VERSION >= 3
 
     reading->Release();
 

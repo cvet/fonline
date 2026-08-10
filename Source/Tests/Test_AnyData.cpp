@@ -207,8 +207,8 @@ TEST_CASE("AnyData")
 
     SECTION("EmptyContainersParsing")
     {
-        const auto parsed_arr_value = AnyData::ParseValue("", false, true, AnyData::ValueType::String);
-        const auto parsed_dict_value = AnyData::ParseValue("", true, false, AnyData::ValueType::Int64);
+        auto parsed_arr_value = AnyData::ParseValue("", false, true, AnyData::ValueType::String);
+        auto parsed_dict_value = AnyData::ParseValue("", true, false, AnyData::ValueType::Int64);
         const auto& parsed_arr = parsed_arr_value.AsArray();
         const auto& parsed_dict = parsed_dict_value.AsDict();
 
@@ -232,6 +232,15 @@ TEST_CASE("AnyData")
         CHECK_THROWS_AS((AnyData::ParseValue("abc", false, false, AnyData::ValueType::Float64)), AnyDataException);
         CHECK_THROWS_AS((AnyData::ParseValue("1 two 3", false, true, AnyData::ValueType::Int64)), AnyDataException);
         CHECK_THROWS_AS((AnyData::ParseValue("key NaNish", true, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("nan", false, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("1 inf 3", false, true, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("key -inf", true, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ValueToString(AnyData::Value {std::numeric_limits<float64_t>::quiet_NaN()})), AnyDataException);
+
+        AnyData::Array non_finite_values;
+        non_finite_values.EmplaceBack(numeric_cast<int64_t>(1));
+        non_finite_values.EmplaceBack(std::numeric_limits<float64_t>::infinity());
+        CHECK_THROWS_AS((AnyData::ValueToString(AnyData::Value {std::move(non_finite_values)})), AnyDataException);
     }
 
     SECTION("BoolAcceptsNumbersAndExplicitLiterals")
@@ -276,22 +285,22 @@ TEST_CASE("AnyData")
         arr.EmplaceBack(string(" spaced value "));
         arr.EmplaceBack(string("quote \" value"));
 
-        const auto encoded_arr = AnyData::ValueToString(arr.Copy());
+        string encoded_arr = AnyData::ValueToString(arr.Copy());
         CHECK(arr == AnyData::ParseValue(encoded_arr, false, true, AnyData::ValueType::String).AsArray());
 
         AnyData::Dict dict;
         dict.Emplace("key space", string("value with spaces"));
         dict.Emplace("key_quote", string("value \"quote\""));
 
-        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        string encoded_dict = AnyData::ValueToString(dict.Copy());
         CHECK(dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
     SECTION("CarriageReturnIsStripped")
     {
-        const string text {"line1\rline2\nline3"};
-        const string normalized_text {"line1line2\nline3"};
-        const auto encoded = AnyData::ValueToString(AnyData::Value {text});
+        string text {"line1\rline2\nline3"};
+        string normalized_text {"line1line2\nline3"};
+        string encoded = AnyData::ValueToString(AnyData::Value {text});
 
         CHECK(StringEscaping::CodeString(text) == "\"line1line2\\nline3\"");
         CHECK(StringEscaping::DecodeString("\"line1\\rline2\\nline3\"") == normalized_text);
@@ -304,7 +313,7 @@ TEST_CASE("AnyData")
         AnyData::Dict normalized_dict;
         normalized_dict.Emplace("payload", string {"head\ntail"});
 
-        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        string encoded_dict = AnyData::ValueToString(dict.Copy());
         CHECK(normalized_dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
@@ -314,8 +323,8 @@ TEST_CASE("AnyData")
         dict.Emplace("key \"quoted\"", string("value1"));
         dict.Emplace("path\\segment", string("value2"));
 
-        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
-        const auto parsed_value = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
+        string encoded_dict = AnyData::ValueToString(dict.Copy());
+        auto parsed_value = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
         const auto& parsed_dict = parsed_value.AsDict();
 
         CHECK(parsed_dict.Contains("key \"quoted\""));
