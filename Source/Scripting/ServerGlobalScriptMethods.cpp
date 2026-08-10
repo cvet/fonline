@@ -38,7 +38,7 @@
 #include "Geometry.h"
 #include "NetworkServer.h"
 #include "Platform.h"
-#include "PropertiesSerializator.h"
+#include "PropertiesSerializer.h"
 #include "ScriptSystem.h"
 #include "Server.h"
 
@@ -726,58 +726,58 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> ser
     return MakeScriptHandleVector<Critter>(result);
 }
 
-// SyncScope: no existing entity cover required; creates a disconnected unlogined player session.
+// SyncScope: no existing entity cover required; creates a disconnected not-logged-in player session.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_CreateUnloginedPlayer(ptr<ServerEngine> server)
+FO_SCRIPT_API ptr<Player> Server_Game_CreateNotLoggedInPlayer(ptr<ServerEngine> server)
 {
     auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-    auto player = server->CreateUnloginedPlayer(std::move(dummy_net_conn));
+    auto player = server->CreateNotLoggedInPlayer(std::move(dummy_net_conn));
     return player;
 }
 
-// SyncScope: requires unloginedPlayer; login mutates that player/session record.
+// SyncScope: requires notLoggedInPlayer; login mutates that player/session record.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer)
 {
-    ValidateEntityAccess(unloginedPlayer);
+    ValidateEntityAccess(notLoggedInPlayer);
 
-    if (unloginedPlayer->GetLogined()) {
-        throw ScriptException("Player is already logined");
+    if (notLoggedInPlayer->GetLoggedIn()) {
+        throw ScriptException("Player is already logged in");
     }
 
-    auto player = server->LoginPlayerToNewRecord(unloginedPlayer);
+    auto player = server->LoginPlayerToNewRecord(notLoggedInPlayer);
     return player;
 }
 
-// SyncScope: requires unloginedPlayer; login mutates that player/session record.
+// SyncScope: requires notLoggedInPlayer; login mutates that player/session record.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer)
 {
-    ValidateEntityAccess(unloginedPlayer);
+    ValidateEntityAccess(notLoggedInPlayer);
 
-    if (unloginedPlayer->GetLogined()) {
-        throw ScriptException("Player is already logined");
+    if (notLoggedInPlayer->GetLoggedIn()) {
+        throw ScriptException("Player is already logged in");
     }
 
-    auto player = server->LoginPlayerToTempSession(unloginedPlayer);
+    auto player = server->LoginPlayerToTempSession(notLoggedInPlayer);
     return player;
 }
 
-// SyncScope: requires unloginedPlayer plus the prepared main-critter/map/location graph; a live reconnect
+// SyncScope: requires notLoggedInPlayer plus the prepared main-critter/map/location graph; a live reconnect
 // additionally requires the existing player. Login preserves the caller-provided cover.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer, ident_t playerId)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer, ident_t playerId)
 {
-    ValidateEntityAccess(unloginedPlayer);
+    ValidateEntityAccess(notLoggedInPlayer);
 
-    if (unloginedPlayer->GetLogined()) {
-        throw ScriptException("Player is already logined");
+    if (notLoggedInPlayer->GetLoggedIn()) {
+        throw ScriptException("Player is already logged in");
     }
     if (!playerId) {
         throw ScriptException("Player id arg is zero");
     }
 
-    auto player = server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
+    auto player = server->LoginPlayerToExistentRecord(notLoggedInPlayer, playerId);
     return player;
 }
 

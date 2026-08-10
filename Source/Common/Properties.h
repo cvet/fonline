@@ -43,7 +43,7 @@ FO_DECLARE_EXCEPTION(PropertiesException);
 
 class Entity;
 class Property;
-class PropertyRegistrator;
+class PropertyRegistrar;
 class Properties;
 
 class PropertyRawData
@@ -114,7 +114,7 @@ using PropertyPostSetCallback = function<void(nptr<Entity>, ptr<const Property>)
 
 class Property final
 {
-    friend class PropertyRegistrator;
+    friend class PropertyRegistrar;
     friend class Properties;
     friend class SafeAlloc;
 
@@ -125,7 +125,7 @@ public:
     auto operator=(Property&&) noexcept -> Property& = default;
     ~Property() = default;
 
-    [[nodiscard]] auto GetRegistrator() const noexcept -> ptr<const PropertyRegistrator> { return _registrator; }
+    [[nodiscard]] auto GetRegistrar() const noexcept -> ptr<const PropertyRegistrar> { return _registrar; }
     [[nodiscard]] auto GetName() const noexcept -> string_view { return _propName; }
     [[nodiscard]] auto GetNameWithoutComponent() const noexcept -> string_view { return _propNameWithoutComponent; }
     [[nodiscard]] auto GetComponentName() const noexcept -> string_view { return _componentName; }
@@ -209,9 +209,9 @@ public:
     void AddPostSetter(PropertyPostSetCallback setter) const;
 
 private:
-    explicit Property(ptr<const PropertyRegistrator> registrator);
+    explicit Property(ptr<const PropertyRegistrar> registrar);
 
-    ptr<const PropertyRegistrator> _registrator;
+    ptr<const PropertyRegistrar> _registrar;
 
     mutable PropertyGetCallback _getter {};
     mutable vector<PropertySetCallback> _setters {};
@@ -270,7 +270,7 @@ private:
 
 class Properties final
 {
-    friend class PropertyRegistrator;
+    friend class PropertyRegistrar;
     friend class Property;
 
 public:
@@ -297,14 +297,14 @@ public:
     };
 
     Properties() = delete;
-    explicit Properties(ptr<const PropertyRegistrator> registrator, nptr<const Properties> base = nullptr) noexcept;
+    explicit Properties(ptr<const PropertyRegistrar> registrar, nptr<const Properties> base = nullptr) noexcept;
     Properties(const Properties& other) = delete;
     Properties(Properties&&) noexcept = default;
     auto operator=(const Properties& other) noexcept = delete;
     auto operator=(Properties&&) noexcept = delete;
     ~Properties() = default;
 
-    [[nodiscard]] auto GetRegistrator() const noexcept -> ptr<const PropertyRegistrator> { return _registrator; }
+    [[nodiscard]] auto GetRegistrar() const noexcept -> ptr<const PropertyRegistrar> { return _registrar; }
     [[nodiscard]] auto GetEntity() const noexcept -> nptr<Entity> { return _entity; }
     [[nodiscard]] auto HasBaseProperties() const noexcept -> bool { return !!_baseProps; }
     [[nodiscard]] auto GetBaseProperties() const noexcept -> nptr<const Properties> { return _baseProps; }
@@ -412,7 +412,7 @@ private:
     auto IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool;
     static void ValidateFiniteRawData(ptr<const Property> prop, span<const uint8_t> raw_data);
 
-    ptr<const PropertyRegistrator> _registrator;
+    ptr<const PropertyRegistrar> _registrar;
     nptr<const Properties> _baseProps {};
 
     unique_arr_ptr<uint8_t> _podData {};
@@ -430,19 +430,19 @@ private:
     mutable nptr<Entity> _entity {};
 };
 
-class PropertyRegistrator final
+class PropertyRegistrar final
 {
     friend class Properties;
     friend class Property;
 
 public:
-    PropertyRegistrator() = delete;
-    PropertyRegistrator(string_view type_name, EngineSideKind side, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver);
-    PropertyRegistrator(const PropertyRegistrator&) = delete;
-    PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
-    auto operator=(const PropertyRegistrator&) = delete;
-    auto operator=(PropertyRegistrator&&) noexcept = delete;
-    ~PropertyRegistrator();
+    PropertyRegistrar() = delete;
+    PropertyRegistrar(string_view type_name, EngineSideKind side, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver);
+    PropertyRegistrar(const PropertyRegistrar&) = delete;
+    PropertyRegistrar(PropertyRegistrar&&) noexcept = default;
+    auto operator=(const PropertyRegistrar&) = delete;
+    auto operator=(PropertyRegistrar&&) noexcept = delete;
+    ~PropertyRegistrar();
 
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _typeName; }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }

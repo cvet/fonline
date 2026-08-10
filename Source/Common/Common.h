@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 33
+///@ MigrationRule Version 0 0 34
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -504,7 +504,7 @@ static constexpr size_t MAX_CALL_ARGS = 16;
 
 struct StructLayoutDesc;
 struct RefTypeDesc;
-class PropertyRegistrator;
+class PropertyRegistrar;
 
 struct BaseTypeDesc
 {
@@ -608,7 +608,7 @@ struct StructLayoutDesc
 struct RefTypeDesc
 {
     vector<MethodDesc> Methods {};
-    nptr<const PropertyRegistrator> FieldsRegistrator {};
+    nptr<const PropertyRegistrar> FieldsRegistrar {};
     bool IsDynamicLayout {};
 };
 
