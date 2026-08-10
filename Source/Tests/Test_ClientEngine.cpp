@@ -295,6 +295,59 @@ namespace ClientEngineTest
         });
     }
 
+    // A two-bone skinned box. The second bone carries an offset of its own, so half the corners are placed by a
+    // different matrix than the other half and the posed silhouette is genuinely skeleton-driven rather than a
+    // rigid copy of the root transform.
+    static auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        auto root_bone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+        root_bone->Name = "Root";
+        root_bone->TransformationMatrix = mat44 {1.0f};
+        root_bone->GlobalTransformationMatrix = mat44 {1.0f};
+
+        auto limb_bone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+        limb_bone->Name = "Limb";
+        limb_bone->TransformationMatrix = glm::translate(mat44 {1.0f}, vec3 {0.35f, 0.7f, 0.0f});
+        limb_bone->GlobalTransformationMatrix = limb_bone->TransformationMatrix;
+
+        ModelMeshGeometryData geometry;
+        geometry.SkinBoneNames = {"Root", "Limb"};
+        geometry.SkinBoneOffsets = {mat44 {1.0f}, mat44 {1.0f}};
+
+        for (uint32_t corner = 0; corner < 8; corner++) {
+            ModelMeshVertexData vertex {};
+
+            vertex.Position = {
+                (corner & 1U) != 0 ? 0.45f : -0.45f,
+                (corner & 2U) != 0 ? 1.7f : 0.0f,
+                (corner & 4U) != 0 ? 0.3f : -0.3f,
+            };
+            vertex.Normal = {0.0f, 1.0f, 0.0f};
+            vertex.BlendWeights[0] = 1.0f;
+            vertex.BlendIndices[0] = (corner & 2U) != 0 ? 1.0f : 0.0f;
+            geometry.Vertices.emplace_back(vertex);
+        }
+
+        constexpr array<uint32_t, 36> box_indices {0, 1, 3, 0, 3, 2, 4, 6, 7, 4, 7, 5, 0, 2, 6, 0, 6, 4, 1, 5, 7, 1, 7, 3, 2, 3, 7, 2, 7, 6, 0, 4, 5, 0, 5, 1};
+
+        for (uint32_t index : box_indices) {
+            geometry.Indices.emplace_back(numeric_cast<ModelMeshIndexData>(index));
+        }
+
+        root_bone->AttachedMesh = std::move(geometry);
+        root_bone->Children.emplace_back(std::move(limb_bone));
+
+        ModelMeshData data;
+        data.RootBone = std::move(root_bone);
+
+        vector<uint8_t> blob;
+        DataWriter writer {blob};
+        WriteModelMeshData(writer, data, "SkinnedSpriteBoundsModel");
+        return blob;
+    }
+
     static void WriteRuntimeModelDescriptionPrefix(DataWriter& writer)
     {
         FO_STACK_TRACE_ENTRY();
@@ -521,6 +574,106 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         INFO(model_path);
         CHECK_THROWS_WITH(model_mngr->PreloadModel(model_path), Catch::Matchers::ContainsSubstring(std::string {expected_failure}));
     }
+}
+
+TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
+{
+    // The sprite frame must follow the model's scale, camera tilt, facing and shadow state, and it is derived through
+    // per-instance state that survives across calls - the posed-frame flag, the frame layout, the configuration
+    // bounds keyed on the combined-mesh generation. State that outlives a call is exactly what can go stale, and a
+    // stale frame rectangle is a silent bug: the model is clipped only in some states, with nothing logged.
+    //
+    // So pin it differentially rather than against hardcoded rectangles. Drive one instance through a sequence of
+    // state changes, measuring after each, and compare every measurement against a freshly created instance driven
+    // to the same state, which by construction carries nothing forward. Anything the reused instance fails to
+    // refresh surfaces as it still reporting the previous state's rectangle while the fresh one reports the new one.
+    // This was verified to detect real staleness: an experimental cache of the vertex sweep with a deliberately
+    // incomplete invalidation key failed here at exactly the step whose input the key was missing.
+    constexpr string_view model_path = "Models/SkinnedSpriteBounds.fbx";
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources({{string {model_path}, MakeSkinnedRuntimeModelMesh()}}));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model_mngr = factory->GetModelMngr();
+
+    struct SpriteBoundsStep
+    {
+        string_view Name {};
+        function<void(ptr<ModelInstance>)> Apply {};
+    };
+
+    const vector<SpriteBoundsStep> steps {
+        {"rest pose", [](ptr<ModelInstance>) {}},
+        {"scaled up", [](ptr<ModelInstance> model) { model->SetScale(1.7f, 1.7f, 1.7f); }},
+        {"camera tilt", [](ptr<ModelInstance> model) { model->SetRotation(0.4f, 0.0f, 0.25f); }},
+        {"turned", [](ptr<ModelInstance> model) { model->SetDir(mdir {120}, false); }},
+        {"shadow off", [](ptr<ModelInstance> model) { model->EnableShadow(false); }},
+        {"scaled back down", [](ptr<ModelInstance> model) { model->SetScale(0.6f, 0.6f, 0.6f); }},
+    };
+
+    auto make_model = [&model_mngr]() {
+        auto model = model_mngr->CreateModel(model_path);
+        FO_VERIFY_AND_THROW(model, "Skinned test model was not created", model_path);
+        auto owned = model.take_not_null();
+
+        owned->StartMeshGeneration();
+        owned->PrepareFrameLayout();
+        owned->SetupFrame(owned->GetDrawSize(), owned->GetFramePivot());
+        return owned;
+    };
+
+    auto measure = [](ptr<ModelInstance> model) -> optional<ModelSpriteBounds> {
+        model->PoseSpriteFrame(false);
+        return model->GetSpriteBounds();
+    };
+
+    auto same_bounds = [](const ModelSpriteBounds& first, const ModelSpriteBounds& second) { //
+        return first.Rect == second.Rect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
+    };
+
+    auto warm_model = make_model();
+
+    // The hit path on its own: measuring twice without touching anything must reproduce the first answer exactly.
+    optional<ModelSpriteBounds> first_bounds = measure(warm_model.as_ptr());
+    optional<ModelSpriteBounds> repeated_bounds = measure(warm_model.as_ptr());
+
+    REQUIRE(first_bounds);
+    REQUIRE(repeated_bounds);
+    CHECK(same_bounds(*first_bounds, *repeated_bounds));
+
+    optional<ModelSpriteBounds> previous_bounds;
+    size_t moved_steps = 0;
+
+    for (size_t step_index = 0; step_index < steps.size(); step_index++) {
+        INFO("step " << step_index << " (" << steps[step_index].Name << ")");
+
+        steps[step_index].Apply(warm_model.as_ptr());
+        optional<ModelSpriteBounds> warm_bounds = measure(warm_model.as_ptr());
+        auto cold_model = make_model();
+
+        for (size_t applied_index = 0; applied_index <= step_index; applied_index++) {
+            steps[applied_index].Apply(cold_model.as_ptr());
+        }
+
+        optional<ModelSpriteBounds> cold_bounds = measure(cold_model.as_ptr());
+
+        REQUIRE(warm_bounds);
+        REQUIRE(cold_bounds);
+        CHECK(same_bounds(*warm_bounds, *cold_bounds));
+
+        if (previous_bounds && !same_bounds(*cold_bounds, *previous_bounds)) {
+            moved_steps++;
+        }
+
+        previous_bounds = cold_bounds;
+    }
+
+    // Guard the guard: a step that leaves the envelope where it was cannot tell a stale cache from a correct one, so
+    // the sequence above only tests anything as long as it keeps moving the rectangle.
+    CHECK(moved_steps + 1 >= steps.size() - 1);
 }
 #endif
 
