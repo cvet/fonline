@@ -1270,7 +1270,7 @@ void ServerEngine::SyncWholeWorld(SyncContext& ctx)
 
     vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
 
-    vector<nptr<ServerEntity>> sync_entities;
+    vector<ptr<ServerEntity>> sync_entities;
     sync_entities.reserve(entities.size());
 
     for (auto& entity : entities) {
@@ -3149,7 +3149,12 @@ void ServerEngine::Process_Move(ptr<Player> player)
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
+
+    if (cr) {
+        sync_entities.emplace_back(cr);
+    }
+
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map->IsDestroyed()) {
@@ -3320,7 +3325,12 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
+
+    if (cr) {
+        sync_entities.emplace_back(cr);
+    }
+
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map->IsDestroyed()) {
@@ -3423,7 +3433,12 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
+
+    if (cr) {
+        sync_entities.emplace_back(cr);
+    }
+
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map->IsDestroyed()) {
@@ -4411,7 +4426,7 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     auto parent = cr->GetParentRaw();
 
     if (parent) {
-        array<nptr<ServerEntity>, 2> sync_entities {parent, cr};
+        small_vector<ptr<ServerEntity>, 2> sync_entities {parent, cr};
         ctx->SyncEntities(sync_entities);
 
         if (cr->GetParentRaw() != parent || parent->IsDestroyed() || cr->IsDestroyed()) {
