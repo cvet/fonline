@@ -533,7 +533,12 @@ namespace NativeDataCaller
         static constexpr size_t arity = sizeof...(Args);
     };
 
-    template<typename T, typename U>
+    // AllowDestroyedEntityArgs opts a single export out of the blanket "no destroyed entity crosses the
+    // script boundary" rule. It exists for the synchronization primitives, whose whole purpose is to answer
+    // "is this entity still reachable": a script can only test liveness and then call, never both at once, so
+    // rejecting the argument makes their recoverable-false contract impossible to honour under a concurrent
+    // destroy. Every other export keeps the check.
+    template<typename T, typename U, bool AllowDestroyedEntityArgs = false>
     auto ConvertArg(ptr<void> data, const DataAccessor& accessor, U& temp) -> T
     {
         using raw_t = std::remove_cvref_t<T>;
@@ -573,7 +578,23 @@ namespace NativeDataCaller
                 nptr<Entity> base_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(data);
                 nptr<std::remove_const_t<elem_t>> target_entity = base_entity.template dyn_cast<std::remove_const_t<elem_t>>();
                 FO_VERIFY_AND_THROW(!base_entity || target_entity, "Base entity exists but target entity lookup failed");
-                FO_VERIFY_AND_THROW(!target_entity || !target_entity->IsDestroyed(), "Target entity lookup returned destroyed entity");
+
+                if constexpr (!AllowDestroyedEntityArgs) {
+                    if (target_entity && target_entity->IsDestroyed()) {
+                        // Access validation runs first, because a destroyed argument is a symptom and
+                        // missing cover is the cause. Every destroy path takes the victim's own lock
+                        // through EnsureEntitySynced, and a descendant lock cannot be taken under a
+                        // foreign-held ancestor (see EntitySync.h, descendant-hold), so a caller holding
+                        // any valid cover cannot have the entity die under it. A destroyed entity
+                        // therefore reaches this boundary only uncovered, or because the caller destroyed
+                        // it and kept using the handle — and only the second case is what the message
+                        // below describes. On the client ValidateAccess is a no-op and the throw stands.
+                        target_entity->ValidateAccess();
+
+                        FO_VERIFY_AND_THROW(false, "Target entity lookup returned destroyed entity");
+                    }
+                }
+
                 return raw_t {target_entity};
             }
             else {
@@ -641,25 +662,25 @@ namespace NativeDataCaller
         }
     }
 
-    template<typename R, typename... Args, size_t... I>
+    template<bool AllowDestroyedEntityArgs, typename R, typename... Args, size_t... I>
     auto NativeCallImpl(R (*fn)(Args...), FuncCallData& call, std::index_sequence<I...> /**/)
     {
         tuple<optional<std::remove_cvref_t<Args>>...> temp_data;
         ptr<const DataAccessor> accessor = call.Accessor;
 
         if constexpr (!std::is_void_v<R>) {
-            R&& r = fn(ConvertArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
+            R&& r = fn(ConvertArg<Args, optional<std::remove_cvref_t<Args>>, AllowDestroyedEntityArgs>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
             optional<std::remove_cvref_t<R>> temp_r = std::move(r);
             ReturnArg<std::add_lvalue_reference_t<R>>(call.RetData, *accessor, temp_r);
         }
         else {
-            fn(ConvertArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
+            fn(ConvertArg<Args, optional<std::remove_cvref_t<Args>>, AllowDestroyedEntityArgs>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
         }
 
         (void)std::initializer_list<int> {(ReturnArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data)), 0)...};
     }
 
-    template<auto Fn>
+    template<auto Fn, bool AllowDestroyedEntityArgs = false>
     void NativeCall(FuncCallData& call)
     {
         using Traits = NativeCallTraits<decltype(Fn)>;
@@ -667,7 +688,7 @@ namespace NativeDataCaller
         FO_VERIFY_AND_THROW(call.ArgsData.size() == Traits::arity, "Native script call argument storage does not match native function arity", call.ArgsData.size(), Traits::arity);
         FO_VERIFY_AND_THROW((call.RetData != nullptr) == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", call.RetData != nullptr, !std::is_void_v<typename Traits::return_type>);
 
-        NativeCallImpl(Fn, call, std::make_index_sequence<Traits::arity> {});
+        NativeCallImpl<AllowDestroyedEntityArgs>(Fn, call, std::make_index_sequence<Traits::arity> {});
     }
 }
 
