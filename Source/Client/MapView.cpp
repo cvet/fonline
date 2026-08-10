@@ -397,9 +397,12 @@ void MapView::LoadStaticData()
             const auto& field = _hexField->GetCellForReading(mpos(hx, hy));
 
             if (field.RoofNum == 0 && field.HasRoof) {
-                int32_t corrected_hx = hx - hx % _engine->Settings->MapTileStep;
-                int32_t corrected_hy = hy - hy % _engine->Settings->MapTileStep;
-                mark_roof_num(ipos32 {corrected_hx, corrected_hy}, roof_num);
+                // Flood-fill from the roof tile's OWN hex, not a hex snapped down to the even tile grid.
+                // Roof tiles sit on a MapTileStep-spaced lattice whose origin parity is whatever the map
+                // author placed it on; snapping the start to even skipped every roof authored on an
+                // odd-parity lattice (it never received a RoofNum, so it never hid). Starting from the
+                // actual hex and stepping by MapTileStep covers that roof's own lattice regardless of parity.
+                mark_roof_num(ipos32 {hx, hy}, roof_num);
                 roof_num++;
             }
         }
@@ -2038,10 +2041,22 @@ void MapView::SetHiddenRoof(mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32_t corrected_hx = hex.x - hex.x % _engine->Settings->MapTileStep;
-    int32_t corrected_hy = hex.y - hex.y % _engine->Settings->MapTileStep;
-    mpos corrected_hex = _mapSize.from_raw_pos(corrected_hx, corrected_hy);
-    int32_t roof_num = _hexField->GetCellForReading(corrected_hex).RoofNum;
+    // The roof tile lattice may be authored on any parity, so the roof above the player is not
+    // necessarily on the even-snapped hex. Scan the MapTileStep-sized block below-and-left of the
+    // player — it contains the covering lattice hex whichever parity the roof was placed on — and take
+    // the RoofNum it finds (matching the former snap-down-to-lattice semantics, now parity-agnostic).
+    int32_t step = _engine->Settings->MapTileStep;
+    int32_t roof_num = 0;
+
+    for (int32_t dy = 0; dy > -step && roof_num == 0; dy--) {
+        for (int32_t dx = 0; dx > -step && roof_num == 0; dx--) {
+            ipos32 raw_hex {hex.x + dx, hex.y + dy};
+
+            if (_mapSize.is_valid_pos(raw_hex)) {
+                roof_num = _hexField->GetCellForReading(_mapSize.from_raw_pos(raw_hex)).RoofNum;
+            }
+        }
+    }
 
     if (_hiddenRoofNum != roof_num) {
         _hiddenRoofNum = roof_num;

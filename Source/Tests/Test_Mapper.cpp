@@ -454,7 +454,8 @@ namespace MapperMergeTest
         cr.StopAnim();
         cr.RefreshView();
         cr.SetAlpha(cr.GetAlpha());
-        cr.GetBodyAngle();
+)"
+R"(        cr.GetBodyAngle();
         cr.ChangeDir(mdir(1));
         cr.StopMove();
 
