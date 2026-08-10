@@ -332,7 +332,17 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
 
     unique_ptr<NetworkServer> server = start_server();
 
-    auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    // `accepted` is declared before `server`, so at scope exit it would be destroyed last - after the
+    // io_context whose services its connections' asio objects still reference. Release the connections
+    // here, while that context is alive, or ~io_object_impl faults on freed service state.
+    auto shutdown_server = scope_exit([&]() noexcept {
+        safe_call([&] {
+            std::scoped_lock locker {accepted_locker};
+            accepted.clear();
+        });
+
+        safe_call([&server] { server->Shutdown(); });
+    });
 
     BakerTests::OverrideSetting(client_settings.ServerHost, string {"127.0.0.1"});
     BakerTests::OverrideSetting(client_settings.ServerPort, port);
@@ -458,7 +468,17 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
 
     unique_ptr<NetworkServer> server = start_server();
 
-    auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    // `accepted` is declared before `server`, so at scope exit it would be destroyed last - after the
+    // io_context whose services its connections' asio objects still reference. Release the connections
+    // here, while that context is alive, or ~io_object_impl faults on freed service state.
+    auto shutdown_server = scope_exit([&]() noexcept {
+        safe_call([&] {
+            std::scoped_lock locker {accepted_locker};
+            accepted.clear();
+        });
+
+        safe_call([&server] { server->Shutdown(); });
+    });
 
     BakerTests::OverrideSetting(client_settings.ServerHost, string {"127.0.0.1"});
     BakerTests::OverrideSetting(client_settings.ServerPort, port);

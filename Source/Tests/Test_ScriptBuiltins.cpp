@@ -1615,7 +1615,8 @@ namespace ScriptBuiltins
     void DictMissingKeyThrows()
     {
         dict<string, int> d = {};
-        int value = d.get("missing");
+)"
+R"(        int value = d.get("missing");
     }
 
     void DictKeyIndexOutOfBoundsThrows()
@@ -2013,7 +2014,8 @@ namespace ScriptBuiltins
         if (text.findFirstOf(",", 4) != 7) return -7;
         if (text.findFirstNotOf("one") != 3) return -8;
 
-        if (text.findLastOf(",") != 13) return -9;
+)"
+R"(        if (text.findLastOf(",") != 13) return -9;
         if (text.findLastOf(",", 6) != 3) return -90;
         if (text.findLastNotOf("otw") != 13) return -10;
         if (text.findLastNotOf(",", 3) != 2) return -91;
@@ -2424,7 +2426,8 @@ namespace ScriptBuiltins
         mpos targetHex = mpos(0, 0);
         mpos[] angled = Game.TraceHexLine(mapSize, fromHex, 0.0f, 5, ZERO_IPOS, ZERO_IPOS, targetHex);
         if (angled.isEmpty()) return -8;
-        if (targetHex == fromHex) return -9;
+)"
+R"(        if (targetHex == fromHex) return -9;
 
         return 1;
     }
@@ -2831,7 +2834,8 @@ namespace ScriptBuiltins
     {
         string[] modules = {};
         string[] names = {};
-        int[] lines = {};
+)"
+R"(        int[] lines = {};
         int[] columns = {};
 
         int count = reflection::getCallstack(modules, names, lines, columns);

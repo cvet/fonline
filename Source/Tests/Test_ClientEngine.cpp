@@ -514,7 +514,8 @@ namespace ClientEngineTest
     {
         ImGui.TextColored("colored", 1.0f, 0.5f, 0.25f, 1.0f);
         ImGui.TextLink("link");
-        ImGui.Value("bool", true);
+)"
+R"(        ImGui.Value("bool", true);
         ImGui.Value("int", 42);
         ImGui.Value("uint", uint(7));
         ImGui.ProgressBar(0.5f);
@@ -978,7 +979,8 @@ namespace ClientEngineTest
                 ImGui.ColorEdit3("", colorValue);
                 break;
             case 69:
-                ImGui.ColorEdit4("", colorValue);
+)"
+R"(                ImGui.ColorEdit4("", colorValue);
                 break;
             case 70:
                 ImGui.ColorPicker3("", colorValue);
@@ -1299,7 +1301,8 @@ namespace ClientEngineTest
         if (readBack.length() != 3) return -8;
         if (readBack[2] != 3) return -9;
 
-        Game.RemoveCacheEntry("unit_test_entry");
+)"
+R"(        Game.RemoveCacheEntry("unit_test_entry");
         Game.RemoveCacheEntry("unit_test_bin");
         if (Game.IsCacheEntry("unit_test_entry")) return -10;
 
