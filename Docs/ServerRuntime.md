@@ -73,7 +73,7 @@ Major responsibilities:
 - create, load, unload, destroy, and switch critters;
 - move critters by paths and movement contexts;
 - dispatch entity lifecycle and gameplay events to scripts;
-- persist entity/property changes through `DataBase` and `PropertiesSerializator`;
+- persist entity/property changes through `DataBase` and `PropertiesSerializer`;
 - host `UpdaterBackend` for client resource/runtime updates;
 - publish health information and optional health-file output.
 
@@ -96,7 +96,7 @@ Major responsibilities:
 - `SyncPointJob()`
 - `FrameTimeJob()`
 - `ScriptSystemJob()`
-- `UnloginedPlayersJob()`
+- `NotLoggedInPlayersJob()`
 - `PlayersJob()`
 - `CrittersJob()`
 - `TimeEventsJob()`
@@ -134,7 +134,7 @@ Two ordering contracts follow from this model. **(1) Script-export functions val
 
 TODO: remove the entire entity-access validation system after multithreaded logic stabilization; it is a high-overhead diagnostic layer, not a permanent runtime safety mechanism. If any `FO_VALIDATE_ENTITY_ACCESS*` check fires, fix the owning top-level path (job dispatch, script entry, sync widening, entity creation/registration, or holder transfer) so the entity cover is acquired before the code can reach the checked access at all. Do not treat the checked method or property accessor as the synchronization boundary unless that method is itself the top-level entry point.
 
-Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()` submits an `UnloginedPlayerJob()` for the temporary player object, and `OnPlayerLogined()` cancels the unlogged job key and submits the logged-in `PlayerJob()`. `Player.HardDisconnect()` and other hard-disconnect paths only mark the underlying connection as disconnected; logged-in player teardown (`OnPlayerLogout`, critter detach, view reset, destroyed mark, and unregister) belongs to the next `PlayerJob()` pass through `ProcessPlayer()`. Code that continues after a script-visible player event should validate possible connection/control changes, but it should not treat hard disconnect as an inline player-destruction path.
+Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()` submits an `NotLoggedInPlayerJob()` for the temporary player object, and `OnPlayerLoggedIn()` cancels the unlogged job key and submits the logged-in `PlayerJob()`. `Player.HardDisconnect()` and other hard-disconnect paths only mark the underlying connection as disconnected; logged-in player teardown (`OnPlayerLogout`, critter detach, view reset, destroyed mark, and unregister) belongs to the next `PlayerJob()` pass through `ProcessPlayer()`. Code that continues after a script-visible player event should validate possible connection/control changes, but it should not treat hard disconnect as an inline player-destruction path.
 
 `SwitchPlayerCritter()` sends the new critter's initial info before `OnPlayerCritterSwitched`. `OnCritterSendInitialInfo` can re-enter scripts and detach or switch the player again, so the switch notification is emitted only if the player still controls the same critter after initial-info scripts return. Switching to no critter sends `RemoveCritter`, detaches the previous chosen server-side, and sends `AddCritter` for the same entity as an ordinary non-chosen view. An active client therefore clears `HasChosen` immediately without making the still-loaded critter disappear. Initial info for a critter on the global map covers only that critter — the script attaching it delivers the rest of its travelling group with `Critter.SendGlobalMapGroupInfo()` (see the independent-roots section above).
 
@@ -186,17 +186,17 @@ It owns:
 
 Custom entities held directly by the global game object share its singleton `EntityLock`. When an engine operation calls `EnsureEntitySynced()` for one of those entities inside `Game.Lock()`, the current synchronization context reuses the singleton acquisition instead of tracking the same physical lock in both its ordinary and singleton buckets. A balanced `Game.Unlock()` therefore releases the lock completely after the operation.
 
-Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializator`. The database facade and backends are documented in [Persistence.md](Persistence.md).
+Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializer`. The database facade and backends are documented in [Persistence.md](Persistence.md).
 
 A persisted entity whose proto resolves through a `Proto <Type> <Name> Remove` migration rule is **dropped** on load: `LoadEntityDoc()` detects that the proto migration rule maps the saved proto to the `Remove` sentinel and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. `OnCritterPreLoad` destruction is the script-controlled equivalent for a fully restored critter and also returns null without a load error after `DestroyCritter()` removes its persistent graph. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A dropped critter requested directly through `ServerEngine::LoadCritter()` is not silently returned — the wrapper raises so a player login cannot continue without its character.
 
 ## Player and connection flow
 
-A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes an unlogged `Player` through `CreateUnloginedPlayer()`.
+A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes an unlogged `Player` through `CreateNotLoggedInPlayer()`.
 
 The server then processes the player in two broad states:
 
-1. **Unlogged player** — `ProcessUnloginedPlayer()` reads initial protocol messages and runs handshake/login logic.
+1. **Unlogged player** — `ProcessNotLoggedInPlayer()` reads initial protocol messages and runs handshake/login logic.
 2. **Logged player** — `ProcessPlayer()` handles normal game messages for an attached player/critter session.
 
 `Player` in `Source/Server/Player.h` owns the server-side per-client send surface:

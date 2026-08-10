@@ -37,7 +37,7 @@
 FO_USING_NAMESPACE();
 
 ScriptImGui::ScriptImGui(ptr<BaseEngine> engine) :
-    Entity(engine->GetPropertyRegistratorForEdit("ImGui"), nullptr, nullptr),
+    Entity(engine->GetPropertyRegistrarForEdit("ImGui"), nullptr, nullptr),
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();

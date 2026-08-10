@@ -50,7 +50,7 @@ public:
     string CollectionName {};
 
 protected:
-    ProtoEntity(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props) noexcept;
+    ProtoEntity(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) noexcept;
 
     const hstring _protoId;
 };
@@ -82,31 +82,31 @@ protected:
 class ProtoItem final : public ProtoEntity, public ItemProperties
 {
 public:
-    ProtoItem(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props = nullptr);
+    ProtoItem(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props = nullptr);
 };
 
 class ProtoCritter final : public ProtoEntity, public CritterProperties
 {
 public:
-    ProtoCritter(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props = nullptr);
+    ProtoCritter(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props = nullptr);
 };
 
 class ProtoMap final : public ProtoEntity, public MapProperties
 {
 public:
-    ProtoMap(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props = nullptr);
+    ProtoMap(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props = nullptr);
 };
 
 class ProtoLocation final : public ProtoEntity, public LocationProperties
 {
 public:
-    ProtoLocation(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props = nullptr);
+    ProtoLocation(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props = nullptr);
 };
 
 class ProtoCustomEntity final : public ProtoEntity, public EntityProperties
 {
 public:
-    ProtoCustomEntity(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props = nullptr);
+    ProtoCustomEntity(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props = nullptr);
 };
 
 FO_END_NAMESPACE

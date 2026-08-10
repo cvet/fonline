@@ -494,7 +494,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
         return;
     }
 
-    auto registrator = proto->GetProperties()->GetRegistrator();
+    auto registrar = proto->GetProperties()->GetRegistrar();
 
     for (const auto& pair_text : mapping) {
         auto sep = pair_text.find('=');
@@ -506,7 +506,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
 
         string prop_name = string(strvex(string_view(pair_text).substr(0, sep)).trim());
         string index_text = string(strvex(string_view(pair_text).substr(sep + 1)).trim());
-        auto prop = registrator->FindProperty(prop_name);
+        auto prop = registrar->FindProperty(prop_name);
 
         if (!prop || prop->IsDisabled()) {
             continue;

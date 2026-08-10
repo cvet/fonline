@@ -35,8 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
-Entity::Entity(ptr<const PropertyRegistrator> registrator, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept :
-    _props {registrator, base_props}
+Entity::Entity(ptr<const PropertyRegistrar> registrar, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept :
+    _props {registrar, base_props}
 {
     FO_STACK_TRACE_ENTRY();
 

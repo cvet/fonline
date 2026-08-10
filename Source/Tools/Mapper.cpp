@@ -3215,7 +3215,7 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
                             return false;
                         }
 
-                        auto apply_prop = target->GetProperties()->GetRegistrator()->FindProperty(prop_name);
+                        auto apply_prop = target->GetProperties()->GetRegistrar()->FindProperty(prop_name);
                         if (!apply_prop) {
                             return false;
                         }
@@ -3228,7 +3228,7 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
                             return false;
                         }
 
-                        auto apply_prop = target->GetProperties()->GetRegistrator()->FindProperty(prop_name);
+                        auto apply_prop = target->GetProperties()->GetRegistrar()->FindProperty(prop_name);
                         if (!apply_prop) {
                             return false;
                         }
@@ -3317,7 +3317,7 @@ auto MapperEngine::GetInspectorEntity() -> nptr<ClientEntity>
         OnInspectorProperties.Fire(entity, prop_indices);
 
         for (auto prop_index : prop_indices) {
-            ShowProps.emplace_back(prop_index != -1 ? entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(prop_index) : nullptr);
+            ShowProps.emplace_back(prop_index != -1 ? entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index) : nullptr);
         }
     }
 
@@ -3900,7 +3900,7 @@ void MapperEngine::SetSelectionContour(ptr<ClientEntity> entity, ucolor color) c
     // Selection outline goes through the same script contour pipeline as the client (ContourPipeline.fos):
     // write the entity's Contour property; the script's property-setter caches it and OnRenderMap_AfterSprites
     // draws it. Mapper-only callers, but the Contour property exists on every Item/Critter.
-    auto prop = entity->GetProperties()->GetRegistrator()->FindProperty("Contour");
+    auto prop = entity->GetProperties()->GetRegistrar()->FindProperty("Contour");
 
     if (prop) {
         entity->GetPropertiesForEdit()->SetValue<ucolor>(prop, color);
@@ -6042,10 +6042,10 @@ void MapperEngine::ParseCommand(string_view command)
         }
 
         if (command_ext == "new") {
-            auto registrator = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME);
-            FO_VERIFY_AND_THROW(registrator, "Map property registrator is not available");
+            auto registrar = GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME);
+            FO_VERIFY_AND_THROW(registrar, "Map property registrar is not available");
 
-            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), registrator);
+            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), registrar);
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
             auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
@@ -6218,10 +6218,10 @@ auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, 
         }
     }
 
-    auto registrator = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME);
-    FO_VERIFY_AND_THROW(registrator, "Map property registrator is not available");
+    auto registrar = GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME);
+    FO_VERIFY_AND_THROW(registrar, "Map property registrar is not available");
 
-    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrator);
+    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrar);
     pmap->GetPropertiesForEdit()->ApplyFromText(proto_map_section);
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
