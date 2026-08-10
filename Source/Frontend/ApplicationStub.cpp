@@ -310,8 +310,10 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
+        // The interface reports whether the state changed, not the resulting state
+        bool changed = _state.Fullscreen != enable;
         _state.Fullscreen = enable;
-        return _state.Fullscreen;
+        return changed;
     }
 
     void Blink() override { FO_STACK_TRACE_ENTRY(); }

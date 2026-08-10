@@ -104,6 +104,36 @@ TEST_CASE("Platform")
         SUCCEED();
     }
 
+    SECTION("ProcessMemoryUsageIsReported")
+    {
+        size_t working_set = Platform::GetProcessMemoryUsage();
+        size_t private_usage = Platform::GetProcessPrivateMemoryUsage();
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
+        // A live process always occupies memory, so both readings must be non-zero on a real platform
+        CHECK(working_set > 0);
+        CHECK(private_usage > 0);
+#else
+        CHECK(working_set == 0);
+        CHECK(private_usage == 0);
+#endif
+    }
+
+    SECTION("ModuleLifecycleResolvesAndReleases")
+    {
+        // The already-loaded process image is the one module every platform can name without a fixture
+        nptr<void> self_module = Platform::LoadModule({});
+
+        if (self_module) {
+            CHECK(Platform::GetFuncAddr(self_module, "malloc") != nullptr);
+            CHECK(Platform::GetFuncAddr(self_module, "no_such_symbol_for_test") == nullptr);
+            Platform::UnloadModule(self_module);
+        }
+
+        // Unloading nothing is a no-op rather than a failure
+        Platform::UnloadModule(nullptr);
+    }
+
     SECTION("CpuUsageSnapshotIsWellFormed")
     {
         Platform::CpuUsageSnapshot snapshot = Platform::GetCpuUsageSnapshot();

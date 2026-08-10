@@ -655,16 +655,16 @@ namespace EntityOps
         int pos1 = s.findFirstOf("de");
         if (pos1 != 3) return -1;
 
-        // findLastOf - start=0 to search from beginning
-        int pos2 = s.findLastOf("de", 0);
+        // findLastOf - the default start scans back from the end of the string
+        int pos2 = s.findLastOf("de");
         if (pos2 != 10) return -2;
 
         // findFirstNotOf
         int pos3 = s.findFirstNotOf("abc");
         if (pos3 != 3) return -3;
 
-        // findLastNotOf - start=0 to search from beginning
-        int pos4 = s.findLastNotOf("def", 0);
+        // findLastNotOf - the default start scans back from the end of the string
+        int pos4 = s.findLastNotOf("def");
         if (pos4 < 0) return -4;
 
         return 0;

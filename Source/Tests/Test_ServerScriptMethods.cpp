@@ -1380,6 +1380,32 @@ namespace ScriptMethodsTest
         return 0;
     }
 
+    // A caller can test an entity for liveness and then call Game.Sync, but never both at once, so a
+    // concurrent destroy always fits between the two. The primitive therefore accepts an already
+    // destroyed handle and covers only what is still alive, instead of rejecting the argument and
+    // making the recoverable-false contract of its Sync::Lock-style wrappers impossible to honour.
+    [[Async]]
+    int TestSyncAcceptsDestroyedEntity()
+    {
+        Critter anchor = Game.CreateCritter("TestCritter".hstr(), false);
+        if (anchor is null) return -1;
+
+        Critter doomed = Game.CreateCritter("TestCritter".hstr(), false);
+        if (doomed is null) return -2;
+
+        Game.Sync(doomed);
+        Game.DestroyCritter(doomed);
+
+        Game.Sync(anchor, doomed);
+        if (!Game.IsEntityLocked(anchor)) return -3;
+
+        Game.DestroyCritter(anchor);
+
+        Game.SyncRelease();
+
+        return 0;
+    }
+
     // ========== Item Ownership ==========
 
     int TestItemOwnership()
@@ -3256,6 +3282,14 @@ TEST_CASE("ServerEntityLifecycle")
     SECTION("CreateCritterUnderHeldSyncContext")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateCritterUnderSyncContext"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("SyncAcceptsDestroyedEntity")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestSyncAcceptsDestroyedEntity"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

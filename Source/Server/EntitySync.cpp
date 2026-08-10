@@ -810,7 +810,7 @@ static void RollbackOps(const_span<pair<ptr<EntityLock>, bool>> ops, size_t coun
     }
 }
 
-void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
+void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -842,10 +842,6 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         unordered_map<ptr<EntityLock>, ptr<ServerEntity>> lock_to_entity;
 
         for (auto entity : entities) {
-            if (!entity) {
-                continue;
-            }
-
             auto lock = entity->GetEntityLock();
 
             if (!lock) {
@@ -877,9 +873,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
                 }
 
                 for (auto entity : entities) {
-                    if (entity) {
-                        snapshot.emplace_back(entity);
-                    }
+                    snapshot.emplace_back(entity);
                 }
 
                 for (auto entity : snapshot) {
@@ -976,10 +970,6 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         bool all_covered = true;
 
         for (auto entity : entities) {
-            if (!entity) {
-                continue;
-            }
-
             auto own_lock = entity->GetEntityLock();
 
             if (own_lock == nullptr) {
@@ -1096,8 +1086,8 @@ void SyncContext::SyncEntity(nptr<ServerEntity> entity)
         return;
     }
 
-    nptr<ServerEntity> arr[] = {entity};
-    SyncEntities(arr);
+    small_vector<ptr<ServerEntity>, 1> sync_entities {entity};
+    SyncEntities(sync_entities);
 }
 
 void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
