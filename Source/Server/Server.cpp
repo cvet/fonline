@@ -1135,6 +1135,7 @@ void ServerEngine::Shutdown()
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
+
         not_logged_in_players = _notLoggedInPlayers;
     }
 
@@ -1219,6 +1220,7 @@ void ServerEngine::Shutdown()
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
+
         _notLoggedInPlayers.clear();
     }
 
@@ -1377,22 +1379,14 @@ void ServerEngine::DrawGui()
 
     auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
 
-    // NotLoggedIn players are deliberately absent from the entity registry. Snapshot them under their
-    // publication lock before taking any entity locks: OnPlayerConnected owns the fresh entity lock
-    // before it may need the publication lock for rollback, so acquiring in the opposite order here
-    // would deadlock. Connections accepted after this snapshot appear next frame.
     vector<refcount_ptr<Player>> not_logged_in_players;
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
+
         not_logged_in_players = _notLoggedInPlayers;
     }
 
-    // The external lock owns only the engine sync point, it does not pre-lock the world. The panels
-    // below read cover-requiring entity state (Player::GetConnection, Location::GetMapsCount and the
-    // per-entity property tables), so take the registered world and the not-logged-in snapshot into one
-    // replacement cover. Without it every per-entity panel throws "Entity access without sync". The
-    // walk is O(entities), matching what the panels already do, and the world is stopped for the frame.
     SyncWholeWorld(*RequireCurrentSyncContext(), not_logged_in_players);
 
     constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
