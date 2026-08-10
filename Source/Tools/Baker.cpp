@@ -337,7 +337,7 @@ void MasterBaker::BakeAllInternal()
     FileSystem baking_output;
 
 #if FO_NATIVE_SCRIPTING
-    unique_ptr<BakerServerEngine> native_script_engine;
+    unique_nptr<BakerServerEngine> native_script_engine;
 #endif
 
     // Resource packs
@@ -583,12 +583,12 @@ void MasterBaker::BakeAllInternal()
             // initializers repeatedly and concurrently. Wait until the metadata
             // pack is baked and mounted so dynamic user types are available.
             native_script_engine = SafeAlloc::MakeUnique<BakerServerEngine>(baking_output);
-            native_script_engine->MapScriptTypes(native_script_engine.get());
+            native_script_engine->MapScriptTypes(native_script_engine);
 
             extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
             extern void RegisterNativeScriptModules_Baker(const NativeScripts::ModuleInitContextBase&);
             InitNativeScripting(
-                native_script_engine.get(), *_settings, baking_output,
+                native_script_engine, *_settings, baking_output,
                 [](const NativeScripts::ModuleInitContextBase& ctx) {
                     RegisterNativeScriptModules_Common(ctx);
                     RegisterNativeScriptModules_Baker(ctx);
@@ -605,7 +605,7 @@ void MasterBaker::BakeAllInternal()
     }
 
 #if FO_NATIVE_SCRIPTING
-    FO_RUNTIME_ASSERT(native_script_engine);
+    FO_STRONG_ASSERT(native_script_engine, "Native scripting metadata context was not initialized during resource baking");
 #endif
 
     // Delete outdated files

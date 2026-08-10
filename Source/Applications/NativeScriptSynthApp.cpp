@@ -301,13 +301,13 @@ static void WriteOutput(string_view output_dir, string_view file_name, string_vi
 
     if (!dir.empty()) {
         const bool dir_ok = fs_create_directories(dir);
-        FO_RUNTIME_ASSERT(dir_ok);
+        FO_VERIFY_AND_THROW(dir_ok, "Failed to create the native script synthesis output directory", dir);
     }
 
     std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
-    FO_RUNTIME_ASSERT(file);
+    FO_VERIFY_AND_THROW(file, "Failed to open the native script synthesis output file", path);
     file.write(body.data(), static_cast<std::streamsize>(body.size()));
-    FO_RUNTIME_ASSERT(file);
+    FO_VERIFY_AND_THROW(file, "Failed to write the native script synthesis output file", path, body.size());
 
     WriteLog("NativeScriptSynth: emitted {} ({} bytes)", file_name, body.size());
 }
@@ -381,7 +381,7 @@ static auto BuildCommonAllowlist(const EngineMetadata& server, const EngineMetad
 
     unordered_map<string, unordered_set<string>> result;
     for (const auto& [srv_hname, srv_desc] : server.GetEntityTypes()) {
-        const string entity_name = srv_hname.as_str();
+        const string entity_name {srv_hname.as_str()};
         const auto& cli_types = client.GetEntityTypes();
         const auto cli_it = cli_types.find(client.Hashes.ToHashedString(entity_name));
         if (cli_it == cli_types.end()) {
@@ -394,13 +394,14 @@ static auto BuildCommonAllowlist(const EngineMetadata& server, const EngineMetad
         for (const auto& e : cli_it->second.Events) {
             cli_names.insert(e.Name);
         }
-        if (cli_it->second.PropRegistrator) {
-            const auto* prop_reg = cli_it->second.PropRegistrator.get();
+        {
+            const auto& prop_reg = cli_it->second.PropRegistrar;
             for (size_t i = 0; i < prop_reg->GetPropertiesCount(); ++i) {
-                const auto* prop = prop_reg->GetPropertyByIndexUnsafe(i);
-                if (prop != nullptr) {
-                    cli_names.insert("Set" + prop->GetName());
+                nptr<const Property> prop = prop_reg->GetPropertyByIndex(numeric_cast<int32_t>(i));
+                if (!prop) {
+                    continue;
                 }
+                cli_names.insert("Set" + string {prop->GetName()});
             }
         }
         auto& entity_allow = result[entity_name];
@@ -414,12 +415,16 @@ static auto BuildCommonAllowlist(const EngineMetadata& server, const EngineMetad
                 entity_allow.insert(e.Name);
             }
         }
-        if (srv_desc.PropRegistrator) {
-            const auto* prop_reg = srv_desc.PropRegistrator.get();
+        {
+            const auto& prop_reg = srv_desc.PropRegistrar;
             for (size_t i = 0; i < prop_reg->GetPropertiesCount(); ++i) {
-                const auto* prop = prop_reg->GetPropertyByIndexUnsafe(i);
-                if (prop != nullptr && cli_names.contains("Set" + prop->GetName())) {
-                    entity_allow.insert("Set" + prop->GetName());
+                nptr<const Property> prop = prop_reg->GetPropertyByIndex(numeric_cast<int32_t>(i));
+                if (!prop) {
+                    continue;
+                }
+                const string prop_name {prop->GetName()};
+                if (cli_names.contains("Set" + prop_name)) {
+                    entity_allow.insert("Set" + prop_name);
                 }
             }
         }
@@ -444,9 +449,7 @@ static void MergeSettings(EngineMetadata& recipient, const EngineMetadata& donor
         if (recipient.GetGameSettings().contains(name)) {
             continue;
         }
-        if (type_ptr != nullptr) {
-            recipient.RegisterGameSetting(name, *type_ptr);
-        }
+        recipient.RegisterGameSetting(name, *type_ptr);
     }
     for (const auto& name : donor.GetExportedGameSettings()) {
         if (recipient.IsExportedGameSetting(name)) {
@@ -456,10 +459,10 @@ static void MergeSettings(EngineMetadata& recipient, const EngineMetadata& donor
         // `SetExportedGameSettingTypeName` assert the setting is
         // already in `_exportedGameSettings`.
         recipient.MarkGameSettingAsExported(name);
-        if (const auto* type_desc = donor.FindExportedGameSettingType(name); type_desc != nullptr) {
+        if (nptr<const BaseTypeDesc> type_desc = donor.FindExportedGameSettingType(name); type_desc) {
             recipient.SetExportedGameSettingType(name, *type_desc);
         }
-        if (const auto* type_name = donor.FindExportedGameSettingTypeName(name); type_name != nullptr) {
+        if (nptr<const string> type_name = donor.FindExportedGameSettingTypeName(name); type_name) {
             recipient.SetExportedGameSettingTypeName(name, *type_name);
         }
     }
@@ -474,7 +477,8 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::DisableLogTags);
+        CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+        InitApp(args, AppInitFlags::DisableLogTags);
 
         // argv layout: 0=exe, 1=output_dir, 2=native_scripts_dir
         // (optional — empty when the project has no user native
@@ -565,15 +569,15 @@ int main(int argc, char** argv)
         // share the server bin — Common and Baker live in the
         // Common-target wrapper space which is server-side-flavored.
         for (const auto& target : {"Common", "Server", "Client", "Mapper", "Baker"}) {
-            const EngineMetadata* meta = meta_server.get();
+            ptr<EngineMetadata> target_meta = meta_server;
             if (string_view {target} == "Client") {
-                meta = meta_client.get();
+                target_meta = meta_client;
             }
             else if (string_view {target} == "Mapper") {
-                meta = meta_mapper.get();
+                target_meta = meta_mapper;
             }
             const string stub_name = strex("NativeApi.{}.cppm", target).str();
-            WriteOutput(output_dir, stub_name, SynthesizeNativeApiModule(target, *meta, native_api_surface));
+            WriteOutput(output_dir, stub_name, SynthesizeNativeApiModule(target, *target_meta, native_api_surface));
         }
 
         // Per-role dispatcher (`NativeBindings-<Role>.cpp`). Scan

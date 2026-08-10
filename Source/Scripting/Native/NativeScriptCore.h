@@ -101,7 +101,7 @@ namespace NativeScripts
         // (`ctx.GetGame()`, etc.).
         //
         // Two call shapes:
-        //   - Explicit: `ctx.MakeScriptFunc<void, Entity*>(name, fn)` —
+        //   - Explicit: `ctx.MakeScriptFunc<void, ptr<Entity>>(name, fn)` —
         //     required for non-void return or generic / templated
         //     callables whose `operator()` signature can't be deduced.
         //   - Deduced:  `ctx.MakeScriptFunc(name, fn)` — `Ret` and
@@ -116,7 +116,7 @@ namespace NativeScripts
         // Same as `MakeScriptFunc` but additionally registers the
         // produced `ScriptFuncDesc*` into `ScriptSystem::_globalFuncMap`
         // so `.fos` scripts can dispatch into the native callback by
-        // name via `Game.Invoke(name, args...)` (or anything else that
+        // name via `Invoke(name, args...)` (or anything else that
         // routes through `engine->FindFunc<...>`). Use for callbacks
         // meant as an AS→native call site; plain `MakeScriptFunc` is
         // enough for inward-only callbacks (TimeEvent targets, predicate
@@ -132,7 +132,7 @@ namespace NativeScripts
         // wire-format-compatible with AS — see the free function for the
         // full contract.
         template<typename... Args>
-        void SendRemoteCall(FO_NAMESPACE string_view name, FO_NAMESPACE Entity* caller, const Args&... args) const;
+        void SendRemoteCall(FO_NAMESPACE string_view name, FO_NAMESPACE ptr<FO_NAMESPACE Entity> caller, const Args&... args) const;
 
         // Context-bound shortcut for `NativeScripts::BindRemoteCall<Args...>(Engine,
         // name, handler)`. For native-declared inbound calls the binding is
@@ -185,7 +185,7 @@ namespace NativeScripts
     // function is invoked once at engine startup, after metadata
     // registration and before AngelScript modules run.
     //
-    // Base for entity wrappers emitted into NativeApi.<Role>. Holds one engine pointer
+    // Base for entity wrappers emitted into NativeApi.<Role>. Holds one engine borrow
     // — copy/move is trivial. Generated subclasses add ExportMethod forwarders,
     // ExportProperty Get/Set, and ExportEvent proxies.
     template<typename EngineEntityT>
@@ -200,21 +200,21 @@ namespace NativeScripts
 
         EntityWrapper() noexcept = default;
         // NOLINTNEXTLINE(google-explicit-constructor): wrappers behave like pointers
-        EntityWrapper(EngineEntityT* self) noexcept :
+        EntityWrapper(FO_NAMESPACE nptr<EngineEntityT> self) noexcept :
             _self {self}
         {
         }
 
-        [[nodiscard]] auto IsValid() const noexcept -> bool { return _self != nullptr; }
-        [[nodiscard]] explicit operator bool() const noexcept { return _self != nullptr; }
+        [[nodiscard]] auto IsValid() const noexcept -> bool { return !!_self; }
+        [[nodiscard]] explicit operator bool() const noexcept { return !!_self; }
 
-        [[nodiscard]] auto Native() const noexcept -> EngineEntityT* { return _self; }
+        [[nodiscard]] auto Native() const noexcept -> FO_NAMESPACE nptr<EngineEntityT> { return _self; }
 
         friend auto operator==(EntityWrapper a, EntityWrapper b) noexcept -> bool { return a._self == b._self; }
         friend auto operator!=(EntityWrapper a, EntityWrapper b) noexcept -> bool { return a._self != b._self; }
 
     protected:
-        EngineEntityT* _self {};
+        FO_NAMESPACE nptr<EngineEntityT> _self {};
     };
 
     namespace Detail
@@ -225,58 +225,51 @@ namespace NativeScripts
         // wrapper class per entity (e.g. `Critter`, not `Critter` + `CritterView`):
         // engine builds the per-target `MethodDesc::Call` lambda which
         // adapts `FuncCallData` to the target's typed engine function,
-        // and the wrapper just packs `(self, args...)` into a `void*`
+        // and the wrapper just packs `(self, args...)` into a `ptr<void>`
         // array and invokes `method->Call(call_data)`.
-        //
-        // Lookup: cache the `MethodDesc*` at the call site through a
-        // function-local `static` (one-time `meta->GetEntityType(...)`
-        // scan per method). Cache key is `(entity_name, method_name)` —
-        // we deliberately don't disambiguate overloads here; codegen
-        // gives the cache slot a unique location per method call, and
-        // overloads cache distinct slots.
         //
         // Dispatch a wrapper method through its `MethodDesc::Call` lambda.
         // The lambda — built by codegen via `NativeDataCaller::NativeCall<&Fn>`
         // when the engine registered the method — reads `(self, args...)`
-        // out of `FuncCallData::ArgsData` (each slot a `void*` pointing
+        // out of `FuncCallData::ArgsData` (each slot a `ptr<void>` pointing
         // at the value) and stuffs the return through `RetData`. Wrapper
         // bodies emit a single call to `DispatchMethod` per method —
         // no per-target extern needed, server / client / mapper share
         // one wrapper class because the engine-side `MethodDesc::Call`
         // already knows which typed function to invoke.
         //
-        // `Self` is the engine pointer the wrapper holds (`BaseEngine*`
-        // for `Game`, `Player*` etc for entity wrappers). `Args...` is
+        // `Self` is the engine borrow the wrapper holds (`nptr<BaseEngine>`
+        // for `Game`, `nptr<Player>` etc. for entity wrappers). `Args...` is
         // the unwrapped argument pack (`string_view`, `int32_t`, …).
         // We pass them by reference so the addresses we put into the
-        // `void*` array stay valid for the duration of the
+        // argument-slot array stay valid for the duration of the
         // `method->Call(call)` invocation.
-        // Pack a wrapper arg into the `void*` slot the engine's
+        // Pack a wrapper arg into the `ptr<void>` slot the engine's
         // `NATIVE_DATA_ACCESSOR` expects. The engine-side `ConvertArg`
         // path consumes vectors via `ArrayDataProxy`, maps via
         // `DictDataProxy`, ScriptFunc via `GetCallback`, and entities
-        // by reading the slot as `Entity**`. All other types pass
+        // by reading the slot as a typed borrow handle. All other types pass
         // through by address. `NativeDataProvider::NormalizeArg` is
         // the engine-side helper that knows the proxy contract, but
         // it requires complete types for `is_base_of_v<Entity, T>` —
         // user `.cppm` TUs only see forward declarations for engine
         // ref types (`DialogAnswerReq`, etc.), so calling NormalizeArg
         // on every arg fails to compile. We route the special cases
-        // explicitly here and fall back to raw `cast_to_void(&arg)`
+        // explicitly here and fall back to a typed borrow of `arg`
         // for the rest (which covers all primitive types plus the
         // forward-only ref-type pointers).
         template<typename T>
-        [[nodiscard]] auto NormalizeWrapperArg(T& arg, FO_NAMESPACE NativeDataProvider::StorageEntryType& storage) -> void*
+        [[nodiscard]] auto NormalizeWrapperArg(T& arg, FO_NAMESPACE NativeDataProvider::StorageEntryType& storage) -> FO_NAMESPACE ptr<void>
         {
             using raw_t = std::remove_cvref_t<T>;
             if constexpr (FO_NAMESPACE vector_collection<raw_t>) {
-                return FO_NAMESPACE cast_to_void(&storage.template emplace<FO_NAMESPACE NativeDataProvider::ArrayDataProxy>(arg));
+                return FO_NAMESPACE make_ptr(&storage.template emplace<FO_NAMESPACE NativeDataProvider::ArrayDataProxy>(arg)).void_cast();
             }
             else if constexpr (FO_NAMESPACE map_collection<raw_t>) {
-                return FO_NAMESPACE cast_to_void(&storage.template emplace<FO_NAMESPACE NativeDataProvider::DictDataProxy>(arg));
+                return FO_NAMESPACE make_ptr(&storage.template emplace<FO_NAMESPACE NativeDataProvider::DictDataProxy>(arg)).void_cast();
             }
             else if constexpr (FO_NAMESPACE specialization_of<raw_t, FO_NAMESPACE ScriptFunc>) {
-                return FO_NAMESPACE cast_to_void(&storage.template emplace<FO_NAMESPACE unique_del_ptr<FO_NAMESPACE ScriptFuncDesc>>(arg.ReleaseDesc()));
+                return FO_NAMESPACE make_ptr(&storage.template emplace<FO_NAMESPACE unique_del_nptr<FO_NAMESPACE ScriptFuncDesc>>(arg.ReleaseDesc())).void_cast();
             }
             else if constexpr (std::is_same_v<raw_t, FO_NAMESPACE string_view> || std::is_same_v<raw_t, FO_NAMESPACE string>) {
                 // Engine `ConvertArg<string_view>` reads the slot as
@@ -286,41 +279,41 @@ namespace NativeScripts
                 // string and string_view have different sizes / fields,
                 // so passing `&string_view` directly would feed
                 // `*cast_from_void<string*>(data)` UB.
-                return FO_NAMESPACE cast_to_void(&storage.template emplace<FO_NAMESPACE string>(arg));
+                return FO_NAMESPACE make_ptr(&storage.template emplace<FO_NAMESPACE string>(arg)).void_cast();
             }
             else {
-                return FO_NAMESPACE cast_to_void(&arg);
+                return FO_NAMESPACE make_ptr(&arg).void_cast();
             }
         }
 
-        // Pack the wrapper's `self` engine pointer into an `Entity*`
-        // slot. Engine `Self` types (`ServerEngine`, `Critter`, etc.)
+        // Pack the wrapper's `self` engine borrow into an `nptr<Entity>`
+        // handle slot. Engine `Self` types (`ServerEngine`, `Critter`, etc.)
         // are always complete in the consuming TU because the wrapper
         // definitions are gated on `NATIVE_SCRIPTS_TARGET_*` macros
         // that imply the matching engine header was included. So
-        // `static_cast<Entity*>(self)` is well-formed here, unlike for
-        // forward-declared ref-type args.
+        // can therefore flow through `NativeDataProvider::NormalizeArg`,
+        // unlike forward-declared ref-type args.
         template<typename Self>
-        [[nodiscard]] auto NormalizeWrapperSelf(Self self, FO_NAMESPACE NativeDataProvider::StorageEntryType& storage) -> void*
+        [[nodiscard]] auto NormalizeWrapperSelf(Self self, FO_NAMESPACE NativeDataProvider::StorageEntryType& storage) -> FO_NAMESPACE ptr<void>
         {
-            return FO_NAMESPACE cast_to_void(&storage.template emplace<FO_NAMESPACE Entity*>(static_cast<FO_NAMESPACE Entity*>(self)));
+            return FO_NAMESPACE NativeDataProvider::NormalizeArg(FO_NAMESPACE nptr<FO_NAMESPACE Entity> {self}, storage);
         }
 
         template<typename Self, typename... Args>
-        void DispatchMethodVoid(const FO_NAMESPACE MethodDesc* method, Self self, Args&... args)
+        void DispatchMethodVoid(FO_NAMESPACE ptr<const FO_NAMESPACE MethodDesc> method, Self self, Args&... args)
         {
-            FO_RUNTIME_ASSERT(method);
-            FO_RUNTIME_ASSERT(method->Call);
-            FO_NAMESPACE array<void*, FO_NAMESPACE MAX_CALL_ARGS> args_data;
+            FO_STRONG_ASSERT(method->Call, "Native entity method has no call handler", method->Name);
             constexpr ::size_t arg_count = sizeof...(Args) + 1;
             static_assert(arg_count <= FO_NAMESPACE MAX_CALL_ARGS, "Too many wrapper args");
+            FO_NAMESPACE vector<FO_NAMESPACE ptr<void>> args_data;
+            args_data.reserve(arg_count);
             FO_NAMESPACE array<FO_NAMESPACE NativeDataProvider::StorageEntryType, arg_count> slot_storage {};
-            args_data[0] = NormalizeWrapperSelf(self, slot_storage[0]);
+            args_data.emplace_back(NormalizeWrapperSelf(self, slot_storage[0]));
             ::size_t idx = 1;
-            (void)std::initializer_list<int> {(args_data[idx] = NormalizeWrapperArg(args, slot_storage[idx]), ++idx, 0)...};
+            (void)std::initializer_list<int> {(args_data.emplace_back(NormalizeWrapperArg(args, slot_storage[idx])), ++idx, 0)...};
             FO_NAMESPACE FuncCallData call {
                 .Accessor = &FO_NAMESPACE NativeDataProvider::NATIVE_DATA_ACCESSOR,
-                .ArgsData = FO_NAMESPACE span<void*> {args_data.data(), arg_count},
+                .ArgsData = args_data,
                 .RetData = nullptr,
             };
             method->Call(call);
@@ -334,39 +327,39 @@ namespace NativeScripts
         // so a vector return needs the proxy wrapping the local result
         // before `method->Call(call)` runs. `NormalizeRetSlot` materialises
         // both the storage variant (holding the proxy if needed) and the
-        // `void*` the engine consumes.
+        // `ptr<void>` the engine consumes.
         template<typename Ret>
-        [[nodiscard]] auto NormalizeRetSlot(Ret& slot, FO_NAMESPACE NativeDataProvider::StorageEntryType& temp) -> void*
+        [[nodiscard]] auto NormalizeRetSlot(Ret& slot, FO_NAMESPACE NativeDataProvider::StorageEntryType& temp) -> FO_NAMESPACE ptr<void>
         {
             if constexpr (FO_NAMESPACE vector_collection<Ret>) {
-                return FO_NAMESPACE cast_to_void(&temp.template emplace<FO_NAMESPACE NativeDataProvider::ArrayDataProxy>(slot));
+                return FO_NAMESPACE make_ptr(&temp.template emplace<FO_NAMESPACE NativeDataProvider::ArrayDataProxy>(slot)).void_cast();
             }
             else if constexpr (FO_NAMESPACE map_collection<Ret>) {
-                return FO_NAMESPACE cast_to_void(&temp.template emplace<FO_NAMESPACE NativeDataProvider::DictDataProxy>(slot));
+                return FO_NAMESPACE make_ptr(&temp.template emplace<FO_NAMESPACE NativeDataProvider::DictDataProxy>(slot)).void_cast();
             }
             else {
-                return FO_NAMESPACE cast_to_void(&slot);
+                return FO_NAMESPACE make_ptr(&slot).void_cast();
             }
         }
 
         template<typename Ret, typename Self, typename... Args>
-        [[nodiscard]] auto DispatchMethod(const FO_NAMESPACE MethodDesc* method, Self self, Args&... args) -> Ret
+        [[nodiscard]] auto DispatchMethod(FO_NAMESPACE ptr<const FO_NAMESPACE MethodDesc> method, Self self, Args&... args) -> Ret
         {
-            FO_RUNTIME_ASSERT(method);
-            FO_RUNTIME_ASSERT(method->Call);
-            FO_NAMESPACE array<void*, FO_NAMESPACE MAX_CALL_ARGS> args_data;
+            FO_STRONG_ASSERT(method->Call, "Native entity method has no call handler", method->Name);
             constexpr ::size_t arg_count = sizeof...(Args) + 1;
             static_assert(arg_count <= FO_NAMESPACE MAX_CALL_ARGS, "Too many wrapper args");
+            FO_NAMESPACE vector<FO_NAMESPACE ptr<void>> args_data;
+            args_data.reserve(arg_count);
             FO_NAMESPACE array<FO_NAMESPACE NativeDataProvider::StorageEntryType, arg_count> slot_storage {};
-            args_data[0] = NormalizeWrapperSelf(self, slot_storage[0]);
+            args_data.emplace_back(NormalizeWrapperSelf(self, slot_storage[0]));
             ::size_t idx = 1;
-            (void)std::initializer_list<int> {(args_data[idx] = NormalizeWrapperArg(args, slot_storage[idx]), ++idx, 0)...};
+            (void)std::initializer_list<int> {(args_data.emplace_back(NormalizeWrapperArg(args, slot_storage[idx])), ++idx, 0)...};
             Ret ret_slot {};
             FO_NAMESPACE NativeDataProvider::StorageEntryType ret_storage {};
-            void* ret_data = NormalizeRetSlot(ret_slot, ret_storage);
+            FO_NAMESPACE ptr<void> ret_data = NormalizeRetSlot(ret_slot, ret_storage);
             FO_NAMESPACE FuncCallData call {
                 .Accessor = &FO_NAMESPACE NativeDataProvider::NATIVE_DATA_ACCESSOR,
-                .ArgsData = FO_NAMESPACE span<void*> {args_data.data(), arg_count},
+                .ArgsData = args_data,
                 .RetData = ret_data,
             };
             method->Call(call);
@@ -377,55 +370,55 @@ namespace NativeScripts
         // for the requested name. Stable pointer — `Methods` is
         // `vector<MethodDesc>` owned by `EntityTypeDesc`, lifetime tied
         // to `EngineMetadata` (which outlives any wrapper).
-        [[nodiscard]] inline auto LookupEntityMethod(const FO_NAMESPACE EngineMetadata* meta, FO_NAMESPACE string_view entity_name, FO_NAMESPACE string_view method_name) -> const FO_NAMESPACE MethodDesc*
+        [[nodiscard]] inline auto LookupEntityMethod(FO_NAMESPACE ptr<const FO_NAMESPACE EngineMetadata> meta, FO_NAMESPACE string_view entity_name, FO_NAMESPACE string_view method_name) -> FO_NAMESPACE ptr<const FO_NAMESPACE MethodDesc>
         {
-            FO_RUNTIME_ASSERT(meta);
             const auto& type_desc = meta->GetEntityType(meta->Hashes.ToHashedString(entity_name));
             for (const auto& m : type_desc.Methods) {
                 if (m.Name == method_name) {
                     return &m;
                 }
             }
-            return nullptr;
+            FO_STRONG_ASSERT(false, "Native entity method is not registered", entity_name, method_name);
+            return &type_desc.Methods.front();
         }
 
         // Concept that detects a NativeScripts entity wrapper. Used by EventProxy
-        // to decide which incoming engine pointer arguments to wrap in a script
+        // to decide which incoming engine borrows to wrap in a script
         // type before invoking the user's handler.
         template<typename T>
         concept IsWrapperClass = requires { typename T::native_type; };
 
         // Read one event argument out of a FuncCallData slot.
-        // For wrapper types we go through the engine `Entity*` upcast that Fire
-        // produced via NormalizeArg, then downcast to the wrapper's native_type
+        // For wrapper types we go through the engine `nptr<Entity>` handle that
+        // Fire produced via NormalizeArg, then downcast to the wrapper's native_type
         // and construct the wrapper. For everything else we read the value
         // directly from the slot.
         template<typename W>
-        [[nodiscard]] auto NativeReadArg(void* data) noexcept -> W
+        [[nodiscard]] auto NativeReadArg(FO_NAMESPACE ptr<void> data) noexcept -> W
         {
             if constexpr (IsWrapperClass<W>) {
                 using EngineEnt = typename W::native_type;
-                auto* base = *FO_NAMESPACE cast_from_void<FO_NAMESPACE Entity**>(data);
+                FO_NAMESPACE nptr<FO_NAMESPACE Entity> base = FO_NAMESPACE NativeDataProvider::ReadTypedHandleSlot<FO_NAMESPACE Entity>(data);
                 // The engine downcasts via dynamic_cast; matching that keeps us
                 // safe if the same callback is reused across mismatched types.
-                auto* target = dynamic_cast<EngineEnt*>(base);
+                FO_NAMESPACE nptr<EngineEnt> target = base.template dyn_cast<EngineEnt>();
                 return W {target};
             }
             else {
-                return *FO_NAMESPACE cast_from_void<W*>(data);
+                return *data.template reinterpret_as<W>();
             }
         }
 
         // Reverse of `NativeReadArg` for the Fire path: unwrap script-side
-        // wrappers to their engine pointer before feeding to
-        // `NormalizeArg`. The Entity* prvalue from `arg.Native()` is
+        // wrappers to their engine borrow before feeding to
+        // `NormalizeArg`. The `nptr<Entity>` value from `arg.Native()` is
         // copied into the variant slot inside NormalizeArg, so its
         // lifetime is fine even though the prvalue itself dies at the
         // end of the full expression. Non-wrapper args pass through
         // (NormalizeArg returns `&arg` which is a pointer to the Fire
         // function's parameter — alive for the whole call).
         template<typename T>
-        [[nodiscard]] auto NormalizeFireArg(T& arg, FO_NAMESPACE NativeDataProvider::StorageEntryType& storage) -> void*
+        [[nodiscard]] auto NormalizeFireArg(T& arg, FO_NAMESPACE NativeDataProvider::StorageEntryType& storage) -> FO_NAMESPACE ptr<void>
         {
             using bare = std::remove_cvref_t<T>;
             if constexpr (IsWrapperClass<bare>) {
@@ -439,8 +432,8 @@ namespace NativeScripts
 
     // EventProxy is returned from a wrapper's `OnXxx()` accessor. It mirrors
     // the engine's `EntityEventWrapper` Subscribe shape but adapts arguments
-    // so user handlers receive `NativeScripts::Xxx` wrappers instead of raw
-    // engine pointers.
+    // so user handlers receive `NativeScripts::Xxx` wrappers instead of
+    // engine borrow wrappers.
     //
     // Template parameters:
     //   IsGlobal    — true for events on `Game` (global entity). When true the
@@ -449,12 +442,12 @@ namespace NativeScripts
     //                 event's logical args start at ArgsData[1].
     //   WrapperArgs — the argument types as visible to user handlers. Wrapper
     //                 types (those with a `native_type` typedef) are translated
-    //                 from the engine's raw pointer at call time.
+    //                 from the engine's borrow handle at call time.
     template<bool IsGlobal, typename... WrapperArgs>
     class EventProxy
     {
     public:
-        explicit EventProxy(FO_NAMESPACE EntityEvent* event) noexcept :
+        explicit EventProxy(FO_NAMESPACE ptr<FO_NAMESPACE EntityEvent> event) noexcept :
             _event {event}
         {
         }
@@ -462,10 +455,10 @@ namespace NativeScripts
         template<typename Handler>
         void Subscribe(Handler&& handler, FO_NAMESPACE Entity::EventPriority priority = FO_NAMESPACE Entity::EventPriority::Normal) const
         {
-            _event->Subscribe(MakeCallbackData(std::forward<Handler>(handler), priority, std::index_sequence_for<WrapperArgs...> {}));
+            _event.get_no_const()->Subscribe(MakeCallbackData(std::forward<Handler>(handler), priority, std::index_sequence_for<WrapperArgs...> {}));
         }
 
-        void UnsubscribeAll() const noexcept { _event->UnsubscribeAll(); }
+        void UnsubscribeAll() const noexcept { _event.get_no_const()->UnsubscribeAll(); }
 
     private:
         template<typename Handler, size_t... I>
@@ -483,7 +476,7 @@ namespace NativeScripts
             };
         }
 
-        FO_NAMESPACE EntityEvent* _event;
+        FO_NAMESPACE ptr<FO_NAMESPACE EntityEvent> _event;
     };
 
     // DynamicEventProxy mirrors EventProxy but for events declared via the
@@ -495,7 +488,7 @@ namespace NativeScripts
     //
     // `Fire(args...)` mirrors the engine's `EntityEventWrapper::Fire`
     // pattern (entity-side static counterpart): wrapper args are unwrapped
-    // to engine pointers (`Player.Native()`), primitive args pass through
+    // to engine borrows (`Player.Native()`), primitive args pass through
     // by reference, and the assembled `FuncCallData` is dispatched to
     // `Entity::FireEvent(name, call)`. Non-global events prepend `_entity`
     // as the self arg.
@@ -503,7 +496,7 @@ namespace NativeScripts
     class DynamicEventProxy
     {
     public:
-        DynamicEventProxy(FO_NAMESPACE Entity* entity, const char* event_name) noexcept :
+        DynamicEventProxy(FO_NAMESPACE ptr<FO_NAMESPACE Entity> entity, FO_NAMESPACE string_view event_name) noexcept :
             _entity {entity},
             _name {event_name}
         {
@@ -512,14 +505,14 @@ namespace NativeScripts
         template<typename Handler>
         void Subscribe(Handler&& handler, FO_NAMESPACE Entity::EventPriority priority = FO_NAMESPACE Entity::EventPriority::Normal) const
         {
-            _entity->SubscribeEvent(_name, MakeCallbackData(std::forward<Handler>(handler), priority, std::index_sequence_for<WrapperArgs...> {}));
+            _entity.get_no_const()->SubscribeEvent(_name, MakeCallbackData(std::forward<Handler>(handler), priority, std::index_sequence_for<WrapperArgs...> {}));
         }
 
-        void UnsubscribeAll() const noexcept { _entity->UnsubscribeAllEvent(_name); }
+        void UnsubscribeAll() const noexcept { _entity.get_no_const()->UnsubscribeAllEvent(_name); }
 
         // Fire the dynamic event with `args`. Wrapper-typed args
         // (`NativeScripts::Player`, etc.) auto-unwrap via `.Native()` so
-        // the engine's `NormalizeArg` sees an `Entity*` and emplaces it
+        // the engine's `NormalizeArg` sees an entity borrow and emplaces it
         // into the temp_storage variant; primitive args pass by
         // reference (NormalizeArg returns `&arg`, safe because `args`
         // are this function's parameters). For non-global events,
@@ -530,19 +523,18 @@ namespace NativeScripts
             if constexpr (IsGlobal) {
                 FO_NAMESPACE array<FO_NAMESPACE NativeDataProvider::StorageEntryType, sizeof...(WrapperArgs)> temp_storage {};
                 size_t storage_index = 0;
-                FO_NAMESPACE array<void*, sizeof...(WrapperArgs)> args_data {Detail::NormalizeFireArg(args, temp_storage[storage_index++])...};
+                FO_NAMESPACE array<FO_NAMESPACE ptr<void>, sizeof...(WrapperArgs)> args_data {Detail::NormalizeFireArg(args, temp_storage[storage_index++])...};
                 FO_NAMESPACE FuncCallData call {.Accessor = &FO_NAMESPACE NativeDataProvider::NATIVE_DATA_ACCESSOR};
                 call.ArgsData = args_data;
-                return _entity->FireEvent(_name, call);
+                return _entity.get_no_const()->FireEvent(_name, call);
             }
             else {
                 FO_NAMESPACE array<FO_NAMESPACE NativeDataProvider::StorageEntryType, sizeof...(WrapperArgs) + 1> temp_storage {};
-                size_t storage_index = 0;
-                void* self_arg = FO_NAMESPACE cast_to_void(_entity);
-                FO_NAMESPACE array<void*, sizeof...(WrapperArgs) + 1> args_data {&self_arg, Detail::NormalizeFireArg(args, temp_storage[storage_index++])...};
+                size_t storage_index = 1;
+                FO_NAMESPACE array<FO_NAMESPACE ptr<void>, sizeof...(WrapperArgs) + 1> args_data {FO_NAMESPACE NativeDataProvider::NormalizeArg(_entity, temp_storage[0]), Detail::NormalizeFireArg(args, temp_storage[storage_index++])...};
                 FO_NAMESPACE FuncCallData call {.Accessor = &FO_NAMESPACE NativeDataProvider::NATIVE_DATA_ACCESSOR};
                 call.ArgsData = args_data;
-                return _entity->FireEvent(_name, call);
+                return _entity.get_no_const()->FireEvent(_name, call);
             }
         }
 
@@ -562,33 +554,33 @@ namespace NativeScripts
             };
         }
 
-        FO_NAMESPACE Entity* _entity;
-        const char* _name;
+        FO_NAMESPACE ptr<FO_NAMESPACE Entity> _entity;
+        FO_NAMESPACE string_view _name;
     };
 
     namespace Detail
     {
         // Extracts one positional argument from a `FuncCallData` slot for
         // the native-side ScriptFunc factory. `NormalizeArg` writes args
-        // by address: for an `Entity*` arg `args_data[i]` points to a
-        // variant slot holding the pointer; for primitives/structs it
+        // by address: for an entity borrow `args_data[i]` points to a
+        // variant slot holding the handle; for primitives/structs it
         // points to caller storage. Either way the slot is a T-storage,
-        // so `*static_cast<T*>(data)` recovers the value.
+        // so a typed `reinterpret_as<T>()` recovers the value.
         //
         // For `vector<T>` args, `NormalizeArg` constructs an
         // `ArrayDataProxy` in the variant slot (not a raw `vector*`),
         // so we must iterate via `proxy->Size()` / `proxy->Get(i)` and
         // rebuild the vector element-by-element. Each element pointer
-        // returned by `Get(i)` follows the same `*static_cast<E*>(p)`
+        // returned by `Get(i)` follows the same typed-slot
         // layout the scalar branch expects.
         template<typename T>
-        [[nodiscard]] auto NativeReadFuncArg(void* data) -> T
+        [[nodiscard]] auto NativeReadFuncArg(FO_NAMESPACE ptr<void> data) -> T
         {
             using bare = std::remove_cvref_t<T>;
             if constexpr (FO_NAMESPACE vector_collection<bare>) {
-                auto* proxy = static_cast<FO_NAMESPACE NativeDataProvider::ArrayDataProxy*>(data);
+                FO_NAMESPACE ptr<FO_NAMESPACE NativeDataProvider::ArrayDataProxy> proxy = data.template reinterpret_as<FO_NAMESPACE NativeDataProvider::ArrayDataProxy>();
                 bare result;
-                const auto count = proxy->Size();
+                const size_t count = proxy->Size();
                 result.reserve(count);
                 for (size_t i = 0; i < count; ++i) {
                     result.push_back(NativeReadFuncArg<typename bare::value_type>(proxy->Get(i)));
@@ -600,12 +592,12 @@ namespace NativeScripts
                 // the key and value pointers — so the iteration is one
                 // step lighter than vector (no intermediate variant
                 // unwrap). Each pointer follows the same per-T layout
-                // the scalar `*static_cast<E*>` extraction expects, so
+                // the scalar typed-slot extraction expects, so
                 // recursing into `NativeReadFuncArg<K>` /
                 // `NativeReadFuncArg<V>` works.
-                auto* proxy = static_cast<FO_NAMESPACE NativeDataProvider::DictDataProxy*>(data);
+                FO_NAMESPACE ptr<FO_NAMESPACE NativeDataProvider::DictDataProxy> proxy = data.template reinterpret_as<FO_NAMESPACE NativeDataProvider::DictDataProxy>();
                 bare result;
-                const auto count = proxy->Size();
+                const size_t count = proxy->Size();
                 for (size_t i = 0; i < count; ++i) {
                     auto [k_ptr, v_ptr] = proxy->Get(i);
                     auto key = NativeReadFuncArg<typename bare::key_type>(k_ptr);
@@ -614,8 +606,12 @@ namespace NativeScripts
                 }
                 return result;
             }
+            else if constexpr (FO_NAMESPACE is_borrow_pointer_wrapper_v<bare>) {
+                using element_type = typename bare::element_type;
+                return FO_NAMESPACE NativeDataProvider::ReadTypedHandleSlot<element_type>(data);
+            }
             else {
-                return *static_cast<T*>(data);
+                return *data.template reinterpret_as<bare>();
             }
         }
 
@@ -631,7 +627,7 @@ namespace NativeScripts
         // `NativeScriptBackend` to be a complete type (NativeScriptCore.h only
         // forward-declares it to avoid a `NativeScriptBackend.h <-> NativeScriptCore.h`
         // include cycle).
-        [[nodiscard]] auto AllocateNativeScriptFunc(FO_NAMESPACE BaseEngine* engine) -> FO_NAMESPACE ScriptFuncDesc&;
+        [[nodiscard]] auto AllocateNativeScriptFunc(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine) -> FO_NAMESPACE ScriptFuncDesc&;
     }
 
     // Build a `fo::ScriptFunc<Ret, Args...>` whose `Call` invokes a native
@@ -652,11 +648,11 @@ namespace NativeScripts
     //
     // Limitations (v1):
     //   - Arg types must be those `NormalizeArg` knows: primitives,
-    //     strings, `hstring`, `Entity*` (and derived script-entity
-    //     pointers), `any_t`. Vectors / dicts (`ArrayDataProxy`,
+    //     strings, `hstring`, `ptr<Entity>` / `nptr<Entity>` (and derived
+    //     script-entity borrows), `any_t`. Vectors / dicts (`ArrayDataProxy`,
     //     `DictDataProxy`) round-trip on the arg side via
     //     `NativeReadFuncArg`'s vector/map branches.
-    //   - `Ret` may be void, a primitive / string / hstring / `Entity*`,
+    //   - `Ret` may be void, a primitive / string / hstring / entity borrow,
     //     or `vector<T>` / `map<K, V>` of those — for container returns
     //     the writeback goes through `call.Accessor->ClearArray` /
     //     `AddArrayElement` (or the dict equivalents) so the caller's
@@ -675,18 +671,18 @@ namespace NativeScripts
     // `MakeGlobalScriptFunc`. The `register_globally` flag adds the
     // freshly-allocated desc to `ScriptSystem::_globalFuncMap` so the
     // engine's `FindFunc<...>(name)` (and AS-callable
-    // `Game.Invoke(name, ...)`) can reach it by name. Sibling
+    // `Invoke(name, ...)`) can reach it by name. Sibling
     // public templates select the flag at the call site so the user
     // gets clear opt-in semantics rather than a "did you remember to
     // register?" question.
     namespace Detail
     {
         template<typename Ret, typename... Args, typename Fn>
-        auto MakeScriptFuncImpl(FO_NAMESPACE BaseEngine* engine, FO_NAMESPACE string_view name, Fn fn, bool register_globally) -> FO_NAMESPACE ScriptFunc<Ret, Args...>;
+        auto MakeScriptFuncImpl(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine, FO_NAMESPACE string_view name, Fn fn, bool register_globally) -> FO_NAMESPACE ScriptFunc<Ret, Args...>;
     }
 
     template<typename Ret, typename... Args, typename Fn>
-    [[nodiscard]] auto MakeScriptFunc(FO_NAMESPACE BaseEngine* engine, FO_NAMESPACE string_view name, Fn fn) -> FO_NAMESPACE ScriptFunc<Ret, Args...>
+    [[nodiscard]] auto MakeScriptFunc(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine, FO_NAMESPACE string_view name, Fn fn) -> FO_NAMESPACE ScriptFunc<Ret, Args...>
     {
         return Detail::MakeScriptFuncImpl<Ret, Args...>(engine, name, std::move(fn),
             /*register_globally=*/false);
@@ -695,7 +691,7 @@ namespace NativeScripts
     // Like `MakeScriptFunc` but additionally registers the underlying
     // `ScriptFuncDesc` into `ScriptSystem::_globalFuncMap` so the
     // engine and AS scripts can resolve it by name. Pair with the
-    // engine `Game.Invoke(funcName, ...)` ExportMethod (which calls
+    // engine `Invoke(funcName, ...)` global function (which calls
     // `engine->FindFunc<void, any_t...>(funcName)`) to let `.fos`
     // scripts reach native callbacks by string lookup. Use this when
     // a native module wants AS to be able to dispatch into it by name;
@@ -716,7 +712,7 @@ namespace NativeScripts
     // Prefer stable, unique names per native module to avoid surprise
     // dispatch.
     template<typename Ret, typename... Args, typename Fn>
-    [[nodiscard]] auto MakeGlobalScriptFunc(FO_NAMESPACE BaseEngine* engine, FO_NAMESPACE string_view name, Fn fn) -> FO_NAMESPACE ScriptFunc<Ret, Args...>
+    [[nodiscard]] auto MakeGlobalScriptFunc(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine, FO_NAMESPACE string_view name, Fn fn) -> FO_NAMESPACE ScriptFunc<Ret, Args...>
     {
         return Detail::MakeScriptFuncImpl<Ret, Args...>(engine, name, std::move(fn),
             /*register_globally=*/true);
@@ -725,7 +721,7 @@ namespace NativeScripts
     namespace Detail
     {
         template<typename Ret, typename... Args, typename Fn>
-        auto MakeScriptFuncImpl(FO_NAMESPACE BaseEngine* engine, FO_NAMESPACE string_view name, Fn fn, bool register_globally) -> FO_NAMESPACE ScriptFunc<Ret, Args...>
+        auto MakeScriptFuncImpl(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine, FO_NAMESPACE string_view name, Fn fn, bool register_globally) -> FO_NAMESPACE ScriptFunc<Ret, Args...>
         {
             FO_NAMESPACE function<Ret(Args...)> wrapped {std::move(fn)};
             auto& desc = Detail::AllocateNativeScriptFunc(engine);
@@ -735,7 +731,7 @@ namespace NativeScripts
             // we're registering the desc into the global func map — without
             // matching type info, `ScriptSystem::ValidateArgs` (used by
             // `FindFunc<TRet, Args...>` and therefore by AS's
-            // `Game.Invoke(name, ...)`) would reject the desc on signature
+            // `Invoke(name, ...)`) would reject the desc on signature
             // mismatch. Non-global `MakeScriptFunc` calls keep the desc's
             // `Args` / `Ret` empty — those are used only via the typed
             // `ScriptFunc<>` handle returned here (TimeEvent target,
@@ -751,15 +747,15 @@ namespace NativeScripts
             if (register_globally) {
                 if constexpr (sizeof...(Args) > 0) {
                     (([&] {
-                        const auto* type = engine->template GetEngineType<Args>();
-                        FO_RUNTIME_ASSERT(type);
+                        FO_NAMESPACE nptr<const FO_NAMESPACE ComplexTypeDesc> type = engine->template GetEngineType<Args>();
+                        FO_STRONG_ASSERT(type, "Native script argument type is not registered");
                         desc.Args.emplace_back(FO_NAMESPACE ArgDesc {.Name = {}, .Type = *type});
                     }()),
                         ...);
                 }
                 if constexpr (!std::is_same_v<Ret, void>) {
-                    const auto* ret_type = engine->template GetEngineType<Ret>();
-                    FO_RUNTIME_ASSERT(ret_type);
+                    FO_NAMESPACE nptr<const FO_NAMESPACE ComplexTypeDesc> ret_type = engine->template GetEngineType<Ret>();
+                    FO_STRONG_ASSERT(ret_type, "Native script return type is not registered");
                     desc.Ret = *ret_type;
                 }
             }
@@ -780,11 +776,11 @@ namespace NativeScripts
                     //     mutates the underlying container.
                     //   - map return → same with `DictDataProxy`.
                     //   - everything else (primitives, strings, hstring,
-                    //     `Entity*`, `any_t`) → RetData points directly at
+                    //     entity borrows, `any_t`) → RetData points directly at
                     //     the `_ret` storage, so `*static_cast<Ret*>` =
                     //     assignment works.
                     auto result = Detail::NativeInvokeFn<decltype(callable), Args...>(callable, call, std::index_sequence_for<Args...> {});
-                    FO_RUNTIME_ASSERT(call.RetData);
+                    FO_STRONG_ASSERT(call.RetData, "Native script call has no return value storage");
                     if constexpr (FO_NAMESPACE vector_collection<Ret>) {
                         call.Accessor->ClearArray(call.RetData);
                         for (auto& element : result) {
@@ -806,7 +802,7 @@ namespace NativeScripts
                         }
                     }
                     else {
-                        *static_cast<Ret*>(call.RetData) = std::move(result);
+                        *call.RetData.template reinterpret_as<Ret>() = std::move(result);
                     }
                 }
             };
@@ -1006,7 +1002,7 @@ namespace NativeScripts
                 // `string` arg type.
                 FO_NAMESPACE string_view sv {arg};
                 writer.template Write<int32_t>(FO_NAMESPACE numeric_cast<int32_t>(sv.length()));
-                writer.WritePtr(sv.data(), sv.length());
+                writer.WriteStringBytes(sv);
             }
             else {
                 static_assert(!std::is_same_v<bare, bare>,
@@ -1023,7 +1019,7 @@ namespace NativeScripts
         // decode identically — same byte layout, same hstring hash
         // resolution path.
         template<typename T>
-        [[nodiscard]] auto ReadRemoteCallArg(FO_NAMESPACE DataReader& reader, FO_NAMESPACE BaseEngine* engine) -> T
+        [[nodiscard]] auto ReadRemoteCallArg(FO_NAMESPACE DataReader& reader, FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine) -> T
         {
             using bare = std::remove_cvref_t<T>;
             if constexpr (std::is_arithmetic_v<bare>) {
@@ -1035,17 +1031,20 @@ namespace NativeScripts
             }
             else if constexpr (std::is_same_v<bare, FO_NAMESPACE string>) {
                 const auto len = reader.template Read<int32_t>();
-                FO_RUNTIME_ASSERT(len >= 0);
+                FO_STRONG_ASSERT(len >= 0, "Remote call string length is negative", len);
                 const size_t size = FO_NAMESPACE numeric_cast<size_t>(len);
-                const auto* bytes = reader.template ReadPtr<char>(size);
-                return FO_NAMESPACE string {bytes, size};
+                if (size == 0) {
+                    return {};
+                }
+                const FO_NAMESPACE nptr<const char> bytes = reader.template ReadPtr<char>(size);
+                return FO_NAMESPACE string {bytes.get(), size};
             }
             else if constexpr (FO_NAMESPACE vector_collection<bare>) {
                 // AS wire format for array args: int32_t count followed by
                 // count * element-encoded-bytes. Mirror `WriteRemoteCallArg`'s
                 // element-wise recursion to decode.
                 const auto count = reader.template Read<int32_t>();
-                FO_RUNTIME_ASSERT(count >= 0);
+                FO_STRONG_ASSERT(count >= 0, "Remote call array length is negative", count);
                 bare result;
                 result.reserve(FO_NAMESPACE numeric_cast<size_t>(count));
                 for (int32_t i = 0; i < count; ++i) {
@@ -1058,7 +1057,7 @@ namespace NativeScripts
                 // count * (key + value) encoded pairs. Mirror
                 // `WriteRemoteCallArg`'s element-wise recursion.
                 const auto count = reader.template Read<int32_t>();
-                FO_RUNTIME_ASSERT(count >= 0);
+                FO_STRONG_ASSERT(count >= 0, "Remote call dictionary length is negative", count);
                 bare result;
                 for (int32_t i = 0; i < count; ++i) {
                     auto key = ReadRemoteCallArg<typename bare::key_type>(reader, engine);
@@ -1072,6 +1071,19 @@ namespace NativeScripts
                     "ReadRemoteCallArg: unsupported argument type "
                     "(primitives, vector<T>, map<K,V>, string, and hstring are bridged)");
             }
+        }
+
+        template<typename... Args>
+        [[nodiscard]] auto ReadRemoteCallArgs(FO_NAMESPACE DataReader& reader, FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine) -> std::tuple<Args...>
+        {
+            std::tuple<Args...> args;
+            [&]<size_t... Indexes>(std::index_sequence<Indexes...>) {
+                // A comma fold guarantees packet-order reads. Passing the
+                // reads directly to std::tuple's constructor does not because
+                // function argument evaluation order is unspecified.
+                ((std::get<Indexes>(args) = ReadRemoteCallArg<std::tuple_element_t<Indexes, std::tuple<Args...>>>(reader, engine)), ...);
+            }(std::index_sequence_for<Args...> {});
+            return args;
         }
     }
 
@@ -1090,13 +1102,12 @@ namespace NativeScripts
     // calls use the generated typed binder below.
     //
     // Caller entity: matches AS's contract. On the server, `caller` must
-    // be a `Player*` or a `Critter*` whose player owns the connection
+    // be a `ptr<Player>` or `ptr<Critter>` whose player owns the connection
     // (engine routes the packet to that player's socket); on the client,
-    // it must be the `Player*` representing the local client.
+    // it must be the `ptr<Player>` representing the local client.
     template<typename... Args>
-    void SendRemoteCall(FO_NAMESPACE BaseEngine* engine, FO_NAMESPACE string_view name, FO_NAMESPACE Entity* caller, const Args&... args)
+    void SendRemoteCall(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine, FO_NAMESPACE string_view name, FO_NAMESPACE ptr<FO_NAMESPACE Entity> caller, const Args&... args)
     {
-        FO_RUNTIME_ASSERT(engine);
         FO_NAMESPACE vector<uint8_t> data;
         FO_NAMESPACE DataWriter writer {data};
         (Detail::WriteRemoteCallArg(writer, args), ...);
@@ -1104,7 +1115,7 @@ namespace NativeScripts
     }
 
     template<typename... Args>
-    void ModuleInitContextBase::SendRemoteCall(FO_NAMESPACE string_view name, FO_NAMESPACE Entity* caller, const Args&... args) const
+    void ModuleInitContextBase::SendRemoteCall(FO_NAMESPACE string_view name, FO_NAMESPACE ptr<FO_NAMESPACE Entity> caller, const Args&... args) const
     {
         NativeScripts::SendRemoteCall<Args...>(Engine, name, caller, args...);
     }
@@ -1124,23 +1135,20 @@ namespace NativeScripts
     // (`Player.<Side>Call.<Name>(args)`) or native-side
     // (`ctx.SendRemoteCall<args...>`).
     //
-    // The handler receives the raw `Entity* caller` (the player whose
+    // The handler receives the nullable `nptr<Entity> caller` (the player whose
     // packet this is) as the first argument, followed by the decoded
-    // args. The caller is `Player*` on the server, the local `Player*`
+    // args. The caller is `nptr<Player>` on the server, the local `nptr<Player>`
     // on the client — same contract as AS-side `[[ServerRemoteCall]]`
     // handler functions.
     template<typename... Args, typename Handler>
-    void BindRemoteCall(FO_NAMESPACE BaseEngine* engine, FO_NAMESPACE string_view name, Handler handler)
+    void BindRemoteCall(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine, FO_NAMESPACE string_view name, Handler handler)
     {
-        FO_RUNTIME_ASSERT(engine);
-        auto hashed = engine->Hashes.ToHashedString(name);
+        FO_NAMESPACE hstring hashed = engine->Hashes.ToHashedString(name);
         engine->SetRemoteCallHandler(
             hashed,
-            [engine, handler = std::move(handler)](FO_NAMESPACE hstring, FO_NAMESPACE Entity* caller, FO_NAMESPACE span<uint8_t> data) FO_DEFERRED {
+            [engine, handler = std::move(handler)](FO_NAMESPACE hstring, FO_NAMESPACE nptr<FO_NAMESPACE Entity> caller, FO_NAMESPACE span<uint8_t> data) FO_DEFERRED {
                 FO_NAMESPACE DataReader reader {data};
-                // Brace-init list forces left-to-right evaluation so the
-                // reader consumes bytes in declaration order.
-                std::tuple<Args...> args {Detail::ReadRemoteCallArg<Args>(reader, engine)...};
+                std::tuple<Args...> args = Detail::ReadRemoteCallArgs<Args...>(reader, engine);
                 reader.VerifyEnd();
                 std::apply([&](auto&&... a) { handler(caller, std::forward<decltype(a)>(a)...); }, std::move(args));
             },

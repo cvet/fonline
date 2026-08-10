@@ -3057,7 +3057,7 @@ def append_user_setting_registration(helper_lines: list[str], register_lines: li
     function_name = 'RegisterAllSettings'
     append_static_function(helper_lines,
                            'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
-    register_lines.append(function_name + '(meta);')
+    register_lines.append(function_name + '(meta.get_no_const());')
     register_lines.append('')
 
 
@@ -3124,7 +3124,7 @@ def append_user_remote_call_registration(helper_lines: list[str], register_lines
 
     append_static_function(helper_lines,
                            'static void RegisterUserRemoteCalls(EngineMetadata* meta)', body_lines)
-    register_lines.append('RegisterUserRemoteCalls(meta);')
+    register_lines.append('RegisterUserRemoteCalls(meta.get_no_const());')
     register_lines.append('')
 
 

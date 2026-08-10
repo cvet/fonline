@@ -53,7 +53,7 @@ FO_BEGIN_NAMESPACE
 // `isBaker` marks the MasterBaker-owned metadata/script context. Baker has no
 // runtime BaseEngine, so its context exposes Meta and ScriptSys while Engine
 // remains null.
-void InitNativeScripting(EngineMetadata* meta, const ScriptSettings& settings, const FileSystem& resources, NativeScripts::Detail::RegisterModulesFn registerModules, bool isBaker = false);
+void InitNativeScripting(ptr<EngineMetadata> meta, const ScriptSettings& settings, const FileSystem& resources, NativeScripts::Detail::RegisterModulesFn registerModules, bool isBaker = false);
 
 FO_END_NAMESPACE
 

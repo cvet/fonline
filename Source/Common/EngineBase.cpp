@@ -582,7 +582,7 @@ void EngineMetadata::MarkGameSettingAsExported(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    FO_STRONG_ASSERT(!_registrationFinalized, "Cannot export a game setting after metadata registration is finalized", name);
     _exportedGameSettings.emplace(name);
 }
 
@@ -590,8 +590,8 @@ void EngineMetadata::SetExportedGameSettingType(string_view name, const BaseType
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_registrationFinalized);
-    FO_RUNTIME_ASSERT(_exportedGameSettings.contains(string(name)));
+    FO_STRONG_ASSERT(!_registrationFinalized, "Cannot set an exported game setting type after metadata registration is finalized", name);
+    FO_STRONG_ASSERT(_exportedGameSettings.contains(string(name)), "Game setting must be exported before assigning its type", name);
     _exportedGameSettingsType.emplace(name, &type);
 }
 
@@ -599,8 +599,8 @@ void EngineMetadata::SetExportedGameSettingTypeName(string_view name, string_vie
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_registrationFinalized);
-    FO_RUNTIME_ASSERT(_exportedGameSettings.contains(string(name)));
+    FO_STRONG_ASSERT(!_registrationFinalized, "Cannot set an exported game setting type name after metadata registration is finalized", name);
+    FO_STRONG_ASSERT(_exportedGameSettings.contains(string(name)), "Game setting must be exported before assigning its type name", name);
     _exportedGameSettingsTypeName.emplace(string(name), string(type_name));
 }
 
@@ -608,8 +608,8 @@ void EngineMetadata::MarkEnumAsExported(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_registrationFinalized);
-    FO_RUNTIME_ASSERT(_enums.contains(name));
+    FO_STRONG_ASSERT(!_registrationFinalized, "Cannot export an enum after metadata registration is finalized", name);
+    FO_STRONG_ASSERT(_enums.contains(name), "Enum must be registered before it is exported", name);
 
     _exportedEnums.emplace(name);
 }

@@ -39,27 +39,27 @@
 
 FO_BEGIN_NAMESPACE
 
-void InitNativeScripting(EngineMetadata* meta, const ScriptSettings& settings, const FileSystem& resources, NativeScripts::Detail::RegisterModulesFn registerModules, bool isBaker)
+void InitNativeScripting(ptr<EngineMetadata> meta, const ScriptSettings& settings, const FileSystem& resources, NativeScripts::Detail::RegisterModulesFn registerModules, bool isBaker)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(resources);
 
     auto native_backend = SafeAlloc::MakeUnique<NativeScriptBackend>(settings);
-    auto* pnative_backend = native_backend.get();
+    ptr<NativeScriptBackend> native_backend_ptr = native_backend;
 
-    if (auto* script_sys = dynamic_cast<ScriptSystem*>(meta)) {
+    if (nptr<ScriptSystem> script_sys = meta.dyn_cast<ScriptSystem>(); script_sys) {
         script_sys->RegisterBackend(ScriptSystemBackend::NATIVE_BACKEND_INDEX, std::move(native_backend));
     }
 
-    pnative_backend->Attach(meta);
+    native_backend_ptr->Attach(meta);
 
     // `registerModules` is the synth-emitted per-role dispatcher
     // (`RegisterNativeScriptModules_Server`, etc.). Each
     // Server/Client/Mapper startup and MasterBaker hand their own dispatcher
     // in so only the right module set runs.
     if (registerModules != nullptr) {
-        registerModules(pnative_backend->MakeContext(isBaker));
+        registerModules(native_backend_ptr->MakeContext(isBaker));
     }
 }
 

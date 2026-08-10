@@ -436,11 +436,11 @@ auto SynthesizeNativeApiContextRpcMethods(const EngineMetadata& meta) -> string
     };
     unordered_map<string, RcEntry> by_name;
     auto collect = [&](const auto& map) {
-        for (const auto& [_hname, desc] : map) {
+        for (const auto& [_hname, desc] : *map) {
             if (desc.SubsystemHint != "native") {
                 continue;
             }
-            const string name = desc.Name.as_str();
+            const string name {desc.Name.as_str()};
             if (by_name.contains(name)) {
                 continue;
             }
@@ -498,7 +498,7 @@ auto SynthesizeNativeApiContextRpcMethods(const EngineMetadata& meta) -> string
 
         // Outbound member function — compile-time-checked args,
         // forwards to the generic SendRemoteCall on the same context.
-        body += "void " + name + "(::FO_NAMESPACE_NAME::Entity* caller" + params_suffix + ") const {\n";
+        body += "void " + name + "(::FO_NAMESPACE_NAME::ptr<::FO_NAMESPACE_NAME::Entity> caller" + params_suffix + ") const {\n";
         body += "    SendRemoteCall<" + type_list + ">(\"" + name + "\", caller" + args_forward + ");\n";
         body += "}\n";
 
@@ -545,7 +545,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
 
     unordered_set<string> auto_property_enums;
     for (const auto& [type_name, _desc] : meta.GetEntityTypes()) {
-        auto_property_enums.emplace(type_name.as_str() + "Property");
+        auto_property_enums.emplace(string {type_name.as_str()} + "Property");
     }
 
     // Open the NativeScripts namespace and emit the complete union surface.
@@ -626,7 +626,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
     }
     std::ranges::sort(user_enum_names);
     for (const auto& enum_name : user_enum_names) {
-        const BaseTypeDesc* underlying = meta.GetEnumUnderlyingType(enum_name);
+        nptr<const BaseTypeDesc> underlying = meta.GetEnumUnderlyingType(enum_name);
         if (!underlying) {
             continue;
         }
@@ -689,11 +689,11 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
     // Settings accessors — mirror codegen.py's `_native_render_settings_block`.
     //
     // Engine-exported settings (`///@ ExportSettings`) resolve to a
-    // C++ field on `GlobalSettings` (`engine->Settings.<Field>`,
+    // C++ field on `GlobalSettings` (`engine->Settings-><Field>`,
     // where `Field` is the post-dot part of the setting name).
     // User-origin settings (`///@ Setting` in user `.cppm` files)
     // have no struct field — they round-trip through
-    // `engine->Settings.GetCustomSetting(name)` /
+    // `engine->Settings->GetCustomSetting(name)` /
     // `SetCustomSetting(name, any_t(...))` with type-specific
     // parsing helpers from `strvex` / `any_t` / `strex`.
     // Inside `NativeScripts::Settings` the engine's `float32_t` /
@@ -746,7 +746,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
     // GetCustomSetting-based user-origin settings. Mirrors
     // codegen.py:3704-3722. Returns empty for unsupported types.
     auto user_parse_expr = [](const BaseTypeDesc& bt, const string& setting_name, const string& cpp_type) -> string {
-        const string getter = "engine->Settings.GetCustomSetting(\"" + setting_name + "\")";
+        const string getter = "engine->Settings->GetCustomSetting(\"" + setting_name + "\")";
         if (bt.IsBool) {
             return "FO_NAMESPACE_NAME::strvex(" + getter + ").to_bool()";
         }
@@ -768,7 +768,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
         return "";
     };
     // Map a BaseTypeDesc to the `any_t(...)` set-expression used in
-    // `engine->Settings.SetCustomSetting(name, ...)`. Mirrors
+    // `engine->Settings->SetCustomSetting(name, ...)`. Mirrors
     // codegen.py:3731-3737.
     auto user_set_expr = [](const BaseTypeDesc& bt) -> string {
         if (bt.IsString) {
@@ -805,7 +805,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
         // Primitive fast path — `_exportedGameSettingsType`
         // populated for every primitive-typed exported setting.
         string cpp_type;
-        if (const BaseTypeDesc* prim = meta.FindExportedGameSettingType(setting_name); prim != nullptr) {
+        if (nptr<const BaseTypeDesc> prim = meta.FindExportedGameSettingType(setting_name); prim) {
             cpp_type = base_type_to_cpp(*prim);
         }
         // Fall through to the full meta-type mapper for anything
@@ -815,7 +815,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
         // the raw value-type string in dot-syntax which
         // `MetaToCpp` handles directly.
         if (cpp_type.empty()) {
-            if (const string* type_name = meta.FindExportedGameSettingTypeName(setting_name); type_name != nullptr) {
+            if (nptr<const string> type_name = meta.FindExportedGameSettingTypeName(setting_name); type_name) {
                 if (const auto mapped = MetaToCpp(meta, *type_name, "Common", false, false); mapped.has_value()) {
                     cpp_type = *mapped;
                 }
@@ -825,12 +825,12 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
             continue;
         }
 
-        // Inline body: `engine->Settings.<Field>`.
+        // Inline body: `engine->Settings-><Field>`.
         settings_body += "[[nodiscard]] inline auto ";
         settings_body += symbol;
-        settings_body += "(::FO_NAMESPACE_NAME::BaseEngine* engine) noexcept -> ";
+        settings_body += "(::FO_NAMESPACE_NAME::ptr<::FO_NAMESPACE_NAME::BaseEngine> engine) noexcept -> ";
         settings_body += cpp_type;
-        settings_body += " { return engine->Settings.";
+        settings_body += " { return engine->Settings->";
         settings_body += field_name;
         settings_body += "; }\n";
         setting_emit.emplace_back(std::move(symbol), cpp_type);
@@ -848,7 +848,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
     for (const auto& setting_name : user_setting_names) {
         const auto& gs_map = meta.GetGameSettings();
         const auto it = gs_map.find(setting_name);
-        if (it == gs_map.end() || it->second == nullptr) {
+        if (it == gs_map.end()) {
             continue;
         }
         const BaseTypeDesc& type = *it->second;
@@ -865,7 +865,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
         // Getter — not `noexcept` (parsing can throw).
         settings_body += "[[nodiscard]] inline auto ";
         settings_body += symbol;
-        settings_body += "(::FO_NAMESPACE_NAME::BaseEngine* engine) -> ";
+        settings_body += "(::FO_NAMESPACE_NAME::ptr<::FO_NAMESPACE_NAME::BaseEngine> engine) -> ";
         settings_body += cpp_type;
         settings_body += " { return ";
         settings_body += parse_expr;
@@ -874,9 +874,9 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
         const string set_expr = user_set_expr(type);
         settings_body += "inline void Set_";
         settings_body += symbol;
-        settings_body += "(::FO_NAMESPACE_NAME::BaseEngine* engine, ";
+        settings_body += "(::FO_NAMESPACE_NAME::ptr<::FO_NAMESPACE_NAME::BaseEngine> engine, ";
         settings_body += cpp_type;
-        settings_body += " value) { engine->Settings.SetCustomSetting(\"";
+        settings_body += " value) { engine->Settings->SetCustomSetting(\"";
         settings_body += setting_name;
         settings_body += "\", ";
         settings_body += set_expr;
@@ -922,10 +922,10 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
     auto property_meta_type = [](const FO_NAMESPACE Property& prop) -> string {
         const string& base_name = prop.GetBaseType().Name;
         if (prop.IsDictOfArray()) {
-            return "dict." + prop.GetDictKeyTypeName() + ".arr." + base_name;
+            return string {"dict."} + string {prop.GetDictKeyTypeName()} + ".arr." + base_name;
         }
         if (prop.IsDict()) {
-            return "dict." + prop.GetDictKeyTypeName() + "." + base_name;
+            return string {"dict."} + string {prop.GetDictKeyTypeName()} + "." + base_name;
         }
         if (prop.IsArray()) {
             return "arr." + base_name;
@@ -993,7 +993,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
 
         // `_self` for `Game` is the engine handle itself; for other
         // entity wrappers the engine comes through `_self->GetEngine()`.
-        const string meta_expr = entity == "Game" ? "static_cast<const ::FO_NAMESPACE_NAME::EngineMetadata*>(static_cast<const ::FO_NAMESPACE_NAME::BaseEngine*>(_self))" : "static_cast<const ::FO_NAMESPACE_NAME::EngineMetadata*>(static_cast<const ::FO_NAMESPACE_NAME::BaseEngine*>(_self->GetEngine()))";
+        const string meta_expr = entity == "Game" ? "_self" : "_self.get_no_const()->GetEngine()";
 
         string params;
         for (size_t i = 0; i < arg_types.size(); ++i) {
@@ -1009,7 +1009,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
             forward_args += ", ";
             forward_args += name;
         }
-        const string lookup_line = "const ::FO_NAMESPACE_NAME::MethodDesc* m_ = "
+        const string lookup_line = "::FO_NAMESPACE_NAME::ptr<const ::FO_NAMESPACE_NAME::MethodDesc> m_ = "
                                    "::NativeScripts::Detail::LookupEntityMethod(" +
             meta_expr + ", \"" + string(entity) + "\", \"" + method.Name + "\");";
 
@@ -1056,10 +1056,10 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
             if (entity == "Game" && target_name != "Common") {
                 body += "    ";
                 body += entity;
-                body += "(::FO_NAMESPACE_NAME::BaseEngine* engine) noexcept :\n";
+                body += "(::FO_NAMESPACE_NAME::ptr<::FO_NAMESPACE_NAME::BaseEngine> engine) noexcept :\n";
                 body += "        EntityWrapper {static_cast<::";
                 body += engine_class;
-                body += "*>(engine)} {}\n";
+                body += "*>(engine.get_no_const())} {}\n";
             }
             // Property accessor declarations: Get / Set / IsNonEmpty
             // per registered property. The baker emits the unified
@@ -1094,16 +1094,17 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
                 visible_method_names.insert(method.Name);
                 visible_method_names.insert("Set" + method.Name);
             }
-            if (type_desc.PropRegistrator) {
-                const auto* prop_reg = type_desc.PropRegistrator.get();
+            {
+                const auto& prop_reg = type_desc.PropRegistrar;
                 const size_t prop_count = prop_reg->GetPropertiesCount();
                 for (size_t i = 0; i < prop_count; ++i) {
-                    const auto* prop = prop_reg->GetPropertyByIndexUnsafe(i);
+                    nptr<const Property> prop = prop_reg->GetPropertyByIndex(numeric_cast<int32_t>(i));
                     if (!prop) {
                         continue;
                     }
-                    if (visible_method_names.contains("Get" + prop->GetName()) || visible_method_names.contains("Set" + prop->GetName())) {
-                        body += "    // skipped property (overshadowed by method): " + prop->GetName() + "\n";
+                    const string prop_name {prop->GetName()};
+                    if (visible_method_names.contains("Get" + prop_name) || visible_method_names.contains("Set" + prop_name)) {
+                        body += "    // skipped property (overshadowed by method): " + prop_name + "\n";
                         continue;
                     }
                     // Per-target allowlist gate (intersection
@@ -1111,27 +1112,27 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
                     // queried under their setter name
                     // (`Set<Name>`) — matches the convention used
                     // for method dedup.
-                    if (!is_member_visible(target_name, entity, "Set" + prop->GetName())) {
+                    if (!is_member_visible(target_name, entity, "Set" + prop_name)) {
                         continue;
                     }
                     const auto get_cpp = property_get_type(*prop, target_name);
                     const auto set_cpp = property_set_type(*prop, target_name);
                     if (!get_cpp.has_value() || !set_cpp.has_value()) {
-                        body += "    // skipped property " + prop->GetName() + "\n";
+                        body += "    // skipped property " + prop_name + "\n";
                         continue;
                     }
                     body += "    [[nodiscard]] auto Get";
-                    body += prop->GetName();
+                    body += prop_name;
                     body += "() const -> ";
                     body += *get_cpp;
                     body += ";\n";
                     body += "    auto Set";
-                    body += prop->GetName();
+                    body += prop_name;
                     body += "(";
                     body += *set_cpp;
                     body += " value) const -> void;\n";
                     body += "    [[nodiscard]] auto IsNonEmpty";
-                    body += prop->GetName();
+                    body += prop_name;
                     body += "() const noexcept -> bool;\n";
                 }
             }
@@ -1240,8 +1241,8 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
             // properties (engine + user). The Property pointer is
             // resolved per-call through `FindProperty(name)` because
             // a process can host multiple engine instances with
-            // their own PropertyRegistrators; a static cache would
-            // hand out a pointer owned by one registrator to a
+            // their own PropertyRegistrars; a static cache would
+            // hand out a pointer owned by one registrar to a
             // Properties owned by another.
             // Match the in-class dedup: if a method shadows the
             // property's Get/Set name, the in-class block skipped
@@ -1253,47 +1254,51 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
                 body_visible_method_names.insert(method.Name);
                 body_visible_method_names.insert("Set" + method.Name);
             }
-            if (type_desc.PropRegistrator) {
-                const auto* prop_reg = type_desc.PropRegistrator.get();
+            {
+                const auto& prop_reg = type_desc.PropRegistrar;
                 const size_t prop_count = prop_reg->GetPropertiesCount();
                 for (size_t i = 0; i < prop_count; ++i) {
-                    const auto* prop = prop_reg->GetPropertyByIndexUnsafe(i);
+                    nptr<const Property> prop = prop_reg->GetPropertyByIndex(numeric_cast<int32_t>(i));
                     if (!prop) {
                         continue;
                     }
-                    if (body_visible_method_names.contains("Get" + prop->GetName()) || body_visible_method_names.contains("Set" + prop->GetName())) {
+                    const string prop_name {prop->GetName()};
+                    if (body_visible_method_names.contains("Get" + prop_name) || body_visible_method_names.contains("Set" + prop_name)) {
                         continue;
                     }
-                    if (!is_member_visible(target_name, entity, "Set" + prop->GetName())) {
+                    if (!is_member_visible(target_name, entity, "Set" + prop_name)) {
                         continue;
                     }
                     const auto get_cpp = property_get_type(*prop, target_name);
                     const auto set_cpp = property_set_type(*prop, target_name);
                     if (!get_cpp.has_value() || !set_cpp.has_value()) {
-                        body += "// skipped property body: " + entity + "::" + prop->GetName() + "\n";
+                        body += "// skipped property body: " + entity + "::" + prop_name + "\n";
                         continue;
                     }
-                    const string lookup_init = "const ::FO_NAMESPACE_NAME::Property* prop = _self->GetProperties().GetRegistrator()->FindProperty(\"" + prop->GetName() + "\")";
+                    const string lookup_init = "::FO_NAMESPACE_NAME::nptr<const ::FO_NAMESPACE_NAME::Property> prop = _self->GetProperties()->GetRegistrar()->FindProperty(\"" + prop_name +
+                        "\");\n"
+                        "    FO_STRONG_ASSERT(prop, \"Native wrapper property is not registered\", \"" +
+                        entity + "\", \"" + prop_name + "\")";
                     // Get
-                    body += "inline auto " + entity + "::Get" + prop->GetName() + "() const -> " + *get_cpp + " {\n";
+                    body += "inline auto " + entity + "::Get" + prop_name + "() const -> " + *get_cpp + " {\n";
                     body += "    " + lookup_init + ";\n";
-                    body += "    return _self->GetProperties().GetValueFast<" + *set_cpp + ">(prop);\n";
+                    body += "    return _self->GetProperties()->GetValueFast<" + *set_cpp + ">(prop);\n";
                     body += "}\n";
                     // Set
-                    body += "inline auto " + entity + "::Set" + prop->GetName() + "(" + *set_cpp + " value) const -> void {\n";
+                    body += "inline auto " + entity + "::Set" + prop_name + "(" + *set_cpp + " value) const -> void {\n";
                     body += "    " + lookup_init + ";\n";
-                    body += "    _self->GetPropertiesForEdit().SetValue(prop, value);\n";
+                    body += "    _self.get_no_const()->GetPropertiesForEdit()->SetValue(prop, value);\n";
                     body += "}\n";
                     // IsNonEmpty
-                    body += "inline auto " + entity + "::IsNonEmpty" + prop->GetName() + "() const noexcept -> bool {\n";
+                    body += "inline auto " + entity + "::IsNonEmpty" + prop_name + "() const noexcept -> bool {\n";
                     body += "    " + lookup_init + ";\n";
-                    body += "    return _self->GetProperties().GetRawDataSize(prop) != 0;\n";
+                    body += "    return _self->GetProperties()->GetRawDataSize(prop) != 0;\n";
                     body += "}\n";
                 }
             }
 
             // Event bodies — `EventProxy {&_self->OnX}` for engine-
-            // origin events; `DynamicEventProxy {static_cast<Entity*>
+            // origin events; `DynamicEventProxy {ptr<Entity>
             // (_self), "OnX"}` for user-origin. Engine-origin events
             // only resolve on targets that include the engine class
             // header (the proxy points at an `EntityEventWrapper`
@@ -1315,10 +1320,10 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
                 }
                 body += "inline auto " + entity + "::" + event_desc.Name + "() const noexcept -> " + *proxy + " { return " + *proxy + " {";
                 if (event_desc.Exported) {
-                    body += "&_self->" + event_desc.Name;
+                    body += "&_self.get_no_const()->" + event_desc.Name;
                 }
                 else {
-                    body += "static_cast<::FO_NAMESPACE_NAME::Entity*>(_self), \"" + event_desc.Name + "\"";
+                    body += "static_cast<::FO_NAMESPACE_NAME::Entity*>(_self.get_no_const()), \"" + event_desc.Name + "\"";
                 }
                 body += "}; }\n";
             }
@@ -1346,7 +1351,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
         // `ModuleInitContext::GetGame()` — per-target body so user
         // code can write `auto game = ctx.GetGame();` without the
         // manual `Game {ctx.Engine}` cast. The per-target Game
-        // wrapper has the `BaseEngine*` accepting ctor (added
+        // wrapper has the `ptr<BaseEngine>` accepting ctor (added
         // earlier) so the braced-init works regardless of the
         // wrapper's underlying engine class.
         body += "inline auto ModuleInitContext::GetGame() const noexcept -> Game { return Game {Engine}; }\n";
@@ -1567,7 +1572,8 @@ auto SynthesizeNativeApiModule(string_view target, const EngineMetadata& meta, s
     // Universal base set — these live in Common.h or its direct
     // dependencies (Essentials/ExtendedTypes.h, Common/Geometry.h,
     // TimeRelated.h, NetBuffer.h) which every role compiles.
-    for (const auto* name : {"vector", "map", "unordered_map", "set", "unordered_set", "string", "string_view", "hstring", "strex", "strvex", "any_t", "timespan", "DataReader", "DataWriter", "BaseEngine", "Entity", "GlobalSettings", "EngineMetadata", "numeric_cast"}) {
+    const array<string_view, 19> common_re_exports {"vector", "map", "unordered_map", "set", "unordered_set", "string", "string_view", "hstring", "strex", "strvex", "any_t", "timespan", "DataReader", "DataWriter", "BaseEngine", "Entity", "GlobalSettings", "EngineMetadata", "numeric_cast"};
+    for (const string_view name : common_re_exports) {
         add_fo(name);
     }
     // Per-role engine handle. ServerEngine and ClientEngine are

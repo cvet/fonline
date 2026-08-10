@@ -42,13 +42,11 @@ FO_END_NAMESPACE
 
 namespace NativeScripts::Detail
 {
-    auto AllocateNativeScriptFunc(FO_NAMESPACE BaseEngine* engine) -> FO_NAMESPACE ScriptFuncDesc&
+    auto AllocateNativeScriptFunc(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine) -> FO_NAMESPACE ScriptFuncDesc&
     {
-        FO_RUNTIME_ASSERT(engine);
-        auto* script_sys = static_cast<FO_NAMESPACE ScriptSystem*>(engine);
-        auto* backend = script_sys->GetBackend<FO_NAMESPACE NativeScriptBackend>(
-            FO_NAMESPACE ScriptSystemBackend::NATIVE_BACKEND_INDEX);
-        FO_RUNTIME_ASSERT(backend);
+        FO_NAMESPACE ptr<FO_NAMESPACE ScriptSystem> script_sys = engine;
+        FO_NAMESPACE nptr<FO_NAMESPACE NativeScriptBackend> backend = script_sys->GetBackend<FO_NAMESPACE NativeScriptBackend>(FO_NAMESPACE ScriptSystemBackend::NATIVE_BACKEND_INDEX);
+        FO_STRONG_ASSERT(backend, "Native script backend is not registered");
         return backend->AllocateScriptFunc();
     }
 }

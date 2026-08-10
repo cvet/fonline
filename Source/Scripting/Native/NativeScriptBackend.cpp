@@ -50,15 +50,13 @@ NativeScriptBackend::~NativeScriptBackend()
     FO_NO_STACK_TRACE_ENTRY();
 }
 
-void NativeScriptBackend::Attach(EngineMetadata* meta)
+void NativeScriptBackend::Attach(ptr<EngineMetadata> meta)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(meta);
-
     _meta = meta;
-    _engine = dynamic_cast<BaseEngine*>(meta);
-    _scriptSys = dynamic_cast<ScriptSystem*>(meta);
+    _engine = meta.dyn_cast<BaseEngine>();
+    _scriptSys = meta.dyn_cast<ScriptSystem>();
 }
 
 auto NativeScriptBackend::MakeContext(bool isBaker) noexcept -> NativeScripts::ModuleInitContextBase

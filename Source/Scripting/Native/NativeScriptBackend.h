@@ -53,7 +53,7 @@ public:
     auto operator=(NativeScriptBackend&&) noexcept -> NativeScriptBackend& = delete;
     ~NativeScriptBackend() override;
 
-    void Attach(EngineMetadata* meta);
+    void Attach(ptr<EngineMetadata> meta);
 
     // Build a target-neutral module context from the attached engine for handing off to
     // user-side module init callbacks. The actual call site lives in the
@@ -63,9 +63,9 @@ public:
     // MasterBaker-owned context, whose BaseEngine pointer is intentionally null.
     [[nodiscard]] auto MakeContext(bool isBaker = false) noexcept -> NativeScripts::ModuleInitContextBase;
 
-    [[nodiscard]] auto GetEngine() noexcept -> BaseEngine* { return _engine.get(); }
-    [[nodiscard]] auto GetScriptSys() noexcept -> ScriptSystem* { return _scriptSys.get(); }
-    [[nodiscard]] auto GetMetadata() noexcept -> EngineMetadata* { return _meta.get(); }
+    [[nodiscard]] auto GetEngine() noexcept -> nptr<BaseEngine> { return _engine; }
+    [[nodiscard]] auto GetScriptSys() noexcept -> nptr<ScriptSystem> { return _scriptSys; }
+    [[nodiscard]] auto GetMetadata() noexcept -> nptr<EngineMetadata> { return _meta; }
 
     // Storage for `ScriptFuncDesc` instances minted by
     // `NativeScripts::MakeScriptFunc`. `ScriptFunc<...>` references the desc
@@ -77,10 +77,10 @@ public:
     [[nodiscard]] auto AllocateScriptFunc() -> ScriptFuncDesc& { return _scriptFuncs.emplace_back(); }
 
 private:
-    raw_ptr<const ScriptSettings> _settings;
-    raw_ptr<EngineMetadata> _meta {};
-    raw_ptr<ScriptSystem> _scriptSys {};
-    raw_ptr<BaseEngine> _engine {};
+    ptr<const ScriptSettings> _settings;
+    nptr<EngineMetadata> _meta {};
+    nptr<ScriptSystem> _scriptSys {};
+    nptr<BaseEngine> _engine {};
     deque<ScriptFuncDesc> _scriptFuncs {};
 };
 
