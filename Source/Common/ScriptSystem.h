@@ -110,6 +110,9 @@ using readonly_map = const map<K, V>&;
 
 struct ScriptFuncDesc;
 
+template<typename TRet, typename... Args>
+class ScriptFunc;
+
 struct DataAccessor
 {
     [[nodiscard]] virtual auto GetBackendIndex() const noexcept -> int32_t = 0;
@@ -202,7 +205,17 @@ namespace NativeDataProvider
         function<void(void*, void*)> _addCallback {};
     };
 
-    using StorageEntryType = variant<int32_t, ArrayDataProxy, DictDataProxy, Entity*>;
+    // Variants used by `NormalizeArg` / `ConvertArg` to keep temporary
+    // proxy objects alive across a `FuncCallData` round-trip. The
+    // `unique_del_ptr<ScriptFuncDesc>` alternative carries a moved-in
+    // ScriptFunc descriptor — the native-dispatch path puts the
+    // user's `ScriptFunc<X>` here (via `ReleaseDesc()`) so the engine's
+    // `ConvertArg<ScriptFunc<X>>` can pull it back out through
+    // `accessor->GetCallback(data)`. The `string` alternative materialises
+    // a string view as a `string` for `ConvertArg<string_view>` which
+    // reads the slot as `string*` (matches the AS convention of always
+    // backing string args with a real `string` object).
+    using StorageEntryType = variant<int32_t, ArrayDataProxy, DictDataProxy, Entity*, unique_del_ptr<ScriptFuncDesc>, string>;
 
     struct NativeDataAccessor final : DataAccessor
     {
@@ -211,7 +224,12 @@ namespace NativeDataProvider
         [[nodiscard]] auto GetArrayElement(void* data, size_t index) const -> void* override { return cast_from_void<ArrayDataProxy*>(data)->Get(index); }
         [[nodiscard]] auto GetDictSize(void* data) const -> size_t override { return cast_from_void<DictDataProxy*>(data)->Size(); }
         [[nodiscard]] auto GetDictElement(void* data, size_t index) const -> pair<void*, void*> override { return cast_from_void<DictDataProxy*>(data)->Get(index); }
-        [[nodiscard]] auto GetCallback(void* /*data*/) const -> unique_del_ptr<ScriptFuncDesc> override { throw NotSupportedException(FO_LINE_STR); }
+        // `data` points to a `unique_del_ptr<ScriptFuncDesc>` slot
+        // inside a `StorageEntryType` variant — populated by
+        // `NormalizeArg(ScriptFunc<X>)` via `ReleaseDesc()`. Move it
+        // out so the caller's reconstructed `ScriptFunc<X>` owns the
+        // descriptor; the storage slot is left empty.
+        [[nodiscard]] auto GetCallback(void* data) const -> unique_del_ptr<ScriptFuncDesc> override { return std::move(*cast_from_void<unique_del_ptr<ScriptFuncDesc>*>(data)); }
 
         void ClearArray(void* data) const override { cast_from_void<ArrayDataProxy*>(data)->Clear(); }
         void AddArrayElement(void* data, void* value) const override { cast_from_void<ArrayDataProxy*>(data)->Add(value); }
@@ -219,7 +237,14 @@ namespace NativeDataProvider
         void AddDictElement(void* data, void* key, void* value) const override { cast_from_void<DictDataProxy*>(data)->Add(key, value); }
     };
 
-    static constexpr NativeDataAccessor NATIVE_DATA_ACCESSOR;
+    // `inline` is redundant under C++17 (static constexpr members are
+    // implicitly inline) but MSVC's modules implementation drops the
+    // inline-storage for variables declared in a module unit's global
+    // fragment when their address is taken from an importer TU, so the
+    // linker can't find a definition. Explicit `inline` forces the
+    // single-definition storage regardless of where the address is
+    // referenced from.
+    inline static constexpr NativeDataAccessor NATIVE_DATA_ACCESSOR {};
 
     template<class T>
     static auto NormalizeArg(T&& arg, StorageEntryType& temp_storage) -> void* // NOLINT(cppcoreguidelines-missing-std-forward)
@@ -234,6 +259,13 @@ namespace NativeDataProvider
         }
         else if constexpr (std::is_base_of_v<Entity, std::remove_pointer_t<raw_t>>) {
             return cast_to_void(&temp_storage.emplace<Entity*>(arg));
+        }
+        else if constexpr (specialization_of<raw_t, ScriptFunc>) {
+            // Move the descriptor out of the user's ScriptFunc and into
+            // the variant. The engine-side `ConvertArg<ScriptFunc<X>>`
+            // pulls it back via `accessor->GetCallback(data)` to
+            // reconstruct a `ScriptFunc<X>` on the consuming side.
+            return cast_to_void(&temp_storage.emplace<unique_del_ptr<ScriptFuncDesc>>(arg.ReleaseDesc()));
         }
         else {
             return cast_to_void(&arg);
@@ -281,6 +313,15 @@ public:
     [[nodiscard]] auto IsDelegate() const noexcept -> bool { return _func && _func->DelegateObj != 0; }
     [[nodiscard]] auto GetName() const noexcept -> ScriptFuncName { return _func ? ScriptFuncName(_func->Name, _func->DelegateObj) : ScriptFuncName(); }
     [[nodiscard]] auto HasAttribute(string_view attribute) const noexcept -> bool { return _func && _func->AttributeChecker(attribute); }
+
+    // Move the underlying descriptor out of this `ScriptFunc`. The
+    // native-dispatch path uses this to forward a `ScriptFunc<X>` arg
+    // through a `void*` slot — `NormalizeArg` puts the moved
+    // `unique_del_ptr<ScriptFuncDesc>` into a `StorageEntryType` variant
+    // and the engine-side `ConvertArg` reads it back with
+    // `accessor->GetCallback(data)`. After release the ScriptFunc is
+    // empty (`bool() == false`).
+    [[nodiscard]] auto ReleaseDesc() noexcept -> unique_del_ptr<ScriptFuncDesc> { return std::move(_func); }
 
     [[nodiscard]] auto GetResult() noexcept -> TRet
     {
@@ -462,7 +503,8 @@ class ScriptSystemBackend
 {
 public:
     static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
-    // static constexpr int32_t MONO_BACKEND_INDEX = 1;
+    static constexpr int32_t NATIVE_BACKEND_INDEX = 1;
+    // static constexpr int32_t MONO_BACKEND_INDEX = 2;
     virtual ~ScriptSystemBackend() = default;
 };
 
@@ -495,6 +537,24 @@ public:
     [[nodiscard]] auto GetBackend(size_t index) const noexcept -> const T*
     {
         return static_cast<const T*>(_backends[index].get());
+    }
+
+    // Looks up the `ComplexTypeDesc` mapped for the C++ type `T`. Returns
+    // nullptr if `T` isn't a script-visible engine type (i.e. wasn't
+    // registered via `MapEngineType` / `MapEngineDictType` at startup
+    // — see `MapScriptTypes`). The key is the same `typeid(...).hash_code()`
+    // that `ArgMapTypeIndex<T>()` uses internally, so a non-null result
+    // round-trips through `ValidateArgs`.
+    //
+    // Native scripts use this when synthesizing a `ScriptFuncDesc` whose
+    // `Args` / `Ret` need to be populated for `FindFunc<>` validation —
+    // e.g. so AS-side `Game.Invoke(name, ...)` can dispatch into a
+    // native callback registered with `MakeGlobalScriptFunc`.
+    template<typename T>
+    [[nodiscard]] auto GetEngineType() const noexcept -> const ComplexTypeDesc*
+    {
+        const auto it = _engineTypes.find(ArgMapTypeIndex<T>());
+        return it != _engineTypes.end() ? &it->second : nullptr;
     }
 
     template<typename TRet, typename... Args>

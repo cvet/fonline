@@ -416,10 +416,13 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
         if (auto* func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call); func != nullptr) {
             if (backend->HasGameEngine()) {
                 auto* engine = backend->GetGameEngine();
-                engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func](hstring name, Entity* entity, span<uint8_t> data) FO_DEFERRED {
-                    FO_RUNTIME_ASSERT(name == inbound_call.Name);
-                    InboundRemoteCallHandler(inbound_call, entity, data, engine, func);
-                });
+                engine->SetRemoteCallHandler(
+                    inbound_call.Name,
+                    [&inbound_call, engine, func](hstring name, Entity* entity, span<uint8_t> data) FO_DEFERRED {
+                        FO_RUNTIME_ASSERT(name == inbound_call.Name);
+                        InboundRemoteCallHandler(inbound_call, entity, data, engine, func);
+                    },
+                    BaseEngine::RemoteCallHandlerMode::Fallback);
             }
         }
         else {

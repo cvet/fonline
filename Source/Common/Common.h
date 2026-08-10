@@ -516,12 +516,30 @@ struct MethodDesc
     bool Getter {};
     bool Setter {};
     bool PassOwnership {};
+    // The `///@ ExportMethod <Target>` qualifier from codegen
+    // (`Common` / `Server` / `Client` / `Mapper`). Used by
+    // NativeScriptSynth to gate per-target wrapper body emission —
+    // a `Server`-tagged method must not appear in the Common /
+    // Client / Mapper wrapper (where the wrapper's engine class
+    // doesn't expose the method's `_self` member). Empty when
+    // the method wasn't sourced from an `///@ ExportMethod` tag
+    // (e.g. AS-bound only).
+    string Target {};
 };
 
 struct StructLayoutDesc
 {
     vector<FieldDesc> Fields {};
     size_t Size {};
+    // C++ alias name from `///@ ExportValueType Name = <meta> Layout = ...`.
+    // Differs from the map key (the meta name) when the engine source
+    // declares the type as a `using` alias — e.g. meta `ident` /
+    // C++ `ident_t`, meta `ipos` / C++ `ipos32`. NativeScriptSynth uses
+    // this to emit `using ::fo::ident_t;` rather than `using ::fo::ident;`
+    // in `NativeApi.<Target>.cppm`. Empty string when codegen registered
+    // the type without a native-type override; callers should fall back
+    // to the meta name in that case.
+    string NativeType {};
 };
 
 struct RefTypeDesc
@@ -529,6 +547,11 @@ struct RefTypeDesc
     vector<MethodDesc> Methods {};
     raw_ptr<const PropertyRegistrator> FieldsRegistrator {};
     bool IsDynamicLayout {};
+    // Target role from `///@ ExportRefType <Target> <Name>` — Common /
+    // Server / Client / Mapper. NativeScriptSynth uses this to filter
+    // ref-type re-exports per cppm target (Server-only ref types like
+    // `DialogAnswerReq` shouldn't appear in Client/Mapper stubs).
+    string Target {};
 };
 
 struct RemoteCallDesc

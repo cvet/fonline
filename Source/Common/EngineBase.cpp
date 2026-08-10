@@ -375,6 +375,37 @@ void EngineMetadata::RegisterRefType(string_view name)
     RegisterBaseType(name);
 }
 
+void EngineMetadata::SetValueTypeNativeType(string_view name, string_view native_type)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    const auto it = _structLayouts.find(string(name));
+    FO_RUNTIME_ASSERT(it != _structLayouts.end());
+    it->second.NativeType = native_type;
+}
+
+void EngineMetadata::SetEntityClassNames(string_view name, string_view server_class, string_view client_class)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    const auto it = _entityTypes.find(Hashes.ToHashedString(name));
+    FO_RUNTIME_ASSERT(it != _entityTypes.end());
+    it->second.ServerClassName = server_class;
+    it->second.ClientClassName = client_class;
+}
+
+void EngineMetadata::SetRefTypeTarget(string_view name, string_view target)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    const auto it = _refTypes.find(string(name));
+    FO_RUNTIME_ASSERT(it != _refTypes.end());
+    it->second.Target = target;
+}
+
 void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout)
 {
     FO_STACK_TRACE_ENTRY();
@@ -512,6 +543,42 @@ void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& t
     FO_RUNTIME_ASSERT(!_gameSettings.contains(name));
 
     _gameSettings.emplace(name, &type);
+}
+
+void EngineMetadata::MarkGameSettingAsExported(string_view name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    _exportedGameSettings.emplace(name);
+}
+
+void EngineMetadata::SetExportedGameSettingType(string_view name, const BaseTypeDesc& type)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    FO_RUNTIME_ASSERT(_exportedGameSettings.contains(string(name)));
+    _exportedGameSettingsType.emplace(name, &type);
+}
+
+void EngineMetadata::SetExportedGameSettingTypeName(string_view name, string_view type_name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    FO_RUNTIME_ASSERT(_exportedGameSettings.contains(string(name)));
+    _exportedGameSettingsTypeName.emplace(string(name), string(type_name));
+}
+
+void EngineMetadata::MarkEnumAsExported(string_view name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    FO_RUNTIME_ASSERT(_enums.contains(name));
+
+    _exportedEnums.emplace(name);
 }
 
 void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
@@ -1161,13 +1228,28 @@ void BaseEngine::SendRemoteCall(hstring name, Entity* caller, const_span<uint8_t
     HandleOutboundRemoteCall(name, caller, data);
 }
 
-void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler)
+void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler, RemoteCallHandlerMode mode)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_inboundRemoteCallHandlers.contains(name));
+    FO_RUNTIME_ASSERT(handler);
 
-    _inboundRemoteCallHandlers[name] = std::move(handler);
+    const auto it = _inboundRemoteCallHandlers.find(name);
+
+    if (mode == RemoteCallHandlerMode::OverrideFallback && it != _inboundRemoteCallHandlers.end()) {
+        const size_t erased = _fallbackInboundRemoteCallHandlers.erase(name);
+        FO_RUNTIME_ASSERT(erased == 1);
+        it->second = std::move(handler);
+        return;
+    }
+
+    FO_RUNTIME_ASSERT(it == _inboundRemoteCallHandlers.end());
+    _inboundRemoteCallHandlers.emplace(name, std::move(handler));
+
+    if (mode == RemoteCallHandlerMode::Fallback) {
+        const bool inserted = _fallbackInboundRemoteCallHandlers.emplace(name).second;
+        FO_RUNTIME_ASSERT(inserted);
+    }
 }
 
 void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
@@ -1175,6 +1257,7 @@ void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_inboundRemoteCallHandlers.size() == GetInboundRemoteCalls().size());
+    FO_RUNTIME_ASSERT(std::ranges::all_of(_fallbackInboundRemoteCallHandlers, [this](hstring name) { return _inboundRemoteCallHandlers.contains(name); }));
 }
 
 void BaseEngine::HandleInboundRemoteCall(hstring name, Entity* caller, span<uint8_t> data)
