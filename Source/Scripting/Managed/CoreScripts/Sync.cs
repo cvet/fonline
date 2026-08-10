@@ -1723,8 +1723,8 @@ namespace FOnline
         }
 
         // SyncScope: compares a covered global-map critter with a previously captured native membership snapshot.
-        // Lifecycle: inspection-only — the caller must hold cr while this function reads its group state.
-        public static bool IsGlobalMapGroupSnapshotCurrent(Critter cr, uint tripId, ulong revision, List<ident> memberIds)
+        // Lifecycle: inspection-only — it reads cr's group state and acquires nothing of its own.
+        public static bool IsGlobalMapGroupSnapshotCurrent([RequiresCover] Critter cr, uint tripId, ulong revision, List<ident> memberIds)
         {
             if (cr.MapId != new ident(0) || cr.GlobalMapTripId != tripId) {
                 return false;
