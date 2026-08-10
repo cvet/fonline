@@ -305,7 +305,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     GenerateManagedHostProjectFile(managed_generated_dir, settings->ManagedScriptTargetFramework, managed_host_source);
-    GenerateUnifiedProjectFile(managed_generated_dir, managed_assemblies_output_dir, managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references);
+    GenerateUnifiedProjectFile(managed_generated_dir, managed_assemblies_output_dir, managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, settings->ManagedScriptAnalyzers);
     GenerateSolutionFile(managed_generated_dir, project_name, vector<string> {project_name, string(MANAGED_HOST_PROJECT_NAME)});
 
     for (const string_view target : targets) {
@@ -976,7 +976,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     WriteTextFileIfChanged(project_path, file.str(), "Can't create generated Managed host project file");
 }
 
-void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references)
+void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const vector<string>& analyzers)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1053,6 +1053,28 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "  <ItemGroup>\n";
     file << "    <ProjectReference Include=\"" << EscapeXml(MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME)) << "\" />\n";
     file << "  </ItemGroup>\n";
+
+    // Roslyn analyzers run inside the script compilation, so their diagnostics are gated by the same
+    // TreatWarningsAsErrors/.editorconfig pass that already gates code style. ReferenceOutputAssembly is
+    // false because an analyzer is a compiler plugin, not something the scripts link against.
+    //
+    // GlobalPropertiesToRemove is load-bearing, not tidiness: without it this project's OutputPath and
+    // Configuration flow into the analyzer build, which then drops its assembly into the baked script
+    // assembly directory (where the baker would pick it up as a runtime script assembly) and builds a
+    // separate obj tree per script configuration.
+    if (!analyzers.empty()) {
+        file << "  <ItemGroup>\n";
+
+        for (const string& analyzer : analyzers) {
+            if (analyzer.empty()) {
+                continue;
+            }
+
+            file << "    <ProjectReference Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {analyzer})) << "\" OutputItemType=\"Analyzer\" ReferenceOutputAssembly=\"false\" GlobalPropertiesToRemove=\"OutputPath;Configuration;Platform\" />\n";
+        }
+
+        file << "  </ItemGroup>\n";
+    }
 
     file << "</Project>\n";
     WriteTextFileIfChanged(proj_path, file.str(), "Can't create generated project file");

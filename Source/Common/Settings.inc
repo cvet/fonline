@@ -68,6 +68,7 @@ FIXED_SETTING(vector<string>, Script, ManagedScriptDirs, "Engine/Source/Scriptin
 FIXED_SETTING(string, Script, ManagedScriptGeneratedDir); // Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
+FIXED_SETTING(vector<string>, Script, ManagedScriptAnalyzers); // Roslyn analyzer project paths referenced by the generated managed project, so their diagnostics run in the script build
 FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING_GROUP_END();
 

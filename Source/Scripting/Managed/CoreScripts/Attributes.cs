@@ -114,4 +114,25 @@ namespace FOnline
     public sealed class AnimCallbackAttribute : Attribute
     {
     }
+
+    // Declares that the CALLER must already hold synchronization cover for the named entities when it calls
+    // this method -- the method reads or mutates them and does not acquire cover itself. Each name must be a
+    // parameter of the annotated method, so write it as `nameof(cr)`: a renamed parameter then breaks the
+    // build instead of silently detaching the contract from the code, which is exactly the failure mode of
+    // the `// SyncScope:` comments this replaces.
+    //
+    // The obligation is transitive. A method that calls a [RequiresCover] method either acquires the cover
+    // itself (Sync.Lock / Sync.Widen*) or re-declares the same obligation on its own signature and passes it
+    // to ITS caller. FOSYNC001/FOSYNC002 check both halves at compile time; the model mirrors the FO_TSA_*
+    // Clang Thread Safety annotations used on the native side (Engine/Docs/ThreadSafetyAnalysis.md).
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+    public sealed class RequiresCoverAttribute : Attribute
+    {
+        public RequiresCoverAttribute(params string[] entities)
+        {
+            Entities = entities;
+        }
+
+        public string[] Entities { get; private set; }
+    }
 }
