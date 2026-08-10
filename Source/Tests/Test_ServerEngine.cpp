@@ -30,12 +30,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <filesystem>
+
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
 #include "DiskFileSystem.h"
+#include "ImGuiStuff.h"
 #include "Logging.h"
 #include "Movement.h"
 #include "Server.h"
@@ -883,6 +886,90 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
 
     CheckServerStartupFailsSafely(settings);
+}
+
+TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
+{
+    // Everything else in this suite runs against an in-memory database, so the world-load path that a real
+    // server takes on every restart never runs. A file-backed JSON storage makes it reachable: one server
+    // writes the world, a second one on the same directory has to read it back.
+    auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_world_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    std::error_code remove_error;
+    std::filesystem::remove_all(storage_dir, remove_error);
+    std::filesystem::create_directories(storage_dir);
+
+    auto cleanup_storage = scope_exit([storage_dir]() noexcept {
+        safe_call([storage_dir] {
+            std::error_code ignored;
+            std::filesystem::remove_all(storage_dir, ignored);
+        });
+    });
+
+    string storage_option = strex("JSON {}", storage_dir.generic_string()).str();
+
+    ident_t location_id;
+    ident_t critter_id;
+
+    {
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+
+        auto server = MakeServerEngine(settings);
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+            // Runtime entities are temporary by default, so they have to be marked persistent before the
+            // restart has anything to read back
+            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+            server->EntityMngr.MakePersistent(location, true, true);
+            location_id = location->GetId();
+
+            auto critter = server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+            server->EntityMngr.MakePersistent(critter, true, true);
+            critter_id = critter->GetId();
+        }
+
+        CHECK(server->EntityMngr.GetLocationsCount() >= 1);
+        CHECK(server->EntityMngr.GetCrittersCount() >= 1);
+
+        server->Shutdown();
+    }
+
+    {
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+
+        auto server = MakeServerEngine(settings);
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server.get_no_const()->Unlock(); }); });
+
+        // The restarted server rebuilt the location from its stored document, so the same id resolves again.
+        // The critter is not asserted on: it was created off-map, and critters are reached through the map
+        // or the global map they live on, so a placeless one has nothing to load it from.
+        CHECK(server->EntityMngr.GetLocationsCount() >= 1);
+        CHECK(static_cast<bool>(server->EntityMngr.GetLocation(location_id)));
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetLocation(ident_t {})));
+        ignore_unused(critter_id);
+    }
 }
 
 TEST_CASE("ServerEngineStopsStartupWhenInitEventStopsChain")
@@ -3044,6 +3131,108 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
         REQUIRE_FALSE(IsEntityAccessValid(cr));
         CHECK_THROWS_WITH(convert(cr.as_ptr()), Catch::Matchers::ContainsSubstring("Entity access without sync"));
     }
+}
+
+TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    // Populate the world so the per-entity panels render real rows instead of empty tables
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+        (void)server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+        (void)CreateLoggedPlayer(server, "UnitTestGuiPlayer");
+        (void)server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+
+        shared_ptr<NetworkServerConnection> not_logged_in_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        (void)server->CreateNotLoggedInPlayer(std::move(not_logged_in_connection));
+    }
+
+    REQUIRE(server->EntityMngr.GetCrittersCount() >= 1);
+    REQUIRE(server->EntityMngr.GetPlayersCount() >= 1);
+    REQUIRE(server->EntityMngr.GetLocationsCount() >= 1);
+
+    // The diagnostic panels are normally only reachable through the windowed server application, so the
+    // test drives a backend-less ImGui context directly: no renderer is attached and the draw data is
+    // discarded, but every panel builder runs for real
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+
+    auto destroy_context = scope_exit([]() noexcept {
+        safe_call([] {
+            if (ImGui::GetCurrentContext() != nullptr) {
+                ImGui::DestroyContext();
+            }
+        });
+    });
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+
+    // The legacy atlas-upload entry points are compiled out, so declare the modern texture contract instead
+    // and let ImGui own the atlas; nothing consumes the resulting texture requests here
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+    // A collapsed node never runs its body, and ImGui only stores an open state once something opens the
+    // node, so there is nothing to flip afterwards. Logging is the supported way through: it auto-expands
+    // every tree node while capturing the rendered text
+    constexpr int32_t GUI_FRAMES = 3;
+
+    // Collapsing headers opt out of the log auto-expansion, so their stored state is seeded by hand. The
+    // ids mirror the root panels of ServerEngine::DrawGui; the log assertions below catch any drift
+    constexpr std::array ROOT_PANEL_IDS = {"Info", "Performance details", "###Players", "###NotLoggedInPlayers", "###Locations", "Data base"};
+
+    string drawn_text;
+
+    for (int32_t frame = 0; frame < GUI_FRAMES; frame++) {
+        ImGui::NewFrame();
+
+        if (ImGui::Begin("ServerDiagnostics")) {
+            ptr<ImGuiWindow> window = ImGui::GetCurrentWindow();
+
+            for (string_view panel_id : ROOT_PANEL_IDS) {
+                window->StateStorage.SetInt(ImGui::GetID(panel_id.data(), panel_id.data() + panel_id.size()), 1);
+            }
+
+            ImGui::LogToBuffer(12);
+            REQUIRE_NOTHROW(server->DrawGui());
+
+            // LogFinish() drops the captured text, so take it while the log is still open
+            drawn_text.assign(ImGui::GetCurrentContext()->LogBuffer.c_str());
+            ImGui::LogFinish();
+        }
+
+        ImGui::End();
+        ImGui::Render();
+    }
+
+    CHECK(ImGui::GetCurrentContext() != nullptr);
+    CHECK(ImGui::GetFrameCount() == GUI_FRAMES);
+
+    // Prove the walk actually descended into the panels instead of silently rendering collapsed headers
+    INFO(drawn_text);
+    CHECK(drawn_text.find("Data base") != string::npos);
+    CHECK(drawn_text.find("Memory documents") != string::npos);
+    CHECK(drawn_text.find("Performance details") != string::npos);
+    CHECK(drawn_text.find("NotLoggedIn players (1)") != string::npos);
 }
 
 FO_END_NAMESPACE

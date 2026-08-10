@@ -199,8 +199,13 @@ auto ScriptType::IsInterface() const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    // Enums and funcdefs are not object types at all, so they are simply not interfaces
     auto object_type = _typeInfo.dyn_cast<AngelScript::asCObjectType>();
-    FO_VERIFY_AND_THROW(object_type, "Script type is not an object type");
+
+    if (!object_type) {
+        return false;
+    }
+
     return object_type->IsInterface();
 }
 
@@ -228,9 +233,10 @@ auto ScriptType::IsShared() const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto object_type = _typeInfo.dyn_cast<AngelScript::asCObjectType>();
-    FO_VERIFY_AND_THROW(object_type, "Script type is not an object type");
-    return object_type->IsShared();
+    // Sharing is a type-info level trait, so enums and funcdefs answer it as well as object types
+    auto type = _typeInfo.dyn_cast<const AngelScript::asCTypeInfo>();
+    FO_VERIFY_AND_THROW(type, "Missing type descriptor");
+    return type->IsShared();
 }
 
 auto ScriptType::GetBaseType() const -> refcount_nptr<ScriptType>
