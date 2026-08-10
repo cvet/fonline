@@ -118,9 +118,9 @@ public:
     void DrawGui();
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
-    auto LoginPlayerToNewRecord(ptr<Player> notLoggedIn_player) -> ptr<Player>;
-    auto LoginPlayerToExistentRecord(ptr<Player> notLoggedIn_player, ident_t player_id) -> ptr<Player>;
-    auto LoginPlayerToTempSession(ptr<Player> notLoggedIn_player) -> ptr<Player>;
+    auto LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>;
+    auto LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player, ident_t player_id) -> ptr<Player>;
+    auto LoginPlayerToTempSession(ptr<Player> not_logged_in_player) -> ptr<Player>;
 
     auto CreateCritter(hstring pid, bool for_player, nptr<const Properties> props = nullptr) -> ptr<Critter>;
     auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
@@ -258,7 +258,7 @@ private:
     void SyncWholeWorld(SyncContext& ctx);
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-    void ProcessNotLoggedInPlayer(ptr<Player> notLoggedIn_player);
+    void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player);
     void ProcessPlayer(ptr<Player> player);
     void ProcessConnection(ptr<Player> player);
     void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
@@ -325,9 +325,9 @@ private:
     void OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay);
     auto TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>;
     void OnTimeEventCancel(uint32_t event_id);
-    void OnPlayerConnected(ptr<Player> notLoggedIn_player);
-    auto NotLoggedInPlayerJob(ptr<Player> notLoggedIn_player) -> std::optional<timespan>;
-    void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> notLoggedIn_player);
+    void OnPlayerConnected(ptr<Player> not_logged_in_player);
+    auto NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>;
+    void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player);
     auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
     auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
     auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;

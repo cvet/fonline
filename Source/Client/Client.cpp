@@ -2210,7 +2210,7 @@ void ClientEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> pro
     FO_VERIFY_AND_THROW(player, "Player is null");
 
     if (!player->GetId()) {
-        throw ScriptException("Can't modify player public/protected property on notLoggedIn player");
+        throw ScriptException("Can't modify player public/protected property on not-logged-in player");
     }
 
     Net_SendProperty(NetProperty::Player, prop, player);

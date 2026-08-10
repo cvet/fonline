@@ -3534,18 +3534,18 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerConnectionAndCritterMethods")
     {
-        auto create_notLoggedIn_player = [&server](string_view name) -> ptr<Player> {
-            auto notLoggedIn_player = server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        auto create_not_logged_in_player = [&server](string_view name) -> ptr<Player> {
+            auto not_logged_in_player = server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
-            notLoggedIn_player->SetName(name);
+            not_logged_in_player->SetName(name);
 
-            return notLoggedIn_player;
+            return not_logged_in_player;
         };
 
         auto methods_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerConnectionAndCritterMethods"));
         REQUIRE(methods_func);
 
-        ptr<Player> methods_player = create_notLoggedIn_player("ScriptPlayerMethodsStart");
+        ptr<Player> methods_player = create_not_logged_in_player("ScriptPlayerMethodsStart");
 
         auto methods_cleanup = scope_exit([&methods_player]() noexcept {
             safe_call([&methods_player] {
@@ -3564,7 +3564,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto name_validation_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerSetNameValidation"));
         REQUIRE(name_validation_func);
 
-        ptr<Player> name_player = create_notLoggedIn_player("ScriptPlayerNameStart");
+        ptr<Player> name_player = create_not_logged_in_player("ScriptPlayerNameStart");
 
         auto name_cleanup = scope_exit([&name_player]() noexcept {
             safe_call([&name_player] {
@@ -3581,7 +3581,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto map_view_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"));
         REQUIRE(map_view_func);
 
-        ptr<Player> map_view_player = create_notLoggedIn_player("ScriptPlayerMapView");
+        ptr<Player> map_view_player = create_not_logged_in_player("ScriptPlayerMapView");
 
         auto map_view_cleanup = scope_exit([&map_view_player]() noexcept {
             safe_call([&map_view_player] {
@@ -3598,13 +3598,13 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerLoginHelpers")
     {
-        auto create_notLoggedIn_player = [&server](string_view name) -> ptr<Player> {
-            auto notLoggedIn_player = server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        auto create_not_logged_in_player = [&server](string_view name) -> ptr<Player> {
+            auto not_logged_in_player = server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
-            notLoggedIn_player->SetName(name);
-            notLoggedIn_player->SetLastControlledCritterId(ident_t {1});
+            not_logged_in_player->SetName(name);
+            not_logged_in_player->SetLastControlledCritterId(ident_t {1});
 
-            return notLoggedIn_player;
+            return not_logged_in_player;
         };
 
         auto create_func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateNotLoggedInPlayerHelper"));
@@ -3615,53 +3615,53 @@ TEST_CASE("ServerMiscScriptOperations")
         auto login_new_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToNewRecordFromPreparedPlayer"));
         REQUIRE(login_new_func);
 
-        ptr<Player> new_notLoggedIn = create_notLoggedIn_player("ScriptLoginNew");
+        ptr<Player> new_not_logged_in = create_not_logged_in_player("ScriptLoginNew");
 
-        auto new_player_cleanup = scope_exit([&new_notLoggedIn]() noexcept {
-            safe_call([&new_notLoggedIn] {
-                if (!new_notLoggedIn->IsDestroyed()) {
-                    new_notLoggedIn->GetConnection()->HardDisconnect();
+        auto new_player_cleanup = scope_exit([&new_not_logged_in]() noexcept {
+            safe_call([&new_not_logged_in] {
+                if (!new_not_logged_in->IsDestroyed()) {
+                    new_not_logged_in->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(login_new_func.Call(new_notLoggedIn));
+        REQUIRE(login_new_func.Call(new_not_logged_in));
         REQUIRE(login_new_func.GetResult() == 0);
 
-        ident_t player_id = new_notLoggedIn->GetId();
+        ident_t player_id = new_not_logged_in->GetId();
         REQUIRE(player_id);
 
         auto reconnect_func = server->FindFunc<int32_t, ptr<Player>, ident_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordFromPreparedPlayer"));
         REQUIRE(reconnect_func);
 
-        ptr<Player> reconnect_notLoggedIn = create_notLoggedIn_player("ScriptLoginReconnect");
+        ptr<Player> reconnect_not_logged_in = create_not_logged_in_player("ScriptLoginReconnect");
 
-        REQUIRE(reconnect_func.Call(reconnect_notLoggedIn, player_id));
+        REQUIRE(reconnect_func.Call(reconnect_not_logged_in, player_id));
         CHECK(reconnect_func.GetResult() == 0);
 
         auto temp_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToTempSessionFromPreparedPlayer"));
         REQUIRE(temp_func);
 
-        ptr<Player> temp_notLoggedIn = create_notLoggedIn_player("ScriptLoginTemp");
+        ptr<Player> temp_not_logged_in = create_not_logged_in_player("ScriptLoginTemp");
 
-        REQUIRE(temp_func.Call(temp_notLoggedIn));
+        REQUIRE(temp_func.Call(temp_not_logged_in));
         CHECK(temp_func.GetResult() == 0);
 
-        auto already_loggedIn_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginAlreadyLoggedInPlayerThrows"));
-        REQUIRE(already_loggedIn_func);
+        auto already_logged_in_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginAlreadyLoggedInPlayerThrows"));
+        REQUIRE(already_logged_in_func);
 
-        ptr<Player> already_loggedIn_notLoggedIn = create_notLoggedIn_player("ScriptLoginAlready");
+        ptr<Player> already_logged_in_not_logged_in = create_not_logged_in_player("ScriptLoginAlready");
 
-        auto already_loggedIn_cleanup = scope_exit([&already_loggedIn_notLoggedIn]() noexcept {
-            safe_call([&already_loggedIn_notLoggedIn] {
-                if (!already_loggedIn_notLoggedIn->IsDestroyed()) {
-                    already_loggedIn_notLoggedIn->GetConnection()->HardDisconnect();
+        auto already_logged_in_cleanup = scope_exit([&already_logged_in_not_logged_in]() noexcept {
+            safe_call([&already_logged_in_not_logged_in] {
+                if (!already_logged_in_not_logged_in->IsDestroyed()) {
+                    already_logged_in_not_logged_in->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(already_loggedIn_func.Call(already_loggedIn_notLoggedIn));
-        CHECK(already_loggedIn_func.GetResult() == 0);
+        REQUIRE(already_logged_in_func.Call(already_logged_in_not_logged_in));
+        CHECK(already_logged_in_func.GetResult() == 0);
     }
 
     SECTION("RuntimeHelpers")

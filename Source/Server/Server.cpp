@@ -771,50 +771,50 @@ auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
     return std::chrono::nanoseconds {Settings->FrameTimePeriodNs};
 }
 
-void ServerEngine::OnPlayerConnected(ptr<Player> notLoggedIn_player)
+void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(notLoggedIn_player.as_uintptr())};
+    auto key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
     ScopedSyncContext ctx;
 
-    // CreateNotLoggedInPlayer already holds the session in the notLoggedIn list, but on the network
+    // CreateNotLoggedInPlayer already holds the session in the not-logged-in list, but on the network
     // thread nothing covers it yet. Capture its own lock in this context before the connection
     // callback and the worker job can reach it.
-    ctx.GetContext().EnsureFreshEntitySynced(notLoggedIn_player);
-    notLoggedIn_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+    ctx.GetContext().EnsureFreshEntitySynced(not_logged_in_player);
+    not_logged_in_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
     scope_fail rollback_publication {[&]() noexcept {
         safe_call([&] {
             scoped_lock locker {_notLoggedInPlayersLocker};
-            vec_remove_unique_value(_notLoggedInPlayers, notLoggedIn_player.hold_ref());
+            vec_remove_unique_value(_notLoggedInPlayers, not_logged_in_player.hold_ref());
         });
-        safe_call([&] { notLoggedIn_player->GetConnection()->HardDisconnect(); });
-        safe_call([&] { notLoggedIn_player->MarkAsDestroyed(); });
+        safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { not_logged_in_player->MarkAsDestroyed(); });
     }};
 
-    _workerPool->Submit(key, [this, notLoggedIn_player_ = notLoggedIn_player.hold_ref()]() mutable -> std::optional<timespan> { return NotLoggedInPlayerJob(notLoggedIn_player_); });
+    _workerPool->Submit(key, [this, not_logged_in_player_ = not_logged_in_player.hold_ref()]() mutable -> std::optional<timespan> { return NotLoggedInPlayerJob(not_logged_in_player_); });
     rollback_publication.release();
 }
 
-auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> notLoggedIn_player) -> std::optional<timespan>
+auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
     auto ctx = RequireCurrentSyncContext();
-    ctx->SyncEntity(notLoggedIn_player);
+    ctx->SyncEntity(not_logged_in_player);
 
-    if (notLoggedIn_player->IsDestroyed()) {
+    if (not_logged_in_player->IsDestroyed()) {
         return std::nullopt;
     }
 
-    auto connection = notLoggedIn_player->GetConnection();
+    auto connection = not_logged_in_player->GetConnection();
 
     try {
-        ProcessConnection(notLoggedIn_player);
-        ProcessNotLoggedInPlayer(notLoggedIn_player);
+        ProcessConnection(not_logged_in_player);
+        ProcessNotLoggedInPlayer(not_logged_in_player);
     }
     catch (const UnknownMessageException&) {
         WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
@@ -834,23 +834,23 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> notLoggedIn_player) -> std::
         ReportExceptionAndContinue(ex);
     }
 
-    if (notLoggedIn_player->IsDestroyed()) {
+    if (not_logged_in_player->IsDestroyed()) {
         return std::nullopt;
     }
 
     return std::chrono::milliseconds {Settings->ConnectionProcessPeriodMs};
 }
 
-void ServerEngine::OnPlayerLoggedIn(ptr<Player> player, nptr<Player> notLoggedIn_player)
+void ServerEngine::OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (notLoggedIn_player) {
-        auto notLoggedIn_key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(notLoggedIn_player.as_uintptr())};
-        _workerPool->Cancel(notLoggedIn_key);
+    if (not_logged_in_player) {
+        auto not_logged_in_key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
+        _workerPool->Cancel(not_logged_in_key);
     }
 
-    if (!notLoggedIn_player || !(player == notLoggedIn_player)) {
+    if (!not_logged_in_player || !(player == not_logged_in_player)) {
         auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(player.as_uintptr())};
         _workerPool->Cancel(same_addr_key);
     }
@@ -1189,7 +1189,7 @@ void ServerEngine::Shutdown()
     }
 
     // LoggedIn players
-    WriteLog("Shutdown stage: disconnect loggedIn players (count={})", EntityMngr.GetPlayersCount());
+    WriteLog("Shutdown stage: disconnect logged-in players (count={})", EntityMngr.GetPlayersCount());
 
     vector<refcount_ptr<Player>> players = EntityMngr.GetPlayers();
 
@@ -1199,7 +1199,7 @@ void ServerEngine::Shutdown()
     }
 
     // NotLoggedIn players
-    WriteLog("Shutdown stage: disconnect notLoggedIn players");
+    WriteLog("Shutdown stage: disconnect not-logged-in players");
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -1929,7 +1929,7 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Player> notLoggedIn_player = [&]() -> ptr<Player> {
+    ptr<Player> not_logged_in_player = [&]() -> ptr<Player> {
         scoped_lock locker {_notLoggedInPlayersLocker};
 
         auto connection = SafeAlloc::MakeUnique<ServerConnection>(Settings, std::move(net_connection));
@@ -1938,30 +1938,30 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
         return _notLoggedInPlayers.back();
     }();
 
-    // Widen the outer SyncContext's cover to include the freshly-created notLoggedIn player so
+    // Widen the outer SyncContext's cover to include the freshly-created not-logged-in player so
     // the caller (script via `Game.CreateNotLoggedInPlayer()` or any engine path running inside
     // a job's SyncContext) can immediately read/write its properties without a separate
     // `Sync::Lock(player)`. This is a creation boundary - the session shell has no cover yet, so
     // it goes through the trusted fresh capture rather than ordinary retention. Network-thread
     // path has no current context - the conditional skips safely there.
     if (auto outermost = SyncContext::GetOutermostOnThisThread()) {
-        outermost->EnsureFreshEntitySynced(notLoggedIn_player);
+        outermost->EnsureFreshEntitySynced(not_logged_in_player);
     }
 
-    OnPlayerConnected(notLoggedIn_player);
-    return notLoggedIn_player;
+    OnPlayerConnected(not_logged_in_player);
+    return not_logged_in_player;
 }
 
-void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> notLoggedIn_player)
+void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto connection = notLoggedIn_player->GetConnection();
+    auto connection = not_logged_in_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
 
-        auto player_holder = notLoggedIn_player.hold_ref();
+        auto player_holder = not_logged_in_player.hold_ref();
 
         scoped_lock locker {_notLoggedInPlayersLocker};
 
@@ -1969,7 +1969,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> notLoggedIn_player)
 
         if (it != _notLoggedInPlayers.end()) {
             _notLoggedInPlayers.erase(it);
-            notLoggedIn_player->MarkAsDestroyed();
+            not_logged_in_player->MarkAsDestroyed();
         }
 
         return;
@@ -1995,7 +1995,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> notLoggedIn_player)
 
         if (!connection->IsHandshakeComplete()) {
             if (msg == NetMessage::Handshake) {
-                Process_Handshake(notLoggedIn_player);
+                Process_Handshake(not_logged_in_player);
             }
             else {
                 throw GenericException("Expected handshake message", msg);
@@ -2004,8 +2004,8 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> notLoggedIn_player)
         else {
             switch (msg) {
             case NetMessage::Ping:
-                Process_Ping(notLoggedIn_player);
-                notLoggedIn_player->Send_TimeSync();
+                Process_Ping(not_logged_in_player);
+                not_logged_in_player->Send_TimeSync();
                 break;
             case NetMessage::GetUpdateFile: {
                 if (!_updaterBackend) {
@@ -2015,19 +2015,19 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> notLoggedIn_player)
                 }
 
                 auto updater_backend = make_ptr(&*_updaterBackend);
-                updater_backend->ProcessUpdateFile(notLoggedIn_player, Settings->UpdateFileMaxPortionSize);
+                updater_backend->ProcessUpdateFile(not_logged_in_player, Settings->UpdateFileMaxPortionSize);
                 connection->RegisterLoginProgress(GameTime.GetFrameTime());
                 break;
             }
             case NetMessage::RemoteCall:
-                Process_RemoteCall(notLoggedIn_player);
+                Process_RemoteCall(not_logged_in_player);
                 connection->RegisterLoginProgress(GameTime.GetFrameTime());
                 break;
             case NetMessage::UnresolvedHash:
                 Process_UnresolvedHash(connection);
                 break;
             default:
-                throw GenericException("Unexpected notLoggedIn player message", msg);
+                throw GenericException("Unexpected not-logged-in player message", msg);
             }
         }
 
@@ -2850,13 +2850,13 @@ void ServerEngine::Process_Ping(ptr<Player> player)
     }
 }
 
-auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> notLoggedIn_player) -> ptr<Player>
+auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!notLoggedIn_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
+    FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
 
-    auto player_holder = notLoggedIn_player.hold_ref();
+    auto player_holder = not_logged_in_player.hold_ref();
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -2864,7 +2864,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> notLoggedIn_player) -> ptr
         vec_remove_unique_value(_notLoggedInPlayers, player_holder);
     }
 
-    auto player = notLoggedIn_player;
+    auto player = not_logged_in_player;
     bool registered_player = false;
     bool inserted_player_record = false;
 
@@ -2913,19 +2913,19 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> notLoggedIn_player) -> ptr
         throw GenericException("New player login rejected by OnPlayerLogin");
     }
 
-    OnPlayerLoggedIn(player, notLoggedIn_player);
+    OnPlayerLoggedIn(player, not_logged_in_player);
 
     return player;
 }
 
-auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> notLoggedIn_player, ident_t player_id) -> ptr<Player>
+auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player, ident_t player_id) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!notLoggedIn_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
+    FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
     FO_VERIFY_AND_THROW(player_id, "Missing required player id");
 
-    auto player_holder = notLoggedIn_player.hold_ref();
+    auto player_holder = not_logged_in_player.hold_ref();
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -2937,24 +2937,24 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> notLoggedIn_player, i
     nptr<Player> player {};
     bool registered_player = false;
     bool reconnect_swapped = false;
-    bool destroy_notLoggedIn_after_login = false;
+    bool destroy_not_logged_in_after_login = false;
 
     scope_fail disconnect_on_error {[&]() noexcept {
         if (reconnect_swapped && player) {
-            safe_call([&] { player->SwapConnection(notLoggedIn_player); });
+            safe_call([&] { player->SwapConnection(not_logged_in_player); });
         }
 
-        safe_call([&] { notLoggedIn_player->SetLoggedIn(false); });
-        safe_call([&] { notLoggedIn_player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { not_logged_in_player->SetLoggedIn(false); });
+        safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(); });
 
         if (registered_player) {
-            safe_call([&] { notLoggedIn_player->DetachCritter(); });
-            safe_call([&] { notLoggedIn_player->ResetViewMap(); });
-            safe_call([&] { notLoggedIn_player->MarkAsDestroyed(); });
-            safe_call([&] { EntityMngr.UnregisterPlayer(notLoggedIn_player); });
+            safe_call([&] { not_logged_in_player->DetachCritter(); });
+            safe_call([&] { not_logged_in_player->ResetViewMap(); });
+            safe_call([&] { not_logged_in_player->MarkAsDestroyed(); });
+            safe_call([&] { EntityMngr.UnregisterPlayer(not_logged_in_player); });
         }
         else {
-            safe_call([&] { notLoggedIn_player->MarkAsDestroyed(); });
+            safe_call([&] { not_logged_in_player->MarkAsDestroyed(); });
         }
     }};
 
@@ -2962,8 +2962,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> notLoggedIn_player, i
     player = player_ref;
 
     if (!player) {
-        player = notLoggedIn_player;
-        FO_VERIFY_AND_THROW(player, "Player must resolve to the notLoggedIn player when the stored record is absent");
+        player = not_logged_in_player;
+        FO_VERIFY_AND_THROW(player, "Player must resolve to the not-logged-in player when the stored record is absent");
 
         auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
@@ -3006,27 +3006,27 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> notLoggedIn_player, i
         // its cover here: OnPlayerLogin and initial-info delivery may need the controlled critter,
         // map, and location in addition to both player entities.
         ValidateEntityAccess(player);
-        ValidateEntityAccess(notLoggedIn_player);
+        ValidateEntityAccess(not_logged_in_player);
 
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Existing player was destroyed before reconnect");
-        FO_VERIFY_AND_THROW(!notLoggedIn_player->IsDestroyed(), "NotLoggedIn player was destroyed before reconnect");
+        FO_VERIFY_AND_THROW(!not_logged_in_player->IsDestroyed(), "NotLoggedIn player was destroyed before reconnect");
 
         // Kick previous
-        player->SwapConnection(notLoggedIn_player);
+        player->SwapConnection(not_logged_in_player);
         reconnect_swapped = true;
-        notLoggedIn_player->GetConnection()->HardDisconnect();
+        not_logged_in_player->GetConnection()->HardDisconnect();
         player->Send_LoginSuccess();
 
         ValidateEntityAccess(player);
-        ValidateEntityAccess(notLoggedIn_player);
+        ValidateEntityAccess(not_logged_in_player);
 
-        EventResult login_result = OnPlayerLogin.Fire(player, notLoggedIn_player);
+        EventResult login_result = OnPlayerLogin.Fire(player, not_logged_in_player);
 
         if (login_result == Entity::EventResult::StopChain) {
             player->SetLoggedIn(false);
             player->GetConnection()->GracefulDisconnect();
-            notLoggedIn_player->SetLoggedIn(false);
-            notLoggedIn_player->MarkAsDestroyed();
+            not_logged_in_player->SetLoggedIn(false);
+            not_logged_in_player->MarkAsDestroyed();
             disconnect_on_error.release();
             throw GenericException("Player reconnect rejected by OnPlayerLogin");
         }
@@ -3037,28 +3037,28 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> notLoggedIn_player, i
             SendCritterInitialInfo(cr, nullptr);
         }
 
-        destroy_notLoggedIn_after_login = true;
+        destroy_not_logged_in_after_login = true;
     }
 
-    OnPlayerLoggedIn(player, notLoggedIn_player);
+    OnPlayerLoggedIn(player, not_logged_in_player);
 
-    if (destroy_notLoggedIn_after_login) {
+    if (destroy_not_logged_in_after_login) {
         // Keep the displaced player alive until scheduling succeeds so scope_fail can still swap
         // the connection back if OnPlayerLoggedIn throws.
-        notLoggedIn_player->MarkAsDestroyed();
+        not_logged_in_player->MarkAsDestroyed();
     }
 
     disconnect_on_error.release();
     return player;
 }
 
-auto ServerEngine::LoginPlayerToTempSession(ptr<Player> notLoggedIn_player) -> ptr<Player>
+auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!notLoggedIn_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
+    FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
 
-    auto player_holder = notLoggedIn_player.hold_ref();
+    auto player_holder = not_logged_in_player.hold_ref();
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -3066,7 +3066,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> notLoggedIn_player) -> p
         vec_remove_unique_value(_notLoggedInPlayers, player_holder);
     }
 
-    ptr<Player> player = notLoggedIn_player;
+    ptr<Player> player = not_logged_in_player;
     bool registered_player = false;
 
     scope_fail disconnect_on_error {[&]() noexcept {
@@ -3102,7 +3102,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> notLoggedIn_player) -> p
         throw GenericException("Temporary player login rejected by OnPlayerLogin");
     }
 
-    OnPlayerLoggedIn(player, notLoggedIn_player);
+    OnPlayerLoggedIn(player, not_logged_in_player);
 
     return player;
 }

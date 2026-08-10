@@ -568,12 +568,12 @@ namespace ServerEngineInitGateTest
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto notLoggedIn_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
-        server->RequireCurrentSyncContext()->SyncEntity(notLoggedIn_player);
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        server->RequireCurrentSyncContext()->SyncEntity(not_logged_in_player);
 
-        notLoggedIn_player->SetName(name);
-        notLoggedIn_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(notLoggedIn_player);
+        not_logged_in_player->SetName(name);
+        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
+        auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
 
         return player;
     }

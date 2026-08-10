@@ -726,7 +726,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> ser
     return MakeScriptHandleVector<Critter>(result);
 }
 
-// SyncScope: no existing entity cover required; creates a disconnected notLoggedIn player session.
+// SyncScope: no existing entity cover required; creates a disconnected not-logged-in player session.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_CreateNotLoggedInPlayer(ptr<ServerEngine> server)
 {
@@ -742,7 +742,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> s
     ValidateEntityAccess(notLoggedInPlayer);
 
     if (notLoggedInPlayer->GetLoggedIn()) {
-        throw ScriptException("Player is already loggedIn");
+        throw ScriptException("Player is already logged in");
     }
 
     auto player = server->LoginPlayerToNewRecord(notLoggedInPlayer);
@@ -756,7 +756,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine>
     ValidateEntityAccess(notLoggedInPlayer);
 
     if (notLoggedInPlayer->GetLoggedIn()) {
-        throw ScriptException("Player is already loggedIn");
+        throw ScriptException("Player is already logged in");
     }
 
     auto player = server->LoginPlayerToTempSession(notLoggedInPlayer);
@@ -771,7 +771,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngi
     ValidateEntityAccess(notLoggedInPlayer);
 
     if (notLoggedInPlayer->GetLoggedIn()) {
-        throw ScriptException("Player is already loggedIn");
+        throw ScriptException("Player is already logged in");
     }
     if (!playerId) {
         throw ScriptException("Player id arg is zero");

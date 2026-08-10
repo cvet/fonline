@@ -615,12 +615,12 @@ namespace EntityLifecycle
     static auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto notLoggedIn_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
 
-        notLoggedIn_player->SetName(name);
-        notLoggedIn_player->SetLastControlledCritterId(ident_t {1});
+        not_logged_in_player->SetName(name);
+        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
 
-        return notLoggedIn_player;
+        return not_logged_in_player;
     }
 
     // A map spectator is an ordinary Player entity, so the fixture only needs the connection shell — not a
@@ -645,10 +645,10 @@ namespace EntityLifecycle
     {
         FO_VERIFY_AND_THROW(net_connection, "Missing required net connection");
 
-        auto notLoggedIn_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
-        notLoggedIn_player->SetName(name);
-        notLoggedIn_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(notLoggedIn_player);
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        not_logged_in_player->SetName(name);
+        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
+        auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
 
         return player;
     }
@@ -1821,8 +1821,8 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(5));
 
-        auto notLoggedIn_player = CreatePreparedNotLoggedInPlayer(server, "RejectNewRecord");
-        CHECK_THROWS_WITH(server->LoginPlayerToNewRecord(notLoggedIn_player), Catch::Matchers::ContainsSubstring("New player login rejected by OnPlayerLogin"));
+        auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, "RejectNewRecord");
+        CHECK_THROWS_WITH(server->LoginPlayerToNewRecord(not_logged_in_player), Catch::Matchers::ContainsSubstring("New player login rejected by OnPlayerLogin"));
     }
 
     SECTION("LoginPlayerToExistentRecordThrowsWhenPlayerLoginStopsChain")
@@ -1837,10 +1837,10 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(5));
 
-        auto notLoggedIn_player = CreatePreparedNotLoggedInPlayer(server, "RejectReconnectNext");
-        array<nptr<ServerEntity>, 2> reconnect_cover {player, notLoggedIn_player};
+        auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, "RejectReconnectNext");
+        array<nptr<ServerEntity>, 2> reconnect_cover {player, not_logged_in_player};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
-        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(notLoggedIn_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
+        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(not_logged_in_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
     }
 
     SECTION("LoginPlayerToExistentRecordUsesCallerProvidedLocalMapCover")
@@ -1869,13 +1869,13 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         REQUIRE(reset_func.Call());
 
-        auto reconnect_notLoggedIn = CreatePreparedNotLoggedInPlayer(server, "ReconnectLocalMapNext");
-        array<nptr<ServerEntity>, 5> reconnect_cover {player, reconnect_notLoggedIn, cr, map, loc};
+        auto reconnect_not_logged_in = CreatePreparedNotLoggedInPlayer(server, "ReconnectLocalMapNext");
+        array<nptr<ServerEntity>, 5> reconnect_cover {player, reconnect_not_logged_in, cr, map, loc};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
-        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_notLoggedIn, player->GetId());
+        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_not_logged_in, player->GetId());
 
         CHECK(reconnected_player == player);
-        CHECK(reconnect_notLoggedIn->IsDestroyed());
+        CHECK(reconnect_not_logged_in->IsDestroyed());
         CHECK(player->GetControlledCritter() == cr.get());
         CHECK(cr->GetMapId() == map->GetId());
 
@@ -1905,13 +1905,13 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         REQUIRE(reset_func.Call());
 
-        auto reconnect_notLoggedIn = CreatePreparedNotLoggedInPlayer(server, "ReconnectGlobalGroupNext");
-        array<nptr<ServerEntity>, 4> reconnect_cover {player, reconnect_notLoggedIn, cr, group_member};
+        auto reconnect_not_logged_in = CreatePreparedNotLoggedInPlayer(server, "ReconnectGlobalGroupNext");
+        array<nptr<ServerEntity>, 4> reconnect_cover {player, reconnect_not_logged_in, cr, group_member};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
-        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_notLoggedIn, player->GetId());
+        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_not_logged_in, player->GetId());
 
         CHECK(reconnected_player == player);
-        CHECK(reconnect_notLoggedIn->IsDestroyed());
+        CHECK(reconnect_not_logged_in->IsDestroyed());
         CHECK(player->GetControlledCritter() == cr.get());
 
         int32_t initial_info_calls = 0;
@@ -1934,8 +1934,8 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(5));
 
-        auto notLoggedIn_player = CreatePreparedNotLoggedInPlayer(server, "RejectTempSession");
-        CHECK_THROWS_WITH(server->LoginPlayerToTempSession(notLoggedIn_player), Catch::Matchers::ContainsSubstring("Temporary player login rejected by OnPlayerLogin"));
+        auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, "RejectTempSession");
+        CHECK_THROWS_WITH(server->LoginPlayerToTempSession(not_logged_in_player), Catch::Matchers::ContainsSubstring("Temporary player login rejected by OnPlayerLogin"));
     }
 
     SECTION("PlayerLoginHardDisconnectDefersDestructionToPlayerJob")
@@ -1950,11 +1950,11 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         size_t initial_player_count = server->EntityMngr.GetPlayersCount();
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto notLoggedIn_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
-        notLoggedIn_player->SetName("LoginDisconnect");
-        notLoggedIn_player->SetLastControlledCritterId(ident_t {1});
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        not_logged_in_player->SetName("LoginDisconnect");
+        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
 
-        (void)server->LoginPlayerToNewRecord(notLoggedIn_player);
+        (void)server->LoginPlayerToNewRecord(not_logged_in_player);
 
         int32_t login_calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerLoginCalls"), login_calls));
@@ -1981,10 +1981,10 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         size_t initial_player_count = server->EntityMngr.GetPlayersCount();
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto notLoggedIn_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
-        notLoggedIn_player->SetName("TempSessionDisconnect");
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        not_logged_in_player->SetName("TempSessionDisconnect");
 
-        auto player = server->LoginPlayerToTempSession(notLoggedIn_player);
+        auto player = server->LoginPlayerToTempSession(not_logged_in_player);
 
         int32_t login_calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerLoginCalls"), login_calls));
