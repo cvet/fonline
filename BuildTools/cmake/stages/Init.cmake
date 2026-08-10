@@ -22,7 +22,8 @@ DeclareValueOptions(
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_INTERNAL_CONFIG_CAPACITY "Capacity for embedded internal config in binaries" 10000
-	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
+	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" ""
+	FO_NATIVE_SCRIPTS_DIR "Path to user-provided Native C++ scripting sources (Common/Server/Client/Mapper/Baker subfolders)" "")
 
 DeclareBoolOptions(
 	FO_ENABLE_3D "Supporting of 3d models" OFF
@@ -111,6 +112,36 @@ elseif(MSVC)
     endif()
 else()
     AbortMessage("Unsupported compiler '${CMAKE_CXX_COMPILER_ID}'. Supported: Clang >= 20, GCC >= 13, MSVC >= 2022, AppleClang (any).")
+endif()
+
+# C++20 named modules need a narrower CMake/compiler/generator matrix than the
+# rest of the engine. Keep the general toolchain support above unchanged, but
+# fail early with an actionable diagnostic when Native scripting is explicitly
+# enabled on a combination CMake cannot scan.
+if(FO_NATIVE_SCRIPTING)
+    if(CMAKE_VERSION VERSION_LESS 3.28)
+        AbortMessage("Native scripting requires CMake 3.28 or newer for CXX_MODULES file sets (found ${CMAKE_VERSION})")
+    endif()
+
+    if(NOT CMAKE_GENERATOR MATCHES "^Ninja" AND NOT CMAKE_GENERATOR MATCHES "^Visual Studio")
+        AbortMessage("Native scripting requires a Ninja or Visual Studio generator (found '${CMAKE_GENERATOR}')")
+    endif()
+
+    if(CMAKE_GENERATOR MATCHES "^Visual Studio" AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        AbortMessage("Native scripting with a Visual Studio generator requires the MSVC toolset; CMake does not support clang-cl modules with Visual Studio generators")
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 14)
+        AbortMessage("Native scripting requires GCC 14 or newer for C++ module dependency scanning (found ${CMAKE_CXX_COMPILER_VERSION})")
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+        AbortMessage("Native scripting is not supported with AppleClang yet")
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC" AND CMAKE_VERSION VERSION_LESS 4.4)
+        AbortMessage("Native scripting with clang-cl requires CMake 4.4 or newer (found ${CMAKE_VERSION})")
+    endif()
 endif()
 
 DetectProcessorArchitecture(FO_PROCESSOR_ARCHITECTURE CMAKE_SYSTEM_PROCESSOR)

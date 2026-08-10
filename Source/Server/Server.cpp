@@ -38,6 +38,7 @@
 #include "ClientDataValidation.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
+#include "NativeScripting.h"
 #include "NetCommand.h"
 #include "PropertiesSerializator.h"
 
@@ -144,6 +145,18 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
 #if FO_ANGELSCRIPT_SCRIPTING
         InitAngelScriptScripting(this, Settings, Resources);
+#endif
+
+#if FO_NATIVE_SCRIPTING
+        // NativeScriptSynth emits these per-role dispatchers from exported
+        // module init functions under FO_NATIVE_SCRIPTS_DIR/{Common,Server}/.
+        // Always available — empty bodies when the user tree is empty.
+        extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
+        extern void RegisterNativeScriptModules_Server(const NativeScripts::ModuleInitContextBase&);
+        InitNativeScripting(this, Settings, Resources, [](const NativeScripts::ModuleInitContextBase& ctx) {
+            RegisterNativeScriptModules_Common(ctx);
+            RegisterNativeScriptModules_Server(ctx);
+        });
 #endif
 
         return std::nullopt;

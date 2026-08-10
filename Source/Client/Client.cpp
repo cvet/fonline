@@ -37,6 +37,7 @@
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
 #include "Movement.h"
+#include "NativeScripting.h"
 #include "NetCommand.h"
 #include "ParticleSprites.h"
 
@@ -89,6 +90,14 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     MapScriptTypes(this);
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, Settings, Resources);
+#endif
+#if FO_NATIVE_SCRIPTING
+    extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
+    extern void RegisterNativeScriptModules_Client(const NativeScripts::ModuleInitContextBase&);
+    InitNativeScripting(this, Settings, Resources, [](const NativeScripts::ModuleInitContextBase& ctx) {
+        RegisterNativeScriptModules_Common(ctx);
+        RegisterNativeScriptModules_Client(ctx);
+    });
 #endif
 
     _curLang = TextPack {Hashes};

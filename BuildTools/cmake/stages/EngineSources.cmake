@@ -369,6 +369,48 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
+# Native scripting: glob the user-provided source tree per role. Globbed once
+# here so codegen can scan them for `///@ Enum / Property / Event / RefType /
+# ValueType / Method` tags (the non-Export user-side aliases), and CoreLibs can
+# reuse the per-role file lists when building the user libraries.
+SetValue(FO_NATIVE_SCRIPTS_HAS_FILES OFF)
+if(FO_NATIVE_SCRIPTING AND FO_NATIVE_SCRIPTS_DIR)
+    foreach(role IN ITEMS Common Server Client Mapper Baker)
+        SetValue(roleDir "${FO_NATIVE_SCRIPTS_DIR}/${role}")
+        SetValue(FO_NATIVE_SCRIPTS_${role}_FILES "")
+        SetValue(FO_NATIVE_SCRIPTS_${role}_MODULE_FILES "")
+        if(EXISTS "${roleDir}")
+            # User-authored native scripts are C++20 module interface units
+            # only — `.ixx` (MSVC) or `.cppm` (Clang/GCC). Plain `.cpp` and
+            # `.h` files are NOT picked up: every user module declares
+            # `export module NativeScripts.User.<Role>.<Name>;` so the
+            # synth-emitted dispatcher (`NativeBindings-<Role>.cpp`) can
+            # reach the init function through `import` instead of `extern`.
+            #
+            # If a contributor drops a `.cpp` in here it's silently ignored
+            # by the build; intentional, to channel everyone toward the
+            # module-only authoring path. Module interface bodies still
+            # support `module;` + `#include <header>` in their global
+            # fragment, so existing engine / stdlib headers remain
+            # reachable from user code.
+            FileGlob(roleModuleFiles
+                "${roleDir}/*.ixx"
+                "${roleDir}/*.cppm"
+                "${roleDir}/**/*.ixx"
+                "${roleDir}/**/*.cppm")
+            if(roleModuleFiles)
+                SetValue(FO_NATIVE_SCRIPTS_${role}_MODULE_FILES ${roleModuleFiles})
+                # Surface every user module unit as a metadata source so
+                # codegen scans it for `///@` annotations alongside the
+                # engine sources. `///@` tags inside a `.cppm` / `.ixx` are
+                # processed identically to engine source tags.
+                AppendList(FO_SOURCE_META_FILES ${roleModuleFiles})
+                SetValue(FO_NATIVE_SCRIPTS_HAS_FILES ON)
+            endif()
+        endif()
+    endforeach()
+endif()
+
 AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"

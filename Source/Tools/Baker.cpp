@@ -46,6 +46,7 @@
 #include "MetadataRegistration.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
+#include "NativeScripting.h"
 #include "ProtoBaker.h"
 #include "ProtoManager.h"
 #include "ProtoTextBaker.h"
@@ -204,6 +205,10 @@ void MasterBaker::BakeAllInternal()
     FO_RUNTIME_ASSERT_STR(make_output_ok, "Unable to recreate baking output dir");
 
     FileSystem baking_output;
+
+#if FO_NATIVE_SCRIPTING
+    unique_ptr<BakerServerEngine> native_script_engine;
+#endif
 
     // Resource packs
     struct PackBakeContext
@@ -382,12 +387,38 @@ void MasterBaker::BakeAllInternal()
             }
         }
 
+#if FO_NATIVE_SCRIPTING
+        if (!native_script_engine && bake_order == MetadataBaker::ORDER) {
+            // Keep one native scripting context alive for the rest of the bake
+            // session. Individual bakers create short-lived BakerServerEngine
+            // instances; dispatching from those would run Common/Baker
+            // initializers repeatedly and concurrently. Wait until the metadata
+            // pack is baked and mounted so dynamic user types are available.
+            native_script_engine = SafeAlloc::MakeUnique<BakerServerEngine>(baking_output);
+            native_script_engine->MapScriptTypes(native_script_engine.get());
+
+            extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
+            extern void RegisterNativeScriptModules_Baker(const NativeScripts::ModuleInitContextBase&);
+            InitNativeScripting(
+                native_script_engine.get(), *_settings, baking_output,
+                [](const NativeScripts::ModuleInitContextBase& ctx) {
+                    RegisterNativeScriptModules_Common(ctx);
+                    RegisterNativeScriptModules_Baker(ctx);
+                },
+                true);
+        }
+#endif
+
         if (std::ranges::all_of(pack_bake_contexts, [](auto&& context) { return context->Done; })) {
             break;
         }
 
         bake_order++;
     }
+
+#if FO_NATIVE_SCRIPTING
+    FO_RUNTIME_ASSERT(native_script_engine);
+#endif
 
     // Delete outdated files
     const auto exclude_all_ext = [](string_view path) -> string {
