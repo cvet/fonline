@@ -85,6 +85,7 @@ public:
     [[nodiscard]] auto RequireCurrentSyncContext() const -> ptr<SyncContext>;
     [[nodiscard]] auto GetEntityLock() const noexcept -> ptr<EntityLock> { return _entityLock; }
     [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
+    [[nodiscard]] auto ResolveScriptEntityHandle(string_view entity_type_name, ident_t id) -> nptr<Entity> override;
 
     void Shutdown() override;
     void FlushExactSyncTime();

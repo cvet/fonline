@@ -41,6 +41,7 @@ DeclareBoolOptions(
 	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
 	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
+	FO_WASM_SCRIPTING "Supporting of WebAssembly scripting through WAMR" OFF
 	FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
 	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
@@ -327,6 +328,7 @@ AddCompileDefinitionsList(
 	FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
+	FO_WASM_SCRIPTING=$<BOOL:${FO_WASM_SCRIPTING}>
 	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
 
 # The remaining engine settings (FO_GEOMETRY, FO_MAP_*, FO_EFFECT_*, FO_MODEL_*, FO_USE_NAMESPACE, FO_NO_*,

@@ -41,6 +41,7 @@
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "PropertiesSerializator.h"
+#include "Wasm/WasmScripting.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -306,6 +307,9 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
 
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, *Settings, Resources);
+#endif
+#if FO_WASM_SCRIPTING
+    InitWasmScripting(this, *Settings, Resources);
 #endif
 
     return std::nullopt;
@@ -1012,6 +1016,15 @@ auto ServerEngine::GetCompletedServerJobsCount() const -> uint64_t
     FO_STACK_TRACE_ENTRY();
 
     return _completedServerStatsJobs.load(std::memory_order_relaxed);
+}
+
+auto ServerEngine::ResolveScriptEntityHandle(string_view entity_type_name, ident_t id) -> nptr<Entity>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(entity_type_name);
+
+    return EntityMngr.GetEntity(id);
 }
 
 void ServerEngine::Shutdown()

@@ -49,6 +49,37 @@ FO_BEGIN_NAMESPACE
 
 class ScriptImGui;
 
+enum class ScriptApiReceiverKind : uint8_t
+{
+    None,
+    Entity,
+    FixedType,
+    RefType,
+};
+
+enum class ScriptApiPropertyAccess : uint8_t
+{
+    Getter,
+    Setter,
+};
+
+struct ScriptApiMethodEntry
+{
+    string EntityName {};
+    size_t MethodIndex {};
+    ScriptApiReceiverKind ReceiverKind {};
+    string UnsupportedReceiverReason {};
+};
+
+struct ScriptApiPropertyEntry
+{
+    string EntityName {};
+    uint16_t PropertyIndex {};
+    ScriptApiPropertyAccess Access {};
+    ScriptApiReceiverKind ReceiverKind {};
+    string UnsupportedReceiverReason {};
+};
+
 class EngineMetadata : public NameResolver
 {
 public:
@@ -81,8 +112,11 @@ public:
     [[nodiscard]] auto IsFixedType(string_view type_name) const noexcept -> bool;
     [[nodiscard]] auto GetFixedType(hstring type_name) const -> const EntityTypeDesc&;
     [[nodiscard]] auto GetFixedTypes() const noexcept -> const map<hstring, EntityTypeDesc>&;
+    [[nodiscard]] auto GetRefTypes() const noexcept -> const auto& { return _refTypes; }
     [[nodiscard]] auto GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) const -> ptr<const Property>;
     [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
+    [[nodiscard]] auto GetScriptApiMethodEntries() const noexcept -> const auto& { return _scriptApiMethodEntries; }
+    [[nodiscard]] auto GetScriptApiPropertyEntries() const noexcept -> const auto& { return _scriptApiPropertyEntries; }
     [[nodiscard]] auto GetOutboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_outboundRemoteCalls; }
     [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_inboundRemoteCalls; }
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
@@ -125,12 +159,15 @@ public:
     void RegisterProtos(const FileSystem& resources);
     void RegisterAnimationInfo(const FileSystem& resources);
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
+    void OnPropertyRegistered(string_view type_name, const Property& prop) override;
     void FinalizeRegistration();
 
     mutable HashStorage Hashes {};
 
 private:
     auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;
+    void RegisterScriptApiMethodEntry(string_view entity_name, size_t method_index, ScriptApiReceiverKind receiver_kind, string_view unsupported_receiver_reason);
+    void RegisterScriptApiPropertyEntry(string_view entity_name, uint16_t property_index, ScriptApiPropertyAccess access, ScriptApiReceiverKind receiver_kind, string_view unsupported_receiver_reason);
 
     EngineSideKind _side {};
     bool _registrationFinalized {};
@@ -148,6 +185,8 @@ private:
     unordered_map<string, ptr<const BaseTypeDesc>> _enumsUnderlyingType {};
     unordered_map<string, StructLayoutDesc> _structLayouts {};
     unordered_map<string, RefTypeDesc> _refTypes {};
+    vector<ScriptApiMethodEntry> _scriptApiMethodEntries {};
+    vector<ScriptApiPropertyEntry> _scriptApiPropertyEntries {};
     unordered_map<string, unique_ptr<PropertyRegistrator>> _dynamicRefTypeRegistrators {};
     unordered_map<string, BaseTypeDesc> _baseTypes {};
     unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
@@ -172,6 +211,7 @@ public:
     [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui> { return _imgui; }
 
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
+    [[nodiscard]] virtual auto ResolveScriptEntityHandle(string_view entity_type_name, ident_t id) -> nptr<Entity>;
     virtual void Shutdown() { }
     void FrameAdvance();
 

@@ -770,6 +770,46 @@ def split_engine_args(function_args_text: str) -> list[str]:
     return result
 
 
+def split_callback_unified_args(unified_type: str) -> list[str]:
+    assert unified_type.startswith('callback('), unified_type
+    open_pos = unified_type.find('(')
+    close_pos = find_matching_cpp_paren(unified_type, open_pos)
+    assert close_pos == len(unified_type) - 1, 'Unexpected callback suffix ' + unified_type
+    return split_engine_args(unified_type[open_pos + 1:close_pos])
+
+
+def split_callback_meta_args_at(meta_type: str, start_pos: int) -> tuple[list[str], int]:
+    assert meta_type.startswith('callback.', start_pos), meta_type
+
+    result: list[str] = []
+    pos = start_pos + len('callback.')
+
+    while pos < len(meta_type):
+        assert meta_type[pos] != '|', 'Empty callback argument in ' + meta_type
+        arg_start = pos
+
+        if meta_type.startswith('callback.', pos):
+            _nested_args, pos = split_callback_meta_args_at(meta_type, pos)
+        else:
+            pos = meta_type.find('|', pos)
+            assert pos != -1, 'Unterminated callback argument in ' + meta_type
+
+        result.append(meta_type[arg_start:pos])
+        assert pos < len(meta_type) and meta_type[pos] == '|', 'Unterminated callback argument in ' + meta_type
+        pos += 1
+
+        if pos == len(meta_type) or meta_type[pos] == '|':
+            break
+
+    return result, pos
+
+
+def split_callback_meta_args(meta_type: str) -> list[str]:
+    result, pos = split_callback_meta_args_at(meta_type, 0)
+    assert pos == len(meta_type), 'Unexpected callback suffix ' + meta_type[pos:] + ' in ' + meta_type
+    return result
+
+
 def normalize_default_arg_value(default_value: str, arg_type: str) -> str:
     default_value = default_value.strip()
     if default_value in ('nullptr', 'NULL'):
@@ -1117,8 +1157,7 @@ def register_entity_relative_type(type_name: str, valid_types: set[str]) -> None
 
 def unified_type_to_meta_type(unified_type: str, valid_types: set[str]) -> str:
     if unified_type.startswith('callback('):
-        assert unified_type[-1] == ')'
-        callback_args = [unified_type_to_meta_type(arg, valid_types) for arg in unified_type[unified_type.find('(') + 1:unified_type.find(')')].split(',')]
+        callback_args = [unified_type_to_meta_type(arg, valid_types) for arg in split_callback_unified_args(unified_type)]
         generic_funcdefs.add('|'.join(callback_args))
         return 'callback.' + '|'.join(callback_args) + '|'
     if unified_type.endswith('&'):
@@ -1714,6 +1753,9 @@ def get_entity_from_target(target: str) -> str:
 
 
 def meta_type_to_unified_type(meta_type: str, self_entity: str = 'SELF_ENTITY') -> str:
+    if meta_type.startswith('callback.'):
+        return 'callback(' + ','.join([meta_type_to_unified_type(arg, self_entity) for arg in split_callback_meta_args(meta_type)]) + ')'
+
     type_parts = meta_type.split('.')
     if type_parts[0] == 'dict':
         value_type = type_parts[2] if type_parts[2] != 'arr' else type_parts[2] + '.' + type_parts[3]
@@ -1721,7 +1763,7 @@ def meta_type_to_unified_type(meta_type: str, self_entity: str = 'SELF_ENTITY') 
     elif type_parts[0] == 'arr':
         result = meta_type_to_unified_type(type_parts[1], self_entity) + '[]'
     elif type_parts[0] == 'callback':
-        result = 'callback(' + ','.join([meta_type_to_unified_type(arg, self_entity) for arg in '.'.join(type_parts[1:]).split('|') if arg]) + ')'
+        assert False, 'Invalid callback metadata type ' + meta_type
     elif type_parts[0] == 'Entity':
         result = type_parts[0]
     elif type_parts[0] in game_entities:
@@ -1849,7 +1891,7 @@ def meta_type_to_engine_type(meta_type: str, target: str, pass_in: bool, ref_as_
         else:
             result = 'vector<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity, wrap_handles=wrap_handles) + '>'
     elif type_parts[0] == 'callback':
-        callback_signature = '<' + ', '.join([meta_type_to_engine_type(arg, target, False, ref_as_ptr=True, self_entity=self_entity, wrap_handles=True) for arg in '.'.join(type_parts[1:]).split('|') if arg]) + '>'
+        callback_signature = '<' + ', '.join([meta_type_to_engine_type(arg, target, False, ref_as_ptr=True, self_entity=self_entity, wrap_handles=True) for arg in split_callback_meta_args(meta_type)]) + '>'
         result = 'ScriptFunc' + callback_signature
     elif type_parts[0] == 'Entity':
         result = get_entity_from_target(target)
@@ -2147,14 +2189,14 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
         if 'HasFactory' in ref_type_tag.flags:
             body_lines.append('    MethodDesc{ .Name = "__Factory", ' +
                     '.Ret = meta->ResolveComplexType("' + ref_type_tag.name + '"), .Call = [](FuncCallData& call) {' +
-                    (' ignore_unused(call); } },' if is_stub else ''))
+                    (' ignore_unused(call); }, .PassOwnership = true },' if is_stub else ''))
             if not is_stub:
                 body_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
 
                 body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
                         '{ return SafeAlloc::MakeRefCounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
                 body_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
-                body_lines.append('    } },')
+                body_lines.append('    }, .PassOwnership = true },')
 
         for field in ref_type_tag.fields:
             append_ref_method_registration(body_lines, ref_type_tag, field.name, field.field_type, [], is_stub, getter=True)

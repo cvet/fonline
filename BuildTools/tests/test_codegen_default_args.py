@@ -60,6 +60,42 @@ def test_split_engine_args_respects_nested_default_commas() -> None:
     ]
 
 
+def test_callback_type_conversion_preserves_nested_callbacks() -> None:
+    valid_types = {"void", "int32"}
+    meta_type = _codegen.engine_type_to_meta_type(
+        "ScriptFunc<void, ScriptFunc<int32_t, int32_t>>",
+        valid_types,
+    )
+
+    assert meta_type == "callback.void|callback.int32|int32||"
+    assert _codegen.meta_type_to_unified_type(meta_type) == "callback(void,callback(int32,int32))"
+    assert _codegen.meta_type_to_engine_type(meta_type, "Server", False) == "ScriptFunc<void, ScriptFunc<int32_t, int32_t>>"
+
+
+def test_parse_export_method_signature_preserves_nested_callback_arg(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _codegen,
+        "game_entities_info",
+        {
+            "Game": _codegen.EntityInfo("ServerEngine", "ClientEngine", True, False, False, False, False, True, []),
+        },
+    )
+
+    target, entity, name, ret, args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = _codegen.parse_export_method_signature(
+        "FO_SCRIPT_API void Server_Game_InvokeNested(ptr<ServerEngine> engine, ScriptFunc<void, ScriptFunc<int32_t, int32_t>> func)",
+        {"void", "int32", "Game"},
+        ["Game"],
+    )
+
+    assert (target, entity, name, ret, ret_nullable) == ("Server", "Game", "InvokeNested", "void", False)
+    assert ret_wrapper is False
+    assert ret_container_element_wrapper == ""
+    assert receiver_wrapper is True
+    assert [(arg.arg_type, arg.name, arg.nullable, arg.default_value) for arg in args] == [
+        ("callback.void|callback.int32|int32||", "func", False, None),
+    ]
+
+
 def test_parse_method_args_preserves_trailing_defaults() -> None:
     args = _codegen.parse_method_args(
         'int32_t value, string_view label = "fresh, crisp", bool enabled = true',

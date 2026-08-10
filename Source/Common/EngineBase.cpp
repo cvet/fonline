@@ -425,7 +425,9 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
         tokens.emplace_back(field_tokens[0]); // Name
         tokens.insert(tokens.end(), field_tokens.begin() + 2, field_tokens.end());
 
-        fields_registrator->RegisterProperty(tokens);
+        ptr<const Property> prop = fields_registrator->RegisterProperty(tokens);
+        RegisterScriptApiPropertyEntry(name, prop->GetRegIndex(), ScriptApiPropertyAccess::Getter, ScriptApiReceiverKind::RefType, {});
+        RegisterScriptApiPropertyEntry(name, prop->GetRegIndex(), ScriptApiPropertyAccess::Setter, ScriptApiReceiverKind::RefType, {});
     }
 
     ref_type.FieldsRegistrator = fields_registrator;
@@ -446,6 +448,19 @@ void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>
     FO_VERIFY_AND_THROW(ref_type.FieldsRegistrator == nullptr, "RefType methods registration found an existing fields registrator", name);
 
     ref_type.Methods = std::move(methods);
+
+    for (size_t method_index = 0; method_index < ref_type.Methods.size(); method_index++) {
+        const string& method_name = ref_type.Methods[method_index].Name;
+
+        if (method_name == "__Factory") {
+            RegisterScriptApiMethodEntry(name, method_index, ScriptApiReceiverKind::None, {});
+            continue;
+        }
+
+        if (!strvex(method_name).starts_with("__") || method_name == "__AddRef" || method_name == "__Release") {
+            RegisterScriptApiMethodEntry(name, method_index, ScriptApiReceiverKind::RefType, {});
+        }
+    }
 }
 
 void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method)
@@ -460,7 +475,17 @@ void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType single-method registration conflicts with a dynamic field layout", name, method.Name);
     FO_VERIFY_AND_THROW(ref_type.FieldsRegistrator == nullptr, "RefType single-method registration found an existing fields registrator", name, method.Name);
 
+    size_t method_index = ref_type.Methods.size();
     ref_type.Methods.emplace_back(std::move(method));
+
+    const string& method_name = ref_type.Methods[method_index].Name;
+
+    if (method_name == "__Factory") {
+        RegisterScriptApiMethodEntry(name, method_index, ScriptApiReceiverKind::None, {});
+    }
+    else if (!strvex(method_name).starts_with("__") || method_name == "__AddRef" || method_name == "__Release") {
+        RegisterScriptApiMethodEntry(name, method_index, ScriptApiReceiverKind::RefType, {});
+    }
 }
 
 void EngineMetadata::RegisterEntityMethod(string_view entity_name, MethodDesc&& method)
@@ -473,7 +498,9 @@ void EngineMetadata::RegisterEntityMethod(string_view entity_name, MethodDesc&& 
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
     auto entity_info = it->second;
 
+    size_t method_index = entity_info->Methods.size();
     entity_info->Methods.emplace_back(std::move(method));
+    RegisterScriptApiMethodEntry(entity_name, method_index, entity_info->IsGlobal ? ScriptApiReceiverKind::None : ScriptApiReceiverKind::Entity, {});
 }
 
 void EngineMetadata::RegisterEntityMethods(string_view entity_name, vector<MethodDesc>&& methods)
@@ -488,6 +515,10 @@ void EngineMetadata::RegisterEntityMethods(string_view entity_name, vector<Metho
 
     FO_VERIFY_AND_THROW(entity_info->Methods.empty(), "Entity info methods must be empty before this operation");
     entity_info->Methods = std::move(methods);
+
+    for (size_t method_index = 0; method_index < entity_info->Methods.size(); method_index++) {
+        RegisterScriptApiMethodEntry(entity_name, method_index, entity_info->IsGlobal ? ScriptApiReceiverKind::None : ScriptApiReceiverKind::Entity, {});
+    }
 }
 
 void EngineMetadata::RegisterEntityEvents(string_view entity_name, vector<EntityEventDesc>&& events)
@@ -678,6 +709,54 @@ auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
 
     type.IsPrimitive = type.IsInt || type.IsFloat || type.IsBool;
     return &_baseTypes.emplace(type_str, std::move(type)).first->second;
+}
+
+void EngineMetadata::RegisterScriptApiMethodEntry(string_view entity_name, size_t method_index, ScriptApiReceiverKind receiver_kind, string_view unsupported_receiver_reason)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+
+    _scriptApiMethodEntries.emplace_back(ScriptApiMethodEntry {
+        .EntityName = string {entity_name},
+        .MethodIndex = method_index,
+        .ReceiverKind = receiver_kind,
+        .UnsupportedReceiverReason = string {unsupported_receiver_reason},
+    });
+}
+
+void EngineMetadata::RegisterScriptApiPropertyEntry(string_view entity_name, uint16_t property_index, ScriptApiPropertyAccess access, ScriptApiReceiverKind receiver_kind, string_view unsupported_receiver_reason)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+    FO_VERIFY_AND_THROW(property_index != 0, "Script API property index is zero", entity_name);
+
+    _scriptApiPropertyEntries.emplace_back(ScriptApiPropertyEntry {
+        .EntityName = string {entity_name},
+        .PropertyIndex = property_index,
+        .Access = access,
+        .ReceiverKind = receiver_kind,
+        .UnsupportedReceiverReason = string {unsupported_receiver_reason},
+    });
+}
+
+void EngineMetadata::OnPropertyRegistered(string_view type_name, const Property& prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+
+    if (auto it = _entityTypesByStr.find(type_name); it != _entityTypesByStr.end()) {
+        RegisterScriptApiPropertyEntry(type_name, prop.GetRegIndex(), ScriptApiPropertyAccess::Getter, it->second->IsGlobal ? ScriptApiReceiverKind::None : ScriptApiReceiverKind::Entity, {});
+        RegisterScriptApiPropertyEntry(type_name, prop.GetRegIndex(), ScriptApiPropertyAccess::Setter, it->second->IsGlobal ? ScriptApiReceiverKind::None : ScriptApiReceiverKind::Entity, {});
+        return;
+    }
+
+    if (_fixedTypesByStr.contains(type_name)) {
+        RegisterScriptApiPropertyEntry(type_name, prop.GetRegIndex(), ScriptApiPropertyAccess::Getter, ScriptApiReceiverKind::FixedType, {});
+        RegisterScriptApiPropertyEntry(type_name, prop.GetRegIndex(), ScriptApiPropertyAccess::Setter, ScriptApiReceiverKind::FixedType, {});
+    }
 }
 
 void EngineMetadata::FinalizeRegistration()
@@ -919,8 +998,8 @@ auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const ->
                 if (is_first_arg && type2.IsMutable) {
                     throw TypeResolveException("Invalid complex type syntax, callback return type cannot be mutable", strex(" ").join(tokens));
                 }
-                if (type2.Kind == ComplexTypeKind::Callback) {
-                    throw TypeResolveException("Invalid complex type syntax, callback cannot be used as argument type", strex(" ").join(tokens));
+                if (is_first_arg && type2.Kind == ComplexTypeKind::Callback) {
+                    throw TypeResolveException("Invalid complex type syntax, callback return type cannot be callback", strex(" ").join(tokens));
                 }
 
                 args->emplace_back(std::move(type2));
@@ -1218,6 +1297,15 @@ auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
     scoped_lock locker {_randomGeneratorLocker};
 
     return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
+}
+
+auto BaseEngine::ResolveScriptEntityHandle(string_view entity_type_name, ident_t id) -> nptr<Entity>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(entity_type_name, id);
+
+    return nullptr;
 }
 
 void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)

@@ -35,41 +35,51 @@
 
 #include "Common.h"
 
-#if FO_ANGELSCRIPT_SCRIPTING
+#if FO_WASM_SCRIPTING && FO_WEB
 
 #include "ScriptSystem.h"
+#include "WasmApiBridge.h"
 
-namespace AngelScript
-{
-    class asIScriptEngine;
-    class asIScriptFunction;
-    class asIScriptGeneric;
-}
+#include <json.hpp>
 
 FO_BEGIN_NAMESPACE
 
-struct ScriptDataAccessor final : DataAccessor
+struct ScriptSettings;
+class EngineMetadata;
+class FileSystem;
+class BaseEngine;
+
+class WebWasmBackend final : public ScriptSystemBackend
 {
-    [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX; }
-    [[nodiscard]] auto GetArraySize(ptr<void> data) const -> size_t override;
-    [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override;
-    [[nodiscard]] auto GetDictSize(ptr<void> data) const -> size_t override;
-    [[nodiscard]] auto GetDictElement(ptr<void> data, size_t index) const -> pair<ptr<void>, ptr<void>> override;
-    [[nodiscard]] auto GetCallback(ptr<void> data) const -> unique_del_nptr<ScriptFuncDesc> override;
+public:
+    explicit WebWasmBackend(ptr<const ScriptSettings> settings);
+    WebWasmBackend(const WebWasmBackend&) = delete;
+    WebWasmBackend(WebWasmBackend&&) noexcept = delete;
+    auto operator=(const WebWasmBackend&) = delete;
+    auto operator=(WebWasmBackend&&) noexcept = delete;
+    ~WebWasmBackend() override;
 
-    void ClearArray(ptr<void> data) const override;
-    void AddArrayElement(ptr<void> data, ptr<void> value) const override;
-    void ClearDict(ptr<void> data) const override;
-    void AddDictElement(ptr<void> data, ptr<void> key, ptr<void> value) const override;
-    void AddDictArrayElement(ptr<void> data, ptr<void> key, const BaseTypeDesc& element_type, const_span<ptr<void>> values) const override;
+    void RegisterMetadata(ptr<EngineMetadata> meta);
+    void LoadScripts(const FileSystem& resources);
+
+private:
+    struct WasmFunction;
+    struct WasmModule;
+
+    void RegisterModule(ptr<WasmModule> module, const nlohmann::json& module_json);
+    void RegisterApiImports();
+    void CallWasmFunction(ptr<const WasmModule> module, ptr<const WasmFunction> function, FuncCallData& call) const;
+    void CallApiImport(size_t method_index, const_span<uint64_t> raw_args, uint64_t* raw_result);
+    void CallPropertyImport(size_t property_index, const_span<uint64_t> raw_args, uint64_t* raw_result);
+    static auto CallApiImportCallback(uintptr_t backend_ptr, int32_t method_index, int32_t argc, const uint64_t* raw_args, uint64_t* raw_result) -> int32_t;
+    static auto CallPropertyImportCallback(uintptr_t backend_ptr, int32_t property_index, int32_t argc, const uint64_t* raw_args, uint64_t* raw_result) -> int32_t;
+
+    nptr<EngineMetadata> _meta {};
+    nptr<BaseEngine> _engine {};
+    nptr<ScriptSystem> _scriptSys {};
+    WasmApiImportTable _apiImports {};
+    vector<unique_ptr<WasmModule>> _modules {};
 };
-
-static constexpr ScriptDataAccessor SCRIPT_DATA_ACCESSOR;
-
-auto ResolveScriptFuncType(ptr<AngelScript::asIScriptEngine> as_engine, int32_t type_id, uint32_t flags = 0, bool is_ret = false) -> ComplexTypeDesc;
-auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFuncDesc>;
-void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, const_span<ArgDesc> args_desc, const function<void(FuncCallData&)>& callback);
-void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call);
 
 FO_END_NAMESPACE
 

@@ -59,6 +59,8 @@ FIXED_SETTING(bool, Script, DebuggerEnabled, false); // If true, AngelScript deb
 FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1"); // Debugger TCP bind host
 FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
+FIXED_SETTING(int32_t, Script, WasmStackSize, 65536);
+FIXED_SETTING(int32_t, Script, WasmHeapSize, 1048576);
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
 SETTING_GROUP_END();
 
