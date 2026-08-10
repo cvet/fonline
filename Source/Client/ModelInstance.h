@@ -162,11 +162,9 @@ private:
         mat44 InverseBindMatrix {1.0f};
     };
 
-    // A vertex of the sprite-bounds sweep, prepared once per mesh generation. GenerateCombinedMeshes already proves
-    // that every blend index is an exact in-range integer and every weight is finite and sums to one, and records
-    // that verdict in SpriteBoundsValid - so the per-frame sweep must not re-derive any of it. Storing only the
-    // positive influences also keeps the sweep from walking empty slots, and packing the position beside them turns
-    // a scattered read of the full Vertex3D array into a sequential read of what the sweep actually uses.
+    // A sweep vertex prepared once per mesh generation. GenerateCombinedMeshes already proves every blend index
+    // and weight and records that in SpriteBoundsValid, so the per-frame sweep must not re-derive it. Keeping only
+    // the positive influences beside the position also turns a scattered read of Vertex3D into a sequential one.
     struct SpriteSweepVertex
     {
         vec3 Position {};

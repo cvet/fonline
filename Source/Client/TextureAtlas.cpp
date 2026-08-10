@@ -37,17 +37,15 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t ATLAS_SPRITES_PADDING = 1;
-// Interim pruning inside a free-list rebuild: prune only once the working list has grown well past its
-// last pruned size, so the rebuild stays linear in allocations while redundant slabs cannot pile up.
+// Growth a rebuild's working list may take before an interim prune, so the rebuild stays linear.
 static constexpr size_t REBUILD_PRUNE_GROWTH_FACTOR = 4;
 static constexpr size_t REBUILD_PRUNE_MIN_GROWTH = 64;
-// Free-list slack tolerated before pruning, measured against the size the previous prune produced.
-// Releases push slots back without coalescing, so the list drifts away from the exact maximal set;
-// these bound that drift without pruning on every allocation.
+// Growth the free list may take past its last pruned size before pruning again. Releases push slots
+// back without coalescing, so the list drifts off the exact maximal set; these bound that drift.
 static constexpr size_t FREE_LIST_GROWTH_FACTOR = 2;
 static constexpr size_t FREE_LIST_MIN_SLACK = 32;
-// Cells per axis in the containment index a prune builds over its own keepers. Coarser means fewer
-// registrations per keeper, finer means fewer keepers to test per candidate.
+// Cells per axis in the prune's containment index: coarser registers fewer cells per keeper, finer
+// leaves fewer keepers to test per candidate.
 static constexpr int32_t PRUNE_GRID_RESOLUTION = 64;
 static constexpr size_t NO_GRID_ENTRY = std::numeric_limits<size_t>::max();
 static constexpr ucolor ATLAS_DUMP_QUAD_COLOR {255, 255, 0, 255};
@@ -125,12 +123,9 @@ auto TextureAtlasLayout::Allocate(isize32 size) -> unique_del_nptr<Allocation>
     auto allocation = AcquireAllocation();
     SplitFreeRectangles(_freeRectangles, placement->Rectangle);
 
-    // Prune only once the list has grown well past what the previous prune achieved, exactly as the
-    // rebuild below paces its own interim prunes. Measuring the threshold against the last pruned size
-    // is what makes it self-tuning, and the earlier form - a multiple of the live allocation count - was
-    // not: once a page's genuine maximal free set exceeded that count-derived threshold, every
-    // allocation ran a full prune that could not get the list back under it and therefore removed
-    // nothing at all.
+    // Threshold measured against what the previous prune achieved, which is what keeps it self-tuning.
+    // Against a multiple of the live allocation count it is not: a page whose maximal free set exceeds
+    // that threshold can never get back under it, so every allocation prunes and removes nothing.
     if (_freeRectangles.size() > _freeRectanglesAtLastPrune * FREE_LIST_GROWTH_FACTOR + FREE_LIST_MIN_SLACK) {
         PruneFreeRectangles(_freeRectangles);
         _freeRectanglesAtLastPrune = _freeRectangles.size();
@@ -362,13 +357,10 @@ void TextureAtlasLayout::PruneFreeRectangles(vector<irect32>& free_rectangles)
         return GetArea(left.size()) > GetArea(right.size());
     });
 
-    // A keeper can only contain a candidate if it also covers the candidate's top-left corner, so
-    // keepers are indexed by the coarse cells they span and a candidate is tested only against the
-    // keepers registered in its own corner cell. That is exact - no containment can hide from the corner
-    // cell - so the surviving set is identical to testing every candidate against every keeper, which on
-    // a crowded page is millions of comparisons inside a single allocation, i.e. a dropped frame rather
-    // than a steady cost. The index is a per-cell singly linked chain over two flat arrays, so
-    // registering a keeper stays O(cells it spans) with no per-cell allocation.
+    // Containment requires the keeper to cover the candidate's top-left corner, so testing only the
+    // keepers registered in that corner's cell is exact and leaves the surviving set unchanged, while
+    // all-against-all is quadratic in the list length - a dropped frame on a crowded page rather than a
+    // steady cost. The index is a per-cell chain over two flat arrays, so no cell allocates.
     int32_t cell_width = std::max(1, (_size.width + PRUNE_GRID_RESOLUTION - 1) / PRUNE_GRID_RESOLUTION);
     int32_t cell_height = std::max(1, (_size.height + PRUNE_GRID_RESOLUTION - 1) / PRUNE_GRID_RESOLUTION);
     size_t grid_columns = numeric_cast<size_t>((_size.width + cell_width - 1) / cell_width);
