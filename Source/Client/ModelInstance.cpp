@@ -2800,7 +2800,7 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
     float32_t dt = 0.0f;
 
     if (advance_animation) {
-        auto time = GetTime();
+        nanotime time = GetTime();
 
         // Full-resolution delta: truncating to whole milliseconds drops sub-millisecond frames, so on an uncapped
         // viewer running at a very high frame rate the animation never accumulates time and looks frozen until a
@@ -2947,12 +2947,12 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
     FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
     glm::decompose(binding->Owner->GetWorldMatrix(binding->JointIndex), scale, rot, pos, skew, perspective);
 
-    auto p = Convert3dTo2d(pos);
+    ipos32 p = Convert3dTo2d(pos);
     // Convert3dTo2d gives a sprite-space point measured from the bottom, so the origin's row from the bottom is
     // (frame_height - pivot.y). The bone offset is taken relative to the exact origin pivot, not a fixed fraction.
     int32_t frame_height = _frameSize.height / FRAME_SCALE;
-    auto x = p.x - _framePivot.x;
-    auto y = -(p.y - (frame_height - _framePivot.y));
+    int32_t x = p.x - _framePivot.x;
+    int32_t y = -(p.y - (frame_height - _framePivot.y));
 
     return ipos32 {x, y};
 }

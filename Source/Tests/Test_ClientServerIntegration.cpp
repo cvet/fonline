@@ -780,7 +780,7 @@ End
         vector<uint8_t> map_data;
         auto writer = DataWriter(map_data);
 
-        const vector<string> hashed_strings {string {critter_pid.as_str()}, string {item_pid.as_str()}};
+        vector<string> hashed_strings {string {critter_pid.as_str()}, string {item_pid.as_str()}};
         writer.Write<uint32_t>(numeric_cast<uint32_t>(hashed_strings.size()));
 
         for (const string& hashed_string : hashed_strings) {

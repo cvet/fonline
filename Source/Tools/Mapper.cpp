@@ -166,7 +166,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     // renderer (headless mapper, e.g. unit tests and batch map rendering): nothing draws those windows, and
     // feeding a stale/foreign cached ini into the headless ImGui context is a needless crash surface.
     if (!Settings->NullRenderer) {
-        auto imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
+        string imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
 
         if (!imgui_ini.empty()) {
             ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());

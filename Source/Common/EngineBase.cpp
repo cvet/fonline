@@ -809,7 +809,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
+    hstring prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
     auto holder_prop = holder->GetProperties()->GetRegistrar()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 

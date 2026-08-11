@@ -1913,7 +1913,11 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
     for (size_t i = 0; i < event_count; i++) {
         auto timer_func = server->FindFunc<void>(get_func("LocEntity::OnUnloadTimer"));
         REQUIRE(timer_func);
-        REQUIRE(server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {}) != 0);
+
+        // The consuming call stays out of REQUIRE: the macro re-expands its argument in the
+        // never-executed while clause, which reads as a second use of the moved-from function.
+        uint32_t event_id = server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {});
+        REQUIRE(event_id != 0);
     }
 
     size_t cancel_calls = 0;

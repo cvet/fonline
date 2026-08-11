@@ -1524,7 +1524,7 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
     string drawn_text;
 
     // Each panel mode shows a different content-window body, so the frames walk through them
-    const vector<int32_t> panel_modes {MapperEngine::INT_MODE_ITEM, MapperEngine::INT_MODE_TILE, MapperEngine::INT_MODE_CRIT, MapperEngine::INT_MODE_INCONT, MapperEngine::INT_MODE_FAST, MapperEngine::INT_MODE_IGNORE, MapperEngine::INT_MODE_MESS, MapperEngine::INT_MODE_LIST};
+    vector<int32_t> panel_modes {MapperEngine::INT_MODE_ITEM, MapperEngine::INT_MODE_TILE, MapperEngine::INT_MODE_CRIT, MapperEngine::INT_MODE_INCONT, MapperEngine::INT_MODE_FAST, MapperEngine::INT_MODE_IGNORE, MapperEngine::INT_MODE_MESS, MapperEngine::INT_MODE_LIST};
 
     // Collapsing headers opt out of the log auto-expansion, so their bodies only render once their stored
     // state is seeded open; these are the ones the map window carries
@@ -2600,7 +2600,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         REQUIRE(dense_map != nullptr);
         mapper->ShowMap(dense_map.as_ptr());
 
-        const vector<float32_t> zooms {1.0f, 2.0f, 0.5f, 1.0f};
+        vector<float32_t> zooms {1.0f, 2.0f, 0.5f, 1.0f};
 
         for (float32_t zoom : zooms) {
             REQUIRE_NOTHROW(mapper->ChangeZoom(zoom));
@@ -2630,7 +2630,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         ImGui::NewFrame();
 
         // The editor's hotkey tables are wide switch statements, so the whole common key range is walked
-        const vector<KeyCode> keys {
+        vector<KeyCode> keys {
             KeyCode::Escape,
             KeyCode::Delete,
             KeyCode::Tab,

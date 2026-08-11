@@ -145,7 +145,7 @@ namespace
         CHECK_THROWS_WITH(ctx.EnsureEntitySynced(target), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
         // Read before the test releases the contention itself, so this reflects only the watchdog.
-        const bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
+        bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
         ensure_finished.store(true, std::memory_order_release);
         release_state.store(true, std::memory_order_release);
         state_owner.join();
@@ -1677,7 +1677,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(ctx.ValidateAccess(cr_a));
     CHECK(ctx.ValidateAccess(cr_b));
     CHECK(IsEntityAccessValid(cr_b));
-    const auto retained_children = ctx.GetHeldEntities();
+    auto retained_children = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_children, cr_a_entity) != retained_children.end());
     CHECK(std::ranges::find(retained_children, cr_b_entity) != retained_children.end());
     ctx.Release();
@@ -1738,7 +1738,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
     // Read before the test releases the contention itself, so this reflects only the watchdog.
-    const bool rescued_by_watchdog = release_child.load(std::memory_order_acquire);
+    bool rescued_by_watchdog = release_child.load(std::memory_order_acquire);
     ensure_finished.store(true, std::memory_order_release);
     release_child.store(true, std::memory_order_release);
     child_owner.join();
@@ -1748,7 +1748,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // rather than being rescued by the watchdog letting go.
     CHECK_FALSE(rescued_by_watchdog);
     CHECK(ctx.ValidateAccess(map));
-    const auto retained_cover = ctx.GetHeldEntities();
+    auto retained_cover = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_cover, map_entity) != retained_cover.end());
     CHECK(std::ranges::find(retained_cover, cr_a_entity) == retained_cover.end());
     ctx.Release();
@@ -1763,7 +1763,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ExpectSustainedEnsureStateMutexContentionThrows(ctx, cr_a, target_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_target_state_mutex_contention, map_entity) != cover_after_target_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_target_state_mutex_contention, cr_a_entity) == cover_after_target_state_mutex_contention.end());
         ctx.Release();
@@ -1782,7 +1782,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_intermediate_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_intermediate_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_intermediate_state_mutex_contention, map_entity) != cover_after_intermediate_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_intermediate_state_mutex_contention, nested_item_entity) == cover_after_intermediate_state_mutex_contention.end());
         ctx.Release();
@@ -1803,13 +1803,13 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, second_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
-        const bool first_state_mutex_free = first_lock->TryLockStateMutex();
+        bool first_state_mutex_free = first_lock->TryLockStateMutex();
         REQUIRE(first_state_mutex_free);
         if (first_state_mutex_free) {
             first_lock->UnlockStateMutex();
         }
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_second_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_second_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, map_entity) != cover_after_second_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, nested_item_entity) == cover_after_second_state_mutex_contention.end());
         ctx.Release();
@@ -1827,7 +1827,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 1);
         CHECK(ctx.ValidateAccess(map));
         CHECK(ctx.ValidateAccess(cr_a));
-        const auto cover_after_transient_contention = ctx.GetHeldEntities();
+        auto cover_after_transient_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_transient_contention, map_entity) != cover_after_transient_contention.end());
         CHECK(std::ranges::find(cover_after_transient_contention, cr_a_entity) != cover_after_transient_contention.end());
         ctx.Release();
@@ -1896,7 +1896,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
 
     CHECK(ctx.ValidateAccess(map));
-    const auto retained_cover_after_partial_rollback = ctx.GetHeldEntities();
+    auto retained_cover_after_partial_rollback = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_cover_after_partial_rollback, map_entity) != retained_cover_after_partial_rollback.end());
     CHECK(std::ranges::find(retained_cover_after_partial_rollback, nested_item_entity) == retained_cover_after_partial_rollback.end());
     release_later.store(true, std::memory_order_release);

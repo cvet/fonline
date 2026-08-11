@@ -1908,11 +1908,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrInvokeEntryDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("SceneEntry") != string::npos);
         CHECK(usage_error.find("CallDirect") != string::npos);
@@ -1931,11 +1931,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrInvokeEntryReference", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(usage_error.empty());
     }
 

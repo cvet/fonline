@@ -128,7 +128,7 @@ TEST_CASE("MovingContext")
 
         auto progress = moving->EvaluateProgress();
         auto path_hexes = moving->EvaluatePathHexes(progress.Hex);
-        auto expected_hex = FindExpectedNearestHex(path_hexes, moving->GetEndHex(), TEST_FALLBACK_HEX);
+        mpos expected_hex = FindExpectedNearestHex(path_hexes, moving->GetEndHex(), TEST_FALLBACK_HEX);
 
         CHECK(moving->EvaluateNearestPathHex(progress.Hex, moving->GetEndHex(), TEST_FALLBACK_HEX) == expected_hex);
     }

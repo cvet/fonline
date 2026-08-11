@@ -199,8 +199,8 @@ auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>
         return strex("frame count {} exceeds the {} frame resource budget", frame_count, EFFEKSEER_MODEL_FRAME_COUNT_MAX).str();
     }
 
-    const size_t legacy_vertex_size = sizeof(Effekseer::Vector3D) * 4 + sizeof(Effekseer::Vector2D) + (version >= 1 ? sizeof(Effekseer::Color) : 0);
-    const size_t vertex_size = version >= 6 ? sizeof(Effekseer::Model::Vertex) : legacy_vertex_size;
+    size_t legacy_vertex_size = sizeof(Effekseer::Vector3D) * 4 + sizeof(Effekseer::Vector2D) + (version >= 1 ? sizeof(Effekseer::Color) : 0);
+    size_t vertex_size = version >= 6 ? sizeof(Effekseer::Model::Vertex) : legacy_vertex_size;
 
     for (int32_t frame = 0; frame < frame_count; frame++) {
         int32_t vertex_count = 0;

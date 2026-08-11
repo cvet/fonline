@@ -510,8 +510,8 @@ bool EntityLock::IsEnsureOpCompatible(bool is_exclusive) const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
-    const auto owner_thread = _ownerThread.load(std::memory_order_acquire);
+    auto this_thread = std::this_thread::get_id();
+    auto owner_thread = _ownerThread.load(std::memory_order_acquire);
 
     if (is_exclusive) {
         return owner_thread == this_thread || (owner_thread == std::thread::id {} && _sharedHolders.empty() && !HasForeignDescendantHolder(this_thread));
@@ -524,8 +524,8 @@ void EntityLock::CommitEnsureOp(bool is_exclusive) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto this_thread = std::this_thread::get_id();
-    const auto owner_thread = _ownerThread.load(std::memory_order_relaxed);
+    auto this_thread = std::this_thread::get_id();
+    auto owner_thread = _ownerThread.load(std::memory_order_relaxed);
 
     if (is_exclusive) {
         if (owner_thread == this_thread) {

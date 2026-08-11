@@ -1257,9 +1257,9 @@ TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effe
     // Face 0 is vertices 0,1,2 of the mesh and face 1 is 2,1,3, which pins both the winding and the vertex mapping.
     // The authored corners carry red channels 10/20/30/40, combined with the instance colour through Effekseer's own
     // colour multiply - a shift by 8 rather than a divide by 255, so even white scales by 255/256 and drops the low bit.
-    const array<uint8_t, mesh_vertices> expected_red {9, 19, 29, 29, 19, 39};
-    const array<float32_t, mesh_vertices> expected_u {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
-    const array<float32_t, mesh_vertices> expected_v {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+    array<uint8_t, mesh_vertices> expected_red {9, 19, 29, 29, 19, 39};
+    array<float32_t, mesh_vertices> expected_u {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
+    array<float32_t, mesh_vertices> expected_v {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 
     for (size_t corner = 0; corner < mesh_vertices; corner++) {
         CHECK(draw.Vertices[corner].Color.comp.r == expected_red[corner]);
@@ -1284,7 +1284,7 @@ TEST_CASE("Effekseer particle runtime carries the model node culling mode into t
 {
     // Effekseer chooses which faces to discard per node, and the renderer has to ask for that mode per draw rather than
     // relying on the effect's own state.
-    const array<pair<int32_t, CullModeType>, 3> cases {
+    array<pair<int32_t, CullModeType>, 3> cases {
         pair {0, CullModeType::Front},
         pair {1, CullModeType::Back},
         pair {2, CullModeType::None},
@@ -1713,7 +1713,7 @@ static auto CompileEffekseerTypeSweep(string_view location_values, string_view r
 
 TEST_CASE("Effekseer compiler writes every authored location type", "[particle][effekseer-compiler]")
 {
-    const vector<string> location_variants {
+    vector<string> location_variants {
         "<LocationValues><Type>0</Type><Fixed><Location><X>1</X><Y>2</Y><Z>3</Z></Location></Fixed></LocationValues>",
         "<LocationValues><Type>1</Type><PVA><Location><X><Center>1</Center><Max>2</Max><Min>0</Min></X></Location></PVA></LocationValues>",
         "<LocationValues><Type>2</Type><Easing><End><Y><Center>4</Center><Max>4</Max><Min>4</Min></Y></End></Easing></LocationValues>",

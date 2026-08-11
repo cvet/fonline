@@ -387,7 +387,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
         return false;
     }
 #else
-    const int32_t flags = ::fcntl(sock, F_GETFL, 0);
+    int32_t flags = ::fcntl(sock, F_GETFL, 0);
 
     if (flags < 0 || ::fcntl(sock, F_SETFL, flags | O_NONBLOCK) != 0) {
         CloseSocket(sock);

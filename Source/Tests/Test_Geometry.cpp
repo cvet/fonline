@@ -689,7 +689,7 @@ TEST_CASE("NormalizeHexOffset")
     {
         mpos hex = START_HEX;
         ipos16 hex_offset = offset_to_neighbour(START_HEX, neighbour_hex);
-        const ipos16 original_offset = hex_offset;
+        ipos16 original_offset = hex_offset;
 
         // This is the production defect: the rounding lands on a hex the critter could never walk
         // onto, and adopting it makes the server's move reconciliation fail for good.

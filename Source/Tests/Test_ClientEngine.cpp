@@ -2076,7 +2076,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
         function<void(ptr<ModelInstance>)> Apply {};
     };
 
-    const vector<SpriteBoundsStep> steps {
+    vector<SpriteBoundsStep> steps {
         {"rest pose", [](ptr<ModelInstance>) {}},
         {"scaled up", [](ptr<ModelInstance> model) { model->SetScale(1.7f, 1.7f, 1.7f); }},
         {"camera tilt", [](ptr<ModelInstance> model) { model->SetRotation(0.4f, 0.0f, 0.25f); }},
@@ -2474,7 +2474,7 @@ TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
         std::this_thread::sleep_for(std::chrono::milliseconds {120});
 
         // Walk the request surface: every command has its own handler and response shape
-        const vector<string> requests {
+        vector<string> requests {
             R"({"seq":1,"type":"request","command":"capabilities"})",
             R"({"seq":2,"type":"request","command":"setBreakpoints","arguments":{"source":{"path":"ClientEngineTest.fos"},"breakpoints":[{"line":10},{"line":20}]}})",
             R"({"seq":3,"type":"request","command":"stackTrace"})",

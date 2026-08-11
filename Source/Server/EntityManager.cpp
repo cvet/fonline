@@ -841,7 +841,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
         }
 
         const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
-        auto inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
+        hstring inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
 
         for (const auto& id : inner_entity_ids) {
             auto custom_entity = LoadCustomEntity(holder, inner_entity_type_name, id, is_error);
@@ -1080,9 +1080,9 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
     // cover; it is not a trusted fresh-entity publication boundary.
     ValidateEntityAccess(player);
 
-    const ident_t assigned_id = player->GetId();
+    ident_t assigned_id = player->GetId();
     FO_VERIFY_AND_THROW(!id || !assigned_id || assigned_id == id, "Player is already assigned a different id", assigned_id, id);
-    const ident_t requested_id = id ? id : assigned_id;
+    ident_t requested_id = id ? id : assigned_id;
     scoped_lock lock {_registryLock};
 
     if (requested_id) {
@@ -1406,7 +1406,7 @@ void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ident_t id = entity->GetId();
+    ident_t id = entity->GetId();
     FO_VERIFY_AND_THROW(!id || !_allEntities.contains(id), "Fresh entity is already published in the global entity registry", entity->GetTypeName(), id);
     _engine->RequireCurrentSyncContext()->EnsureFreshEntitySynced(entity);
 }
@@ -1670,7 +1670,7 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
             FO_VERIFY_AND_THROW(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0, "Custom entity id is already registered for this type while loading from storage", type_name, id);
         }
 
-        auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
+        hstring collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {

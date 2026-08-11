@@ -1224,7 +1224,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 #if FO_WINDOWS
     auto size = _lseeki64(_fd, 0, SEEK_END);
 #else
-    const auto size = lseek(_fd, 0, SEEK_END);
+    auto size = lseek(_fd, 0, SEEK_END);
 #endif
 
     if (size < 0) {
@@ -1254,7 +1254,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
         auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
         int32_t read_size = _read(_fd, read_pos.get(), chunk);
 #else
-        const auto read_size = read(_fd, read_pos.get(), remaining);
+        ssize_t read_size = read(_fd, read_pos.get(), remaining);
 #endif
 
         if (read_size <= 0) {
@@ -1400,7 +1400,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
         int32_t written_size = _write(_fd, write_pos.get(), chunk);
 #else
-        const auto written_size = write(_fd, write_pos.get(), remaining);
+        ssize_t written_size = write(_fd, write_pos.get(), remaining);
 #endif
 
         if (written_size <= 0) {

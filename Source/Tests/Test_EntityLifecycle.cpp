@@ -1361,7 +1361,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1378,7 +1378,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         REQUIRE(leader->GetGlobalMapGroup().size() == 2);
 
         uint64_t revision = 0;
-        const vector<ident_t> ids = leader->GetGlobalMapGroupIds(revision);
+        vector<ident_t> ids = leader->GetGlobalMapGroupIds(revision);
         CHECK(ids.size() == 2);
         CHECK(std::ranges::find(ids, leader->GetId()) != ids.end());
         CHECK(std::ranges::find(ids, member->GetId()) != ids.end());
@@ -1420,11 +1420,11 @@ TEST_CASE("IndependentRootCoverEnumeration")
         auto ctx = server->RequireCurrentSyncContext();
 
         // Bootstrap: with nothing but the critter itself covered, the enumeration still reports the group.
-        const small_vector<ptr<ServerEntity>, 1> leader_only_cover {leader};
+        small_vector<ptr<ServerEntity>, 1> leader_only_cover {leader};
         ctx->SyncEntities(leader_only_cover);
 
         uint64_t revision = 0;
-        const vector<ident_t> ids = leader->GetGlobalMapGroupIds(revision);
+        vector<ident_t> ids = leader->GetGlobalMapGroupIds(revision);
         REQUIRE(ids.size() == 2);
         REQUIRE(std::ranges::find(ids, member->GetId()) != ids.end());
 
@@ -1432,7 +1432,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         CHECK_THROWS_WITH(leader->Send_AddCritter(member), Catch::Matchers::ContainsSubstring("Entity access without sync"));
 
         // Covering exactly what the enumeration reported makes the same fan-out legal.
-        const small_vector<ptr<ServerEntity>, 2> group_cover {leader, member};
+        small_vector<ptr<ServerEntity>, 2> group_cover {leader, member};
         ctx->SyncEntities(group_cover);
         CHECK_NOTHROW(leader->Send_AddCritter(member));
 
@@ -1459,7 +1459,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
         // The critter to attach is chosen inside the login callback, so the travelling companion is an
         // independent root the caller could not pre-cover. Initial info must work with the attach pair alone.
-        const small_vector<ptr<ServerEntity>, 2> attach_cover {player, cr};
+        small_vector<ptr<ServerEntity>, 2> attach_cover {player, cr};
         ctx->SyncEntities(attach_cover);
 
         test_connection->Dispatch();
@@ -1473,7 +1473,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
         server->SwitchPlayerCritter(player, nullptr);
 
-        const small_vector<ptr<ServerEntity>, 3> group_cover {player, cr, group_member};
+        small_vector<ptr<ServerEntity>, 3> group_cover {player, cr, group_member};
         ctx->SyncEntities(group_cover);
         cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(group_member);
@@ -1492,7 +1492,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
         auto ctx = server->RequireCurrentSyncContext();
 
-        const small_vector<ptr<ServerEntity>, 2> attach_cover {player, cr};
+        small_vector<ptr<ServerEntity>, 2> attach_cover {player, cr};
         ctx->SyncEntities(attach_cover);
         server->SwitchPlayerCritter(player, cr);
         REQUIRE(player->GetControlledCritter() == cr.get());
@@ -1507,7 +1507,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 0);
 
         // Covering exactly what Critter.GetGlobalMapCritterIds reports delivers the travelling companion.
-        const small_vector<ptr<ServerEntity>, 3> group_cover {player, cr, group_member};
+        small_vector<ptr<ServerEntity>, 3> group_cover {player, cr, group_member};
         ctx->SyncEntities(group_cover);
         CHECK_NOTHROW(Server_Critter_SendGlobalMapGroupInfo(cr));
         test_connection->Dispatch();
@@ -1528,16 +1528,16 @@ TEST_CASE("IndependentRootCoverEnumeration")
         REQUIRE(static_cast<bool>(map));
 
         auto spectator = MakeSpectatorPlayer(server);
-        const small_vector<ptr<ServerEntity>, 3> full_cover {loc, map, spectator.as_ptr()};
+        small_vector<ptr<ServerEntity>, 3> full_cover {loc, map, spectator.as_ptr()};
         ctx->SyncEntities(full_cover);
         spectator->SetViewMap(map, mpos {10, 10});
 
-        const vector<refcount_ptr<Player>> spectators = map->GetSpectatorPlayersForSend();
+        vector<refcount_ptr<Player>> spectators = map->GetSpectatorPlayersForSend();
         REQUIRE(spectators.size() == 1);
         CHECK(spectators.front() == spectator);
 
         // The spectator is not a map descendant, so the map tree cover alone cannot eject it.
-        const small_vector<ptr<ServerEntity>, 2> tree_only_cover {loc, map};
+        small_vector<ptr<ServerEntity>, 2> tree_only_cover {loc, map};
         ctx->SyncEntities(tree_only_cover);
         CHECK_THROWS_WITH(server->MapMngr.DestroyLocation(loc), Catch::Matchers::ContainsSubstring("Entity access without sync"));
 
@@ -1550,7 +1550,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         auto covered_map = covered_loc->GetMapByIndex(0);
         REQUIRE(static_cast<bool>(covered_map));
 
-        const small_vector<ptr<ServerEntity>, 3> covered_cover {covered_loc, covered_map, spectator.as_ptr()};
+        small_vector<ptr<ServerEntity>, 3> covered_cover {covered_loc, covered_map, spectator.as_ptr()};
         ctx->SyncEntities(covered_cover);
         spectator->SetViewMap(covered_map, mpos {10, 10});
         REQUIRE(covered_map->GetSpectatorPlayersForSend().size() == 1);
@@ -1796,7 +1796,7 @@ TEST_CASE("PlayerRegistrationCppApi")
     SECTION("RegisterPlayerRejectsDuplicateIdBeforeMutatingCandidate")
     {
         auto registered_player = CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref();
-        const ident_t registered_id = registered_player->GetId();
+        ident_t registered_id = registered_player->GetId();
         auto net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
         auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
         auto candidate = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));

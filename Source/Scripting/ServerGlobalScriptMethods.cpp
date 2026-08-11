@@ -1618,7 +1618,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
     return std::bit_cast<int32_t>(retval);
 
 #elif !FO_WINDOWS && !FO_WEB
-    const string command_str = string(command);
+    string command_str = string(command);
     auto command_cstr = make_ptr(command_str.c_str());
     auto in = make_nptr(popen(command_cstr.get(), "r"));
 

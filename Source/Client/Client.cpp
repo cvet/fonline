@@ -1986,7 +1986,7 @@ auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ide
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
+    hstring type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     FO_VERIFY_AND_THROW(IsValidEntityType(type_name), "Invalid entity type name");
 
