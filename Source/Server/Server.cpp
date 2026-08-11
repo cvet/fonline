@@ -1142,7 +1142,7 @@ void ServerEngine::Shutdown()
     // From here teardown is single-threaded (pool and main worker are gone) and every entity lock is
     // free: take every registered entity and every not-logged-in player into the shutdown context explicitly
     // so the remaining stages (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player
-    // disconnects) run covered. The scope-exit Release() drains the held locks.
+    // disconnects) run covered. The scope-exit Release() drains the held locks
     WriteLog("Shutdown stage: lock whole world (count={})", EntityMngr.GetEntitiesCount());
     SyncWholeWorld(shutdown_ctx.GetContext(), not_logged_in_players);
 
@@ -3067,7 +3067,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
     if (destroy_not_logged_in_after_login) {
         // Keep the displaced player alive until scheduling succeeds so scope_fail can still swap
-        // the connection back if OnPlayerLoggedIn throws.
+        // the connection back if OnPlayerLoggedIn throws
         not_logged_in_player->MarkAsDestroyed();
     }
 

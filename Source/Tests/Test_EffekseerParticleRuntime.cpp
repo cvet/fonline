@@ -1562,7 +1562,7 @@ TEST_CASE("Effekseer capability census", "[.census]")
 // The compiler writes a distinct binary section per authored value type, so these cases walk the type
 // switches directly instead of going through the runtime: one node per type, compiled as a whole project.
 // Same skeleton as the location/rotation/scale sweep, but the whole node body is caller-supplied so a case
-// can pick the renderer type and attach the drawing, colour, sound and kill-rule sections it needs.
+// can pick the renderer type and attach the drawing, colour, sound and kill-rule sections it needs
 static auto MakeEffekseerNodeBodyProject(string_view node_body) -> string
 {
     return strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
@@ -1756,7 +1756,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     SECTION("RingRendererShapesAndColours")
     {
         // Renderer type 4 is the ring. Its shape, per-ring locations and per-ring colours are all selected by
-        // plain integers on the Ring node, with the payload in sibling <Name>_Fixed / _Random / _Easing nodes.
+        // plain integers on the Ring node, with the payload in sibling <Name>_Fixed / _Random / _Easing nodes
         for (int32_t shape_type : {0, 1, 2, 3}) {
             string body = strex(R"(        <DrawingValues>
           <Type>4</Type>
@@ -1795,7 +1795,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     SECTION("RibbonAndTrackRenderers")
     {
         // Renderer types 3 and 6 are the ribbon and the track. Their colour selectors are plain integers on
-        // the renderer node, not nested colour blocks, so the defaults are enough to run both writers.
+        // the renderer node, not nested colour blocks, so the defaults are enough to run both writers
         for (int32_t renderer_type : {3, 6}) {
             string body = strex(R"(        <DrawingValues>
           <Type>{}</Type>

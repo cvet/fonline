@@ -401,7 +401,7 @@ void MapView::LoadStaticData()
                 // Roof tiles sit on a MapTileStep-spaced lattice whose origin parity is whatever the map
                 // author placed it on; snapping the start to even skipped every roof authored on an
                 // odd-parity lattice (it never received a RoofNum, so it never hid). Starting from the
-                // actual hex and stepping by MapTileStep covers that roof's own lattice regardless of parity.
+                // actual hex and stepping by MapTileStep covers that roof's own lattice regardless of parity
                 mark_roof_num(ipos32 {hx, hy}, roof_num);
                 roof_num++;
             }

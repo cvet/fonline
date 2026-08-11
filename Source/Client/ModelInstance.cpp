@@ -1058,14 +1058,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     mat44 identity {1.0f};
     // The model matrix is the identity here, so the clip matrix is the frame projection itself. Combining once
-    // keeps the per-vertex sweep below to a single matrix-vector product each.
+    // keeps the per-vertex sweep below to a single matrix-vector product each
     mat44 frame_clip_matrix = _frameProj * identity;
     float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
 
     // Every clip matrix here is affine - the frame projection is orthographic and each facing delta is a rotation
     // conjugated by a rigid transform - so the perspective divide is a division by one. Proving that once per call
     // lets each projection below drop three divisions and the depth component, which no consumer here reads. A
-    // non-affine matrix would be an engine defect rather than bad content, hence a strong assert.
+    // non-affine matrix would be an engine defect rather than bad content, hence a strong assert
     auto is_affine_clip_matrix = [](const mat44& matrix) noexcept { //
         return matrix[0][3] == 0.0f && matrix[1][3] == 0.0f && matrix[2][3] == 0.0f && matrix[3][3] == 1.0f;
     };
@@ -1073,7 +1073,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t viewport_offset_y = numeric_cast<float32_t>(viewport[1]);
     float32_t viewport_width = numeric_cast<float32_t>(viewport[2]);
     float32_t viewport_height = numeric_cast<float32_t>(viewport[3]);
-    // Sums in the same order as the general matrix-vector product it replaces, so the result is bit-identical.
+    // Sums in the same order as the general matrix-vector product it replaces, so the result is bit-identical
     auto project_affine = [&](vec3 obj_pos, const mat44& clip_matrix) noexcept -> fpos32 {
         float32_t clip_x = (clip_matrix[0][0] * obj_pos.x + clip_matrix[1][0] * obj_pos.y) + (clip_matrix[2][0] * obj_pos.z + clip_matrix[3][0]);
         float32_t clip_y = (clip_matrix[0][1] * obj_pos.x + clip_matrix[1][1] * obj_pos.y) + (clip_matrix[2][1] * obj_pos.z + clip_matrix[3][1]);
@@ -1135,7 +1135,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     };
 
     // The facing-0 projection of the world point, captured before the shadow projection below overwrites
-    // last_projected_point, so the all-facings sweep can reuse it.
+    // last_projected_point, so the all-facings sweep can reuse it
     fpos32 world_point_projection {};
     auto include_world_point = [&](vec3 world_pos) -> bool {
         if (!include_projected_point(world_pos, 0.0f)) {
@@ -1175,7 +1175,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     mat44 facing_rotation_90 = facing_delta_matrix(90.0f);
     mat44 facing_rotation_180 = facing_delta_matrix(180.0f);
     // Matrix product is associative, so Proj*(R*v) == (Proj*R)*v: folding each facing rotation into the clip
-    // matrix once per call turns every sample into one matrix-vector product instead of two.
+    // matrix once per call turns every sample into one matrix-vector product instead of two
     mat44 clip_matrix_facing_90 = frame_clip_matrix * facing_rotation_90;
     mat44 clip_matrix_facing_180 = frame_clip_matrix * facing_rotation_180;
 
@@ -1191,7 +1191,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         float64_t sine = numeric_cast<float64_t>(value_90) - center;
         // Plain sqrt rather than std::hypot: both operands are half-differences of sprite-pixel coordinates,
         // so their squares stay near 1e8 against a float64 range of ~1e308. hypot's overflow-safe scaling
-        // buys nothing at that magnitude and costs several times more, twice per vertex.
+        // buys nothing at that magnitude and costs several times more, twice per vertex
         float64_t radius = std::sqrt(cosine * cosine + sine * sine);
         return {numeric_cast<float32_t>(center - radius), numeric_cast<float32_t>(center + radius)};
     };
@@ -1201,7 +1201,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t all_facings_max_x {};
     float32_t all_facings_max_y {};
     // Takes the facing-0 projection from the caller: include_world_point already projected this exact point
-    // through the same clip matrix, so recomputing it doubled one of the three per-vertex projections.
+    // through the same clip matrix, so recomputing it doubled one of the three per-vertex projections
     auto include_mesh_all_facings = [&](vec3 world_pos, fpos32 projected_0, float32_t padding) {
         fpos32 projected_90 = project_affine(world_pos, clip_matrix_facing_90);
         fpos32 projected_180 = project_affine(world_pos, clip_matrix_facing_180);
@@ -1262,7 +1262,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
             // Reads only what generation prepared and proved, so no index bound check, float-to-index rounding or
             // bone-range check per influence: SpriteBoundsValid above stands for all three. Finiteness of the posed
-            // point is still checked - that depends on the runtime skinning matrices, which generation cannot see.
+            // point is still checked - that depends on the runtime skinning matrices, which generation cannot see
             for (const SpriteSweepVertex& sweep_vertex : combined_mesh->SpriteSweepVertices) {
                 glm::vec4 local_pos {sweep_vertex.Position, 1.0f};
                 glm::vec4 transformed_pos {};
@@ -1857,7 +1857,7 @@ void ModelInstance::GenerateCombinedMeshes()
         // seams, and those skin to the same world point and project identically. The key includes the blend data
         // because two vertices sharing a position but not their weights move apart once posed.
         // Flat float key rather than a struct: the engine's unordered_set alias fixes the comparator to
-        // std::equal_to<>, and an array already compares elementwise.
+        // std::equal_to<>, and an array already compares elementwise
         constexpr size_t SPRITE_VERTEX_KEY_POSITION_SIZE = 3;
         using SpriteVertexKey = array<float32_t, SPRITE_VERTEX_KEY_POSITION_SIZE + 2 * MODEL_BONES_PER_VERTEX>;
         auto key_hash = [](const SpriteVertexKey& key) noexcept -> size_t {
@@ -1885,7 +1885,7 @@ void ModelInstance::GenerateCombinedMeshes()
             }
 
             // Same validation as before, but its result is kept rather than thrown away: positive influences land
-            // in slot order, so the per-frame sweep accumulates in exactly the order this loop accepts them.
+            // in slot order, so the per-frame sweep accumulates in exactly the order this loop accepts them
             SpriteSweepVertex sweep_vertex {};
             sweep_vertex.Position = vertex.Position;
             float32_t total_weight = 0.0f;
@@ -1929,7 +1929,7 @@ void ModelInstance::GenerateCombinedMeshes()
                 break;
             }
 
-            // Collected after validation, so a prepared vertex is only ever stored once its blend data is proved.
+            // Collected after validation, so a prepared vertex is only ever stored once its blend data is proved
             if (!included_vertices[vertex_index]) {
                 included_vertices[vertex_index] = true;
 
@@ -2690,7 +2690,7 @@ auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const 
 
 // Projects with an already-combined clip matrix. Callers projecting many points through the same pair -
 // the bounds sweep runs three per mesh vertex - would otherwise redo the 4x4 product per point.
-// Combining once is exact, so results match the two-matrix overload.
+// Combining once is exact, so results match the two-matrix overload
 auto ModelInstance::ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();

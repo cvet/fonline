@@ -407,7 +407,7 @@ static auto RunAtlasProductionChurn(size_t churn_allocations) -> size_t
 // small fixture, 55 s of churn here instead of 140 ms.
 //
 // The bound separates regimes rather than tuning: every sane setting of the two constants lands two
-// orders of magnitude below it, so read a failure as "the trigger stopped making progress".
+// orders of magnitude below it, so read a failure as "the trigger stopped making progress"
 TEST_CASE("TextureAtlasLayoutPruningStaysRareUnderProductionChurn", "[texture-atlas]")
 {
     constexpr size_t churn_allocations = 4000;
@@ -427,7 +427,7 @@ TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
 
     // Churn must not cost a page. Release() hands a slot back without coalescing, so placements get
     // chosen from a list that has drifted off the exact maximal set - which did cost a seventh page
-    // while the prune trigger was keyed to the live allocation count instead of the last pruned size.
+    // while the prune trigger was keyed to the live allocation count instead of the last pruned size
     size_t churned_pages = RunAtlasCorpus(corpus, true);
     CAPTURE(churned_pages);
     CHECK(churned_pages <= 6);
@@ -436,7 +436,7 @@ TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
 // Releasing without coalescing drifts the free list off the exact maximal set as a session runs, and
 // that drift must be self-limiting: DefragmentFreeRectangles() rebuilds the exact set on a placement
 // miss, so fragmentation can never permanently consume space or force extra pages. Sustained churn far
-// past where a leak would show, pinning both halves - bounded page growth and full space recovery.
+// past where a leak would show, pinning both halves - bounded page growth and full space recovery
 TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
 {
     constexpr isize32 atlas_size = {2048, 2048};
@@ -457,7 +457,7 @@ TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
     };
 
     // Fill to the working set, then churn: release a slot and allocate a differently sized replacement,
-    // which is the pattern that fragments the free list without changing the live count.
+    // which is the pattern that fragments the free list without changing the live count
     while (live.size() < live_target) {
         auto allocation = layout->Allocate(next_size());
 
@@ -488,7 +488,7 @@ TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
     }
 
     // A single page absorbed the whole run: fragmentation never made the atlas claim to be full, which
-    // is what keeps same-type art on one page and therefore one draw call.
+    // is what keeps same-type art on one page and therefore one draw call
     CAPTURE(rejected);
     CHECK(rejected == 0);
 
@@ -505,7 +505,7 @@ TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
     CHECK(live_after_churn == live_after_fill);
 
     // Releasing everything must return the atlas to pristine: a full-page allocation has to succeed,
-    // which only holds if the freed slots were genuinely reclaimed and coalesced rather than lost.
+    // which only holds if the freed slots were genuinely reclaimed and coalesced rather than lost
     live.clear();
 
     auto whole_page = layout->Allocate(atlas_size);
@@ -527,7 +527,7 @@ TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
     };
 
     // Enough churn to cross the prune threshold several times, so the sample includes both the cheap
-    // allocations and the periodic prune they pay for.
+    // allocations and the periodic prune they pay for
     BENCHMARK("Sustained churn at a production working set")
     {
         return RunAtlasProductionChurn(4000);

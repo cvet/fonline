@@ -26,7 +26,7 @@ endif()
 message(STATUS "Run log written to ${FO_RUN_LOG}")
 
 # The log file stays on the machine that ran the command, so a failure has to carry its own output:
-# on CI the exit code alone says nothing about which test or assertion actually failed.
+# on CI the exit code alone says nothing about which test or assertion actually failed
 if(NOT run_result EQUAL 0)
 	message("${run_output}")
 

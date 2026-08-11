@@ -106,7 +106,7 @@ namespace MapperMergeTest
     }
 
     // The inspector renders one row per index this event hands back, so with no subscriber it draws an
-    // empty panel. Listing the first properties of the entity registrator is enough to exercise the rows.
+    // empty panel. Listing the first properties of the entity registrator is enough to exercise the rows
     [[Event]]
     void OnInspectorProperties(Entity entity, int[]& properties)
     {
@@ -214,7 +214,7 @@ namespace MapperMergeTest
 
         // The sandboxed save rejects an empty name, path separators and traversal before touching anything.
         // The two well-formed saves are rejected too, because this fixture serves maps from memory and has no
-        // maps root on disk to write into - which is itself the check that the root is resolved, not assumed.
+        // maps root on disk to write into - which is itself the check that the root is resolved, not assumed
         int saveRejections = 0;
         try { Game.SaveMapToPath(map, "Generated", ""); } catch { saveRejections++; }
         try { Game.SaveMapToPath(map, "Generated", "with/separator"); } catch { saveRejections++; }
@@ -222,7 +222,7 @@ namespace MapperMergeTest
         if (saveRejections != 3) return -5;
 
         // Only the sandboxed writer is driven here. Game.SaveMap resolves against the maps root, which in a
-        // memory-only fixture lands in the working directory and would litter the repository.
+        // memory-only fixture lands in the working directory and would litter the repository
         int writeRejections = 0;
         try { Game.SaveMapToPath(map, "Generated", "MapperCoverageSaved"); } catch { writeRejections++; }
         if (writeRejections == 0) return -6;
@@ -765,7 +765,7 @@ R"(        cr.GetBodyAngle();
     )PARTICLE";
 
     // Bakes the test particle plus the effect family and texture the SPARK runtime resolves, so a fixture can
-    // serve real particle resources without a build step.
+    // serve real particle resources without a build step
     static auto MakeBakedParticleResources(string_view asset_path, string_view asset_text, string_view effect_text, string_view texture_name) -> vector<pair<string, vector<uint8_t>>>
     {
         BakerTests::TestRig particle_rig;
@@ -1575,7 +1575,7 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
 
     // The inspector draws its editor widgets only for the line that is currently being edited, so every
     // property type's editor - text, bool, array, struct fields - is unreachable until each line in turn
-    // becomes the edit target. Walking the lines is what covers that tree.
+    // becomes the edit target. Walking the lines is what covers that tree
     REQUIRE_FALSE(mapper->ShowProps.empty());
 
     for (size_t prop_index = 0; prop_index < mapper->ShowProps.size(); prop_index++) {
@@ -1614,7 +1614,7 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
 {
     // Select-all walks the placed items once and admits each by its own kind, so a map of plain items only
     // ever reaches one arm of that test. This map carries an item, a scenery piece, a wall, a floor tile,
-    // a roof tile and a critter, and the layers are switched off one at a time.
+    // a roof tile and a critter, and the layers are switched off one at a time
     auto settings = MakeMapperTestSettings();
     auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
@@ -1695,7 +1695,7 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
     {
         // Dropping an item out of the selection re-merges it into its multihex mesh, and for the AnyUnique
         // strategy that goes through the per-step incremental driver rather than the whole-map coalescer -
-        // a path no other test reaches, because every other fixture item is SameSibling or plain.
+        // a path no other test reaches, because every other fixture item is SameSibling or plain
         ptr<MapView> selection_map = mapper->GetCurMap().as_ptr();
         hstring unique_pid = mapper->Hashes.ToHashedString(TILE_U);
 
@@ -1753,7 +1753,7 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
 {
     // The panels draw their controls in every headless frame but nothing is ever pressed, so the code
     // behind each button stays unreachable. Saving writes real files, so the fixture keeps a private
-    // Maps root the same way the save test does.
+    // Maps root the same way the save test does
     auto maps_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_controls_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(maps_dir, remove_error);
@@ -2682,7 +2682,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         auto restore_fullscreen = scope_exit([saved_fullscreen]() noexcept { safe_call([saved_fullscreen] { (void)GetApp()->MainWindow.ToggleFullscreen(saved_fullscreen); }); });
 
         // With an entity selected and the inspector up, F9, Delete and Escape take their other branches.
-        // This runs before the sweep below, which toggles the layer visibility a selection depends on.
+        // This runs before the sweep below, which toggles the layer visibility a selection depends on
         mapper->SelectAll();
         REQUIRE_FALSE(mapper->SelectedEntities.empty());
         mapper->InspectorVisible = true;
@@ -2698,7 +2698,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         // The shift and ctrl tables both early-out on GetApp()->Input.IsShiftDown()/IsCtrlDown(), which the
         // real InputSystem only ever sets from an SDL modifier state. A pushed or simulated key event does
         // not update it, so their bodies stay unreachable from a test - see the plan note on simulated
-        // modifier state.
+        // modifier state
         for (KeyCode shift_key : {KeyCode::F7, KeyCode::F11, KeyCode::C0, KeyCode::Numpad0, KeyCode::Tab}) {
             REQUIRE_NOTHROW(mapper->HandleShiftMapperHotkeys(shift_key, false));
         }
@@ -2733,12 +2733,12 @@ TEST_CASE("MapViewLightingAndViewportOperations")
     mapper->InitIface();
 
     // A light-emitting item drives the light fan machinery: tracing, marking the fan ends and cleaning it up
-    // on every rebuild. Without a light source those paths never run, whatever else the map contains.
+    // on every rebuild. Without a light source those paths never run, whatever else the map contains
     string light_props = "LightSource = true\nLightIntensity = 50\nLightDistance = 6\nLightFlags = 0\nLightColor = 0xFFFFFFFF";
     string body = MakeItemBlock(10, TILE_A, 8, 8, light_props) + MakeItemBlock(11, TILE_B, 12, 12, light_props) + MakeItemBlock(12, TILE_A, 5, 5);
 
     // A map critter exercises the critter map view alongside the item paths. Its light properties are
-    // client-scoped, so they cannot be authored in the map text and are switched on at runtime below.
+    // client-scoped, so they cannot be authored in the map text and are switched on at runtime below
     body += MakeCritterBlock(20, CRITTER_A, 6, 6);
     body += MakeCritterBlock(21, CRITTER_A, 10, 10);
 
@@ -2902,7 +2902,7 @@ TEST_CASE("MapViewLightingAndViewportOperations")
 TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 {
     // Saving resolves the on-disk Maps root from an existing map container, so the fixture needs a real
-    // directory with a reference .fomap in it - a memory-only resource set can never reach this path.
+    // directory with a reference .fomap in it - a memory-only resource set can never reach this path
     auto maps_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_save_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(maps_dir, remove_error);
@@ -2988,7 +2988,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 
         // LoadMapFromText hands back a borrow, and the engine's only owning reference lives in LoadedMaps,
         // so unloading destroys the view outright. Hold an own reference across the unload - otherwise the
-        // rejection below reads freed memory instead of exercising the destroyed-map guard.
+        // rejection below reads freed memory instead of exercising the destroyed-map guard
         refcount_ptr<MapView> unloaded = refcount_ptr<MapView>::from_add_ref(other.as_ptr().get());
 
         mapper->UnloadMap(other.as_ptr());

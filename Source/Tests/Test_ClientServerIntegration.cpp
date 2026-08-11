@@ -90,7 +90,7 @@ namespace ClientServerIntegrationServer
 
         // Entering a real map is what makes the client run the load-map protocol instead of staying global
         // Each session gets its own location. Reusing one across logins would need the handler to acquire
-        // explicit cover for the already-existing location and map, which the login context does not carry.
+        // explicit cover for the already-existing location and map, which the login context does not carry
         hstring[] mapPids = {"UnitTestSharedMap".hstr()};
         Location loc = Game.CreateLocation("UnitTestSharedLocation".hstr(), mapPids);
         Map map = loc.GetMapByIndex(0);
@@ -192,7 +192,7 @@ namespace ClientServerIntegrationServer
         else if (step == 4) {
             // Repeated property writes on the observed critter keep the synchronized-property path busy.
             // Moving it is not reachable from here: TransferToHex on a critter the caller does not control
-            // reaches past what an inbound remote call can cover - see the sync-contract note in the plan.
+            // reaches past what an inbound remote call can cover - see the sync-contract note in the plan
             if (crMapCover !is null && SpawnedNpcId.value != 0) {
                 Map crMap = crMapCover;
                 Critter? npcHandle = crMap.GetCritter(SpawnedNpcId);
@@ -544,7 +544,7 @@ namespace ClientServerIntegrationClient
 
         // Fog shapes only build outside mapper mode, so a real session is the only place the fog
         // preparation and its per-slot draw are reachable at all. One layer follows the chosen critter,
-        // one is pinned to a hex, and one is a traced overlay - three different shape inputs.
+        // one is pinned to a hex, and one is a traced overlay - three different shape inputs
         FogLayer following = CurMap.AddFog(Chosen, DrawOrderType::Last);
         following.Radius = 5;
         following.Distance = 7;
@@ -742,7 +742,7 @@ End
     }
 
     // The server static map blob carries three counts (hashes, items, critters); the client one stops after
-    // the hash table and the static items, so the two sides get differently sized empty blobs.
+    // the hash table and the static items, so the two sides get differently sized empty blobs
     static auto MakeEmptyServerMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
@@ -855,7 +855,7 @@ End
     static auto MakeServerTestResources() -> FileSystem
     {
         // The login handshake is a remote call, so both sides declare it: inbound on the server, outbound on
-        // the client. The subsystem hint is the owning script file, whose stem becomes the handler namespace.
+        // the client. The subsystem hint is the owning script file, whose stem becomes the handler namespace
         auto metadata_blob = BakerTests::MakeMetadataBlob({
             {"Property",
                 {

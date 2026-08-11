@@ -164,7 +164,7 @@ private:
 
     // A sweep vertex prepared once per mesh generation. GenerateCombinedMeshes already proves every blend index
     // and weight and records that in SpriteBoundsValid, so the per-frame sweep must not re-derive it. Keeping only
-    // the positive influences beside the position also turns a scattered read of Vertex3D into a sequential one.
+    // the positive influences beside the position also turns a scattered read of Vertex3D into a sequential one
     struct SpriteSweepVertex
     {
         vec3 Position {};

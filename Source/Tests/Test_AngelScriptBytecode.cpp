@@ -731,7 +731,7 @@ class Resource
     ~Resource() { if (Id != 0) ReleaseResource(Id); }
 }
 
-// Nullable assignment: must not throw.
+// Nullable assignment: must not throw
 void AssignNullToNullable()
 {
     Resource? optional = Resource();
@@ -739,7 +739,7 @@ void AssignNullToNullable()
     ObserveResource(optional == null ? 1 : 0);
 }
 
-// Non-nullable assignment to null: must throw at runtime.
+// Non-nullable assignment to null: must throw at runtime
 void AssignNullToNonNullable()
 {
     Resource required = Resource();
@@ -1951,19 +1951,19 @@ Resource? GetMaybeResource(bool produce)
     return null;
 }
 
-// Guard 1: `if (x != null) { x.GetId(); }` narrows in then-branch.
+// Guard 1: `if (x != null) { x.GetId(); }` narrows in then-branch
 void GuardedReadInThenBranch()
 {
     Resource? optional = GetMaybeResource(true);
     if (optional != null) {
         // Inside this block `optional` is statically `Resource` (non-nullable).
-        // Calling a method must compile without an Assert / explicit cast.
+        // Calling a method must compile without an Assert / explicit cast
         Resource confirmed = optional;
         ObserveResource(confirmed.GetId());
     }
 }
 
-// Guard 2: `if (x == null) return;` narrows for the rest of the function body.
+// Guard 2: `if (x == null) return;` narrows for the rest of the function body
 void GuardedReadAfterEarlyReturn()
 {
     Resource? optional = GetMaybeResource(true);
@@ -1971,7 +1971,7 @@ void GuardedReadAfterEarlyReturn()
         ObserveResource(-1);
         return;
     }
-    // After the if-with-early-return, `optional` is non-null.
+    // After the if-with-early-return, `optional` is non-null
     Resource confirmed = optional;
     ObserveResource(confirmed.GetId());
 }
@@ -2031,7 +2031,7 @@ class Resource
 
 Resource? Maybe(bool produce) { return produce ? Resource() : null; }
 
-// 1) Compound && narrows every named atom in the then-branch.
+// 1) Compound && narrows every named atom in the then-branch
 void NarrowsCompoundAnd()
 {
     Resource? a = Maybe(true);
@@ -2043,7 +2043,7 @@ void NarrowsCompoundAnd()
     }
 }
 
-// 2) Compound || with early-return narrows every atom after the if.
+// 2) Compound || with early-return narrows every atom after the if
 void NarrowsCompoundOrAfterReturn()
 {
     Resource? a = Maybe(true);
@@ -2114,7 +2114,7 @@ void NarrowsCompoundOrAfterReturn()
                 Resource? g = GetMaybe();
                 if (g != null) {
                     Resource a = g;            // OK â€" narrowed.
-                    g = GetMaybe();            // Reassign: drops narrowing.
+                    g = GetMaybe();            // Reassign: drops narrowing
                     Resource b = g;            // Must fail â€" g is `Resource?` again.
                 }
             }
@@ -2141,9 +2141,9 @@ void NarrowsCompoundOrAfterReturn()
                 {
                     Resource? g = GetMaybe();
                     if (g != null) {
-                        Resource a = g;        // OK - narrowed.
-                        g = null;              // Un-narrowing write: legal.
-                        Resource b = g;        // Must fail - g is `Resource?` again.
+                        Resource a = g;        // OK - narrowed
+                        g = null;              // Un-narrowing write: legal
+                        Resource b = g;        // Must fail - g is `Resource?` again
                     }
                 }
             )",
@@ -2185,7 +2185,7 @@ class Resource
     ~Resource() { if (Id != 0) ReleaseResource(Id); }
 }
 
-// Local flavor: simple guard.
+// Local flavor: simple guard
 void NullAssignToNarrowedLocal()
 {
     Resource? slot = Resource();
@@ -2196,7 +2196,7 @@ void NullAssignToNarrowedLocal()
 }
 
 // Local flavor: compound `&&` guard with a member read - the deferred-attack
-// "target died during hit delay" shape that hit this defect in production.
+// "target died during hit delay" shape that hit this defect in production
 void NullAssignToCompoundNarrowedLocal()
 {
     Resource? slot = Resource();
@@ -2206,7 +2206,7 @@ void NullAssignToCompoundNarrowedLocal()
     ObserveResource(slot == null ? 1 : 0);
 }
 
-// Ref-parameter flavor: the callee clears the caller's slot through `&`.
+// Ref-parameter flavor: the callee clears the caller's slot through `&`
 void ClearSlot(Resource? & slot)
 {
     if (slot != null) {
@@ -2309,7 +2309,7 @@ void NullAssignToNarrowedRefParam()
         static constexpr string_view IdentityScript = R"(
 class Node { int Tag; Node(int t) { Tag = t; } }
 
-// Same handle assigned both sides â€" must compare equal.
+// Same handle assigned both sides â€" must compare equal
 void SameHandle()
 {
     Node n = Node(7);
@@ -2383,8 +2383,8 @@ class Tagged
 void TagsEqual()
 {
     Tagged a = Tagged(7);
-    Tagged b = Tagged(7);   // Distinct handles, same tag.
-    // opEquals matches â€" `==` should be true.
+    Tagged b = Tagged(7);   // Distinct handles, same tag
+    // opEquals matches â€" `==` should be true
     ObserveResource(a == b ? 11 : 0);
     ObserveResource(a != b ? 0 : 12);
 }
@@ -2446,10 +2446,10 @@ class Resource
     ~Resource() { if (Id != 0) ReleaseResource(Id); }
 }
 
-// `?` on the return type lets the body return null.
+// `?` on the return type lets the body return null
 Resource? MakeNull() { return null; }
 
-// `?` on a parameter type lets the caller pass null cleanly.
+// `?` on a parameter type lets the caller pass null cleanly
 void RecordsNull(Resource? r) { ObserveResource(r == null ? 24 : 0); }
 
 void NullableReturn()
@@ -2561,10 +2561,10 @@ void Run()
 {
     Holder h = Holder();
     ObserveResource(h.Slot == null ? 31 : -1);
-    // Assigning a fresh Resource flips the slot to non-null.
+    // Assigning a fresh Resource flips the slot to non-null
     h.Slot = Resource();
     ObserveResource(h.Slot != null ? 32 : -2);
-    // Assigning null is allowed because the field is nullable.
+    // Assigning null is allowed because the field is nullable
     h.Slot = null;
     ObserveResource(h.Slot == null ? 33 : -3);
 }
@@ -2619,14 +2619,14 @@ class Resource
 
 // Callee declares non-nullable param then immediately copies it to
 // another non-nullable local: the local-assign slot is what
-// asBC_RefCpyChk protects.
+// asBC_RefCpyChk protects
 void CalleeCopiesParamToLocal(Resource r)
 {
     Resource local = r;
     ObserveResource(-998);
 }
 
-// Callee declares nullable param: no runtime check expected.
+// Callee declares nullable param: no runtime check expected
 void CalleeNullableParam(Resource? r)
 {
     ObserveResource(r == null ? 41 : -1);

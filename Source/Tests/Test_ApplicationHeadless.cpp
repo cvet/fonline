@@ -211,7 +211,7 @@ TEST_CASE("HeadlessApplicationAudioAndInputSurfaces")
         input->PushEvent(pushed, false);
 
         // The true headless frontend has no event queue; embedders use GetAppWindowStub when they need
-        // simulated input. Pushing into the process-global headless input is therefore a documented no-op.
+        // simulated input. Pushing into the process-global headless input is therefore a documented no-op
         CHECK_FALSE(input->PollEvent(drained));
         input->ClearEvents();
 

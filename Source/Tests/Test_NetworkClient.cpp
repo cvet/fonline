@@ -301,7 +301,7 @@ TEST_CASE("NetworkClientWrapperDisconnectsAndRethrowsOnImplExceptions")
 TEST_CASE("NetworkClientSocketsTalksToARealServer")
 {
     // The socket transports were previously assumed untestable, but a server on a loopback port is enough:
-    // the client dials 127.0.0.1 and the whole connect / send / receive / disconnect path runs for real.
+    // the client dials 127.0.0.1 and the whole connect / send / receive / disconnect path runs for real
     REQUIRE(net_sockets::startup());
 
     auto server_settings = MakeClientNetworkSettings();
@@ -335,7 +335,7 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
 
     // `accepted` is declared before `server`, so at scope exit it would be destroyed last - after the
     // io_context whose services its connections' asio objects still reference. Release the connections
-    // here, while that context is alive, or ~io_object_impl faults on freed service state.
+    // here, while that context is alive, or ~io_object_impl faults on freed service state
     auto shutdown_server = scope_exit([&]() noexcept {
         safe_call([&] {
             std::scoped_lock locker {accepted_locker};
@@ -471,7 +471,7 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
 
     // `accepted` is declared before `server`, so at scope exit it would be destroyed last - after the
     // io_context whose services its connections' asio objects still reference. Release the connections
-    // here, while that context is alive, or ~io_object_impl faults on freed service state.
+    // here, while that context is alive, or ~io_object_impl faults on freed service state
     auto shutdown_server = scope_exit([&]() noexcept {
         safe_call([&] {
             std::scoped_lock locker {accepted_locker};

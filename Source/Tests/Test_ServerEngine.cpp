@@ -231,7 +231,7 @@ namespace ServerEngineTest
     // Deterministic seam for the item-move conservation regression: when armed, the next OnItemInit
     // (which fires from inside CreateItem) mutates the SOURCE stack's count. CreateItem runs between
     // SplitItem's count read and its write, so this reproduces — single-threaded and deterministically —
-    // the exact effect of a concurrent split/merge landing during CreateItem's sync-cover yield.
+    // the exact effect of a concurrent split/merge landing during CreateItem's sync-cover yield
     ident SplitInjectSourceId;
     int SplitInjectAmount = 0;
 
@@ -893,7 +893,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 {
     // Everything else in this suite runs against an in-memory database, so the world-load path that a real
     // server takes on every restart never runs. A file-backed JSON storage makes it reachable: one server
-    // writes the world, a second one on the same directory has to read it back.
+    // writes the world, a second one on the same directory has to read it back
     auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_world_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(storage_dir, remove_error);
@@ -965,7 +965,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
         // The restarted server rebuilt the location from its stored document, so the same id resolves again.
         // The critter is not asserted on: it was created off-map, and critters are reached through the map
-        // or the global map they live on, so a placeless one has nothing to load it from.
+        // or the global map they live on, so a placeless one has nothing to load it from
         CHECK(server->EntityMngr.GetLocationsCount() >= 1);
         CHECK(static_cast<bool>(server->EntityMngr.GetLocation(location_id)));
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetLocation(ident_t {})));
@@ -3044,7 +3044,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 }
 
 // Minimal accessor for driving NativeDataCaller::ConvertArg directly. The entity branch reads its
-// value through ReadTypedHandleSlot and never touches the accessor, so only the pure virtual needs a body.
+// value through ReadTypedHandleSlot and never touches the accessor, so only the pure virtual needs a body
 class BoundaryArgAccessor final : public DataAccessor
 {
 public:
@@ -3082,7 +3082,7 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
     // The script ABI hands an entity to native code as a pointer-sized handle slot holding the Entity
     // base handle, which ConvertArg reads back through ReadTypedHandleSlot; a borrow wrapper is exactly
     // that pointer, so it stands in as the slot without unwrapping. Production instantiates the scratch
-    // parameter as optional<...> for the branches that need it — the entity branch never touches it.
+    // parameter as optional<...> for the branches that need it — the entity branch never touches it
     auto convert = [&accessor](ptr<Critter> cr) {
         nptr<Entity> slot = cr;
         nptr<Critter> unused_scratch;
@@ -3102,7 +3102,7 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
     SECTION("DestroyedButStillCoveredNamesTheDestroyedHandle")
     {
         // The destroyer keeps the victim's own lock, so this is the caller that destroyed the entity
-        // and kept using the handle — the one case the destroyed-entity message actually describes.
+        // and kept using the handle — the one case the destroyed-entity message actually describes
         auto cr = server->CreateCritter(critter_pid, false);
         setup_ctx->EnsureEntitySynced(cr);
         server->CrMngr.DestroyCritter(cr);
@@ -3116,7 +3116,7 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
         // Destroy inside a nested script context so its locks drain on exit. What is left is the shape
         // a racing caller sees, and the actionable defect there is the absent cover, not the symptom.
         // Hold a ref: the nested context drops the last one when it releases, and the argument a racing
-        // caller still holds is exactly what has to stay observable here.
+        // caller still holds is exactly what has to stay observable here
         refcount_nptr<Critter> cr;
 
         server->RunScriptContext([&] {

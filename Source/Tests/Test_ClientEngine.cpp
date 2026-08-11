@@ -1081,7 +1081,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
         if (effectRejections != 4) return -10;
 
         // Every effect slot resolves through its own arm of one switch, so the whole enum is walked. The
-        // fixture binds no shader, so each call is expected to be rejected once the slot is resolved.
+        // fixture binds no shader, so each call is expected to be rejected once the slot is resolved
         EffectType[] effectTypes = {
             EffectType::GenericSprite, EffectType::CritterSprite, EffectType::TileSprite,
             EffectType::RoofSprite, EffectType::RainSprite, EffectType::SkinnedMesh,
@@ -1111,7 +1111,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
 
         // Binding walks the same slot table from the other side. The headless render backend builds a stub
         // effect for any path and only logs a missing file, so a bad path installs a stub rather than
-        // failing - the point here is that every slot is addressable, not that the path is validated.
+        // failing - the point here is that every slot is addressable, not that the path is validated
         int bindRejections = 0;
         for (uint i = 0; i < effectTypes.length(); i++) {
             try { Game.SetEffect(effectTypes[i], 0, "Effects/UnitTestMissing.fofx"); } catch { bindRejections++; }
@@ -1242,7 +1242,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
     int UnitTestClientStateQueries()
     {
         // Without a session none of the current-context accessors have anything to hand out.
-        // These are GlobalGetter exports, so they are bare globals rather than Game members.
+        // These are GlobalGetter exports, so they are bare globals rather than Game members
         if (HasChosen) return -1;
         if (HasCurPlayer) return -2;
         if (HasCurLocation) return -3;
@@ -1365,7 +1365,7 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
     }
 
     // A minimal BMFont binary: the info/common/pages/chars blocks the loader walks, with one glyph per
-    // ASCII letter so the measurement paths behave the same as with the text descriptor.
+    // ASCII letter so the measurement paths behave the same as with the text descriptor
     static auto MakeUnitTestBmfFont(string_view image_name) -> vector<uint8_t>
     {
         vector<uint8_t> data;
@@ -1444,7 +1444,7 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
     }
 
     // A minimal .fofnt descriptor plus its atlas page. Every glyph shares one cell, which is enough for the
-    // measurement, wrapping and draw paths to run end to end without a real bitmap font.
+    // measurement, wrapping and draw paths to run end to end without a real bitmap font
     static auto MakeUnitTestFontResources() -> vector<pair<string, vector<uint8_t>>>
     {
         string descriptor = "Version 2\n";
@@ -1562,7 +1562,7 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
     }
 
     // A minimal effect, baked through the real EffectBaker so the runtime accepts it. Registering one as an
-    // offscreen effect is what makes the offscreen surface bindings usable at all.
+    // offscreen effect is what makes the offscreen surface bindings usable at all
     static auto MakeBakedEffectResources(string_view effect_path) -> vector<pair<string, vector<uint8_t>>>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1648,7 +1648,7 @@ void main(void)
 
     // A two-bone skinned box. The second bone carries an offset of its own, so half the corners are placed by a
     // different matrix than the other half and the posed silhouette is genuinely skeleton-driven rather than a
-    // rigid copy of the root transform.
+    // rigid copy of the root transform
     static auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1746,7 +1746,7 @@ void main(void)
     }
 
     // The runtime requires the baked animation-info document: a plain config keyed by the model resource
-    // name, carrying the bounds version, the twelve model/view bounds keys and one duration record.
+    // name, carrying the bounds version, the twelve model/view bounds keys and one duration record
     static auto MakeUnitTestModelAnimationInfo(string_view model_path) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1784,7 +1784,7 @@ BoundsMaxZ = 1 1 1 1
     }
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
-    // source asset directly through the loader callback, so no source-file format has to be reproduced.
+    // source asset directly through the loader callback, so no source-file format has to be reproduced
     static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -2060,7 +2060,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     // to the same state, which by construction carries nothing forward. Anything the reused instance fails to
     // refresh surfaces as it still reporting the previous state's rectangle while the fresh one reports the new one.
     // This was verified to detect real staleness: an experimental cache of the vertex sweep with a deliberately
-    // incomplete invalidation key failed here at exactly the step whose input the key was missing.
+    // incomplete invalidation key failed here at exactly the step whose input the key was missing
     constexpr string_view model_path = "Models/SkinnedSpriteBounds.fbx";
 
     auto settings = MakeClientTestSettings();
@@ -2110,7 +2110,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 
     auto warm_model = make_model();
 
-    // The hit path on its own: measuring twice without touching anything must reproduce the first answer exactly.
+    // The hit path on its own: measuring twice without touching anything must reproduce the first answer exactly
     optional<ModelSpriteBounds> first_bounds = measure(warm_model.as_ptr());
     optional<ModelSpriteBounds> repeated_bounds = measure(warm_model.as_ptr());
 
@@ -2146,7 +2146,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     }
 
     // Guard the guard: a step that leaves the envelope where it was cannot tell a stale cache from a correct one, so
-    // the sequence above only tests anything as long as it keeps moving the rectangle.
+    // the sequence above only tests anything as long as it keeps moving the rectangle
     CHECK(moved_steps + 1 >= steps.size() - 1);
 }
 #endif
@@ -2155,7 +2155,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 TEST_CASE("ModelManagerInstantiatesABakedModel")
 {
     // The 3D instance surface was assumed to need a GPU, but the headless Null renderer serves it: with a
-    // baked mesh and a valid baked description the manager builds a real ModelInstance.
+    // baked mesh and a valid baked description the manager builds a real ModelInstance
     constexpr string_view MESH_PATH = "Models/RuntimeInstance.fbx";
     constexpr string_view MODEL_PATH = "Models/RuntimeInstance.fo3d";
 
@@ -2433,7 +2433,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
 {
     // The debugger was assumed to need an attached debugger client, but the endpoint server is ordinary
-    // engine code: it binds a loopback port and runs its worker threads without anyone connecting.
+    // engine code: it binds a loopback port and runs its worker threads without anyone connecting
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings);
 
@@ -2452,7 +2452,7 @@ TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
     REQUIRE_NOTHROW(debugger.EmitEvent("unitTestEventWithBody", R"({"value":1})"));
 
     // Attaching a plain socket drives the accept path, the handshake write and the request reader. The
-    // listener picks its port from the process id inside a fixed span, so the same arithmetic finds it.
+    // listener picks its port from the process id inside a fixed span, so the same arithmetic finds it
     REQUIRE(net_sockets::startup());
 
     constexpr uint16_t DEBUGGER_BASE_PORT = 43000;
@@ -2633,7 +2633,7 @@ TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
     // The legacy Fallout animation path only runs for model names under art/critters/, and derives its
     // sprite names by dropping the extension and the last two characters, then appending one index letter
     // per animation from "_abcdefghijklmnopqrstuvwxyz0123456789". The loader casts the result to a
-    // SpriteSheet, so the fixture sprites carry several frames.
+    // SpriteSheet, so the fixture sprites carry several frames
     constexpr string_view FRM_IND = "_abcdefghijklmnopqrstuvwxyz0123456789";
     constexpr string_view MODEL_NAME = "art/critters/utxx.frm";
     constexpr string_view MODEL_STEM = "art/critters/ut";
@@ -2782,7 +2782,7 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     // Bits 8/16/128/256 are the probes that must reject: a missing video file, an unknown font extension and
     // the two empty output paths. The rest legitimately answer instead of throwing - the sound and music
     // players report a bool, a video request with no file queues nothing, SetEffect with subtype 0 addresses
-    // no drawable, and language selection accepts a pack that resolves to no entries.
+    // no drawable, and language selection accepts a pack that resolves to no entries
     CHECK(rejection_count == 8 + 16 + 128 + 256);
 }
 
@@ -2790,7 +2790,7 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
 {
     // A single-frame sprite resolves to an atlas sprite, so the sheet's own playback - frame stepping,
     // looping, reversing and the copy that a second user of the same animation gets - has nothing to run
-    // on until the fixture serves a real multi-frame sprite.
+    // on until the fixture serves a real multi-frame sprite
     auto settings = MakeClientTestSettings();
 
     vector<pair<string, vector<uint8_t>>> sprite_resources;
@@ -3487,7 +3487,7 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 
     // Every ImGui binding validates its label/id before touching ImGui, so an empty one must surface as a
     // script exception rather than an unaddressable widget. The sweep runs inside the render pass because
-    // the ImGui accessor itself is only available while a frame is open.
+    // the ImGui accessor itself is only available while a frame is open
     int32_t probe_count = 0;
     int32_t rejections = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));

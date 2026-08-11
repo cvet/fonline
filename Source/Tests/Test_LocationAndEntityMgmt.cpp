@@ -646,13 +646,13 @@ namespace LocEntity
  )" + R"(
     // ========== Load/Unload Critter ==========
 
-    // Plain void callback resolved by the native time-event tests through Game.FindFunc.
+    // Plain void callback resolved by the native time-event tests through Game.FindFunc
     void OnUnloadTimer()
     {
     }
 
     // Self-entity callbacks the native time-event tests fire through the manager. They record their
-    // effect on the critter's LookDistance so C++ can observe that the dispatch really happened.
+    // effect on the critter's LookDistance so C++ can observe that the dispatch really happened
     void OnCritterTickTimer(Entity self)
     {
         Critter cr = cast<Critter>(self);
@@ -1631,7 +1631,7 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 {
     // Custom inner entities are written by one server and read back by the next one, and that read path -
     // the inner-entities entry walk and the per-entity load - runs nowhere else in the suite: every other
-    // test in this file keeps the world in memory for the lifetime of one engine.
+    // test in this file keeps the world in memory for the lifetime of one engine
     auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_custom_entity_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(storage_dir, remove_error);
@@ -1915,7 +1915,7 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
         REQUIRE(timer_func);
 
         // The consuming call stays out of REQUIRE: the macro re-expands its argument in the
-        // never-executed while clause, which reads as a second use of the moved-from function.
+        // never-executed while clause, which reads as a second use of the moved-from function
         uint32_t event_id = server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {});
         REQUIRE(event_id != 0);
     }

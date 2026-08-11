@@ -516,7 +516,7 @@ if(NOT FO_DISABLE_SQLITE AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
     # Serialized threading mode: the engine already serializes access per connection, and this keeps
     # SQLite's own mutexes available for the shared allocator the engine installs.
     # The omitted subsystems are ones a key-value store never reaches; leaving them in would only
-    # grow the binary and the attack surface.
+    # grow the binary and the attack surface
     TargetCompileDefinitions(sqlite PRIVATE
         "SQLITE_THREADSAFE=1"
         "SQLITE_DEFAULT_MEMSTATUS=0"
@@ -587,7 +587,7 @@ if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
     endif()
 endif()
 
-# SPARK particle simulation runtime and XML/binary serializer.
+# SPARK particle simulation runtime and XML/binary serializer
 if(FO_SPARK_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
     StatusMessage("+ SPARK particle runtime")
     SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
@@ -607,7 +607,7 @@ endif()
 
 # Effekseer CPU simulation runtime. FOnline owns geometry generation and all
 # graphics backends, so RendererCommon and the upstream renderer libraries are
-# deliberately absent from the vendored tree and build graph.
+# deliberately absent from the vendored tree and build graph
 if(FO_EFFEKSEER_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
     StatusMessage("+ Effekseer particle runtime")
     SetValue(FO_EFFEKSEER_DIR "${FO_ENGINE_ROOT}/ThirdParty/Effekseer")

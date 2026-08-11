@@ -920,7 +920,7 @@ namespace MapOpsTest
     // completely different machinery: the walk relies on the multihex field registration done by Map::SetMultihexCritter,
     // the scan subtracts Multihex from the centre distance. HexesInRadius(2) is 19 on hexagonal geometry and 25 on square
     // geometry, so this many fillers keep both a radius 1 and a radius 2 probe on the walk arm in either build. Fillers
-    // spawn far from every probe hex, so they never enter a result set.
+    // spawn far from every probe hex, so they never enter a result set
     const int HexWalkFillerCritterCount = 32;
 
     // Largest HexesInRadius(2) across the supported geometries (square: 1 + 8 * 3; hexagonal: 1 + 6 * 3)

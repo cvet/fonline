@@ -726,7 +726,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> ser
     return MakeScriptHandleVector<Critter>(result);
 }
 
-// SyncScope: no existing entity cover required; creates a disconnected not-logged-in player session.
+// SyncScope: no existing entity cover required; creates a disconnected not-logged-in player session
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_CreateNotLoggedInPlayer(ptr<ServerEngine> server)
 {
@@ -735,7 +735,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_CreateNotLoggedInPlayer(ptr<ServerEngine> 
     return player;
 }
 
-// SyncScope: requires notLoggedInPlayer; login mutates that player/session record.
+// SyncScope: requires notLoggedInPlayer; login mutates that player/session record
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer)
 {
@@ -749,7 +749,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> s
     return player;
 }
 
-// SyncScope: requires notLoggedInPlayer; login mutates that player/session record.
+// SyncScope: requires notLoggedInPlayer; login mutates that player/session record
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer)
 {
@@ -1736,7 +1736,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<np
         }
 
         // A null argument is still a caller error, but an entity destroyed since the caller checked it
-        // is the race described above and is simply dropped.
+        // is the race described above and is simply dropped
         if (entity->IsDestroyed()) {
             continue;
         }

@@ -1265,7 +1265,7 @@ static void ValidateModelAnimationRuntimeMatrix(const mat44& matrix, string_view
 
 // Per-joint variant: the index travels as a trailing context argument instead of being formatted into the
 // message. This runs per joint per model per frame, so an eager strex label would build millions of
-// strings a minute that only a throw would ever read.
+// strings a minute that only a throw would ever read
 static void ValidateModelAnimationRuntimeJointMatrix(const mat44& matrix, string_view context, size_t joint_index)
 {
     FO_STACK_TRACE_ENTRY();

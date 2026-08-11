@@ -135,7 +135,7 @@ class ExportMethodTag:
     ret_nullable: bool = False
     # ptr<T> / nptr<T> wrapper spellings for the return value and the engine/entity
     # receiver (the skipped first parameter), plus ptr<T> / nptr<T> container element wrapper
-    # spellings for vector/readonly_vector returns. C++-glue detail, not part of the script hash.
+    # spellings for vector/readonly_vector returns. C++-glue detail, not part of the script hash
     ret_wrapper: bool = False
     ret_container_element_wrapper: str = ''
     receiver_wrapper: bool = False
@@ -1783,7 +1783,7 @@ def container_element_wrapper(type_text: str) -> str:
 def apply_container_element_wrapper(engine_type: str, element_wrapper: str) -> str:
     # Re-spell the element of a script-ABI container engine type (readonly_vector<Critter*> ->
     # readonly_vector<nptr<Critter>>) so the generated glue matches the source parameter's C++
-    # mangling. Only the C++-glue spelling changes; the script-facing meta type is unaffected.
+    # mangling. Only the C++-glue spelling changes; the script-facing meta type is unaffected
     if not element_wrapper:
         return engine_type
     open_pos = engine_type.find('<')

@@ -98,7 +98,7 @@ namespace AlignTest
     funcdef int64 UnaryOp(int8);
 
     // Adversarial member ordering: every 8-byte or pointer-sized member is preceded by a smaller
-    // member, so the historical 4-byte packing would misalign each of them.
+    // member, so the historical 4-byte packing would misalign each of them
     class MixedMembers
     {
         int8 SmallA;
@@ -137,7 +137,7 @@ namespace AlignTest
     }
 
     // Inherited members continue after the base layout; derived 8-byte members must stay aligned
-    // regardless of the base class total size.
+    // regardless of the base class total size
     class DerivedMembers : MixedMembers
     {
         int8 SmallDerivedA;
@@ -193,7 +193,7 @@ namespace AlignTest
     }
 
     // One-DWORD argument block: without the runtime frame-base alignment the callee frame lands on
-    // a 4-mod-8 boundary and every 8-byte local below is misaligned.
+    // a 4-mod-8 boundary and every 8-byte local below is misaligned
     int64 OddArgFrameLocals(int8 pad)
     {
         int64 wide = 40;
@@ -210,7 +210,7 @@ namespace AlignTest
         return OddArgFrameLocals(1);
     }
 
-    // Module globals of 8-byte types: initialized in the module-init frame, then read at runtime.
+    // Module globals of 8-byte types: initialized in the module-init frame, then read at runtime
     const int64 g_wide = 80;
     const double g_real = 1.5;
     const timespan g_ts = timespan(6, 3);
@@ -222,7 +222,7 @@ namespace AlignTest
         return g_wide + int64(g_real) + g_ts.seconds;
     }
 
-    // Array storage of 8-byte elements filled through init lists and element access.
+    // Array storage of 8-byte elements filled through init lists and element access
     int64 UseArrays()
     {
         int64[] wides = {5, 6};
@@ -232,7 +232,7 @@ namespace AlignTest
         return wides[0] + wides[1] + int64(reals[0] + reals[1]) + int64(ids.length());
     }
 
-    // Construct-only coverage for the non-POD any value.
+    // Construct-only coverage for the non-POD any value
     int64 UseAny()
     {
         any holder = any(int64(42));
