@@ -607,15 +607,18 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
         _activeClientSock.close();
     }
 
-    _tcpServer.close();
-    _discoverySocket.close();
-
+    // Both endpoint loops poll _stopped on ANGELSCRIPT_DEBUGGER_IO_POLL_TIMEOUT, so they leave on their
+    // own without their listening socket being closed under them. Joining first keeps close() from
+    // racing the can_accept()/can_read() reads those threads still perform on the very same handles.
     if (_thread.joinable()) {
         _thread.join();
     }
     if (_discovery.joinable()) {
         _discovery.join();
     }
+
+    _tcpServer.close();
+    _discoverySocket.close();
 }
 
 auto DebuggerEndpointServer::Impl::MakeAttachHandshakeMessage() const -> string
