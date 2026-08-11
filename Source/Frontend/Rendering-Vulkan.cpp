@@ -37,11 +37,8 @@
 
 #include "Application.h"
 
-// The Vulkan loader is resolved dynamically through SDL (SDL_Vulkan_LoadLibrary +
-// SDL_Vulkan_GetVkGetInstanceProcAddr) instead of link-time against vulkan-1.lib, so a client
-// built with Vulkan support still launches on a machine without the Vulkan runtime — the loader is
-// only pulled in when the Vulkan backend is actually selected. VK_NO_PROTOTYPES suppresses the
-// header's function declarations; the entry points below are the sole definitions
+// The loader is resolved through SDL rather than linked, so a Vulkan-capable client still launches on a
+// machine without the Vulkan runtime; VK_NO_PROTOTYPES leaves the entry points below as the definitions
 #define VK_NO_PROTOTYPES
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_video.h"
@@ -54,10 +51,8 @@ static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS = 16;
 static constexpr uint32_t VULKAN_MAX_UNIFORM_BINDINGS = 16;
 static constexpr uint32_t VULKAN_FRAMES_IN_FLIGHT = 2;
 
-// Dynamically-loaded Vulkan entry points (mirrors the OpenGL backend's SDL_GL_GetProcAddress table).
-// vkGetInstanceProcAddr is the bootstrap obtained from SDL; global functions load with a null
-// instance before one exists; the rest load from the created instance. These file-scope pointers are
-// process-global loader dispatch, not per-engine state, and the client renderer is single-instance
+// The bootstrap for the table below: global functions load with a null instance, the rest from the
+// created one. File-scope because loader dispatch is process-global, not per-engine state
 static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
 
 #define FO_VK_GLOBAL_FUNCTIONS(X) \
@@ -969,10 +964,8 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     FO_VERIFY_AND_THROW(source_data, "Texture update source data is null");
     auto source_bytes = source_data.reinterpret_as<uint8_t>();
 
-    // Fills staging with the region pixels swizzled R<->B for VK_FORMAT_B8G8R8A8_UNORM. Compose
-    // from the source so the write-combined staging memory is never read back (an in-place swap
-    // costs milliseconds per large region); inter-row gaps on the use_dest_pitch path are skipped
-    // by the copy via bufferRowLength
+    // Swizzles R<->B for VK_FORMAT_B8G8R8A8_UNORM while composing from the source, because reading back
+    // write-combined staging memory for an in-place swap costs milliseconds per large region
     auto fill_staging = [&](ptr<uint8_t> mapped_bytes) {
         size_t pixels_per_row = numeric_cast<size_t>(size.width);
 
@@ -1168,9 +1161,8 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             CurrentVertexBuffer = pooled.Buffer;
         }
         else {
-            // Static buffers: use staging copy to GPU-local memory. Build into locals and keep the old
-            // static buffers alive/referenced until the copy succeeds, so a throw leaves the current
-            // static vertex buffer valid and StaticDataChanged still true for a clean retry
+            // Built into locals that only replace the live static buffers once the staging copy succeeds,
+            // so a throw leaves the current buffers valid and StaticDataChanged set for a clean retry
             VkBuffer staging_vert_buf {};
             VkDeviceMemory staging_vert_mem {};
 
@@ -1221,9 +1213,8 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             CurrentIndexBuffer = pooled.Buffer;
         }
         else {
-            // Static buffers: use staging copy to GPU-local memory. Build into locals and keep the old
-            // static buffers alive/referenced until the copy succeeds, so a throw leaves the current
-            // static index buffer valid and StaticDataChanged still true for a clean retry
+            // Built into locals that only replace the live static buffers once the staging copy succeeds,
+            // so a throw leaves the current buffers valid and StaticDataChanged set for a clean retry
             VkBuffer staging_idx_buf {};
             VkDeviceMemory staging_idx_mem {};
             AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_idx_buf, staging_idx_mem);
@@ -1960,9 +1951,8 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         rasterization_ci.depthClampEnable = VK_FALSE;
         rasterization_ci.rasterizerDiscardEnable = VK_FALSE;
         rasterization_ci.polygonMode = VK_POLYGON_MODE_FILL;
-        // The negative-height viewport flips screen-space winding exactly like the previously used Y-negated projection
-        // did, so counter-clockwise is the front face here, matching the other backends. The cull mode itself is a
-        // per-pipeline variant filled in below
+        // The negative-height viewport flips screen-space winding, so counter-clockwise is the front face
+        // here as on every other backend
         rasterization_ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterization_ci.depthBiasEnable = VK_FALSE;
         rasterization_ci.lineWidth = 1.0f;
@@ -2481,9 +2471,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     vk_result = vkCreateDescriptorSetLayout(_ctx->Device, &ubo_layout_ci, nullptr, &_ctx->UniformDescriptorSetLayout);
     VerifyVkResult(vk_result);
 
-    // Create per-slot descriptor pools and uniform bump buffers. Each per-draw set consumes the
-    // full fixed-width VULKAN_MAX_*_BINDINGS descriptor count; an undersized pool silently starves
-    // the frame-final ImGui pass (UI vanishes), so provision per-type counts to cover maxSets
+    // Every per-draw set consumes the full fixed-width VULKAN_MAX_*_BINDINGS count, and an undersized
+    // pool starves the frame-final ImGui pass silently, so the per-type counts must cover maxSets
     {
         constexpr uint32_t kMaxFrameSets = 20000;
         VkDescriptorPoolSize frame_pool_sizes[2] {};
@@ -2748,9 +2737,8 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
         const VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
 
-        // Explicit external dependencies: the pass LOADs prior color and re-clears depth stored by
-        // the previous pass instance; implicit dependencies carry no memory scope, and the races
-        // manifest as render targets losing accumulated content between passes
+        // Spelled out because implicit dependencies carry no memory scope, and this pass loads color and
+        // depth left by the previous instance: the race shows up as targets losing accumulated content
         VkSubpassDependency dependencies[2] {};
         dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
         dependencies[0].dstSubpass = 0;
@@ -3010,9 +2998,8 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     ctx->FrameCbRecording = false;
 
-    // Wait the acquire semaphore only on the frame's first submit (a mid-frame flush may have
-    // consumed it), at the stages of the image's first use (TRANSFER clear + attachment writes);
-    // signal the acquired image's render-complete semaphore and the slot's in-flight fence
+    // The acquire semaphore is waited on the frame's first submit only, since a mid-frame flush may
+    // already have consumed it
     FO_VERIFY_AND_THROW(ctx->CurrentSwapchainImageIndex < ctx->RenderCompleteSemaphores.size(), "Swapchain image index out of render-complete semaphore range");
     VkSemaphore render_complete_semaphore = ctx->RenderCompleteSemaphores[ctx->CurrentSwapchainImageIndex];
 
@@ -3206,9 +3193,8 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Negative-height viewport (core since Vulkan 1.1): flips Vulkan's Y-down clip space so the
-    // same Y-up projection matrices as OpenGL/Direct3D produce top-left-origin output. Winding is
-    // flipped by the negative height, which the pipeline frontFace settings account for
+    // The negative height flips Vulkan's Y-down clip space, so the same Y-up projections as the other
+    // backends give top-left-origin output; the pipelines account for the flipped winding
     VkViewport viewport {};
     viewport.x = numeric_cast<float32_t>(ctx->ViewPort.x);
     viewport.y = numeric_cast<float32_t>(ctx->ViewPort.y + ctx->ViewPort.height);
@@ -3362,16 +3348,14 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         return;
     }
 
-    // Resolve every fallible value (new-target validation + new viewport/target-size/projection) into
-    // locals BEFORE closing the render pass, so a throw here leaves the current pass open and the frame
-    // consistent. Only the no-throw member commit and the pass close/reopen touch pass state below
+    // Every fallible value is resolved into locals before the pass closes, so a throw here leaves the
+    // current pass open and the frame consistent
     irect32 new_viewport {};
     isize32 new_target_size {};
 
     if (!tex) {
-        // Back-buffer target: letterbox the configured screen size into the swapchain. Mirror of
-        // ApplySwapchainTargetMetrics, computed into locals (its own ProjMatrix write is redundant here
-        // because the projection is rebuilt below from the resolved target size)
+        // Letterboxes like ApplySwapchainTargetMetrics, but into locals: the projection is rebuilt below
+        // from the resolved target size
         isize32 back_buf_size = _ctx->SwapchainSize;
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
         float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));

@@ -533,11 +533,8 @@ namespace NativeDataCaller
         static constexpr size_t arity = sizeof...(Args);
     };
 
-    // AllowDestroyedEntityArgs opts a single export out of the blanket "no destroyed entity crosses the
-    // script boundary" rule. It exists for the synchronization primitives, whose whole purpose is to answer
-    // "is this entity still reachable": a script can only test liveness and then call, never both at once, so
-    // rejecting the argument makes their recoverable-false contract impossible to honour under a concurrent
-    // destroy. Every other export keeps the check
+    // AllowDestroyedEntityArgs exists for the synchronization primitives, which answer "is this entity still
+    // reachable": rejecting the argument would make their recoverable-false contract impossible to honour
     template<typename T, typename U, bool AllowDestroyedEntityArgs = false>
     auto ConvertArg(ptr<void> data, const DataAccessor& accessor, U& temp) -> T
     {
@@ -581,14 +578,8 @@ namespace NativeDataCaller
 
                 if constexpr (!AllowDestroyedEntityArgs) {
                     if (target_entity && target_entity->IsDestroyed()) {
-                        // Access validation runs first, because a destroyed argument is a symptom and
-                        // missing cover is the cause. Every destroy path takes the victim's own lock
-                        // through EnsureEntitySynced, and a descendant lock cannot be taken under a
-                        // foreign-held ancestor (see EntitySync.h, descendant-hold), so a caller holding
-                        // any valid cover cannot have the entity die under it. A destroyed entity
-                        // therefore reaches this boundary only uncovered, or because the caller destroyed
-                        // it and kept using the handle — and only the second case is what the message
-                        // below describes. On the client ValidateAccess is a no-op and the throw stands
+                        // Validation runs first because missing cover is the cause and a destroyed argument
+                        // only the symptom: a caller holding valid cover cannot have the entity die under it
                         target_entity->ValidateAccess();
 
                         FO_VERIFY_AND_THROW(false, "Target entity lookup returned destroyed entity");

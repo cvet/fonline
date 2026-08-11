@@ -48,21 +48,8 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
-// Regression coverage for the 8-byte value alignment of AngelScript STORAGE. Each historical
-// misalignment class gets both a direct layout assertion (member byte offsets via asITypeInfo,
-// checked on every build) and a runtime execution path (constructing/using the values, so the UBSan
-// leg catches any regression as a hard `alignment` runtime error):
-//   1. Script-class member layout — `as_objecttype.cpp AddPropertyToClass` used to pack 8-byte
-//      members on 4-byte boundaries (observed on script GUI classes and Ai::Plan in gameplay).
-//      Covered across primitives of every size, inline POD value types (ident/timespan/nanotime/
-//      mpos/ipos/irect/ucolor/hdir), non-POD value types stored as references (string/hstring/any),
-//      enums, funcdef/class/array handle members, two inheritance levels and a mixin.
-//   2. 8-byte locals in a callee whose argument block is an odd DWORD count —
-//      `as_context.cpp PrepareScriptFunction` aligns the frame base by relocating the arg block.
-//   3. Module globals of 8-byte types (initialized in the module-init frame), array init-list
-//      element storage, and the non-POD `any` value.
-// Call-shape coverage (method/virtual/interface/funcdef/delegate/parameters) lives in
-// Test_AngelScriptCall.cpp
+// Every misalignment class gets both a layout assertion and a runtime path, so the UBSan leg turns a regression
+// into a hard alignment error; call-shape coverage lives in Test_AngelScriptCall.cpp
 namespace
 {
     struct AlignTestRig
@@ -292,9 +279,8 @@ namespace AlignTest
         static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources()); }
     };
 
-    // Required byte alignment of one script-class member slot, derived from what the layout stores
-    // there: handles, script-object/array members and non-POD value references are a pointer; inline
-    // value types and primitives align by their size (mirrors AddPropertyToClass)
+    // Mirrors AddPropertyToClass: anything stored as a reference aligns like a pointer, while inline value types
+    // and primitives align by their size
     static auto RequiredMemberAlignment(ptr<AngelScript::asIScriptEngine> as_engine, int32_t type_id, bool is_reference) -> size_t
     {
         if (is_reference || (type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {

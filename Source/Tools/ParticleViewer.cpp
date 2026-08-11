@@ -202,9 +202,8 @@ void ParticleViewer::RefreshResourceList()
 
     _resourcesIndexed = true;
 
-    // The particle sprite factory advertises the baked runtime extensions it can
-    // load (e.g. "spk" for Spark, "efk" for Effekseer); enumerate every matching
-    // resource file so the list reflects the loaded content exactly
+    // The list is built from the extensions the sprite factory advertises, so it reflects exactly the
+    // runtimes the loaded content can play
     auto factory = _sprMngr->GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
 
     if (!factory) {
@@ -340,9 +339,8 @@ void ParticleViewer::DrawControls()
     ImGui::SameLine();
     ImGui::Checkbox("Prewarm", &_prewarm);
 
-    // Render path of the selected effect, initialized from its authored `draw in scene` flag: on it draws as real
-    // geometry into the scene, off it rasterizes into its sprite frame through the atlas. Flipping it previews the
-    // other path without touching the resource - the frame clips an atlas effect, so the difference is visible
+    // Flipping the authored `draw in scene` flag previews the other render path without touching the
+    // resource, and the difference shows because the sprite frame clips an atlas effect
     if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>()) {
         bool draw_in_scene = particle_sprite->IsDirectDraw();
 
@@ -382,9 +380,8 @@ void ParticleViewer::SelectParticle(string_view path)
     _pan = {};
     _previewSprite = nullptr;
 
-    // The viewer browses every particle resource, including ones the runtime cannot load (e.g. a texture too large
-    // for its atlas). Such a load throws deep in the engine; catch it here so a bad resource shows an error line
-    // instead of unwinding through the ImGui frame and corrupting it
+    // The viewer browses resources the runtime may fail to load, and that throw must not unwind through
+    // the ImGui frame, which would corrupt it
     shared_ptr<Sprite> sprite;
 
     try {
@@ -481,9 +478,8 @@ void ParticleViewer::RenderPreview()
     auto wireframe_guard = scope_exit([&]() noexcept { _engine->Settings->DrawWireframe = prev_draw_wireframe; });
 
     if (!_renderTarget || _renderTargetSize != PREVIEW_SIZE) {
-        // Nearest filtering: ImGui presents the target scaled by the display's
-        // framebuffer (DPI) scale, and a linear target would blur the magnified
-        // effect there. Nearest keeps the honest sprite pixelation crisp
+        // Nearest filtering, because ImGui presents the target scaled by the display's DPI scale and a
+        // linear target would blur the magnified effect
         _renderTarget = GetApp()->Render.CreateTexture(PREVIEW_SIZE, false, true);
         _renderTargetSize = PREVIEW_SIZE;
     }
@@ -496,9 +492,8 @@ void ParticleViewer::RenderPreview()
 
     bool direct = _previewSprite->IsDirectDraw();
 
-    // Scene drawing has no baked frame to magnify, so zoom is applied there as the effect's own scale, which scales
-    // emitter placement and quad sizes together. The atlas path magnifies the baked frame instead, so the effect
-    // itself has to stay at its authored scale or it would overflow the frame it rasterizes into
+    // Scene drawing has no baked frame to magnify, so zoom becomes the effect's own scale; the atlas path
+    // must stay at the authored scale or the effect overflows the frame it rasterizes into
     float32_t effect_scale = direct ? _zoom : 1.0f;
 
     if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>(); particle_sprite && _appliedScale != effect_scale) {
@@ -526,10 +521,8 @@ void ParticleViewer::RenderPreview()
         DrawRootCrosshair(anchor);
     }
 
-    // Anchor by the effect root - the ground point the game pins the effect to -
-    // rather than centring the bounds, so it stays put while the effect evolves.
-    // The root inside a sprite is bottom-centre adjusted by its offset, exactly
-    // as MapSprite::GetSpriteRootOffset computes it for the map
+    // Anchored by the effect root — the ground point the game pins it to, as MapSprite::GetSpriteRootOffset
+    // computes it — rather than by the bounds, so the preview holds still while the effect evolves
     isize32 sprite_size = _previewSprite->GetSize();
     ipos32 sprite_offset = _previewSprite->GetOffset();
     ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
@@ -539,9 +532,8 @@ void ParticleViewer::RenderPreview()
     };
 
     if (direct) {
-        // Clear depth again so the crosshair's 2D draw cannot occlude the effect,
-        // and widen the ortho depth range so a scaled effect is not clipped by the
-        // near/far planes. DrawInScene anchors the effect root to `anchor`
+        // Clear depth again so the crosshair cannot occlude the effect, and widen the ortho range so a
+        // scaled effect is not clipped by the near/far planes
         GetApp()->Render.ClearRenderTarget(std::nullopt, true);
         GetApp()->Render.SetOrthoDepthRange(-SCENE_DEPTH_HALF, SCENE_DEPTH_HALF);
         auto restore_depth = scope_exit([]() noexcept { GetApp()->Render.SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); });

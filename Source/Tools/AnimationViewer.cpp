@@ -81,9 +81,8 @@ static constexpr array<ucolor, 10> BONE_PALETTE = {
     ucolor {189, 189, 189},
 };
 
-// 2D critters have no authored clip table, so the viewer probes the sprite
-// resources across the declared enum ranges. The bound stays generous enough
-// for project-defined action values while keeping the probe cheap
+// 2D critters have no authored clip table, so the viewer probes the sprite resources across the enum
+// ranges; the bound stays generous for project-defined actions while keeping the probe cheap
 static constexpr int32_t PROBE_STATE_ANIM_MAX = 32;
 static constexpr int32_t PROBE_ACTION_ANIM_MAX = 700;
 static constexpr float32_t MIN_ZOOM = 0.25f;
@@ -464,10 +463,8 @@ void AnimationViewer::ApplyDir()
     _previewSprite->SetDir(dir);
 
 #if FO_ENABLE_3D
-    // Sprite::SetDir starts a *smooth* turn on the model, which only converges
-    // while frames advance with the model considered "moving". A review window
-    // wants the pose immediately, so snap the model's look and move direction
-    // and force a redraw
+    // Sprite::SetDir starts a smooth turn that converges only while frames advance, but a review window
+    // wants the pose at once, so the directions are snapped and a redraw forced
     if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
         auto model = model_spr->GetModel();
         model->SetLookDir(dir);
@@ -483,11 +480,8 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
 
     _modelLayers.clear();
 
-    // Prototypes author their visual slots as ordinary critter properties
-    // (armor, clothing, hair...), but which property feeds which model layer is
-    // game-specific. `Render.ModelLayerProperties` declares that mapping as
-    // "<PropertyName>=<LayerIndex>" pairs, so a prototype can be dressed here
-    // exactly the way the game dresses it, without game knowledge in the engine
+    // Which critter property feeds which model layer is game-specific, so `Render.ModelLayerProperties`
+    // declares the mapping and a prototype is dressed here without game knowledge in the engine
     const auto& mapping = _engine->Settings->ModelLayerProperties;
 
     if (mapping.empty()) {
@@ -583,9 +577,8 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
 
         auto flags = looped ? ModelAnimFlags::None : CombineEnum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
 
-        // Instant playback drops the cross-fade so the pose is settled at once
-        // (used by the prewarm so the first frame is already the idle pose, not a
-        // blend from the bind pose)
+        // Instant playback drops the cross-fade, which is what lets the prewarm open on the idle pose
+        // instead of a blend from the bind pose
         if (instant) {
             flags = CombineEnum(flags, ModelAnimFlags::NoSmooth);
         }
@@ -631,9 +624,8 @@ void AnimationViewer::PrewarmModel()
         return;
     }
 
-    // Settle the idle instantly so the first shown frame is the idle pose rather
-    // than a blend from the bind pose, and warm the particle systems so any
-    // effects are already emitting (no cold start)
+    // Settle the idle and warm the particle systems, so the first shown frame is the real idle pose
+    // with its effects already emitting
     PlayIdle(true);
     _previewSprite->Prewarm();
 }
@@ -647,9 +639,8 @@ void AnimationViewer::RenderPreview()
     }
 
     if (!_renderTarget || _renderTargetSize != PREVIEW_SIZE) {
-        // Nearest filtering: ImGui presents the target scaled by the display's
-        // framebuffer (DPI) scale, and a linear target would blur the magnified
-        // sprite there. Nearest keeps the honest sprite pixelation crisp
+        // Nearest filtering, because ImGui presents the target scaled by the display's DPI scale and a
+        // linear target would blur the magnified sprite
         _renderTarget = GetApp()->Render.CreateTexture(PREVIEW_SIZE, false, true);
         _renderTargetSize = PREVIEW_SIZE;
     }
@@ -660,12 +651,8 @@ void AnimationViewer::RenderPreview()
         PlayIdle();
     }
 
-    // Sprite mode renders the model at native scale into the atlas (2x-supersampled
-    // to the atlas frame, so edges are anti-aliased at native resolution) and then
-    // magnifies that baked frame, so zoom shows honest sprite pixelation exactly
-    // like the game's cached sprite. Direct draw instead renders the model itself
-    // as real geometry into the scene at the zoom (crisp at any magnification, no
-    // atlas). Only 3D models can draw directly; 2D critters always use the atlas
+    // Sprite mode magnifies the baked atlas frame, so zoom shows the same pixelation the game shows;
+    // direct draw renders real geometry at the zoom and is possible only for 3D models
     float32_t draw_scale = _zoom;
     bool direct = false;
 
@@ -713,12 +700,8 @@ void AnimationViewer::RenderPreview()
         DrawRootCrosshair(anchor);
     }
 
-    // Anchor by the root — the hex ground point the game stands critters on —
-    // rather than centering the bounds, so it stays put while clips change the
-    // silhouette. The root inside a sprite is bottom-centre adjusted by its
-    // offset, exactly as MapSprite::GetSpriteRootOffset computes it for the map.
-    // `draw_scale` is the residual on-screen scale after the model's own render
-    // scale (1.0 when the render resolution already matches the zoom)
+    // Anchored by the root — the hex ground point critters stand on, as MapSprite::GetSpriteRootOffset
+    // computes it — rather than by the bounds, so the preview holds still while a clip changes the shape
     isize32 sprite_size = _previewSprite->GetSize();
     ipos32 sprite_offset = _previewSprite->GetOffset();
     ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
@@ -729,9 +712,8 @@ void AnimationViewer::RenderPreview()
 
     if (direct) {
 #if FO_ENABLE_3D
-        // Clear depth again so the crosshair's 2D draw cannot occlude the model,
-        // and widen the ortho depth range so a scaled-up model is not clipped by
-        // the near/far planes. DrawInScene anchors the model root to `anchor`
+        // Clear depth again so the crosshair cannot occlude the model, and widen the ortho range so a
+        // scaled-up model is not clipped by the near/far planes
         GetApp()->Render.ClearRenderTarget(std::nullopt, true);
         float32_t depth_half = std::max(64.0f, _appliedModelScale * 64.0f);
         GetApp()->Render.SetOrthoDepthRange(-depth_half, depth_half);
@@ -800,11 +782,8 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
     };
 
     if (_drawRenderRect) {
-        // The render/draw rect is the whole frame the model rasterizes into — the
-        // maximal drawing area. For a 3D model that is GetDrawSize(), which is
-        // larger than the cropped sprite (GetSize()) and always contains the view
-        // rect; place it so the model origin sits where the crop's root does (the
-        // origin projects to (drawW/2, drawH - drawH/4) inside the draw frame)
+        // The draw rect is the maximal area the model rasterizes into, larger than the cropped sprite,
+        // so it is placed to put the model origin at (drawW/2, drawH - drawH/4) where the crop's root sits
         irect32 render_local = {0, 0, sprite_size.width, sprite_size.height};
 #if FO_ENABLE_3D
         if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
@@ -839,10 +818,8 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
             add_rect(view_local, VIEW_RECT_COLOR);
         }
         if (_drawNameLevel) {
-            // Full-width line at the name's height, matching CritterHexView's
-            // GetNameTextPos: view-rect top + global NameOffset + the per-critter
-            // NameOffset from the proto. Those offsets are game pixels, so they
-            // scale by the full on-screen zoom (`_zoom`), not the residual draw scale
+            // Matches CritterHexView::GetNameTextPos, whose offsets are game pixels and therefore scale
+            // by the full on-screen zoom rather than the residual draw scale
             ipos32 name_top = to_screen({view_local.x + view_local.width / 2, view_local.y});
             int32_t name_y = name_top.y + iround<int32_t>(numeric_cast<float32_t>(_engine->Settings->NameOffset + _protoNameOffset) * _zoom);
             add_segment({0, name_y}, {PREVIEW_SIZE.width, name_y}, NAME_POINT_COLOR);

@@ -89,9 +89,8 @@ auto TextureAtlasLayout::FindBestFitScore(isize32 size) -> optional<FitScore>
 
     optional<Placement> placement = FindBestPlacement(size);
 
-    // A miss may be fragmentation rather than a genuinely full atlas, and reporting "no fit" would send
-    // the caller off to create another atlas. Defragmenting restores the exact maximal set, so retry
-    // once before giving up. Misses are rare, so this keeps the hot query path free of rebuilds
+    // A miss may be fragmentation rather than a full atlas, and reporting "no fit" would send the caller off
+    // to build another one; misses are rare, so the retry keeps rebuilds off the hot query path
     if (!placement && CanDefragment()) {
         DefragmentFreeRectangles();
         placement = FindBestPlacement(size);
@@ -123,9 +122,8 @@ auto TextureAtlasLayout::Allocate(isize32 size) -> unique_del_nptr<Allocation>
     auto allocation = AcquireAllocation();
     SplitFreeRectangles(_freeRectangles, placement->Rectangle);
 
-    // Threshold measured against what the previous prune achieved, which is what keeps it self-tuning.
-    // Against a multiple of the live allocation count it is not: a page whose maximal free set exceeds
-    // that threshold can never get back under it, so every allocation prunes and removes nothing
+    // Measured against what the previous prune achieved, which self-tunes; against the live allocation count a
+    // page whose maximal set exceeds the threshold would prune on every allocation and remove nothing
     if (_freeRectangles.size() > _freeRectanglesAtLastPrune * FREE_LIST_GROWTH_FACTOR + FREE_LIST_MIN_SLACK) {
         PruneFreeRectangles(_freeRectangles);
         _freeRectanglesAtLastPrune = _freeRectangles.size();
@@ -247,13 +245,8 @@ void TextureAtlasLayout::Release(ptr<Allocation> allocation) noexcept
     allocation->_spriteMesh = nullptr;
     _availableAllocations.emplace_back(allocation);
 
-    // Hand the slot straight back to the free list instead of invalidating it. The released rectangle
-    // cannot overlap any current free rectangle - allocating it split every rectangle that did - so
-    // pushing it back keeps the list consistent for both placement and splitting. What it does not do
-    // is coalesce with neighbouring free space, so the list is no longer the exact maximal set and
-    // packing quality decays as the atlas churns. That trade is deliberate: a free is now O(1) instead
-    // of invalidating the list and forcing the next allocation to re-split every active allocation.
-    // DefragmentFreeRectangles() restores the exact set, and is called only when a placement fails
+    // The released rectangle cannot overlap a current free one, so pushing it back keeps the list usable; it
+    // does not coalesce, so packing decays until DefragmentFreeRectangles restores the maximal set
     _freeRectangles.emplace_back(allocation->_rectangle);
 
     // Marks that the list has drifted from the exact maximal set, so a later placement miss knows a
@@ -285,17 +278,8 @@ void TextureAtlasLayout::DefragmentFreeRectangles()
 
     std::sort(used_rectangles.begin(), used_rectangles.end());
 
-    // Prune once for the whole rebuild instead of once per split. Splitting preserves containment - if
-    // rectangle A is inside rectangle B, then each of A's four split slabs is inside the corresponding
-    // slab of B (A.x >= B.x, A.y >= B.y and A's extents are within B's, so every slab bound is at least
-    // as tight) - so a rectangle that is redundant stays redundant through any number of later splits
-    // and the single final prune yields exactly the maximal set the per-split pruning produced. The
-    // interim prune only bounds working-set growth: pruning is safe at any point, and without it a
-    // large atlas accumulates redundant slabs that make every subsequent split scan more rectangles.
-    //
-    // This is what made the rebuild quadratic: it re-splits against every active allocation, so a
-    // per-split prune meant a full sort-plus-containment scan per allocation. Measured on a crowd scene
-    // (2026-08-06): 43 rebuilds drove 51 642 prunes costing 33.6 s of a 45 s capture
+    // Once for the whole rebuild rather than per split: splitting preserves containment, so a redundant
+    // rectangle stays redundant and the final prune yields the same maximal set without the quadratic cost
     size_t rectangles_at_last_prune = rebuilt_free_rectangles.size();
 
     for (irect32 used_rectangle : used_rectangles) {
@@ -357,10 +341,8 @@ void TextureAtlasLayout::PruneFreeRectangles(vector<irect32>& free_rectangles)
         return GetArea(left.size()) > GetArea(right.size());
     });
 
-    // Containment requires the keeper to cover the candidate's top-left corner, so testing only the
-    // keepers registered in that corner's cell is exact and leaves the surviving set unchanged, while
-    // all-against-all is quadratic in the list length - a dropped frame on a crowded page rather than a
-    // steady cost. The index is a per-cell chain over two flat arrays, so no cell allocates
+    // Containment requires covering the candidate's top-left corner, so testing only that cell's keepers is
+    // exact while all-against-all would drop a frame on a crowded page
     int32_t cell_width = std::max(1, (_size.width + PRUNE_GRID_RESOLUTION - 1) / PRUNE_GRID_RESOLUTION);
     int32_t cell_height = std::max(1, (_size.height + PRUNE_GRID_RESOLUTION - 1) / PRUNE_GRID_RESOLUTION);
     size_t grid_columns = numeric_cast<size_t>((_size.width + cell_width - 1) / cell_width);

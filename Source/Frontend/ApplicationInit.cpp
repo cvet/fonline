@@ -430,10 +430,8 @@ auto GetExeLogFileName() -> string
 }
 
 #if FO_LINUX || FO_MAC
-// Written from the signal handler, so it must stay async-signal-safe: a lock-free atomic store is
-// the only thing the handler may do (no logging, allocation or condition-variable work — malloc or
-// a cv notify from a signal can deadlock against the interrupted thread). Process-global by nature:
-// a signal targets the process, not an engine instance. Consumed via IsQuitSignalReceived()
+// Written from a signal handler, where a lock-free store is the only async-signal-safe move; global
+// because a signal targets the process, not an engine instance
 static std::atomic<bool> QuitSignalReceived {};
 static_assert(std::atomic<bool>::is_always_lock_free);
 

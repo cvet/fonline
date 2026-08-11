@@ -142,12 +142,8 @@ enum class DepthFuncType : uint8_t
     NotEqual,
 };
 
-// Depth state a single draw may pick instead of the one its effect declares. Transparent geometry carries its own
-// per-item depth intent - a particle system stores a depth-test and a depth-write flag per emitter node - which is
-// orthogonal to the shader, so selecting it per draw avoids one effect file per combination. An effect opts in with
-// `DepthVariants = True`; only then are the alternative variants built, so every other effect stays exactly as costly
-// as before. "Test" reuses the comparison the effect declares; "NoTest" replaces it with a comparison that always
-// passes
+// Per-draw depth intent, which transparent geometry carries per emitter node and is orthogonal to the
+// shader, so an effect opts in with `DepthVariants = True` instead of shipping one file per combination
 enum class DepthVariantType : uint8_t
 {
     FromEffect, // Default (zero-init): the state declared by the effect file
@@ -257,10 +253,8 @@ protected:
 class RenderEffect
 {
 public:
-    // Uniform-buffer payloads consumed by the per-effect GLSL/HLSL/MSL passes.
-    // All members are float32 in std140 layout (vec4-aligned). For each buffer
-    // the comment lists the corresponding GLSL declaration and which channel
-    // holds what; producers cited in parentheses
+    // Uniform payloads in std140 layout: each block below states its GLSL declaration, what every
+    // channel holds, and the producer in parentheses
 
     // GLSL: uniform ProjBuf { mat4 ProjMatrix; };
     // Column-major 4x4 view-proj matrix.

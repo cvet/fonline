@@ -343,9 +343,8 @@ TEST_CASE("CrashReporterHooks")
 
     SECTION("EverySignalAndSehCodeResolvesToAName")
     {
-        // The reporter must survive any code the platform hands it, including ones it does not know.
-        // Only the C-standard six exist everywhere; the rest are POSIX and are not declared by the MSVC
-        // runtime, so listing them unconditionally does not compile on Windows
+        // Only the C-standard six signals exist everywhere, and the POSIX rest are undeclared by the MSVC runtime,
+        // so they cannot be listed unconditionally
         constexpr std::array KNOWN_SIGNALS = {
             SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM,
 #if !FO_WINDOWS

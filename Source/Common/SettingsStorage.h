@@ -39,11 +39,8 @@ FO_BEGIN_NAMESPACE
 
 class SettingsStorageImpl;
 
-// Small per-user key/value store for tool and editor settings (ImGui window layout, editor options, last
-// selection, ...). Values are scoped by an application name so different tools never collide. On Windows the
-// backing store is the registry under HKCU\Software\FOnline\<app_name>; on other platforms it is a file store
-// under the per-user data directory. Persistence is best-effort: a backend failure is logged, never thrown, so a
-// tool never dies because its settings could not be written
+// Per-user tool and editor settings, scoped by application name so tools never collide. Persistence is
+// best-effort: a backend failure is logged rather than thrown, so no tool dies over unsaved settings
 class SettingsStorage
 {
 public:

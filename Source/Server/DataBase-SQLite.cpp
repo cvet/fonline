@@ -472,9 +472,8 @@ private:
 
         // WAL keeps readers from blocking the writer, which matches the commit-thread model
         Execute("PRAGMA journal_mode = WAL", hstring());
-        // NORMAL is the recommended pairing for WAL: a crash may lose the last transactions but cannot
-        // corrupt the database. FULL only removes that last-commit window, at a real write cost, so it
-        // stays out until an actual deployment asks for it
+        // NORMAL pairs with WAL: a crash may lose the last transactions but cannot corrupt the database, and
+        // FULL closes only that window at a real write cost
         Execute("PRAGMA synchronous = NORMAL", hstring());
         Execute("PRAGMA foreign_keys = ON", hstring());
     }

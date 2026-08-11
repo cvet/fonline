@@ -607,9 +607,8 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
         _activeClientSock.close();
     }
 
-    // Both endpoint loops poll _stopped on ANGELSCRIPT_DEBUGGER_IO_POLL_TIMEOUT, so they leave on their
-    // own without their listening socket being closed under them. Joining first keeps close() from
-    // racing the can_accept()/can_read() reads those threads still perform on the very same handles
+    // Join before closing: both loops leave on their own poll timeout, while closing first would race
+    // the can_accept()/can_read() calls they still make on these handles
     if (_thread.joinable()) {
         _thread.join();
     }

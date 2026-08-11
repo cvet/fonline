@@ -47,14 +47,8 @@ FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 
-// The engine bakes one Vulkan-1.0 SPIR-V module per stage (native Vulkan renderer convention: set 0 = uniform
-// buffers, set 1 = combined image samplers, shared by both stages). The SDL_GPU backend needs the same SPIR-V
-// remapped to SDL_GPU's per-stage descriptor convention (SDL3 SDL_gpu.h, SDL_CreateGPUShader docs):
-//   vertex stage:   set 0 = sampled textures, set 1 = uniform buffers;
-//   fragment stage: set 2 = sampled textures, set 3 = uniform buffers;
-// with dense 0..N-1 slot indices per set. The extra `-spv_sdl` flavor and the SDL-remapped MSL are produced from
-// the native SPIR-V by rewriting the descriptor decorations, so the native `-spv` (consumed by Rendering-Vulkan)
-// stays untouched
+// SDL_GPU mandates its own per-stage descriptor sets, so `-spv_sdl` rewrites the decorations of the native
+// SPIR-V and leaves the `-spv` that Rendering-Vulkan consumes untouched (Docs/FrontendAndRendering.md)
 static constexpr int32_t SDLGPU_MAX_SAMPLERS_PER_STAGE = 16;
 static constexpr int32_t SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE = 4;
 

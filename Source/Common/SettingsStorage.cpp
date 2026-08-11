@@ -42,9 +42,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// Backend of SettingsStorage. Values are always stored as strings (typed accessors serialize through them), so the
-// registry and the file backend behave identically. On Windows a value is a REG_SZ under the application subkey;
-// elsewhere it is one entry in a per-application CacheStorage
+// Values are always stored as strings, so the registry and file backends behave identically: a REG_SZ under
+// the application subkey on Windows, one CacheStorage entry elsewhere
 class SettingsStorageImpl
 {
 public:
@@ -71,9 +70,8 @@ private:
 
 #if FO_WINDOWS
 
-// The registry stores the raw UTF-8 bytes of the value as a REG_SZ (a trailing null is added on write and stripped
-// on read), so the round-trip is byte-preserving even for non-ASCII text. Only the explicit *A entry points are
-// used because WinApiUndef.inc removes the RegCreateKeyEx/etc. resolver macros
+// Raw UTF-8 bytes go in as a REG_SZ, keeping the round-trip byte-preserving for non-ASCII text; the explicit
+// *A entry points are required because WinApiUndef.inc removes the resolver macros
 static auto RegistryReadValue(const string& sub_key, string_view name) -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();

@@ -31,15 +31,8 @@
 // SOFTWARE.
 //
 
-///
-/// Standalone critter animation viewer.
-///
-/// Boots straight into the animation viewer window: no map, no mapper UI, no
-/// server connection. The viewer needs the client-side content services
-/// (prototypes, sprites, models, fonts, effects), which a plain `ClientEngine`
-/// already constructs, so this application owns one and drives a minimal frame
-/// of its own instead of the client's networked main loop.
-///
+// Standalone critter animation viewer. Owns a ClientEngine for its content services (protos,
+// sprites, models, fonts, effects) but runs its own frame instead of the networked main loop
 
 #include "Common.h"
 
@@ -81,9 +74,8 @@ static auto GetViewer() -> ptr<AnimationViewer>
     return Data->Viewer;
 }
 
-// Minimal frame: advance time, refresh the render-side managers, and draw the
-// single window. The client's own main loop is deliberately not used - it
-// drives networking, login, and game screens this tool has no use for
+// The client's own main loop is deliberately not used: it drives networking, login, and game
+// screens this tool has no use for
 static void DrawViewerFrame()
 {
     FO_STACK_TRACE_ENTRY();
@@ -96,9 +88,8 @@ static void DrawViewerFrame()
 
     engine->SprMngr.BeginScene();
 
-    // EndScene must balance BeginScene even if Draw throws, or the scene render
-    // target is left bound and the following EndFrame fails ("render target tex
-    // must be unset")
+    // EndScene must balance BeginScene even if Draw throws, or the scene render target stays bound
+    // and the next EndFrame fails
     auto end_scene = scope_exit([&]() noexcept { safe_call([&engine] { engine->SprMngr.EndScene(); }); });
 
     GetViewer()->Draw();

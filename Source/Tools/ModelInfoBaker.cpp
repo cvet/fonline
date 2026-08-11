@@ -1598,10 +1598,8 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
             stats.AnimationBoundsMaxExtent[bucket]++;
         }
 
-        // Match ModelInformation::GetAnimationIndexEx: both alias maps are applied once before the
-        // animation lookup, and an alias has priority over an exact entry with the same source key.
-        // Materialize every input pair that resolves to a baked entry so common runtimes do not need
-        // the client-only model description to answer the typed duration query
+        // Mirrors ModelInformation::GetAnimationIndexEx, where an alias outranks an exact entry, and
+        // materializes every resolvable pair so common runtimes answer without the client-only description
         set<pair<int32_t, int32_t>> output_pairs;
 
         for (const auto& [state_anim, action_anim, duration_ms] : raw_durations) {

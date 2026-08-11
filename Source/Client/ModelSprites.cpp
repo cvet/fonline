@@ -420,12 +420,8 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         model_spr->GetModel()->SetupFrame(render_frame_size, model_spr->GetModel()->GetFramePivot());
     }
 
-    // Size the sprite frame from the posed geometry before drawing anything. GetSpriteBounds derives the frame extent
-    // from the skinned skeleton and the baked particle box - there is no shader/GPU read-back - so the required size is
-    // fully known without a render. Pose the model (advancing the animation only on the first pass), measure, and grow
-    // the frame if the pose overflows it. Merge placements in root-relative coordinates instead of replacing one with
-    // the next: pixel rounding or a live world-space particle can otherwise alternate between adjacent pivots forever
-    // even though the size is unchanged. The re-poses are cheap CPU work, not renders
+    // The frame size is known from the posed skeleton without any GPU read-back, so the model is posed and measured
+    // first; placements merge in root-relative coordinates, or rounding could alternate pivots forever
     optional<ModelSpriteBounds> bounds;
 
     for (size_t size_pass = 0; size_pass < 3; size_pass++) {

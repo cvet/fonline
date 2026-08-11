@@ -406,12 +406,8 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
 
     auto load_spk = [&spark_io](const vector<uint8_t>& binary) -> SPK::Ref<SPK::System> { return spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size())); };
 
-    // The baker simulates the effect and records its extent so the runtime frames an emitting instance from a static
-    // measurement instead of computing an axis-aligned bounding box every frame. Position extent and billboard radius
-    // are recorded apart: the fixture emits one motionless particle at the origin from a point zone, so its position
-    // box is degenerate and the whole extent lives in the quad radius. That radius is the group's graphical radius
-    // (default 1) times the renderer's quad diagonal, sqrt(1.5^2 + 2^2) = 2.5 - it must not leak into the box, because
-    // the runtime transforms the box with the emitter's world placement but never scales the quad
+    // The fixture emits one motionless particle, so its position box is degenerate and the whole extent must land in
+    // the quad radius, which the runtime never scales with the emitter placement
     SECTION("BakerComputesAndStoresBoundsFromSimulation")
     {
         TestRig rig;

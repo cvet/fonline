@@ -1492,9 +1492,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
-    // Every shader-required block must be written and bound EVERY draw: a stale binding would
-    // point into the shared bump buffer, whose storage dies at the per-frame orphan — so
-    // default-initialize any required-but-unset buffer to zero (mirrors the Vulkan backend)
+    // Every shader-required block must be rewritten each draw: a stale binding points into the shared
+    // bump buffer, whose storage dies at the per-frame orphan
     if (_needEggBuf && !EggBuf.has_value()) {
         EggBuf = EggBuffer();
     }

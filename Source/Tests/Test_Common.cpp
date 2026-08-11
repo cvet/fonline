@@ -174,10 +174,8 @@ TEST_CASE("CommonUtilities")
     {
         auto generator = MakeSeededRandomGenerator();
 
-        // std::random_device is allowed to be deterministic, so two generators are not required to differ
-        // and comparing them is a flaky assertion. What the helper does owe its callers is that the engine
-        // came back seeded rather than default-constructed: mt19937's default seed is a fixed constant, so
-        // walking the default sequence would mean random_device() was never consulted
+        // Two generators need not differ, since random_device may be deterministic, but the engine must not walk
+        // mt19937's fixed default sequence, which would mean it was never seeded
         std::mt19937 default_seeded;
         bool matches_default_sequence = true;
 

@@ -149,10 +149,8 @@ struct ModelAnimationRigData
 [[nodiscard]] auto ReadModelAnimationJointRemapPayload(const_span<uint8_t> payload, string_view context) -> ModelAnimationJointRemap;
 void ValidateModelAnimationJointRemap(const ModelAnimationJointRemap& remap, string_view context);
 
-// Rig-data wire order: magic[8], schema:u16, flags:u16, rig/cache signatures:u64,
-// clip/binding counts:u32, skeleton and base-remap archive manifests, sorted clip
-// archive manifests, then sorted state/action bindings. An archive manifest stores
-// caller-owned source signature and identities before its length-prefixed LF archive
+// Wire order: magic[8], schema:u16, flags:u16, signatures:u64, counts:u32, skeleton and base-remap
+// manifests, sorted clip manifests, sorted bindings; a manifest precedes its length-prefixed LF archive
 [[nodiscard]] auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view context) -> vector<uint8_t>;
 [[nodiscard]] auto ReadModelAnimationRigData(const_span<uint8_t> data, string_view context) -> ModelAnimationRigData;
 

@@ -399,10 +399,8 @@ static auto RoundSpriteIntersectionPoint(float64_t x, float64_t y) -> optional<i
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Nearly parallel support lines intersect arbitrarily far from the frame, and iround throws instead of
-    // saturating, so unrepresentable coordinates must be rejected before conversion. The bound sits far outside
-    // any frame yet well inside the int32 range, so the callers keep owning the actual frame range checks.
-    // The negated form also rejects the non-finite coordinates that iround refuses
+    // Nearly parallel support lines intersect arbitrarily far away and iround throws rather than saturating,
+    // so the bound sits outside any frame but inside int32, leaving frame checks to the callers
     constexpr float64_t coordinate_bound = 1.0e9;
 
     if (!(std::abs(x) <= coordinate_bound && std::abs(y) <= coordinate_bound)) {
@@ -2730,9 +2728,8 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
                     vector<SpriteMeshCandidate> simplified_candidates = BuildSimplifiedSpriteCandidates(*simplified_contours, width, height, SPRITE_MESH_DILATION, config.MaxTriangles);
                     validate_detailed_candidates(simplified_candidates, detailed_tolerance_mask, SpriteMeshCandidateSource::DetailedSimplified, SPRITE_MESH_DILATION);
 
-                    // Douglas-Peucker bounds discarded points by the tolerance. Expanding by
-                    // that distance turns a simplified contour into a cover candidate; any
-                    // resulting transparent overdraw is compared by the normal score
+                    // Douglas-Peucker bounds discarded points by the tolerance, so expanding by that distance
+                    // turns a simplified contour into a cover candidate
                     int32_t enclosing_dilation = std::min(SPRITE_MESH_MAXIMUM_PADDING, SPRITE_MESH_DILATION + iround<int32_t>(std::ceil(tolerance)));
                     vector<SpriteMeshCandidate> expanded_candidates = BuildSimplifiedSpriteCandidates(*simplified_contours, width, height, enclosing_dilation, config.MaxTriangles);
                     validate_detailed_candidates(expanded_candidates, {}, SpriteMeshCandidateSource::DetailedExpanded, enclosing_dilation);

@@ -56,9 +56,8 @@ WorkerPool::WorkerPool(string_view name, int32_t thread_count, ptr<const std::at
         }
     }
     catch (...) {
-        // Thread spawning can throw (e.g. OS thread exhaustion). Any workers already started are
-        // referencing *this via their captured lambda; the constructor is unwinding and ~WorkerPool
-        // will not run, so stop and join them here before the storage is torn down, then rethrow
+        // Workers already started reference *this through their lambda, and an unwinding constructor never runs
+        // ~WorkerPool, so they are stopped and joined here before the storage goes away
         StopWorkers();
         throw;
     }

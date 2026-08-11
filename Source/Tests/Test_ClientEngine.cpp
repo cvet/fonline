@@ -1109,9 +1109,8 @@ R"(                ImGui.ColorEdit4("", colorValue);
         try { Game.ClearEffectScriptValues(EffectType::CritterSprite, 1); } catch { subtypeRejections++; }
         if (subtypeRejections != 4) return -13;
 
-        // Binding walks the same slot table from the other side. The headless render backend builds a stub
-        // effect for any path and only logs a missing file, so a bad path installs a stub rather than
-        // failing - the point here is that every slot is addressable, not that the path is validated
+        // The headless backend stubs any effect path, so this proves every slot is addressable rather than that
+        // the path is validated
         int bindRejections = 0;
         for (uint i = 0; i < effectTypes.length(); i++) {
             try { Game.SetEffect(effectTypes[i], 0, "Effects/UnitTestMissing.fofx"); } catch { bindRejections++; }
@@ -1646,9 +1645,8 @@ void main(void)
         });
     }
 
-    // A two-bone skinned box. The second bone carries an offset of its own, so half the corners are placed by a
-    // different matrix than the other half and the posed silhouette is genuinely skeleton-driven rather than a
-    // rigid copy of the root transform
+    // The second bone carries its own offset, so half the corners move by a different matrix and the posed
+    // silhouette is genuinely skeleton-driven
     static auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -2050,17 +2048,8 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 
 TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 {
-    // The sprite frame must follow the model's scale, camera tilt, facing and shadow state, and it is derived through
-    // per-instance state that survives across calls - the posed-frame flag, the frame layout, the configuration
-    // bounds keyed on the combined-mesh generation. State that outlives a call is exactly what can go stale, and a
-    // stale frame rectangle is a silent bug: the model is clipped only in some states, with nothing logged.
-    //
-    // So pin it differentially rather than against hardcoded rectangles. Drive one instance through a sequence of
-    // state changes, measuring after each, and compare every measurement against a freshly created instance driven
-    // to the same state, which by construction carries nothing forward. Anything the reused instance fails to
-    // refresh surfaces as it still reporting the previous state's rectangle while the fresh one reports the new one.
-    // This was verified to detect real staleness: an experimental cache of the vertex sweep with a deliberately
-    // incomplete invalidation key failed here at exactly the step whose input the key was missing
+    // Pinned differentially against a fresh instance rather than hardcoded rectangles, because the frame is derived
+    // through per-instance state that can go stale, and a stale rectangle clips the model with nothing logged
     constexpr string_view model_path = "Models/SkinnedSpriteBounds.fbx";
 
     auto settings = MakeClientTestSettings();
@@ -2252,9 +2241,8 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
     SECTION("LayerValuesDriveTheAnimationDataAndLinkTransforms")
     {
-        // Every link block in the description - the transform one, the disabling one and the second
-        // layer - is applied only when the matching layer value is requested, so nothing under
-        // SetAnimData runs until an animation is played with layers set
+        // Each link block applies only when its layer value is requested, so nothing under SetAnimData runs until
+        // an animation plays with layers set
         model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
 
         auto state_anim = static_cast<CritterStateAnim>(1);
@@ -2630,10 +2618,8 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
 
 TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
 {
-    // The legacy Fallout animation path only runs for model names under art/critters/, and derives its
-    // sprite names by dropping the extension and the last two characters, then appending one index letter
-    // per animation from "_abcdefghijklmnopqrstuvwxyz0123456789". The loader casts the result to a
-    // SpriteSheet, so the fixture sprites carry several frames
+    // The legacy path only runs under art/critters/ and builds sprite names by index letter, then casts the result
+    // to a SpriteSheet — hence the multi-frame fixtures
     constexpr string_view FRM_IND = "_abcdefghijklmnopqrstuvwxyz0123456789";
     constexpr string_view MODEL_NAME = "art/critters/utxx.frm";
     constexpr string_view MODEL_STEM = "art/critters/ut";
@@ -2779,18 +2765,15 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
 
     int32_t rejection_count = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
-    // Bits 8/16/128/256 are the probes that must reject: a missing video file, an unknown font extension and
-    // the two empty output paths. The rest legitimately answer instead of throwing - the sound and music
-    // players report a bool, a video request with no file queues nothing, SetEffect with subtype 0 addresses
-    // no drawable, and language selection accepts a pack that resolves to no entries
+    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool, queueing
+    // nothing, or accepting a pack that resolves to no entries
     CHECK(rejection_count == 8 + 16 + 128 + 256);
 }
 
 TEST_CASE("MultiFrameSpritesPlayAndCopy")
 {
-    // A single-frame sprite resolves to an atlas sprite, so the sheet's own playback - frame stepping,
-    // looping, reversing and the copy that a second user of the same animation gets - has nothing to run
-    // on until the fixture serves a real multi-frame sprite
+    // A single-frame sprite resolves to an atlas sprite, so sheet playback has nothing to run on until the fixture
+    // serves a real multi-frame one
     auto settings = MakeClientTestSettings();
 
     vector<pair<string, vector<uint8_t>>> sprite_resources;
@@ -3485,9 +3468,8 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
         ImGui::Render();
     }
 
-    // Every ImGui binding validates its label/id before touching ImGui, so an empty one must surface as a
-    // script exception rather than an unaddressable widget. The sweep runs inside the render pass because
-    // the ImGui accessor itself is only available while a frame is open
+    // An empty label must surface as a script exception rather than an unaddressable widget; the sweep runs inside
+    // the render pass because the accessor exists only while a frame is open
     int32_t probe_count = 0;
     int32_t rejections = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));

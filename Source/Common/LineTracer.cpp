@@ -78,9 +78,8 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         constexpr float32_t bias = 0.02f;
 
-        // Convert pixel sub-hex offset to internal trace coordinates.
-        // Internal hex bounding box is 4 wide (vertex-to-vertex) and SQRT3_X2 tall (edge-to-edge),
-        // visual hex bounding box is MAP_HEX_WIDTH x MAP_HEX_HEIGHT
+        // Trace coordinates use a hex box 4 wide (vertex-to-vertex) by SQRT3_X2 tall, while the visual one
+        // is MAP_HEX_WIDTH x MAP_HEX_HEIGHT
         constexpr float32_t offset_scale_x = 4.0f / numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH);
         constexpr float32_t offset_scale_y = SQRT3_X2_FLOAT / numeric_cast<float32_t>(GameSettings::MAP_HEX_HEIGHT);
 

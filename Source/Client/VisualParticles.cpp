@@ -231,11 +231,8 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Size the sprite frame to the effect's baked extent. The atlas draws the effect through the map camera (a tilt
-    // about X) at ModelProjFactor px per world unit; project the 8 corners of the baked position box through that tilt
-    // (the ortho drops view Z), grow the result by the billboard radius - a view-plane length the tilt must not touch -
-    // and place the emitter, which projects to the view origin, so the extent exactly fills the frame. An effect that
-    // showed no particle (no box) falls back to a small default square
+    // The box corners are projected through the map camera tilt and then grown by the billboard radius, which is a
+    // view-plane length the tilt must not touch; an effect that showed no particle falls back to a default square
     optional<ParticleBounds3D> baked = GetBakedBounds();
     float32_t proj_factor = settings.ModelProjFactor;
     ParticleSpriteFrame layout;

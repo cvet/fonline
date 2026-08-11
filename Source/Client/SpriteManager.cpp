@@ -1189,10 +1189,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
         if (spr->IsDirectDraw()) {
             vec3 map_proj = get_map_sprite_proj(mspr.get());
-            // Direct-draw sprites contain real scene geometry; keep only a tiny ground separation instead of
-            // inheriting their late draw-order bias, otherwise particles become closer than critters/scenery.
-            // Proxy-geometry map sprites write unbiased world depth, so one step is enough to avoid terrain
-            // z-fighting without shifting the particle anchor toward the camera
+            // Only a tiny ground separation, because inheriting the direct-draw draw-order bias would pull
+            // particles in front of critters and scenery
             float32_t direct_layer_bias = MAP_LAYER_DEPTH_BIAS;
             float32_t depth = map_proj.z + direct_layer_bias;
             // scene_pos == GetDrawRootPos() - draw_area == mspr_rect.pos + sprite root offset (already computed

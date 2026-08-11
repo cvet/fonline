@@ -915,12 +915,8 @@ namespace MapOpsTest
         return 0;
     }
 
-    // Map::GetCrittersInRadius walks the hex field only while GeometryHelper::HexesInRadius(radius) stays below the map
-    // critter count, and otherwise scans every critter and filters by distance arithmetic. The two arms answer through
-    // completely different machinery: the walk relies on the multihex field registration done by Map::SetMultihexCritter,
-    // the scan subtracts Multihex from the centre distance. HexesInRadius(2) is 19 on hexagonal geometry and 25 on square
-    // geometry, so this many fillers keep both a radius 1 and a radius 2 probe on the walk arm in either build. Fillers
-    // spawn far from every probe hex, so they never enter a result set
+    // The radius query picks between a hex walk and a full scan by critter count, and the two arms answer through
+    // different machinery, so the filler count keeps both probes on the walk arm in either geometry
     const int HexWalkFillerCritterCount = 32;
 
     // Largest HexesInRadius(2) across the supported geometries (square: 1 + 8 * 3; hexagonal: 1 + 6 * 3)
@@ -933,9 +929,8 @@ namespace MapOpsTest
             if (filler is null) return false;
         }
 
-        // Pin the arm selector itself rather than trusting the filler count: GetCritters reports the very
-        // vector the predicate measures, so a live count above the hex threshold proves the radius 1 and
-        // radius 2 probes below cannot silently fall back to the full scan
+        // The selector is pinned rather than trusted: this is the very count the predicate measures, so both probes
+        // below provably stay on the walk arm
         return map.GetCritters(CritterFindType::Any).length() > uint(MaxHexesInRadius2);
     }
 

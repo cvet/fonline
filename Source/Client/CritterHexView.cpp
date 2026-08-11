@@ -124,13 +124,8 @@ void CritterHexView::StopMoving()
     _walkAnchorAnim.reset();
     _walkAnchorDisp = {};
 
-    // Cash any accumulated sub-hex offset into the hex position. Rapid stop/start (key mashing)
-    // re-creates the move every tap inheriting the current HexOffset, but the time-based step index
-    // restarts at 0, so the critter's real forward progress piles up as an ever-growing HexOffset
-    // while the hex stays put — stranding the resting sprite hexes from its logical hex. Snap to the
-    // hex the sprite has actually reached, keeping only the sub-hex remainder. Because
-    // GetHexPos(hex) + offset is invariant under this re-split, the sprite does not visually jump; the
-    // logical hex just catches up to where the sprite already is
+    // Rapid stop/start restarts the step index while inheriting HexOffset, so progress piles up as an offset
+    // that strands the sprite from its logical hex; the re-split is invariant, so nothing jumps visually
     NormalizeHexOffset();
 }
 
@@ -674,10 +669,8 @@ void CritterHexView::NormalizeHexOffset()
     mpos hex = GetHex();
     ipos16 hex_offset = GetHexOffset();
 
-    // Never let the rounding seat us on a blocked hex: the server reconciles a move request by
-    // pathing to the hex we report, and an unwalkable one fails that path, so every later request is
-    // rejected and resynced instead. Declining leaves the offset in place, which the sprite already
-    // draws at the same spot
+    // The server reconciles a move by pathing to the reported hex, so a blocked one fails every later request;
+    // declining leaves the offset in place, where the sprite already draws
     auto is_movable = [this](mpos check_hex) { return !GetMap()->GetField(check_hex).MoveBlocked; };
 
     if (!GeometryHelper::NormalizeHexOffset(hex, hex_offset, GetMap()->GetSize(), is_movable)) {
@@ -776,10 +769,8 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
 
     if (action == CritterActionAnim::Walk || action == CritterActionAnim::Run) {
         if (IsMoving()) {
-            // Snap the sprite to its frame's intended root-motion position: while a frame is shown
-            // the sprite stays put, then jumps by Delta accum on every frame transition. _offsAnim
-            // = (cycle_start - disp) + accum[i] cancels the engine's linear hex_offset within the
-            // frame; sprite = start_hex + cycle_start + accum[i] is therefore constant per frame
+            // Root motion holds still within a frame and jumps at each transition, so _offsAnim cancels the
+            // engine's linear hex_offset and leaves the sprite position constant per frame
             const_span<ipos32> spr_offset = anim->GetSprOffset();
             int32_t frames_count = anim->GetFramesCount();
 

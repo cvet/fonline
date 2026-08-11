@@ -173,10 +173,8 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         ptr<void> arg_data = gen->GetArgAddress(first_arg + numeric_cast<AngelScript::asUINT>(index));
         auto arg_type = make_ptr(&func_desc->Args[index].Type);
 
-        // Mutable simple arguments follow the unified slot contract: the slot is the address of the
-        // caller's variable (the value itself or the handle cell), which GetArgAddress already returns
-        // for the '?&' variadic reference. Non-mutable entity/ref-type and collection arguments are
-        // re-packed into a local handle cell so the callee sees a plain handle slot
+        // Slot contract: a mutable simple argument is already the caller's variable address, so only
+        // the other kinds are re-packed into a local handle cell for the callee to read as a handle
         bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {

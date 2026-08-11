@@ -59,19 +59,12 @@ struct ParticleSceneBackgroundResult
     nptr<const RenderTexture> Texture {};
 };
 
-// Hands out a copy of the scene as it was before the current draw, for content that refracts what is behind it. A hard
-// Unavailable result means there is no scene to refract and fails the particle closed. Deferred is narrower: a
-// direct-scene owner is performing an auxiliary offscreen preview, so this draw is skipped without retiring the
-// particle and the later scene draw can ask again. Called only by a draw that needs it, so an ordinary particle never
-// pays for the copy
+// Unavailable means there is nothing to refract and fails the particle closed, while Deferred only skips this
+// draw during an auxiliary offscreen preview; called solely by a draw that needs it
 using ParticleSceneBackgroundProvider = function<ParticleSceneBackgroundResult()>;
 
-// Bake-time extent of a particle system, kept as two separable quantities because they do not transform alike. The
-// position box is swept by the particles themselves, so it follows the emitter's world placement (bone matrix, atlas
-// frame scale, entity scale) in full and rotates with the model's facing. The billboard radius is the largest
-// half-extent one particle's camera-facing sprite reaches: it follows only the placement's *scale*, because a sprite
-// always faces the camera and keeps the same screen footprint at every facing, so it is added once in the view plane
-// and never rotated or swept
+// Two quantities because they do not transform alike: the position box follows the world placement in full,
+// while the billboard radius follows only its scale and is added in the view plane, never rotated or swept
 struct ParticleBounds3D
 {
     vec3 PositionMin {};
@@ -83,10 +76,8 @@ struct ParticleBounds3D
 // frame anything, so the caller reserves no space instead of trusting it
 auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, float32_t billboard_radius) noexcept -> optional<ParticleBounds3D>;
 
-// Fold a bake-time extent through a frame transform (the emitter's world placement combined with the view matrix).
-// The position box follows the matrix outright; the billboard radius follows only its scale, because the renderers
-// scale a sprite with the effect's placement while a camera-facing quad keeps the same screen footprint at every
-// facing - so the radius must never be rotated or swept
+// The position box follows the matrix outright while the billboard radius follows only its scale, because a
+// camera-facing quad keeps the same screen footprint at every facing
 auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix) noexcept -> optional<ParticleBounds3D>;
 
 struct ParticleRuntimeSetup
@@ -155,9 +146,8 @@ public:
 // The returned vector is sorted by backend priority, with the first backend being the most preferred
 auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
 
-// Debug wireframe overlay for particle geometry: re-draws a particle draw buffer's triangles as a line list through
-// the primitive effect with the same projection, mirroring the sprite-batch wireframe from Render.DrawWireframe. The
-// overlay buffer is created lazily on first use and reused between draws
+// Mirrors the sprite-batch wireframe from Render.DrawWireframe by re-drawing the triangles as a line list; the
+// overlay buffer is created lazily and reused
 void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, unique_nptr<RenderDrawBuffer>& overlay_buf, const RenderDrawBuffer& source_buf, size_t index_count, const mat44& proj_matrix);
 
 FO_END_NAMESPACE

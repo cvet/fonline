@@ -52,9 +52,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// Script-facing lookups treat an entity inside its destroy window as already gone: method calls on a
-// destroying entity throw, so handing one out would force IsDestroying boilerplate at every call site.
-// A registry entry only sits in this window while its teardown events (hide/finish) are firing
+// Script-facing lookups treat an entity inside its destroy window as already gone: its methods throw
+// anyway, so handing one out would force IsDestroying boilerplate at every call site
 template<typename T>
 static auto DropDestroyingEntity(refcount_nptr<T> entity) -> refcount_nptr<T>
 {
@@ -1593,9 +1592,8 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
             }
         }
 
-        // Drain once more AFTER the process has exited: a fast command (e.g. `echo`) can write its
-        // whole output and terminate between the last peek and this check, leaving it buffered in the
-        // pipe. Breaking immediately on exit would lose that final output
+        // Drain once more after the exit is observed: a fast command can write everything and
+        // terminate between the last peek and this check, leaving its output buffered in the pipe
         if (process_done) {
             break;
         }

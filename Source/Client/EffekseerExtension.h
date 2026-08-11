@@ -98,24 +98,19 @@ private:
     unique_ptr<Impl> _impl;
 };
 
-// Structural resource budgets enforced before Effekseer's unchecked parser allocates from serialized counts. The
-// renderer's per-draw geometry budget is 64K vertices; animated model resources additionally get a generous frame and
-// payload ceiling so a compact count bomb cannot amplify into an unbounded decoded model
+// Enforced before Effekseer's unchecked parser allocates from serialized counts, so a compact count bomb cannot
+// amplify into an unbounded decoded model
 inline constexpr size_t EFFEKSEER_MODEL_PAYLOAD_SIZE_MAX = 64U * 1024U * 1024U;
 inline constexpr int32_t EFFEKSEER_MODEL_FRAME_COUNT_MAX = 4096;
 inline constexpr int32_t EFFEKSEER_MODEL_VERTEX_COUNT_MAX = 64000;
 inline constexpr int32_t EFFEKSEER_MODEL_FACE_COUNT_MAX = EFFEKSEER_MODEL_VERTEX_COUNT_MAX / 3;
 
-// Effekseer's model constructor trusts every serialized count and does not consult the supplied buffer size. Validate
-// the complete part it will read before handing a raw-copied .efkmodel payload to the third-party parser. A valid
-// legacy payload may carry trailing bytes which that parser deliberately ignores
+// Effekseer's model constructor trusts every serialized count without consulting the buffer size, so the part it
+// will read is validated first; a valid legacy payload may carry trailing bytes it ignores
 auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>;
 
-// A baked Effekseer effect carries its precomputed world-space bounds as a fixed-size trailer appended after the
-// compiled "SKFE" payload (the effect keeps its magic at offset 0). Only our runtime reads the .efk - it is never
-// reopened by the Effekseer editor - so appending the trailer is safe: the baker writes it, and the runtime splits it
-// back off and hands the untouched payload to Effekseer::Effect::Create. Baking the trailer is mandatory, so a
-// missing or malformed one is a broken invariant of our baked data and throws rather than being silently skipped
+// Only our runtime reads the .efk — the Effekseer editor never reopens it — so the baker may append this trailer
+// after the payload; it is mandatory, and a missing or malformed one throws
 constexpr uint32_t EFFEKSEER_BOUNDS_TRAILER_MAGIC = 0x42424546u; // bytes 'F','E','B','B' little-endian
 
 struct EffekseerBoundsTrailer

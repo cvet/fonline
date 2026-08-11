@@ -1347,9 +1347,8 @@ TEST_CASE("CritterCppApi")
 
 // ========== Independent-Root Cover Enumeration Tests ==========
 
-// A global-map group member and a map spectator are entity-lock roots of their own: neither is reachable
-// through the map/location ancestry the caller already covers, so the engine has to let the caller enumerate
-// them before it can acquire the cover the native fan-outs then validate
+// Group members and spectators are entity-lock roots outside the caller's ancestry, so the engine must let them
+// be enumerated before the cover the native fan-outs validate can be acquired
 TEST_CASE("IndependentRootCoverEnumeration")
 {
     auto settings = MakeSettings();

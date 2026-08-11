@@ -1375,10 +1375,8 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    // A caller can test an entity for liveness and then call Game.Sync, but never both at once, so a
-    // concurrent destroy always fits between the two. The primitive therefore accepts an already
-    // destroyed handle and covers only what is still alive, instead of rejecting the argument and
-    // making the recoverable-false contract of its Sync::Lock-style wrappers impossible to honour
+    // A concurrent destroy always fits between a liveness test and the call, so the primitive accepts a destroyed
+    // handle and covers what is still alive, keeping its wrappers' recoverable-false contract honourable
     [[Async]]
     int TestSyncAcceptsDestroyedEntity()
     {

@@ -96,9 +96,8 @@ TEST_CASE("ModelSpriteFramePlacementMergeAllowsRootOutsideTightFrame", "[model][
 
 TEST_CASE("ModelSpriteViewRectStaysInsideTheDrawRectOfWiderBounds", "[model]")
 {
-    // The view rect anchors the critter name, so it must never advertise more space than the model actually draws in.
-    // Its bounds are the idle-pose subset of the model bounds, and the layout must keep that containment: the regression
-    // this pins is a view box grown from live poses and attachments until it dwarfed the frame and the name drifted up
+    // The view rect anchors the critter name, so it must stay the idle-pose subset of the model bounds; a box grown
+    // from live poses and attachments dwarfs the frame and drifts the name up
     ModelBounds3D model_bounds = {.Min = {-0.9f, 0.0f, -0.7f}, .Max = {0.9f, 2.4f, 0.7f}};
     ModelBounds3D view_bounds = {.Min = {-0.3f, 0.0f, -0.25f}, .Max = {0.3f, 1.8f, 0.25f}};
     mat44 identity {1.0f};

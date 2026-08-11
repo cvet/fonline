@@ -41,23 +41,8 @@
 
 FO_BEGIN_NAMESPACE
 
-///
-/// Particle effect preview window (view only).
-///
-/// Lists every particle resource the loaded content provides (the baked `.spk`
-/// Spark and `.efk` Effekseer files the sprite factory advertises), loads the
-/// selected one as a `Sprite` through the same `ParticleSpriteFactory` path the
-/// game uses, and plays it live in an offscreen preview at in-game scale. Opt-in
-/// overlays mark the review geometry: the **root** crosshair (the ground point
-/// the effect is anchored to) and the **draw rect** (the sprite frame the
-/// particle rasterizes into). Playback runs on a per-system seed so a one-shot
-/// burst can be replayed deterministically or reseeded.
-///
-/// Authoring stays in the mapper's particle editor; this window never edits.
-///
-/// The window owns no engine services; a host (standalone app) passes the ones
-/// it already has and calls `Draw()` from its ImGui pass.
-///
+// Particle effect preview, view only — authoring stays in the mapper's particle editor. Loads through the
+// same factory path the game uses and owns no engine services; a host passes its own and calls Draw()
 class ParticleViewer final
 {
 public:

@@ -307,9 +307,8 @@ auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<Part
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Frame the effect from its bake-time extent (measured by simulating the effect during baking, and mandatory for
-    // every baked system), and only while it is actually emitting - a cheap particle-count check, no per-frame AABB
-    // computation. A dormant system (no live particles) reserves nothing
+    // Framed from the mandatory bake-time extent and only while particles live, so nothing is measured per frame
+    // and a dormant system reserves nothing
     if (_impl->RuntimeSystem->getNbParticles() == 0) {
         return std::nullopt;
     }
@@ -363,10 +362,8 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
         mat44 result_position_translation_matrix = glm::translate(mat44 {1.0f}, result_position);
         mat44 look_direction_matrix = glm::rotate(mat44 {1.0f}, (setup.LookDirectionAngle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
 
-        // The authored look direction replaces the placement's *rotation* only. Its scale must survive, or an effect
-        // whose system carries a local transform would ignore the scale of the matrix that places it - the model sprite
-        // frame renders at ModelInstance::FRAME_SCALE - and end up drawn at a different size than an otherwise
-        // identical effect whose system transform happens to be identity (the branch below)
+        // The authored look direction replaces rotation only: dropping the placement's scale would draw an effect
+        // carrying a local transform at a different size than an identical one with an identity transform
         result_position_matrix = result_position_translation_matrix * look_direction_matrix * glm::scale(mat44 {1.0f}, result_position_scale);
     }
     else {

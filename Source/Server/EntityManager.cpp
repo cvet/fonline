@@ -366,10 +366,8 @@ auto EntityManager::GetItemsCount() const noexcept -> size_t
     return _allItems.size();
 }
 
-// Thread-safety analysis is disabled here: LoadEntities runs single-threaded during server init (before the worker
-// pool processes any entity), so it reads the registry maps without _registryLock and iterates them while calling
-// back into the engine (CallInit / ProcessVisible*), which itself re-locks the registry - holding the lock across
-// that would self-deadlock. See Engine/Docs/ThreadSafetyAnalysis.md
+// Runs single-threaded during init and calls back into the engine, which re-locks the registry, so holding
+// `_registryLock` across it would self-deadlock (Docs/ThreadSafetyAnalysis.md)
 void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
@@ -687,9 +685,8 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
         // Inner entities
         LoadInnerEntities(cr, is_error);
 
-        // Give scripts a fully restored critter before it is attached to a map or exposed through
-        // world-entry and regular initialization events. This is the persistence-migration boundary.
-        // Player-bound critters are marked before the event so handlers observe the real controllable state
+        // The persistence-migration boundary: scripts see a fully restored critter before any map attachment or
+        // world-entry event, with player binding already marked so handlers see the real state
         if (!is_error) {
             ValidateEntityAccess(cr);
 
@@ -922,9 +919,8 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
 
         hstring proto_id = _engine->Hashes.ToHashedString(proto_name);
 
-        // A proto whose migration rule resolves to the "Remove" sentinel was deleted on purpose: skip
-        // the entity cleanly (without is_error) so callers drop it instead of failing the whole load.
-        // A genuinely missing proto (no rule) keeps proto_id and surfaces later as proto-not-found
+        // A proto removed on purpose by a migration rule skips cleanly so callers drop the entity, while a
+        // genuinely missing one keeps its id and surfaces later as proto-not-found
         if (auto migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && migrated.value() == _removeMigrationReplacement) {
             WriteLog(LogType::Info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
             return {};
@@ -1594,9 +1590,8 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> ptr<Cu
     return entity;
 }
 
-// Binds a still-unpublished custom entity to its holder: a ServerEntity holder supplies the parent link
-// and its own lock, the engine singleton supplies its EntityLock (the same one Game.Lock()/Unlock() use)
-// without a parent link, so the validator's chain walk finds a real cover on the entity itself
+// A ServerEntity holder supplies both the parent link and its lock, while the engine singleton supplies only
+// its lock, so either way the validator's chain walk finds a real cover on the entity
 void EntityManager::AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder)
 {
     FO_STACK_TRACE_ENTRY();

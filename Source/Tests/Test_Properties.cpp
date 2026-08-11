@@ -2048,11 +2048,8 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
 TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
 {
-    // RestoreAllData's full-data POD records carry (start_pos, len) offsets straight from the blob. A
-    // corrupted or hostile snapshot whose layout-size header still matches the registrar must not be
-    // able to drive an out-of-bounds MemCopy into _podData — the offsets have to be validated against the
-    // POD layout. (The sibling RestoreData(ptrs, sizes) path already size-checks its single POD block;
-    // this is the matching guard for the sparse start_pos/len record format.)
+    // The record offsets come straight from the blob, so a hostile snapshot whose size header still matches must
+    // not drive an out-of-bounds copy: they are validated against the POD layout
     HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OobPodRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);

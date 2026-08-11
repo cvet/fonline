@@ -512,9 +512,8 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
 
         int32_t r = index - (1 + 3 * (round - 1) * round); // [0, 6*round - 1]
 
-        // Axial position relative to hex (engine's doubled-axial: E=(+2,0), SE=(+1,+1), ...).
-        // 6 sides of length `round` walked in order SE, SW, W, NW, NE, E. Ranges below
-        // overlap at corners by design - both side formulas agree there
+        // Six sides of length `round` walked SE, SW, W, NW, NE, E in doubled-axial deltas; the ranges
+        // below overlap at the corners by design, where both side formulas agree
         int32_t dax;
         int32_t day;
 
@@ -543,9 +542,8 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
             day = -round;
         }
 
-        // Convert axial delta back to offset delta. Hex directions always produce
-        // an even (day - dax), so dx is integer; dy then depends on hex.x parity
-        // via the same row-shift rule used by GetHexPos
+        // Hex directions always give an even (day - dax), so dx stays integer; dy then follows hex.x
+        // parity through the same row-shift rule as GetHexPos
         int32_t dx = (day - dax) / 2;
         int32_t cx_parity = hex.x & 1;
         int32_t shift = dx + cx_parity;
@@ -683,13 +681,8 @@ auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Real-3D map-camera world frame: +X right, +Y up (elevation), +Z map-south, one world unit == one
-    // pixel of hex spacing. The fixed map camera is a parallel (orthographic) projection that rigidly tilts
-    // the world about X by MAP_CAMERA_ANGLE; ground northing is foreshortened by sin(angle) (== 1 /
-    // GetYProj()) and elevation by cos(angle). Anchoring the ground point at z = legacy_y / sin(angle) makes
-    // ProjectWorldToMap reproduce the legacy GetHexPos screen position exactly at elevation 0. Models render
-    // in this same frame, so they need no extra transform (see
-    // Docs/Plans/2026-05-29-sprites-real-3d-coordinates.md)
+    // Anchoring the ground point at z = legacy_y / sin(angle) is what makes ProjectWorldToMap reproduce
+    // the legacy GetHexPos position at elevation 0 (Docs/MapsMovementGeometry.md, "Map camera projection")
     ipos32 hex_pos = GetHexPos(raw_hex);
     float32_t sin_a = std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT);
 
@@ -705,11 +698,8 @@ auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Reference map-camera projection (no scroll/zoom): rigid tilt about X by MAP_CAMERA_ANGLE, parallel
-    // projection. Returns map-space pixels in .x/.y (legacy convention, Y down) and view depth in .z (larger
-    // == nearer the camera == drawn on top). The (.y, .z) pair is an orthonormal rotation of the world
-    // (Z, Y) pair, so this is a true rigid camera tilt rather than a shear. The Phase 1 GPU view-projection
-    // matrix must agree with this contract; it is pinned by Test_Geometry.cpp
+    // Reference projection without scroll or zoom, returning map pixels in .x/.y and view depth in .z
+    // (larger == nearer). Contract: Docs/MapsMovementGeometry.md, "Map camera projection"
     float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
@@ -729,9 +719,8 @@ auto GeometryHelper::ProjectMapYToGroundDepth(float32_t map_y, float32_t elevati
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
 
-    // Inverse of ProjectWorldToMap for a horizontal ground plane:
-    // screen_y = sin(a) * world_z - cos(a) * elevation
-    // depth = cos(a) * world_z + sin(a) * elevation
+    // Inverse of ProjectWorldToMap on a ground plane, where screen_y = sin(a) * world_z - cos(a) *
+    // elevation and depth = cos(a) * world_z + sin(a) * elevation
     return map_y * cos_a / sin_a + elevation / sin_a;
 }
 
@@ -743,9 +732,8 @@ auto GeometryHelper::ProjectMapYToVerticalDepth(float32_t map_y, float32_t ancho
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
 
-    // Inverse of ProjectWorldToMap for a vertical plane at the anchor's ground Z:
-    // screen_y - anchor_y = -cos(a) * height_delta
-    // depth - anchor_depth = sin(a) * height_delta
+    // Inverse of ProjectWorldToMap on a vertical plane at the anchor's ground Z, where a height delta
+    // moves screen_y by -cos(a) and depth by sin(a)
     return anchor_depth - (map_y - anchor_map_y) * sin_a / cos_a;
 }
 
@@ -753,17 +741,8 @@ auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // World -> map-screen pixels (.x/.y, Y down) + view depth (.z): the GPU form of ProjectWorldToMap with the
-    // map camera's scroll (translate) and zoom (scale) folded in. `camera_angle_deg` is the fixed elevation
-    // (pitch) above the ground (arcsin(sqrt(3)/4) == MAP_CAMERA_ANGLE keeps hexes metric-regular); `yaw_deg`
-    // orbits the camera about the vertical (up) axis so a real 3D camera can rotate the scene around the same
-    // elevation/roll. yaw == 0 reproduces the legacy fixed isometric view: result = (ProjectWorldToMap(world).xy
-    // - scroll) * zoom on screen, depth unchanged. The renderer composes the backend ortho on top
-    // (MapViewProj = CreateOrthoMatrix(0, w, h, 0, near, far) * MakeMapCameraView), giving one world->clip
-    // matrix shared by sprites, 3D models and particles. 2D map sprites write per-vertex world depth and test it
-    // with DepthFunc = LessEqual (the CPU painter sort still orders blended layers), so the shared GPU depth
-    // buffer resolves occlusion across sprites, 3D models and particles alike. Pinned against
-    // ProjectWorldToMap / GetHexPos by Test_Geometry.cpp
+    // The GPU form of ProjectWorldToMap with scroll, zoom, and yaw folded in; yaw == 0 reproduces the fixed
+    // isometric view. Contract: Docs/MapsMovementGeometry.md, "Map camera projection"
     float32_t angle_rad = camera_angle_deg * DEG_TO_RAD_FLOAT;
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
@@ -829,11 +808,8 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
     constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        // Hex centers form a lattice with basis vectors:
-        //   v1 = (half_w, h)  — direction of ry++
-        //   v2 = (w, 0)       — direction of rx-- (horizontal neighbor)
-        // Pixel position = a * v1 + b * v2
-        // Solving: a = py / h, b = (px - a * half_w) / w
+        // Hex centers form a lattice with v1 = (half_w, h) along ry and v2 = (w, 0) along -rx, so a
+        // pixel is a * v1 + b * v2 with a = py / h and b = (px - a * half_w) / w
         float32_t fh = numeric_cast<float32_t>(h);
         float32_t fw = numeric_cast<float32_t>(w);
         float32_t fhw = numeric_cast<float32_t>(half_w);
@@ -869,15 +845,8 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
         int32_t dx = pos.x - cx;
         int32_t dy = pos.y - cy;
 
-        // Verify point is inside the hex using edge constraints
-        // Pointy-top hex vertices relative to center:
-        //   top (0, -H/2), upper-right (half_w, -H/4), lower-right (half_w, H/4),
-        //   bottom (0, H/2), lower-left (-half_w, H/4), upper-left (-half_w, -H/4)
-        // Three symmetric constraint pairs:
-        //   |dx| <= half_w
-        //   |dx * hq - dy * half_w| <= limit
-        //   |dx * hq + dy * half_w| <= limit
-        // where hq = MAP_HEX_HEIGHT / 4, limit = 2 * half_w * hq
+        // Inside test by the three symmetric edge constraints of a pointy-top hex: |dx| <= half_w and
+        // |dx * hq ± dy * half_w| <= limit
         constexpr int32_t hq = GameSettings::MAP_HEX_HEIGHT / 4;
         constexpr int32_t limit = 2 * half_w * hq;
 
@@ -920,11 +889,8 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
         return raw_hex;
     }
     else {
-        // Rhomboid/diamond grid
-        // Cell (rx, ry) center: cx = (ry - rx) * half_w, cy = (ry + rx) * h
-        // Oblique coordinate transform:
-        //   u = px / half_w + py / h = 2 * ry (at center)
-        //   v = -px / half_w + py / h = 2 * rx (at center)
+        // Oblique transform of the diamond grid, whose cell (rx, ry) centers on ((ry - rx) * half_w,
+        // (ry + rx) * h): u = px / half_w + py / h and v = -px / half_w + py / h are 2 * ry and 2 * rx there
         float32_t u = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(half_w) + numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(h);
         float32_t v = -numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(half_w) + numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(h);
 
@@ -970,10 +936,8 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
 
     mpos normalized_hex = map_size.from_raw_pos(normalized_raw_hex);
 
-    // Re-deriving the hex from a pixel position can round onto a hex its owner could never walk to.
-    // A caller that relocates a live critter passes the predicate so the rounding cannot seat it
-    // inside a wall: keeping the accumulated offset is always better than adopting an illegal hex,
-    // because a position the other side refuses to path to can never be reconciled again
+    // Rounding a pixel position back to a hex can land on one its owner could never walk to, and a hex the
+    // other side refuses to path to never reconciles, so keeping the accumulated offset is the safer error
     if (is_movable && normalized_hex != hex && !is_movable(normalized_hex)) {
         return false;
     }

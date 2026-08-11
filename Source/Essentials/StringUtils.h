@@ -142,9 +142,8 @@ public:
         _sv = _s;
     }
 
-    // Formatting writes straight into the engine-allocated buffer. Do not switch these to std::format /
-    // std::vformat: those return a std::string built with std::allocator, which both bypasses the
-    // SafeAllocator out-of-memory contract and costs an extra copy into _s on every formatted call
+    // Never switch to std::format / std::vformat: they return a std::allocator string, which bypasses
+    // the SafeAllocator out-of-memory contract and costs a copy into _s on every call
     template<typename... Args>
     explicit strex(std::format_string<Args...>&& format, Args&&... args) :
         strvex()

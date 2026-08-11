@@ -351,9 +351,8 @@ static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& sourc
     static constexpr string_view effect_config = "[Effect]\nPasses = 1\n";
     static constexpr string_view effect_info = "[EffectInfo]\nMainTex = 0\nProjBuf = 1\n";
 
-    // A baked .efk always carries the mandatory bounds trailer, and the runtime throws on a binary missing one. The
-    // cooked fixtures are the raw Effekseer payload, so append a representative trailer here (its extent does not
-    // affect the geometry these tests assert)
+    // The runtime throws on a binary without the mandatory bounds trailer, and the cooked fixtures are raw Effekseer
+    // payloads, so a representative trailer is appended here
     AppendEffekseerBoundsTrailer(effect_data, vec3 {-1.0f, -1.0f, -1.0f}, vec3 {1.0f, 1.0f, 1.0f}, 0.5f);
     source.AddFile(effect_path, std::move(effect_data));
     source.AddFile("Effects/Particles_ColorMul.fofx", effect_config);
@@ -1141,9 +1140,8 @@ TEST_CASE("Effekseer particle runtime builds ribbon strip geometry", "[particle]
 
 TEST_CASE("Effekseer particle runtime orients a viewpoint-dependent ribbon toward the camera", "[particle][effekseer-runtime]")
 {
-    // Turning the effect a quarter turn around Y aims the emitter's own X axis straight at the camera, which is the one
-    // placement where the two ribbon orientations disagree: an ordinary band collapses to a line, a viewpoint-dependent
-    // one keeps its full width across the view
+    // A quarter turn aims the emitter's X axis at the camera, the one placement where the two ribbon orientations
+    // disagree: an ordinary band collapses to a line, a viewpoint-dependent one keeps its width
     ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
     setup.World = glm::rotate(mat44 {1.0f}, 90.0f * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
 
@@ -1254,9 +1252,8 @@ TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effe
         CHECK(numeric_cast<size_t>(draw.Indices[index]) == index);
     }
 
-    // Face 0 is vertices 0,1,2 of the mesh and face 1 is 2,1,3, which pins both the winding and the vertex mapping.
-    // The authored corners carry red channels 10/20/30/40, combined with the instance colour through Effekseer's own
-    // colour multiply - a shift by 8 rather than a divide by 255, so even white scales by 255/256 and drops the low bit
+    // The face indices pin both winding and vertex mapping, and the expected reds follow Effekseer's colour multiply,
+    // a shift by 8 rather than a divide by 255, so even white scales by 255/256
     array<uint8_t, mesh_vertices> expected_red {9, 19, 29, 29, 19, 39};
     array<float32_t, mesh_vertices> expected_u {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
     array<float32_t, mesh_vertices> expected_v {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
@@ -1464,12 +1461,8 @@ TEST_CASE("Effekseer particle runtime picks the distortion blend the node asks f
     CHECK(added_draws.front().EffectName == "Effects/Particles_DistortionAddAtlas.fofx");
 }
 
-// Opt-in capability census: feed every baked .efk in reach through the real creation path and then actually play and
-// draw what was accepted, so the log reports which effects the runtime accepts, the first capability each rejected one
-// stops at, and the dynamic failures that only a real draw can reach - a node's renderer parameters are delivered at
-// draw time, so a creation-only walk cannot see them at all. Hidden behind a dot tag so it never runs in the ordinary
-// suite, and skipped outright when no baked corpus is present: it measures whatever content the working tree happens to
-// hold, so it is a diagnostic, never a normative assertion about a given corpus
+// A diagnostic census, never a normative assertion: it measures whatever corpus the working tree holds, and it draws
+// what it accepts because a node's renderer parameters only arrive at draw time
 TEST_CASE("Effekseer capability census", "[.census]")
 {
     std::filesystem::path corpus {"Baking/Visual/Particles"};
@@ -1483,9 +1476,8 @@ TEST_CASE("Effekseer capability census", "[.census]")
     static constexpr int32_t census_frames = 4;
     static constexpr float32_t census_frame_delta = 1.0f / 30.0f;
 
-    // A model node loads its mesh through the runtime's own loader, so the corpus' .efkmodel payloads have to be
-    // reachable exactly as they are in a resource pack - otherwise the census would measure a missing file rather than
-    // the renderer
+    // The mesh loads through the runtime's own loader, so the payloads must be reachable exactly as in a resource
+    // pack, or the census measures a missing file instead of the renderer
     map<string, vector<uint8_t>> dependencies;
 
     for (const auto& entry : std::filesystem::recursive_directory_iterator(corpus)) {
@@ -1559,10 +1551,8 @@ TEST_CASE("Effekseer capability census", "[.census]")
 
 #if FO_EFFEKSEER_PARTICLES
 
-// The compiler writes a distinct binary section per authored value type, so these cases walk the type
-// switches directly instead of going through the runtime: one node per type, compiled as a whole project.
-// Same skeleton as the location/rotation/scale sweep, but the whole node body is caller-supplied so a case
-// can pick the renderer type and attach the drawing, colour, sound and kill-rule sections it needs
+// The compiler writes a distinct section per authored value type, so these cases walk the type switches directly
+// with a caller-supplied node body, one node per type compiled as a whole project
 static auto MakeEffekseerNodeBodyProject(string_view node_body) -> string
 {
     return strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>

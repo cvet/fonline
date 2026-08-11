@@ -90,10 +90,8 @@ public:
     [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter>;
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetGlobalMapGroup() -> vector<ptr<Critter>>;
-    // Ids of the current global-map group plus the group's membership revision (empty with revision 0 when the
-    // critter is mapped). Group members are independent roots that this critter's cover does not include, so a
-    // caller that must touch them resolves and covers the reported ids, then re-reads ids and revision to prove
-    // the membership did not change while it was acquiring that cover
+    // Group members are independent roots outside this critter's cover, so a caller resolves and covers the
+    // reported ids and then re-reads them with the revision to prove the membership held still
     [[nodiscard]] auto GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&;
     [[nodiscard]] auto IsMoving() const noexcept -> bool;
@@ -229,10 +227,8 @@ private:
     EntityLock _ownedLock {};
 };
 
-// Membership of one global-map group, shared by every critter travelling in it. Group members are separate
-// entity-lock roots, so a join/leave performed under one member's cover races a membership read performed
-// under another member's cover: the internal lock is what makes both safe. `Revision` advances on every
-// membership change so a caller can prove the membership it resolved and covered is still the current one
+// Members are separate entity-lock roots, so a join under one member's cover races a read under another's and
+// the internal lock is what makes both safe; `Revision` lets a caller prove what it covered is current
 class GlobalMapGroup final
 {
 public:

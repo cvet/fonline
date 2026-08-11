@@ -132,9 +132,8 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        // Exception safety: build a plain-data model first (Phase 1), then render it with pure ImGui calls (Phase 2).
-        // Every recoverable throw (strex, AnyData::ValueToString on a non-finite Float64) happens in Phase 1, before any
-        // ImGui push, so an exception leaves ImGui's ID/tree/table stacks untouched and balanced instead of corrupting the frame
+        // The data model is built before any ImGui push, so every recoverable throw happens while ImGui's ID, tree
+        // and table stacks are still balanced
         struct FieldRow
         {
             string key;

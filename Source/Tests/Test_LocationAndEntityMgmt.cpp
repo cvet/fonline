@@ -1629,9 +1629,8 @@ TEST_CASE("LoadUnloadCritter")
 
 TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 {
-    // Custom inner entities are written by one server and read back by the next one, and that read path -
-    // the inner-entities entry walk and the per-entity load - runs nowhere else in the suite: every other
-    // test in this file keeps the world in memory for the lifetime of one engine
+    // The inner-entity read path runs nowhere else in the suite, because every other test here keeps the world in
+    // memory for one engine's lifetime
     auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_custom_entity_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(storage_dir, remove_error);
@@ -1699,9 +1698,8 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 
         hstring custom_type = server->Hashes.ToHashedString("CoverageTarget");
 
-        // Only the registry lookups are asserted here: reading an entity's properties needs that entity
-        // covered by the current sync context, and a test holding just the engine lock has no way to take
-        // a pre-existing entity into it
+        // Only registry lookups are asserted, because reading properties needs the entity covered and a test
+        // holding just the engine lock cannot take a pre-existing one into its context
         CHECK(server->EntityMngr.GetLocation(location_id) != nullptr);
         CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id) != nullptr);
         CHECK(server->EntityMngr.GetCustomEntity(custom_type, ident_t {}) == nullptr);

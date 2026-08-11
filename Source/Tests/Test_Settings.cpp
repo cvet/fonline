@@ -165,10 +165,8 @@ TEST_CASE("Settings")
 
     SECTION("ApplyCommandLineAppendAccumulatesPerCall")
     {
-        // '+'-prefixed overrides append to the current value, so applying the same command line twice to
-        // one settings object doubles the result. LoadAppSettings() therefore applies the command line to
-        // the live settings exactly once — this test pins the hazard that the single-application flow
-        // must avoid (it was a real bug while the command line was applied in two passes)
+        // '+'-prefixed overrides append, so applying one command line twice doubles the result — the hazard the
+        // single-application flow exists to avoid
         GlobalSettings settings {false};
         char arg0[] = "lf_tests";
         char arg1[] = "--Common.GameName";

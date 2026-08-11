@@ -90,9 +90,8 @@ TEST_CASE("WorkerPoolAnonymous")
         });
 
         REQUIRE(WaitFor([&] { return fired.load(); }, std::chrono::milliseconds {2000}));
-        // The delayed task must not run before (close to) its scheduled deadline. Measuring the actual
-        // fire delay is robust under suite load, unlike asserting "not fired" after a fixed wall-clock
-        // sleep that can itself overshoot the deadline. Small slack accounts for timer granularity
+        // Measuring the actual fire delay survives suite load, unlike a fixed sleep that can itself overshoot the
+        // deadline; the slack covers timer granularity
         CHECK(fired_after_ms.load() >= 70);
         pool.WaitIdle();
     }
@@ -552,13 +551,8 @@ TEST_CASE("WorkerPoolClearAndParallelism")
 
 TEST_CASE("WorkerPoolConcurrentChaos")
 {
-    // No isolated test exercises the keyed bookkeeping (_pendingRerun / _wakeRequests /
-    // _cancelOnFinish / _queuedKeys / _runningKeys) under concurrent external mutation. Several driver
-    // threads hammer Submit / Wake / Cancel / Clear over a small, deliberately overlapping key space
-    // while the worker threads run the bodies — the interleaving that actually stresses every
-    // transition in WorkerEntry's finalize block. Bodies are non-deterministic, so only structural
-    // invariants are asserted: the pool must stay race-free (TSan), never touch a freed closure (ASan),
-    // and drain to a fully idle, self-consistent state
+    // Drivers hammer a deliberately overlapping key space while workers run, which is the interleaving that
+    // stresses every finalize transition; only structural invariants are asserted, since the bodies race
     SECTION("DriversHammerSubmitWakeCancelClear")
     {
         std::atomic<bool> shutdown_flag {false};

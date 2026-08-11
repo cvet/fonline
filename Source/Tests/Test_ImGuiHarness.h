@@ -40,9 +40,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// Drives ImGui panels that normally wait for a user: a headless frame draws every widget but nothing is
-// ever pressed, so the code behind a button, a list entry or a folded section stays unreachable. These
-// helpers address widgets by the id they are built with and let a test take those branches
+// A headless frame draws every widget but presses nothing, so these helpers address widgets by their built id to
+// reach the code behind a button, list entry or folded section
 namespace ImGuiTestHarness
 {
     // Windows are addressed by their visible name; child windows carry the "Parent/Child" form that ImGui

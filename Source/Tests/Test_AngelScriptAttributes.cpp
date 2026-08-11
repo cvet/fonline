@@ -206,9 +206,8 @@ namespace
 
     static void RegisterDummyCritterType(ptr<asIScriptEngine> engine)
     {
-        // Critter is registered as an implicit-handle ref type so the
-        // game-side `Critter` / `Critter?` syntax (without explicit `@`) matches the
-        // production engine's `asEP_ALLOW_IMPLICIT_HANDLE_TYPES` setup
+        // Registered as an implicit-handle ref type so the `Critter` / `Critter?` syntax matches the production
+        // engine's setup
         CHECK(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
         REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF | asOBJ_IMPLICIT_HANDLE) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
@@ -713,10 +712,8 @@ void WithPriority()
 }
 )";
 
-    // `?` is no longer stripped by the preprocessor — AngelScript itself
-    // parses the suffix on handle types. The script uses the project's implicit-handle
-    // syntax (`Critter?`) since Critter is registered with `asOBJ_IMPLICIT_HANDLE`;
-    // ternary uses inside function bodies stay disambiguated by the AS parser
+    // AngelScript parses the `?` suffix itself rather than the preprocessor stripping it, and the parser keeps a
+    // ternary inside a function body disambiguated
     static constexpr string_view NullableStripScript = R"(
 namespace AttrTest
 {
@@ -1788,10 +1785,8 @@ void NamespacedCall()
 
     SECTION("ParsesNullableTypeSuffix")
     {
-        // `?` now passes through the preprocessor untouched and is parsed
-        // by AngelScript itself as a first-class nullable handle marker. The `?` suffix
-        // must survive into the AS source; ternary `cond ? a : b` inside function bodies
-        // must continue to parse normally
+        // The suffix must survive the preprocessor into the AS source, where it is parsed as a nullable marker,
+        // while a ternary inside a function body still parses normally
         auto parsed = ParseScript("AttributesNullableStrip.fos", NullableStripScript);
 
         INFO(parsed.Errors);
@@ -1898,9 +1893,8 @@ void TakesIntPlease(int? value)
 
     SECTION("RejectsDirectCallsToInvokeEntryFunctions")
     {
-        // `[[InvokeEntry]]` marks a function that is dispatched only through the engine's dynamic
-        // `Invoke(name, ...)` global, so it is a built-in direct-call-blocking attribute: no
-        // project-extras list is passed here, proving the engine blocks the direct call on its own
+        // No project-extras list is passed, which proves the engine blocks the direct call on its own for a
+        // built-in dispatch-only attribute
         auto parsed = ParseScript("AttributesInvokeEntryDirectCall.fos", InvokeEntryDirectCallScript);
         REQUIRE(parsed.Errors.empty());
 

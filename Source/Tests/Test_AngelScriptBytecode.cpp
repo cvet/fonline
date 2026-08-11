@@ -241,9 +241,8 @@ namespace
         }
     }
 
-    // PtrSizedVal is a value type whose size equals sizeof(void*), simulating hstring.
-    // On 64-bit it occupies 8 bytes (2 DWORDs), on 32-bit it occupies 4 bytes (1 DWORD).
-    // This exercises the portable bytecode format's stack normalization for platform-dependent value types
+    // A value type sized like a pointer, standing in for hstring, so the portable bytecode format's stack
+    // normalization for platform-dependent value types is exercised
     struct PtrSizedVal
     {
         uintptr_t Value {};
@@ -298,10 +297,8 @@ namespace
             return;
         }
 
-        // Treat only errors as test failures. Warnings (e.g. the new
-        // "Redundant '?'" diagnostic that fires when `T? x = nonNullExpr;`
-        // could be `T x = nonNullExpr;` instead) are emitted by intentional
-        // test fixtures and should not abort the suite
+        // Only errors fail the suite: the fixtures deliberately trigger warnings such as the redundant-`?`
+        // diagnostic
         if (message->type != asMSGTYPE_ERROR) {
             return;
         }
@@ -442,12 +439,8 @@ void RunScenario()
 }
 )";
 
-    // Extended script exercises:
-    // - PtrSizedVal (platform-dependent value type on stack) Ã¢â€ â€™ COPY, stack adjustment
-    // - Global property access Ã¢â€ â€™ PGA, LDG, PshG4, CpyGtoV4, CpyVtoG4, SetG4
-    // - Mixed-type function parameters Ã¢â€ â€™ ALLOC, FREE, REFCPY, various GET instructions
-    // - Function pointers Ã¢â€ â€™ FuncPtr, CallPtr
-    // - Multiple value-type locals Ã¢â€ â€™ stack layout normalization
+    // Reaches the instruction families the portable format has to normalize: stack-adjusted value types,
+    // global property access, mixed-type parameters, and function pointers
     static constexpr string_view PortableFormatTestScript = R"(
 class Container
 {
@@ -516,17 +509,8 @@ void RunScenario()
 }
 )";
 
-    // This script specifically exercises the GETREF offset adjustment bug that caused crashes
-    // on 32-bit platforms loading 64-bit bytecode. The bug was in AdjustGetOffset: the REFCPY
-    // early-return shortcut assumed exactly 1 pointer on the stack, but methods like
-    // dict<K,V>::get(const K&in, const V&in) push multiple pointer-sized items (this + key ref).
-    // The GETREF for the second reference parameter (defVal) must look through all of them.
-    //
-    // Pattern that triggers the bug:
-    //   obj.Method(const PtrSizedVal&in arg1, const int&in arg2)
-    // Stack layout at CALLSYS: [this_ptr] [&arg1] [&arg2]
-    // GETREF for &arg2 has offset > 1 on 64-bit (AS_PTR_SIZE=2), and the old code
-    // hit the REFCPY early-return instead of falling through to count all pointer slots
+    // A call whose stack holds several pointer-sized items before the reference parameter, so GETREF offset
+    // adjustment must count all of them instead of stopping at the first
     static constexpr string_view GetRefOffsetTestScript = R"(
 class Lookup
 {
@@ -665,10 +649,8 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 
     SECTION("PortableFormatPreservesPlatformDependentValueTypes")
     {
-        // This test exercises bytecode serialization with registered value types whose size
-        // depends on pointer size (like hstring). On 64-bit, PtrSizedVal is 8 bytes (2 DWORDs),
-        // on 32-bit it would be 4 bytes (1 DWORD). The portable bytecode format normalizes
-        // stack layouts to handle this difference
+        // Serialization with a registered value type whose size follows the pointer size, which is what the
+        // portable format's stack normalization exists for
 
         auto build_engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {build_engine});
@@ -716,9 +698,8 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 
     SECTION("NullableHandleRuntimeGuard")
     {
-        // `T?` opts a handle into nullability; bare `T` rejects null at runtime.
-        // The compiler emits asBC_RefCpyChk for non-nullable destinations and the VM throws
-        // a null pointer access exception when the source handle is null
+        // A bare `T` rejects null at runtime: the compiler emits asBC_RefCpyChk for non-nullable destinations and
+        // the VM throws when the source handle is null
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -845,14 +826,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("CompileTimeRejectsNullableToNonNullableAssignment")
     {
-        // Maximum compile-time guarantee: assigning a nullable
-        // source to a non-nullable destination is rejected at build time. Two
-        // shapes are tested:
-        //   1. `T x = null;`         â€" explicit null literal.
-        //   2. `T x = nullableExpr;` â€" nullable handle value.
-        // The third shape is allowed: `T x = nullableExpr;` inside an
-        // `if (nullableExpr != null)` guard, because smart-cast narrows the
-        // source to non-nullable
+        // Assigning a nullable source to a non-nullable destination is rejected at build time, whether the source
+        // is the null literal or a nullable expression; a guarded expression is allowed, because smart-cast narrows it
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -993,12 +968,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("WarnsOnRedundantNullableOnLocalInit")
     {
-        // Diagnostic for needless widening: declaring a
-        // local `T? x = nonNullExpr;` is suspicious - the initializer cannot
-        // produce null, so the `?` only enables a dead null-check downstream
-        // and weakens the type information. Emit a warning (not an error)
-        // so existing scripts keep building while authors clean up; the
-        // warning carries the would-be replacement type in the message
+        // An initializer that cannot produce null makes the `?` enable only a dead null-check downstream; a
+        // warning rather than an error keeps existing scripts building while authors clean up
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -1090,24 +1061,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("SuppressesRedundantNullableForRuntimeNullableShapes")
     {
-        // The redundant-? warning must NOT fire for RHS shapes
-        // whose static type is non-null but whose runtime value can still be
-        // null. The exempt shapes are:
-        //   * `cast<T>(...)`            - a failed downcast yields null.
-        //   * `cond ? a : b`            - AS picks the non-null branch as the
-        //                                 common type, dropping nullability.
-        //   * `const T@&` ref           - `dict.get(key, default)` substitutes a
-        //                                 (possibly null) default and yields null
-        //                                 on a missing key, so the const ref it
-        //                                 returns may hold null.
-        // A NON-const handle reference is NOT exempt: `array[i]` of a
-        // non-nullable element type (and a non-nullable field/local reached by
-        // reference) aliases storage whose non-null invariant is enforced on
-        // every write, so widening it to `T?` IS redundant and must warn - just
-        // like a handle returned by value (a temporary).
-        // Backing slot for the `GetByRef()` accessor. The function is never
-        // executed (these are build-only fixtures), so the stored handle value
-        // is irrelevant - only the AS signature matters
+        // The warning must not fire where the static type is non-null but the runtime value can still be null: a
+        // failed cast, a ternary common type, or a const ref to a mutable handle whose default may be null
         static void* g_resourceCell = nullptr;
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
@@ -1120,15 +1075,11 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }),
                 FO_SCRIPT_FUNC_CONV);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
-            // Mimics `array[i]`: returns a (non-temporary) NON-const reference to
-            // a handle cell of a non-nullable element type - enforced non-null,
-            // so widening it to `T?` is redundant
+            // Mimics `array[i]`: a non-temporary reference to a handle cell whose non-null invariant is enforced
+            // on every write, so widening it is redundant
             engine->RegisterGlobalFunction("Resource@& GetByRef()", FO_SCRIPT_FUNC(+[]() -> void* { return &g_resourceCell; }), FO_SCRIPT_FUNC_CONV);
-            // Real array+dict so the const-handle-reference shape can be tested
-            // faithfully: `dict<K,V>` is registered `const T2& get(...)`, which
-            // for a handle value type yields a const ref to a *mutable* handle -
-            // a shape that cannot be spelled via a raw RegisterGlobalFunction
-            // decl (there `const T@` means handle-to-const, a different type)
+            // Real containers, because a const ref to a mutable handle cannot be spelled through a raw
+            // RegisterGlobalFunction declaration, where `const T@` means handle-to-const instead
             RegisterAngelScriptArray(engine.get());
             RegisterAngelScriptDict(engine.get());
             engine->RegisterGlobalFunction("bool Cond()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
@@ -1189,9 +1140,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             CHECK_FALSE(hasRedundantWarning(cap));
         }
 
-        // 3) `const T@&` - `dict.get` returns `const T2& get(...)`, so for a
-        //    handle value type it yields a const ref to a *mutable* handle whose
-        //    looked-up-or-default value can be null at runtime. Must NOT warn
+        // A const ref to a mutable handle, whose looked-up-or-default value can be null at runtime, must not warn
         {
             MsgCapture cap;
             auto r = buildScript(R"(
@@ -1223,9 +1172,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             CHECK(hasRedundantWarning(cap));
         }
 
-        // 4) Regression anchor: a handle returned BY VALUE (a temporary) is
-        //    NOT a container reference, so the warning must still fire. This
-        //    pins the `!isTemporary` half of the reference exemption
+        // A handle returned by value is no container reference, so the warning must still fire — this pins the
+        // `!isTemporary` half of the exemption
         {
             MsgCapture cap;
             auto r = buildScript(R"(
@@ -1242,11 +1190,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("RejectsNullableReturnFromNonNullableFunction")
     {
-        // Returning a nullable value (the `null` literal or a
-        // `T?` expression) from a function whose declared return type is a
-        // non-nullable handle must be a compile error. Without this guard the
-        // implicit conversion silently strips nullability and the caller
-        // crashes at runtime with `asBC_RefCpyChk`
+        // Without this guard the implicit conversion silently strips nullability and the caller crashes at
+        // runtime on `asBC_RefCpyChk`
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -1305,11 +1250,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("WarnsOnDereferenceOfUnnarrowedNullable")
     {
-        // Accessing a member (property / method / field) on a
-        // nullable handle `T?` that has not been narrowed is suspicious: the
-        // author should guard first. The compiler emits a warning (not an
-        // error - the runtime still traps the null access) and smart-cast must
-        // suppress it once an `if`-guard narrows the handle to `T`
+        // A member access on an unnarrowed `T?` warns rather than errors, because the runtime still traps it, and
+        // smart-cast must suppress the warning once a guard narrows the handle
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -1405,12 +1347,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("SmartCastNarrowsThroughAndOrAndTernary")
     {
-        // A `x != null` guard placed in a `&&` / `||`
-        // short-circuit or a ternary condition narrows `x` for the guarded
-        // operand/branch, exactly like an `if`-guard: `x != null && x.IsReady()`
-        // dereferences `x` only when it was proven non-null, so no warning. The
-        // narrowing is order-sensitive - dereferencing before the check still
-        // warns
+        // A guard inside a short-circuit or ternary narrows exactly like an `if`, and the narrowing is
+        // order-sensitive: dereferencing before the check still warns
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -1545,11 +1483,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
-        // 8) A nullable PARAMETER narrows the same way. Parameter stack offsets
-        //    are negative, which once aliased the "no tag" sentinel and silently
-        //    disabled narrowing for every parameter; a dedicated validity flag
-        //    now gates the tag. A nullable *second* parameter is used so its
-        //    offset is unmistakably negative
+        // Parameter stack offsets are negative, so the second parameter is used to make the offset unmistakably
+        // negative and pin that it no longer aliases the no-tag sentinel
         {
             MsgCapture cap;
             auto r = buildScript(R"(
@@ -1593,9 +1528,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
-        // 11) Compound right operand: the guard narrows across the WHOLE right
-        //     operand, not just an adjacent term. `r.Ready` is dereferenced
-        //     inside `r.Ready == Cond()`, which is the right operand of `&&`
+        // The guard narrows across the whole right operand, not just an adjacent term
         {
             MsgCapture cap;
             auto r = buildScript(R"(
@@ -1628,11 +1561,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("WarnsOnRedundantNullComparison")
     {
-        // Comparing a non-nullable handle to null (`h == null` /
-        // `h != null`) has a constant result - the handle can never be null - so
-        // the guarded branch is dead code. The compiler emits a warning (not an
-        // error). A genuinely nullable handle compared to null must NOT warn, and
-        // a handle already narrowed to non-null SHOULD warn on a second check
+        // Comparing a non-nullable handle to null has a constant result, so the guarded branch is dead code and
+        // warns; a narrowed handle warns on a second check, a genuinely nullable one never does
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -1724,11 +1654,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             CHECK(hasRedundantCmpWarning(cap));
         }
 
-        // 5) A non-nullable-typed temporary (a call result) compared to null.
-        //    The static type is non-nullable, so the check is redundant and must
-        //    warn for temporaries too - not just named locals/params. A source
-        //    that can genuinely be null must spell itself nullable (`cast<T?>`,
-        //    a `Resource@?` return, the `Nullable` property flag) instead
+        // Temporaries warn too, not just named locals: a source that can genuinely be null has to spell itself
+        // nullable instead
         {
             MsgCapture cap;
             auto r = buildScript(R"(
@@ -1746,12 +1673,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("NoReturnCallNarrowsLikeReturn")
     {
-        // A function marked no-return (always throws/exits)
-        // terminates control flow like `return`. A guard branch ending in such
-        // a call - `if (x == null) { Fatal(); }` - narrows `x` for the rest of
-        // the scope WITHOUT an explicit `return`, so the subsequent dereference
-        // produces no warning. The control case (a normal void call in the
-        // guard) does not narrow, so the dereference still warns
+        // A no-return call ends control flow like `return`, so a guard branch using one narrows for the rest of
+        // the scope without an explicit return; a normal void call does not
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -1842,12 +1765,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("NegatedGuardNarrowsViaDeMorgan")
     {
-        // A whole-condition negation `if (!(C)) <exit>` narrows
-        // exactly like the inverted guard: `!(x != null)` behaves as
-        // `x == null`, and `!(a != null && b != null)` behaves as
-        // `a == null || b == null` (De Morgan). This is what lets the
-        // `verify(cond, message)` macro (expanding to `if (!(cond)) throw(...)`)
-        // keep narrowing
+        // A whole-condition negation narrows like the inverted guard by De Morgan, which is what keeps the
+        // `verify(cond, message)` macro narrowing
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -1928,10 +1847,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     SECTION("SmartCastNarrowsNullableInsideGuard")
     {
-        // Verify that `if (x != null) { ... }`, `if (x == null) return;`,
-        // and `x != null && ...` narrow a `T?` local to `T` for the rest of the
-        // guarded region. The body would otherwise need an explicit cast or Assert
-        // to dereference the variable; smart-cast lets it be used as `T`
+        // The three guard shapes narrow a `T?` local for the rest of the guarded region, which is what spares the
+        // body an explicit cast
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -2007,15 +1924,8 @@ void GuardedReadAfterEarlyReturn()
 
     SECTION("SmartCastNarrowsCompoundShapes")
     {
-        // Two smart-cast shapes the compiler must narrow:
-        //   1. `if (a != null && b != null) { ... }` â€" both narrow in then.
-        //   2. `if (a == null || b == null) return;` â€" both narrow after.
-        // The script body would otherwise need explicit Asserts or casts to
-        // assign each nullable local to a non-nullable. Assert-based
-        // narrowing was intentionally removed in favour of always-explicit
-        // `if (x == null) { <recover>; return; }` shapes â€" production
-        // callers benefit from a named recovery action over a generic
-        // Assert
+        // Both conjunction and disjunction guards narrow every local they test, which is what spares the body an
+        // explicit cast; assert-based narrowing was dropped in favour of a named recovery action
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -2087,10 +1997,8 @@ void NarrowsCompoundOrAfterReturn()
 
     SECTION("SmartCastInvalidatedByAssignment")
     {
-        // Smart-cast must drop the narrowing as soon as the
-        // narrowed local is reassigned. The new value's static type is again
-        // `T?`, so the next `T x = local;` must be rejected at compile time
-        // (with `asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE` on)
+        // Reassignment restores the declared `T?` type, so the narrowing must drop and the next non-nullable
+        // assignment be rejected at compile time
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -2130,9 +2038,8 @@ void NarrowsCompoundOrAfterReturn()
         }
         CHECK(found);
 
-        // A `null` literal reassignment drops the narrowing the same way - and the
-        // write itself must compile: it goes through the declared nullable type
-        // (read-time narrowing must not turn it into a non-nullable null write)
+        // A `null` reassignment drops the narrowing and must still compile, because the write goes through the
+        // declared nullable type
         {
             MsgCapture null_cap;
             auto null_r = buildScript(R"(
@@ -2163,13 +2070,8 @@ void NarrowsCompoundOrAfterReturn()
 
     SECTION("NullAssignmentToNarrowedNullableUnNarrows")
     {
-        // A write goes through the variable's *declared* type: an active smart-cast
-        // narrowing is a read-time refinement only. `x = null;` on a declared-nullable
-        // local (or `&` parameter) inside its own `x != null` guard is a legal
-        // un-narrowing write compiled as a plain REFCPY. Regression: the copy
-        // instruction used to be chosen from the narrowed (non-nullable) view, which
-        // emitted asBC_RefCpyChk and threw "Null assignment to non-nullable handle"
-        // on every execution of the branch
+        // Narrowing is a read-time refinement only, so a null write inside the guard is legal and must compile as
+        // a plain REFCPY rather than a checked copy
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -2254,11 +2156,8 @@ void NullAssignToNarrowedRefParam()
 
     SECTION("SmartCastDoesNotNarrowMixedAndOr")
     {
-        // Mixed `&&` and `||` at the same precedence level
-        // is ambiguous without operator-precedence parsing. The smart-cast
-        // detector keeps both narrow-lists empty for such conditions; the
-        // user is expected to split the if. Verify the build rejects the
-        // un-guarded read so the analyzer stays conservative
+        // Mixed `&&` and `||` at one precedence level is ambiguous without precedence parsing, so the detector
+        // narrows nothing and the author is expected to split the `if`
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -2298,10 +2197,8 @@ void NullAssignToNarrowedRefParam()
 
     SECTION("HandleEqualityFallsBackToIdentity")
     {
-        // For ref types without an `opEquals` method, `==`
-        // and `!=` between two handles fall back to handle-identity
-        // comparison (asBC_CmpPtr), identical in semantics to `is` / `!is`.
-        // This lets the project drop `is` / `!is` from the style guide
+        // Without `opEquals`, handle comparison falls back to identity, which is what lets the project drop
+        // `is` / `!is` from the style guide
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -2361,10 +2258,8 @@ void DistinctHandles()
 
     SECTION("HandleEqualityUsesOpEqualsWhenRegistered")
     {
-        // When the ref type DOES register `opEquals`, the
-        // overloaded version still wins over the identity fallback. This
-        // is what makes `Critter == Critter` an id-based comparison in
-        // production code while `Gui::Screen == Gui::Screen` is identity
+        // A registered `opEquals` still wins over the identity fallback, which is why `Critter ==` compares ids
+        // while `Gui::Screen ==` compares identity
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -2429,11 +2324,8 @@ void TagsDiffer()
 
     SECTION("NullableMarkerOnReturnAndParameter")
     {
-        // The `?` suffix must parse on the return type and
-        // every parameter type of a script function, producing a nullable
-        // handle that the body and the caller can assign null to without a
-        // runtime exception. Funcdef and array shapes are exercised by the
-        // gameplay test suite where the array add-on is registered
+        // The `?` suffix parses on return and parameter types alike; funcdef and array shapes are covered by the
+        // gameplay suite, where the array add-on is registered
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -2495,11 +2387,8 @@ void NullableParameter()
 
     SECTION("NullableHandleFieldRejectsImplicitInit")
     {
-        // A class field declared with a non-nullable handle
-        // type AND an explicit `= null` initializer is the most common
-        // pre-strict-mode bug. The compile-time check must reject this even
-        // before runtime, because the field would otherwise initialize a
-        // non-nullable slot to null at constructor time
+        // A non-nullable field with an explicit `= null` initializer must be rejected at compile time, or the slot
+        // starts null at constructor time
         auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
             REQUIRE(nptr<asIScriptEngine> {engine});
@@ -2534,12 +2423,8 @@ void NullableParameter()
 
     SECTION("NullableHandleAcceptsNullField")
     {
-        // The same field with `T?` accepts the `= null`
-        // initializer and is observable as null at runtime. Holder itself
-        // is a non-ref class (engine runs with implicit-handle on, so we
-        // instantiate it via `Holder()` instead of bare `Holder h;` to
-        // avoid value-vs-handle-default-construct ambiguity in the test
-        // harness)
+        // The same field as `T?` accepts the initializer and reads null at runtime; the holder is constructed
+        // explicitly to dodge the value-vs-handle ambiguity under implicit-handle mode
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -2593,18 +2478,8 @@ void Run()
 
     SECTION("CalleeLocalAssignCatchesPassedNull")
     {
-        // The runtime null check fires on
-        // *handle assignment / initialization*, not on script-to-script
-        // argument passing (the latter uses copy-on-call patterns that
-        // bypass the `asBC_RefCpyChk` slot). The agreed contract:
-        //
-        //   * Script callee with `T param` and `T local = param;` â€"
-        //     the local-assignment slot raises "Null assignment to
-        //     non-nullable handle" if the caller passed null.
-        //   * Script callee with `T? param` â€" no exception, param holds
-        //     null, the callee branches on it normally.
-        //
-        // Document the contract by exercising both shapes
+        // The runtime check fires on handle assignment, not on script-to-script argument passing, so a non-nullable
+        // callee traps only where it copies the parameter into a local
         auto engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
@@ -2617,9 +2492,7 @@ class Resource
     ~Resource() { if (Id != 0) ReleaseResource(Id); }
 }
 
-// Callee declares non-nullable param then immediately copies it to
-// another non-nullable local: the local-assign slot is what
-// asBC_RefCpyChk protects
+// The local-assign slot, not the call, is what asBC_RefCpyChk protects
 void CalleeCopiesParamToLocal(Resource r)
 {
     Resource local = r;
@@ -2689,10 +2562,8 @@ void CallCalleeNullableWithNull()
 
     SECTION("GetRefOffsetAdjustmentWithMultiplePtrSizedArgs")
     {
-        // Regression test for AdjustGetOffset REFCPY early-return bug.
-        // On 64-bit build Ã¢â€ â€™ 32-bit load, GETREF offsets for reference parameters
-        // past multiple pointer-sized stack items were miscalculated, causing crashes.
-        // The fix guards the REFCPY shortcut with offset == 1 (reader) / offset == AS_PTR_SIZE (writer)
+        // GETREF offsets for reference parameters sitting past several pointer-sized stack items, which a 64-bit
+        // build once miscalculated when loading on 32-bit
 
         auto build_engine = MakeScriptEngine();
         REQUIRE(nptr<asIScriptEngine> {build_engine});
@@ -2740,16 +2611,8 @@ void CallCalleeNullableWithNull()
 
 TEST_CASE("AngelScriptInitListSubDwordValueType", "[angelscript][bytecode]")
 {
-    // Regression for the init-list buffer overflow with a value type smaller than a
-    // dword (FOnline Patch in as_compiler.cpp's CompileListConstructor). The compiler
-    // sized the list buffer as count(4) + sum of EXACT element sizes, but each
-    // value-type element is written with asBC_COPY using the dword-rounded size; for a
-    // sub-dword element the final copy spilled past the buffer end — a heap-buffer-
-    // overflow caught by AddressSanitizer. The fix rounds the buffer up to a dword.
-    //
-    // A 2-byte value type with 3 elements yields a 4 + 3*2 = 10-byte buffer; the last
-    // element's dword-rounded (4-byte) copy lands at offset 8..11 and previously
-    // overflowed at offset 10..11
+    // A sub-dword element type, whose exact-size buffer cannot hold the dword-rounded copy of its last element:
+    // three 2-byte elements give a 10-byte buffer whose final 4-byte copy lands at offset 8..11
     using namespace AngelScript;
 
     auto engine = MakeScriptEngine();

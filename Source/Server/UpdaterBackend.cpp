@@ -48,9 +48,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
 
     WriteLog("Load client data packs for synchronization");
 
-    // Build the update state into function-locals first, then swap it into the members in a no-throw
-    // commit tail. This keeps the load strongly exception-safe: any throw mid-load unwinds the locals
-    // and leaves all five members untouched instead of half-cleared/half-rebuilt
+    // Built into locals and swapped in by a no-throw tail, so a throw mid-load leaves every member untouched
+    // instead of half-rebuilt
     vector<UpdateFileData> update_files;
     vector<UpdateFileInfo> common_update_files;
     vector<uint8_t> common_update_files_desc;
@@ -168,9 +167,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         build_update_desc(desc, &files);
     }
 
-    // No-throw commit tail: swap the fully-built locals into the members. Container swap is
-    // unconditionally noexcept for the engine containers with their stateless allocator, so this
-    // tail cannot throw and cannot itself leave the members in a half-updated state
+    // Container swap is unconditionally noexcept for the engine containers and their stateless allocator, so
+    // this tail cannot leave the members half-updated
     _updateFiles.swap(update_files);
     _commonUpdateFiles.swap(common_update_files);
     _commonUpdateFilesDesc.swap(common_update_files_desc);

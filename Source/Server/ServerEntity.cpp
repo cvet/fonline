@@ -217,11 +217,8 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
     if (_parent.load(std::memory_order_relaxed) != nullptr) {
         auto ctx = SyncContext::GetCurrentOnThisThread();
         auto lock = GetEntityLock();
-        // Strict access model: reparenting a live entity requires its OWN lock held directly (ancestor
-        // coverage is a read-path right only; there is no empty-context free pass). The only exemption
-        // is a thread with no sync context at all (non-server threads). Stop-the-world owners
-        // (ServerEngine::Lock / Shutdown) satisfy this naturally: their reparents run through the
-        // capture paths (EnsureEntitySynced), which take the entity's own lock
+        // Reparenting needs the entity's own lock directly, because ancestor coverage is a read-path right only;
+        // the sole exemption is a thread with no sync context at all
         FO_VERIFY_AND_CONTINUE(!ctx || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
     }
 

@@ -331,10 +331,8 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     auto settings = MakeServerNetworkSettings();
     BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
 
-    // Walk to a port this host really has free before provoking the double-bind on purpose. The
-    // counter is per-process, but several unit-test processes share a CI machine whenever workflows
-    // run in parallel, so they walk the identical sequence and the *first* bind can fail with the
-    // very "Address already in use" this test means to trigger deliberately with the second one
+    // The port counter is per-process while CI runs several processes on one machine, so a genuinely free port is
+    // found first and only the second bind fails deliberately
     uint16_t port = 0;
     unique_nptr<NetworkServer> server;
     string startup_error;
@@ -373,12 +371,8 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     CHECK(std::ranges::all_of(error_message, [](char ch) { return static_cast<unsigned char>(ch) < 0x80; }));
 }
 
-// End-to-end WebSocket transport coverage (previously none, which is what let the transport's threading
-// bugs ship). A real websocketpp client connects and sends a binary frame that must reach the connection's
-// receive callback (the flaky inbound-delivery regression), then Shutdown() itself must disconnect the
-// accepted wrapper and tear the transport down without racing the websocketpp io thread - the
-// close() teardown, tracked-connection shutdown, and weak_from_this() handler lifetime. The sanitizer CI
-// jobs turn any residual use-after-free in this path into a hard failure
+// A real client connects, sends a frame that must reach the receive callback, and then the transport must tear
+// down without racing the io thread — the path whose threading bugs the sanitizer jobs turn into failures
 TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 {
     REQUIRE(net_sockets::startup());

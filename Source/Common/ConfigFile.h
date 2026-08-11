@@ -37,11 +37,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// Section names are stored verbatim. A name containing '/' is a nested section: the parser only
-// recognizes the nesting syntax, never what a prefix means - resolving a prefix against the section
-// it belongs to is the consuming format's rule, and GetOrderedSections() exposes the file order it
-// needs for that. ConfigFileOption::SkipNestedSections parses only non-nested sections and skips
-// nested section bodies, which keeps header enumeration cheap on files with large nested payloads
+// Section names are stored verbatim: a '/' marks nesting syntactically, but what a prefix means is the
+// consuming format's rule, which is why GetOrderedSections() exposes file order
 
 enum class ConfigFileOption : uint8_t
 {

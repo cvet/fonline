@@ -96,9 +96,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesViewsAfterMoveForShortInput")
     {
-        // An input this small fits every implementation's small-string buffer, so holding it in a
-        // plain string member would move the characters inside the object and dangle every stored
-        // view. The input lives in the owned-node list precisely to keep its address stable here
+        // An input this small lives in every small-string buffer, so a plain string member would move the
+        // characters with the object and dangle the stored views
         ConfigFile original {"[A]\nk = v\n"};
         ConfigFile moved {std::move(original)};
 

@@ -88,9 +88,8 @@ namespace ClientServerIntegrationServer
         loggedPlayer.SwitchCritter(cr);
         SwitchedCritters++;
 
-        // Entering a real map is what makes the client run the load-map protocol instead of staying global
-        // Each session gets its own location. Reusing one across logins would need the handler to acquire
-        // explicit cover for the already-existing location and map, which the login context does not carry
+        // Entering a real map is what runs the load-map protocol, and each session gets its own location because
+        // reusing one would need cover the login context does not carry
         hstring[] mapPids = {"UnitTestSharedMap".hstr()};
         Location loc = Game.CreateLocation("UnitTestSharedLocation".hstr(), mapPids);
         Map map = loc.GetMapByIndex(0);
@@ -190,9 +189,8 @@ namespace ClientServerIntegrationServer
             }
         }
         else if (step == 4) {
-            // Repeated property writes on the observed critter keep the synchronized-property path busy.
-            // Moving it is not reachable from here: TransferToHex on a critter the caller does not control
-            // reaches past what an inbound remote call can cover - see the sync-contract note in the plan
+            // Property writes keep the synchronized-property path busy; moving the critter is unreachable here,
+            // because transferring one the caller does not control exceeds an inbound call's cover
             if (crMapCover !is null && SpawnedNpcId.value != 0) {
                 Map crMap = crMapCover;
                 Critter? npcHandle = crMap.GetCritter(SpawnedNpcId);
@@ -542,9 +540,8 @@ namespace ClientServerIntegrationClient
         CurMap.RebuildFog();
         CurMap.RedrawMap();
 
-        // Fog shapes only build outside mapper mode, so a real session is the only place the fog
-        // preparation and its per-slot draw are reachable at all. One layer follows the chosen critter,
-        // one is pinned to a hex, and one is a traced overlay - three different shape inputs
+        // Fog shapes build only outside mapper mode, so a real session is the only place they are reachable; the
+        // three layers cover the follow, pinned and traced shape inputs
         FogLayer following = CurMap.AddFog(Chosen, DrawOrderType::Last);
         following.Radius = 5;
         following.Distance = 7;
@@ -618,9 +615,8 @@ namespace ClientServerIntegrationClient
         Game.GetCritters(CritterFindType::NonDead);
         Game.SortCrittersByDeep(Game.GetCritters(CritterFindType::Any));
 
-        // Distance is only defined for entities placed on the map, so the map items are used rather
-        // than the chosen critter's inventory
-        // A client-local item carries no server id, so the lookup is done against a server-owned one
+        // Distance is defined only for placed entities, so map items are used, and the lookup targets a
+        // server-owned item because a client-local one carries no id
         Item[] mapItems = CurMap.GetItems();
 
         for (uint i = 0; i < mapItems.length(); i++) {
@@ -753,9 +749,8 @@ End
         return map_data;
     }
 
-    // A static map with authored content, so map creation runs the content generator instead of skipping it.
-    // Layout: the hash table, then the critter records, then the item records; each record is an id, the
-    // prototype's hash and a properties blob (empty here, so every value stays at its prototype default).
+    // Authored content, so map creation runs the content generator instead of skipping it; each record carries an
+    // id, a proto hash and an empty properties blob, leaving every value at its prototype default
     template<typename TEngine>
     static auto MakeStaticServerMapBlob(TEngine& engine) -> vector<uint8_t>
     {

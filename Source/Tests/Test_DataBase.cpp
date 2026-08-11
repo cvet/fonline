@@ -500,9 +500,8 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        // Goes through the engine initializer rather than sqlite3_initialize directly: sqlite3_config
-        // only applies before initialization, so initializing here would silently lose the engine
-        // allocator for the backend created later in the test
+        // sqlite3_config only applies before initialization, so initializing directly here would silently lose the
+        // engine allocator for the backend created later
         InitializeSQLiteRuntime();
 
         REQUIRE(fs_create_directories(fs_path_to_string(storage_dir)));

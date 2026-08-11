@@ -472,11 +472,8 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
 {
     using namespace BakerTests;
 
-    // A baker may read another baker's output while the data source is still discovering outputs: ModelInfoBaker
-    // builds a BakerClientEngine during the discovery pass, which reads the baked metadata back through the data
-    // source. Reindex must therefore publish the input resources before the discovery loop and each discovered
-    // output as it goes, so this re-entrant mid-loop read resolves. A .fo3d input is required to make
-    // ModelInfoBaker build the engine at all - the plain dependency-order case above uses a non-model placeholder
+    // A baker reading another's output mid-discovery only resolves if inputs are published before the loop and
+    // outputs as they appear; the .fo3d input is what makes ModelInfoBaker build its engine at all
     string temp_dir = MakeTempBakerSetupDir("baker_data_source_reentrant_metadata");
     string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
     string model_desc_path = strex(temp_dir).combine_path("model_input/Test.fo3d").str();

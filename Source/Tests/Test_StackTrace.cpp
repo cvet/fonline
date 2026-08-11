@@ -169,14 +169,8 @@ TEST_CASE("StackTrace")
 
     SECTION("MultiLevelInterleavingSplicesNativeBetweenLayers")
     {
-        // Synthesize a StackTraceData by hand — a fixed native trace with known PCs and two
-        // layers whose BirthNativeFrames bottom-align with the trace. The resolver must
-        // produce: native(0..anchor_child), child-script, native(anchor_child..anchor_parent),
-        // parent-script, native-tail(anchor_parent..end).
-        //
-        // Bottom alignment matters: in production, BirthNativeFrames is captured at
-        // RequestContext and shares its bottom with any later trace taken inside the
-        // launched Execute(). Anchor = first native trace frame above the matched bottom
+        // Hand-built so the layers bottom-align with the trace, which is what production produces: birth frames are
+        // captured at RequestContext and share their bottom with any later trace inside the launched Execute()
         StackTraceData st {};
         // Pretend native frames addresses 0xA0, 0xB0, ..., 0xA0 = top, 0x80 = main
         std::array<NativeStackFrameAddress, 5> pcs {
@@ -215,14 +209,8 @@ TEST_CASE("StackTrace")
 
         auto resolved = ResolveStackTrace(st);
 
-        // Expected interleaving (most-recent first):
-        //   [Native] PC 0xA0               <- deeper than the child layer (the throw chain)
-        //   [Native] PC 0xA1
-        //   [Script] ChildScript          <- innermost layer (called the natives above)
-        //   [Native] PC 0xB0               <- between child anchor and parent anchor
-        //   [Script] ParentScript         <- outer layer
-        //   [Native] PC 0xB1               <- tail below parent anchor
-        //   [Native] PC 0x80
+        // Most-recent first, so each script layer sits directly below the natives it called and above the frames
+        // between its own anchor and the next one out
         REQUIRE(resolved.size() == 7);
         CHECK(resolved[0].Type == StackTraceFrame::FrameType::Native);
         CHECK(resolved[1].Type == StackTraceFrame::FrameType::Native);
@@ -237,9 +225,7 @@ TEST_CASE("StackTrace")
 
     SECTION("DeepNativeStackAtCapacityAnchorsLayerCorrectly")
     {
-        // Native trace fills the cap exactly. Layer's BirthNativeFrames is a proper
-        // bottom-aligned suffix of the trace, so anchoring must still work at the edge of
-        // the cap without an off-by-one
+        // The trace fills the cap exactly, so anchoring has to hold at the edge without an off-by-one
         StackTraceData st {};
         st.NativeFrameCount = STACK_TRACE_MAX_NATIVE_FRAMES;
 
@@ -345,12 +331,8 @@ TEST_CASE("StackTrace")
 
     SECTION("CaptureOverflowDegradesGracefullyAndPushesScriptBeforeNatives")
     {
-        // Simulates the real-world cap-overflow: both birth and current trace each filled
-        // STACK_TRACE_MAX_NATIVE_FRAMES with addresses near the TOP of their respective
-        // (deeper) physical stacks, so the captured arrays do NOT share a common bottom.
-        // Bottom-aligned matching honestly fails to anchor here — by design we degrade
-        // by emitting the script layer before the (un-anchored) native chunk instead of
-        // guessing a wrong-but-plausible anchor through a top-down search
+        // Both traces fill the cap from the top of deeper stacks, so they share no bottom and anchoring honestly
+        // fails; the degraded output is deliberate rather than a guessed anchor
         StackTraceData st {};
         st.NativeFrameCount = STACK_TRACE_MAX_NATIVE_FRAMES;
 
