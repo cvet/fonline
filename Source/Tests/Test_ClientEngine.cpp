@@ -261,11 +261,8 @@ namespace ClientEngineTest
 
             // Geometry and state queries answer inside a live window
             fsize textSize = ImGui.CalcTextSize("measure me");
-            if (textSize.width < 0.0f) return;
-
             fpos windowPos = ImGui.GetWindowPos();
             fsize windowSize = ImGui.GetWindowSize();
-            if (windowPos.x < -100000.0f || windowSize.width < 0.0f) return;
 
             float scrollX = ImGui.GetScrollX();
             float scrollY = ImGui.GetScrollY();
@@ -273,32 +270,38 @@ namespace ClientEngineTest
             ImGui.SetScrollY(scrollY);
             float maxX = ImGui.GetScrollMaxX();
             float maxY = ImGui.GetScrollMaxY();
-            if (maxX < 0.0f || maxY < 0.0f) return;
 
-            ImGui.GetTextLineHeight();
-            ImGui.GetTextLineHeightWithSpacing();
-            ImGui.GetFrameHeight();
-            ImGui.GetFrameHeightWithSpacing();
-            ImGui.GetWindowWidth();
-            ImGui.GetWindowHeight();
-            ImGui.GetTime();
-            ImGui.GetFrameCount();
-            ImGui.IsWindowAppearing();
-            ImGui.IsAnyItemHovered();
-            ImGui.IsAnyItemActive();
+            // Nonsense geometry means the window is not in a drawable state, so the probes below are
+            // skipped - but never by returning: the matching ImGui.End after this block must still run,
+            // or the next render aborts the whole frame over the unbalanced window
+            bool geometryIsSane = textSize.width >= 0.0f && windowPos.x >= -100000.0f && windowSize.width >= 0.0f && maxX >= 0.0f && maxY >= 0.0f;
 
-            DrawImGuiLayout();
-            DrawImGuiInputWidgets();
-            DrawImGuiContainers();
-            DrawImGuiItemQueries();
-            DrawImGuiTreesAndSelectables();
-            DrawImGuiTooltipsAndPopups();
-            DrawImGuiTablesAndTabs();
-            DrawImGuiTextAndColorWidgets();
-            DrawImGuiMenusAndSettings();
-            DrawImGuiRemainingBindings();
-            DrawImGuiSprites();
-            SweepImGuiEmptyIds();
+            if (geometryIsSane) {
+                ImGui.GetTextLineHeight();
+                ImGui.GetTextLineHeightWithSpacing();
+                ImGui.GetFrameHeight();
+                ImGui.GetFrameHeightWithSpacing();
+                ImGui.GetWindowWidth();
+                ImGui.GetWindowHeight();
+                ImGui.GetTime();
+                ImGui.GetFrameCount();
+                ImGui.IsWindowAppearing();
+                ImGui.IsAnyItemHovered();
+                ImGui.IsAnyItemActive();
+
+                DrawImGuiLayout();
+                DrawImGuiInputWidgets();
+                DrawImGuiContainers();
+                DrawImGuiItemQueries();
+                DrawImGuiTreesAndSelectables();
+                DrawImGuiTooltipsAndPopups();
+                DrawImGuiTablesAndTabs();
+                DrawImGuiTextAndColorWidgets();
+                DrawImGuiMenusAndSettings();
+                DrawImGuiRemainingBindings();
+                DrawImGuiSprites();
+                SweepImGuiEmptyIds();
+            }
         }
 
         ImGui.End();
