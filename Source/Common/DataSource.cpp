@@ -90,7 +90,7 @@ public:
     ~DummySpace() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> u8string_view override { return u8"Dummy"; }
+    [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return u8"Dummy"; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;
@@ -108,7 +108,7 @@ public:
     ~NonCachedDir() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
-    [[nodiscard]] auto GetPackName() const -> u8string_view override { return _baseDir.view(); }
+    [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return _baseDir; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;
@@ -130,7 +130,7 @@ public:
     ~CachedDir() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
-    [[nodiscard]] auto GetPackName() const -> u8string_view override { return _baseDir.view(); }
+    [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return _baseDir; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;
@@ -163,7 +163,7 @@ public:
     ~FalloutDat() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> u8string_view override { return _fileName.view(); }
+    [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return _fileName; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;
@@ -193,7 +193,7 @@ public:
     ~ZipFile() override;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> u8string_view override { return _fileName.view(); }
+    [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return _fileName; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;
@@ -226,7 +226,7 @@ public:
     ~EmbeddedFile() override;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> u8string_view override { return u8"Embedded"; }
+    [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return u8"Embedded"; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;
@@ -257,7 +257,7 @@ public:
     ~FilesList() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> u8string_view override { return _packName.view(); }
+    [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return _sourcePath; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;
@@ -271,7 +271,7 @@ private:
         uint64_t WriteTime {};
     };
 
-    u8string _packName {u8"@FilesList"};
+    u8string _sourcePath {u8"@FilesList"};
     unordered_map<string, FileEntry> _filesTree {};
     vector<string> _filesTreeNames {};
 };
@@ -304,7 +304,7 @@ auto DataSource::MountPack(u8string_view dir, u8string_view name, bool maybe_not
 
     auto is_file_present = [](u8string_view path) -> bool { return static_cast<bool>(fs_open_ifstream(path)); };
 
-    u8string path = fs_path_to_u8string(std::filesystem::path {fs_make_path(dir)} / std::filesystem::path {fs_make_path(name)});
+    u8string path = fs_combine_path(dir, name);
 
     if (name == u8"Embedded") {
         return SafeAlloc::MakeUnique<EmbeddedFile>();
@@ -316,29 +316,29 @@ auto DataSource::MountPack(u8string_view dir, u8string_view name, bool maybe_not
     u8string pack_path = path;
     pack_path.append(u8".zip");
 
-    if (is_file_present(pack_path.view())) {
-        return SafeAlloc::MakeUnique<ZipFile>(pack_path.view());
+    if (is_file_present(pack_path)) {
+        return SafeAlloc::MakeUnique<ZipFile>(pack_path);
     }
 
     pack_path = path;
     pack_path.append(u8".bos");
 
-    if (is_file_present(pack_path.view())) {
-        return SafeAlloc::MakeUnique<ZipFile>(pack_path.view());
+    if (is_file_present(pack_path)) {
+        return SafeAlloc::MakeUnique<ZipFile>(pack_path);
     }
 
     pack_path = path;
     pack_path.append(u8".dat");
 
-    if (is_file_present(pack_path.view())) {
-        return SafeAlloc::MakeUnique<FalloutDat>(pack_path.view());
+    if (is_file_present(pack_path)) {
+        return SafeAlloc::MakeUnique<FalloutDat>(pack_path);
     }
 
     if (maybe_not_available) {
         return SafeAlloc::MakeUnique<DummySpace>();
     }
 
-    throw DataSourceException("Data pack not found", path.view());
+    throw DataSourceException("Data pack not found", path);
 }
 
 auto DummySpace::IsFileExists(string_view path) const -> bool
@@ -388,12 +388,12 @@ auto NonCachedDir::IsFileExists(string_view path) const -> bool
         return false;
     }
 
-    u8string full_path = fs_combine_path(_baseDir.view(), path);
+    u8string full_path = fs_combine_path(_baseDir, path);
 
-    if (!fs_exists(full_path.view())) {
+    if (!fs_exists(full_path)) {
         return false;
     }
-    if (fs_is_dir(full_path.view())) {
+    if (fs_is_dir(full_path)) {
         return false;
     }
 
@@ -408,15 +408,15 @@ auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
         return false;
     }
 
-    u8string full_path = fs_combine_path(_baseDir.view(), path);
-    auto file = fs_open_ifstream(full_path.view());
+    u8string full_path = fs_combine_path(_baseDir, path);
+    auto file = fs_open_ifstream(full_path);
 
     if (!file) {
         return false;
     }
 
     size = stream_get_size(file);
-    write_time = fs_last_write_time(full_path.view());
+    write_time = fs_last_write_time(full_path);
     return true;
 }
 
@@ -428,8 +428,8 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
         return nullptr;
     }
 
-    u8string full_path = fs_combine_path(_baseDir.view(), path);
-    auto file = fs_open_ifstream(full_path.view());
+    u8string full_path = fs_combine_path(_baseDir, path);
+    auto file = fs_open_ifstream(full_path);
 
     if (!file) {
         return nullptr;
@@ -440,10 +440,10 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
     ptr<byte> buf_data = buf.get();
 
     if (!stream_read_exact(file, make_byte_span(buf_data, size))) {
-        throw DataSourceException("Can't read file from non cached dir", _baseDir.view(), path);
+        throw DataSourceException("Can't read file from non cached dir", _baseDir, path);
     }
 
-    write_time = fs_last_write_time(full_path.view());
+    write_time = fs_last_write_time(full_path);
     return MakeFileBufferHolder(std::move(buf));
 }
 
@@ -548,10 +548,10 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     }
 
     const auto& fe = it->second;
-    auto file = fs_open_ifstream(fe.FileName.view());
+    auto file = fs_open_ifstream(fe.FileName);
 
     if (!file) {
-        throw DataSourceException("Can't read file from cached dir", _baseDir.view(), path);
+        throw DataSourceException("Can't read file from cached dir", _baseDir, path);
     }
 
     size = fe.FileSize;
@@ -663,11 +663,9 @@ bool FalloutDat::ReadTree()
             MemCopy(type_target, type_source, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
-                string raw_name;
-                raw_name.resize(numeric_cast<size_t>(fnsz));
-                auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<byte>();
+                size_t name_size = numeric_cast<size_t>(fnsz);
                 auto raw_name_source = tree_entry.offset(4);
-                MemCopy(raw_name_target, raw_name_source, raw_name.size());
+                string raw_name = string_from_byte_span({raw_name_source.get(), name_size});
                 string name = strex(raw_name).normalize_path_slashes();
 
                 if (type == 2) {
@@ -764,11 +762,8 @@ bool FalloutDat::ReadTree()
         }
 
         if (name_len != 0) {
-            string raw_name;
-            raw_name.resize(numeric_cast<size_t>(name_len));
-            auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<byte>();
             auto raw_name_source = tree_entry.offset(4);
-            MemCopy(raw_name_target, raw_name_source, raw_name.size());
+            string raw_name = string_from_byte_span({raw_name_source.get(), numeric_cast<size_t>(name_len)});
             string name = strex(raw_name).normalize_path_slashes();
 
             auto file_info = tree_entry.offset(4 + name_len);
@@ -925,7 +920,7 @@ struct EmbeddedZipMemStream
 
 ZipFile::ZipFile(u8string_view fname) :
     _fileName {fname},
-    _fileStream {SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName.view()))}
+    _fileStream {SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName))}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -934,10 +929,10 @@ ZipFile::ZipFile(u8string_view fname) :
     zlib_filefunc_def ffunc;
 
     if (!*_fileStream) {
-        throw DataSourceException("Can't open zip file", _fileName.view());
+        throw DataSourceException("Can't open zip file", _fileName);
     }
 
-    _writeTime = fs_last_write_time(_fileName.view());
+    _writeTime = fs_last_write_time(_fileName);
 
     ffunc.zopen_file = [](voidpf opaque, const char*, int32_t) -> voidpf {
         nptr<void> stream = opaque;
@@ -997,13 +992,13 @@ ZipFile::ZipFile(u8string_view fname) :
     });
 
     if (!zip_handle) {
-        throw DataSourceException("Can't read zip file", _fileName.view());
+        throw DataSourceException("Can't read zip file", _fileName);
     }
 
     unz_global_info gi;
 
     if (unzGetGlobalInfo(zip_handle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
-        throw DataSourceException("Read zip file tree failed (unzGetGlobalInfo)", _fileName.view());
+        throw DataSourceException("Read zip file tree failed (unzGetGlobalInfo)", _fileName);
     }
 
     ZipFileInfo zip_info;
@@ -1013,15 +1008,17 @@ ZipFile::ZipFile(u8string_view fname) :
 
     for (uLong i = 0; i < gi.number_entry; i++) {
         if (unzGetFilePos(zip_handle.get(), &pos) != UNZ_OK) {
-            throw DataSourceException("Read zip file tree failed (unzGetFilePos)", _fileName.view());
+            throw DataSourceException("Read zip file tree failed (unzGetFilePos)", _fileName);
         }
 
         if (unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
-            throw DataSourceException("Read zip file tree failed (unzGetCurrentFileInfo)", _fileName.view());
+            throw DataSourceException("Read zip file tree failed (unzGetCurrentFileInfo)", _fileName);
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
-            string name = strex(name_buf).normalize_path_slashes();
+            FO_VERIFY_AND_THROW(info.size_filename <= sizeof(name_buf), "Zip resource path exceeds the read buffer", _fileName, info.size_filename);
+            string raw_name = string_from_byte_span(make_byte_span(name_buf, numeric_cast<size_t>(info.size_filename)));
+            string name = strex(raw_name).normalize_path_slashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = numeric_cast<int32_t>(info.uncompressed_size);
@@ -1030,7 +1027,7 @@ ZipFile::ZipFile(u8string_view fname) :
         }
 
         if (i + 1 < gi.number_entry && unzGoToNextFile(zip_handle.get()) != UNZ_OK) {
-            throw DataSourceException("Read zip file tree failed (unzGoToNextFile)", _fileName.view());
+            throw DataSourceException("Read zip file tree failed (unzGoToNextFile)", _fileName);
         }
     }
 
@@ -1238,7 +1235,9 @@ EmbeddedFile::EmbeddedFile()
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
-            string name = strex(name_buf).normalize_path_slashes();
+            FO_VERIFY_AND_THROW(info.size_filename <= sizeof(name_buf), "Embedded resource path exceeds the read buffer", info.size_filename);
+            string raw_name = string_from_byte_span(make_byte_span(name_buf, numeric_cast<size_t>(info.size_filename)));
+            string name = strex(raw_name).normalize_path_slashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = numeric_cast<int32_t>(info.uncompressed_size);
@@ -1357,29 +1356,28 @@ FilesList::FilesList()
         throw DataSourceException("Can't open 'FilesTree.txt' in file list assets");
     }
 
-    string_view files_tree_text = utf8_as_char_view(files_tree_content->view());
-
-    for (string_view name : strvex(files_tree_text).split('\n')) {
-        name = strvex(name).trim();
+    for (u8string_view name : u8strvex(*files_tree_content).split(u8'\n')) {
+        name = u8strvex(name).trim();
 
         if (name.empty()) {
             continue;
         }
 
-        u8string file_name = name;
-        auto file = fs_open_ifstream(file_name.view());
+        string resource_path = utf8_to_string(name);
+        u8string file_name {name};
+        auto file = fs_open_ifstream(file_name);
 
         if (!file) {
-            throw DataSourceException("Can't open file in file list assets", name);
+            throw DataSourceException("Can't open file in file list assets", file_name);
         }
 
         FileEntry fe;
         fe.FileName = file_name;
         fe.FileSize = stream_get_size(file);
-        fe.WriteTime = fs_last_write_time(file_name.view());
+        fe.WriteTime = fs_last_write_time(file_name);
 
-        _filesTree.emplace(name, std::move(fe));
-        _filesTreeNames.emplace_back(name);
+        _filesTree.emplace(resource_path, std::move(fe));
+        _filesTreeNames.emplace_back(std::move(resource_path));
     }
 }
 
@@ -1423,7 +1421,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     }
 
     const auto& fe = it->second;
-    auto file = fs_open_ifstream(fe.FileName.view());
+    auto file = fs_open_ifstream(fe.FileName);
 
     if (!file) {
         throw DataSourceException("Can't open file in file list assets", path);

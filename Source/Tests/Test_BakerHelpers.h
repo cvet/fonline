@@ -76,8 +76,8 @@ namespace BakerTests
         settings.ScreenHeight = 200;
         settings.DisableAudio = true;
         OverrideSetting(settings.NullRenderer, true);
-        OverrideSetting(settings.CritterStubSpriteName, u8string {});
-        OverrideSetting(settings.ItemStubSpriteName, u8string {});
+        OverrideSetting(settings.CritterStubSpriteName, string {});
+        OverrideSetting(settings.ItemStubSpriteName, string {});
     }
 
     // Test rigs embed tiny scripts that intentionally use mutable module-level globals as
@@ -313,7 +313,7 @@ namespace BakerTests
     {
     public:
         explicit MemoryDataSource(string pack_name) :
-            _packName {pack_name}
+            _sourcePath {pack_name}
         {
         }
 
@@ -325,7 +325,7 @@ namespace BakerTests
         };
 
         [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-        [[nodiscard]] auto GetPackName() const -> u8string_view override { return _packName.view(); }
+        [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return _sourcePath; }
 
         void AddFile(string_view path, string_view content, uint64_t write_time = 1)
         {
@@ -414,7 +414,7 @@ namespace BakerTests
         }
 
     private:
-        u8string _packName {};
+        u8string _sourcePath {};
         unordered_map<string, Entry> _entries {};
     };
 
@@ -429,6 +429,8 @@ namespace BakerTests
         }
 
         void AddTextFile(string_view path, string_view content, uint64_t write_time = 1) { _dataSource->AddFile(path, content, write_time); }
+
+        void AddTextFile(string_view path, u8string_view content, uint64_t write_time = 1) { _dataSource->AddFile(path, content, write_time); }
 
         void AddBinaryFile(string_view path, vector<byte> content, uint64_t write_time = 1) { _dataSource->AddFile(path, std::move(content), write_time); }
 
@@ -451,7 +453,32 @@ namespace BakerTests
         return &instance;
     }
 
-    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, const ScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<byte>
+    struct InlineScriptSource
+    {
+        InlineScriptSource(string_view path, string_view content) :
+            Path {path},
+            Content {content}
+        {
+        }
+
+        InlineScriptSource(string_view path, u8string_view content) :
+            Path {path},
+            Content {content}
+        {
+        }
+
+        template<size_t N>
+        InlineScriptSource(string_view path, const char8_t (&content)[N]) :
+            Path {path},
+            Content {content}
+        {
+        }
+
+        string Path;
+        u8string Content;
+    };
+
+    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, const ScriptSettings& script_settings, string_view pack_name, const vector<InlineScriptSource>& script_files, function<void(string_view)> message_callback) -> vector<byte>
     {
         MemoryFileSet source_files {string(pack_name)};
         vector<File> files;
@@ -469,7 +496,7 @@ namespace BakerTests
         return CompileAngelScript(meta, script_settings, files, std::move(message_callback));
     }
 
-    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<byte>
+    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, string_view pack_name, const vector<InlineScriptSource>& script_files, function<void(string_view)> message_callback) -> vector<byte>
     {
         auto script_settings = MakeScriptCompilerSettings();
         return CompileInlineScripts(meta, script_settings, pack_name, script_files, std::move(message_callback));

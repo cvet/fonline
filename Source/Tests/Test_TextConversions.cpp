@@ -343,9 +343,12 @@ TEST_CASE("TextConversions")
         CHECK_FALSE(validate_utf16_text(source));
 
         u8string utf8 = utf16_to_utf8(source);
-        utf16_string decoded = utf8_to_utf16(utf8.view());
+        utf16_string decoded = utf8_to_utf16(utf8);
         CHECK(std::u16string_view {decoded.data(), decoded.size()} == source);
         CHECK(utf16_to_utf8(std::u16string_view {decoded.data(), decoded.size()}) == utf8);
+        CHECK(string_to_utf16("Ascii") == utf16_string {u"Ascii"});
+        CHECK(utf16_to_string(u"Ascii") == "Ascii");
+        CHECK_THROWS_AS(utf16_to_string(u"текст"), TextValidationException);
     }
 
     SECTION("Utf16RejectsLoneSurrogatesAtTheirExactOffsets")

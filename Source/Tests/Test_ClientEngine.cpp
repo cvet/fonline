@@ -64,13 +64,13 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        return [](u8string_view name) -> vector<byte> {
+        return [](string_view name) -> vector<byte> {
             string_view content;
 
-            if (name == u8"Effects/Test_Recording.fofx") {
+            if (name == "Effects/Test_Recording.fofx") {
                 content = "[Effect]\nPasses = 1\n";
             }
-            else if (name == u8"Effects/Test_Recording.fofx-1-info") {
+            else if (name == "Effects/Test_Recording.fofx-1-info") {
                 content = "[EffectInfo]\nMainTex = 0\nSpriteBorderBuf = 1\n";
             }
             else {
@@ -86,7 +86,7 @@ namespace
     {
     public:
         RecordingQuadEffect() :
-            RenderEffect(EffectUsage::QuadSprite, u8"Effects/Test_Recording.fofx", MakeRecordingQuadEffectLoader())
+            RenderEffect(EffectUsage::QuadSprite, "Effects/Test_Recording.fofx", MakeRecordingQuadEffectLoader())
         {
             FO_STACK_TRACE_ENTRY();
         }

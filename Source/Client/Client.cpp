@@ -2860,7 +2860,7 @@ void ClientEngine::ProcessVideo()
     }
 }
 
-void ClientEngine::SetEffect(EffectType effect_type, int64_t effect_subtype, u8string_view effect_path)
+void ClientEngine::SetEffect(EffectType effect_type, int64_t effect_subtype, string_view effect_path)
 {
     FO_STACK_TRACE_ENTRY();
 

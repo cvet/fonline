@@ -105,30 +105,6 @@ static void LogEffekseerRejection(string_view path, string_view reason)
     WriteLog(LogType::Warning, "Effekseer particle '{}' rejected: {}", path, reason);
 }
 
-static auto ToUtf8(const char16_t* value) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (value == nullptr) {
-        return {};
-    }
-
-    size_t source_length = std::char_traits<char16_t>::length(value);
-    vector<char> result(source_length * 3 + 1);
-    int32_t converted_length = Effekseer::ConvertUtf16ToUtf8(result.data(), numeric_cast<int32_t>(result.size()), value);
-    return string(result.data(), numeric_cast<size_t>(converted_length));
-}
-
-static auto ToUtf16(string_view value) -> vector<char16_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string source {value};
-    vector<char16_t> result(source.size() + 1);
-    (void)Effekseer::ConvertUtf8ToUtf16(result.data(), numeric_cast<int32_t>(result.size()), source.c_str());
-    return result;
-}
-
 auto ValidateEffekseerModelPayload(const_span<byte> data) -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
@@ -345,13 +321,19 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
+        string texture_path;
+
+        if (path != nullptr) {
+            texture_path = utf16_to_string(std::u16string_view {path, std::char_traits<char16_t>::length(path)});
+        }
+        texture_path = strex(texture_path).format_path();
+
         // A distortion map is an ordinary image in the atlas; what differs is how the shader reads it, not how it loads.
         if (texture_type != Effekseer::TextureType::Color && texture_type != Effekseer::TextureType::Distortion) {
-            WriteLog(LogType::Warning, "Effekseer texture '{}' rejected: only color and distortion textures are supported", ToUtf8(path));
+            WriteLog(LogType::Warning, "Effekseer texture '{}' rejected: only color and distortion textures are supported", texture_path);
             return nullptr;
         }
 
-        string texture_path = strex(ToUtf8(path)).format_path().str();
         auto [render_texture, atlas_rect] = _textureLoader(texture_path);
         if (!render_texture) {
             WriteLog(LogType::Warning, "Effekseer texture '{}' is missing", texture_path);
@@ -383,7 +365,12 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        string model_path = strex(ToUtf8(path)).format_path().str();
+        string model_path;
+
+        if (path != nullptr) {
+            model_path = utf16_to_string(std::u16string_view {path, std::char_traits<char16_t>::length(path)});
+        }
+        model_path = strex(model_path).format_path();
         File file = _resources->ReadFile(model_path);
 
         if (!file) {
@@ -3439,7 +3426,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
     }
 
     string material_path = strex(path).extract_dir().format_path().str();
-    vector<char16_t> material_path_utf16 = ToUtf16(material_path);
+    utf16_string material_path_utf16 = string_to_utf16(material_path);
     _impl->Runtime->GpuParticleFactory->Reset();
     Effekseer::EffectRef effect = Effekseer::Effect::Create(_impl->Runtime->Manager, data.data(), numeric_cast<int32_t>(bounds_trailer.PayloadSize), 1.0f, material_path_utf16.data());
 

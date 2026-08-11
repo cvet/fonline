@@ -81,7 +81,7 @@ auto ReadSpriteInfoFile(string_view file_name, u8string content) -> vector<Sprit
 
     auto config = ConfigFile(std::move(content));
     vector<SpriteInfoFileEntry> result;
-    set<u8string> source_paths;
+    set<string> source_paths;
     set<string> resource_paths;
 
     for (const auto& [section_name, values] : *config.GetSections()) {
@@ -91,7 +91,7 @@ auto ReadSpriteInfoFile(string_view file_name, u8string content) -> vector<Sprit
         }
 
         SpriteInfoFileEntry entry;
-        entry.SourcePath = u8string {GetRequiredSpriteInfoValue(values, file_name, section_name, "SourcePath")};
+        entry.SourcePath = utf8_to_string(GetRequiredSpriteInfoValue(values, file_name, section_name, "SourcePath"));
         entry.ResourcePath = section_name;
         FO_VERIFY_AND_THROW(!entry.SourcePath.empty(), "Sprite info source path is empty", file_name, section_name);
         FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info resource contains a duplicate source path", file_name, entry.SourcePath);
@@ -161,14 +161,14 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> u8string
     std::iota(entry_order.begin(), entry_order.end(), size_t {});
     std::sort(entry_order.begin(), entry_order.end(), [&entries](size_t left, size_t right) { return entries[left].ResourcePath < entries[right].ResourcePath; });
 
-    set<u8string_view> source_paths;
+    set<string_view> source_paths;
     set<string_view> resource_paths;
     u8string result;
 
     for (size_t entry_index : entry_order) {
         const SpriteInfoFileEntry& entry = entries[entry_index];
         FO_VERIFY_AND_THROW(!entry.SourcePath.empty() && !entry.ResourcePath.empty(), "Sprite info file entry contains an empty path", entry.SourcePath, entry.ResourcePath);
-        FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath.view()).second, "Sprite info file contains a duplicate source path", entry.SourcePath);
+        FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info file contains a duplicate source path", entry.SourcePath);
         FO_VERIFY_AND_THROW(resource_paths.emplace(entry.ResourcePath).second, "Sprite info file contains a duplicate resource path", entry.ResourcePath);
         FO_VERIFY_AND_THROW(entry.Info.FrameCount != 0, "Sprite info file entry contains no frames", entry.ResourcePath);
         FO_VERIFY_AND_THROW(!entry.Info.Directions.empty(), "Sprite info file entry contains no directions", entry.ResourcePath);
@@ -216,7 +216,7 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> u8string
         int32_t duration_ms = numeric_cast<int32_t>(entry.Info.Duration.milliseconds());
         int32_t direction_count = numeric_cast<int32_t>(entry.Info.Directions.size());
         u8string entry_text = u8strex("[{}]\nSourcePath = {}\nInfoVersion = {}\nFrameCount = {}\nDurationMs = {}\nDirectionCount = {}\nSharedFrameIndices = {}\nOffsetsX = {}\nOffsetsY = {}\nWidths = {}\nHeights = {}\nNextOffsetsX = {}\nNextOffsetsY = {}\n\n", entry.ResourcePath, entry.SourcePath, SPRITE_INFO_VERSION, entry.Info.FrameCount, duration_ms, direction_count, shared_frame_indices, offsets_x, offsets_y, widths, heights, next_offsets_x, next_offsets_y);
-        result.append(entry_text.view());
+        result.append(entry_text);
     }
 
     FO_VERIFY_AND_THROW(!result.empty(), "Cannot write an empty sprite info resource");

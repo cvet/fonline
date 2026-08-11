@@ -100,7 +100,7 @@ void ResourceManager::IndexFiles()
         }
     }
 
-    auto any_spr = !_settings->CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->CritterStubSpriteName.view(), AtlasType::MapSprites, true) : shared_ptr<Sprite> {};
+    auto any_spr = !_settings->CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->CritterStubSpriteName, AtlasType::MapSprites, true) : shared_ptr<Sprite> {};
 
     if (!any_spr) {
         any_spr = MakeBuiltInDummyAtlasSprite(_sprMngr, AtlasType::MapSprites);
@@ -112,7 +112,7 @@ void ResourceManager::IndexFiles()
     _critterDummyAnimFrames->_spr[0] = std::move(atlas_spr);
     FO_VERIFY_AND_THROW(_critterDummyAnimFrames, "Critter dummy animation frames are null");
 
-    _itemHexDummyAnim = !_settings->ItemStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->ItemStubSpriteName.view(), AtlasType::MapSprites, true) : nullptr;
+    _itemHexDummyAnim = !_settings->ItemStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->ItemStubSpriteName, AtlasType::MapSprites, true) : nullptr;
 
     if (!_itemHexDummyAnim) {
         _itemHexDummyAnim = MakeBuiltInDummyAtlasSprite(_sprMngr, AtlasType::MapSprites);

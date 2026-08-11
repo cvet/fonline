@@ -759,7 +759,7 @@ FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, u8string_view effectPath)
+FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
 {
     client->SetEffect(effectType, effectSubtype, effectPath);
 }
@@ -905,7 +905,7 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, K
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, u8string_view sprName)
+FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::IfaceSprites);
 }
@@ -917,7 +917,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, hstring 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, u8string_view sprName)
+FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::MapSprites);
 }

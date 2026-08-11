@@ -47,7 +47,7 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     SpriteInfoFileEntry entry {
-        .SourcePath = u8string {u8"Art/Test.png"},
+        .SourcePath = "Art/Test.png",
         .ResourcePath = "Art/Test.png",
         .Info =
             {
@@ -68,7 +68,7 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
 
     auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SpriteInfoTestPack");
     u8string sprite_info = WriteSpriteInfoFile({entry});
-    source->AddFile("SpriteInfo/TestPack.foinfo", sprite_info.view());
+    source->AddFile("SpriteInfo/TestPack.foinfo", sprite_info);
 
     FileSystem resources;
     resources.AddCustomSource(std::move(source));

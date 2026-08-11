@@ -2562,7 +2562,7 @@ Frm=one.toy
         const vector<byte>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
         vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
         REQUIRE(entries.size() == 1);
-        CHECK(entries.front().SourcePath == u8"gfx/runtime-info.tga");
+        CHECK(entries.front().SourcePath == "gfx/runtime-info.tga");
         CHECK(entries.front().ResourcePath == "gfx/runtime-info.tga");
         CHECK(entries.front().Info.FrameCount == 1);
         CHECK(entries.front().Info.Directions.front().Frames.front().Size == isize32 {1, 1});
@@ -2579,10 +2579,10 @@ Frm=one.toy
             .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
         };
         u8string stale_sprite_info = WriteSpriteInfoFile({
-            SpriteInfoFileEntry {.SourcePath = u8string {u8"gfx/current.tga"}, .ResourcePath = "gfx/current.tga", .Info = info},
-            SpriteInfoFileEntry {.SourcePath = u8string {u8"gfx/removed.tga"}, .ResourcePath = "gfx/removed.tga", .Info = info},
+            SpriteInfoFileEntry {.SourcePath = "gfx/current.tga", .ResourcePath = "gfx/current.tga", .Info = info},
+            SpriteInfoFileEntry {.SourcePath = "gfx/removed.tga", .ResourcePath = "gfx/removed.tga", .Info = info},
         });
-        rig.AddBakedFile("SpriteInfo/TestPack.foinfo", stale_sprite_info.view());
+        rig.AddBakedFile("SpriteInfo/TestPack.foinfo", stale_sprite_info);
 
         ImageBaker baker {rig.MakeContext("TestPack", [](string_view, uint64_t) { return false; })};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
@@ -2591,24 +2591,27 @@ Frm=one.toy
         const vector<byte>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
         vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", utf8_from_byte_span(sprite_info_data));
         REQUIRE(entries.size() == 1);
-        CHECK(entries.front().SourcePath == u8"gfx/current.tga");
+        CHECK(entries.front().SourcePath == "gfx/current.tga");
     }
 
-    SECTION("SpriteInfoSourcePathPreservesUtf8")
+    SECTION("SpriteInfoSourcePathRejectsNonAscii")
     {
-        SpriteInfo info {
-            .FrameCount = 1,
-            .Duration = std::chrono::milliseconds {100},
-            .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
-        };
-        u8string source_path {u8"графика/персонаж-🌍.tga"};
-        u8string sprite_info = WriteSpriteInfoFile({
-            SpriteInfoFileEntry {.SourcePath = source_path, .ResourcePath = "gfx/runtime.tga", .Info = info},
-        });
+        u8string sprite_info {u8R"([gfx/runtime.tga]
+SourcePath = графика/персонаж-🌍.tga
+InfoVersion = 1
+FrameCount = 1
+DurationMs = 100
+DirectionCount = 1
+SharedFrameIndices = -1
+OffsetsX = 0
+OffsetsY = 0
+Widths = 1
+Heights = 1
+NextOffsetsX = 0
+NextOffsetsY = 0
+)"};
 
-        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info);
-        REQUIRE(entries.size() == 1);
-        CHECK(entries.front().SourcePath == source_path);
+        CHECK_THROWS_AS(ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info), TextValidationException);
     }
 
     SECTION("InvalidTgaInputsAreReported")

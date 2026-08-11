@@ -125,7 +125,7 @@ public:
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
     void ProcessInputEvent(const InputEvent& ev);
-    void SetEffect(EffectType effect_type, int64_t effect_subtype, u8string_view effect_path);
+    void SetEffect(EffectType effect_type, int64_t effect_subtype, string_view effect_path);
     void SetEffectScriptValue(EffectType effect_type, int64_t effect_subtype, int32_t value_index, float32_t value);
     void SetEffectScriptValues(EffectType effect_type, int64_t effect_subtype, int32_t value_start_index, const_span<float32_t> values, int32_t values_offset = 0, int32_t values_count = -1);
     void ClearEffectScriptValues(EffectType effect_type, int64_t effect_subtype);

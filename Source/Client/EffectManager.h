@@ -122,9 +122,7 @@ public:
     ~EffectManager() = default;
 
     auto LoadEffect(EffectUsage usage, string_view path) -> nptr<RenderEffect>;
-    auto LoadEffect(EffectUsage usage, u8string_view path) -> nptr<RenderEffect>;
     auto ResolveEffect(ptr<RenderEffect> default_effect, string_view effect_path) -> ptr<RenderEffect>;
-    auto ResolveEffect(ptr<RenderEffect> default_effect, u8string_view effect_path) -> ptr<RenderEffect>;
     void SetEffectScriptValue(ptr<RenderEffect> effect, int32_t value_index, float32_t value);
     void SetEffectScriptValues(ptr<RenderEffect> effect, int32_t value_start_index, const_span<float32_t> values);
     void ClearEffectScriptValues(ptr<RenderEffect> effect);
@@ -142,7 +140,7 @@ private:
     ptr<FileSystem> _resources;
     ptr<IAppRender> _render;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-    map<u8string, unique_ptr<RenderEffect>> _loadedEffects {};
+    map<string, unique_ptr<RenderEffect>> _loadedEffects {};
     optional<nanotime> _shaderTimeEpoch {};
 };
 

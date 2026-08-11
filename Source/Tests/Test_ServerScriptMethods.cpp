@@ -66,7 +66,7 @@ namespace
         return BakerTests::CompileInlineScripts(&compiler_engine, "ServerScriptMethodsScripts",
             {
                 {"Scripts/ScriptMethodsTest.fos",
-                    R"(
+                    u8R"(
 namespace ScriptMethodsTest
 {
     // ========== Critter Inventory Operations ==========
@@ -503,7 +503,7 @@ namespace ScriptMethodsTest
             Game.DestroyCritter(loose);
             Game.DestroyLocation(loc);
             return -12;)"
-                    R"(
+                    u8R"(
         }
         catch {
         }
@@ -819,7 +819,7 @@ namespace ScriptMethodsTest
         return 0;
     }
 )"
-                    R"(
+                    u8R"(
     // ========== Game Item Operations ==========
 
     int ItemInitScriptCalls = 0;
@@ -941,7 +941,7 @@ namespace ScriptMethodsTest
 
         Critter? owner = childByPid.GetCritter();
         if (owner is null || owner.Id != cr.Id) {)"
-                    R"(
+                    u8R"(
             Game.DestroyCritter(cr);
             return -10;
         }
@@ -1306,7 +1306,7 @@ namespace ScriptMethodsTest
         if (cr.IsPersistent() != was_persistent) return -3;
 
         Game.DestroyCritter(cr);)"
-                    R"(
+                    u8R"(
         return 0;
     }
 
@@ -1414,7 +1414,7 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 )"
-                    R"(
+                    u8R"(
         // Set direction
         cr.SetDir(HDIR_SouthWest);
 
@@ -1445,7 +1445,7 @@ namespace ScriptMethodsTest
     int TestGameCreateCritterOverloads()
     {
 )"
-                    R"(
+                    u8R"(
         ProtoCritter? proto = Game.GetProtoCritter("TestCritter".hstr());
         if (proto is null) return -1;
 
@@ -1574,7 +1574,7 @@ namespace ScriptMethodsTest
         if (Game.DbHasRecord("test_collection".hstr(), intId)) return -15;
         Game.DbRemoveRecord("test_collection".hstr(), intId);
 )"
-                    R"(
+                    u8R"(
         return 0;
     }
 
@@ -1887,7 +1887,7 @@ namespace ScriptMethodsTest
     void TestDatabaseUpdateEmptyStringKeyThrows()
     {
         Game.DbInsertRecord("test_strings".hstr(), "empty-update-key-record", {{"Name", "Alpha"}});)"
-                    R"(
+                    u8R"(
         Game.DbUpdateRecordString("test_strings".hstr(), "empty-update-key-record", "", "Beta");
     }
 
@@ -2027,7 +2027,7 @@ namespace ScriptMethodsTest
         Critter? current = unlogined.GetControlledCritter();
         if (current !is null) return -4;
 )"
-                    R"(
+                    u8R"(
         Critter cr = Game.CreateCritter("TestCritter".hstr(), true);
         if (cr is null) return -5;
 
@@ -2140,7 +2140,7 @@ namespace ScriptMethodsTest
             return -8;
         }
 )"
-                    R"(
+                    u8R"(
         try {
             unlogined.ViewMap(map, mpos(9999, 9999));
             Game.UnloadCritter(cr);
@@ -2193,7 +2193,7 @@ namespace ScriptMethodsTest
         if (reconnected_player.Id != playerId) return -3;
 
 )"
-                    R"(
+                    u8R"(
         reconnected_player.HardDisconnect();
         return 0;
     }
@@ -2415,7 +2415,7 @@ namespace ScriptMethodsTest
         if (!isSynced) return -4;
         if (!enumName.isEmpty()) return -5;
 )"
-                    R"(
+                    u8R"(
         Game.GetPropertyInfo(ItemProperty::Hidden, isDisabled, isVirtual, isDict, isArray, isStringLike, enumName, isInt, isFloat, isBool, baseSize, isSynced);
         if (isDisabled || isVirtual || isDict || isArray || isStringLike) return -6;
         if (isInt || isFloat || !isBool) return -7;
@@ -2662,7 +2662,7 @@ namespace ScriptMethodsTest
     }
 
     bool ContainsEntity(array<Entity> entities, Entity target))"
-                    R"(
+                    u8R"(
     {
         for (uint i = 0; i < entities.length(); i++) {
             Entity? entity = entities[i];

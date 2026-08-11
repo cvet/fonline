@@ -78,6 +78,24 @@ auto utf8_to_string(T&& value) -> string = delete;
 
 [[nodiscard]] auto validate_utf16_text(std::u16string_view value) noexcept -> optional<TextValidationIssue>;
 auto validate_utf16_text(const char16_t* value) -> optional<TextValidationIssue> = delete;
+[[nodiscard]] auto string_to_utf16(string_view value) -> utf16_string;
+[[nodiscard]] auto utf16_to_string(std::u16string_view value) -> string;
+
+template<size_t N>
+[[nodiscard]] auto utf16_to_string(const char16_t (&value)[N]) -> string
+{
+    static_assert(N > 0);
+
+    if (value[N - 1] != char16_t {}) {
+        throw TextValidationException(TextEncoding::Utf16, TextValidationError::MissingTerminator, N - 1);
+    }
+
+    return utf16_to_string(std::u16string_view {value, N - 1});
+}
+
+template<typename T>
+    requires(std::same_as<std::remove_cvref_t<T>, char16_t*> || std::same_as<std::remove_cvref_t<T>, const char16_t*>)
+auto utf16_to_string(T&& value) -> string = delete;
 [[nodiscard]] auto utf8_to_utf16(u8string_view value) -> utf16_string;
 [[nodiscard]] auto utf16_to_utf8(std::u16string_view value) -> u8string;
 auto utf16_to_utf8(const char16_t* value) -> u8string = delete;

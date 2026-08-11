@@ -69,7 +69,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _startTime = nanotime::now();
 
     const u8string& resources_dir = IsPackaged() ? settings->ClientResources : settings->BakeOutput;
-    _resources.AddPackSource(resources_dir, u8"Embedded");
+    _resources.AddPackSource(resources_dir, "Embedded");
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
     if (!settings->UserWritablePath.empty()) {

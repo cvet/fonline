@@ -259,6 +259,32 @@ auto validate_utf16_text(std::u16string_view value) noexcept -> optional<TextVal
     return std::nullopt;
 }
 
+auto string_to_utf16(string_view value) -> utf16_string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (auto issue = validate_ascii_text(value)) {
+        throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
+    }
+
+    utf16_string result;
+    result.reserve(value.size());
+
+    for (char code_unit : value) {
+        result.push_back(static_cast<char16_t>(code_unit));
+    }
+
+    return result;
+}
+
+auto utf16_to_string(std::u16string_view value) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8string utf8_value = utf16_to_utf8(value);
+    return utf8_to_string(utf8_value);
+}
+
 auto utf8_to_utf16(u8string_view value) -> utf16_string
 {
     FO_STACK_TRACE_ENTRY();

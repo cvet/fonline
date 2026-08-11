@@ -437,7 +437,7 @@ Bakers = {}
     BakerDataSource data_source {&settings};
 
     CHECK_FALSE(data_source.IsDiskDir());
-    CHECK(data_source.GetPackName() == u8"Baker");
+    CHECK(data_source.GetSourcePath() == u8"Baker");
     CHECK(data_source.IsFileExists("Data/prebaked.json"));
     CHECK(data_source.IsFileExists("Data/runtime.json"));
     CHECK(data_source.IsFileExists("Data/stale.json"));

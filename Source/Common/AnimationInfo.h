@@ -64,7 +64,7 @@ struct SpriteInfo
 
 struct SpriteInfoFileEntry
 {
-    u8string SourcePath {};
+    string SourcePath {};
     string ResourcePath {};
     SpriteInfo Info {};
 };

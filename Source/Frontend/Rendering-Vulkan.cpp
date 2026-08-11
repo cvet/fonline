@@ -567,7 +567,7 @@ class Vulkan_Effect final : public RenderEffect
     friend class Vulkan_Renderer;
 
 public:
-    Vulkan_Effect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader, ptr<Vulkan_Renderer::Context> ctx) :
+    Vulkan_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, ptr<Vulkan_Renderer::Context> ctx) :
         RenderEffect(usage, name, loader),
         _ctx {ctx}
     {
@@ -1799,7 +1799,7 @@ auto Vulkan_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
     return std::move(dbuf);
 }
 
-auto Vulkan_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1809,7 +1809,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
     for (size_t pass = 0; pass < vk_effect->_passCount; pass++) {
         // Load vertex shader SPIR-V
         {
-            u8string vert_fname = u8strex("{}.fofx-{}-vert-spv", u8strex(name).erase_file_extension(), pass + 1);
+            string vert_fname = strex("{}.fofx-{}-vert-spv", strex(name).erase_file_extension(), pass + 1);
             vector<byte> vert_content = loader(vert_fname);
             FO_VERIFY_AND_THROW(!vert_content.empty(), "Vertex shader SPIR-V is empty");
             FO_VERIFY_AND_THROW(vert_content.size() % sizeof(uint32_t) == 0, "Vertex shader SPIR-V size is not a multiple of 4");
@@ -1826,7 +1826,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
 
         // Load fragment shader SPIR-V
         {
-            u8string frag_fname = u8strex("{}.fofx-{}-frag-spv", u8strex(name).erase_file_extension(), pass + 1);
+            string frag_fname = strex("{}.fofx-{}-frag-spv", strex(name).erase_file_extension(), pass + 1);
             vector<byte> frag_content = loader(frag_fname);
             FO_VERIFY_AND_THROW(!frag_content.empty(), "Fragment shader SPIR-V is empty");
             FO_VERIFY_AND_THROW(frag_content.size() % sizeof(uint32_t) == 0, "Fragment shader SPIR-V size is not a multiple of 4");

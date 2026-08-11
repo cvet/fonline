@@ -128,7 +128,7 @@ public:
     ~BakerDataSource() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> u8string_view override { return u8"Baker"; }
+    [[nodiscard]] auto GetSourcePath() const -> u8string_view override { return u8"Baker"; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const byte> override;

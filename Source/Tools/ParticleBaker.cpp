@@ -54,8 +54,8 @@ static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string particle_dir_path = u8strex(particle_file.GetPath()).extract_dir().normalize_path_slashes();
-    std::filesystem::path particle_dir {fs_make_path(particle_dir_path)};
+    string particle_dir_path = strex(particle_file.GetPath()).extract_dir().normalize_path_slashes();
+    std::filesystem::path particle_dir {particle_dir_path};
 
     for (size_t group_index = 0; group_index < system->getNbGroups(); group_index++) {
         const SPK::Ref<SPK::Group>& group = system->getGroup(group_index);
@@ -66,21 +66,20 @@ static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<
         }
 
         SPK::FO::SparkQuadRendererData renderer_data = SPK::FO::GetSparkQuadRendererData(*renderer);
-        u8string texture_path = renderer_data.TextureName;
+        string texture_path = renderer_data.TextureName;
 
         if (texture_path.empty()) {
             continue;
         }
-        if (texture_path.view().native_view().find_first_of(u8"\t\r\n") != std::u8string_view::npos) {
+        if (texture_path.find_first_of("\t\r\n") != string::npos) {
             throw ParticleBakerException("SPARK particle has an invalid texture path", particle_file.GetPath(), texture_path);
         }
 
-        u8string normalized_path = u8strex(texture_path).normalize_path_slashes();
-        std::u8string_view normalized_path_view = normalized_path.view().native_view();
-        bool has_drive_prefix = normalized_path.size() >= 2 && normalized_path_view[1] == u8':' && ((normalized_path_view[0] >= u8'A' && normalized_path_view[0] <= u8'Z') || (normalized_path_view[0] >= u8'a' && normalized_path_view[0] <= u8'z'));
-        std::filesystem::path relative_path {fs_make_path(normalized_path)};
+        string normalized_path = strex(texture_path).normalize_path_slashes();
+        bool has_drive_prefix = normalized_path.size() >= 2 && normalized_path[1] == ':' && ((normalized_path[0] >= 'A' && normalized_path[0] <= 'Z') || (normalized_path[0] >= 'a' && normalized_path[0] <= 'z'));
+        std::filesystem::path relative_path {normalized_path};
 
-        if (normalized_path_view.starts_with(u8"/") || has_drive_prefix || relative_path.is_absolute()) {
+        if (normalized_path.starts_with('/') || has_drive_prefix || relative_path.is_absolute()) {
             throw ParticleBakerException("SPARK particle texture path must be relative", particle_file.GetPath(), texture_path);
         }
 
@@ -88,7 +87,7 @@ static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<
         auto first_component = resolved_path.begin();
 
         if (resolved_path.empty() || resolved_path.is_absolute() || (first_component != resolved_path.end() && *first_component == "..")) {
-            throw ParticleBakerException("SPARK particle texture path escapes its resource source", particle_file.GetPath(), texture_path, particle_file.GetDataSource()->GetPackName());
+            throw ParticleBakerException("SPARK particle texture path escapes its resource source", particle_file.GetPath(), texture_path, particle_file.GetDataSource()->GetSourcePath());
         }
     }
 }
@@ -224,26 +223,26 @@ static auto TryGetCachedEffekseerDependencyWriteTime(const BakingContext& contex
     return std::nullopt;
 }
 
-static auto ResolveEffekseerDependencyPaths(const File& project_file, const vector<u8string>& compiler_dependencies) -> vector<u8string>
+static auto ResolveEffekseerDependencyPaths(const File& project_file, const vector<string>& compiler_dependencies) -> vector<u8string>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<u8string> resolved_paths;
     u8string project_path = fs_resolve_path(project_file.GetDiskPath());
-    u8string source_root_path = fs_resolve_path(project_file.GetDataSource()->GetPackName());
+    u8string source_root_path = fs_resolve_path(project_file.GetDataSource()->GetSourcePath());
     std::filesystem::path project_dir = std::filesystem::path {fs_make_path(project_path)}.parent_path();
     std::filesystem::path source_root = std::filesystem::path {fs_make_path(source_root_path)}.lexically_normal();
 
-    for (const u8string& dependency_path : compiler_dependencies) {
+    for (const string& dependency_path : compiler_dependencies) {
         if (dependency_path.empty()) {
             continue;
         }
-        if (dependency_path.view().native_view().find_first_of(u8"\t\r\n") != std::u8string_view::npos) {
+        if (dependency_path.find_first_of("\t\r\n") != string::npos) {
             throw ParticleBakerException("Effekseer compiler produced an invalid dependency path", project_path, dependency_path);
         }
 
-        u8string normalized_dependency_path = u8strex(dependency_path).normalize_path_slashes();
-        std::filesystem::path relative_path {fs_make_path(normalized_dependency_path)};
+        string normalized_dependency_path = strex(dependency_path).normalize_path_slashes();
+        std::filesystem::path relative_path {normalized_dependency_path};
 
         if (relative_path.is_absolute()) {
             throw ParticleBakerException("Effekseer project dependency path must be relative", project_path, dependency_path);
@@ -271,7 +270,7 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
     FO_STACK_TRACE_ENTRY();
 
     u8string project_path = fs_resolve_path(project_file.GetDiskPath());
-    vector<u8string> compiler_dependencies;
+    vector<string> compiler_dependencies;
 
     try {
         compiler_dependencies = GetEffekseerProjectDependencies(project_path, project_file.GetDataSpan());
@@ -588,24 +587,6 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 static constexpr int32_t EFFEKSEER_BOUNDS_MAX_FRAMES = 600;
 static constexpr int32_t EFFEKSEER_BOUNDS_SIM_INSTANCES = 4000;
 
-static auto ToEffekseerUtf8(const char16_t* value) -> u8string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (value == nullptr) {
-        return {};
-    }
-
-    return utf16_to_utf8(std::u16string_view {value, std::char_traits<char16_t>::length(value)});
-}
-
-static auto ToEffekseerUtf16(u8string_view value) -> utf16_string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return utf8_to_utf16(value);
-}
-
 // Bounds simulation needs model geometry just like the runtime does. Keep the loader confined to the project's
 // directory resource source: the compiler dependency walk validates the same containment before simulation, and the
 // loader repeats it at the actual resource boundary so an unexpected model path cannot escape the pack.
@@ -623,18 +604,21 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        u8string model_path = ToEffekseerUtf8(path);
+        string model_path;
 
-        if (model_path.empty() || model_path.view().native_view().find_first_of(u8"\t\r\n") != std::u8string_view::npos) {
+        if (path != nullptr) {
+            model_path = utf16_to_string(std::u16string_view {path, std::char_traits<char16_t>::length(path)});
+        }
+
+        if (model_path.empty() || model_path.find_first_of("\t\r\n") != string::npos) {
             throw ParticleBakerException("Effekseer model dependency has an invalid path", _projectPath, model_path);
         }
 
-        u8string normalized_path = u8strex(model_path).normalize_path_slashes();
-        std::u8string_view normalized_path_view = normalized_path.view().native_view();
-        bool has_drive_prefix = normalized_path.size() >= 2 && normalized_path_view[1] == u8':' && ((normalized_path_view[0] >= u8'A' && normalized_path_view[0] <= u8'Z') || (normalized_path_view[0] >= u8'a' && normalized_path_view[0] <= u8'z'));
-        std::filesystem::path relative_path {fs_make_path(normalized_path)};
+        string normalized_path = strex(model_path).normalize_path_slashes();
+        bool has_drive_prefix = normalized_path.size() >= 2 && normalized_path[1] == ':' && ((normalized_path[0] >= 'A' && normalized_path[0] <= 'Z') || (normalized_path[0] >= 'a' && normalized_path[0] <= 'z'));
+        std::filesystem::path relative_path {normalized_path};
 
-        if (normalized_path_view.starts_with(u8"/") || has_drive_prefix || relative_path.is_absolute()) {
+        if (normalized_path.starts_with('/') || has_drive_prefix || relative_path.is_absolute()) {
             throw ParticleBakerException("Effekseer model dependency path must be relative", _projectPath, model_path);
         }
 
@@ -885,8 +869,8 @@ static void SimulateEffekseerBounds(string_view source_path, u8string_view sourc
     manager->SetTrackRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::TrackRenderer>>(collector_ptr));
     manager->SetModelRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::ModelRenderer>>(collector_ptr));
 
-    u8string material_path = u8strex(source_path).extract_dir().format_path();
-    utf16_string material_path_utf16 = ToEffekseerUtf16(material_path);
+    string material_path = strex(source_path).extract_dir().format_path();
+    utf16_string material_path_utf16 = string_to_utf16(material_path);
     Effekseer::EffectRef effect = Effekseer::Effect::Create(manager, binary.data(), numeric_cast<int32_t>(binary.size()), 1.0f, material_path_utf16.data());
 
     if (!effect) {
@@ -939,7 +923,7 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
 
     for (const File& file : files) {
         if (!file.GetDataSource()->IsDiskDir()) {
-            throw ParticleBakerException("Effekseer text projects can only be compiled from a directory resource source", file.GetPath(), file.GetDataSource()->GetPackName());
+            throw ParticleBakerException("Effekseer text projects can only be compiled from a directory resource source", file.GetPath(), file.GetDataSource()->GetSourcePath());
         }
 
         u8string project_path = fs_resolve_path(file.GetDiskPath());
@@ -961,7 +945,7 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
         vec3 bounds_min;
         vec3 bounds_max;
         float32_t billboard_radius;
-        SimulateEffekseerBounds(output_path, file.GetDataSource()->GetPackName(), compiled.Binary, bounds_min, bounds_max, billboard_radius);
+        SimulateEffekseerBounds(output_path, file.GetDataSource()->GetSourcePath(), compiled.Binary, bounds_min, bounds_max, billboard_radius);
         AppendEffekseerBoundsTrailer(compiled.Binary, bounds_min, bounds_max, billboard_radius);
 
         uint64_t dependency_write_time = 0;

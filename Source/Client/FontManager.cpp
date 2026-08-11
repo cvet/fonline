@@ -406,7 +406,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     font_data.DrawEffect = _sprMngr->_effectMngr->Effects.Font;
     font_data.BakeScale = ResolveFontScale(default_scale);
 
-    u8string image_name;
+    string image_name;
 
     // Parse data
     u8string font_text = file.GetText();
@@ -512,16 +512,16 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
     bool make_gray = false;
 
-    if (image_name.view().native_view().back() == u8'*') {
+    if (image_name.back() == '*') {
         make_gray = true;
-        image_name = u8string::FromChecked(image_name.view().native_view().substr(0, image_name.size() - 1));
+        image_name.resize(image_name.size() - 1);
     }
 
     font_data.MakeGray = make_gray;
 
     // Load image
     {
-        image_name = u8strex(font_path).extract_dir().combine_path(image_name);
+        image_name = strex(font_path).extract_dir().combine_path(image_name);
 
         font_data.ImageNormal = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type);
 

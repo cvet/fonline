@@ -48,22 +48,14 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_path {path};
-    return LoadEffect(usage, utf8_path);
-}
-
-auto EffectManager::LoadEffect(EffectUsage usage, u8string_view path) -> nptr<RenderEffect>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string effect_path {path};
+    string effect_path {path};
 
     if (auto it = _loadedEffects.find(effect_path); it != _loadedEffects.end()) {
         return it->second;
     }
 
     // Load new
-    unique_ptr<RenderEffect> effect = _render->CreateEffect(usage, effect_path, [this](u8string_view path2) -> vector<byte> {
+    unique_ptr<RenderEffect> effect = _render->CreateEffect(usage, effect_path, [this](string_view path2) -> vector<byte> {
         if (auto file = _resources->ReadFile(path2)) {
             return file.GetData();
         }
@@ -83,14 +75,6 @@ auto EffectManager::LoadEffect(EffectUsage usage, u8string_view path) -> nptr<Re
 }
 
 auto EffectManager::ResolveEffect(ptr<RenderEffect> default_effect, string_view effect_path) -> ptr<RenderEffect>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_effect_path {effect_path};
-    return ResolveEffect(default_effect, utf8_effect_path);
-}
-
-auto EffectManager::ResolveEffect(ptr<RenderEffect> default_effect, u8string_view effect_path) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 

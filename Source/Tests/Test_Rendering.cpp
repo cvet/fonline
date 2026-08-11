@@ -39,28 +39,28 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTestEffectLoader() -> RenderEffectLoader
 {
-    return [](u8string_view name) -> vector<byte> {
+    return [](string_view name) -> vector<byte> {
         string_view content;
 
-        if (name == u8"Effects/Test_Default.fofx" || name == u8"Effects/Тест_Рендера.fofx") {
+        if (name == "Effects/Test_Default.fofx") {
             content = R"([Effect]
 Passes = 1
 )";
         }
-        else if (name == u8"Effects/Test_Default.fofx-1-info" || name == u8"Effects/Тест_Рендера.fofx-1-info") {
+        else if (name == "Effects/Test_Default.fofx-1-info") {
             content = R"([EffectInfo]
 MainTex = 0
 MainTexBuf = 1
 ProjBuf = 2
 )";
         }
-        else if (name == u8"Effects/Test_DepthVariants.fofx") {
+        else if (name == "Effects/Test_DepthVariants.fofx") {
             content = R"([Effect]
 Passes = 1
 DepthVariants = True
 )";
         }
-        else if (name == u8"Effects/Test_DepthVariants.fofx-1-info") {
+        else if (name == "Effects/Test_DepthVariants.fofx-1-info") {
             content = "[EffectInfo]\n";
         }
         else {
@@ -101,7 +101,7 @@ TEST_CASE("NullRenderer")
     {
         auto tex = renderer.CreateTexture({2, 2}, false, false);
         auto dbuf = renderer.CreateDrawBuffer(false);
-        auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Test_Default.fofx", MakeTestEffectLoader());
+        auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader());
 
         dbuf->Vertices.resize(4);
         dbuf->VertCount = 4;
@@ -116,18 +116,11 @@ TEST_CASE("NullRenderer")
         CHECK(effect->ProjBuf.has_value());
     }
 
-    SECTION("Utf8EffectResourcePath")
-    {
-        auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Тест_Рендера.fofx", MakeTestEffectLoader());
-
-        CHECK(effect->GetName() == u8"Effects/Тест_Рендера.fofx");
-    }
-
     SECTION("DepthVariantRequiresBuiltState")
     {
         auto dbuf = renderer.CreateDrawBuffer(false);
-        auto fixed_effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Test_Default.fofx", MakeTestEffectLoader());
-        auto variant_effect = renderer.CreateEffect(EffectUsage::QuadSprite, u8"Effects/Test_DepthVariants.fofx", MakeTestEffectLoader());
+        auto fixed_effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader());
+        auto variant_effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_DepthVariants.fofx", MakeTestEffectLoader());
 
         CHECK(fixed_effect->ResolveDepthVariantSlot(0) == 3);
 

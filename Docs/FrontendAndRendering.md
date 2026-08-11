@@ -514,13 +514,12 @@ Local-map viewports recenter instantly on the chosen critter when their screen s
 
 `EffectManager` in `Source/Client/EffectManager.h` loads minimal/default effects, resolves script-selected effects, writes script-value buffers, and performs per-frame updates. Scripts can write one `ScriptValueBuf` float with `Game.SetEffectScriptValue(...)`, or write a contiguous range with `Game.SetEffectScriptValues(effectType, effectSubtype, valueStartIndex, values, valuesOffset = 0, valuesCount = -1)` to avoid repeated native calls when updating shader parameter blocks. Both APIs validate the selected effect, require the shader to declare `ScriptValueBuf`, and enforce the configured `EFFECT_SCRIPT_VALUES` range.
 
-Effect resource paths are strict UTF-8 throughout the render boundary:
+Effect resource paths are ASCII throughout the render boundary:
 `EffectManager`, `IAppRender::CreateEffect()`, `RenderEffect`, backend-generated
-shader/pass names, and `RenderEffectLoader` all use `u8string` /
-`u8string_view`. Ordinary ASCII literals still use the manager's natural
-overload and promote without explicit wrappers. Only the effect file's
-technical enum-like values (`BlendFunc`, `BlendEquation`, and `DepthFunc`) are
-checked down to ASCII before their parsers consume them.
+shader/pass names, and `RenderEffectLoader` all use `string` / `string_view`.
+The effect file itself remains strict UTF-8 text. Its technical enum-like values
+(`BlendFunc`, `BlendEquation`, and `DepthFunc`) are checked down to ASCII before
+their parsers consume them.
 
 **Shader time is session-relative and wrapped.** `TimeBuf` (`FrameTime.x` / `GameTime.x`, seconds) is rebased to the first rendered frame and wrapped at 8192 s by `EffectManager::PerFrameEffectUpdate` — it is a periodic animation-phase input, not an absolute clock. The raw steady-clock time is seconds since OS boot (days-scale on long-running machines), and even session-relative time reaches 10^5–10^6 s on clients embedded into long-running servers; at such magnitudes fp32 `fract()`/hash/`sin` math degrades into visible stepping (high-frequency phases like `sin(t * 76)` break within a day) and the clock granularity eventually exceeds the frame delta. The fp32-exact wrap keeps granularity under 1 ms for any session length at the cost of a once-per-~2.3h phase pop, which consumers must keep on noisy/ambient math. Effects that feed the time into hash lattices should still wrap locally (`mod(p, period)` noise lattices in the fog effects); script-side accumulated effect clocks (e.g. weather anim clocks passed through `ScriptValueBuf`) need the same treatment — an fp32 accumulator that only grows will first quantize and then freeze once its ulp exceeds the per-tick increment.
 
@@ -624,6 +623,13 @@ not graphics backends: FOnline copies callback values, builds its own
 `RenderDrawBuffer`, selects its own `RenderEffect`, and submits through the
 normal renderer abstraction. This keeps Mapper and game preview on one path and
 requires no Direct3D/OpenGL/Vulkan/SDL GPU code from Effekseer.
+
+Particle dependency names follow the same ASCII resource-path contract as the
+rest of the resource system. The runtime and baker validate SPARK effect/texture names and
+Effekseer texture/model/sound/curve references before publishing or compiling
+them; a non-ASCII dependency is rejected. The physical `.efkproj` path and its
+directory source remain UTF-8, so projects may still live below Unicode host
+directories while their mounted resource-relative names stay ASCII.
 
 The callback collectors fail closed on malformed callback
 topology. They enforce both the fixed supported-instance hard limit and the

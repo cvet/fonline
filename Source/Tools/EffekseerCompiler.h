@@ -44,11 +44,11 @@ FO_DECLARE_EXCEPTION(EffekseerCompilerException);
 struct EffekseerCompilerOutput final
 {
     vector<byte> Binary {};
-    vector<u8string> Dependencies {};
+    vector<string> Dependencies {};
 };
 
 [[nodiscard]] auto CompileEffekseerProject(u8string_view project_path, const_span<byte> project_data) -> EffekseerCompilerOutput;
-[[nodiscard]] auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte> project_data) -> vector<u8string>;
+[[nodiscard]] auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte> project_data) -> vector<string>;
 
 FO_END_NAMESPACE
 

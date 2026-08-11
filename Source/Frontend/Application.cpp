@@ -673,8 +673,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     // Default effect
     const u8string& base_resources = IsPackaged() ? Settings.ClientResources : Settings.BakeOutput;
     FileSystem base_fs;
-    base_fs.AddPackSource(base_resources.view(), u8"Embedded", true);
-    base_fs.AddPackSource(base_resources.view(), u8"Core", true);
+    base_fs.AddPackSource(base_resources, "Embedded", true);
+    base_fs.AddPackSource(base_resources, "Core", true);
     LoadImGuiEffect(base_fs);
 
     _imguiDrawBuf = active_renderer->CreateDrawBuffer(false);
@@ -746,7 +746,7 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
 
     if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
         auto active_renderer = GetActiveRenderer(_ctx);
-        _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](u8string_view path) -> vector<byte> {
+        _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> vector<byte> {
             auto file = resources.ReadFile(path);
             FO_VERIFY_AND_THROW(file, "ImGui_Default effect not found");
             return file.GetData();
@@ -2855,7 +2855,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
     return active_renderer->CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 

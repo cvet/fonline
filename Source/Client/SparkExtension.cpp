@@ -894,6 +894,10 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
+        if (auto issue = validate_ascii_text(effect_name)) {
+            throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
+        }
+
         _effectName = string(effect_name);
 
         if (!_effectName.empty() && _runtime) {
@@ -914,6 +918,10 @@ namespace SPK::FO
     void SparkQuadRenderer::SetTextureName(string_view tex_name)
     {
         FO_STACK_TRACE_ENTRY();
+
+        if (auto issue = validate_ascii_text(tex_name)) {
+            throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
+        }
 
         _textureName = string(tex_name);
 

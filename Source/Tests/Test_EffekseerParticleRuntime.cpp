@@ -60,7 +60,7 @@ static constexpr frect32 EffekseerFixtureAtlasRect {0.125f, 0.25f, 0.5f, 0.375f}
 
 struct CapturedEffekseerDraw final
 {
-    u8string EffectName {};
+    string EffectName {};
     vector<Vertex2D> Vertices {};
     // A refracting draw carries the particle's own plane per vertex, which is the model vertex layout.
     vector<Vertex3D> Vertices3D {};
@@ -89,7 +89,7 @@ enum class TestSceneBackgroundMode : uint8_t
 class CapturingRenderEffect final : public RenderEffect
 {
 public:
-    CapturingRenderEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader, shared_ptr<EffekseerDrawCapture> capture);
+    CapturingRenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, shared_ptr<EffekseerDrawCapture> capture);
 
     void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override;
 
@@ -105,7 +105,7 @@ public:
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
@@ -176,7 +176,7 @@ EffekseerRuntimeTestSettings::EffekseerRuntimeTestSettings() :
     BakerTests::ApplySelfContainedClientSettings(*this);
 }
 
-CapturingRenderEffect::CapturingRenderEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader, shared_ptr<EffekseerDrawCapture> capture) :
+CapturingRenderEffect::CapturingRenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, shared_ptr<EffekseerDrawCapture> capture) :
     RenderEffect(usage, name, loader),
     _capture {std::move(capture)}
 {
@@ -266,7 +266,7 @@ auto CapturingAppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDr
     return _renderer.CreateDrawBuffer(is_static);
 }
 
-auto CapturingAppRender::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto CapturingAppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1006,6 +1006,14 @@ TEST_CASE("Effekseer particle runtime rejects a missing color texture", "[partic
     CHECK(rig.GetTextureRequests().front() == "Particles/Effekseer01/Texture/Particle01.png");
 }
 
+TEST_CASE("Effekseer compiler rejects a non-ASCII resource dependency", "[particle][effekseer-runtime]")
+{
+    u8string project = ParticleTests::MakeDistortionProject(1.0f, 1);
+    project = u8strex(project).replace(u8"Texture/Distortion.png", u8"Текстуры/Искажение.png");
+
+    CHECK_THROWS_AS(CompileEffekseerProject(u8"Particles/EffekseerTests/Refraction.efkproj", utf8_to_byte_span(project)), TextValidationException);
+}
+
 // A strip is delivered as one draw per instance group, so these fixtures are compiled from source here: the geometry only
 // exists once several instances of one group are alive together, which a cooked single-instance fixture cannot express.
 static auto MakeStripFixtureRig(string_view project) -> unique_ptr<EffekseerRuntimeTestRig>
@@ -1257,7 +1265,7 @@ TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effe
     // Face 0 is vertices 0,1,2 of the mesh and face 1 is 2,1,3, which pins both the winding and the vertex mapping.
     // The authored corners carry red channels 10/20/30/40, combined with the instance colour through Effekseer's own
     // colour multiply - a shift by 8 rather than a divide by 255, so even white scales by 255/256 and drops the low bit.
-    array<uint8_t, mesh_vertices> expected_red {9, 19, 29, 29, 19, 39};
+    array<int32_t, mesh_vertices> expected_red {9, 19, 29, 29, 19, 39};
     array<float32_t, mesh_vertices> expected_u {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
     array<float32_t, mesh_vertices> expected_v {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 

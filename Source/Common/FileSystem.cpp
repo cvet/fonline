@@ -44,6 +44,10 @@ FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, ptr<c
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (auto issue = validate_ascii_text(path)) {
+        throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
+    }
+
     FO_VERIFY_AND_THROW(_dataSource, "Missing required data source");
 }
 
@@ -85,11 +89,10 @@ auto FileHeader::GetDiskPath() const -> u8string
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
-    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", _dataSource->GetPackName(), _fileSize, _writeTime);
-    FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, _dataSource->GetPackName());
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", _dataSource->GetSourcePath(), _fileSize, _writeTime);
+    FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, _dataSource->GetSourcePath());
 
-    u8string file_path = _filePath;
-    return fs_path_to_u8string(std::filesystem::path {fs_make_path(_dataSource->GetPackName())} / std::filesystem::path {fs_make_path(file_path)});
+    return fs_combine_path(_dataSource->GetSourcePath(), _filePath);
 }
 
 auto FileHeader::GetSize() const -> size_t
@@ -144,7 +147,7 @@ auto File::Load(const FileHeader& fh) -> File
     uint64_t write_time = fh.GetWriteTime();
     auto data_source = fh.GetDataSource();
     auto buf = data_source->OpenFile(fh.GetPath(), size, write_time);
-    FO_VERIFY_AND_THROW(buf, "Missing required buffer", fh.GetPath(), data_source->GetPackName(), size, write_time);
+    FO_VERIFY_AND_THROW(buf, "Missing required buffer", fh.GetPath(), data_source->GetSourcePath(), size, write_time);
 
     return File(fh.GetPath(), size, write_time, data_source, take_not_null(buf));
 }
@@ -537,17 +540,18 @@ void FileSystem::AddDirSource(u8string_view dir, bool recursive, bool non_cached
     _dataSources.emplace(_dataSources.begin(), std::move(ds));
 }
 
-void FileSystem::AddPackSource(u8string_view dir, u8string_view pack, bool maybe_not_available)
+void FileSystem::AddPackSource(u8string_view dir, string_view pack, bool maybe_not_available)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (IsPackaged()) {
-        auto ds = DataSource::MountPack(dir, pack, maybe_not_available);
+        u8string pack_name = pack;
+        auto ds = DataSource::MountPack(dir, pack_name, maybe_not_available);
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
     else {
-        u8string pack_dir = fs_path_to_u8string(std::filesystem::path {fs_make_path(dir)} / std::filesystem::path {fs_make_path(pack)});
-        auto ds = DataSource::MountDir(pack_dir.view(), true, false, maybe_not_available);
+        u8string pack_dir = fs_combine_path(dir, pack);
+        auto ds = DataSource::MountDir(pack_dir, true, false, maybe_not_available);
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
 }
@@ -556,9 +560,8 @@ void FileSystem::AddPacksSource(u8string_view dir, const vector<string>& packs)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto& pack : packs) {
-        u8string pack_name = pack;
-        AddPackSource(dir, pack_name.view());
+    for (const string& pack : packs) {
+        AddPackSource(dir, pack);
     }
 }
 
@@ -614,7 +617,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
             size_t size = 0;
             uint64_t write_time = 0;
             bool ok = ds->GetFileInfo(path, size, write_time);
-            FO_VERIFY_AND_THROW(ok, "Data source listed a file but did not return its metadata", ds->GetPackName(), path);
+            FO_VERIFY_AND_THROW(ok, "Data source listed a file but did not return its metadata", ds->GetSourcePath(), path);
             auto file_header = FileHeader(path, size, write_time, ds);
             files.emplace_back(std::move(file_header));
         }
@@ -737,14 +740,6 @@ auto FileSystem::IsFileExists(string_view path) const -> bool
     return false;
 }
 
-auto FileSystem::IsFileExists(u8string_view path) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string path_chars = utf8_to_char_string(path);
-    return IsFileExists(path_chars);
-}
-
 auto FileSystem::ReadFile(string_view path) const -> File
 {
     FO_STACK_TRACE_ENTRY();
@@ -763,14 +758,6 @@ auto FileSystem::ReadFile(string_view path) const -> File
     }
 
     return {};
-}
-
-auto FileSystem::ReadFile(u8string_view path) const -> File
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string path_chars = utf8_to_char_string(path);
-    return ReadFile(path_chars);
 }
 
 auto FileSystem::ReadFileText(string_view path) const -> u8string

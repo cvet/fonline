@@ -156,7 +156,7 @@ FIXED_SETTING(int32_t, Geometry, MapRoofElevation, 98); // Roof tile 3D elevatio
 FIXED_SETTING(float32_t, Geometry, MapCameraAngle, 25.6589f); // Angle for critters moving/rendering
 FIXED_SETTING(bool, Geometry, MapFreeMovement, false); // If true, free movement on the map is enabled
 FIXED_SETTING(bool, Geometry, MapSmoothPath, true); // Enable pathfinding path smoothing
-FIXED_SETTING(u8string, Geometry, MapDataPrefix, u8"Geometry"); // Path and prefix for names used for geometry sprites
+FIXED_SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Resource path and prefix for geometry sprite names
 FIXED_SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
 FIXED_SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING_GROUP_END();
@@ -214,11 +214,11 @@ FIXED_SETTING(int32_t, Render, DefaultParticleDrawWidth, 128); // Default partic
 FIXED_SETTING(int32_t, Render, DefaultParticleDrawHeight, 128); // Default particle draw height
 FIXED_SETTING(bool, Render, RecreateClientOnError, false); // If true, client is recreated on error
 FIXED_SETTING(string, Render, ImGuiColorStyle); // ImGui theme: Light, Classic, Dark
-FIXED_SETTING(u8string, Render, ImGuiDefaultEffect, u8"Effects/ImGui_Default.fofx"); // Shader effect for ImGui
+FIXED_SETTING(string, Render, ImGuiDefaultEffect, "Effects/ImGui_Default.fofx"); // Shader effect resource for ImGui
 FIXED_SETTING(int32_t, Render, ImGuiFontTextureSize, 256); // Minimum ImGui texture size
 FIXED_SETTING(int32_t, Render, SpriteHitValue, 127); // If alpha is greather then hit test is passed
-FIXED_SETTING(u8string, Render, CritterStubSpriteName, u8""); // Fallback critter sprite, empty value uses built-in runtime dummy sprite
-FIXED_SETTING(u8string, Render, ItemStubSpriteName, u8""); // Fallback item sprite, empty value uses built-in runtime dummy sprite
+FIXED_SETTING(string, Render, CritterStubSpriteName, ""); // Fallback critter sprite resource, empty value uses built-in runtime dummy sprite
+FIXED_SETTING(string, Render, ItemStubSpriteName, ""); // Fallback item sprite resource, empty value uses built-in runtime dummy sprite
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -368,8 +368,8 @@ SETTING_GROUP_END();
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings);
 FIXED_SETTING(int32_t, Client, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32_t, Client, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
-FIXED_SETTING(u8string, Client, DefaultSplash); // Default splash screen
-FIXED_SETTING(u8string, Client, DefaultSplashPack); // Default splash pack
+FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen resource
+FIXED_SETTING(string, Client, DefaultSplashPack); // Default splash resource pack
 FIXED_SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
 VARIABLE_SETTING(u8string, Client, UserWritablePath); // Writable data root for an INSTALLED client (cache, logs, self-update overlay) when the install dir is read-only. Empty = portable (write next to the exe, the default). "*" = the per-OS user data dir from the environment (Windows %LOCALAPPDATA% else %APPDATA%; macOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share). Otherwise an explicit absolute path. Resolved to an absolute, created directory at startup; read-only base resources stay in the install dir with this dir layered on top. The installer sets this; see Docs/ClientUpdater.md

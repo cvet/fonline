@@ -349,13 +349,12 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 - `FontManager` loads fonts and formats/draws text, including inline color tags.
 - `RenderTargetManager` creates, resizes, pushes, pops, reads, clears, dumps, and deletes offscreen render targets.
 
-Effect resource names remain strict UTF-8 from `EffectManager` through
-`IAppRender`, `RenderEffect`, every renderer backend, and `RenderEffectLoader`.
-The manager keeps an ASCII overload for ordinary technical literals, which
-promote into the UTF-8 path without caller-side adapters. Parsed effect
-configuration values such as blend functions and depth modes are technical
-ASCII tokens and cross that narrower boundary only through the checked
-`utf8_to_string()` conversion.
+Effect resource names are ASCII `string` / `string_view` values from
+`EffectManager` through `IAppRender`, `RenderEffect`, every renderer backend,
+and `RenderEffectLoader`. Script-selected paths are checked at the generated
+script/native boundary. Parsed effect configuration values such as blend
+functions and depth modes are technical ASCII tokens and cross from the UTF-8
+config text through the checked `utf8_to_string()` conversion.
 
 For 3D critter views, idle refresh plays alive-state animations from the beginning. Dead condition idles freeze on their final frame. Other non-alive condition idles freeze on their first frame, so embedding projects should author that first frame as the intended resting pose for the condition.
 

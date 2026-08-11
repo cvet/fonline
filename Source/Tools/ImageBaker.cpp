@@ -204,8 +204,8 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     bool sprite_info_target = target_path == sprite_info_path;
     bool bake_sprite_info = scan_mode || sprite_info_target;
     bool sprite_info_needs_write = !_context->BakeChecker;
-    map<u8string, SpriteInfoFileEntry> sprite_info_entries;
-    set<u8string> current_sprite_sources;
+    map<string, SpriteInfoFileEntry> sprite_info_entries;
+    set<string> current_sprite_sources;
     uint64_t maximum_source_write_time = 0;
 
     nptr<const FileSystem> sprite_info_files = _context->PackBakedFiles ? _context->PackBakedFiles : _context->BakedFiles;
@@ -314,7 +314,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         }
 
         u8string sprite_info = WriteSpriteInfoFile(entries);
-        _context->WriteData(sprite_info_path, utf8_to_byte_span(sprite_info.view()));
+        _context->WriteData(sprite_info_path, utf8_to_byte_span(sprite_info));
     }
 }
 

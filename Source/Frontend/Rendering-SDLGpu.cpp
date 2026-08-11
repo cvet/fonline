@@ -154,7 +154,7 @@ public:
 #endif
     };
 
-    SDLGpu_Effect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader, ptr<SDLGpu_Renderer::Context> ctx) :
+    SDLGpu_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, ptr<SDLGpu_Renderer::Context> ctx) :
         RenderEffect(usage, name, loader),
         _ctx {ctx}
     {
@@ -822,7 +822,7 @@ auto SDLGpu_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
     return std::move(sdl_dbuf);
 }
 
-auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
+auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -842,7 +842,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
 
     for (size_t pass = 0; pass < sdl_effect->_passCount; pass++) {
         // Per-stage SDL binding slots and resource counts from the baked [EffectInfoSdl] section
-        u8string pass_info_fname = u8strex("{}.fofx-{}-info", u8strex(name).erase_file_extension(), pass + 1);
+        string pass_info_fname = strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1);
         vector<byte> pass_info_data = loader(pass_info_fname);
         u8string pass_info_content = utf8_from_byte_span(pass_info_data);
         auto pass_info = ConfigFile(pass_info_content);
@@ -886,7 +886,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, u8string_view name, const 
 
         // Shaders
         auto create_shader = [&](bool is_vertex) {
-            u8string shader_fname = u8strex("{}.fofx-{}-{}-{}", u8strex(name).erase_file_extension(), pass + 1, is_vertex ? "vert" : "frag", shader_flavor);
+            string shader_fname = strex("{}.fofx-{}-{}-{}", strex(name).erase_file_extension(), pass + 1, is_vertex ? "vert" : "frag", shader_flavor);
             vector<byte> shader_content = loader(shader_fname);
             FO_VERIFY_AND_THROW(!shader_content.empty(), "SDL_GPU effect shader content is empty after loading", name, pass + 1, shader_fname);
 

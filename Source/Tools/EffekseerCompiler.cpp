@@ -56,7 +56,7 @@ public:
     void WriteFloat(float32_t value);
     void WriteBytes(const_span<byte> value);
     void WriteSized(const BinaryWriter& value);
-    void WriteUtf16(u8string_view value);
+    void WriteUtf16(string_view value);
     [[nodiscard]] auto MoveData() -> vector<byte>;
     [[nodiscard]] auto GetData() const noexcept -> const vector<byte>&;
 
@@ -69,13 +69,13 @@ struct CompilerContext final
     u8string ProjectDirectory {};
     vector<nptr<const XmlNode>> ExportedNodes {};
     map<nptr<const XmlNode>, int32_t> RenderIndices {};
-    map<u8string, int32_t> ColorTextures {};
-    map<u8string, int32_t> NormalTextures {};
-    map<u8string, int32_t> DistortionTextures {};
-    map<u8string, int32_t> Waves {};
-    map<u8string, int32_t> Models {};
-    map<u8string, int32_t> Curves {};
-    set<u8string> Dependencies {};
+    map<string, int32_t> ColorTextures {};
+    map<string, int32_t> NormalTextures {};
+    map<string, int32_t> DistortionTextures {};
+    map<string, int32_t> Waves {};
+    map<string, int32_t> Models {};
+    map<string, int32_t> Curves {};
+    set<string> Dependencies {};
 };
 
 [[nodiscard]] static auto ParseXmlProject(u8string_view project_path, u8string_view xml) -> XmlNode;
@@ -95,7 +95,7 @@ auto CompileEffekseerProject(u8string_view project_path, const_span<byte> projec
     return CompileProject(project_path, project);
 }
 
-auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte> project_data) -> vector<u8string>
+auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte> project_data) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -106,7 +106,7 @@ auto GetEffekseerProjectDependencies(u8string_view project_path, const_span<byte
     u8string xml = utf8_from_byte_span(project_data);
     XmlNode project = ParseXmlProject(project_path, xml);
     CompilerContext context = CreateCompilerContext(project_path, project);
-    return vector<u8string> {context.Dependencies.begin(), context.Dependencies.end()};
+    return vector<string> {context.Dependencies.begin(), context.Dependencies.end()};
 }
 
 [[nodiscard]] static auto IsXmlSpace(char8_t ch) noexcept -> bool
@@ -512,36 +512,14 @@ void BinaryWriter::WriteSized(const BinaryWriter& value)
     WriteBytes(value.GetData());
 }
 
-void BinaryWriter::WriteUtf16(u8string_view value)
+void BinaryWriter::WriteUtf16(string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Decode the UTF-8 input directly rather than through a platform wide string: u8strex::to_wide_char is
-    // Windows-only, and wchar_t is 16-bit only there, so the wide detour is not portable either way.
-    vector<uint16_t> units;
-    units.reserve(value.size());
+    WriteInt32(numeric_cast<int32_t>(value.size() + 1));
 
-    for (size_t i = 0; i < value.size();) {
-        size_t length = value.size() - i;
-        auto text_pos = make_ptr(value.data() + i);
-        optional<uint32_t> codepoint = utf8::Decode(text_pos, length);
-
-        if (!codepoint || !utf8::IsValid(*codepoint)) {
-            throw EffekseerCompilerException("Effekseer dependency path is not valid UTF-8", value);
-        }
-
-        if (*codepoint > 0xffffU) {
-            throw EffekseerCompilerException("Effekseer dependency path contains a non-BMP character", value);
-        }
-
-        units.emplace_back(numeric_cast<uint16_t>(*codepoint));
-        i += length;
-    }
-
-    WriteInt32(numeric_cast<int32_t>(units.size() + 1));
-
-    for (uint16_t unit : units) {
-        WriteUInt16(unit);
+    for (char code_unit : value) {
+        WriteUInt16(static_cast<uint16_t>(code_unit));
     }
 
     WriteUInt16(0);
@@ -1086,7 +1064,7 @@ static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const X
     }
 }
 
-[[nodiscard]] static auto ChangeDependencyExtension(u8string_view path, string_view ext) -> u8string
+[[nodiscard]] static auto ChangeDependencyExtension(u8string_view path, string_view ext) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1094,16 +1072,16 @@ static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const X
         return {};
     }
 
-    return u8strex(path).normalize_path_slashes().change_file_extension(ext);
+    return strex(utf8_to_string(path)).normalize_path_slashes().change_file_extension(ext);
 }
 
-static void AssignResourceIndices(const set<u8string>& resources, map<u8string, int32_t>& indices)
+static void AssignResourceIndices(const set<string>& resources, map<string, int32_t>& indices)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     int32_t index = 0;
 
-    for (const u8string& resource : resources) {
+    for (const string& resource : resources) {
         indices.emplace(resource, index++);
     }
 }
@@ -1112,12 +1090,12 @@ static void CollectResources(CompilerContext& context)
 {
     FO_STACK_TRACE_ENTRY();
 
-    set<u8string> color_textures;
-    set<u8string> normal_textures;
-    set<u8string> distortion_textures;
-    set<u8string> waves;
-    set<u8string> models;
-    set<u8string> curves;
+    set<string> color_textures;
+    set<string> normal_textures;
+    set<string> distortion_textures;
+    set<string> waves;
+    set<string> models;
+    set<string> curves;
 
     for (nptr<const XmlNode> node : context.ExportedNodes) {
         nptr<const XmlNode> renderer = Find(node, "RendererCommonValues");
@@ -1126,8 +1104,8 @@ static void CollectResources(CompilerContext& context)
         bool rendered = IsRenderedNode(node);
 
         if (rendered) {
-            u8string color_path {Text(renderer, "ColorTexture")};
-            u8string normal_path {Text(renderer, "NormalTexture")};
+            string color_path = utf8_to_string(Text(renderer, "ColorTexture"));
+            string normal_path = utf8_to_string(Text(renderer, "NormalTexture"));
 
             if (!color_path.empty()) {
                 if (material == 6) {
@@ -1142,14 +1120,14 @@ static void CollectResources(CompilerContext& context)
             }
 
             if (NodeDrawingType(node) == 5) {
-                u8string model_path = ChangeDependencyExtension(Text(drawing, "Model/Model"), "efkmodel");
+                string model_path = ChangeDependencyExtension(Text(drawing, "Model/Model"), "efkmodel");
 
                 if (!model_path.empty()) {
                     models.emplace(model_path);
                 }
             }
             if (IntValue(Find(node, "SoundValues"), "Type", 0) == 1) {
-                u8string wave_path {Text(Find(node, "SoundValues"), "Sound/Wave")};
+                string wave_path = utf8_to_string(Text(Find(node, "SoundValues"), "Sound/Wave"));
 
                 if (!wave_path.empty()) {
                     waves.emplace(wave_path);
@@ -1160,14 +1138,14 @@ static void CollectResources(CompilerContext& context)
         nptr<const XmlNode> generation = Find(node, "GenerationLocationValues");
 
         if (IntValue(generation, "Type", 0) == 2) {
-            u8string model_path = ChangeDependencyExtension(Text(generation, "Model/Model"), "efkmodel");
+            string model_path = ChangeDependencyExtension(Text(generation, "Model/Model"), "efkmodel");
 
             if (!model_path.empty()) {
                 models.emplace(model_path);
             }
         }
         if (IntValue(Find(node, "LocationValues"), "Type", 0) == 4) {
-            u8string curve_path = ChangeDependencyExtension(Text(Find(node, "LocationValues"), "NurbsCurve/FilePath"), "efkcurve");
+            string curve_path = ChangeDependencyExtension(Text(Find(node, "LocationValues"), "NurbsCurve/FilePath"), "efkcurve");
 
             if (!curve_path.empty()) {
                 curves.emplace(curve_path);
@@ -1182,7 +1160,7 @@ static void CollectResources(CompilerContext& context)
     AssignResourceIndices(models, context.Models);
     AssignResourceIndices(curves, context.Curves);
 
-    for (ptr<const map<u8string, int32_t>> table : {&context.ColorTextures, &context.NormalTextures, &context.DistortionTextures, &context.Waves, &context.Models, &context.Curves}) {
+    for (ptr<const map<string, int32_t>> table : {&context.ColorTextures, &context.NormalTextures, &context.DistortionTextures, &context.Waves, &context.Models, &context.Curves}) {
         for (const auto& [path, index] : *table) {
             ignore_unused(index);
             context.Dependencies.emplace(path);
@@ -1190,7 +1168,7 @@ static void CollectResources(CompilerContext& context)
     }
 }
 
-static void WriteResourceTable(BinaryWriter& writer, const map<u8string, int32_t>& resources)
+static void WriteResourceTable(BinaryWriter& writer, const map<string, int32_t>& resources)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1298,7 +1276,7 @@ static void WriteLocationValues(BinaryWriter& writer, nptr<const XmlNode> node, 
         writer.WriteSized(data);
     }
     else if (type == 4) {
-        u8string path = ChangeDependencyExtension(Text(values, "NurbsCurve/FilePath"), "efkcurve");
+        string path = ChangeDependencyExtension(Text(values, "NurbsCurve/FilePath"), "efkcurve");
         writer.WriteInt32(path.empty() || !context.Curves.contains(path) ? -1 : context.Curves.at(path));
         writer.WriteFloat(FloatValue(values, "NurbsCurve/Scale", 1.0f));
         writer.WriteFloat(FloatValue(values, "NurbsCurve/MoveSpeed", 1.0f));
@@ -1509,7 +1487,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
         writer.WriteInt32(reference_type);
 
         if (reference_type == 0) {
-            u8string model_path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
+            string model_path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
             writer.WriteInt32(!model_path.empty() && context.Models.contains(model_path) ? context.Models.at(model_path) : -1);
         }
         else if (reference_type == 1) {
@@ -1545,16 +1523,15 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     }
 }
 
-[[nodiscard]] static auto ResolveDependencyPath(const CompilerContext& context, u8string_view path) -> u8string
+[[nodiscard]] static auto ResolveDependencyPath(const CompilerContext& context, string_view path) -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string normalized_path = u8strex(path).normalize_path_slashes();
-    std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(normalized_path)}).lexically_normal();
-    return fs_path_to_u8string(resolved);
+    string normalized_path = strex(path).normalize_path_slashes();
+    return fs_resolve_path(fs_combine_path(context.ProjectDirectory, normalized_path));
 }
 
-[[nodiscard]] static auto ReadTextureSize(const CompilerContext& context, u8string_view path) -> optional<std::pair<float32_t, float32_t>>
+[[nodiscard]] static auto ReadTextureSize(const CompilerContext& context, string_view path) -> optional<std::pair<float32_t, float32_t>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1582,7 +1559,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
         constexpr string_view tga_footer {"TRUEVISION-XFILE.\0", 18};
         bool has_tga_footer = bytes->size() >= tga_footer.size() && std::ranges::equal(const_span<byte> {bytes->data() + bytes->size() - tga_footer.size(), tga_footer.size()}, string_to_byte_span(tga_footer));
 
-        if (u8strex(path).get_file_extension() != u8"tga" && !has_tga_footer) {
+        if (strex(path).get_file_extension() != "tga" && !has_tga_footer) {
             return std::nullopt;
         }
 
@@ -1597,15 +1574,15 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     return std::make_pair(numeric_cast<float32_t>(width), numeric_cast<float32_t>(height));
 }
 
-[[nodiscard]] static auto TextureIndex(const CompilerContext& context, u8string_view path, const map<u8string, int32_t>& indices) -> int32_t
+[[nodiscard]] static auto TextureIndex(const CompilerContext& context, string_view path, const map<string, int32_t>& indices) -> int32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto it = indices.find(u8string {path});
+    auto it = indices.find(path);
     return it != indices.end() && ReadTextureSize(context, path) ? it->second : -1;
 }
 
-static void WriteBasicUv(BinaryWriter& writer, nptr<const XmlNode> renderer, const CompilerContext& context, u8string_view texture_path)
+static void WriteBasicUv(BinaryWriter& writer, nptr<const XmlNode> renderer, const CompilerContext& context, string_view texture_path)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1661,8 +1638,8 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
 
     nptr<const XmlNode> renderer = Find(node, "RendererCommonValues");
     int32_t material = IntValue(renderer, "Material", 0);
-    u8string color_path {Text(renderer, "ColorTexture")};
-    u8string normal_path {Text(renderer, "NormalTexture")};
+    string color_path = utf8_to_string(Text(renderer, "ColorTexture"));
+    string normal_path = utf8_to_string(Text(renderer, "NormalTexture"));
     writer.WriteInt32(material);
 
     if (material == 0 || material == 7) {
@@ -2169,7 +2146,7 @@ static void WriteModelRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing
 
     if (reference_type == 0) {
         writer.WriteFloat(1.0f);
-        u8string path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
+        string path = ChangeDependencyExtension(Text(model, "Model"), "efkmodel");
         writer.WriteInt32(!path.empty() && context.Models.contains(path) ? context.Models.at(path) : -1);
     }
     else if (reference_type == 1) {
@@ -2249,7 +2226,7 @@ static void WriteSoundValues(BinaryWriter& writer, nptr<const XmlNode> node, con
     }
 
     nptr<const XmlNode> sound = Find(values, "Sound");
-    u8string wave {Text(sound, "Wave")};
+    string wave = utf8_to_string(Text(sound, "Wave"));
     writer.WriteInt32(!wave.empty() && context.Waves.contains(wave) ? context.Waves.at(wave) : -1);
     WriteRandomFloat(writer, Find(sound, "Volume"), 1.0f);
     WriteRandomFloat(writer, Find(sound, "Pitch"), 0.0f);

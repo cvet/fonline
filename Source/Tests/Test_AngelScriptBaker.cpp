@@ -130,7 +130,7 @@ TEST_CASE("AngelScriptBaker")
         local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
 
         BakerServerEngine compiler_engine {local_rig.BakedFiles};
-        vector<pair<string, string>> script_files = {{"Scripts/Nested/BrokenScript.fos", "namespace BrokenScript\n{\nvoid Broken()\n{\n    int value = ;\n}\n}\n"}};
+        vector<InlineScriptSource> script_files = {{"Scripts/Nested/BrokenScript.fos", "namespace BrokenScript\n{\nvoid Broken()\n{\n    int value = ;\n}\n}\n"}};
         vector<string> messages;
 
         CHECK_THROWS_AS(CompileInlineScripts(&compiler_engine, "DiagnosticScripts", script_files, [&messages](string_view message) { messages.emplace_back(message); }), ScriptCompilerException);

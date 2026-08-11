@@ -68,7 +68,7 @@ void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
     }
 }
 
-RenderEffect::RenderEffect(EffectUsage usage, u8string_view name, const RenderEffectLoader& loader) :
+RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
     _name {name},
     _usage {usage}
 {
@@ -213,7 +213,7 @@ RenderEffect::RenderEffect(EffectUsage usage, u8string_view name, const RenderEf
         string depth_func_value = utf8_to_string(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
         _depthFunc[pass] = get_depth_func(depth_func_value);
 
-        vector<byte> pass_info_data = loader(u8strex("{}.fofx-{}-info", u8strex(name).erase_file_extension(), pass + 1));
+        vector<byte> pass_info_data = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
         u8string pass_info_content = utf8_from_byte_span(pass_info_data);
         auto pass_info = ConfigFile(std::move(pass_info_content));
         FO_VERIFY_AND_THROW(pass_info.HasSection("EffectInfo"), "FOFX pass EffectInfo section is missing");

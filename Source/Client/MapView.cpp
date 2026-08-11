@@ -302,7 +302,7 @@ void MapView::LoadStaticData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto file = _engine->Resources.ReadFile(u8strex("{}.fomap-bin-client", GetProtoId()));
+    auto file = _engine->Resources.ReadFile(strex("{}.fomap-bin-client", GetProtoId().as_str()));
 
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());
