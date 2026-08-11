@@ -237,6 +237,26 @@ extern auto GetExceptionCallback() noexcept -> ExceptionCallback
     return ExceptionHandling->Callback;
 }
 
+#if HAS_NATIVE_TRACE && !FO_WINDOWS
+
+// Retires the sigaltstack registration before the pages it points at are released. Freeing first would
+// leave the kernel aiming the signal stack at reclaimed memory for the remainder of thread teardown, and
+// under an instrumented allocator the same region is then unmapped twice.
+class AltSignalStackReleaser final
+{
+public:
+    void operator()(uint8_t* buffer) const noexcept
+    {
+        stack_t ss {};
+        ss.ss_flags = SS_DISABLE;
+        (void)sigaltstack(&ss, nullptr);
+
+        delete[] buffer;
+    }
+};
+
+#endif
+
 extern void InstallCrashHandlerStackForThisThread() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -250,17 +270,19 @@ extern void InstallCrashHandlerStackForThisThread() noexcept
     // touched only during a crash, so the reservation stays lazily committed for a thread that never faults.
     constexpr size_t stack_size = size_t {2} * 1024 * 1024;
 
-    // Per-thread backing buffer kept alive for the thread's lifetime; sigaltstack retains a pointer to it
-    // and the registration is torn down automatically when the thread exits. std::unique_ptr (not the
-    // engine alias) is used because it supports array storage; new[] leaves the bytes uninitialized so
-    // the reservation stays lazily committed.
-    static thread_local std::unique_ptr<uint8_t[]> alt_stack_buffer;
+    // Per-thread backing buffer kept alive for the thread's lifetime; sigaltstack retains a pointer to it.
+    // The kernel only forgets the registration when the thread itself ends, which is strictly later than
+    // this thread_local destructor, so the releaser retires it explicitly before the pages are handed back
+    // - otherwise the rest of thread teardown runs with sigaltstack aimed at freed memory. std::unique_ptr
+    // (not the engine alias) is used because it supports array storage; new[] leaves the bytes
+    // uninitialized so the reservation stays lazily committed.
+    static thread_local std::unique_ptr<uint8_t[], AltSignalStackReleaser> alt_stack_buffer;
 
     if (alt_stack_buffer) {
         return; // already installed on this thread
     }
 
-    alt_stack_buffer = std::unique_ptr<uint8_t[]> {new (std::nothrow) uint8_t[stack_size]};
+    alt_stack_buffer = std::unique_ptr<uint8_t[], AltSignalStackReleaser> {new (std::nothrow) uint8_t[stack_size]};
 
     if (!alt_stack_buffer) {
         return;
