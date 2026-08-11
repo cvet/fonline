@@ -632,6 +632,8 @@ R"(        cr.GetBodyAngle();
         source.AddFile(image_path, BakerTests::MakeMinimalBakedSprite());
     }
 
+#if FO_SPARK_PARTICLES
+
     // The SPARK asset below names this effect on its renderer, and the runtime refuses to build the system
     // unless the effect resolves, so the editor fixture bakes it alongside the particle
     static constexpr string_view MAPPER_TEST_PARTICLE_EFFECT = R"EFFECT(
@@ -794,6 +796,8 @@ R"(        cr.GetBodyAngle();
         return resources;
     }
 
+#endif
+
     static auto MakeMapperTestResources() -> FileSystem
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
@@ -862,11 +866,15 @@ R"(        cr.GetBodyAngle();
             AddMinimalFont(*runtime_source, font_name);
         }
 
+#if FO_SPARK_PARTICLES
+
         // Real particle resources make the particle editor, the particle viewer and the particle sprite
         // factory reachable from the mapper instead of stopping at an empty resource list
         for (auto& [particle_path, particle_data] : MakeBakedParticleResources("Particles/MapperEditorTest.spark", MAPPER_TEST_SPARK_ASSET, MAPPER_TEST_PARTICLE_EFFECT, "TestParticle.png")) {
             runtime_source->AddFile(particle_path, particle_data);
         }
+
+#endif
 
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
@@ -2977,9 +2985,15 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     {
         auto other = mapper->LoadMapFromText("OtherMap", "OtherMap.fomap", MakeMapText(MakeItemBlock(12, TILE_A, 7, 7)));
         REQUIRE(other != nullptr);
+
+        // LoadMapFromText hands back a borrow, and the engine's only owning reference lives in LoadedMaps,
+        // so unloading destroys the view outright. Hold an own reference across the unload - otherwise the
+        // rejection below reads freed memory instead of exercising the destroyed-map guard.
+        refcount_ptr<MapView> unloaded = refcount_ptr<MapView>::from_add_ref(other.as_ptr().get());
+
         mapper->UnloadMap(other.as_ptr());
 
-        CHECK_THROWS(mapper->SaveMapToDir(other.as_ptr(), "Generated", "NotLoaded"));
+        CHECK_THROWS(mapper->SaveMapToDir(unloaded.as_ptr(), "Generated", "NotLoaded"));
     }
 }
 
@@ -3076,7 +3090,10 @@ TEST_CASE("MapperScriptApiCoverage")
     run_script("MapperMergeTest::UnitTestMapperViewApi");
     run_script("MapperMergeTest::UnitTestMapperEntityApi");
     run_script("MapperMergeTest::UnitTestMapperTabApi");
+#if FO_SPARK_PARTICLES
+    // The particle sprite factory only has a baked particle to serve when the SPARK fixture is compiled in
     run_script("MapperMergeTest::UnitTestParticleSpriteApi");
+#endif
     run_script("MapperMergeTest::UnitTestClientMapApi");
     run_script("MapperMergeTest::UnitTestClientItemApi");
     run_script("MapperMergeTest::UnitTestClientEntityTimeEvents");
