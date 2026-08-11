@@ -197,6 +197,7 @@ public:
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
+    [[nodiscard]] auto GetHiddenRoofNum() const noexcept -> int32_t { return _hiddenRoofNum; }
     [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return make_ptr(_hexLight.data()); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }

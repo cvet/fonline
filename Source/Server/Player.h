@@ -135,7 +135,7 @@ private:
     // _connectionLock protects broadcast sends outside recipient entity cover.
     // Entity-covered accessors and cross-object swaps use FO_TSA_NO_ANALYSIS
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
-    string _name {"(Unlogined)"};
+    string _name {"(NotLoggedIn)"};
     // Atomic non-owning controlled-critter link for lock-free chosen-recipient checks.
     // Published under player cover and used as the Player-to-Critter sync-widen anchor
     std::atomic<Critter*> _controlledCr {};

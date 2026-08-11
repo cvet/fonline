@@ -45,7 +45,7 @@ FO_BEGIN_NAMESPACE
 extern auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
 
 Critter::Critter(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(*GetInitRef())
 {
@@ -632,8 +632,8 @@ auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
 
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
-        const vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
-        const auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+        vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
+        auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
         return it != members.end() && cr_id != GetId();
     }
 
@@ -653,7 +653,8 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
         vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
-        const auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+        auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+
         if (it != members.end() && cr_id != GetId()) {
             return it->as_nptr();
         }

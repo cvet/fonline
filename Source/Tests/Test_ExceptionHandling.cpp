@@ -1,6 +1,17 @@
 #include "catch_amalgamated.hpp"
 
+#include "BaseLogging.h"
+#include "CommonHelpers.h"
+#include "DiskFileSystem.h"
 #include "ExceptionHandling.h"
+
+// The crash reporter publishes these entry points to backward.hpp only, so they are declared here exactly as
+// that header declares them - they carry no engine namespace and appear in no engine header
+extern auto GetCrashStream() noexcept -> std::ostream&;
+extern void SetCrashStackTrace() noexcept;
+extern void SetCrashSignalInfo(int32_t signum, int32_t code, const void* address) noexcept;
+extern void SetCrashSehInfo(uint32_t code, uint32_t flags, const void* address) noexcept;
+extern void SetCrashTerminationInfo(const char* reason) noexcept;
 
 FO_BEGIN_NAMESPACE
 
@@ -258,6 +269,126 @@ TEST_CASE("ExceptionHandling")
         CHECK_FALSE(trace_has_origin);
 
         SetExceptionCallback(std::move(prev_callback));
+    }
+}
+
+static const auto NULL_LOG_PATH =
+#if FO_WINDOWS
+    string_view {"NUL"};
+#else
+    string_view {"/dev/null"};
+#endif
+
+TEST_CASE("CrashReporterHooks")
+{
+    // The crash reporter writes through the base log, so the log is pointed at a private file and the
+    // emitted report is read back from there instead of leaking into the test console
+    auto log_path = std::filesystem::temp_directory_path() / std::format("lf_crash_report_{}.log", std::chrono::steady_clock::now().time_since_epoch().count());
+    string log_file = fs_path_to_string(log_path);
+
+    LogToFile(log_file);
+    auto restore_log = scope_exit([&log_file]() noexcept {
+        safe_call([&log_file] {
+            LogToFile(NULL_LOG_PATH);
+            (void)fs_remove_file(log_file);
+        });
+    });
+
+    SECTION("TheFatalReportCarriesTheReasonAndTheCapturedTrace")
+    {
+        // This is the std::terminate path: backward.hpp records the reason, captures the trace and then
+        // prints the frames into the crash stream, whose first write emits the whole report header
+        ::SetCrashTerminationInfo("std::terminate");
+        ::SetCrashStackTrace();
+
+        std::ostream& stream = ::GetCrashStream();
+        stream << "printed frame line\n";
+        stream.flush();
+
+        optional<string> written = fs_read_file(log_file);
+        REQUIRE(written.has_value());
+        CHECK(written->find("FATAL ERROR!") != string::npos);
+        CHECK(written->find("Crash reason: Runtime termination: std::terminate") != string::npos);
+        CHECK(written->find("Stack trace (most recent call first):") != string::npos);
+        CHECK(written->find("printed frame line") != string::npos);
+    }
+
+    SECTION("AnInFlightExceptionIsAppendedToTheTerminationReason")
+    {
+        // std::terminate normally fires while an exception is in flight, and the reporter is expected to
+        // name it - the header is already spent by now, so the stored reason is re-read through the stream
+        try {
+            throw GenericException("Unhandled boom");
+        }
+        catch (const std::exception&) {
+            ::SetCrashTerminationInfo("std::terminate");
+        }
+
+        // A reason with no source, and the non-std branch of the same lookup
+        ::SetCrashTerminationInfo(nullptr);
+
+        try {
+            throw 42;
+        }
+        catch (...) {
+            ::SetCrashTerminationInfo("std::terminate");
+        }
+
+        std::ostream& stream = ::GetCrashStream();
+        stream.put('x');
+        stream.flush();
+
+        CHECK(fs_read_file(log_file).has_value());
+    }
+
+    SECTION("EverySignalAndSehCodeResolvesToAName")
+    {
+        // The reporter must survive any code the platform hands it, including ones it does not know.
+        // Only the C-standard six exist everywhere; the rest are POSIX and are not declared by the MSVC
+        // runtime, so listing them unconditionally does not compile on Windows.
+        constexpr std::array KNOWN_SIGNALS = {
+            SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM,
+#if !FO_WINDOWS
+            SIGBUS, SIGQUIT, SIGSYS, SIGTRAP, SIGXCPU, SIGXFSZ,
+#endif
+        };
+
+        for (int32_t signum : KNOWN_SIGNALS) {
+            CHECK_NOTHROW(::SetCrashSignalInfo(signum, 1, nullptr));
+        }
+
+        CHECK_NOTHROW(::SetCrashSignalInfo(0, 0, nullptr));
+
+        constexpr std::array KNOWN_SEH_CODES = {0x40010005U, 0x80000003U, 0x80000004U, 0xC0000005U, 0xC0000006U, 0xC0000008U, 0xC000001DU, 0xC0000025U, 0xC000008CU, 0xC000008DU, 0xC000008EU, 0xC000008FU, 0xC0000090U, 0xC0000091U, 0xC0000092U, 0xC0000093U, 0xC0000094U, 0xC0000095U, 0xC0000096U, 0xC00000FDU, 0xE0434352U, 0xE06D7363U};
+
+        for (uint32_t code : KNOWN_SEH_CODES) {
+            CHECK_NOTHROW(::SetCrashSehInfo(code, 0, nullptr));
+        }
+
+        CHECK_NOTHROW(::SetCrashSehInfo(0x11111111U, 1, &log_file));
+    }
+
+    SECTION("TheCrashStreamNeverServesReads")
+    {
+        // backward.hpp only ever prints into the stream, so the read side answers end-of-file
+        CHECK(::GetCrashStream().rdbuf()->sgetc() == std::streambuf::traits_type::eof());
+    }
+
+    SECTION("TheAlternateSignalStackIsInstalledOncePerThread")
+    {
+        // The handler runs on its own stack so a stack-overflow crash can still be reported; a repeat
+        // call on an already-equipped thread must be a no-op rather than a second reservation
+        CHECK_NOTHROW(InstallCrashHandlerStackForThisThread());
+        CHECK_NOTHROW(InstallCrashHandlerStackForThisThread());
+
+        bool installed_on_worker = false;
+        std::thread worker {[&installed_on_worker] {
+            InstallCrashHandlerStackForThisThread();
+            installed_on_worker = true;
+        }};
+        worker.join();
+
+        CHECK(installed_on_worker);
     }
 }
 

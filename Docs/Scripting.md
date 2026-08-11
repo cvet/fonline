@@ -115,6 +115,10 @@ Global variables, delegates, script object handles, arrays, dictionaries, and GU
 
 Entity deletion/unload clears the entity's own event callbacks and time events from `Entity::MarkAsDestroyed()`, so embedding-project scripts should not keep central per-entity unsubscribe / `StopTimeEvent` registries for ordinary entity lifetime. Entity mutators and event/time-event entry points assert or verify when called after `MarkAsDestroyed()`, making accidental attempts to repopulate a destroyed entity show their stack trace at the offending call. During `ServerEngine::Shutdown` / `ClientEngine::Shutdown`, the engine also runs `UnsubscribeAllEvents()` + `ClearAllTimeEvents()` on the global engine entity and all live entities before `DestroyAllEntities()`. Embedding-project scripts should not hand-maintain unsubscribe / global-clear / `StopTimeEvent` cleanup in their `Game.OnFinish` handler purely to keep the GC quiet — only genuinely functional teardown belongs there.
 
+A destroyed entity does not cross the script-to-native boundary either: `ConvertArg` in `Source/Common/ScriptSystem.h` rejects a destroyed entity argument for every `///@ ExportMethod`, so an export body never has to guard against one.
+
+The rejection validates access **before** it reports the destroyed handle, because missing cover is the cause and a destroyed argument is only the symptom. Every destroy path takes the victim's own lock through `EnsureEntitySynced`, and a descendant lock cannot be registered under a foreign-held ancestor (`EntitySync.h`, descendant-hold), so a caller holding any valid cover — the entity's own lock or any ancestor's — cannot have the entity die under it. A destroyed entity therefore reaches the boundary in exactly two shapes: uncovered, where `ServerEntity::ValidateAccess` throws *"Entity access without sync"* and names the actionable defect, or still covered by the caller that destroyed it and kept using the handle, which is the only case the *"Target entity lookup returned destroyed entity"* message describes. On the client `ValidateAccess` is a no-op and only the second message can appear. Both branches are pinned by `Source/Tests/Test_ServerEngine.cpp` → `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst`. The single opt-out is `///@ ExportMethod … AllowDestroyedEntityArgs`, which codegen turns into a compile-time template argument on `NativeDataCaller::NativeCall`. It exists for the explicit synchronization primitives (`Game.Sync`), whose purpose is to answer whether an entity is still reachable: a script can test liveness and then call, but never both at once, so a concurrent destroy always fits between the two and rejecting the argument would make the recoverable-`false` contract of their script wrappers impossible to honour. Those exports accept a destroyed entity and leave it uncovered rather than synchronizing it. Do not add the flag to an ordinary export — a destroyed argument reaching one is a caller bug and must keep failing. Pinned by `Source/Tests/Test_ServerScriptMethods.cpp` → `SyncAcceptsDestroyedEntity`.
+
 ## Attributes, declarations, and metadata
 
 `Source/Scripting/AngelScript/AngelScriptAttributes.cpp` parses engine-specific script attributes and declaration tags. Important contracts include:
@@ -180,7 +184,7 @@ The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript
 - `Gui.fos`
 - `Sprite.fos`
 - `LineTracer.fos`
-- `Serializator.fos`
+- `Serializer.fos`
 - `MapperCore.fos`
 - `FixedDropMenu.fos`
 - `Tween.fos`

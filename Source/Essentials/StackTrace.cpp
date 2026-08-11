@@ -247,7 +247,7 @@ extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_T
 #if FO_WINDOWS
     ULONG skip_count = 1u + skip;
     constexpr ULONG REQUEST_COUNT = static_cast<ULONG>(STACK_TRACE_MAX_NATIVE_FRAMES) + 1u;
-    void* raw_frames[REQUEST_COUNT] = {};
+    void* raw_frames[REQUEST_COUNT];
     USHORT captured = RtlCaptureStackBackTrace(skip_count, REQUEST_COUNT, raw_frames, nullptr);
     out_truncated = captured > STACK_TRACE_MAX_NATIVE_FRAMES;
     uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(STACK_TRACE_MAX_NATIVE_FRAMES));
@@ -261,11 +261,11 @@ extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_T
 #elif HAS_NATIVE_TRACE
     try {
         backward::StackTrace native;
-        const size_t skip_count = static_cast<size_t>(2) + skip;
+        size_t skip_count = static_cast<size_t>(2) + skip;
         native.load_here(STACK_TRACE_MAX_NATIVE_FRAMES + skip_count + 1);
         native.skip_n_firsts(skip_count);
         out_truncated = native.size() > STACK_TRACE_MAX_NATIVE_FRAMES;
-        const size_t count = std::min(native.size(), STACK_TRACE_MAX_NATIVE_FRAMES);
+        size_t count = std::min(native.size(), STACK_TRACE_MAX_NATIVE_FRAMES);
 
         for (size_t i = 0; i < count; i++) {
             out_frames[i] = std::bit_cast<NativeStackFrameAddress>(native[i].addr);

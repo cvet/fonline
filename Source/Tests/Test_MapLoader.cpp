@@ -13,11 +13,11 @@ static void InitTestMapLoaderMetadata(EngineMetadata& meta)
     meta.RegisterEntityType("Item", true, false, true, true, true);
 }
 
-static auto GetTestMapLoaderRegistrator(EngineMetadata& meta, string_view type_name) -> ptr<const PropertyRegistrator>
+static auto GetTestMapLoaderRegistrar(EngineMetadata& meta, string_view type_name) -> ptr<const PropertyRegistrar>
 {
-    auto registrator = meta.GetPropertyRegistrator(type_name);
-    REQUIRE(static_cast<bool>(registrator));
-    return registrator;
+    auto registrar = meta.GetPropertyRegistrar(type_name);
+    REQUIRE(static_cast<bool>(registrar));
+    return registrar;
 }
 
 TEST_CASE("MapLoader")
@@ -95,7 +95,7 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
         HashStorage hashes {};
@@ -167,8 +167,8 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), GetTestMapLoaderRegistrator(meta, "Critter"));
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), GetTestMapLoaderRegistrar(meta, "Critter"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Critter"), critter_proto);
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
@@ -220,7 +220,7 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
         HashStorage hashes {};
@@ -296,7 +296,7 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
         HashStorage hashes {};

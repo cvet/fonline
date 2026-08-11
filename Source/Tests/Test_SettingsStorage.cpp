@@ -10,7 +10,7 @@ TEST_CASE("SettingsStorage")
     // name so it never touches a tool's real settings. Every key is removed after use to leave no residue
     SettingsStorage store {"Test_SettingsStorage"};
 
-    for (const string_view key : {"str", "multiline", "int", "bool_true", "bool_false", "float"}) {
+    for (string_view key : {"str", "multiline", "int", "bool_true", "bool_false", "float"}) {
         store.Remove(key);
     }
 

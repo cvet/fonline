@@ -36,7 +36,7 @@
 #include "EntitySync.h"
 #include "ItemManager.h"
 #include "MapManager.h"
-#include "PropertiesSerializator.h"
+#include "PropertiesSerializer.h"
 #include "ProtoManager.h"
 #include "Server.h"
 
@@ -458,7 +458,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
 
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, loc_id, loc_proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(loc->GetPropertiesForEdit(), loc_doc, _engine->Hashes, *_engine)) {
+    if (!PropertiesSerializer::LoadFromDocument(loc->GetPropertiesForEdit(), loc_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
         return nullptr;
@@ -538,7 +538,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
     auto static_map = _engine->MapMngr.GetStaticMap(map_proto);
     auto map = SafeAlloc::MakeRefCounted<Map>(_engine, map_id, map_proto, nullptr, static_map);
 
-    if (!PropertiesSerializator::LoadFromDocument(map->GetPropertiesForEdit(), map_doc, _engine->Hashes, *_engine)) {
+    if (!PropertiesSerializer::LoadFromDocument(map->GetPropertiesForEdit(), map_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
         return nullptr;
@@ -642,7 +642,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
 
     auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, cr_id, proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(cr->GetPropertiesForEdit(), cr_doc, _engine->Hashes, *_engine)) {
+    if (!PropertiesSerializer::LoadFromDocument(cr->GetPropertiesForEdit(), cr_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
         return nullptr;
@@ -743,7 +743,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine, item_id, proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(item->GetPropertiesForEdit(), item_doc, _engine->Hashes, *_engine)) {
+    if (!PropertiesSerializer::LoadFromDocument(item->GetPropertiesForEdit(), item_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
         return nullptr;
@@ -841,7 +841,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
         }
 
         const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
-        auto inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
+        hstring inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
 
         for (const auto& id : inner_entity_ids) {
             auto custom_entity = LoadCustomEntity(holder, inner_entity_type_name, id, is_error);
@@ -1080,9 +1080,9 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
     // cover; it is not a trusted fresh-entity publication boundary
     ValidateEntityAccess(player);
 
-    const ident_t assigned_id = player->GetId();
+    ident_t assigned_id = player->GetId();
     FO_VERIFY_AND_THROW(!id || !assigned_id || assigned_id == id, "Player is already assigned a different id", assigned_id, id);
-    const ident_t requested_id = id ? id : assigned_id;
+    ident_t requested_id = id ? id : assigned_id;
     scoped_lock lock {_registryLock};
 
     if (requested_id) {
@@ -1392,12 +1392,12 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
 
     if (auto entity_with_proto = entity.dyn_cast<EntityWithProto>()) {
         auto proto = entity_with_proto->GetProto();
-        auto doc = PropertiesSerializator::SaveToDocument(entity->GetProperties(), proto->GetProperties(), _engine->Hashes, *_engine);
+        auto doc = PropertiesSerializer::SaveToDocument(entity->GetProperties(), proto->GetProperties(), _engine->Hashes, *_engine);
         doc.Emplace("_Proto", string(proto->GetName()));
         return doc;
     }
     else {
-        auto doc = PropertiesSerializator::SaveToDocument(entity->GetProperties(), nullptr, _engine->Hashes, *_engine);
+        auto doc = PropertiesSerializer::SaveToDocument(entity->GetProperties(), nullptr, _engine->Hashes, *_engine);
         return doc;
     }
 }
@@ -1406,7 +1406,7 @@ void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ident_t id = entity->GetId();
+    ident_t id = entity->GetId();
     FO_VERIFY_AND_THROW(!id || !_allEntities.contains(id), "Fresh entity is already published in the global entity registry", entity->GetTypeName(), id);
     _engine->RequireCurrentSyncContext()->EnsureFreshEntitySynced(entity);
 }
@@ -1636,15 +1636,15 @@ auto EntityManager::ConstructCustomEntity(hstring type_name, hstring pid) -> ref
         FO_VERIFY_AND_THROW(!has_protos, "Has protos is already set");
     }
 
-    auto registrator = _engine->GetPropertyRegistrator(type_name);
-    FO_VERIFY_AND_THROW(registrator, "Missing property registrator for custom entity type");
+    auto registrar = _engine->GetPropertyRegistrar(type_name);
+    FO_VERIFY_AND_THROW(registrar, "Missing property registrar for custom entity type");
 
     refcount_ptr<CustomEntity> entity = [&]() -> refcount_ptr<CustomEntity> {
         if (proto) {
-            return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, ident_t {}, registrator, proto);
+            return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, ident_t {}, registrar, proto);
         }
 
-        return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrator, nullptr);
+        return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrar, nullptr);
     }();
 
     return entity;
@@ -1670,7 +1670,7 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
             FO_VERIFY_AND_THROW(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0, "Custom entity id is already registered for this type while loading from storage", type_name, id);
         }
 
-        auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
+        hstring collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {
@@ -1697,17 +1697,17 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
             }
         }
 
-        auto registrator = _engine->GetPropertyRegistrator(type_name);
-        FO_VERIFY_AND_THROW(registrator, "Missing property registrator for custom entity type");
+        auto registrar = _engine->GetPropertyRegistrar(type_name);
+        FO_VERIFY_AND_THROW(registrar, "Missing property registrar for custom entity type");
         refcount_ptr<CustomEntity> entity = [&]() -> refcount_ptr<CustomEntity> {
             if (proto) {
-                return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, id, registrator, proto);
+                return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, id, registrar, proto);
             }
 
-            return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, id, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, id, registrar, nullptr);
         }();
 
-        if (!PropertiesSerializator::LoadFromDocument(entity->GetPropertiesForEdit(), doc, _engine->Hashes, *_engine)) {
+        if (!PropertiesSerializer::LoadFromDocument(entity->GetPropertiesForEdit(), doc, _engine->Hashes, *_engine)) {
             WriteLog(LogType::Warning, "Failed to load properties for custom entity {} with type {}", id, type_name);
             is_error = true;
             return nullptr;

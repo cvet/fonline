@@ -1257,9 +1257,9 @@ TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effe
     // Face 0 is vertices 0,1,2 of the mesh and face 1 is 2,1,3, which pins both the winding and the vertex mapping.
     // The authored corners carry red channels 10/20/30/40, combined with the instance colour through Effekseer's own
     // colour multiply - a shift by 8 rather than a divide by 255, so even white scales by 255/256 and drops the low bit
-    const array<uint8_t, mesh_vertices> expected_red {9, 19, 29, 29, 19, 39};
-    const array<float32_t, mesh_vertices> expected_u {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
-    const array<float32_t, mesh_vertices> expected_v {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+    array<uint8_t, mesh_vertices> expected_red {9, 19, 29, 29, 19, 39};
+    array<float32_t, mesh_vertices> expected_u {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
+    array<float32_t, mesh_vertices> expected_v {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 
     for (size_t corner = 0; corner < mesh_vertices; corner++) {
         CHECK(draw.Vertices[corner].Color.comp.r == expected_red[corner]);
@@ -1284,7 +1284,7 @@ TEST_CASE("Effekseer particle runtime carries the model node culling mode into t
 {
     // Effekseer chooses which faces to discard per node, and the renderer has to ask for that mode per draw rather than
     // relying on the effect's own state
-    const array<pair<int32_t, CullModeType>, 3> cases {
+    array<pair<int32_t, CullModeType>, 3> cases {
         pair {0, CullModeType::Front},
         pair {1, CullModeType::Back},
         pair {2, CullModeType::None},
@@ -1553,6 +1553,572 @@ TEST_CASE("Effekseer capability census", "[.census]")
 
     WriteLog("CENSUSDONE\twalked={}\taccepted={}\tdrewToCompletion={}\tretiredWhileDrawing={}", walked, accepted, drawn, retired_while_drawing);
     CHECK(walked != 0);
+}
+
+#endif
+
+#if FO_EFFEKSEER_PARTICLES
+
+// The compiler writes a distinct binary section per authored value type, so these cases walk the type
+// switches directly instead of going through the runtime: one node per type, compiled as a whole project.
+// Same skeleton as the location/rotation/scale sweep, but the whole node body is caller-supplied so a case
+// can pick the renderer type and attach the drawing, colour, sound and kill-rule sections it needs.
+static auto MakeEffekseerNodeBodyProject(string_view node_body) -> string
+{
+    return strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>1</Value>
+          </MaxGeneration>
+          <Life>
+            <Center>30</Center>
+            <Max>30</Max>
+            <Min>30</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>1</Center>
+              <Max>1</Max>
+              <Min>1</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+{}
+        <Name>NodeBody</Name>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations />
+  </Dynamic>
+  <ProceduralModel>
+    <ProceduralModels />
+  </ProceduralModel>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER",
+        node_body)
+        .str();
+}
+
+static auto CompileEffekseerNodeBody(string_view node_body) -> EffekseerCompilerOutput
+{
+    string project = MakeEffekseerNodeBodyProject(node_body);
+    return CompileEffekseerProject("Particles/EffekseerTests/NodeBody.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
+}
+
+static auto MakeEffekseerTypeSweepProject(string_view location_values, string_view rotation_values, string_view scaling_values) -> string
+{
+    return strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>1</Value>
+          </MaxGeneration>
+          <Life>
+            <Center>30</Center>
+            <Max>30</Max>
+            <Min>30</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>1</Center>
+              <Max>1</Max>
+              <Min>1</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+{}
+{}
+{}
+        <RendererCommonValues>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <Name>TypeSweep</Name>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations />
+  </Dynamic>
+  <ProceduralModel>
+    <ProceduralModels />
+  </ProceduralModel>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER",
+        location_values, rotation_values, scaling_values)
+        .str();
+}
+
+static auto CompileEffekseerTypeSweep(string_view location_values, string_view rotation_values, string_view scaling_values) -> EffekseerCompilerOutput
+{
+    string project = MakeEffekseerTypeSweepProject(location_values, rotation_values, scaling_values);
+    return CompileEffekseerProject("Particles/EffekseerTests/TypeSweep.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
+}
+
+TEST_CASE("Effekseer compiler writes every authored location type", "[particle][effekseer-compiler]")
+{
+    vector<string> location_variants {
+        "<LocationValues><Type>0</Type><Fixed><Location><X>1</X><Y>2</Y><Z>3</Z></Location></Fixed></LocationValues>",
+        "<LocationValues><Type>1</Type><PVA><Location><X><Center>1</Center><Max>2</Max><Min>0</Min></X></Location></PVA></LocationValues>",
+        "<LocationValues><Type>2</Type><Easing><End><Y><Center>4</Center><Max>4</Max><Min>4</Min></Y></End></Easing></LocationValues>",
+        "<LocationValues><Type>3</Type><LocationFCurve><FCurve /></LocationFCurve></LocationValues>",
+        "<LocationValues><Type>5</Type><ViewOffset><Distance><Center>3</Center><Max>3</Max><Min>3</Min></Distance></ViewOffset></LocationValues>",
+    };
+
+    for (const string& location : location_variants) {
+        INFO(location);
+        EffekseerCompilerOutput compiled = CompileEffekseerTypeSweep(location, "", "");
+        CHECK_FALSE(compiled.Binary.empty());
+    }
+
+    // An unknown type is rejected rather than silently written as garbage
+    CHECK_THROWS_AS(CompileEffekseerTypeSweep("<LocationValues><Type>99</Type></LocationValues>", "", ""), EffekseerCompilerException);
+}
+
+TEST_CASE("Effekseer compiler writes every authored rotation and scale type", "[particle][effekseer-compiler]")
+{
+    for (int32_t type = 0; type <= 7; type++) {
+        string rotation = strex("<RotationValues><Type>{}</Type></RotationValues>", type).str();
+        INFO(rotation);
+        EffekseerCompilerOutput compiled = CompileEffekseerTypeSweep("", rotation, "");
+        CHECK_FALSE(compiled.Binary.empty());
+    }
+
+    for (int32_t type = 0; type <= 6; type++) {
+        string scaling = strex("<ScalingValues><Type>{}</Type></ScalingValues>", type).str();
+        INFO(scaling);
+        EffekseerCompilerOutput compiled = CompileEffekseerTypeSweep("", "", scaling);
+        CHECK_FALSE(compiled.Binary.empty());
+    }
+
+    CHECK_THROWS_AS(CompileEffekseerTypeSweep("", "<RotationValues><Type>99</Type></RotationValues>", ""), EffekseerCompilerException);
+    CHECK_THROWS_AS(CompileEffekseerTypeSweep("", "", "<ScalingValues><Type>99</Type></ScalingValues>"), EffekseerCompilerException);
+}
+
+TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
+{
+    SECTION("RingRendererShapesAndColours")
+    {
+        // Renderer type 4 is the ring. Its shape, per-ring locations and per-ring colours are all selected by
+        // plain integers on the Ring node, with the payload in sibling <Name>_Fixed / _Random / _Easing nodes.
+        for (int32_t shape_type : {0, 1, 2, 3}) {
+            string body = strex(R"(        <DrawingValues>
+          <Type>4</Type>
+          <Ring>
+            <RingShape>
+              <Type>{}</Type>
+              <Crescent>
+                <StartingFade>0</StartingFade>
+                <EndingFade>0</EndingFade>
+                <StartingAngle>0</StartingAngle>
+                <StartingAngle_Fixed>0</StartingAngle_Fixed>
+                <EndingAngle>1</EndingAngle>
+                <EndingAngle_Random><Max>360</Max><Min>0</Min></EndingAngle_Random>
+              </Crescent>
+            </RingShape>
+            <VertexCount>8</VertexCount>
+            <ViewingAngle>0</ViewingAngle>
+            <ViewingAngle_Fixed>360</ViewingAngle_Fixed>
+            <OuterColor>0</OuterColor>
+            <OuterColor_Fixed><R>255</R><G>255</G><B>255</B><A>255</A></OuterColor_Fixed>
+            <CenterColor>1</CenterColor>
+            <CenterColor_Random><R><Max>255</Max><Min>0</Min></R><G><Max>255</Max><Min>0</Min></G><B><Max>255</Max><Min>0</Min></B><A><Max>255</Max><Min>0</Min></A></CenterColor_Random>
+            <InnerColor>2</InnerColor>
+            <InnerColor_Easing><Start><Max><R>255</R><G>255</G><B>255</B><A>255</A></Max><Min><R>0</R><G>0</G><B>0</B><A>0</A></Min></Start><End><Max><R>255</R><G>255</G><B>255</B><A>255</A></Max><Min><R>0</R><G>0</G><B>0</B><A>0</A></Min></End></InnerColor_Easing>
+          </Ring>
+        </DrawingValues>)",
+                shape_type)
+                              .str();
+
+            INFO(body);
+            EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
+            CHECK_FALSE(compiled.Binary.empty());
+        }
+    }
+
+    SECTION("RibbonAndTrackRenderers")
+    {
+        // Renderer types 3 and 6 are the ribbon and the track. Their colour selectors are plain integers on
+        // the renderer node, not nested colour blocks, so the defaults are enough to run both writers.
+        for (int32_t renderer_type : {3, 6}) {
+            string body = strex(R"(        <DrawingValues>
+          <Type>{}</Type>
+          <Ribbon>
+            <ViewpointDependent>false</ViewpointDependent>
+            <ColorAll>0</ColorAll>
+            <ColorAll_Fixed><R>255</R><G>255</G><B>255</B><A>255</A></ColorAll_Fixed>
+          </Ribbon>
+          <Track>
+            <TrackSizeFor>0</TrackSizeFor>
+            <TrackSizeFor_Fixed>1</TrackSizeFor_Fixed>
+            <SplineDivision>2</SplineDivision>
+          </Track>
+        </DrawingValues>)",
+                renderer_type)
+                              .str();
+
+            INFO(body);
+            EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
+            CHECK_FALSE(compiled.Binary.empty());
+        }
+
+        // The ribbon colour selector also has random and easing variants
+        for (int32_t color_all : {1, 2}) {
+            string body = strex(R"(        <DrawingValues>
+          <Type>3</Type>
+          <Ribbon>
+            <ColorAll>{}</ColorAll>
+            <ColorAll_Random><R><Max>255</Max><Min>0</Min></R><G><Max>255</Max><Min>0</Min></G><B><Max>255</Max><Min>0</Min></B><A><Max>255</Max><Min>0</Min></A></ColorAll_Random>
+          </Ribbon>
+        </DrawingValues>)",
+                color_all)
+                              .str();
+
+            INFO(body);
+            CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
+        }
+
+        CHECK_THROWS_AS(CompileEffekseerNodeBody("        <DrawingValues>\n          <Type>9</Type>\n        </DrawingValues>"), EffekseerCompilerException);
+    }
+
+    SECTION("EveryStandardColourType")
+    {
+        // 0 fixed, 1 random, 2 easing, 3 f-curve, 4 gradient
+        string curve_colour = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+          <ColorAll>
+              <Type>3</Type>
+              <FCurve>
+                <FCurve>
+                  <Timeline>0</Timeline>
+                  <Keys>
+                    <R><StartType>0</StartType><EndType>0</EndType><OffsetMax>0</OffsetMax><OffsetMin>0</OffsetMin><Keys>
+                      <Key><Frame>0</Frame><Value>0</Value><LeftX>0</LeftX><LeftY>0</LeftY><RightX>1</RightX><RightY>0</RightY><InterpolationType>1</InterpolationType></Key>
+                      <Key><Frame>30</Frame><Value>255</Value><LeftX>29</LeftX><LeftY>255</LeftY><RightX>31</RightX><RightY>255</RightY><InterpolationType>1</InterpolationType></Key>
+                    </Keys></R>
+                    <G><StartType>0</StartType><EndType>0</EndType><Keys>
+                      <Key><Frame>0</Frame><Value>128</Value><InterpolationType>0</InterpolationType></Key>
+                    </Keys></G>
+                    <B><StartType>0</StartType><EndType>0</EndType><Keys /></B>
+                    <A><StartType>0</StartType><EndType>0</EndType><Keys>
+                      <Key><Frame>0</Frame><Value>255</Value><InterpolationType>2</InterpolationType></Key>
+                      <Key><Frame>60</Frame><Value>0</Value><InterpolationType>2</InterpolationType></Key>
+                    </Keys></A>
+                  </Keys>
+                </FCurve>
+              </FCurve>
+          </ColorAll>
+        </DrawingValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(curve_colour).Binary.empty());
+
+        string easing_colour = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+          <ColorAll><Type>2</Type><Easing><Start><Max><R>255</R><G>255</G><B>255</B><A>255</A></Max><Min><R>0</R><G>0</G><B>0</B><A>0</A></Min></Start><End><Max><R>255</R><G>255</G><B>255</B><A>255</A></Max><Min><R>0</R><G>0</G><B>0</B><A>0</A></Min></End></Easing></ColorAll>
+        </DrawingValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(easing_colour).Binary.empty());
+
+        string gradient_colour = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+          <ColorAll>
+              <Type>4</Type>
+              <Gradient>
+                <ColorMarkers>
+                  <ColorMarker><Position>0</Position><ColorR>1</ColorR><ColorG>0</ColorG><ColorB>0</ColorB><Intensity>1</Intensity></ColorMarker>
+                  <ColorMarker><Position>1</Position><ColorR>0</ColorR><ColorG>0</ColorG><ColorB>1</ColorB><Intensity>1</Intensity></ColorMarker>
+                </ColorMarkers>
+                <AlphaMarkers>
+                  <AlphaMarker><Position>0</Position><Alpha>1</Alpha></AlphaMarker>
+                </AlphaMarkers>
+              </Gradient>
+          </ColorAll>
+        </DrawingValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(gradient_colour).Binary.empty());
+
+        CHECK_THROWS_AS(CompileEffekseerNodeBody(R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+          <ColorAll><Type>9</Type></ColorAll>
+        </DrawingValues>)"),
+            EffekseerCompilerException);
+    }
+
+    SECTION("CurveDrivenLocationSamplesTheCurveSolver")
+    {
+        // Location type 3 is the f-curve, which is the only path that runs the cubic curve solver
+        string body = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <LocationValues>
+          <Type>3</Type>
+          <LocationFCurve>
+            <FCurve>
+              <Timeline>0</Timeline>
+              <Keys>
+                <X><StartType>0</StartType><EndType>0</EndType><OffsetMax>0</OffsetMax><OffsetMin>0</OffsetMin><Keys>
+                  <Key><Frame>0</Frame><Value>0</Value><LeftX>-1</LeftX><LeftY>0</LeftY><RightX>5</RightX><RightY>2</RightY><InterpolationType>1</InterpolationType></Key>
+                  <Key><Frame>30</Frame><Value>10</Value><LeftX>25</LeftX><LeftY>8</LeftY><RightX>35</RightX><RightY>12</RightY><InterpolationType>1</InterpolationType></Key>
+                  <Key><Frame>60</Frame><Value>0</Value><LeftX>55</LeftX><LeftY>2</LeftY><RightX>65</RightX><RightY>0</RightY><InterpolationType>1</InterpolationType></Key>
+                </Keys></X>
+                <Y><StartType>1</StartType><EndType>1</EndType><Keys>
+                  <Key><Frame>0</Frame><Value>0</Value><InterpolationType>0</InterpolationType></Key>
+                  <Key><Frame>60</Frame><Value>5</Value><InterpolationType>0</InterpolationType></Key>
+                </Keys></Y>
+                <Z><StartType>2</StartType><EndType>2</EndType><Keys>
+                  <Key><Frame>0</Frame><Value>1</Value><InterpolationType>2</InterpolationType></Key>
+                </Keys></Z>
+              </Keys>
+            </FCurve>
+          </LocationFCurve>
+        </LocationValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
+
+        // Type 5 is the view-offset variant, and an unknown type must be rejected
+        CHECK_FALSE(CompileEffekseerNodeBody(R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <LocationValues>
+          <Type>5</Type>
+          <ViewOffset><Distance><Max>5</Max><Min>1</Min></Distance></ViewOffset>
+        </LocationValues>)")
+                .Binary.empty());
+    }
+
+    SECTION("AbsoluteLocationFields")
+    {
+        // The location-abs section carries the external force fields
+        for (int32_t field_type : {0, 1, 2}) {
+            string body = strex(R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <LocationAbsValues>
+          <Type>{}</Type>
+          <Position><X>0</X><Y>0</Y><Z>0</Z></Position>
+          <Rotation><X>0</X><Y>0</Y><Z>0</Z></Rotation>
+        </LocationAbsValues>)",
+                field_type)
+                              .str();
+
+            INFO(body);
+            CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
+        }
+    }
+
+    SECTION("KillRuleShapes")
+    {
+        // 0 none, 1 box, 2 plane, 3 sphere - each writes a different payload
+        for (int32_t rule_type : {0, 1, 2, 3}) {
+            string body = strex(R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <KillRulesValues>
+          <Type>{}</Type>
+          <BoxCenter><X>0</X><Y>0</Y><Z>0</Z></BoxCenter>
+          <BoxSize><X>2</X><Y>2</Y><Z>2</Z></BoxSize>
+          <PlaneAxis>2</PlaneAxis>
+          <PlaneOffset>3</PlaneOffset>
+          <SphereCenter><X>0</X><Y>0</Y><Z>0</Z></SphereCenter>
+          <SphereRadius>4</SphereRadius>
+        </KillRulesValues>)",
+                rule_type)
+                              .str();
+
+            INFO(body);
+            EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
+            CHECK_FALSE(compiled.Binary.empty());
+        }
+
+        // An out-of-range plane axis has no normal to write, so it must be rejected
+        CHECK_THROWS_AS(CompileEffekseerNodeBody(R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <KillRulesValues>
+          <Type>2</Type>
+          <PlaneAxis>9</PlaneAxis>
+        </KillRulesValues>)"),
+            EffekseerCompilerException);
+    }
+
+    SECTION("RotationAndScaleEasingAndCurves")
+    {
+        // The easing and f-curve variants of rotation and scale are separate writers from the fixed ones
+        string rotation_easing = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <RotationValues>
+          <Type>2</Type>
+          <Easing>
+            <Start><Max><X>0</X><Y>0</Y><Z>0</Z></Max><Min><X>0</X><Y>0</Y><Z>0</Z></Min></Start>
+            <End><Max><X>360</X><Y>360</Y><Z>360</Z></Max><Min><X>0</X><Y>0</Y><Z>0</Z></Min></End>
+          </Easing>
+        </RotationValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(rotation_easing).Binary.empty());
+
+        string scale_easing = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <ScalingValues>
+          <Type>2</Type>
+          <Easing>
+            <Start><Max><X>1</X><Y>1</Y><Z>1</Z></Max><Min><X>1</X><Y>1</Y><Z>1</Z></Min></Start>
+            <End><Max><X>2</X><Y>2</Y><Z>2</Z></Max><Min><X>2</X><Y>2</Y><Z>2</Z></Min></End>
+          </Easing>
+        </ScalingValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(scale_easing).Binary.empty());
+
+        string location_easing = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <LocationValues>
+          <Type>2</Type>
+          <Easing>
+            <Start><Max><X>0</X><Y>0</Y><Z>0</Z></Max><Min><X>0</X><Y>0</Y><Z>0</Z></Min></Start>
+            <End><Max><X>5</X><Y>5</Y><Z>5</Z></Max><Min><X>0</X><Y>0</Y><Z>0</Z></Min></End>
+          </Easing>
+        </LocationValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(location_easing).Binary.empty());
+    }
+
+    SECTION("DepthAndTextureSections")
+    {
+        // Depth ordering and the texture UV modes are written for every node
+        for (int32_t uv_type : {0, 1, 2, 3}) {
+            string body = strex(R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+          <TextureUVType>
+            <Type>{}</Type>
+            <Strech><Start>0</Start><End>1</End></Strech>
+            <Tile><FrameLength>1</FrameLength><FrameCountX>1</FrameCountX><FrameCountY>1</FrameCountY><LoopType>0</LoopType></Tile>
+            <Animation><FrameLength>1</FrameLength><FrameCountX>1</FrameCountX><FrameCountY>1</FrameCountY><LoopType>0</LoopType><StartSheet><Max>0</Max><Min>0</Min></StartSheet></Animation>
+            <Scroll><Speed><Max><X>0</X><Y>0</Y></Max><Min><X>0</X><Y>0</Y></Min></Speed></Scroll>
+            <FCurve><Start><X /><Y /></Start><Size><X /><Y /></Size></FCurve>
+          </TextureUVType>
+        </DrawingValues>
+        <DepthValues>
+          <DepthOffset>1</DepthOffset>
+          <ZSort>1</ZSort>
+          <DrawingPriority>2</DrawingPriority>
+        </DepthValues>)",
+                uv_type)
+                              .str();
+
+            INFO(body);
+            CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
+        }
+    }
+
+    SECTION("SoundSectionIsWrittenWhenEnabled")
+    {
+        for (int32_t sound_type : {0, 1}) {
+            string body = strex(R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+        </DrawingValues>
+        <SoundValues>
+          <Type>{}</Type>
+          <Sound>
+            <Wave>NoSuchWave.wav</Wave>
+            <Volume><Max>1</Max><Min>1</Min></Volume>
+            <Pitch><Max>0</Max><Min>0</Min></Pitch>
+            <PanType>0</PanType>
+            <Pan><Max>0</Max><Min>0</Min></Pan>
+            <Distance>10</Distance>
+            <Delay><Max>0</Max><Min>0</Min></Delay>
+          </Sound>
+        </SoundValues>)",
+                sound_type)
+                              .str();
+
+            INFO(body);
+            EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
+            CHECK_FALSE(compiled.Binary.empty());
+        }
+    }
+
+    SECTION("SpriteColourTypes")
+    {
+        // Fixed, random and gradient colours each take their own writer
+        string fixed_colour = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+          <ColorAll><Type>0</Type><Fixed><R>10</R><G>20</G><B>30</B><A>255</A></Fixed></ColorAll>
+        </DrawingValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(fixed_colour).Binary.empty());
+
+        string random_colour = R"(        <DrawingValues>
+          <Type>2</Type>
+          <Sprite />
+          <ColorAll><Type>1</Type><Random><R><Max>255</Max><Min>0</Min></R><G><Max>255</Max><Min>0</Min></G><B><Max>255</Max><Min>0</Min></B><A><Max>255</Max><Min>0</Min></A></Random></ColorAll>
+        </DrawingValues>)";
+        CHECK_FALSE(CompileEffekseerNodeBody(random_colour).Binary.empty());
+    }
 }
 
 #endif

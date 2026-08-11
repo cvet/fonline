@@ -488,7 +488,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     need_wake = true;
                 }
                 else if (next_delay.has_value() && !cancelled) {
-                    auto reschedule_delay = wake_requested ? timespan::zero : next_delay.value();
+                    timespan reschedule_delay = wake_requested ? timespan::zero : next_delay.value();
                     EnqueueJob(nanotime::now() + reschedule_delay, job.Key, std::move(job.Body));
                     body_rescheduled = true;
                     _queuedKeys.insert(job.Key);

@@ -272,7 +272,7 @@ FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_FindEntityById(ptr<MapperEngine> ma
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<ClientEntity> entity, string_view propName, string_view valueText)
 {
-    auto prop = entity->GetProperties()->GetRegistrator()->FindProperty(propName);
+    auto prop = entity->GetProperties()->GetRegistrar()->FindProperty(propName);
 
     if (!prop) {
         throw ScriptException("Unknown property", propName);

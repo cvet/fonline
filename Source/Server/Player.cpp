@@ -44,7 +44,7 @@
 FO_BEGIN_NAMESPACE
 
 Player::Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection> connection, nptr<const Properties> props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props, nullptr),
+    ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props, nullptr),
     PlayerProperties(*GetInitRef()),
     _connection {std::move(connection)}
 {

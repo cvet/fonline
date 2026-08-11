@@ -84,7 +84,7 @@ public:
             ReportAndExit("Alloc size overflow");
         }
 
-        const size_t size = sizeof(T) * count;
+        size_t size = sizeof(T) * count;
         nptr<void> mem = AllocateRaw(size);
 
         if (!mem) {

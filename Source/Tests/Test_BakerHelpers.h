@@ -184,10 +184,10 @@ namespace BakerTests
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = meta.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = meta.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoType proto {meta.Hashes.ToHashedString(proto_name), registrator};
+        ProtoType proto {meta.Hashes.ToHashedString(proto_name), registrar};
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
@@ -227,7 +227,7 @@ namespace BakerTests
         writer.WriteStringBytes(type_name.as_str());
 
         for (const auto& [proto_name, configure] : protos) {
-            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
+            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrar(type_name)};
 
             if (configure) {
                 configure(proto);
@@ -245,6 +245,45 @@ namespace BakerTests
         }
 
         return protos_data;
+    }
+
+    // A baked sprite with several frames in one direction. Some runtime paths cast the loaded sprite to
+    // SpriteSheet, which a single-frame sprite never becomes, so they need this instead
+    inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint16_t ticks = 100) -> vector<uint8_t>
+    {
+        vector<uint8_t> sprite_data;
+        auto writer = DataWriter(sprite_data);
+
+        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.Write<uint16_t>(frame_count);
+        writer.Write<uint16_t>(ticks);
+        writer.Write<uint8_t>(uint8_t {1}); // Directions
+
+        auto pixel_count = numeric_cast<size_t>(width) * height;
+
+        for (uint16_t frame = 0; frame < frame_count; frame++) {
+            writer.Write<uint8_t>(uint8_t {0}); // Not a sprite reference
+            writer.Write<int16_t>(int16_t {0}); // Offset x
+            writer.Write<int16_t>(int16_t {0}); // Offset y
+            writer.Write<uint16_t>(width);
+            writer.Write<uint16_t>(height);
+            writer.Write<int16_t>(int16_t {0}); // Frame x
+            writer.Write<int16_t>(int16_t {0}); // Frame y
+
+            for (size_t i = 0; i < pixel_count; i++) {
+                writer.Write<uint8_t>(uint8_t {255});
+                writer.Write<uint8_t>(uint8_t {255});
+                writer.Write<uint8_t>(uint8_t {255});
+                writer.Write<uint8_t>(uint8_t {255});
+            }
+
+            // The mesh descriptor belongs to the frame, so it is written per frame rather than once
+            writer.Write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+        }
+
+        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        return sprite_data;
     }
 
     // Minimal valid baked sprite blob (the versioned single-frame format read by

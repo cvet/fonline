@@ -176,7 +176,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
 #elif FO_LINUX
     char path[FILENAME_MAX];
     auto path_data = make_ptr(path);
-    auto size = ::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1);
+    ssize_t size = ::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1);
 
     if (size == -1) {
         return std::nullopt;

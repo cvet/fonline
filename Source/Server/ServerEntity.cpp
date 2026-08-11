@@ -36,8 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
-ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) noexcept :
-    Entity(registrator, props, engine->Settings->ServerPropertiesPackData ? base_props : nullptr),
+ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props) noexcept :
+    Entity(registrar, props, engine->Settings->ServerPropertiesPackData ? base_props : nullptr),
     _engine {engine},
     _id {id}
 {
@@ -282,7 +282,7 @@ auto CustomEntity::GetName() const noexcept -> string_view
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return _propsRef->GetRegistrator()->GetTypeName();
+    return _propsRef->GetRegistrar()->GetTypeName();
 }
 
 auto CustomEntityWithProto::GetName() const noexcept -> string_view

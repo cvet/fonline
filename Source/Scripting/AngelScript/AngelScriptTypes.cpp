@@ -1088,9 +1088,9 @@ static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto registrator = GetGenericAuxiliaryAs<const PropertyRegistrator>(gen);
+    auto registrar = GetGenericAuxiliaryAs<const PropertyRegistrar>(gen);
 
-    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(registrator);
+    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(registrar);
 
     new (gen->GetAddressOfReturnLocation()) void*(ref_instance.release_ownership());
 }
@@ -1136,12 +1136,12 @@ static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> a
     const char* name = type.Name.c_str();
     const auto& ref_type = *type.RefType;
 
-    if (!ref_type.FieldsRegistrator) {
+    if (!ref_type.FieldsRegistrar) {
         return;
     }
 
-    for (size_t i = 1; i < ref_type.FieldsRegistrator->GetPropertiesCount(); i++) {
-        auto prop = ref_type.FieldsRegistrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+    for (size_t i = 1; i < ref_type.FieldsRegistrar->GetPropertiesCount(); i++) {
+        auto prop = ref_type.FieldsRegistrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
         FO_VERIFY_AND_THROW(prop, "Missing ref type property by index");
 
         if (prop->IsComponentItself()) {
@@ -1527,12 +1527,12 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
 
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("bool opEquals(const {}@+ other) const", name).c_str(), FO_SCRIPT_GENERIC(RefType_Equals), FO_SCRIPT_GENERIC_CONV));
 
-        if (ref_type->FieldsRegistrator) {
+        if (ref_type->FieldsRegistrar) {
             FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DynamicRefType_AddRef), FO_SCRIPT_FUNC_THIS_CONV));
             FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DynamicRefType_Release), FO_SCRIPT_FUNC_THIS_CONV));
-            FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_Factory), FO_SCRIPT_GENERIC_CONV, make_nptr(ref_type->FieldsRegistrator.get()).void_cast()));
+            FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_Factory), FO_SCRIPT_GENERIC_CONV, make_nptr(ref_type->FieldsRegistrar.get()).void_cast()));
 
-            for (const auto& [component_name, component_prop] : ref_type->FieldsRegistrator->GetComponents()) {
+            for (const auto& [component_name, component_prop] : ref_type->FieldsRegistrar->GetComponents()) {
                 string component_type = strex("{}{}Component", name, component_name).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("{}@ get_{}() const", component_type, component_name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetComponent), FO_SCRIPT_GENERIC_CONV, make_nptr(component_prop.get()).void_cast()));

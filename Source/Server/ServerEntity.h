@@ -94,7 +94,7 @@ public:
     void SetParent(nptr<ServerEntity> parent) noexcept;
 
 protected:
-    ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) noexcept;
+    ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props) noexcept;
 
     auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
 
@@ -115,8 +115,8 @@ private:
 class CustomEntity : public ServerEntity, public EntityProperties
 {
 public:
-    CustomEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props = nullptr) noexcept :
-        ServerEntity(engine, id, registrator, props, base_props),
+    CustomEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props = nullptr) noexcept :
+        ServerEntity(engine, id, registrar, props, base_props),
         EntityProperties(*GetInitRef())
     {
         FO_VALIDATE_ENTITY(NONE);
@@ -128,8 +128,8 @@ public:
 class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
-    CustomEntityWithProto(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, ptr<const ProtoEntity> proto) noexcept :
-        CustomEntity(engine, id, registrator, proto->GetProperties(), proto->GetProperties()),
+    CustomEntityWithProto(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, ptr<const ProtoEntity> proto) noexcept :
+        CustomEntity(engine, id, registrar, proto->GetProperties(), proto->GetProperties()),
         EntityWithProto(proto)
     {
         FO_VALIDATE_ENTITY(NONE);

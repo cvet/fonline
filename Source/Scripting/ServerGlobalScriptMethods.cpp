@@ -38,7 +38,7 @@
 #include "Geometry.h"
 #include "NetworkServer.h"
 #include "Platform.h"
-#include "PropertiesSerializator.h"
+#include "PropertiesSerializer.h"
 #include "ScriptSystem.h"
 #include "Server.h"
 
@@ -726,58 +726,58 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> ser
     return MakeScriptHandleVector<Critter>(result);
 }
 
-// SyncScope: no existing entity cover required; creates a disconnected unlogined player session
+// SyncScope: no existing entity cover required; creates a disconnected not-logged-in player session.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_CreateUnloginedPlayer(ptr<ServerEngine> server)
+FO_SCRIPT_API ptr<Player> Server_Game_CreateNotLoggedInPlayer(ptr<ServerEngine> server)
 {
     auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-    auto player = server->CreateUnloginedPlayer(std::move(dummy_net_conn));
+    auto player = server->CreateNotLoggedInPlayer(std::move(dummy_net_conn));
     return player;
 }
 
-// SyncScope: requires unloginedPlayer; login mutates that player/session record
+// SyncScope: requires notLoggedInPlayer; login mutates that player/session record.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer)
 {
-    ValidateEntityAccess(unloginedPlayer);
+    ValidateEntityAccess(notLoggedInPlayer);
 
-    if (unloginedPlayer->GetLogined()) {
-        throw ScriptException("Player is already logined");
+    if (notLoggedInPlayer->GetLoggedIn()) {
+        throw ScriptException("Player is already logged in");
     }
 
-    auto player = server->LoginPlayerToNewRecord(unloginedPlayer);
+    auto player = server->LoginPlayerToNewRecord(notLoggedInPlayer);
     return player;
 }
 
-// SyncScope: requires unloginedPlayer; login mutates that player/session record
+// SyncScope: requires notLoggedInPlayer; login mutates that player/session record.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer)
 {
-    ValidateEntityAccess(unloginedPlayer);
+    ValidateEntityAccess(notLoggedInPlayer);
 
-    if (unloginedPlayer->GetLogined()) {
-        throw ScriptException("Player is already logined");
+    if (notLoggedInPlayer->GetLoggedIn()) {
+        throw ScriptException("Player is already logged in");
     }
 
-    auto player = server->LoginPlayerToTempSession(unloginedPlayer);
+    auto player = server->LoginPlayerToTempSession(notLoggedInPlayer);
     return player;
 }
 
-// SyncScope: requires unloginedPlayer plus the prepared main-critter/map/location graph; a live reconnect
+// SyncScope: requires notLoggedInPlayer plus the prepared main-critter/map/location graph; a live reconnect
 // additionally requires the existing player. Login preserves the caller-provided cover
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer, ident_t playerId)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer, ident_t playerId)
 {
-    ValidateEntityAccess(unloginedPlayer);
+    ValidateEntityAccess(notLoggedInPlayer);
 
-    if (unloginedPlayer->GetLogined()) {
-        throw ScriptException("Player is already logined");
+    if (notLoggedInPlayer->GetLoggedIn()) {
+        throw ScriptException("Player is already logged in");
     }
     if (!playerId) {
         throw ScriptException("Player id arg is zero");
     }
 
-    auto player = server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
+    auto player = server->LoginPlayerToExistentRecord(notLoggedInPlayer, playerId);
     return player;
 }
 
@@ -1618,7 +1618,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
     return std::bit_cast<int32_t>(retval);
 
 #elif !FO_WINDOWS && !FO_WEB
-    const string command_str = string(command);
+    string command_str = string(command);
     auto command_cstr = make_ptr(command_str.c_str());
     auto in = make_nptr(popen(command_cstr.get(), "r"));
 
@@ -1670,49 +1670,82 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
 }
 
 // SyncScope: replaces current cover with entity plus engine auto-widen partners
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 1> entities {entity};
-    ctx->SyncEntities(entities);
+    small_vector<ptr<ServerEntity>, 3> syncable;
+
+    if (!entity->IsDestroyed()) {
+        syncable.emplace_back(entity);
+    }
+
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: replaces current cover with both entities plus engine auto-widen partners
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 2> entities {entity1, entity2};
-    ctx->SyncEntities(entities);
+    small_vector<ptr<ServerEntity>, 3> syncable;
+
+    if (!entity1->IsDestroyed()) {
+        syncable.emplace_back(entity1);
+    }
+
+    if (!entity2->IsDestroyed()) {
+        syncable.emplace_back(entity2);
+    }
+
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: replaces current cover with all entities plus engine auto-widen partners
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    array<nptr<ServerEntity>, 3> entities {entity1, entity2, entity3};
-    ctx->SyncEntities(entities);
+    small_vector<ptr<ServerEntity>, 3> syncable;
+
+    if (!entity1->IsDestroyed()) {
+        syncable.emplace_back(entity1);
+    }
+
+    if (!entity2->IsDestroyed()) {
+        syncable.emplace_back(entity2);
+    }
+
+    if (!entity3->IsDestroyed()) {
+        syncable.emplace_back(entity3);
+    }
+
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: replaces current cover with all non-null entities plus engine auto-widen partners
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
-    vector<nptr<ServerEntity>> non_null;
-    non_null.reserve(entities.size());
+    vector<ptr<ServerEntity>> syncable;
+    syncable.reserve(entities.size());
 
     for (auto entity : entities) {
         if (!entity) {
             throw ScriptException("Entity in array arg is null");
         }
 
-        non_null.emplace_back(entity);
+        // A null argument is still a caller error, but an entity destroyed since the caller checked it
+        // is the race described above and is simply dropped.
+        if (entity->IsDestroyed()) {
+            continue;
+        }
+
+        syncable.emplace_back(entity);
     }
 
     auto ctx = server->RequireCurrentSyncContext();
-    ctx->SyncEntities(non_null);
+    ctx->SyncEntities(syncable);
 }
 
 // SyncScope: releases the full held set — the entity cover AND any singleton Game.Lock entries

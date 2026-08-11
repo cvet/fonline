@@ -3438,7 +3438,7 @@ class Console : TextInput
             _History.clear();
             _HistoryActualStorageName = actualStorageName;
             if (_HistoryActualStorageName != "") {
-                Serializator::Serializator data = Serializator::Serializator();
+                Serializer::Serializer data = Serializer::Serializer();
                 if (data.LoadFromCache(_HistoryActualStorageName) > 0) {
                     data.Get(_History);
                 }
@@ -3494,7 +3494,7 @@ class Console : TextInput
                 }
             }
 
-            Serializator::Serializator data = Serializator::Serializator();
+            Serializer::Serializer data = Serializer::Serializer();
             data.Set(filteredHistory);
             data.SaveToCache(_HistoryActualStorageName);
         }

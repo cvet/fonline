@@ -413,6 +413,8 @@ static auto ConvertModelAnimationRuntimeMatrix(const ozz::math::Float4x4& matrix
 static auto ExtractModelAnimationRuntimeTransform(ozz::span<const ozz::math::SoaTransform> locals, size_t joint_index) noexcept -> ModelAnimationRuntimeTransform;
 static void ValidateModelAnimationRuntimePoseRig(const ModelAnimationRuntimeRig& rig);
 static void ValidateModelAnimationRuntimeMatrix(const mat44& matrix, string_view context);
+static void ValidateModelAnimationRuntimeJointMatrix(const mat44& matrix, string_view context, size_t joint_index);
+static auto FindNonFiniteMatrixComponent(const mat44& matrix) noexcept -> std::optional<std::pair<mat44::length_type, mat44::length_type>>;
 static void ValidateModelAnimationRuntimeProceduralRotations(const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> procedural_rotations, size_t joint_count);
 static void ApplyModelAnimationRuntimeProceduralRotations(const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> procedural_rotations, ozz::span<ozz::math::SoaTransform> locals) noexcept;
 
@@ -641,7 +643,7 @@ void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44&
 
     for (size_t joint_index = 0; joint_index < joints.size(); joint_index++) {
         const ModelPoseJoint& joint = joints[joint_index];
-        ValidateModelAnimationRuntimeMatrix(joint.RestLocalTransform, strex("rest-pose local matrix at joint {}", joint_index));
+        ValidateModelAnimationRuntimeJointMatrix(joint.RestLocalTransform, "rest-pose local matrix at joint", joint_index);
 
         if ((joint_index == 0 && joint.ParentIndex != -1) || (joint_index != 0 && (joint.ParentIndex < 0 || numeric_cast<size_t>(joint.ParentIndex) >= joint_index))) {
             throw ModelAnimationRuntimeException("Rest-pose joint has invalid parent; joints must be in parent-before-child order", joint_index, joint.ParentIndex);
@@ -652,7 +654,7 @@ void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44&
         const ModelPoseJoint& joint = joints[joint_index];
         const mat44& parent_matrix = joint.ParentIndex >= 0 ? world_matrices[numeric_cast<size_t>(joint.ParentIndex)] : root_matrix;
         mat44 world_matrix = parent_matrix * joint.RestLocalTransform;
-        ValidateModelAnimationRuntimeMatrix(world_matrix, strex("rest-pose world matrix at joint {}", joint_index));
+        ValidateModelAnimationRuntimeJointMatrix(world_matrix, "rest-pose world matrix at joint", joint_index);
         world_matrices[joint_index] = world_matrix;
     }
 }
@@ -1256,13 +1258,36 @@ static void ValidateModelAnimationRuntimeMatrix(const mat44& matrix, string_view
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (auto bad_component = FindNonFiniteMatrixComponent(matrix)) {
+        throw ModelAnimationRuntimeException("Animation runtime pose matrix contains a non-finite component", context, bad_component->first, bad_component->second);
+    }
+}
+
+// Per-joint variant: the index travels as a trailing context argument instead of being formatted into the
+// message. This runs per joint per model per frame, so an eager strex label would build millions of
+// strings a minute that only a throw would ever read.
+static void ValidateModelAnimationRuntimeJointMatrix(const mat44& matrix, string_view context, size_t joint_index)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (auto bad_component = FindNonFiniteMatrixComponent(matrix)) {
+        throw ModelAnimationRuntimeException("Animation runtime pose matrix contains a non-finite component", context, joint_index, bad_component->first, bad_component->second);
+    }
+}
+
+static auto FindNonFiniteMatrixComponent(const mat44& matrix) noexcept -> std::optional<std::pair<mat44::length_type, mat44::length_type>>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
             if (!std::isfinite(matrix[column][row])) {
-                throw ModelAnimationRuntimeException("Animation runtime pose matrix contains a non-finite component", context, column, row);
+                return std::pair {column, row};
             }
         }
     }
+
+    return std::nullopt;
 }
 
 static void ValidateModelAnimationRuntimeProceduralRotations(const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> procedural_rotations, size_t joint_count)

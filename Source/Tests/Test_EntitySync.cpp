@@ -1204,24 +1204,13 @@ TEST_CASE("SyncContextNegative")
         SyncContext ctx;
         ctx.Activate();
 
-        vector<nptr<ServerEntity>> empty;
+        vector<ptr<ServerEntity>> empty;
         ctx.SyncEntities(empty);
         CHECK(SyncContext::GetCurrentOnThisThread() == &ctx);
 
         ctx.Deactivate();
     }
 
-    SECTION("SyncSpanOfNullsIsNoOp")
-    {
-        SyncContext ctx;
-        ctx.Activate();
-
-        array<nptr<ServerEntity>, 3> nulls {nullptr, nullptr, nullptr};
-        ctx.SyncEntities(nulls);
-        CHECK(SyncContext::GetCurrentOnThisThread() == &ctx);
-
-        ctx.Deactivate();
-    }
 }
 
 // ============================================================================
@@ -1244,7 +1233,7 @@ TEST_CASE("SyncContextSingletonLock")
 
         // A thread holding Game.Lock() must not Sync(...) — the guard converts that into a
         // hard error instead of risking the per-property auto-lock deadlock
-        vector<nptr<ServerEntity>> empty;
+        vector<ptr<ServerEntity>> empty;
         CHECK_THROWS_AS(ctx.SyncEntities(empty), EntitySyncException);
 
         // Drain (destructor asserts both buckets are empty)

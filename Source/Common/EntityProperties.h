@@ -79,7 +79,7 @@ public:
     }
 
     ///@ ExportProperty Server
-    FO_ENTITY_PROPERTY(bool, Logined);
+    FO_ENTITY_PROPERTY(bool, LoggedIn);
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(ident_t, ControlledCritterId);
     ///@ ExportProperty Server Persistent

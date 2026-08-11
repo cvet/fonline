@@ -250,7 +250,7 @@ public:
 
     void Activate() noexcept;
     void Deactivate() noexcept;
-    void SyncEntities(span<const nptr<ServerEntity>> entities);
+    void SyncEntities(const_span<ptr<ServerEntity>> entities);
     void SyncEntity(nptr<ServerEntity> entity);
     void EnsureEntitySynced(nptr<ServerEntity> entity);
     void Release() noexcept;

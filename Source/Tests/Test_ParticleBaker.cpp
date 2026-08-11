@@ -452,16 +452,16 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
         SPK::Ref<SPK::System> system = load_spk(rig.Outputs.at("Particles/UnitTest.spk"));
         REQUIRE(system);
 
-        const SPK::Vector3D expected_min(-1.5f, -2.0f, -3.25f);
-        const SPK::Vector3D expected_max(4.0f, 5.5f, 6.75f);
-        const float expected_radius = 0.375f;
+        SPK::Vector3D expected_min(-1.5f, -2.0f, -3.25f);
+        SPK::Vector3D expected_max(4.0f, 5.5f, 6.75f);
+        float expected_radius = 0.375f;
         system->setBakedBounds(expected_min, expected_max, expected_radius);
 
         std::ostringstream oss(std::ios::binary);
         REQUIRE(spark_io.save("spk", oss, system));
 
         std::string str = oss.str();
-        const vector<uint8_t> resaved(str.begin(), str.end());
+        vector<uint8_t> resaved(str.begin(), str.end());
 
         SPK::Ref<SPK::System> reloaded = load_spk(resaved);
         REQUIRE(reloaded);

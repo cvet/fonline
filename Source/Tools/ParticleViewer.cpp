@@ -105,7 +105,7 @@ void ParticleViewer::LoadSettings()
 
     // Re-open the last previewed effect, but only if that resource still exists, so a removed/renamed file never
     // surfaces as a selection error on startup
-    auto last_path = _settings.GetString("SelectedPath");
+    string last_path = _settings.GetString("SelectedPath");
 
     if (!last_path.empty()) {
         RefreshResourceList();

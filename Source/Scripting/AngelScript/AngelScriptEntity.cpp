@@ -155,7 +155,7 @@ static auto Entity_GetValueAsInt(const Entity* entity, int32_t prop_index) -> in
 
     CheckScriptEntityAccessAndNonDestroyed(entity);
 
-    auto prop = entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(prop_index);
+    auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
 
     if (!prop) {
         throw ScriptException("Property invalid enum", prop_index);
@@ -177,7 +177,7 @@ static void Entity_SetValueAsInt(Entity* entity, int32_t prop_index, int32_t val
 
     CheckScriptEntityAccessAndNonDestroyed(entity);
 
-    auto prop = entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(prop_index);
+    auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
 
     if (!prop) {
         throw ScriptException("Property invalid enum", prop_index);
@@ -202,7 +202,7 @@ static auto Entity_GetValueAsAny(const Entity* entity, int32_t prop_index) -> an
 
     CheckScriptEntityAccessAndNonDestroyed(entity);
 
-    auto prop = entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(prop_index);
+    auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
 
     if (!prop) {
         throw ScriptException("Property invalid enum", prop_index);
@@ -224,7 +224,7 @@ static void Entity_SetValueAsAny(Entity* entity, int32_t prop_index, any_t value
 
     CheckScriptEntityAccessAndNonDestroyed(entity);
 
-    auto prop = entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(prop_index);
+    auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
 
     if (!prop) {
         throw ScriptException("Property invalid enum", prop_index);
@@ -438,9 +438,9 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     hstring entity_type = engine->Hashes.ToHashedString(*entity_name);
     int32_t prop_enum = static_cast<int32_t>(*GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0));
     auto prop_value = GetGenericAddressArgAs<const any_t>(gen, 1);
-    auto registrator = engine->GetPropertyRegistrator(*entity_name);
-    FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-    auto prop = registrator->GetPropertyByIndex(prop_enum);
+    auto registrar = engine->GetPropertyRegistrar(*entity_name);
+    FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
+    auto prop = registrar->GetPropertyByIndex(prop_enum);
 
     if (!prop) {
         throw ScriptException("Property invalid enum", prop_enum);
@@ -636,15 +636,15 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = GetScriptBackend(as_engine);
-    auto registrator = backend->GetMetadata()->GetPropertyRegistrator(*entity_name);
-    FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+    auto registrar = backend->GetMetadata()->GetPropertyRegistrar(*entity_name);
+    FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
     auto prop_enum = *GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0);
 
     if (static_cast<int32_t>(prop_enum) == 0) {
         throw ScriptException("'None' is not valid property entry in this context");
     }
 
-    auto prop = registrator->GetPropertyByIndex(static_cast<int32_t>(prop_enum));
+    auto prop = registrar->GetPropertyByIndex(static_cast<int32_t>(prop_enum));
     FO_VERIFY_AND_THROW(prop, "Missing property instance");
 
     nptr<const AngelScript::asITypeInfo> as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1));
@@ -731,15 +731,15 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = GetScriptBackend(as_engine);
-    auto registrator = backend->GetMetadata()->GetPropertyRegistrator(*entity_name);
-    FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+    auto registrar = backend->GetMetadata()->GetPropertyRegistrar(*entity_name);
+    FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
     auto prop_enum = *GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0);
 
     if (static_cast<int32_t>(prop_enum) == 0) {
         throw ScriptException("'None' is not valid property entry in this context");
     }
 
-    auto prop = registrator->GetPropertyByIndex(static_cast<int32_t>(prop_enum));
+    auto prop = registrar->GetPropertyByIndex(static_cast<int32_t>(prop_enum));
     FO_VERIFY_AND_THROW(prop, "Missing property instance");
 
     nptr<const AngelScript::asITypeInfo> as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1));
@@ -893,9 +893,9 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
     }
 
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
-    auto registrator = engine->GetPropertyRegistrator(*entity_name);
-    FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-    auto prop = registrator->GetPropertyByIndex(prop_enum);
+    auto registrar = engine->GetPropertyRegistrar(*entity_name);
+    FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
+    auto prop = registrar->GetPropertyByIndex(prop_enum);
     FO_VERIFY_AND_THROW(prop, "Missing property instance");
 
     *is_disabled = prop->IsDisabled();
@@ -1303,14 +1303,14 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
 
     // Register properties
     for (auto&& [type_name, type_desc] : meta->GetEntityTypes()) {
-        auto registrator = type_desc.PropRegistrator.as_ptr();
+        auto registrar = type_desc.PropRegistrar.as_ptr();
         string_view type_name_str = type_name.as_str();
         string class_name = type_desc.IsGlobal ? strex("{}Singleton", type_name_str).str() : string(type_name_str);
         string abstract_class_name = strex("Abstract{}", class_name).str();
         string proto_class_name = strex("Proto{}", class_name).str();
         string static_class_name = strex("Static{}", class_name).str();
 
-        for (const auto& [name, prop] : registrator->GetComponents()) {
+        for (const auto& [name, prop] : registrar->GetComponents()) {
             {
                 string component_type = strex("{}{}Component", type_name_str, name).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
@@ -1337,8 +1337,8 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
             }
         }
 
-        for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-            auto prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
+            auto prop = registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
             FO_VERIFY_AND_THROW(prop, "Property lookup by index returned null");
             string handle_str_storage = [&]() -> string {
                 if (prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType()) {
@@ -1377,19 +1377,19 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
     }
 
     for (auto&& [type_name, type_desc] : meta->GetFixedTypes()) {
-        auto registrator = type_desc.PropRegistrator.as_ptr();
+        auto registrar = type_desc.PropRegistrar.as_ptr();
         string_view type_name_str = type_name.as_str();
         string type_name_storage {type_name_str};
 
-        for (const auto& [name, prop] : registrator->GetComponents()) {
+        for (const auto& [name, prop] : registrar->GetComponents()) {
             string component_type = strex("{}{}Component", type_name_str, name).str();
             FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(type_name_storage.c_str(), strex("{}@ get_{}() const", component_type, name).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(type_name_storage.c_str(), strex("bool get_Has{}() const", name).c_str(), FO_SCRIPT_GENERIC(Entity_HasComponent), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
         }
 
-        for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-            auto prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
+            auto prop = registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
             FO_VERIFY_AND_THROW(prop, "Property lookup by index returned null");
             string handle_str_storage = [&]() -> string {
                 if (prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType()) {

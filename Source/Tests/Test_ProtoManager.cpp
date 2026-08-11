@@ -48,11 +48,11 @@ static void InitProtoTestMetadata(EngineMetadata& meta)
     meta.RegisterEntityType("Location", true, false, true, true, true);
 }
 
-static auto GetTestRegistrator(EngineMetadata& meta, hstring type_name) -> ptr<const PropertyRegistrator>
+static auto GetTestRegistrar(EngineMetadata& meta, hstring type_name) -> ptr<const PropertyRegistrar>
 {
-    auto registrator = meta.GetPropertyRegistrator(type_name);
-    REQUIRE(static_cast<bool>(registrator));
-    return registrator;
+    auto registrar = meta.GetPropertyRegistrar(type_name);
+    REQUIRE(static_cast<bool>(registrar));
+    return registrar;
 }
 
 template<typename TActual, typename TExpected>
@@ -77,8 +77,8 @@ TEST_CASE("ProtoManager")
         hstring knife_pid = meta.Hashes.ToHashedString("Knife");
         hstring raider_pid = meta.Hashes.ToHashedString("Raider");
 
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrator(meta, item_type));
-        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, GetTestRegistrator(meta, critter_type));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrar(meta, item_type));
+        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, GetTestRegistrar(meta, critter_type));
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(critter_type, critter_proto);
 
@@ -117,9 +117,9 @@ TEST_CASE("ProtoManager")
         hstring rest_stop_day_pid = meta.Hashes.ToHashedString("RestStop_Day");
         hstring rest_stop_day_time_pid = meta.Hashes.ToHashedString("RestStop_DayTime");
 
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrator(meta, item_type));
-        auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, GetTestRegistrator(meta, map_type));
-        auto location_proto = SafeAlloc::MakeRefCounted<ProtoLocation>(rest_stop_day_time_pid, GetTestRegistrator(meta, location_type));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrar(meta, item_type));
+        auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, GetTestRegistrar(meta, map_type));
+        auto location_proto = SafeAlloc::MakeRefCounted<ProtoLocation>(rest_stop_day_time_pid, GetTestRegistrar(meta, location_type));
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(map_type, map_proto);
         meta.RegisterProto(location_type, location_proto);

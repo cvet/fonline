@@ -498,7 +498,7 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery
     array<string_view, 3> metadata_targets = {"server", "client", "mapper"};
 
-    for (const string_view target : metadata_targets) {
+    for (string_view target : metadata_targets) {
         string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
         REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
         SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});

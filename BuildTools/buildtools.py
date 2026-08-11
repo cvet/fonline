@@ -1494,6 +1494,89 @@ def prepare_host_workspace(host_name: str, features: Sequence[str], check_only: 
 	host_preparer(selected, workspace, check_only, env)
 
 
+def repair_checkout_case(check_only: bool, env: Mapping[str, str]) -> None:
+	"""Realign working-tree entry names with the names git tracks.
+
+	A case-only rename is recorded correctly in the index, but on a case-insensitive filesystem git
+	only rewrites file names - an already existing directory keeps its old spelling forever. Every
+	reused checkout therefore serves the stale name, while resource and include lookups are
+	case-sensitive, so the drift surfaces much later as a file that sits on disk yet is reported as
+	missing. Long-lived checkouts on self-hosted Windows runners are the usual victim; a fresh clone
+	never reproduces it.
+	"""
+	project_root = Path(env['FO_PROJECT_ROOT'])
+	expected_names, conflicts = collect_tracked_entry_names(list_git_tracked_paths(project_root))
+
+	if conflicts:
+		for conflict in conflicts:
+			log('Tracked path is checked in under more than one spelling:', conflict)
+
+		raise SystemExit('Case-conflicting tracked paths have to be fixed in the repository')
+
+	drifted = realign_entry_names(project_root, expected_names, check_only)
+
+	if drifted == 0:
+		log('Checkout entry names match the git index')
+		return
+
+	if check_only:
+		raise SystemExit(f'Checkout case drifted from the git index in {drifted} entries')
+
+	log(f'Realigned {drifted} checkout entries with the git index')
+
+
+def list_git_tracked_paths(repo_root: Path) -> list[str]:
+	output = run_capture_text(['git', 'ls-files', '-z', '--recurse-submodules'], cwd=repo_root, log_command=False)
+	return [tracked_path for tracked_path in output.split('\0') if tracked_path]
+
+
+def collect_tracked_entry_names(tracked_paths: Sequence[str]) -> tuple[dict[str, dict[str, str]], list[str]]:
+	expected_names: dict[str, dict[str, str]] = {}
+	conflicts: list[str] = []
+
+	for tracked_path in tracked_paths:
+		parts = tracked_path.split('/')
+
+		for index, part in enumerate(parts):
+			parent = '/'.join(parts[:index])
+			siblings = expected_names.setdefault(parent, {})
+			tracked_name = siblings.setdefault(part.lower(), part)
+
+			if tracked_name != part:
+				conflict = f'{parent}/{tracked_name} and {parent}/{part}' if parent else f'{tracked_name} and {part}'
+
+				if conflict not in conflicts:
+					conflicts.append(conflict)
+
+	return expected_names, conflicts
+
+
+def realign_entry_names(repo_root: Path, expected_names: Mapping[str, Mapping[str, str]], check_only: bool) -> int:
+	drifted = 0
+
+	for parent in sorted(expected_names, key=lambda path: (path.count('/'), path)):
+		parent_dir = repo_root / parent if parent else repo_root
+
+		if not parent_dir.is_dir():
+			continue
+
+		siblings = expected_names[parent]
+
+		for entry_name in sorted(os.listdir(parent_dir)):
+			tracked_name = siblings.get(entry_name.lower())
+
+			if tracked_name is None or tracked_name == entry_name:
+				continue
+
+			log('Checkout case drift:', f'{parent}/{entry_name}' if parent else entry_name, '->', tracked_name)
+			drifted += 1
+
+			if not check_only:
+				os.rename(parent_dir / entry_name, parent_dir / tracked_name)
+
+	return drifted
+
+
 def resolve_build_hash(env: Mapping[str, str]) -> str:
 	project_root = Path(env['FO_PROJECT_ROOT'])
 	build_hash = run_capture_text(['git', 'rev-parse', 'HEAD'], cwd=project_root)
@@ -2294,6 +2377,9 @@ def create_parser() -> argparse.ArgumentParser:
 	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
 	prepare_parser.add_argument('--check', action='store_true')
 
+	repair_case_parser = subparsers.add_parser('repair-checkout-case', help='realign working-tree entry names with the git index')
+	repair_case_parser.add_argument('--check', action='store_true')
+
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
 	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
 	package_web_parser.add_argument('configs', nargs='+', help='config names to package (e.g. RemoteSceneLaunch LocalTest)')
@@ -2373,6 +2459,9 @@ def main() -> None:
 		return
 	if args.command == 'prepare-workspace':
 		prepare_workspace(args.parts, args.check, env)
+		return
+	if args.command == 'repair-checkout-case':
+		repair_checkout_case(args.check, env)
 		return
 	if args.command == 'package-web-debug':
 		package_web_debug(env, args.devname, args.configs)
