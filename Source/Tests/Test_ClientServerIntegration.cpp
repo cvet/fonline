@@ -740,18 +740,6 @@ End
         return bake_dir;
     }
 
-    // The server static map blob carries three counts (hashes, items, critters); the client one stops after
-    // the hash table and the static items, so the two sides get differently sized empty blobs.
-    static auto MakeEmptyServerMapBlob() -> vector<uint8_t>
-    {
-        vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        return map_data;
-    }
-
     // A static map with authored content, so map creation runs the content generator instead of skipping it.
     // Layout: the hash table, then the critter records, then the item records; each record is an id, the
     // prototype's hash and a properties blob (empty here, so every value stays at its prototype default).

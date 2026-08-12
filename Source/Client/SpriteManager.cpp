@@ -305,7 +305,7 @@ void SpriteManager::BeginScene()
         _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
     }
 
-    for (size_t i = 0; i != _spriteFactories.size(); ++i) {
+    for (size_t i = 0; i < _spriteFactories.size(); ++i) {
         _spriteFactories[i]->Update();
     }
 
@@ -340,6 +340,30 @@ void SpriteManager::EndScene()
 
     FO_VERIFY_AND_THROW(_rtMngr.GetRenderTargetStack().empty(), "Sprite drawing left render targets on the render-target stack", _rtMngr.GetRenderTargetStack().size());
     FO_VERIFY_AND_THROW(_scissorStack.empty(), "Scissor stack must be empty before this operation");
+}
+
+void SpriteManager::AbortScene() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // An exception thrown between BeginScene and EndScene abandons the frame midway, leaving the scene render target
+    // on the stack and bound in the render context, and possibly a scissor rect enabled. The frame host reports such
+    // an exception and continues to the next frame through Application::EndFrame, which requires no render target to
+    // be bound, so an abandoned frame has to hand the renderer back the way it found it: half-built draws dropped,
+    // scissors and render targets released. This runs on the unwind path, hence noexcept; the release of a render
+    // context that is itself already gone is the one step here that can fail, and it is reported rather than raised
+    // on top of the exception that is already unwinding.
+    _dipQueue.clear();
+    _spriteWireframeVertices.clear();
+    _spritesDrawBuf->VertCount = 0;
+    _spritesDrawBuf->IndCount = 0;
+    _scissorStack.clear();
+    _rtMngr.ClearStack();
+
+    safe_call([this] {
+        _render->DisableScissor();
+        _render->SetRenderTarget(nullptr);
+    });
 }
 
 auto SpriteManager::MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32
