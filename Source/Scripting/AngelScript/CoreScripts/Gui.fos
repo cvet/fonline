@@ -173,6 +173,7 @@ funcdef bool DragAndDropHandler(Object obj, Object? target);
 //   void SetFrameImage(hstring imageName)
 //   void SetCapInsets(int left, int top, int right, int bottom)
 //   void SetCropContent(bool enabled)
+//   bool CropContent
 //   void SetAutoScroll(bool ver, bool hor)
 //   int VerticalScrollValue
 //   int HorizontalScrollValue
@@ -2010,6 +2011,11 @@ class Panel : Object
         if (_IsHorizontalScroll) {
             maxHorScroll = wholeSize.width - Size.width + ((centerPos.x + _HorizontalScroll) - wholeSize.width / 2 - AbsolutePos.x);
         }
+    }
+
+    bool get_CropContent() final
+    {
+        return _CropContent;
     }
 
     void SetCropContent(bool enabled)
