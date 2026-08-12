@@ -90,7 +90,7 @@ FO_SCRIPT_API uint32_t Server_Critter_GetMovingUid(ptr<Critter> self)
 
 // SyncScope: requires self; returns the auto-widen partner Player when one is attached.
 ///@ ExportMethod
-FO_SCRIPT_API nptr<Player> Server_Critter_GetPlayer(ptr<Critter> self)
+FO_SCRIPT_API FO_PROVIDES_COVER nptr<Player> Server_Critter_GetPlayer(ptr<Critter> self)
 {
     auto player = self->GetPlayer();
     return player;
@@ -523,7 +523,7 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, ptr<ProtoItem> 
 
 // SyncScope: requires self; creates and attaches a new inventory item under self's cover.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid, int32_t count)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
@@ -544,7 +544,7 @@ FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid, i
 
 // SyncScope: requires self; creates and attaches a new inventory item under self's cover.
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem> proto, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem> proto, int32_t count)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
@@ -559,7 +559,7 @@ FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem>
 
 // SyncScope: requires self; returned inventory item is covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ident_t itemId)
+FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ident_t itemId)
 {
     if (!itemId) {
         return nullptr;
@@ -571,21 +571,21 @@ FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ident_t itemI
 
 // SyncScope: requires self; returned inventory item is covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, hstring protoId)
+FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Critter_GetItem(ptr<Critter> self, hstring protoId)
 {
     return self->GetItemByPidInvPriority(protoId);
 }
 
 // SyncScope: requires self; returned inventory item is covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ptr<ProtoItem> proto)
+FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
     return self->GetItemByPidInvPriority(proto->GetProtoId());
 }
 
 // SyncScope: requires self; returned inventory item is covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ItemProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
@@ -600,7 +600,7 @@ FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ItemProperty 
 
 // SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self)
+FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self)
 {
     vector<ptr<Item>> items = self->GetInvItems();
     return items;
@@ -608,7 +608,7 @@ FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self)
 
 // SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ItemProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     vector<ptr<Item>> items = self->GetInvItems();
@@ -627,7 +627,7 @@ FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ItemP
 
 // SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, hstring protoId)
+FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, hstring protoId)
 {
     vector<ptr<Item>> items = self->GetInvItems();
 
@@ -645,7 +645,7 @@ FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, hstri
 
 // SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ptr<ProtoItem> proto)
+FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ptr<ProtoItem> proto)
 {
     vector<ptr<Item>> items = self->GetInvItems();
 

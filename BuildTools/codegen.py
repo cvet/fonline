@@ -41,6 +41,7 @@ class MethodArg:
     default_value: str | None = None
     wrapper: bool = False
     container_element_wrapper: str = ''
+    requires_cover: bool = False
 
 
 @dataclass(slots=True)
@@ -139,6 +140,7 @@ class ExportMethodTag:
     ret_wrapper: bool = False
     ret_container_element_wrapper: str = ''
     receiver_wrapper: bool = False
+    ret_provides_cover: bool = False
 
 
 @dataclass(slots=True)
@@ -855,12 +857,21 @@ def strip_pointer_wrapper(type_text: str) -> tuple[str, bool, bool]:
     return type_text, False, False
 
 
+REQUIRES_COVER_MARKER = 'FO_REQUIRES_COVER'
+PROVIDES_COVER_MARKER = 'FO_PROVIDES_COVER'
+
+
 def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: bool = False) -> list[MethodArg]:
     result_args: list[MethodArg] = []
     raw_args = split_engine_args(args_text)
     has_default_arg = False
     for arg in raw_args[1:] if skip_first_arg else raw_args:
         arg = arg.strip()
+        # The cover marker is an empty macro on the parameter, so it has to come off before the type is
+        # parsed -- everything below splits the declaration on its last space.
+        requires_cover = arg.startswith(REQUIRES_COVER_MARKER + ' ')
+        if requires_cover:
+            arg = arg[len(REQUIRES_COVER_MARKER):].lstrip()
         raw_default_value = None
         default_separator = find_cpp_top_level_char(arg, '=')
         if default_separator != -1:
@@ -881,11 +892,12 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
         default_value = normalize_default_arg_value(raw_default_value, arg_type) if raw_default_value is not None else None
         arg_name = arg[separator + 1:]
         assert arg_name, 'Argument name is empty: ' + arg
-        result_args.append(MethodArg(arg_type, arg_name, nullable=nullable, default_value=default_value, wrapper=wrapper, container_element_wrapper=container_element_wrapper(raw_type_text)))
+        result_args.append(MethodArg(arg_type, arg_name, nullable=nullable, default_value=default_value, wrapper=wrapper, container_element_wrapper=container_element_wrapper(raw_type_text),
+            requires_cover=requires_cover))
     return result_args
 
 
-def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool, bool, str, bool]:
+def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool, bool, str, bool, bool]:
     line_tokens = tokenize(tag_context)
     brace_open_pos = tag_context.find('(')
     brace_close_pos = find_matching_cpp_paren(tag_context, brace_open_pos)
@@ -895,6 +907,11 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     assert function_token_index > 1, tag_context
     function_name = line_tokens[function_token_index - 1]
     return_tokens = line_tokens[1:function_token_index - 1]
+    # The cover marker is an empty macro in front of the return type, so it has to come off before the type
+    # is parsed -- everything below joins the remaining tokens into one type spelling.
+    ret_provides_cover = bool(return_tokens) and return_tokens[0] == PROVIDES_COVER_MARKER
+    if ret_provides_cover:
+        return_tokens = return_tokens[1:]
     raw_ret_type_text = ''.join(return_tokens)
     ret_type_text, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(raw_ret_type_text)
     ret = engine_type_to_meta_type(ret_type_text, valid_types, allow_raw_handle_pointer=ret_wrapper)
@@ -920,7 +937,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
         _, receiver_wrapper, _ = strip_pointer_wrapper(first_arg)
         assert receiver_wrapper, 'Raw pointer script ABI receiver is not supported; use ptr<T> or nptr<T>: ' + receiver_args[0]
 
-    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, container_element_wrapper(raw_ret_type_text), receiver_wrapper
+    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, container_element_wrapper(raw_ret_type_text), receiver_wrapper, ret_provides_cover
 
 
 def resolve_event_target(tag_context: str, game_entities_info: Mapping[str, EntityInfo]) -> tuple[str, str]:
@@ -1474,9 +1491,9 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             method_context = require_str_context(tag_context, 'ExportMethod')
             export_flags = tokenize(tag_info)
 
-            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = parse_export_method_signature(method_context, valid_types, game_entities)
+            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper, ret_provides_cover = parse_export_method_signature(method_context, valid_types, game_entities)
 
-            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper))
+            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper, ret_provides_cover=ret_provides_cover))
             # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
             # detail (nullability is already carried by `nullable`), so it must not change the
             # client/server compatibility hash when a raw signature is converted to a wrapper.
@@ -1772,7 +1789,8 @@ def cpp_string_literal(value: str) -> str:
 
 
 def make_arg_desc_initializer(arg: MethodArg, type_expr: str) -> str:
-    return '{' + cpp_string_literal(arg.name) + ', ' + type_expr + ', ' + cpp_bool(arg.nullable) + ', ' + cpp_string_literal(arg.default_value or '') + '}'
+    return ('{' + cpp_string_literal(arg.name) + ', ' + type_expr + ', ' + cpp_bool(arg.nullable) + ', ' + cpp_string_literal(arg.default_value or '') +
+        (', true' if arg.requires_cover else '') + '}')
 
 
 def wrap_handle_engine_type(engine_type: str, nullable: bool) -> str:
@@ -2310,6 +2328,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     (', .PassOwnership = true' if 'PassOwnership' in method_tag.flags else '') +
                     (', .ReturnNullable = true' if method_tag.ret_nullable else '') +
                     (', .Async = true' if 'Async' in method_tag.flags else '') +
+                    (', .ReturnProvidesCover = true' if method_tag.ret_provides_cover else '') +
                     ' });')
             method_blocks.append(method_body_lines)
 

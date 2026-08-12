@@ -134,10 +134,10 @@ static void AppendMutableEventArgAssignments(std::ostringstream& out, const_span
 static void AppendProperty(std::ostringstream& out, const string& type_name, const string& property_name, bool writable, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names, optional<string_view> initializer);
 static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> prop, string_view owner_type_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
 static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names);
-static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, const unordered_set<string>& reserved_names, unordered_set<string>& signatures);
+static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures);
 static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view method_name, string_view ret, std::initializer_list<string_view> arg_types) -> bool;
 static void AppendMethodProperties(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
-static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
+static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, unordered_set<string>& member_names);
 static void AppendDynamicRefTypeProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, unordered_set<string>& member_names);
 static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names);
 static void AppendComponentAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names);
@@ -569,7 +569,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n\n";
                 }
 
-                AppendMethods(out, type->RefType->Methods, type->Name, false, type->RefType->FieldsRegistrator == nullptr, type->RefType->FieldsRegistrator == nullptr, member_names);
+                AppendMethods(out, type->RefType->Methods, type->Name, false, type->RefType->FieldsRegistrator == nullptr, type->RefType->FieldsRegistrator == nullptr, false, member_names);
                 out << "    }\n\n";
             }
         }
@@ -2161,6 +2161,10 @@ static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args) -> vector<strin
         const ArgDesc& arg = args[i];
         string declaration;
 
+        if (arg.RequiresCover) {
+            declaration += "[RequiresCover] ";
+        }
+
         if (arg.Type.IsMutable) {
             declaration += "ref ";
         }
@@ -2192,6 +2196,10 @@ static auto MakeCsEventArgumentDeclarations(string_view owner_type_name, bool is
         const ArgDesc& arg = args[i];
         const string arg_name = MakeUniqueCsIdentifier(arg.Name.empty() ? strex("arg{}", i).str() : arg.Name, used_names);
         string declaration;
+
+        if (arg.RequiresCover) {
+            declaration += "[RequiresCover] ";
+        }
 
         if (arg.Type.IsMutable) {
             declaration += "ref ";
@@ -3154,7 +3162,7 @@ static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc
     out << CS_INDENT << "}\n\n";
 }
 
-static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, const unordered_set<string>& reserved_names, unordered_set<string>& signatures)
+static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3187,6 +3195,22 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
     // special-case logic and body emission below.
     declaration_prefix += MakeCsTypeName(method.Ret, method.ReturnNullable);
     declaration_prefix += " ";
+
+    // A server entity export reads or mutates its receiver, so the caller owns that entity's cover. That is
+    // the standing rule for the whole native surface rather than a per-method property, so the generated API
+    // states it for every such method and each script call site falls under the same analyzer rule as a
+    // script-to-script call. There is deliberately no per-export opt-in: the owner-type gate already excludes
+    // everything without a covered receiver -- statics have none, RefType and FixedType owners are not
+    // entities, and client/mapper scripts have no synchronization to name.
+    if (is_synced_entity_owner) {
+        out << CS_INDENT << "[RequiresCover]\n";
+    }
+
+    // A downward accessor hands back entities that the receiver's cover already covers, so the value arrives
+    // covered and discharges the obligation at the next call that takes it.
+    if (method.ReturnProvidesCover) {
+        out << CS_INDENT << "[return: ProvidesCover]\n";
+    }
 
     AppendCsCallableDeclaration(out, CS_INDENT, declaration_prefix, method_name, arg_declarations, "");
 
@@ -3416,7 +3440,7 @@ static void AppendMethodProperties(std::ostringstream& out, const vector<MethodD
     }
 }
 
-static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names)
+static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3425,7 +3449,7 @@ static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& met
     AppendMethodProperties(out, methods, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, member_names);
 
     for (size_t method_index = 0; method_index < methods.size(); method_index++) {
-        AppendMethod(out, methods[method_index], method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, member_names, signatures);
+        AppendMethod(out, methods[method_index], method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures);
     }
 }
 
@@ -3633,7 +3657,11 @@ static void AppendEntityClass(std::ostringstream& out, string_view class_name, s
     // property shadows the base member and needs `new`; the static `Game` class has no such base.
     AppendEntityProperties(out, desc.PropRegistrator.get(), owner, {}, is_static, true, false, !is_static, member_names);
     AppendEventAccessors(out, owner, desc, is_static, member_names);
-    AppendMethods(out, desc.Methods, owner, is_static, false, true, member_names);
+    // Entity synchronization exists only on the server; client and mapper scripts run single-threaded, so a
+    // cover contract there would name a guarantee with no mechanism behind it.
+    const bool is_synced_entity_owner = !is_static && !is_fixed_type && target_name == "Server";
+
+    AppendMethods(out, desc.Methods, owner, is_static, false, true, is_synced_entity_owner, member_names);
     AppendEntityHolderAccessors(out, owner, desc, target_name, is_static, member_names);
 
     if (is_static) {

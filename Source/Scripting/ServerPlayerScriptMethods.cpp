@@ -84,7 +84,7 @@ FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
 
 // SyncScope: requires self + cr when cr is non-null; before linkage callers must explicitly cover both.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> cr)
+FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, FO_REQUIRES_COVER nptr<Critter> cr)
 {
     ValidateEntityAccess(cr);
 
@@ -93,7 +93,7 @@ FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> c
 
 // SyncScope: requires self; returns the controlled critter handle, auto-widened when self is Sync'd.
 ///@ ExportMethod
-FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
+FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 {
     auto controlled_cr = self->GetControlledCritter();
     return controlled_cr;
