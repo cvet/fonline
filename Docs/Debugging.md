@@ -187,6 +187,7 @@ Use the deterministic engine test target for Common and metadata regressions bef
 2. Run it with `cmake --build Build/MSVC2026 --config RelWithDebInfo --target RunUnitTests`.
 3. Prefer this path for migration-rule, serialization, and other engine-only regressions that do not require resource baking or a live server-client session.
 4. Self-contained client-engine tests run through `NullRenderer`. They may still log missing `.fofx` files from the minimal in-memory test resources, but the headless renderer now synthesizes the required effect metadata instead of treating those missing shader assets as fatal.
+5. A recoverable ImGui error reaches the engine as an `IM_ASSERT` throw carrying only the stringified expression, so a report like `ImGui: (0) && "Missing End()"` says what went wrong but not where. `ImGuiExt::Init` therefore enables ImGui's error log category, which prints the identifying line first: `[imgui-error] In window '<name>': <message>`. When a headless client or mapper test aborts a frame over an unbalanced window, read that line to find the `Begin` that was never closed.
 
 ## Gameplay Bug Triage
 
