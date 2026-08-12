@@ -172,7 +172,7 @@ namespace FOnline
     // On a METHOD it names the receiver instead of a parameter: `cr.SendGlobalMapGroupInfo()` needs `cr`
     // covered, and the receiver is not in the parameter list. That is the dominant shape among the engine's
     // own exports -- 44 of the 74 native cover contracts are exactly "the receiver" -- so it is the form
-    // codegen will emit when those contracts move onto `///@ ExportMethod`.
+    // codegen emits for a server entity export by default.
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Method, AllowMultiple = false)]
     public sealed class RequiresCoverAttribute : Attribute
     {
