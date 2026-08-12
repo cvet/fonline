@@ -741,6 +741,16 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersInRadius(ptr<Map> self,
     return critters;
 }
 
+// SyncScope: requires self; reads the map's player-critter membership without materializing it.
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Map_GetPlayerCritterCount(ptr<Map> self)
+{
+    // The map already maintains this membership, so answering "are there players here" does not need
+    // a filtered copy of every critter on the map. Callers that only want the count — an AI tick
+    // selecting its cadence, for instance — would otherwise walk the whole population per call.
+    return numeric_cast<int32_t>(self->GetPlayerCritters().size());
+}
+
 // SyncScope: requires self; returned critters are covered by self while the map cover remains.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterFindType findType)
