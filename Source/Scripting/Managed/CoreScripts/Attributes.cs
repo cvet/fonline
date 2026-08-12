@@ -153,9 +153,11 @@ namespace FOnline
     // Declares that the CALLER must already hold synchronization cover for this entity when it calls the
     // method -- the method reads or mutates it and acquires nothing itself.
     //
-    // This one is PURELY STATIC: it changes no runtime behavior and exists so the compiler can prove the
-    // obligation is met. The cover it demands is established elsewhere -- by the engine through [SyncCover]
-    // at the entry point, or by an explicit Sync call mid-flight.
+    // It is PURELY STATIC: it changes no runtime behavior and exists so the compiler can prove the obligation
+    // is met. The cover itself comes from one of two places. At an execution-context entry point the engine
+    // has already synchronized the subject it dispatches on -- a remote call's Player, an event's own entity
+    // -- so those parameters are annotated to state that guarantee, not to request anything. Everywhere else
+    // the code establishes what it needs with an explicit Sync call; the attribute never locks anything.
     //
     // It sits on the parameter rather than naming it from the method, so the contract cannot drift from the
     // signature: there is no name to get wrong and a rename carries the annotation with it. That is the
@@ -163,37 +165,18 @@ namespace FOnline
     // detached from their code.
     //
     // The obligation is transitive. A method that calls one of these either acquires the cover itself
-    // (Sync.Lock / Sync.Widen*) or re-declares it on its own parameter and passes it to ITS caller.
+    // (Sync.Lock / Sync.Widen*) or re-declares it on its own parameter and passes it to ITS caller; an entry
+    // point discharges it by carrying the annotation for what the engine already covers.
     // FOSYNC001/FOSYNC002 check both halves at compile time; the model mirrors the FO_TSA_* Clang Thread
     // Safety annotations used on the native side (Engine/Docs/ThreadSafetyAnalysis.md).
-    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
+    // On a METHOD it names the receiver instead of a parameter: `cr.SendGlobalMapGroupInfo()` needs `cr`
+    // covered, and the receiver is not in the parameter list. That is the dominant shape among the engine's
+    // own exports -- 44 of the 74 native cover contracts are exactly "the receiver" -- so it is the form
+    // codegen will emit when those contracts move onto `///@ ExportMethod`.
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Method, AllowMultiple = false)]
     public sealed class RequiresCoverAttribute : Attribute
     {
         public RequiresCoverAttribute(CoverReach reach = CoverReach.None)
-        {
-            Reach = reach;
-        }
-
-        public CoverReach Reach { get; private set; }
-    }
-
-    // Requests that the ENGINE synchronize this argument before it starts the execution context. It belongs
-    // on the parameters of a dispatcher entry point -- [Event], [TimeEvent], the remote calls, dialog demands
-    // and results, item/critter/map/location triggers.
-    //
-    // Unlike the other two, this attribute HAS RUNTIME EFFECT: it is the declarative replacement for opening
-    // a handler with a manual Sync.Lock of what it was just handed, and it is the preferred way to establish
-    // that cover. Omit it when the handler does not need the entity covered -- absence simply means no cover
-    // was requested, not that something is missing.
-    //
-    // It is the start of the chain that [RequiresCover] carries onward: entry points declare what arrives
-    // covered, everything called along the way declares what it needs. This split is sound only because an
-    // entry point is invoked by its attribute rule and never called from ordinary code, so its assumption
-    // cannot leak into a normal call chain.
-    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
-    public sealed class SyncCoverAttribute : Attribute
-    {
-        public SyncCoverAttribute(CoverReach reach = CoverReach.None)
         {
             Reach = reach;
         }

@@ -23,19 +23,13 @@ namespace FOnline
     [System.Flags]
     public enum CoverReach { None = 0, Parent = 1, Ancestors = 2, DestroyGraph = 4 }
 
-    [System.AttributeUsage(System.AttributeTargets.Parameter)]
+    [System.AttributeUsage(System.AttributeTargets.Parameter | System.AttributeTargets.Method)]
     public sealed class RequiresCoverAttribute : System.Attribute
     {
         public RequiresCoverAttribute(CoverReach reach = CoverReach.None) { Reach = reach; }
         public CoverReach Reach { get; private set; }
     }
 
-    [System.AttributeUsage(System.AttributeTargets.Parameter)]
-    public sealed class SyncCoverAttribute : System.Attribute
-    {
-        public SyncCoverAttribute(CoverReach reach = CoverReach.None) { Reach = reach; }
-        public CoverReach Reach { get; private set; }
-    }
 
     [System.AttributeUsage(System.AttributeTargets.Parameter | System.AttributeTargets.ReturnValue)]
     public sealed class ProvidesCoverAttribute : System.Attribute
@@ -48,7 +42,13 @@ namespace FOnline
     public sealed class EventAttribute : System.Attribute { }
 
     public class Entity { }
-    public class Critter : Entity { }
+    public class Critter : Entity
+    {
+        [RequiresCover]
+        public void SendGroupInfo() { }
+
+        public void Untracked() { }
+    }
     public class Map : Entity { }
 
     public static class Sync
@@ -270,42 +270,8 @@ namespace LastFrontier
     }
 }");
 
-            Check(failures, "an entry point receives covered arguments", @"
-namespace LastFrontier
-{
-    using FOnline;
-    public static class Probe
-    {
-        public static void Reads([RequiresCover] Critter cr) { }
 
-        [Event]
-        public static void OnSomething([SyncCover(CoverReach.Parent)] Critter cr) { Reads(cr); }
-    }
-}");
 
-            Check(failures, "an entry point without SyncCover on the argument is still reported", @"
-namespace LastFrontier
-{
-    using FOnline;
-    public static class Probe
-    {
-        public static void Reads([RequiresCover] Critter cr) { }
-
-        [Event]
-        public static void OnSomething(Critter cr) { Reads(cr); }
-    }
-}", "FOSYNC002");
-
-            Check(failures, "SyncCover on a non-entity is reported", @"
-namespace LastFrontier
-{
-    using FOnline;
-    public static class Probe
-    {
-        [Event]
-        public static void OnSomething([SyncCover] int hp) { }
-    }
-}", "FOSYNC001");
 
             Check(failures, "a non-entry caller with the same shape is still reported", @"
 namespace LastFrontier
@@ -319,35 +285,154 @@ namespace LastFrontier
     }
 }", "FOSYNC002");
 
-            Check(failures, "an entry point locking its own parameter is told to declare it", @"
-namespace LastFrontier
-{
-    using FOnline;
-    public static class Probe
-    {
-        [Event]
-        public static void OnSomething(Critter cr) { Sync.Lock(cr); }
-    }
-}", "FOSYNC003");
 
-            Check(failures, "a declared SyncCover parameter is not told twice", @"
+
+
+            Check(failures, "a ProvidesCover parameter discharges that argument", @"
 namespace LastFrontier
 {
     using FOnline;
     public static class Probe
     {
-        [Event]
-        public static void OnSomething([SyncCover] Critter cr) { Sync.Lock(cr); }
+        public static void Reads([RequiresCover] Critter cr) { }
+
+        public static void Establish([ProvidesCover] Critter cr) { }
+
+        public static void Caller(Critter cr)
+        {
+            Establish(cr);
+            Reads(cr);
+        }
     }
 }");
 
-            Check(failures, "a non-entry method locking its own parameter is fine", @"
+            Check(failures, "an awaited ProvidesCover return discharges through a local", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        public static void Reads([RequiresCover] Critter cr) { }
+
+        [return: ProvidesCover]
+        public static Task<Critter> SpawnAsync() { return null!; }
+
+        public static async Task Caller()
+        {
+            Critter spawned = await SpawnAsync();
+            Reads(spawned);
+        }
+    }
+}");
+
+            Check(failures, "a ProvidesCover call on a different value does not discharge", @"
 namespace LastFrontier
 {
     using FOnline;
     public static class Probe
     {
-        public static void Helper(Critter cr) { Sync.Lock(cr); }
+        public static void Reads([RequiresCover] Critter cr) { }
+
+        public static void Establish([ProvidesCover] Critter cr) { }
+
+        public static void Caller(Critter a, Critter b)
+        {
+            Establish(b);
+            Reads(a);
+        }
+    }
+}", "FOSYNC002");
+
+            Check(failures, "an entry point must declare the cover the engine gives it", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [Event]
+        public static void OnSomething(Critter cr) { }
+    }
+}", "FOSYNC003");
+
+            Check(failures, "a declaring entry point is silent and discharges its callees", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads([RequiresCover] Critter cr) { }
+
+        [Event]
+        public static void OnSomething([RequiresCover] Critter cr) { Reads(cr); }
+    }
+}");
+
+            Check(failures, "only the first entity parameter of an entry point is required to declare", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [Event]
+        public static void OnSomething([RequiresCover] Critter cr, Critter other) { }
+    }
+}");
+
+            Check(failures, "a non-entry method needs no entry-point declaration", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Helper(Critter cr) { }
+    }
+}");
+
+            Check(failures, "an uncovered receiver is reported", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Caller(Critter cr) { cr.SendGroupInfo(); }
+    }
+}", "FOSYNC002");
+
+            Check(failures, "a covered receiver is silent", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Caller([RequiresCover] Critter cr) { cr.SendGroupInfo(); }
+    }
+}");
+
+            Check(failures, "a receiver from a ProvidesCover source is silent", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [return: ProvidesCover]
+        public static Critter Spawn() { return null!; }
+
+        public static void Caller()
+        {
+            Critter spawned = Spawn();
+            spawned.SendGroupInfo();
+        }
+    }
+}");
+
+            Check(failures, "a method without the attribute does not police its receiver", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Caller(Critter cr) { cr.Untracked(); }
     }
 }");
 

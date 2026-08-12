@@ -22,7 +22,6 @@ namespace FOnline.Analyzers
     {
         public const string RequiresCoverAttributeFullName = "FOnline.RequiresCoverAttribute";
         public const string ProvidesCoverAttributeFullName = "FOnline.ProvidesCoverAttribute";
-        public const string SyncCoverAttributeFullName = "FOnline.SyncCoverAttribute";
         public const string EntityTypeFullName = "FOnline.Entity";
 
         // The cover primitives are engine-owned, so they are matched by their symbol's full metadata name.
@@ -81,20 +80,21 @@ namespace FOnline.Analyzers
                 + "that came from a [ProvidesCover] source, or re-declare [RequiresCover] so the obligation "
                 + "travels to the next caller.");
 
-        internal static readonly DiagnosticDescriptor ManualEntryLockRule = new DiagnosticDescriptor(
+        internal static readonly DiagnosticDescriptor EntryPointCoverRule = new DiagnosticDescriptor(
             id: "FOSYNC003",
-            title: "Entry point locks its own parameter by hand",
-            messageFormat: "'{0}' opens by locking its own parameter '{1}'; declare [SyncCover] on it instead",
+            title: "Entry point does not declare the cover the engine gives it",
+            messageFormat: "'{0}' is an execution-context entry point; declare [RequiresCover] on '{1}', which the engine has already synchronized",
             category: Category,
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description:
-                "An execution context can have its arguments synchronized by the engine from a [SyncCover] "
-                + "declaration. Doing it by hand at the top of the handler is the same work stated where the "
-                + "compiler cannot see it, and it leaves callees unable to rely on the contract.");
+                "The engine synchronizes the subject it dispatches an execution context on -- a remote call's "
+                + "Player, an event's own entity -- before the handler runs. Stating that with [RequiresCover] "
+                + "makes the guarantee checkable and lets the obligation flow to everything the handler calls; "
+                + "leaving it off means callees cannot rely on a contract that in fact holds.");
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-            ImmutableArray.Create(NonEntityTargetRule, UndischargedCoverRule, ManualEntryLockRule);
+            ImmutableArray.Create(NonEntityTargetRule, UndischargedCoverRule, EntryPointCoverRule);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -107,7 +107,6 @@ namespace FOnline.Analyzers
 
                 INamedTypeSymbol? requiresCover = compilation.GetTypeByMetadataName(RequiresCoverAttributeFullName);
                 INamedTypeSymbol? providesCover = compilation.GetTypeByMetadataName(ProvidesCoverAttributeFullName);
-                INamedTypeSymbol? syncCover = compilation.GetTypeByMetadataName(SyncCoverAttributeFullName);
                 INamedTypeSymbol? entityType = compilation.GetTypeByMetadataName(EntityTypeFullName);
 
                 if (requiresCover == null || entityType == null) {
@@ -126,7 +125,7 @@ namespace FOnline.Analyzers
                     }
                 }
 
-                var model = new CoverModel(requiresCover, providesCover, syncCover, entityType, syncType, entryMarkers);
+                var model = new CoverModel(requiresCover, providesCover, entityType, syncType, entryMarkers);
 
                 compilationStart.RegisterSymbolAction(
                     symbolContext => AnalyzeDeclaration(symbolContext, model),
@@ -137,7 +136,7 @@ namespace FOnline.Analyzers
                     SyntaxKind.InvocationExpression);
 
                 compilationStart.RegisterSyntaxNodeAction(
-                    nodeContext => AnalyzeManualEntryLock(nodeContext, model),
+                    nodeContext => AnalyzeEntryPointDeclaration(nodeContext, model),
                     SyntaxKind.MethodDeclaration);
             });
         }
@@ -148,7 +147,7 @@ namespace FOnline.Analyzers
             var method = (IMethodSymbol)context.Symbol;
 
             foreach (IParameterSymbol parameter in method.Parameters) {
-                bool annotated = model.HasRequiresCover(parameter) || model.HasProvidesCover(parameter) || model.HasSyncCover(parameter);
+                bool annotated = model.HasRequiresCover(parameter) || model.HasProvidesCover(parameter);
 
                 if (annotated && !model.IsEntityish(parameter.Type)) {
                     Report(context, model, parameter, parameter.Name);
@@ -182,8 +181,9 @@ namespace FOnline.Analyzers
             }
 
             List<IParameterSymbol> demanding = callee.Parameters.Where(model.HasRequiresCover).ToList();
+            bool demandsReceiver = model.HasRequiresCoverOnMethod(callee) && !callee.IsStatic;
 
-            if (demanding.Count == 0) {
+            if (demanding.Count == 0 && !demandsReceiver) {
                 return;
             }
 
@@ -200,10 +200,31 @@ namespace FOnline.Analyzers
                 return;
             }
 
-            bool callerIsEntryPoint = caller != null && model.IsEntryPoint(caller);
+            // The cover primitives are the mechanism, not a consumer of it: `Sync` walks the hierarchy to
+            // decide what to acquire, so demanding that it already hold cover for what it is about to acquire
+            // is circular. Nothing else is exempt.
+            if (caller != null && model.SyncType != null &&
+                SymbolEqualityComparer.Default.Equals(caller.ContainingType, model.SyncType)) {
+                return;
+            }
 
             if (AcquiresCover(body, semantics, model, cancellationToken)) {
                 return;
+            }
+
+            if (demandsReceiver && invocation.Expression is MemberAccessExpressionSyntax memberAccess) {
+                ExpressionSyntax receiver = memberAccess.Expression;
+
+                if (!model.ComesFromProvidedCover(receiver, semantics, cancellationToken) &&
+                    !model.CoveredByEarlierCall(body, receiver, semantics, cancellationToken)) {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            UndischargedCoverRule,
+                            receiver.GetLocation(),
+                            callee.Name,
+                            "the receiver",
+                            caller?.Name ?? "the enclosing member"));
+                }
             }
 
             foreach (IParameterSymbol parameter in demanding) {
@@ -214,10 +235,10 @@ namespace FOnline.Analyzers
                     continue;
                 }
 
-                // Inside an entry point, an argument that is one of its [SyncCover] parameters was
-                // synchronized by the dispatcher before the context started.
-                if (callerIsEntryPoint && argument != null &&
-                    model.ComesFromSyncCoveredParameter(argument, semantics, cancellationToken)) {
+                // Cover can also be established mid-flight by handing the value to a [ProvidesCover]
+                // parameter of some earlier call -- Sync.Widen* is not the only way to acquire it.
+                if (argument != null &&
+                    model.CoveredByEarlierCall(body, argument, semantics, cancellationToken)) {
                     continue;
                 }
 
@@ -231,44 +252,40 @@ namespace FOnline.Analyzers
             }
         }
 
-        // FOSYNC003 -- an entry point that locks its own parameter should declare it instead.
-        private static void AnalyzeManualEntryLock(SyntaxNodeAnalysisContext context, CoverModel model)
+        // FOSYNC003 -- an entry point must state the cover the engine already established for it.
+        //
+        // The engine synchronizes the subject it dispatches on before the context starts, so the first entity
+        // parameter arrives covered. Declaring that is what lets the obligation flow onward: an entry point
+        // carrying [RequiresCover] discharges FOSYNC002 for everything it calls with that argument, by the
+        // ordinary propagation rule. Only the first entity parameter is checked -- the rest are whatever the
+        // handler itself decides to acquire.
+        private static void AnalyzeEntryPointDeclaration(SyntaxNodeAnalysisContext context, CoverModel model)
         {
             var declaration = (MethodDeclarationSyntax)context.Node;
-            SemanticModel semantics = context.SemanticModel;
-            CancellationToken cancellationToken = context.CancellationToken;
 
-            if (semantics.GetDeclaredSymbol(declaration, cancellationToken) is not IMethodSymbol method) {
+            if (context.SemanticModel.GetDeclaredSymbol(declaration, context.CancellationToken) is not IMethodSymbol method) {
                 return;
             }
 
-            if (!model.IsEntryPoint(method) || model.SyncType == null) {
+            if (!model.IsEntryPoint(method)) {
                 return;
             }
 
-            foreach (InvocationExpressionSyntax invocation in declaration.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
-                if (semantics.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol callee) {
+            foreach (IParameterSymbol parameter in method.Parameters) {
+                if (!model.IsEntityish(parameter.Type)) {
                     continue;
                 }
 
-                if (!SymbolEqualityComparer.Default.Equals(callee.ContainingType, model.SyncType) ||
-                    !callee.Name.StartsWith("Lock", System.StringComparison.Ordinal)) {
-                    continue;
-                }
-
-                foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments) {
-                    if (semantics.GetSymbolInfo(argument.Expression, cancellationToken).Symbol is not IParameterSymbol parameter) {
-                        continue;
-                    }
-
-                    if (!SymbolEqualityComparer.Default.Equals(parameter.ContainingSymbol, method) ||
-                        model.HasSyncCover(parameter)) {
-                        continue;
-                    }
-
+                if (!model.HasRequiresCover(parameter)) {
                     context.ReportDiagnostic(
-                        Diagnostic.Create(ManualEntryLockRule, invocation.GetLocation(), method.Name, parameter.Name));
+                        Diagnostic.Create(
+                            EntryPointCoverRule,
+                            DeclarationLocation(parameter, method, context.CancellationToken),
+                            method.Name,
+                            parameter.Name));
                 }
+
+                return;
             }
         }
 
@@ -299,6 +316,19 @@ namespace FOnline.Analyzers
             }
 
             return false;
+        }
+
+        // The whole parameter declaration, not just its identifier: it is what a reader wants highlighted, and
+        // it is where an inserted attribute has to go -- `[RequiresCover] Critter cr`, never `Critter [..] cr`.
+        private static Location DeclarationLocation(IParameterSymbol parameter, IMethodSymbol method, CancellationToken cancellationToken)
+        {
+            foreach (SyntaxReference reference in parameter.DeclaringSyntaxReferences) {
+                if (reference.GetSyntax(cancellationToken) is ParameterSyntax syntax) {
+                    return syntax.GetLocation();
+                }
+            }
+
+            return parameter.Locations.FirstOrDefault() ?? method.Locations.FirstOrDefault() ?? Location.None;
         }
 
         private static ExpressionSyntax? ArgumentFor(InvocationExpressionSyntax invocation, IMethodSymbol callee, IParameterSymbol parameter)
@@ -344,13 +374,10 @@ namespace FOnline.Analyzers
 
             private readonly List<INamedTypeSymbol> _entryMarkers;
 
-            private readonly INamedTypeSymbol? _syncCover;
-
-            public CoverModel(INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover, INamedTypeSymbol? syncCover, INamedTypeSymbol entityType, INamedTypeSymbol? syncType, List<INamedTypeSymbol> entryMarkers)
+            public CoverModel(INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover, INamedTypeSymbol entityType, INamedTypeSymbol? syncType, List<INamedTypeSymbol> entryMarkers)
             {
                 _requiresCover = requiresCover;
                 _providesCover = providesCover;
-                _syncCover = syncCover;
                 _entityType = entityType;
                 SyncType = syncType;
                 _entryMarkers = entryMarkers;
@@ -374,9 +401,11 @@ namespace FOnline.Analyzers
                 return HasAttribute(parameter.GetAttributes(), _requiresCover);
             }
 
-            public bool HasSyncCover(IParameterSymbol parameter)
+
+            // On a method the attribute names the receiver, which no parameter can express.
+            public bool HasRequiresCoverOnMethod(IMethodSymbol method)
             {
-                return _syncCover != null && HasAttribute(parameter.GetAttributes(), _syncCover);
+                return HasAttribute(method.GetAttributes(), _requiresCover);
             }
 
             public bool HasProvidesCover(IParameterSymbol parameter)
@@ -448,12 +477,45 @@ namespace FOnline.Analyzers
                 return false;
             }
 
-            // The value is, verbatim, a [SyncCover] parameter of the enclosing entry point.
-            public bool ComesFromSyncCoveredParameter(ExpressionSyntax expression, SemanticModel semantics, CancellationToken cancellationToken)
+            // Some earlier call in this body handed the same value to a [ProvidesCover] parameter, which is
+            // how a helper establishes cover for something it does not return. Body-scoped like the rest of
+            // the discharge rule, so it under-reports rather than blocking a build on control flow the
+            // analyzer cannot yet follow.
+            public bool CoveredByEarlierCall(SyntaxNode body, ExpressionSyntax expression, SemanticModel semantics, CancellationToken cancellationToken)
             {
-                return semantics.GetSymbolInfo(expression, cancellationToken).Symbol is IParameterSymbol parameter &&
-                    HasSyncCover(parameter);
+                if (_providesCover == null) {
+                    return false;
+                }
+
+                ISymbol? wanted = semantics.GetSymbolInfo(expression, cancellationToken).Symbol;
+
+                if (wanted == null) {
+                    return false;
+                }
+
+                foreach (InvocationExpressionSyntax candidate in body.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
+                    if (semantics.GetSymbolInfo(candidate, cancellationToken).Symbol is not IMethodSymbol callee) {
+                        continue;
+                    }
+
+                    SeparatedSyntaxList<ArgumentSyntax> arguments = candidate.ArgumentList.Arguments;
+
+                    for (int i = 0; i < arguments.Count && i < callee.Parameters.Length; i++) {
+                        if (!HasProvidesCover(callee.Parameters[i])) {
+                            continue;
+                        }
+
+                        ISymbol? passed = semantics.GetSymbolInfo(arguments[i].Expression, cancellationToken).Symbol;
+
+                        if (passed != null && SymbolEqualityComparer.Default.Equals(passed, wanted)) {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
             }
+
 
             private bool IsEntity(ITypeSymbol type)
             {

@@ -7,4 +7,4 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|------------------------------------------------------------------------
 FOSYNC001 | Synchronization | Warning | A cover annotation sits on a value that is neither an entity nor a collection of entities.
 FOSYNC002 | Synchronization | Warning | An argument for a [RequiresCover] parameter is neither covered by the caller, received from a [ProvidesCover] source, nor re-declared.
-FOSYNC003 | Synchronization | Warning | An entry point locks its own parameter by hand instead of declaring [SyncCover] on it.
+FOSYNC003 | Synchronization | Warning | An execution-context entry point does not declare [RequiresCover] on the entity the engine already synchronized for it.
