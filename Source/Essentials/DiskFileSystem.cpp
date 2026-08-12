@@ -41,8 +41,12 @@ extern void LogToFile(string_view path, bool append)
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_path = path;
-    LogToFile(utf8_path, append);
+    std::filesystem::path native_path {path};
+
+    if (!base_logging_detail::OpenLogFileNative(native_path, append)) {
+        u8string message = FormatUtf8("Can't create log file '{}'\n", path);
+        WriteBaseLog(message);
+    }
 }
 
 extern void LogToFile(u8string_view path, bool append)
@@ -122,8 +126,7 @@ auto fs_combine_path(u8string_view base_path, string_view ascii_relative_path) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string relative_path = ascii_relative_path;
-    return fs_combine_path(base_path, relative_path);
+    return fs_path_to_u8string(std::filesystem::path {fs_make_path(base_path)} / std::filesystem::path {ascii_relative_path});
 }
 
 auto fs_make_writable_path(u8string_view user_writable_path, u8string_view relative) -> u8string
@@ -271,6 +274,13 @@ auto fs_write_file_text(u8string_view path, u8string_view content) -> bool
     }
 
     return fs_write_file_bytes(path, utf8_to_byte_span(content));
+}
+
+auto fs_write_file_text(u8string_view path, string_view ascii_content) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return fs_write_file_bytes(path, string_to_byte_span(ascii_content));
 }
 
 auto fs_remove_file(u8string_view path) noexcept -> bool

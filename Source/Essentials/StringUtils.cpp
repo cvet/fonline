@@ -1902,10 +1902,10 @@ auto u8strex::change_file_name(u8string_view new_name) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string extension = u8strex(_sv).get_file_extension();
+    u8string ext = u8strex(_sv).get_file_extension();
 
-    if (!extension.empty()) {
-        u8string name_with_extension = u8strex(u8"{}.{}", new_name, extension);
+    if (!ext.empty()) {
+        u8string name_with_extension = u8strex(u8"{}.{}", new_name, ext);
         _s = u8strex(_sv).extract_dir().combine_path(name_with_extension);
     }
     else {
@@ -1920,8 +1920,18 @@ auto u8strex::change_file_name(string_view new_name) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_name = new_name;
-    return change_file_name(utf8_name);
+    u8string ext = u8strex(_sv).get_file_extension();
+
+    if (!ext.empty()) {
+        u8string name_with_extension = u8strex("{}.{}", new_name, ext);
+        _s = u8strex(_sv).extract_dir().combine_path(name_with_extension);
+    }
+    else {
+        _s = u8strex(_sv).extract_dir().combine_path(new_name);
+    }
+
+    _sv = _s;
+    return *this;
 }
 
 auto u8strex::change_file_extension(u8string_view new_ext) -> u8strex&
@@ -1940,8 +1950,12 @@ auto u8strex::change_file_extension(string_view new_ext) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_ext = new_ext;
-    return change_file_extension(utf8_ext);
+    erase_file_extension();
+    own_storage();
+    _s.append(".");
+    _s.append(new_ext);
+    _sv = _s;
+    return *this;
 }
 
 auto u8strex::combine_path(u8string_view path) -> u8strex&
@@ -1968,8 +1982,19 @@ auto u8strex::combine_path(string_view path) -> u8strex&
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_path = path;
-    return combine_path(utf8_path);
+    if (path.empty()) {
+        return *this;
+    }
+
+    own_storage();
+
+    if (!_s.empty() && _s.view().native_view().back() != u8'/' && path.front() != '/') {
+        _s.append("/");
+    }
+
+    _s.append(path);
+    _sv = _s;
+    return format_path();
 }
 
 auto u8strex::normalize_path_slashes() -> u8strex&

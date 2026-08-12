@@ -27,8 +27,7 @@ static auto MakeConfigBakerTempDir() -> string
 static auto WriteConfigBakerTextFile(string_view path, string_view content) -> bool
 {
     u8string path_utf8 = path;
-    u8string utf8_content = content;
-    return fs_write_file_text(path_utf8.view(), utf8_content.view());
+    return fs_write_file_text(path_utf8, content);
 }
 
 static void AddConfigBakerMetadata(BakerTests::TestRig& rig)

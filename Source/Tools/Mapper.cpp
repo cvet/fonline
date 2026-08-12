@@ -2155,10 +2155,10 @@ void MapperEngine::DrawContentWindowImGui()
 
         ImGui::SameLine();
         if (ImGui::Button("Copy all")) {
-            string all_messages;
+            u8string all_messages;
             for (const auto& entry : MessBox) {
-                all_messages += entry.Time;
-                all_messages += entry.Mess;
+                all_messages.append(entry.Time);
+                all_messages.append(entry.Mess);
             }
 
             GetApp()->Input.SetClipboardText(all_messages);
@@ -5900,8 +5900,7 @@ void MapperEngine::ConsoleSubmitCommand()
     for (const auto& str : ConsoleHistory) {
         history_str += str + "\n";
     }
-    u8string history_text = history_str;
-    Cache.SetText("mapper_console.txt", history_text);
+    Cache.SetText("mapper_console.txt", history_str);
 
     bool process_command = OnMapperMessage.Fire(ConsoleStr) == EventResult::ContinueChain;
     AddMess(ConsoleStr);

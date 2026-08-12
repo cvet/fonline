@@ -1073,7 +1073,7 @@ FO_SCRIPT_API void Client_Game_GetTextInfo(ptr<ClientEngine> client, u8string_vi
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetTextLines(ptr<ClientEngine> client, isize32 size, FontType font)
 {
-    return client->FontMngr.GetLinesCount(size, "", font);
+    return client->FontMngr.GetLinesCount(size, u8"", font);
 }
 
 ///@ ExportMethod
@@ -1680,8 +1680,7 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
         cfg_user += strex("{} = {}\n", key, value);
     }
 
-    u8string config_text = cfg_user;
-    client->Cache.SetText(LOCAL_CONFIG_NAME, config_text.view());
+    client->Cache.SetText(LOCAL_CONFIG_NAME, cfg_user);
 }
 
 ///@ ExportMethod
@@ -1693,8 +1692,7 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
         cfg_user += strex("{} = {}\n", keyValues[i], keyValues[i + 1]);
     }
 
-    u8string config_text = cfg_user;
-    client->Cache.SetText(LOCAL_CONFIG_NAME, config_text.view());
+    client->Cache.SetText(LOCAL_CONFIG_NAME, cfg_user);
 }
 
 ///@ ExportMethod

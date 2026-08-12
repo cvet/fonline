@@ -253,8 +253,7 @@ static void DrawEntry(string_view name, const T& entry)
             }
         }();
         u8string text = FormatUtf8("{}: {}", name, value);
-        string text_chars {utf8_as_char_view(text.view())};
-        ImGui::TextUnformatted(text_chars.c_str());
+        ImGuiTextUnformatted(text);
     }
     else {
         ImGui::TextUnformatted(strex("{}: {}", name, entry).c_str());

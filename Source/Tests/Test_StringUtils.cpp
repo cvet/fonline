@@ -231,7 +231,9 @@ TEST_CASE("StringUtils")
         u8string strict_hello_copy = u8strex(strict_hello);
         CHECK(strict_hello_copy == strict_hello);
 
-        CHECK_THROWS_AS(u8string(span_to_string(invalid_lead_bytes)), TextValidationException);
+        u8string promoted_invalid_lead = span_to_string(invalid_lead_bytes);
+        REQUIRE(promoted_invalid_lead.size() == 1);
+        CHECK(promoted_invalid_lead.view().native_view()[0] == char8_t {200});
 
         CHECK(u8strvex(hello_mixed).length_utf8() == 10);
         CHECK(u8strvex(three_e).length_utf8() == 3);

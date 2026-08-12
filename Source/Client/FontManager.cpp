@@ -1356,14 +1356,6 @@ void FontManager::DrawText(irect32 rect, u8string_view str, ucolor color, TextFo
     }
 }
 
-void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextFormat format)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_str = str;
-    DrawText(rect, utf8_str, color, format);
-}
-
 auto FontManager::GetLinesCount(isize32 size, u8string_view str, FontType num_font) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -1384,14 +1376,6 @@ auto FontManager::GetLinesCount(isize32 size, u8string_view str, FontType num_fo
     return fi->LinesInRect;
 }
 
-auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_str = str;
-    return GetLinesCount(size, utf8_str, num_font);
-}
-
 auto FontManager::GetLinesHeight(isize32 size, u8string_view str, FontType num_font) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -1408,14 +1392,6 @@ auto FontManager::GetLinesHeight(isize32 size, u8string_view str, FontType num_f
     }
 
     return lines_count * font->LineHeight + (lines_count - 1) * font->YAdvance;
-}
-
-auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_str = str;
-    return GetLinesHeight(size, utf8_str, num_font);
 }
 
 auto FontManager::GetLineHeight(FontType num_font) const -> int32_t
@@ -1446,14 +1422,6 @@ auto FontManager::GetTextInfo(isize32 size, u8string_view str, TextFormat format
     return true;
 }
 
-auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_str = str;
-    return GetTextInfo(size, utf8_str, format, result_size, lines);
-}
-
 auto FontManager::SplitLines(irect32 rect, u8string_view str, FontType num_font) -> vector<u8string>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1466,14 +1434,6 @@ auto FontManager::SplitLines(irect32 rect, u8string_view str, FontType num_font)
     format.Font = num_font;
     auto fi = GetOrFormat(format, num_font, rect, ucolor {}, FormatMode::Split, str);
     return fi->Lines;
-}
-
-auto FontManager::SplitLines(irect32 rect, string_view str, FontType num_font) -> vector<u8string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_str = str;
-    return SplitLines(rect, utf8_str, num_font);
 }
 
 auto FontManager::HaveLetter(FontType num_font, uint32_t letter) const -> bool

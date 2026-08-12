@@ -323,7 +323,7 @@ public:
     u8string_view_nt() = delete;
 
     template<size_t N>
-    consteval explicit u8string_view_nt(const char8_t (&literal)[N]) :
+    consteval u8string_view_nt(const char8_t (&literal)[N]) : // NOLINT(google-explicit-constructor,hicpp-explicit-conversions)
         _view {literal}
     {
         for (size_t i = 0; i + 1 < N; i++) {

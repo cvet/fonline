@@ -42,6 +42,11 @@ static void CheckCacheStorageContract(string_view temp_dir_name)
             byte {0x42},
         };
         vector<byte> binary_payload {byte {0x00}, byte {0x80}, byte {0xFF}};
+        vector<byte> ascii_bytes {byte {0x41}, byte {0x53}, byte {0x43}, byte {0x49}, byte {0x49}};
+
+        cache.SetText("ascii-text", "ASCII");
+        CHECK(cache.GetText("ascii-text") == u8"ASCII");
+        CHECK(cache.GetBytes("ascii-text") == ascii_bytes);
 
         cache.SetText("text-to-bytes", unicode_text);
         CHECK(cache.HasEntry("text-to-bytes"));

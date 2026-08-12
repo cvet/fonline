@@ -47,21 +47,11 @@ using FsFileVisitor = function<void(u8string_view, size_t, uint64_t)>;
 // Base log destination
 extern void LogToFile(string_view path, bool append = false);
 extern void LogToFile(u8string_view path, bool append = false);
-inline void LogToFile(const string& path, bool append = false)
-{
-    LogToFile(string_view {path}, append);
-}
-inline void LogToFile(const u8string& path, bool append = false)
+template<typename T>
+    requires std::same_as<std::remove_cvref_t<T>, u8string>
+inline void LogToFile(T&& path, bool append = false)
 {
     LogToFile(path.view(), append);
-}
-inline void LogToFile(const strex& path, bool append = false)
-{
-    LogToFile(static_cast<string_view>(path), append);
-}
-inline void LogToFile(const u8strex& path, bool append = false)
-{
-    LogToFile(static_cast<u8string_view>(path), append);
 }
 
 // Filesystem helpers
@@ -97,11 +87,7 @@ auto fs_read_file_text(u8string_view path) -> optional<u8string>;
 auto fs_compare_file_bytes(u8string_view path, const_span<byte> content) -> bool;
 auto fs_write_file_bytes(u8string_view path, const_span<byte> content) -> bool;
 auto fs_write_file_text(u8string_view path, u8string_view content) -> bool;
-inline auto fs_write_file_text(u8string_view path, string_view ascii_content) -> bool
-{
-    u8string utf8_content = ascii_content;
-    return fs_write_file_text(path, utf8_content);
-}
+auto fs_write_file_text(u8string_view path, string_view ascii_content) -> bool;
 auto fs_remove_file(u8string_view path) noexcept -> bool;
 inline auto fs_remove_file(const u8string& path) noexcept -> bool
 {

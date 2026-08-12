@@ -91,15 +91,14 @@ int main(int argc, char** argv) // Handled by SDL
         bool os_size_saved = false;
         isize32 os_size_before_first_child {};
 
-        list<pair<vector<string>, CatchedStackTraceData>> log_buffer;
+        list<pair<vector<u8string>, CatchedStackTraceData>> log_buffer;
         mutex log_buffer_locker;
         int32_t exception_count = 0;
 
         SetLogCallback("ServerApp", [&](LogType type, u8string_view message, nptr<const CatchedStackTraceData> st) FO_DEFERRED {
             scoped_lock locker {log_buffer_locker};
 
-            string_view message_chars = utf8_as_char_view(message);
-            auto lines = strex(message_chars).split('\n');
+            vector<u8string> lines = u8strex(message).split(u8'\n');
             log_buffer.emplace_back(std::move(lines), st ? *st : CatchedStackTraceData {std::nullopt, GetStackTrace()});
 
             if (log_buffer.size() > numeric_cast<size_t>(GetApp()->Settings.MaxServerLogLines)) {
@@ -469,24 +468,24 @@ int main(int argc, char** argv) // Handled by SDL
                             ImGui::SameLine();
 
                             if (ImGui::Button("Save log", btn_size)) {
-                                string log_lines;
+                                u8string log_lines;
 
                                 {
                                     scoped_lock locker {log_buffer_locker};
 
                                     for (const auto& lines : log_buffer | std::views::keys) {
                                         for (const auto& line : lines) {
-                                            log_lines += line + '\n';
+                                            log_lines.append(line);
+                                            log_lines.append(u8"\n");
                                         }
                                     }
                                 }
 
                                 auto time = nanotime::now().desc(true);
                                 u8string log_path = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
-                                std::ofstream log_file {std::filesystem::path {fs_make_path(log_path.view())}, std::ios::binary | std::ios::trunc};
 
-                                if (log_file && !log_lines.empty()) {
-                                    log_file.write(log_lines.data(), static_cast<std::streamsize>(log_lines.size()));
+                                if (!log_lines.empty()) {
+                                    (void)fs_write_file_text(log_path, log_lines);
                                 }
                             }
 
@@ -531,7 +530,9 @@ int main(int argc, char** argv) // Handled by SDL
                                 scoped_lock locker {log_buffer_locker};
 
                                 for (const auto& [lines, st] : log_buffer) {
-                                    if (ImGui::TreeNodeEx(lines.front().c_str(), ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                                    ptr<const char> first_line = utf8_to_c_str(lines.front().view_nt());
+
+                                    if (ImGui::TreeNodeEx(first_line.get(), ImGuiTreeNodeFlags_SpanAvailWidth)) {
                                         for (size_t i = 1; i < lines.size(); i++) {
                                             ImGuiTextUnformatted(lines[i]);
                                         }
@@ -570,14 +571,14 @@ int main(int argc, char** argv) // Handled by SDL
                 ImGui::SetNextWindowBgAlpha(0.85f);
 
                 if (ImGui::Begin("##WindowTabs", nullptr, TAB_BAR_FLAGS)) {
-                    auto draw_tab = [&](ptr<AppWindow> window, const string& label) {
+                    auto draw_tab = [&](ptr<AppWindow> window, u8string_view_nt label) {
                         bool is_active = (GetApp()->GetActiveWindow() == window);
 
                         if (is_active) {
                             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
                         }
 
-                        if (ImGui::Button(label.c_str())) {
+                        if (ImGui::Button(utf8_to_c_str(label).get())) {
                             GetApp()->SetActiveWindow(window);
                         }
 
@@ -588,13 +589,12 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::SameLine();
                     };
 
-                    draw_tab(&GetApp()->MainWindow, string {"Server"});
+                    draw_tab(&GetApp()->MainWindow, u8"Server");
 
                     for (size_t i = 0; i < child_count; i++) {
                         if (auto child = GetApp()->GetChildWindow(i)) {
                             u8string title = child->GetTitle().empty() ? FormatUtf8("Client {}", i + 1) : u8string {child->GetTitle()};
-                            string label = utf8_to_char_string(title.view());
-                            draw_tab(child, label);
+                            draw_tab(child, title.view_nt());
                         }
                     }
 

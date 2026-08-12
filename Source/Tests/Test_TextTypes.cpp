@@ -71,6 +71,8 @@ static_assert(!std::convertible_to<u8string, string>);
 static_assert(std::constructible_from<string, string_view>);
 static_assert(std::convertible_to<decltype("ASCII"), string_view>);
 static_assert(std::convertible_to<decltype(u8"UTF-8 🌍"), u8string_view>);
+static_assert(std::convertible_to<decltype(u8"UTF-8 🌍"), u8string_view_nt>);
+static_assert(!std::convertible_to<string_view, u8string_view>);
 static_assert(!std::convertible_to<string_view, string>);
 static_assert(!std::convertible_to<std::u8string_view, u8string>);
 static_assert(!HasRvalueView<string>);
@@ -195,17 +197,24 @@ TEST_CASE("TextTypes")
         CHECK(utf8.view().native_view() == u8"ASCII");
         utf8.assign(u8"U+FFFD: �");
         CHECK(utf8.view().native_view() == u8"U+FFFD: �");
+    }
 
-        string invalid_ascii;
-        invalid_ascii.push_back(std::bit_cast<char>(uint8_t {0x80}));
-        CHECK_THROWS_AS((void)u8string {invalid_ascii}, TextValidationException);
+    SECTION("NarrowStringPromotionIsBytePreserving")
+    {
+        string utf8_bytes;
+        utf8_bytes.push_back(std::bit_cast<char>(uint8_t {0xD0}));
+        utf8_bytes.push_back(std::bit_cast<char>(uint8_t {0x90}));
 
-        u8string stable {u8"stable"};
-        u8string target = stable;
-        CHECK_THROWS_AS((void)target.assign(invalid_ascii), TextValidationException);
-        CHECK(target == stable);
-        CHECK_THROWS_AS((void)target.append(invalid_ascii), TextValidationException);
-        CHECK(target == stable);
+        u8string promoted_bytes = utf8_bytes;
+        CHECK(promoted_bytes.view().native_view() == u8"А");
+
+        u8string assigned_bytes;
+        assigned_bytes.assign(utf8_bytes);
+        CHECK(assigned_bytes.view().native_view() == u8"А");
+
+        u8string appended_bytes;
+        appended_bytes.append(utf8_bytes);
+        CHECK(appended_bytes.view().native_view() == u8"А");
     }
 
     SECTION("Utf8OwnersRevalidateViewsWhoseBackingStorageChanged")

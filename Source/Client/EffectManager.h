@@ -140,7 +140,7 @@ private:
     ptr<FileSystem> _resources;
     ptr<IAppRender> _render;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-    map<string, unique_ptr<RenderEffect>> _loadedEffects {};
+    unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
     optional<nanotime> _shaderTimeEpoch {};
 };
 

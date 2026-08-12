@@ -51,19 +51,13 @@ public:
     ~CacheStorage();
 
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool;
-    [[nodiscard]] auto HasEntry(u8string_view entry_name) const -> bool;
     [[nodiscard]] auto GetText(string_view entry_name) const -> u8string;
-    [[nodiscard]] auto GetText(u8string_view entry_name) const -> u8string;
     [[nodiscard]] auto GetBytes(string_view entry_name) const -> vector<byte>;
-    [[nodiscard]] auto GetBytes(u8string_view entry_name) const -> vector<byte>;
 
     void SetText(string_view entry_name, string_view text);
     void SetText(string_view entry_name, u8string_view text);
-    void SetText(u8string_view entry_name, u8string_view text);
     void SetBytes(string_view entry_name, const_span<byte> bytes);
-    void SetBytes(u8string_view entry_name, const_span<byte> bytes);
     void RemoveEntry(string_view entry_name);
-    void RemoveEntry(u8string_view entry_name);
 
 private:
     unique_ptr<CacheStorageImpl> _impl;

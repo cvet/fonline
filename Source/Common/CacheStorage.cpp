@@ -45,11 +45,11 @@ public:
     auto operator=(CacheStorageImpl&&) noexcept = delete;
     virtual ~CacheStorageImpl() = default;
 
-    [[nodiscard]] virtual auto HasEntry(u8string_view entry_name) const -> bool = 0;
-    [[nodiscard]] virtual auto GetBytes(u8string_view entry_name) const -> vector<byte> = 0;
+    [[nodiscard]] virtual auto HasEntry(string_view entry_name) const -> bool = 0;
+    [[nodiscard]] virtual auto GetBytes(string_view entry_name) const -> vector<byte> = 0;
 
-    virtual void SetBytes(u8string_view entry_name, const_span<byte> bytes) = 0;
-    virtual void RemoveEntry(u8string_view entry_name) = 0;
+    virtual void SetBytes(string_view entry_name, const_span<byte> bytes) = 0;
+    virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
 class FileCacheStorage final : public CacheStorageImpl
@@ -62,15 +62,15 @@ public:
     auto operator=(FileCacheStorage&&) noexcept = delete;
     ~FileCacheStorage() override = default;
 
-    [[nodiscard]] auto HasEntry(u8string_view entry_name) const -> bool override;
-    [[nodiscard]] auto GetBytes(u8string_view entry_name) const -> vector<byte> override;
+    [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool override;
+    [[nodiscard]] auto GetBytes(string_view entry_name) const -> vector<byte> override;
 
     auto CreateCacheStorage() const -> bool;
-    void SetBytes(u8string_view entry_name, const_span<byte> bytes) override;
-    void RemoveEntry(u8string_view entry_name) override;
+    void SetBytes(string_view entry_name, const_span<byte> bytes) override;
+    void RemoveEntry(string_view entry_name) override;
 
 private:
-    [[nodiscard]] auto MakeCacheEntryPath(u8string_view work_path, u8string_view data_name) const -> u8string;
+    [[nodiscard]] auto MakeCacheEntryPath(u8string_view work_path, string_view data_name) const -> u8string;
 
     u8string _workPath {};
 };
@@ -94,26 +94,10 @@ auto CacheStorage::HasEntry(string_view entry_name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_entry_name = entry_name;
-    return HasEntry(utf8_entry_name);
-}
-
-auto CacheStorage::HasEntry(u8string_view entry_name) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->HasEntry(entry_name);
 }
 
 auto CacheStorage::GetText(string_view entry_name) const -> u8string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_entry_name = entry_name;
-    return GetText(utf8_entry_name);
-}
-
-auto CacheStorage::GetText(u8string_view entry_name) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -125,34 +109,10 @@ auto CacheStorage::GetBytes(string_view entry_name) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_entry_name = entry_name;
-    return GetBytes(utf8_entry_name);
-}
-
-auto CacheStorage::GetBytes(u8string_view entry_name) const -> vector<byte>
-{
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->GetBytes(entry_name);
 }
 
 void CacheStorage::SetText(string_view entry_name, u8string_view text)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_entry_name = entry_name;
-    SetText(utf8_entry_name, text);
-}
-
-void CacheStorage::SetText(string_view entry_name, string_view text)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string utf8_text = text;
-    SetText(entry_name, utf8_text);
-}
-
-void CacheStorage::SetText(u8string_view entry_name, u8string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -163,15 +123,14 @@ void CacheStorage::SetText(u8string_view entry_name, u8string_view text)
     _impl->SetBytes(entry_name, utf8_to_byte_span(text));
 }
 
-void CacheStorage::SetBytes(string_view entry_name, const_span<byte> bytes)
+void CacheStorage::SetText(string_view entry_name, string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_entry_name = entry_name;
-    SetBytes(utf8_entry_name, bytes);
+    _impl->SetBytes(entry_name, string_to_byte_span(text));
 }
 
-void CacheStorage::SetBytes(u8string_view entry_name, const_span<byte> bytes)
+void CacheStorage::SetBytes(string_view entry_name, const_span<byte> bytes)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -182,18 +141,10 @@ void CacheStorage::RemoveEntry(string_view entry_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string utf8_entry_name = entry_name;
-    RemoveEntry(utf8_entry_name);
-}
-
-void CacheStorage::RemoveEntry(u8string_view entry_name)
-{
-    FO_STACK_TRACE_ENTRY();
-
     _impl->RemoveEntry(entry_name);
 }
 
-auto FileCacheStorage::MakeCacheEntryPath(u8string_view work_path, u8string_view data_name) const -> u8string
+auto FileCacheStorage::MakeCacheEntryPath(u8string_view work_path, string_view data_name) const -> u8string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -223,7 +174,7 @@ auto FileCacheStorage::CreateCacheStorage() const -> bool
     return true;
 }
 
-auto FileCacheStorage::HasEntry(u8string_view entry_name) const -> bool
+auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -231,7 +182,7 @@ auto FileCacheStorage::HasEntry(u8string_view entry_name) const -> bool
     return fs_exists(path);
 }
 
-auto FileCacheStorage::GetBytes(u8string_view entry_name) const -> vector<byte>
+auto FileCacheStorage::GetBytes(string_view entry_name) const -> vector<byte>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -245,7 +196,7 @@ auto FileCacheStorage::GetBytes(u8string_view entry_name) const -> vector<byte>
     return *bytes;
 }
 
-void FileCacheStorage::SetBytes(u8string_view entry_name, const_span<byte> bytes)
+void FileCacheStorage::SetBytes(string_view entry_name, const_span<byte> bytes)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -261,7 +212,7 @@ void FileCacheStorage::SetBytes(u8string_view entry_name, const_span<byte> bytes
     }
 }
 
-void FileCacheStorage::RemoveEntry(u8string_view entry_name)
+void FileCacheStorage::RemoveEntry(string_view entry_name)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -249,17 +249,16 @@ void WriteSimpleTga(u8string_view fname, isize32 size, vector<ucolor> data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    string_view fname_text = utf8_as_char_view(fname);
     auto dir = std::filesystem::path {fs_make_path(fname)}.parent_path();
 
     if (!dir.empty()) {
         u8string dir_path = fs_path_to_u8string(dir);
-        auto dir_ok = fs_create_directories(dir_path.view());
-        FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir_path.view(), fname_text);
+        bool dir_ok = fs_create_directories(dir_path);
+        FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir_path, fname);
     }
 
     std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
-    FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname_text, size, data.size());
+    FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname, size, data.size());
 
     // ucolor keeps pixels in R, G, B, A byte order, but a TrueColor TGA stores them as B, G, R, A
     // (matching the engine's own TgaLoad reader), so swap red and blue before writing the payload
@@ -278,7 +277,7 @@ void WriteSimpleTga(u8string_view fname, isize32 size, vector<ucolor> data)
         file.write(pixels.reinterpret_as<char>().get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
     }
 
-    FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname_text, size, data.size());
+    FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname, size, data.size());
 }
 
 // Dummy symbols for web build to avoid linker errors

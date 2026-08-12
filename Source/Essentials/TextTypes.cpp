@@ -184,10 +184,6 @@ u8string::u8string(string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto issue = validate_ascii_text(value)) {
-        throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
-    }
-
     _storage.reserve(value.size());
 
     for (char code_unit : value) {
@@ -300,10 +296,6 @@ auto u8string::assign(string_view value) -> u8string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto issue = validate_ascii_text(value)) {
-        throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
-    }
-
     storage_type replacement;
     replacement.reserve(value.size());
 
@@ -336,10 +328,6 @@ auto u8string::append(u8string_view value) -> u8string&
 auto u8string::append(string_view value) -> u8string&
 {
     FO_STACK_TRACE_ENTRY();
-
-    if (auto issue = validate_ascii_text(value)) {
-        throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
-    }
 
     storage_type suffix;
     suffix.reserve(value.size());

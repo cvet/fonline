@@ -410,11 +410,6 @@ public:
     virtual void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) = 0;
     virtual void SetScreenKeyboardEnabled(bool enabled) = 0;
     virtual void SetClipboardText(u8string_view text) = 0;
-    void SetClipboardText(string_view text)
-    {
-        u8string utf8_text = text;
-        SetClipboardText(utf8_text);
-    }
 };
 
 class IAppAudio

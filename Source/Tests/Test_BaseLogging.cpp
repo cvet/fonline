@@ -48,6 +48,7 @@ concept CanWriteBaseLogBytes = requires(T&& message) { WriteBaseLogBytes(std::fo
 
 static_assert(CanLogToFile<u8string_view>);
 static_assert(CanLogToFile<const u8string&>);
+static_assert(CanLogToFile<u8string>);
 static_assert(CanLogToFile<string_view>);
 static_assert(CanLogToFile<string&>);
 static_assert(CanLogToFile<strex>);

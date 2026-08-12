@@ -750,7 +750,7 @@ auto Updater::IsDiskFileHashMatch(u8string_view file_path, uint64_t expected_siz
 
     // Keyed by the whole path: two same-named files in different directories would otherwise share one
     // entry, and a size plus write-time collision would answer this check with the other file's hash.
-    u8string cache_key = u8strex("{}-{:016x}.hash", u8strvex(file_path).extract_file_name(), hashing::hash<std::u8string_view> {}(file_path.native_view()));
+    string cache_key = strex("{:016x}.hash", hashing::hash<std::u8string_view> {}(file_path.native_view()));
 
     if (_cache.HasEntry(cache_key)) {
         auto data = _cache.GetBytes(cache_key);

@@ -326,6 +326,7 @@ public:
         if (path != nullptr) {
             texture_path = utf16_to_string(std::u16string_view {path, std::char_traits<char16_t>::length(path)});
         }
+
         texture_path = strex(texture_path).format_path();
 
         // A distortion map is an ordinary image in the atlas; what differs is how the shader reads it, not how it loads.
@@ -335,6 +336,7 @@ public:
         }
 
         auto [render_texture, atlas_rect] = _textureLoader(texture_path);
+
         if (!render_texture) {
             WriteLog(LogType::Warning, "Effekseer texture '{}' is missing", texture_path);
             return nullptr;
@@ -370,6 +372,7 @@ public:
         if (path != nullptr) {
             model_path = utf16_to_string(std::u16string_view {path, std::char_traits<char16_t>::length(path)});
         }
+
         model_path = strex(model_path).format_path();
         File file = _resources->ReadFile(model_path);
 

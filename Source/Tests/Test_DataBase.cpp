@@ -478,8 +478,7 @@ namespace
 
     auto WriteUtf8Fixture(u8string_view path, string_view content) -> bool
     {
-        u8string utf8_content = content;
-        return fs_write_file_text(path, utf8_content.view());
+        return fs_write_file_text(path, content);
     }
 
     void WriteRecoveryLogs(const ScopedRecoveryLogs& recovery_logs, string_view pending_content, string_view committed_content = {})

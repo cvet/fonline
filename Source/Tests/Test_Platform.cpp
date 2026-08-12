@@ -145,14 +145,14 @@ TEST_CASE("Platform")
 
     SECTION("LoadModuleReturnsNullForMissingLibrary")
     {
-        nptr<void> module = Platform::LoadModule(u8string_view_nt {u8"lf_missing_platform_module_for_tests"});
+        nptr<void> module = Platform::LoadModule(u8"lf_missing_platform_module_for_tests");
         CHECK_FALSE(static_cast<bool>(module));
         Platform::UnloadModule(module);
     }
 
     SECTION("LoadModuleAcceptsUnicodePaths")
     {
-        nptr<void> module = Platform::LoadModule(u8string_view_nt {u8"несуществующая_библиотека_𐍈"});
+        nptr<void> module = Platform::LoadModule(u8"несуществующая_библиотека_𐍈");
         CHECK_FALSE(static_cast<bool>(module));
         Platform::UnloadModule(module);
     }
@@ -179,8 +179,8 @@ TEST_CASE("Platform")
 
     SECTION("InfoHelpersAreSafeToCall")
     {
-        Platform::InfoLog(u8string_view_nt {u8"platform test log — журнал"});
-        Platform::SetThreadName(u8string_view_nt {u8"platform-test-thread-𐍈"});
+        Platform::InfoLog(u8"platform test log — журнал");
+        Platform::SetThreadName(u8"platform-test-thread-𐍈");
         SUCCEED();
     }
 

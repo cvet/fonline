@@ -689,7 +689,7 @@ static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
     if (runtime_result.Result.RequestedRuntimePath != nullptr) {
         const char* requested_runtime_path = runtime_result.Result.RequestedRuntimePath;
         runtime_result.RequestedRuntimePath = utf8_from_char_span(const_span<char> {requested_runtime_path, std::strlen(requested_runtime_path)});
-        runtime_result.Result.RequestedRuntimePath = utf8_as_char_view(runtime_result.RequestedRuntimePath).data();
+        runtime_result.Result.RequestedRuntimePath = utf8_to_c_str(runtime_result.RequestedRuntimePath.view_nt()).get();
     }
     else {
         runtime_result.RequestedRuntimePath.clear();
