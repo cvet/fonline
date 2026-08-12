@@ -70,6 +70,16 @@ static void ImGuiFree(void* raw_mem, void* user_data)
     allocator.deallocate(bytes.get(), 0);
 }
 
+static void ImGuiLogError(ImGuiContext* ctx, void* user_data, const char* msg) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(user_data);
+
+    const ImGuiWindow* window = ctx != nullptr ? ctx->CurrentWindow : nullptr;
+    WriteLog(LogType::Error, "ImGui error in window '{}': {}", window != nullptr ? window->Name : "(none)", msg != nullptr ? msg : "(no message)");
+}
+
 void ImGuiExt::Init()
 {
     FO_STACK_TRACE_ENTRY();
@@ -77,12 +87,7 @@ void ImGuiExt::Init()
     IMGUI_CHECKVERSION();
     ImGui::SetAllocatorFunctions(&ImGuiAlloc, &ImGuiFree, nullptr);
     ImGui::CreateContext();
-
-    // A recoverable ImGui error reaches us through IM_ASSERT, which carries only the stringified
-    // expression - "Missing End()" says nothing about which window was left open. ImGui writes the
-    // named form ("Recovered from missing End() for '<window>'") to its error log first, so enabling
-    // that category keeps the identifying half of the report instead of discarding it.
-    ImGui::GetCurrentContext()->DebugLogFlags |= ImGuiDebugLogFlags_EventError | ImGuiDebugLogFlags_OutputToTTY;
+    ImGui::GetCurrentContext()->ErrorCallback = &ImGuiLogError;
 }
 
 auto ImGuiExt::LoadIniSettingsIfContext(std::string_view ini_data) -> bool
