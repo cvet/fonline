@@ -85,6 +85,15 @@ ModelInstance::~ModelInstance()
     FO_NO_STACK_TRACE_ENTRY();
 
     InvalidateCombinedMeshes();
+
+    // Every child walks up through _parent to reach the combined-mesh root, so children must not be
+    // released by implicit member teardown - by then this object's own members are already gone and the
+    // walk reads them. Cut the links and drop the children while this instance is still whole.
+    for (auto& child : _children) {
+        child->_parent = nullptr;
+    }
+
+    _children.clear();
     _modelParticles.clear();
 }
 
