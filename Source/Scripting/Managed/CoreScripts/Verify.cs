@@ -49,6 +49,25 @@ namespace FOnline
             }
         }
 
+        // The end of a path that cannot be reached -- the arm after a switch that handles every enum member,
+        // the tail of a search that always returns from inside its loop. Written as `throw Game.Unreachable(...)`.
+        //
+        // It returns the exception rather than throwing it, because only a `throw` ends a path as far as the
+        // compiler is concerned: C# reachability is structural, so neither `Verify(false, ...)` nor a
+        // `[DoesNotReturn]` method satisfies CS0161 -- which is why such tails previously needed a *second*,
+        // messageless `throw` after the Verify purely to compile. This keeps one statement that both states
+        // the invariant with a real message and ends the path, and it formats context values in the same
+        // "\n- <value>" layout as Verify.
+        public static System.Exception Unreachable(string message)
+        {
+            return new System.InvalidOperationException(message);
+        }
+
+        public static System.Exception Unreachable(string message, params object?[] args)
+        {
+            return new System.InvalidOperationException(BuildMessage(message, args));
+        }
+
         // verify(x != null, message) narrowing form: returns the value typed non-null so the C# nullable-flow
         // analysis treats it as live afterward (honoring the repo's zero-warning rule on nullable references).
         // `[NotNull]` narrows the *argument* too, so a caller that ignores the return value still gets the
