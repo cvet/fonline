@@ -235,81 +235,94 @@ namespace ClientEngineTest
             // aborts on the unbalanced window. Catch here so the window always closes, and record the
             // failure instead of hiding it: the test asserts this counter stayed at zero.
             try {
-            ImGui.Text("plain text");
-            ImGui.TextDisabled("disabled text");
-            ImGui.TextWrapped("wrapped text that is long enough to actually wrap inside the window");
-            ImGui.AlignTextToFramePadding();
+                ImGui.Text("plain text");
+                ImGui.TextDisabled("disabled text");
+                ImGui.TextWrapped("wrapped text that is long enough to actually wrap inside the window");
+                ImGui.AlignTextToFramePadding();
 
-            ImGui.PushID(1);
-            ImGui.PopID();
-            ImGui.PushID("named");
-            ImGui.PopID();
+                ImGui.PushID(1);
+                ImGui.PopID();
+                ImGui.PushID("named");
+                ImGui.PopID();
 
-            ImGui.PushStyleColor(ImGui_Col::Text, 1.0f, 1.0f, 1.0f, 1.0f);
-            ImGui.PopStyleColor(1);
-            ImGui.PushStyleVar(ImGui_StyleVar::Alpha, 1.0f);
-            ImGui.PopStyleVar(1);
+                ImGui.PushStyleColor(ImGui_Col::Text, 1.0f, 1.0f, 1.0f, 1.0f);
+                ImGui.PopStyleColor(1);
+                ImGui.PushStyleVar(ImGui_StyleVar::Alpha, 1.0f);
+                ImGui.PopStyleVar(1);
 
-            ImGui.Separator();
-            ImGui.SameLine();
-            ImGui.Spacing();
-            ImGui.NewLine();
-            ImGui.Indent();
-            ImGui.Unindent();
+                ImGui.Separator();
+                ImGui.SameLine();
+                ImGui.Spacing();
+                ImGui.NewLine();
+                ImGui.Indent();
+                ImGui.Unindent();
 
-            if (ImGui.Button("button")) {
-            }
+                if (ImGui.Button("button")) {
+                }
 
-            ImGui.SmallButton("small");
-            ImGui.Bullet();
-            ImGui.BulletText("bullet text");
+                ImGui.SmallButton("small");
+                ImGui.Bullet();
+                ImGui.BulletText("bullet text");
 
-            // Geometry and state queries answer inside a live window
-            fsize textSize = ImGui.CalcTextSize("measure me");
-            fpos windowPos = ImGui.GetWindowPos();
-            fsize windowSize = ImGui.GetWindowSize();
+                // Geometry and state queries answer inside a live window
+                fsize textSize = ImGui.CalcTextSize("measure me");
+                fpos windowPos = ImGui.GetWindowPos();
+                fsize windowSize = ImGui.GetWindowSize();
 
-            float scrollX = ImGui.GetScrollX();
-            float scrollY = ImGui.GetScrollY();
-            ImGui.SetScrollX(scrollX);
-            ImGui.SetScrollY(scrollY);
-            float maxX = ImGui.GetScrollMaxX();
-            float maxY = ImGui.GetScrollMaxY();
+                float scrollX = ImGui.GetScrollX();
+                float scrollY = ImGui.GetScrollY();
+                ImGui.SetScrollX(scrollX);
+                ImGui.SetScrollY(scrollY);
+                float maxX = ImGui.GetScrollMaxX();
+                float maxY = ImGui.GetScrollMaxY();
 
-            // Nonsense geometry means the window is not in a drawable state, so the probes below are
-            // skipped - but never by returning: the matching ImGui.End after this block must still run,
-            // or the next render aborts the whole frame over the unbalanced window
-            bool geometryIsSane = textSize.width >= 0.0f && windowPos.x >= -100000.0f && windowSize.width >= 0.0f && maxX >= 0.0f && maxY >= 0.0f;
+                // Nonsense geometry means the window is not in a drawable state, so the probes below are
+                // skipped - but never by returning: the matching ImGui.End after this block must still run,
+                // or the next render aborts the whole frame over the unbalanced window
+                bool geometryIsSane = textSize.width >= 0.0f && windowPos.x >= -100000.0f && windowSize.width >= 0.0f && maxX >= 0.0f && maxY >= 0.0f;
 
-            if (geometryIsSane) {
-                ImGui.GetTextLineHeight();
-                ImGui.GetTextLineHeightWithSpacing();
-                ImGui.GetFrameHeight();
-                ImGui.GetFrameHeightWithSpacing();
-                ImGui.GetWindowWidth();
-                ImGui.GetWindowHeight();
-                ImGui.GetTime();
-                ImGui.GetFrameCount();
-                ImGui.IsWindowAppearing();
-                ImGui.IsAnyItemHovered();
-                ImGui.IsAnyItemActive();
+                if (geometryIsSane) {
+                    ImGui.GetTextLineHeight();
+                    ImGui.GetTextLineHeightWithSpacing();
+                    ImGui.GetFrameHeight();
+                    ImGui.GetFrameHeightWithSpacing();
+                    ImGui.GetWindowWidth();
+                    ImGui.GetWindowHeight();
+                    ImGui.GetTime();
+                    ImGui.GetFrameCount();
+                    ImGui.IsWindowAppearing();
+                    ImGui.IsAnyItemHovered();
+                    ImGui.IsAnyItemActive();
 
-                DrawImGuiLayout();
-                DrawImGuiInputWidgets();
-                DrawImGuiContainers();
-                DrawImGuiItemQueries();
-                DrawImGuiTreesAndSelectables();
-                DrawImGuiTooltipsAndPopups();
-                DrawImGuiTablesAndTabs();
-                DrawImGuiTextAndColorWidgets();
-                DrawImGuiMenusAndSettings();
-                DrawImGuiRemainingBindings();
-                DrawImGuiSprites();
-                SweepImGuiEmptyIds();
-            }
+                    ImGuiStage = "layout";
+                    DrawImGuiLayout();
+                    ImGuiStage = "input widgets";
+                    DrawImGuiInputWidgets();
+                    ImGuiStage = "containers";
+                    DrawImGuiContainers();
+                    ImGuiStage = "item queries";
+                    DrawImGuiItemQueries();
+                    ImGuiStage = "trees and selectables";
+                    DrawImGuiTreesAndSelectables();
+                    ImGuiStage = "tooltips and popups";
+                    DrawImGuiTooltipsAndPopups();
+                    ImGuiStage = "tables and tabs";
+                    DrawImGuiTablesAndTabs();
+                    ImGuiStage = "text and color widgets";
+                    DrawImGuiTextAndColorWidgets();
+                    ImGuiStage = "menus and settings";
+                    DrawImGuiMenusAndSettings();
+                    ImGuiStage = "remaining bindings";
+                    DrawImGuiRemainingBindings();
+                    ImGuiStage = "sprites";
+                    DrawImGuiSprites();
+                    ImGuiStage = "empty id sweep";
+                    SweepImGuiEmptyIds();
+                }
             }
             catch {
                 ImGuiSurfaceFailures++;
+                ImGuiFailedStage = ImGuiStage;
             }
         }
 
@@ -743,6 +756,8 @@ R"(        ImGui.Value("bool", true);
     int ImGuiEmptyIdRejections = 0;
     int ImGuiSpriteRejections = 0;
     int ImGuiSurfaceFailures = 0;
+    string ImGuiStage;
+    string ImGuiFailedStage;
 
     int UnitTestGetImGuiSpriteRejections()
     {
@@ -769,6 +784,11 @@ R"(        ImGui.Value("bool", true);
     int UnitTestGetImGuiSurfaceFailures()
     {
         return ImGuiSurfaceFailures;
+    }
+
+    string UnitTestGetImGuiFailedStage()
+    {
+        return ImGuiFailedStage;
     }
 
     void UnitTestImGuiRejectsEmptyId(int index)
@@ -3591,6 +3611,10 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
     // misbehaved - the engine swallows it inside the event, so it is only visible through this counter
     int32_t surface_failures = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiSurfaceFailures"), surface_failures));
+
+    string failed_stage;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiFailedStage"), failed_stage));
+    INFO("last ImGui stage entered before the throw: " << failed_stage);
     CHECK(surface_failures == 0);
 
     // Input events must be safe to feed outside of a session too
