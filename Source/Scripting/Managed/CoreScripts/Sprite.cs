@@ -18,6 +18,12 @@
 
 namespace FOnline
 {
+    ///@ Enum SpriteLayout None
+    ///@ Enum SpriteLayout Tile
+    ///@ Enum SpriteLayout Center
+    ///@ Enum SpriteLayout Stretch
+    ///@ Enum SpriteLayout Zoom
+
     public sealed class Sprite : System.IDisposable
     {
         public uint Id = 0;
