@@ -230,6 +230,11 @@ namespace ClientEngineTest
         ImGui.SetNextWindowFocus();
 
         if (ImGui.Begin("ScriptImGuiCoverage", ImGui_WindowFlags::None)) {
+            // OnRenderIface is an event handler, so the engine swallows anything that escapes it and the
+            // frame still looks successful - but ImGui.End below would be skipped and the next render
+            // aborts on the unbalanced window. Catch here so the window always closes, and record the
+            // failure instead of hiding it: the test asserts this counter stayed at zero.
+            try {
             ImGui.Text("plain text");
             ImGui.TextDisabled("disabled text");
             ImGui.TextWrapped("wrapped text that is long enough to actually wrap inside the window");
@@ -301,6 +306,10 @@ namespace ClientEngineTest
                 DrawImGuiRemainingBindings();
                 DrawImGuiSprites();
                 SweepImGuiEmptyIds();
+            }
+            }
+            catch {
+                ImGuiSurfaceFailures++;
             }
         }
 
@@ -733,6 +742,7 @@ R"(        ImGui.Value("bool", true);
 
     int ImGuiEmptyIdRejections = 0;
     int ImGuiSpriteRejections = 0;
+    int ImGuiSurfaceFailures = 0;
 
     int UnitTestGetImGuiSpriteRejections()
     {
@@ -754,6 +764,11 @@ R"(        ImGui.Value("bool", true);
     int UnitTestGetImGuiEmptyIdRejections()
     {
         return ImGuiEmptyIdRejections;
+    }
+
+    int UnitTestGetImGuiSurfaceFailures()
+    {
+        return ImGuiSurfaceFailures;
     }
 
     void UnitTestImGuiRejectsEmptyId(int index)
@@ -3571,6 +3586,12 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
     int32_t sprite_rejections = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiSpriteRejections"), sprite_rejections));
     CHECK(sprite_rejections == 4);
+
+    // The surface guard keeps ImGui balanced when a probe throws, but a throw still means a binding
+    // misbehaved - the engine swallows it inside the event, so it is only visible through this counter
+    int32_t surface_failures = 0;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiSurfaceFailures"), surface_failures));
+    CHECK(surface_failures == 0);
 
     // Input events must be safe to feed outside of a session too
     InputEvent move;
