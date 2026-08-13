@@ -86,9 +86,8 @@ ModelInstance::~ModelInstance()
 
     InvalidateCombinedMeshes();
 
-    // Every child walks up through _parent to reach the combined-mesh root, so children must not be
-    // released by implicit member teardown - by then this object's own members are already gone and the
-    // walk reads them. Cut the links and drop the children while this instance is still whole.
+    // Children reach the combined-mesh root by walking _parent, so they cannot be left to implicit member
+    // teardown — by then the members that walk reads are already gone
     for (auto& child : _children) {
         child->_parent = nullptr;
     }
@@ -322,7 +321,7 @@ void ModelInstance::ApplyDisabledMeshes(const vector<hstring>& disabled_meshes)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // An empty name stands for every mesh of the model, which is how a link hides the whole base body.
+    // An empty name stands for every mesh of the model, which is how a link hides the whole base body
     for (hstring disabled_mesh_name : disabled_meshes) {
         for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
             auto mesh = _allMeshes[mesh_index].as_ptr();
@@ -534,10 +533,8 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
             _allMeshesDisabled[i] = _allMeshes[i]->Disabled;
         }
 
-        // Set anim data. The default link disables meshes just like a layer or child link does - a model that
-        // permanently hides one of its meshes says so once, at the top of its description, instead of through every
-        // layer value. Baked model bounds already exclude it, so leaving it enabled here would also make the runtime
-        // sprite frame disagree with the frame the bounds were baked for.
+        // The default link disables meshes like any layer or child link, and baked bounds already exclude them, so
+        // leaving them enabled makes the runtime sprite frame disagree with the frame the bounds were baked for
         SetAnimData(_modelInfo->_animDataDefault, true);
         ApplyDisabledMeshes(_modelInfo->_animDataDefault.DisabledMesh);
 
@@ -2456,9 +2453,8 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The frame is rendered into a render texture of draw_size * FRAME_SCALE, so a frame the renderer cannot turn into
-    // a texture is not a draw to attempt. Reject it here, where the model that produced the size is still known, rather
-    // than letting the graphics API fail on an opaque invalid-argument deep inside the atlas draw.
+    // Rejected here, where the model that produced the size is still known, instead of failing later as an opaque
+    // invalid-argument deep inside the atlas draw
     int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / FRAME_SCALE;
     int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / FRAME_SCALE;
 

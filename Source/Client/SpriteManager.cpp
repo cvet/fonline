@@ -346,13 +346,8 @@ void SpriteManager::AbortScene() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    // An exception thrown between BeginScene and EndScene abandons the frame midway, leaving the scene render target
-    // on the stack and bound in the render context, and possibly a scissor rect enabled. The frame host reports such
-    // an exception and continues to the next frame through Application::EndFrame, which requires no render target to
-    // be bound, so an abandoned frame has to hand the renderer back the way it found it: half-built draws dropped,
-    // scissors and render targets released. This runs on the unwind path, hence noexcept; the release of a render
-    // context that is itself already gone is the one step here that can fail, and it is reported rather than raised
-    // on top of the exception that is already unwinding.
+    // Runs on the unwind path, so it hands the renderer back as it was found — dropped draws, released scissor and
+    // render target — and reports rather than raises the one step that can fail on an already-gone render context
     _dipQueue.clear();
     _spriteWireframeVertices.clear();
     _spritesDrawBuf->VertCount = 0;

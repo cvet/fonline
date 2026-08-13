@@ -439,10 +439,8 @@ void ClientEngine::MainLoop()
     FontMngr.FrameUpdate();
 
     {
-        // Drawing a frame binds the scene render target for its whole duration, and the frame host recovers from a
-        // failed main loop by continuing with the next frame. An abandoned frame must therefore release the render
-        // target it bound, or the following Application::EndFrame trips its own no-render-target invariant and turns
-        // a recoverable draw failure into a shutdown.
+        // An abandoned frame still holds the scene render target, and Application::EndFrame requires none bound —
+        // without this release a recoverable draw failure escalates into a shutdown
         auto abort_scene_on_fail = scope_fail([this]() noexcept { SprMngr.AbortScene(); });
         SprMngr.BeginScene();
 

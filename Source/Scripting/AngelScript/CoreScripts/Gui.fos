@@ -2956,8 +2956,7 @@ class Grid : Panel
         }
 
         // Re-flow the rows relative to the first cell, which stays where it is. The scroll offset must NOT appear
-        // here: scrolling has already moved every cell, so subtracting it again would drag the whole block one more
-        // page up on each refresh. That stayed invisible while grids were only ever refreshed at scroll 0.
+        // here: scrolling has already moved every cell, so subtracting it again drags the whole block a page up
         int col = 0;
         int row = 0;
         int rowHeight = 0;

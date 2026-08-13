@@ -731,9 +731,8 @@ def copy_directory(source_path: str | Path, target_path: str | Path, dirs_exist_
 def download_file(url: str, target_path: Path, label: str) -> None:
 	log(f'Download {label}:', url)
 
-	# Release CDNs drop connections when several jobs start at once, and every caller here fetches a large
-	# archive the rest of the job depends on, so one hiccup must not fail the build. xwin already retries
-	# its own downloads (XWIN_HTTP_RETRY_COUNT); this covers fetching xwin itself and the Android archives.
+	# Release CDNs drop connections when several jobs start at once and every caller here fetches an archive the
+	# rest of the job depends on; xwin retries its own downloads, this covers fetching xwin and the Android archives
 	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
 		try:
 			urllib.request.urlretrieve(url, target_path)

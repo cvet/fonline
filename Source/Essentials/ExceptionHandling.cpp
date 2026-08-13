@@ -239,9 +239,8 @@ extern auto GetExceptionCallback() noexcept -> ExceptionCallback
 
 #if HAS_NATIVE_TRACE && !FO_WINDOWS
 
-// Retires the sigaltstack registration before the pages it points at are released. Freeing first would
-// leave the kernel aiming the signal stack at reclaimed memory for the remainder of thread teardown, and
-// under an instrumented allocator the same region is then unmapped twice.
+// Retires the sigaltstack registration before its pages are released: freeing first leaves the kernel aiming the
+// signal stack at reclaimed memory, and an instrumented allocator then unmaps the same region twice
 class AltSignalStackReleaser final
 {
 public:

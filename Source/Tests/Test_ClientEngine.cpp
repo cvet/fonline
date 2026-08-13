@@ -231,10 +231,8 @@ namespace ClientEngineTest
         ImGui.SetNextWindowFocus();
 
         if (ImGui.Begin("ScriptImGuiCoverage", ImGui_WindowFlags::None)) {
-            // OnRenderIface is an event handler, so the engine swallows anything that escapes it and the
-            // frame still looks successful - but ImGui.End below would be skipped and the next render
-            // aborts on the unbalanced window. Catch here so the window always closes, and record the
-            // failure instead of hiding it: the test asserts this counter stayed at zero.
+            // The engine swallows anything escaping OnRenderIface, so a throw would skip ImGui.End and abort the
+            // next render instead of failing here; catching keeps the window balanced and records the failure
             try {
                 ImGui.Text("plain text");
                 ImGui.TextDisabled("disabled text");
@@ -277,9 +275,8 @@ namespace ClientEngineTest
                 float maxX = ImGui.GetScrollMaxX();
                 float maxY = ImGui.GetScrollMaxY();
 
-                // Nonsense geometry means the window is not in a drawable state, so the probes below are
-                // skipped - but never by returning: the matching ImGui.End after this block must still run,
-                // or the next render aborts the whole frame over the unbalanced window
+                // Skipped by branching, never by returning: the matching ImGui.End must still run, or the next
+                // render aborts the whole frame over the unbalanced window
                 bool geometryIsSane = textSize.width >= 0.0f && windowPos.x >= -100000.0f && windowSize.width >= 0.0f && maxX >= 0.0f && maxY >= 0.0f;
 
                 if (geometryIsSane) {
@@ -1650,7 +1647,7 @@ void main(void)
     }
 
     // A real triangle, so the model-info baker can compute static bounds from it. The origin moves the whole
-    // triangle, which lets a test place it far outside the declared bounds and tell a swept mesh from a skipped one.
+    // triangle, which lets a test place it far outside the bounds and tell a swept mesh from a skipped one
     static auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1827,9 +1824,8 @@ BoundsMaxZ = 1 1 1 1
         FO_STACK_TRACE_ENTRY();
 
         BakerTests::TestRig rig;
-        // A one-line description leaves the whole layer machinery unreachable: animation-data layers,
-        // per-animation speeds and the link transforms are all authored here and nowhere else. Anything the caller
-        // adds goes right after the model line, which is where the description's own default link is authored.
+        // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
+        // after the model line — where the description's own default link is authored
         string mesh_name = strex(mesh_path).extract_file_name().str();
         string description = strex("Model {}\n"
                                    "{}"
@@ -2184,14 +2180,12 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 #if FO_ENABLE_3D
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
-    // A description hides a permanently invisible mesh once, at its top, through the model's own default link - the
-    // same disabled-mesh list a layer value or a child attachment carries. Baked model and animation bounds are
-    // calculated with those meshes excluded, so a runtime that left them enabled would sweep geometry the baked
-    // layout never budgeted for and settle on a frame no renderer can allocate.
+    // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so a
+    // runtime that left them enabled would sweep geometry the baked layout never budgeted for
     constexpr string_view MESH_PATH = "Models/DefaultLinkDisabled.fbx";
     constexpr string_view MODEL_PATH = "Models/DefaultLinkDisabled.fo3d";
 
-    // Far outside the declared bounds, so a mesh that still reached the sweep could not hide inside the layout frame.
+    // Far outside the declared bounds, so a mesh that still reached the sweep could not hide inside the layout frame
     vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh(vec3 {12.0f, 12.0f, 0.0f});
 
     vector<pair<string, vector<uint8_t>>> model_resources;
@@ -2214,13 +2208,13 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
     auto model = model_mngr->CreateModel(MODEL_PATH);
     REQUIRE(static_cast<bool>(model));
 
-    // The sweep only measures generated combined meshes, so without this the frame would stay at the layout size no
-    // matter what the default link did.
+    // The sweep only measures generated combined meshes, so without this the frame would stay at the layout size
+    // no matter what the default link did
     model->StartMeshGeneration();
     model->PrepareFrameLayout();
 
-    // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already inside
-    // the frame and the check below would pass without proving anything.
+    // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already
+    // inside the frame and the check below would pass without proving anything
     isize32 layout_size = model->GetDrawSize();
     int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->ModelProjFactor);
     REQUIRE(layout_size.width <= bounds_span_limit);
@@ -2334,9 +2328,8 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
     SECTION("AFrameLargerThanTheMaximumRenderTextureIsRejected")
     {
-        // The frame is rendered into a render texture of draw_size * FRAME_SCALE. A model whose posed geometry demands
-        // more than the renderer can allocate has to be rejected here, while the model is still identifiable, instead
-        // of reaching the graphics API and failing there as an anonymous invalid argument.
+        // Rejected while the model is still identifiable, instead of reaching the graphics API and failing there as
+        // an anonymous invalid argument
         int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
         int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
 
