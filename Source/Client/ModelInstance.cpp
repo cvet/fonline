@@ -85,6 +85,15 @@ ModelInstance::~ModelInstance()
     FO_NO_STACK_TRACE_ENTRY();
 
     InvalidateCombinedMeshes();
+
+    // Every child walks up through _parent to reach the combined-mesh root, so children must not be
+    // released by implicit member teardown - by then this object's own members are already gone and the
+    // walk reads them. Cut the links and drop the children while this instance is still whole.
+    for (auto& child : _children) {
+        child->_parent = nullptr;
+    }
+
+    _children.clear();
     _modelParticles.clear();
 }
 
@@ -309,6 +318,22 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     }
 }
 
+void ModelInstance::ApplyDisabledMeshes(const vector<hstring>& disabled_meshes)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // An empty name stands for every mesh of the model, which is how a link hides the whole base body.
+    for (hstring disabled_mesh_name : disabled_meshes) {
+        for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
+            auto mesh = _allMeshes[mesh_index].as_ptr();
+
+            if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
+                mesh->Disabled = true;
+            }
+        }
+    }
+}
+
 void ModelInstance::SetDir(mdir dir, bool smooth_rotation)
 {
     FO_STACK_TRACE_ENTRY();
@@ -509,8 +534,12 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
             _allMeshesDisabled[i] = _allMeshes[i]->Disabled;
         }
 
-        // Set anim data
+        // Set anim data. The default link disables meshes just like a layer or child link does - a model that
+        // permanently hides one of its meshes says so once, at the top of its description, instead of through every
+        // layer value. Baked model bounds already exclude it, so leaving it enabled here would also make the runtime
+        // sprite frame disagree with the frame the bounds were baked for.
         SetAnimData(_modelInfo->_animDataDefault, true);
+        ApplyDisabledMeshes(_modelInfo->_animDataDefault.DisabledMesh);
 
         if (_parent) {
             SetAnimData(_animLink, false);
@@ -534,15 +563,8 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                     for (auto j : link.DisabledLayer) {
                         unused_layers[j] = true;
                     }
-                    for (auto disabled_mesh_name : link.DisabledMesh) {
-                        for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
-                            auto mesh = _allMeshes[mesh_index].as_ptr();
 
-                            if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
-                                mesh->Disabled = true;
-                            }
-                        }
-                    }
+                    ApplyDisabledMeshes(link.DisabledMesh);
                 }
             }
         }
@@ -551,15 +573,8 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
             for (auto j : _animLink.DisabledLayer) {
                 unused_layers[j] = true;
             }
-            for (auto disabled_mesh_name : _animLink.DisabledMesh) {
-                for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
-                    auto mesh = _allMeshes[mesh_index].as_ptr();
 
-                    if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
-                        mesh->Disabled = true;
-                    }
-                }
-            }
+            ApplyDisabledMeshes(_animLink.DisabledMesh);
         }
 
         // Append animations
@@ -2441,8 +2456,14 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(draw_size.width > 0 && draw_size.width <= std::numeric_limits<int32_t>::max() / FRAME_SCALE, "3D model frame width is out of range", draw_size.width);
-    FO_VERIFY_AND_THROW(draw_size.height > 0 && draw_size.height <= std::numeric_limits<int32_t>::max() / FRAME_SCALE, "3D model frame height is out of range", draw_size.height);
+    // The frame is rendered into a render texture of draw_size * FRAME_SCALE, so a frame the renderer cannot turn into
+    // a texture is not a draw to attempt. Reject it here, where the model that produced the size is still known, rather
+    // than letting the graphics API fail on an opaque invalid-argument deep inside the atlas draw.
+    int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / FRAME_SCALE;
+    int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / FRAME_SCALE;
+
+    FO_VERIFY_AND_THROW(draw_size.width > 0 && draw_size.width <= max_draw_width, "3D model frame width is out of range", _modelInfo->_fileName, draw_size.width, max_draw_width);
+    FO_VERIFY_AND_THROW(draw_size.height > 0 && draw_size.height <= max_draw_height, "3D model frame height is out of range", _modelInfo->_fileName, draw_size.height, max_draw_height);
 
     optional<vec3> old_root_pos;
 

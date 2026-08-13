@@ -173,6 +173,7 @@ funcdef bool DragAndDropHandler(Object obj, Object? target);
 //   void SetFrameImage(hstring imageName)
 //   void SetCapInsets(int left, int top, int right, int bottom)
 //   void SetCropContent(bool enabled)
+//   bool CropContent
 //   void SetAutoScroll(bool ver, bool hor)
 //   int VerticalScrollValue
 //   int HorizontalScrollValue
@@ -2012,6 +2013,11 @@ class Panel : Object
         }
     }
 
+    bool get_CropContent() final
+    {
+        return _CropContent;
+    }
+
     void SetCropContent(bool enabled)
     {
         _CropContent = enabled;
@@ -2949,13 +2955,16 @@ class Grid : Panel
             return;
         }
 
+        // Re-flow the rows relative to the first cell, which stays where it is. The scroll offset must NOT appear
+        // here: scrolling has already moved every cell, so subtracting it again would drag the whole block one more
+        // page up on each refresh. That stayed invisible while grids were only ever refreshed at scroll 0.
         int col = 0;
         int row = 0;
         int rowHeight = 0;
-        int shiftX = -_HorizontalScroll;
-        int shiftY = -_VerticalScroll;
-        int baseX = _Cells[0]._BasePos.x - _HorizontalScroll;
-        int baseY = _Cells[0]._BasePos.y - _VerticalScroll;
+        int shiftX = 0;
+        int shiftY = 0;
+        int baseX = _Cells[0]._BasePos.x;
+        int baseY = _Cells[0]._BasePos.y;
 
         for (int i = 0; i < _Cells.length(); i++) {
             int ox = shiftX - _Cells[i]._BasePos.x + baseX;

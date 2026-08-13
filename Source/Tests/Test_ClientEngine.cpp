@@ -231,75 +231,100 @@ namespace ClientEngineTest
         ImGui.SetNextWindowFocus();
 
         if (ImGui.Begin("ScriptImGuiCoverage", ImGui_WindowFlags::None)) {
-            ImGui.Text("plain text");
-            ImGui.TextDisabled("disabled text");
-            ImGui.TextWrapped("wrapped text that is long enough to actually wrap inside the window");
-            ImGui.AlignTextToFramePadding();
+            // OnRenderIface is an event handler, so the engine swallows anything that escapes it and the
+            // frame still looks successful - but ImGui.End below would be skipped and the next render
+            // aborts on the unbalanced window. Catch here so the window always closes, and record the
+            // failure instead of hiding it: the test asserts this counter stayed at zero.
+            try {
+                ImGui.Text("plain text");
+                ImGui.TextDisabled("disabled text");
+                ImGui.TextWrapped("wrapped text that is long enough to actually wrap inside the window");
+                ImGui.AlignTextToFramePadding();
 
-            ImGui.PushID(1);
-            ImGui.PopID();
-            ImGui.PushID("named");
-            ImGui.PopID();
+                ImGui.PushID(1);
+                ImGui.PopID();
+                ImGui.PushID("named");
+                ImGui.PopID();
 
-            ImGui.PushStyleColor(ImGui_Col::Text, 1.0f, 1.0f, 1.0f, 1.0f);
-            ImGui.PopStyleColor(1);
-            ImGui.PushStyleVar(ImGui_StyleVar::Alpha, 1.0f);
-            ImGui.PopStyleVar(1);
+                ImGui.PushStyleColor(ImGui_Col::Text, 1.0f, 1.0f, 1.0f, 1.0f);
+                ImGui.PopStyleColor(1);
+                ImGui.PushStyleVar(ImGui_StyleVar::Alpha, 1.0f);
+                ImGui.PopStyleVar(1);
 
-            ImGui.Separator();
-            ImGui.SameLine();
-            ImGui.Spacing();
-            ImGui.NewLine();
-            ImGui.Indent();
-            ImGui.Unindent();
+                ImGui.Separator();
+                ImGui.SameLine();
+                ImGui.Spacing();
+                ImGui.NewLine();
+                ImGui.Indent();
+                ImGui.Unindent();
 
-            if (ImGui.Button("button")) {
+                if (ImGui.Button("button")) {
+                }
+
+                ImGui.SmallButton("small");
+                ImGui.Bullet();
+                ImGui.BulletText("bullet text");
+
+                // Geometry and state queries answer inside a live window
+                fsize textSize = ImGui.CalcTextSize("measure me");
+                fpos windowPos = ImGui.GetWindowPos();
+                fsize windowSize = ImGui.GetWindowSize();
+
+                float scrollX = ImGui.GetScrollX();
+                float scrollY = ImGui.GetScrollY();
+                ImGui.SetScrollX(scrollX);
+                ImGui.SetScrollY(scrollY);
+                float maxX = ImGui.GetScrollMaxX();
+                float maxY = ImGui.GetScrollMaxY();
+
+                // Nonsense geometry means the window is not in a drawable state, so the probes below are
+                // skipped - but never by returning: the matching ImGui.End after this block must still run,
+                // or the next render aborts the whole frame over the unbalanced window
+                bool geometryIsSane = textSize.width >= 0.0f && windowPos.x >= -100000.0f && windowSize.width >= 0.0f && maxX >= 0.0f && maxY >= 0.0f;
+
+                if (geometryIsSane) {
+                    ImGui.GetTextLineHeight();
+                    ImGui.GetTextLineHeightWithSpacing();
+                    ImGui.GetFrameHeight();
+                    ImGui.GetFrameHeightWithSpacing();
+                    ImGui.GetWindowWidth();
+                    ImGui.GetWindowHeight();
+                    ImGui.GetTime();
+                    ImGui.GetFrameCount();
+                    ImGui.IsWindowAppearing();
+                    ImGui.IsAnyItemHovered();
+                    ImGui.IsAnyItemActive();
+
+                    ImGuiStage = "layout";
+                    DrawImGuiLayout();
+                    ImGuiStage = "input widgets";
+                    DrawImGuiInputWidgets();
+                    ImGuiStage = "containers";
+                    DrawImGuiContainers();
+                    ImGuiStage = "item queries";
+                    DrawImGuiItemQueries();
+                    ImGuiStage = "trees and selectables";
+                    DrawImGuiTreesAndSelectables();
+                    ImGuiStage = "tooltips and popups";
+                    DrawImGuiTooltipsAndPopups();
+                    ImGuiStage = "tables and tabs";
+                    DrawImGuiTablesAndTabs();
+                    ImGuiStage = "text and color widgets";
+                    DrawImGuiTextAndColorWidgets();
+                    ImGuiStage = "menus and settings";
+                    DrawImGuiMenusAndSettings();
+                    ImGuiStage = "remaining bindings";
+                    DrawImGuiRemainingBindings();
+                    ImGuiStage = "sprites";
+                    DrawImGuiSprites();
+                    ImGuiStage = "empty id sweep";
+                    SweepImGuiEmptyIds();
+                }
             }
-
-            ImGui.SmallButton("small");
-            ImGui.Bullet();
-            ImGui.BulletText("bullet text");
-
-            // Geometry and state queries answer inside a live window
-            fsize textSize = ImGui.CalcTextSize("measure me");
-            if (textSize.width < 0.0f) return;
-
-            fpos windowPos = ImGui.GetWindowPos();
-            fsize windowSize = ImGui.GetWindowSize();
-            if (windowPos.x < -100000.0f || windowSize.width < 0.0f) return;
-
-            float scrollX = ImGui.GetScrollX();
-            float scrollY = ImGui.GetScrollY();
-            ImGui.SetScrollX(scrollX);
-            ImGui.SetScrollY(scrollY);
-            float maxX = ImGui.GetScrollMaxX();
-            float maxY = ImGui.GetScrollMaxY();
-            if (maxX < 0.0f || maxY < 0.0f) return;
-
-            ImGui.GetTextLineHeight();
-            ImGui.GetTextLineHeightWithSpacing();
-            ImGui.GetFrameHeight();
-            ImGui.GetFrameHeightWithSpacing();
-            ImGui.GetWindowWidth();
-            ImGui.GetWindowHeight();
-            ImGui.GetTime();
-            ImGui.GetFrameCount();
-            ImGui.IsWindowAppearing();
-            ImGui.IsAnyItemHovered();
-            ImGui.IsAnyItemActive();
-
-            DrawImGuiLayout();
-            DrawImGuiInputWidgets();
-            DrawImGuiContainers();
-            DrawImGuiItemQueries();
-            DrawImGuiTreesAndSelectables();
-            DrawImGuiTooltipsAndPopups();
-            DrawImGuiTablesAndTabs();
-            DrawImGuiTextAndColorWidgets();
-            DrawImGuiMenusAndSettings();
-            DrawImGuiRemainingBindings();
-            DrawImGuiSprites();
-            SweepImGuiEmptyIds();
+            catch {
+                ImGuiSurfaceFailures++;
+                ImGuiFailedStage = ImGuiStage;
+            }
         }
 
         ImGui.End();
@@ -731,6 +756,9 @@ R"(        ImGui.Value("bool", true);
 
     int ImGuiEmptyIdRejections = 0;
     int ImGuiSpriteRejections = 0;
+    int ImGuiSurfaceFailures = 0;
+    string ImGuiStage;
+    string ImGuiFailedStage;
 
     int UnitTestGetImGuiSpriteRejections()
     {
@@ -752,6 +780,16 @@ R"(        ImGui.Value("bool", true);
     int UnitTestGetImGuiEmptyIdRejections()
     {
         return ImGuiEmptyIdRejections;
+    }
+
+    int UnitTestGetImGuiSurfaceFailures()
+    {
+        return ImGuiSurfaceFailures;
+    }
+
+    string UnitTestGetImGuiFailedStage()
+    {
+        return ImGuiFailedStage;
     }
 
     void UnitTestImGuiRejectsEmptyId(int index)
@@ -1611,18 +1649,19 @@ void main(void)
         return resources;
     }
 
-    // A real triangle, so the model-info baker can compute static bounds from it
-    static auto MakeRuntimeModelTriangleMesh() -> vector<uint8_t>
+    // A real triangle, so the model-info baker can compute static bounds from it. The origin moves the whole
+    // triangle, which lets a test place it far outside the declared bounds and tell a swept mesh from a skipped one.
+    static auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
 
-        return MakeRuntimeModelMesh([](DataWriter& writer) {
+        return MakeRuntimeModelMesh([origin](DataWriter& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
 
             array<Vertex3D, 3> vertices {};
-            vertices[0].Position = vec3 {0.0f, 0.0f, 0.0f};
-            vertices[1].Position = vec3 {1.0f, 0.0f, 0.0f};
-            vertices[2].Position = vec3 {0.0f, 1.0f, 0.0f};
+            vertices[0].Position = origin;
+            vertices[1].Position = origin + vec3 {1.0f, 0.0f, 0.0f};
+            vertices[2].Position = origin + vec3 {0.0f, 1.0f, 0.0f};
 
             for (Vertex3D& vertex : vertices) {
                 vertex.BlendWeights[0] = 1.0f;
@@ -1783,15 +1822,17 @@ BoundsMaxZ = 1 1 1 1
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
     // source asset directly through the loader callback, so no source-file format has to be reproduced
-    static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob) -> vector<uint8_t>
+    static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
 
         BakerTests::TestRig rig;
         // A one-line description leaves the whole layer machinery unreachable: animation-data layers,
-        // per-animation speeds and the link transforms are all authored here and nowhere else
+        // per-animation speeds and the link transforms are all authored here and nowhere else. Anything the caller
+        // adds goes right after the model line, which is where the description's own default link is authored.
         string mesh_name = strex(mesh_path).extract_file_name().str();
         string description = strex("Model {}\n"
+                                   "{}"
                                    "Anim 1 1 {} Base\n"
                                    "Anim 1 3 {} Base\n"
                                    "Anim 1 5 {} Base\n"
@@ -1819,7 +1860,7 @@ BoundsMaxZ = 1 1 1 1
                                    "Root\n"
                                    "Link Root\n"
                                    "Scale* 0.5\n",
-            mesh_name, mesh_name, mesh_name, mesh_name, mesh_name)
+            mesh_name, default_link_extra, mesh_name, mesh_name, mesh_name, mesh_name)
                                  .str();
 
         rig.AddSourceFile(model_path, description, 1);
@@ -2141,6 +2182,58 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 #endif
 
 #if FO_ENABLE_3D
+TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
+{
+    // A description hides a permanently invisible mesh once, at its top, through the model's own default link - the
+    // same disabled-mesh list a layer value or a child attachment carries. Baked model and animation bounds are
+    // calculated with those meshes excluded, so a runtime that left them enabled would sweep geometry the baked
+    // layout never budgeted for and settle on a frame no renderer can allocate.
+    constexpr string_view MESH_PATH = "Models/DefaultLinkDisabled.fbx";
+    constexpr string_view MODEL_PATH = "Models/DefaultLinkDisabled.fo3d";
+
+    // Far outside the declared bounds, so a mesh that still reached the sweep could not hide inside the layout frame.
+    vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh(vec3 {12.0f, 12.0f, 0.0f});
+
+    vector<pair<string, vector<uint8_t>>> model_resources;
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob, "DisableMesh All\n"));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+
+    auto model_mngr = factory->GetModelMngr();
+
+    REQUIRE_NOTHROW(model_mngr->PreloadModel(MODEL_PATH));
+
+    auto model = model_mngr->CreateModel(MODEL_PATH);
+    REQUIRE(static_cast<bool>(model));
+
+    // The sweep only measures generated combined meshes, so without this the frame would stay at the layout size no
+    // matter what the default link did.
+    model->StartMeshGeneration();
+    model->PrepareFrameLayout();
+
+    // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already inside
+    // the frame and the check below would pass without proving anything.
+    isize32 layout_size = model->GetDrawSize();
+    int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->ModelProjFactor);
+    REQUIRE(layout_size.width <= bounds_span_limit);
+    REQUIRE(layout_size.height <= bounds_span_limit);
+
+    model->SetupFrame(layout_size, model->GetFramePivot());
+    model->PoseSpriteFrame(true);
+
+    auto bounds = model->GetSpriteBounds();
+    REQUIRE(bounds);
+    CHECK(bounds->RequiredFrameSize == layout_size);
+}
+
 TEST_CASE("ModelManagerInstantiatesABakedModel")
 {
     // The 3D instance surface was assumed to need a GPU, but the headless Null renderer serves it: with a
@@ -2237,6 +2330,21 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
         REQUIRE_NOTHROW(model->ClearAnimationCallbacks());
         REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterStateAnim&, CritterActionAnim&) { }));
+    }
+
+    SECTION("AFrameLargerThanTheMaximumRenderTextureIsRejected")
+    {
+        // The frame is rendered into a render texture of draw_size * FRAME_SCALE. A model whose posed geometry demands
+        // more than the renderer can allocate has to be rejected here, while the model is still identifiable, instead
+        // of reaching the graphics API and failing there as an anonymous invalid argument.
+        int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
+        int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
+
+        REQUIRE(max_draw_width > 0);
+        REQUIRE(max_draw_height > 0);
+        REQUIRE_NOTHROW(model->SetupFrame(isize32 {max_draw_width, max_draw_height}, ipos32 {}));
+        REQUIRE_THROWS(model->SetupFrame(isize32 {max_draw_width + 1, max_draw_height}, ipos32 {}));
+        REQUIRE_THROWS(model->SetupFrame(isize32 {max_draw_width, max_draw_height + 1}, ipos32 {}));
     }
 
     SECTION("LayerValuesDriveTheAnimationDataAndLinkTransforms")
@@ -3481,6 +3589,16 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
     int32_t sprite_rejections = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiSpriteRejections"), sprite_rejections));
     CHECK(sprite_rejections == 4);
+
+    // The surface guard keeps ImGui balanced when a probe throws, but a throw still means a binding
+    // misbehaved - the engine swallows it inside the event, so it is only visible through this counter
+    int32_t surface_failures = 0;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiSurfaceFailures"), surface_failures));
+
+    string failed_stage;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiFailedStage"), failed_stage));
+    INFO("last ImGui stage entered before the throw: " << failed_stage);
+    CHECK(surface_failures == 0);
 
     // Input events must be safe to feed outside of a session too
     InputEvent move;

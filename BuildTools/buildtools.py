@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -181,6 +182,9 @@ CLANG_VERSION_RE = re.compile(r'\bversion\s+(\d+\.\d+\.\d+)\b')
 XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
 XWIN_ARCH_LIB_PARENT_DIRS = (Path('crt/lib'), Path('sdk/lib/um'), Path('sdk/lib/ucrt'))
 XWIN_HTTP_RETRY_COUNT = '5'
+
+DOWNLOAD_RETRY_COUNT = 5
+DOWNLOAD_RETRY_DELAY_SEC = 3
 
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
@@ -726,7 +730,22 @@ def copy_directory(source_path: str | Path, target_path: str | Path, dirs_exist_
 
 def download_file(url: str, target_path: Path, label: str) -> None:
 	log(f'Download {label}:', url)
-	urllib.request.urlretrieve(url, target_path)
+
+	# Release CDNs drop connections when several jobs start at once, and every caller here fetches a large
+	# archive the rest of the job depends on, so one hiccup must not fail the build. xwin already retries
+	# its own downloads (XWIN_HTTP_RETRY_COUNT); this covers fetching xwin itself and the Android archives.
+	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
+		try:
+			urllib.request.urlretrieve(url, target_path)
+			return
+		except OSError as ex:
+			if attempt == DOWNLOAD_RETRY_COUNT:
+				raise
+
+			delay = DOWNLOAD_RETRY_DELAY_SEC * attempt
+			log(f'Download {label} failed ({type(ex).__name__}: {ex}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
+			remove_path_if_exists(target_path)
+			time.sleep(delay)
 
 
 def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None) -> None:

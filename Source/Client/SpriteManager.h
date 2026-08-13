@@ -222,6 +222,7 @@ public:
 
     void BeginScene();
     void EndScene();
+    void AbortScene() noexcept; // Must be called if exception is thrown between BeginScene and EndScene to avoid corruption of the sprite manager state.
 
     void DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color);
     void DrawSpriteSize(ptr<const Sprite> spr, ipos32 pos, isize32 size, bool fit, bool center, ucolor color);

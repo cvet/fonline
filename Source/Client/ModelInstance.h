@@ -224,6 +224,7 @@ private:
     void DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
     void SetAnimData(ModelAnimationData& data, bool clear);
+    void ApplyDisabledMeshes(const vector<hstring>& disabled_meshes);
     void RefreshMoveAnimation();
     void RefreshFrameLayout();
     void RefreshConfigurationLayout();

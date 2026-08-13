@@ -2952,11 +2952,12 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
         auto other = mapper->LoadMapFromText("OtherMap", "OtherMap.fomap", MakeMapText(MakeItemBlock(12, TILE_A, 7, 7)));
         REQUIRE(other != nullptr);
 
-        // Unloading destroys the view outright, so an own reference is held across it, or the rejection below would
-        // read freed memory instead of exercising the destroyed-map guard
-        refcount_ptr<MapView> unloaded = refcount_ptr<MapView>::from_add_ref(other.as_ptr().get());
+        // The engine's only owning reference lives in LoadedMaps, so unloading destroys the view outright. Hold
+        // an own reference across it, or the rejection below reads freed memory instead of exercising the guard
+        ptr<MapView> other_view = other.as_ptr();
+        refcount_ptr<MapView> unloaded = refcount_ptr<MapView>::from_add_ref(other_view.get());
 
-        mapper->UnloadMap(other.as_ptr());
+        mapper->UnloadMap(other_view);
 
         CHECK_THROWS(mapper->SaveMapToDir(unloaded.as_ptr(), "Generated", "NotLoaded"));
     }

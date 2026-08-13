@@ -331,6 +331,29 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
 }
 
+static void Game_TryEnumToString(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
+    auto meta = GetEngineMetadata(as_engine);
+    auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
+    int32_t enum_index = 0;
+    const auto& enum_type = meta->GetBaseType(*enum_name);
+    auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
+    MemCopy(&enum_index, enum_arg, enum_type.Size);
+
+    bool failed = false;
+    string enum_value_name {meta->ResolveEnumValueName(*enum_name, enum_index, &failed)};
+
+    if (!failed) {
+        auto result_arg = GetGenericArgAddressAs<string>(gen, 1);
+        *result_arg = std::move(enum_value_name);
+    }
+
+    new (gen->GetAddressOfReturnLocation()) bool(!failed);
+}
+
 static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
@@ -742,6 +765,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum_{}(string valueName)", enum_name, enum_name).c_str(), FO_SCRIPT_GENERIC(Game_ParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryParseEnum(string valueName, {}&out result)", enum_name, enum_name).c_str(), FO_SCRIPT_GENERIC(Game_TryParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("string EnumToString({} value, bool fullSpecification = false)", enum_name).c_str(), FO_SCRIPT_GENERIC(Game_EnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryEnumToString({} value, string&out result)", enum_name).c_str(), FO_SCRIPT_GENERIC(Game_TryEnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
     }
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "int ParseGenericEnum(string enumName, string valueName)", FO_SCRIPT_FUNC_THIS(Game_ParseGenericEnum), FO_SCRIPT_FUNC_THIS_CONV));

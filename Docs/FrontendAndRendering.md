@@ -268,7 +268,25 @@ placements are merged as root-relative intervals, so adjacent pixel-rounded
 pivots or a live world-space particle cannot make an otherwise stable frame
 alternate forever. The interval anchor is signed: a tight frame may legitimately
 lie completely on one side of the model root, leaving its pivot outside the frame;
-the bounded retry loop still rejects a genuinely unbounded layout. Only the selected region is allocated
+the bounded retry loop still rejects a genuinely unbounded layout.
+
+A settled frame is still only usable if the renderer can allocate it, so
+`ModelInstance::SetupFrame` rejects any frame whose `draw_size * FRAME_SCALE` exceeds
+`AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT` (the device texture limit the atlases
+already use), naming the model file and both sizes. The check belongs there because that
+is the last point where the model that produced the size is known; without it an
+impossible size reaches the graphics API and surfaces as an anonymous invalid-argument
+failure from the texture creation call.
+
+A mesh a link disables contributes to neither. `DisableMesh` is honoured for the model's
+own default link exactly as it is for a layer value or a child attachment, so a model
+that permanently hides one of its meshes declares it once at the top of its `.fo3d`. This
+is not cosmetic: baked model and animation bounds are calculated with the default link's
+disabled meshes excluded, so a runtime that kept such a mesh enabled would sweep geometry
+the baked layout never budgeted for. A mesh rigidly bound to its own node is the worst
+case, because the animations that carry the skeleton's unit normalisation never touch it.
+
+Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
 preserving the automatic frame's root, hit-test coordinates, and map
 positioning. The active layer/child-model tree extends the idle-priority base
