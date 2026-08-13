@@ -44,6 +44,8 @@
 
 FO_BEGIN_NAMESPACE
 
+extern void LogToFile(const std::filesystem::path& path, bool append);
+
 static void EmitLogMessage(LogType type, u8string_view message, nptr<const CatchedStackTraceData> st);
 static void FlushLogMessageRepeatsLocked();
 static auto IsSameAsLastLogMessage(LogType type, u8string_view message) -> bool;
@@ -76,6 +78,21 @@ struct LoggingData
     bool TagsDisabled {};
 };
 FO_GLOBAL_DATA(LoggingData, Logging);
+
+extern void LogToFile(string_view path, bool append)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    LogToFile(std::filesystem::path {path}, append);
+}
+
+extern void LogToFile(u8string_view path, bool append)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    u8string checked_path = u8string::FromChecked(path.native_view());
+    LogToFile(std::filesystem::path {checked_path.view().native_view()}, append);
+}
 
 extern void WriteBaseLog(u8string_view message, nptr<const CatchedStackTraceData> st) noexcept
 {

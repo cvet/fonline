@@ -38,11 +38,6 @@
 
 FO_BEGIN_NAMESPACE
 
-namespace base_logging_detail
-{
-    [[nodiscard]] extern auto OpenLogFileNative(const std::filesystem::path& path, bool append) -> bool;
-}
-
 extern void SetAsyncLogWriting(bool enabled);
 extern void SuspendAsyncLogWriting() noexcept;
 extern void WriteBaseLogBytes(const_span<byte> message, const CatchedStackTraceData* st = nullptr) noexcept;

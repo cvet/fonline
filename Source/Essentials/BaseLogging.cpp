@@ -101,24 +101,40 @@ struct BaseLoggingData
 };
 FO_GLOBAL_DATA(BaseLoggingData, BaseLogging);
 
-extern auto base_logging_detail::OpenLogFileNative(const std::filesystem::path& path, bool append) -> bool
+extern void LogToFile(const std::filesystem::path& path, bool append)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (build_condition<FO_WEB>()) {
-        return true;
+        return;
     }
 
-    std::scoped_lock locker {BaseLogging->LogLocker};
+    bool open_failed = false;
 
-    if (BaseLogging->LogFileHandle.is_open()) {
-        BaseLogging->LogFileHandle.close();
+    {
+        std::scoped_lock locker {BaseLogging->LogLocker};
+
+        if (BaseLogging->LogFileHandle.is_open()) {
+            BaseLogging->LogFileHandle.close();
+        }
+
+        std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
+        BaseLogging->LogFileHandle.open(path, open_mode);
+        open_failed = !BaseLogging->LogFileHandle;
     }
 
-    std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
-    BaseLogging->LogFileHandle.open(path, open_mode);
+    if (open_failed) {
+        std::u8string path_text = path.generic_u8string();
+        std::vector<byte> message;
+        AppendAscii(message, "Can't create log file '");
 
-    return !!BaseLogging->LogFileHandle;
+        for (char8_t code_unit : path_text) {
+            message.emplace_back(std::bit_cast<byte>(code_unit));
+        }
+
+        AppendAscii(message, "'\n");
+        WriteBaseLogBytes(message);
+    }
 }
 
 extern void SetAsyncLogWriting(bool enabled)

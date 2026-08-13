@@ -44,16 +44,6 @@ FO_BEGIN_NAMESPACE
 
 using FsFileVisitor = function<void(u8string_view, size_t, uint64_t)>;
 
-// Base log destination
-extern void LogToFile(string_view path, bool append = false);
-extern void LogToFile(u8string_view path, bool append = false);
-template<typename T>
-    requires std::same_as<std::remove_cvref_t<T>, u8string>
-inline void LogToFile(T&& path, bool append = false)
-{
-    LogToFile(path.view(), append);
-}
-
 // Filesystem helpers
 auto fs_make_path(u8string_view path) -> std::u8string;
 inline auto fs_make_path(u8string&& path) -> std::u8string

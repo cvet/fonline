@@ -52,6 +52,16 @@ enum class LogType : uint8_t
 
 using LogFunc = function<void(LogType, u8string_view, nptr<const CatchedStackTraceData>)>;
 
+// Log destination
+extern void LogToFile(string_view path, bool append = false);
+extern void LogToFile(u8string_view path, bool append = false);
+template<typename T>
+    requires std::same_as<std::remove_cvref_t<T>, u8string>
+inline void LogToFile(T&& path, bool append = false)
+{
+    LogToFile(path.view(), append);
+}
+
 // Write strict UTF-8 directly to the base logger
 extern void WriteBaseLog(u8string_view message, nptr<const CatchedStackTraceData> st = nullptr) noexcept;
 inline void WriteBaseLog(const u8string& message, nptr<const CatchedStackTraceData> st = nullptr) noexcept

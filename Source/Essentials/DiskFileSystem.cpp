@@ -31,36 +31,9 @@
 // SOFTWARE.
 
 #include "DiskFileSystem.h"
-#include "Logging.h"
 #include "SafeArithmetics.h"
-#include "TextFormatting.h"
 
 FO_BEGIN_NAMESPACE
-
-extern void LogToFile(string_view path, bool append)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::filesystem::path native_path {path};
-
-    if (!base_logging_detail::OpenLogFileNative(native_path, append)) {
-        u8string message = FormatUtf8("Can't create log file '{}'\n", path);
-        WriteBaseLog(message);
-    }
-}
-
-extern void LogToFile(u8string_view path, bool append)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    u8string checked_path = u8string::FromChecked(path.native_view());
-    std::filesystem::path native_path {fs_make_path(checked_path)};
-
-    if (!base_logging_detail::OpenLogFileNative(native_path, append)) {
-        u8string message = FormatUtf8("Can't create log file '{}'\n", checked_path);
-        WriteBaseLog(message);
-    }
-}
 
 auto fs_make_path(u8string_view path) -> std::u8string
 {
