@@ -324,6 +324,39 @@ namespace FOnline
         public long microseconds => value / 1_000L;
         public long milliseconds => value / 1_000_000L;
         public long seconds => value / 1_000_000_000L;
+
+        // Mirrors the engine std::formatter<steady_time_point::duration> (Essentials/TimeRelated.h), which
+        // picks the scale from the magnitude. Without it a duration reaches a log through the default
+        // ValueType.ToString and prints its type name, which is what the combat timeout lines were showing.
+        public override string ToString() => FormatNanoseconds(value);
+
+        internal static string FormatNanoseconds(long ns)
+        {
+            var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+            if (ns < 1_000_000L) {
+                return string.Format(culture, "{0}.{1:000} us", ns / 1_000L % 1_000L, ns % 1_000L);
+            }
+
+            if (ns < 1_000_000_000L) {
+                return string.Format(culture, "{0}.{1:000} ms", ns / 1_000_000L % 1_000L, ns / 1_000L % 1_000L);
+            }
+
+            if (ns < 60_000_000_000L) {
+                return string.Format(culture, "{0}.{1:000} sec", ns / 1_000_000_000L, ns / 1_000_000L % 1_000L);
+            }
+
+            long totalSeconds = ns / 1_000_000_000L;
+
+            if (totalSeconds < 24L * 60L * 60L) {
+                return string.Format(culture, "{0:00}:{1:00}:{2:00} sec", totalSeconds / 3600L, totalSeconds / 60L % 60L, totalSeconds % 60L);
+            }
+
+            long days = totalSeconds / (24L * 60L * 60L);
+
+            return string.Format(culture, "{0} day{1} {2:00}:{3:00}:{4:00} sec",
+                days, days > 1L ? "s" : "", totalSeconds / 3600L % 24L, totalSeconds / 60L % 60L, totalSeconds % 60L);
+        }
     }
 
     public partial struct synctime
@@ -353,6 +386,9 @@ namespace FOnline
         public long milliseconds => value;
         public long seconds => value / 1_000L;
         public timespan timeSinceEpoch => new timespan(value, 2);
+
+        // The native formatter renders a synctime through its duration value, and synctime stores milliseconds.
+        public override string ToString() => timespan.FormatNanoseconds(value * 1_000_000L);
     }
 
     public partial struct ident
@@ -438,12 +474,48 @@ namespace FOnline
         public long milliseconds => value / 1_000_000L;
         public long seconds => value / 1_000_000_000L;
         public timespan timeSinceEpoch => new timespan(value);
+
+        public override string ToString() => timespan.FormatNanoseconds(value);
     }
 
     // Spatial value-structs: comparison operators mirror the AngelScript opCmp (lexicographic field order,
     // i.e. std::tie), and ipos/fpos additionally get add/sub/neg. The gen emits ==/!=/Equals/GetHashCode; these
     // add the rest. Multi-field structs that AngelScript does not register an opCmp for (frect, ipos8, ipos16)
     // intentionally get no comparison operators here, preserving parity.
+    //
+    // ToString is a separate question from opCmp parity: every one of these has a native std::formatter
+    // (FO_DECLARE_TYPE_FORMATTER in Essentials/ExtendedTypes.h and Common/Geometry.h) that renders the fields
+    // space-separated, so a struct without the managed mirror reaches a log as its own type name instead. That
+    // is silent -- the line still prints -- so the mirrors are kept complete rather than added on demand.
+    internal static class SpatialFormat
+    {
+        public static string Fields(params object[] fields)
+        {
+            var parts = new string[fields.Length];
+
+            for (int i = 0; i < fields.Length; i++) {
+                parts[i] = System.Convert.ToString(fields[i], System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+            }
+
+            return string.Join(" ", parts);
+        }
+    }
+
+    public partial struct ipos8
+    {
+        public override string ToString() => SpatialFormat.Fields(x, y);
+    }
+
+    public partial struct ipos16
+    {
+        public override string ToString() => SpatialFormat.Fields(x, y);
+    }
+
+    public partial struct frect
+    {
+        public override string ToString() => SpatialFormat.Fields(x, y, width, height);
+    }
+
     public partial struct ipos
     {
         public static bool operator <(ipos a, ipos b) => a.x != b.x ? a.x < b.x : a.y < b.y;
@@ -455,6 +527,8 @@ namespace FOnline
         public static ipos operator +(ipos a, isize b) => new ipos(a.x + b.width, a.y + b.height);
         public static ipos operator -(ipos a, isize b) => new ipos(a.x - b.width, a.y - b.height);
         public static ipos operator -(ipos a) => new ipos(-a.x, -a.y);
+
+        public override string ToString() => SpatialFormat.Fields(x, y);
     }
 
     public partial struct fpos
@@ -466,6 +540,8 @@ namespace FOnline
         public static fpos operator +(fpos a, fpos b) => new fpos(a.x + b.x, a.y + b.y);
         public static fpos operator -(fpos a, fpos b) => new fpos(a.x - b.x, a.y - b.y);
         public static fpos operator -(fpos a) => new fpos(-a.x, -a.y);
+
+        public override string ToString() => SpatialFormat.Fields(x, y);
     }
 
     public partial struct isize
@@ -474,6 +550,8 @@ namespace FOnline
         public static bool operator >(isize a, isize b) => b < a;
         public static bool operator <=(isize a, isize b) => !(b < a);
         public static bool operator >=(isize a, isize b) => !(a < b);
+
+        public override string ToString() => SpatialFormat.Fields(width, height);
     }
 
     public partial struct fsize
@@ -482,6 +560,8 @@ namespace FOnline
         public static bool operator >(fsize a, fsize b) => b < a;
         public static bool operator <=(fsize a, fsize b) => !(b < a);
         public static bool operator >=(fsize a, fsize b) => !(a < b);
+
+        public override string ToString() => SpatialFormat.Fields(width, height);
     }
 
     public partial struct irect
@@ -491,6 +571,8 @@ namespace FOnline
         public static bool operator >(irect a, irect b) => b < a;
         public static bool operator <=(irect a, irect b) => !(b < a);
         public static bool operator >=(irect a, irect b) => !(a < b);
+
+        public override string ToString() => SpatialFormat.Fields(x, y, width, height);
     }
 
     public partial struct mpos
@@ -507,7 +589,7 @@ namespace FOnline
         public static bool operator <=(mpos a, mpos b) => !(b < a);
         public static bool operator >=(mpos a, mpos b) => !(a < b);
         public bool fitTo(msize size) => x >= 0 && y >= 0 && x < size.width && y < size.height;
-        public override string ToString() => x.ToString(System.Globalization.CultureInfo.InvariantCulture) + " " + y.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        public override string ToString() => SpatialFormat.Fields(x, y);
     }
 
     public partial struct msize
@@ -516,6 +598,8 @@ namespace FOnline
         public static bool operator >(msize a, msize b) => b < a;
         public static bool operator <=(msize a, msize b) => !(b < a);
         public static bool operator >=(msize a, msize b) => !(a < b);
+
+        public override string ToString() => SpatialFormat.Fields(width, height);
     }
 
     // Convenience constructors for TextPackKey mirroring the C++ defaulted-arg ctors (TextPack.h) and the
