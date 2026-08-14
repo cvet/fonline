@@ -33,7 +33,7 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 - [Docs/SmartPointers.md](Docs/SmartPointers.md) - native smart-pointer vocabulary (`ptr<T>`/`nptr<T>` borrows, `unique_*`/`refcount_*` owners, engine-own `shared_ptr`/`weak_ptr`), raw-pointer allowlist, and audit expectations.
 - [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) - engine-invariant stability under exceptions: terminate-on-OOM allocation model, entity-lifecycle throw-as-signal contract, and the `FO_STRONG_ASSERT` disposition rules.
 - [Docs/ThreadSafetyAnalysis.md](Docs/ThreadSafetyAnalysis.md) - `FO_TSA_*` Clang Thread Safety Analysis annotations, locking primitives, and `-Werror=thread-safety` enforcement.
-- [Docs/SyncCoverAnalysis.md](Docs/SyncCoverAnalysis.md) - `[RequiresCover]`/`[ProvidesCover]` managed-script cover contract, `CoverReach`, the `FO_REQUIRES_COVER`/`FO_PROVIDES_COVER` export markers, and the FOSYNC001-003 analyzer.
+- [Docs/SyncCoverAnalysis.md](Docs/SyncCoverAnalysis.md) - `[RequiresCover]`/`[ProvidesCover]` managed-script cover contract, `CoverReach`, the `FO_REQUIRES_COVER`/`FO_PROVIDES_COVER` export markers, and the FOSYNC001-009 analyzer.
 - [Docs/MapperTools.md](Docs/MapperTools.md) - mapper automation and native mapper helper integration points.
 - [Docs/WebDebugging.md](Docs/WebDebugging.md) - web target build/debug workflow.
 - [Docs/AndroidDebugging.md](Docs/AndroidDebugging.md) - Android target build/debug workflow.

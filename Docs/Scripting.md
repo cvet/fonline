@@ -159,6 +159,34 @@ Entity lifetime is still owned by the engine runtime:
 
 Use [EntityModel.md](EntityModel.md) for entity/property/prototype ownership and [Persistence.md](Persistence.md) for database boundaries.
 
+### A prototype is not a live entity, and the script types must say so
+
+Natively the two are unrelated: `ProtoCritter` derives from `ProtoEntity`, while `Critter` derives from
+`ServerEntity`, and they share no base but `Entity`. A script type graph that lets one stand in for the other
+therefore hands an export a pointer to a different subobject -- wrong vtable, wrong layout, silent corruption
+instead of a diagnosable failure.
+
+So `Proto<Type>` is emitted as its own class off `Entity`, carrying the type's **properties and components and
+nothing else**. It does not derive from the live type. Deriving was only ever a way to hand the prototype the
+type's properties, and it cost far more than it gave: `ProtoCritter` WAS a `Critter`, so `Critter cr = proto;`
+compiled, and it also inherited ~100 methods of live behaviour -- `Disconnect()`, `AddItem()`, `DestroyItem()`
+-- on something with no id, no map and no lock. Both are now compile errors (CS0029 and CS1061).
+
+`HasAbstract` is a **separate** decision, and it is about generalization, not safety. It emits `Abstract<Type>`
+to carry the content with `<Type>`, `Proto<Type>` and `Static<Type>` as its leaves, so one parameter can accept
+all of them. Declare it only where an API genuinely wants that: `Item` has it because an unarmed critter
+attacks with its `UnarmedWeapon` **prototype** standing in for a real item, so
+`OnCritterUseWeapon(… AbstractItem weapon …)` legitimately receives a `ProtoItem`. `Critter`, `Map`, `Location`
+and the project's own proto-backed entities have no such case and no abstract form -- adding one would put a
+type in the script API that nothing asks for.
+
+The type graph cannot cover every path -- `object`, reflection and remote calls all bypass it -- so the
+managed bridge validates the argument as well. `ValidateManagedEntityKind` (`ManagedScriptBackend.cpp`) rejects
+a `ProtoEntity` handed to a parameter that asks for a live entity, and exempts one typed `Abstract<Type>` via
+`BaseTypeDesc::IsAbstractEntity`. Static entities are not checked: a `StaticItem` IS an `Item` natively, so its
+pointer is already the right type. Nor can the check go by name -- a prototype shares its property registrator
+with the live type, so `GetTypeName()` answers `Critter` for both, and only the runtime type separates them.
+
 ## Remote calls and event callbacks
 
 `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp` registers remote caller object types such as `RemoteCaller` and `CritterRemoteCaller`. Remote-call declarations are metadata-backed, and runtime handling is split by side:
