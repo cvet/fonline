@@ -16,6 +16,15 @@ AppendList(FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -embedded "${FO_EMBEDDED_DATA_CAPACITY}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -internalcfg "${FO_INTERNAL_CONFIG_CAPACITY}")
 
+# Forward `FO_NATIVE_SCRIPTS_DIR` so codegen can tell which `///@ Export*`
+# tags originate from the user native scripts tree (vs engine source) when
+# emitting metadata registration. The native scripting SOURCE files are
+# emitted by LF_NativeScriptSynth, not codegen. No-op when native scripting
+# is off.
+if(FO_NATIVE_SCRIPTING AND FO_NATIVE_SCRIPTS_DIR)
+    AppendList(FO_CODEGEN_COMMAND_ARGS -nativescriptsdir "${FO_NATIVE_SCRIPTS_DIR}")
+endif()
+
 # Engine configuration macros, emitted into EngineConfig.gen.h instead of cluttering the compiler command
 # line. The codegen args file is written with file(WRITE), which does not evaluate generator expressions, so
 # resolve every value to a literal here.
@@ -79,6 +88,11 @@ AppendList(FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp")
 
+# All native scripting outputs (NativeApi_ContextRpcMethods.h,
+# NativeApi.<Target>.cppm, and NativeBindings-<Target>.cpp) are emitted by
+# LF_NativeScriptSynth via the NativeApiGeneration custom command below;
+# codegen.py does not emit native scripting sources.
+
 FileWrite("${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
 
 foreach(entry ${FO_CODEGEN_COMMAND_ARGS})
@@ -97,7 +111,10 @@ SetValue(codegenTouchCommand
 AddCustomCommand(OUTPUT ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
-    DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE}
+    DEPENDS
+        ${FO_CODEGEN_SCRIPT}
+        ${FO_CODEGEN_META_SOURCE}
+        "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "Code generation")
 
@@ -111,3 +128,72 @@ AddCommandTarget(ForceCodeGeneration
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# Native scripting code emission — LF_NativeScriptSynth (engine C++
+# tool, see Engine/Source/Applications/NativeScriptSynthApp.cpp) is
+# the SOLE generator of the native scripting surface. codegen.py
+# emits nothing for native scripting anymore. The tool produces:
+#   - NativeApi_ContextRpcMethods.h / per-target NativeApi.<Target>.cppm
+#     — driven by EngineMetadata.
+#   - NativeBindings-<Target>.cpp  — the per-role dispatcher,
+#     built by scanning the user `.cppm` tree
+#     (FO_NATIVE_SCRIPTS_DIR, passed as argv[2]) for
+#     `export module NativeScripts.User.<Role>.<Name>;` + the
+#     module's `void <Init>(const ModuleInitContext&)` entry.
+#
+# The CMake target cycle that previously blocked this wiring was
+# broken in CoreLibs.cmake by moving the Common dispatcher link
+# from CommonLib to the role-specific engine libs.
+if(FO_NATIVE_SCRIPTING)
+    SetValue(FO_NATIVE_API_GEN_OUTPUT
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeApi_ContextRpcMethods.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeApi.Common.cppm"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeApi.Server.cppm"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeApi.Client.cppm"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeApi.Mapper.cppm"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeApi.Baker.cppm"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeBindings-Common.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeBindings-Server.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeBindings-Client.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeBindings-Mapper.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeBindings-Baker.cpp")
+
+    # Collect user `.cppm` module files across all roles so the
+    # custom command re-runs when a user module is added / edited /
+    # removed (the tool scans the dir at runtime, but CMake needs
+    # the file-level dep to know when to invoke it).
+    SetValue(FO_NATIVE_API_GEN_DEPS "")
+    foreach(role IN ITEMS Common Server Client Mapper Baker)
+        if(FO_NATIVE_SCRIPTS_${role}_MODULE_FILES)
+            AppendList(FO_NATIVE_API_GEN_DEPS ${FO_NATIVE_SCRIPTS_${role}_MODULE_FILES})
+        endif()
+    endforeach()
+
+    # argv[2] = native scripts dir (omitted when the project has
+    # no user native script tree — the tool then emits empty
+    # dispatcher bodies so the symbols still resolve).
+    SetValue(FO_NATIVE_SCRIPT_SYNTH_SCRIPTS_ARG "")
+    if(FO_NATIVE_SCRIPTS_DIR)
+        SetValue(FO_NATIVE_SCRIPT_SYNTH_SCRIPTS_ARG "${FO_NATIVE_SCRIPTS_DIR}")
+    endif()
+
+    AddCustomCommand(OUTPUT ${FO_NATIVE_API_GEN_OUTPUT}
+        COMMAND $<TARGET_FILE:${FO_DEV_NAME}_NativeScriptSynth>
+                "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource"
+                "${FO_NATIVE_SCRIPT_SYNTH_SCRIPTS_ARG}"
+        DEPENDS ${FO_DEV_NAME}_NativeScriptSynth ${FO_NATIVE_API_GEN_DEPS}
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "NativeApi generation (via LF_NativeScriptSynth)")
+
+    AddCommandTarget(NativeApiGeneration
+        DEPENDS ${FO_NATIVE_API_GEN_OUTPUT}
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    # Don't add to FO_GEN_DEPENDENCIES — that list is consumed by
+    # every engine target's `AddDependencies` call, and
+    # LF_NativeScriptSynth itself transitively links AppHeadless /
+    # CommonLib / NativeScriptSynth which are members of that list.
+    # File-level dep tracking via AddCustomCommand's OUTPUT is
+    # enough: any target listing NativeApi.<Role>.cppm or
+    # NativeBindings-<Role>.cpp as a source automatically waits
+    # for this command.
+endif()

@@ -48,6 +48,7 @@ class MetadataBaker final : public BaseBaker
 {
 public:
     static constexpr string_view_nt NAME = "Metadata";
+    static constexpr int32_t ORDER = 1;
 
     explicit MetadataBaker(shared_ptr<BakingContext> ctx);
     MetadataBaker(const MetadataBaker&) = delete;
@@ -57,7 +58,7 @@ public:
     ~MetadataBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32_t override { return 1; }
+    [[nodiscard]] auto GetOrder() const -> int32_t override { return ORDER; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 

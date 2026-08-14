@@ -38,6 +38,7 @@
 #include "DefaultSprites.h"
 #include "ImGuiStuff.h"
 #include "MetadataRegistration.h"
+#include "NativeScripting.h"
 #include "ModelSprites.h"
 #include "ParticleSprites.h"
 
@@ -85,6 +86,14 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, *Settings, Resources);
+#endif
+#if FO_NATIVE_SCRIPTING
+    extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
+    extern void RegisterNativeScriptModules_Mapper(const NativeScripts::ModuleInitContextBase&);
+    InitNativeScripting(this, *Settings, Resources, [](const NativeScripts::ModuleInitContextBase& ctx) {
+        RegisterNativeScriptModules_Common(ctx);
+        RegisterNativeScriptModules_Mapper(ctx);
+    });
 #endif
 
     _curLang = TextPack {&Hashes};

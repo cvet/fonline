@@ -31,6 +31,7 @@ class TagMetaRecord:
     tag_info: str | None
     tag_context: TagContext
     comment: CommentLines
+    is_user_origin: bool = False
 
 
 @dataclass(slots=True)
@@ -103,6 +104,7 @@ class ExportEnumTag:
     key_values: list[EnumKeyValue]
     flags: list[str]
     comment: CommentLines
+    user_origin: bool = False
 
 
 @dataclass(slots=True)
@@ -121,6 +123,11 @@ class ExportPropertyTag:
     name: str
     flags: list[str]
     comment: CommentLines
+    # True for properties declared via the unified-style `///@ Property` user tag
+    # (rather than the engine-side `///@ ExportProperty`). User-origin
+    # properties have no `FO_ENTITY_PROPERTY` C++ accessor — wrapper Get/Set
+    # go through the runtime PropertyRegistrator instead.
+    user_origin: bool = False
 
 
 @dataclass(slots=True)
@@ -149,6 +156,7 @@ class ExportEventTag:
     args: list[MethodArg]
     flags: list[str]
     comment: CommentLines
+    user_origin: bool = False
 
 
 @dataclass(slots=True)
@@ -175,6 +183,107 @@ class ExportSettingsTag:
     group_name: str
     target: str
     settings: list[SettingsEntry]
+    flags: list[str]
+    comment: CommentLines
+    # True for user-side `///@ Setting <Target> <Type> <Name>` tags (single
+    # setting per tag). User-origin settings have no `GlobalSettings::Group::X`
+    # C++ field — accessors round-trip through `GetCustomSetting/SetCustomSetting`.
+    user_origin: bool = False
+
+
+@dataclass(slots=True)
+class UserRemoteCallTag:
+    """Native-declared `///@ RemoteCall <Target> <Name>(args)` from a `.cppm`
+    or `.ixx` module under `FO_NATIVE_SCRIPTS_DIR`. The AS baker normally synthesizes
+    `RemoteCallDesc` metadata from `.fos` declarations; for native sources
+    we emit equivalent `RegisterInboundRemoteCall` /
+    `RegisterOutboundRemoteCall` calls directly in
+    `MetadataRegistration-<Role>.cpp`. `SubsystemHint` is `"native"` so
+    AS's `BindAngelScriptRemoteCalls` skips inbound binding (it filters
+    on `.fos` suffix) and lets native module init register the handler.
+    """
+    target: str  # "Server" or "Client" — side that hosts the inbound handler
+    name: str
+    args: list[MethodArg]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class UserEntityTag:
+    """Native-declared `///@ Entity <Target> <Name> [Global|HasProtos|
+    HasStatics|HasAbstract]` in a `.cppm` / `.ixx` module under
+    `FO_NATIVE_SCRIPTS_DIR`.
+    Mirrors `MetadataBaker::ParseEntity` semantics: registers a custom
+    inner entity type via `meta->RegisterEntityType(name, exported=false,
+    is_global, has_protos, has_statics, has_abstract)` at engine startup
+    so the engine can host instances and so other tags
+    (`///@ EntityHolder`, `///@ Property`) can reference the entity.
+
+    Runtime registration is intentionally not emitted by codegen.
+    MetadataBaker scans native module files from the Metadata pack and
+    writes Entity and EntityHolder registrations into the same metadata
+    bin used by `.fos` declarations, keeping proto layouts and runtime
+    metadata synchronized. This parser still validates authoring syntax
+    and records the type so other native tags can reference it.
+    """
+    target: str  # Common/Server/Client/Mapper
+    name: str
+    flags: list[str]  # Global / HasProtos / HasStatics / HasAbstract
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class UserRefTypeTag:
+    """Native-declared `///@ RefType <Target> <Name>` in a `.cppm` / `.ixx`
+    module under `FO_NATIVE_SCRIPTS_DIR`. Mirrors `MetadataBaker::ParseRefType`
+    semantics: registers the type name via the metadata bin so
+    AngelScript and the engine can hold instances by name.
+
+    Runtime registration happens on the baker side (the MetadataBaker
+    scans native script files for `RefType` tags through the Metadata
+    pack's `NativeScripts/*` InputDirs). Codegen.py stores the tag for
+    one reason only: so user `///@ Property <RefTypeName> ...` tags in
+    other native files can validate their target against the parsed
+    set. The Property tags themselves are also forwarded to the baker
+    via the native-file scan (baker handles RefType fields) and
+    skipped by codegen.py's own Property emit to avoid duplicate
+    registration.
+    """
+    target: str  # Common/Server/Client/Mapper
+    name: str
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class UserFixedTypeTag:
+    """Native-declared `///@ FixedType <Target> <Name>` in a `.cppm` / `.ixx` module under
+    `FO_NATIVE_SCRIPTS_DIR`. AS-baked equivalents flow through
+    `MetadataBaker::ParseFixedType` directly into the engine metadata at
+    bake time. Native modules use that same MetadataBaker path through the
+    Metadata pack; codegen stores the declaration only for validation and
+    cross-tag type resolution.
+    """
+    target: str  # Common/Server/Client/Mapper
+    name: str
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class UserEntityHolderTag:
+    """Native-declared `///@ EntityHolder <Target> <HolderEntity>
+    <TargetEntity> <EntryName> [Flags...]` in a `.cppm` / `.ixx` module under
+    `FO_NATIVE_SCRIPTS_DIR`. Mirrors `MetadataBaker::ParseEntityHolder`
+    semantics: the MetadataBaker bin registers a holder relationship via
+    `meta->RegsiterEntityHolderEntry(...)` at engine startup so the
+    engine knows that `HolderEntity` instances may carry inner
+    `TargetEntity` instances under `EntryName`. Flags are
+    `NoSync` / `OwnerSync` / `PublicSync` (mutually exclusive sync
+    modes) and `Persistent` (load-survives ownership cascade).
+    """
+    target: str  # Common/Server/Client/Mapper
+    holder_entity: str
+    target_entity: str
+    entry_name: str
     flags: list[str]
     comment: CommentLines
 
@@ -214,6 +323,11 @@ class CodeGenTagStore(TypedDict):
     ExportSettings: list[ExportSettingsTag]
     EngineHook: list[EngineHookTag]
     MigrationRule: list[MigrationRuleTag]
+    UserRemoteCall: list[UserRemoteCallTag]
+    UserEntity: list[UserEntityTag]
+    UserFixedType: list[UserFixedTypeTag]
+    UserEntityHolder: list[UserEntityHolderTag]
+    UserRefType: list[UserRefTypeTag]
     CodeGen: list[CodeGenTag]
 
 
@@ -243,6 +357,11 @@ def create_codegen_tag_store() -> CodeGenTagStore:
         'ExportSettings': [],
         'EngineHook': [],
         'MigrationRule': [],
+        'UserRemoteCall': [],
+        'UserEntity': [],
+        'UserFixedType': [],
+        'UserEntityHolder': [],
+        'UserRefType': [],
         'CodeGen': [],
     }
 
@@ -275,6 +394,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
     parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
     parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
+    parser.add_argument('-nativescriptsdir', dest='nativescriptsdir', default='', help='root of user-provided native scripts (FO_NATIVE_SCRIPTS_DIR)')
     parser.add_argument('-verbose', dest='verbose', action='store_true', help='verbose mode')
     return parser
 
@@ -348,7 +468,12 @@ assert get_hash('abcde') == '1594468574'
 assert get_hash('abcdef') == '1271458169'
 assert get_hash('abcdefg') == '-106836237'
 
-# Generated file list
+# Generated file list. Native scripting files (NativeApi_ContextRpcMethods.h,
+# NativeApi.<Target>.cppm,
+# NativeBindings-<Target>.cpp) are intentionally absent — they're
+# emitted by LF_NativeScriptSynth, not codegen.py. Listing them here
+# would make `flush()` stamp `// Empty file` stubs over the tool's
+# real output.
 generated_file_list = ['EmbeddedResources.gen.inc',
         'InternalConfig.gen.inc',
         'EngineConfig.gen.h',
@@ -421,6 +546,7 @@ def run_codegen_step(action: Callable[[], None], error_message: str) -> None:
 
 # Parse tags
 tag_metas: TagMetaStore = create_tag_meta_store()
+user_tag_metas: dict[str, list[TagMetaRecord]] = {}
 
 
 def find_comment_start(line: str) -> int:
@@ -497,7 +623,29 @@ def resolve_export_tag_context(tag_name: str, lines: list[str], line_index: int)
     assert False, 'Invalid export tag context ' + tag_name
 
 
+def is_native_user_tag(tag_name: str) -> bool:
+    if tag_name.startswith('Export'):
+        return False
+    return tag_name not in tag_metas
+
+
+def is_under_native_scripts_dir(abs_path: str) -> bool:
+    """True if `abs_path` lives under `FO_NATIVE_SCRIPTS_DIR`. Used to enforce
+    the rule that native user scripts cannot declare `///@ Export*` tags —
+    Export-family tags are engine-side and belong in `Engine/Source/`.
+
+    Returns False when `-nativescriptsdir` wasn't passed (no native tree
+    configured) so the check doesn't false-positive on engine sources.
+    """
+    if not getattr(args, 'nativescriptsdir', None):
+        return False
+    root = os.path.abspath(args.nativescriptsdir) + os.sep
+    return os.path.abspath(abs_path).startswith(root)
+
+
 def resolve_tag_context(tag_name: str, lines: list[str], line_index: int, tag_pos: int) -> TagContext:
+    if is_native_user_tag(tag_name):
+        return None
     if tag_name.startswith('Export'):
         return resolve_export_tag_context(tag_name, lines, line_index)
     if tag_name == 'EngineHook':
@@ -541,16 +689,34 @@ def parse_meta_file(abs_path: str) -> None:
                 
                 tag_split = tag_str.split(' ', 1)
                 tag_name = tag_split[0]
-                
-                if tag_name not in tag_metas:
-                    show_error('Invalid tag ' + tag_name, abs_path + ' (' + str(line_index + 1) + ')', line.strip())
-                    continue
-                
+
                 tag_info = tag_split[1] if len(tag_split) > 1 else None
 
+                # Native user scripts MUST NOT declare `///@ Export*`
+                # tags — Export-family tags are the engine-side surface
+                # and live exclusively in `Engine/Source/`. User .cppm
+                # files declare their native-script metadata via the
+                # unqualified forms (`///@ Enum`, `///@ Property`,
+                # `///@ Event`, `///@ Setting`, etc.). Refuse to parse
+                # the file rather than silently accepting the wrong
+                # spelling — otherwise codegen would synthesize wrong
+                # bindings or miss the user_origin flag.
+                if tag_name.startswith('Export') and is_under_native_scripts_dir(abs_path):
+                    show_error('`///@ ' + tag_name + '` is not allowed in native scripts',
+                               abs_path + ' (' + str(line_index + 1) + ')',
+                               'Use the unqualified form (e.g. `///@ Enum`, `///@ Property`, '
+                               '`///@ Event`, `///@ Setting`) — Export-family tags are reserved '
+                               'for engine-side `Engine/Source/` files.')
+
+                if is_native_user_tag(tag_name):
+                    user_tag_metas.setdefault(tag_name, []).append(
+                        TagMetaRecord(abs_path, line_index, tag_info, None, comment, True))
+                    last_comment = []
+                    continue
+
                 tag_context = resolve_tag_context(tag_name, lines, line_index, tag_pos)
-                
-                tag_metas[tag_name].append(TagMetaRecord(abs_path, line_index, tag_info, tag_context, comment))
+
+                tag_metas[tag_name].append(TagMetaRecord(abs_path, line_index, tag_info, tag_context, comment, False))
                 last_comment = []
                 
             elif line_len - tag_pos >= 3 and line[tag_pos + 2] != '/':
@@ -1098,8 +1264,8 @@ def create_valid_types() -> set[str]:
     return valid_types
 
 
-def register_export_enum(group_name: str, underlying_type: str, key_values: list[EnumKeyValue], export_flags: list[str], comment: CommentLines, valid_types: set[str]) -> None:
-    codegen_tags['ExportEnum'].append(ExportEnumTag(group_name, underlying_type, key_values, export_flags, comment))
+def register_export_enum(group_name: str, underlying_type: str, key_values: list[EnumKeyValue], export_flags: list[str], comment: CommentLines, valid_types: set[str], user_origin: bool = False) -> None:
+    codegen_tags['ExportEnum'].append(ExportEnumTag(group_name, underlying_type, key_values, export_flags, comment, user_origin))
     hash_recursive(compatibility_hasher, (group_name, underlying_type, key_values, export_flags))
 
     assert group_name not in valid_types, 'Enum already in valid types'
@@ -1244,6 +1410,11 @@ def postprocess_tags() -> None:
                 index += 1
         codegen_tags['ExportEnum'].append(ExportEnumTag(entity + 'Property', 'uint16', key_values, [], []))
         hash_recursive(compatibility_hasher, (entity + 'Property', 'uint16', key_values))
+        # Treat auto-synthesized property enums as regular engine
+        # enums so the native API generator (LF_NativeScriptSynth)
+        # recognizes them as valid method/event arg types via the
+        # registered metadata.
+        engine_enums.add(entity + 'Property')
 
     for enum_tag in codegen_tags['ExportEnum']:
         if not [1 for key_value in enum_tag.key_values if int(require_enum_value_text(key_value), 0) == 0]:
@@ -1282,7 +1453,7 @@ def parse_enum_tags(valid_types: set[str]) -> None:
             underlying_type = engine_type_to_meta_type('int32' if separator == -1 else first_line[separator + 1:].strip(), valid_types)
 
             key_values = parse_enum_key_values(enum_lines)
-            register_export_enum(group_name, underlying_type, key_values, export_flags, comment, valid_types)
+            register_export_enum(group_name, underlying_type, key_values, export_flags, comment, valid_types, user_origin=tag_meta.is_user_origin)
 
         except Exception as ex:
             show_error('Invalid tag ExportEnum', abs_path + ' (' + str(line_index + 1) + ')', get_context_preview(tag_context), ex)
@@ -1604,12 +1775,469 @@ def parse_runtime_tags(valid_types: set[str]) -> None:
     parse_migration_rule_tags()
     parse_codegen_tags()
 
+def parse_user_tags(valid_types: set[str]) -> None:
+    """Parse non-Export user-side tags written in native modules (.cppm/.ixx)
+    and AngelScript modules (.fos). All type spellings use codegen's
+    **unified** naming layer — not C++ engine spellings (`vector<int32_t>`)
+    and not "AS notation" (the AS baker happens to use the same unified
+    spelling, but the convention is codegen-internal):
+
+      ///@ Enum <GroupName> <Key>
+      ///@ Enum <GroupName> <Key> = <Value>
+      ///@ Property <Entity> <Access> <Type> <Name> [Flags...]
+      ///@ Event <Target> <Entity> <Name>(<args>)
+      ///@ Setting <Target> <Type> <Name>
+      ///@ RemoteCall <Target> <Name>(<args>)
+
+    Unified type spellings the parsers accept: primitive base types
+    (`bool`, `int8`..`uint64`, `float32`, `float64`, `string`, `hstring`,
+    `any`), engine enums (`ItemProperty`, etc.), entity types
+    (`Critter`, `Item`, ...), array suffix `[]`, dict pairing `=>`,
+    callback grouping `callback(...)`, and ref suffix `&`. All four
+    parsers below use `unified_type_to_meta_type` directly — the
+    engine→unified conversion is only for parsing C++ engine source
+    (which uses C++ types like `vector<int32_t>` in `FO_SCRIPT_API`
+    signatures).
+    """
+
+    # ---- ///@ RefType <Target> <Name> -----------------------------------
+    # Mirrors `MetadataBaker::ParseRefType` — registers a ref-counted
+    # opaque type via the metadata bin. Like the entity-relationship
+    # tags, codegen.py only parses + stores; the actual
+    # `meta->RegisterRefType` call happens in MetadataBaker (which
+    # scans native script files through the Metadata pack's
+    # `NativeScripts/*` InputDirs). The parse path matters because
+    # subsequent user tags (`///@ Property NativeProbeRefType ...`)
+    # must validate their target against the set of known RefType
+    # names — that's why this parser runs FIRST in `parse_user_tags`,
+    # before the Property parser checks for RefType-typed targets.
+    for tag_meta in user_tag_metas.get('RefType', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+        tokens = tag_info.split()
+        if len(tokens) != 2:
+            show_error('Invalid ///@ RefType tag (expected `<Target> <Name>`)',
+                       location, tag_info)
+            continue
+        rt_target, rt_name = tokens
+        if rt_target not in EXPORT_TARGETS:
+            show_error('Invalid ///@ RefType target (expected one of ' +
+                       ', '.join(EXPORT_TARGETS) + ')', location, rt_target)
+            continue
+        codegen_tags['UserRefType'].append(
+            UserRefTypeTag(rt_target, rt_name, tag_meta.comment))
+        hash_recursive(compatibility_hasher, (rt_target, rt_name, 'user_ref_type'))
+
+    # ---- ///@ Enum aggregation -------------------------------------------
+    enum_groups: dict[str, list[tuple[str, str | None, CommentLines]]] = {}
+    for tag_meta in user_tag_metas.get('Enum', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+
+        # Split off the optional `= <Value>` suffix first; anything to the
+        # left is the `<GroupName> <Key>` pair.
+        if '=' in tag_info:
+            left_text, value_text = tag_info.split('=', 1)
+            value: str | None = value_text.strip()
+        else:
+            left_text = tag_info
+            value = None
+
+        left = left_text.split()
+        if len(left) != 2:
+            show_error('Invalid ///@ Enum tag (expected `<GroupName> <Key> [= <Value>]`)',
+                       location, tag_info)
+            continue
+
+        group_name, key = left[0], left[1]
+        enum_groups.setdefault(group_name, []).append((key, value, tag_meta.comment))
+
+    for group_name, entries in enum_groups.items():
+        if group_name in valid_types:
+            show_error('User ///@ Enum group ' + group_name + ' clashes with an existing type')
+            continue
+        # AngelScript baker uses uint32 as the default underlying type.
+        key_values = [EnumKeyValue(key, value, comment) for key, value, comment in entries]
+        register_export_enum(group_name, 'uint32', key_values, [], [], valid_types, user_origin=True)
+        hash_recursive(compatibility_hasher, (group_name, 'user_enum', key_values))
+
+    # ---- ///@ Property runtime-property registration ---------------------
+    # Format: `///@ Property <Entity> <Access> <Type> <Name> [Flags...]`
+    # The synthesized ExportPropertyTag flows through the same engine
+    # registration code path as engine-side `///@ ExportProperty` tags, so the
+    # runtime PropertyRegistrator picks them up at startup. LF_NativeScriptSynth
+    # then emits the native wrapper Get/Set through the runtime Properties API
+    # (it can't use FO_ENTITY_PROPERTY accessors for user-origin properties).
+    for tag_meta in user_tag_metas.get('Property', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+        tokens = tag_info.split()
+        if len(tokens) < 4:
+            show_error('Invalid ///@ Property tag (expected `<Entity> <Access> <Type> <Name> [Flags...]`)',
+                       location, tag_info)
+            continue
+
+        entity = tokens[0]
+        access = tokens[1]
+        property_type_raw = tokens[2]
+        property_name = tokens[3]
+        property_flags = tokens[4:]
+
+        if access not in ('Common', 'Server', 'Client'):
+            show_error('Invalid ///@ Property access (expected Common/Server/Client)',
+                       location, access)
+            continue
+
+        # A native `///@ Property NativeProbeRefType ...` targets a
+        # user-declared RefType — the baker handles those properties as
+        # RefType fields (its `ParseProperty` walks `ctx.RefTypes`), so
+        # codegen.py must NOT emit a duplicate registration. Detecting a
+        # RefType target here makes the tag a parse-only no-op on the
+        # codegen side; the same tag, present in the source file, is
+        # picked up by MetadataBaker through the native scan.
+        if any(rt.name == entity for rt in codegen_tags['UserRefType']):
+            continue
+
+        # codegen.py only knows entities registered via `///@ ExportEntity`.
+        # AngelScript baker handles proto-defined entities (e.g. Modifier)
+        # separately; we don't bridge those on the native side yet.
+        targets = [entity] if entity in game_entities else []
+        if entity == 'Entity':
+            targets = list(game_entities)
+            property_flags = property_flags + ['SharedProperty']
+
+        if not targets:
+            show_error('///@ Property entity ' + entity + ' is not a known ///@ ExportEntity',
+                       location,
+                       'codegen.py only bridges properties on game entities (' + ', '.join(game_entities) + ')')
+            continue
+
+        try:
+            # User-side unified spelling — pass directly through the
+            # unified→meta layer. `engine_type_to_meta_type` is the
+            # other entry point: it understands C++ engine spellings
+            # (`vector<int32_t>`) used in `FO_SCRIPT_API` signatures.
+            # User tags speak unified (`int32[]` / `Item[]` / etc).
+            property_type = unified_type_to_meta_type(property_type_raw, valid_types)
+        except Exception as ex:
+            show_error('Invalid ///@ Property type ' + property_type_raw, location, ex)
+            continue
+
+        for target_entity in targets:
+            codegen_tags['ExportProperty'].append(ExportPropertyTag(
+                target_entity, access, property_type, property_name,
+                list(property_flags), tag_meta.comment, True))
+            hash_recursive(compatibility_hasher,
+                           (target_entity, access, property_type, property_name, property_flags))
+
+    # ---- ///@ Event dynamic event declaration ----------------------------
+    # Format: `///@ Event <Target> <Entity> <Name>(<args>)`
+    # Synthesizes an ExportEventTag with `user_origin=True`. NativeApi.<Role> then
+    # emits `EntityWrapper::OnXxx()` returning a `DynamicEventProxy` instead
+    # of a static EventProxy — the proxy routes Subscribe through
+    # Entity::SubscribeEvent("Name", ...) so user code subscribes to AS-fired
+    # dynamic events with the same lambda shape as engine-static events.
+    for tag_meta in user_tag_metas.get('Event', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+
+        paren_open = tag_info.find('(')
+        paren_close = tag_info.rfind(')')
+        if paren_open == -1 or paren_close == -1 or paren_close <= paren_open:
+            show_error('Invalid ///@ Event tag (expected `<Target> <Entity> <Name>(args)`)',
+                       location, tag_info)
+            continue
+
+        head_parts = tag_info[:paren_open].split()
+        if len(head_parts) != 3:
+            show_error('Invalid ///@ Event header (expected `<Target> <Entity> <Name>`)',
+                       location, tag_info[:paren_open])
+            continue
+        target, entity, event_name = head_parts
+
+        if target not in ('Server', 'Client', 'Mapper', 'Common'):
+            show_error('Invalid ///@ Event target (Server/Client/Mapper/Common)', location, target)
+            continue
+        if entity not in game_entities:
+            show_error('///@ Event entity ' + entity + ' is not a known ///@ ExportEntity',
+                       location,
+                       'codegen.py only bridges events on game entities (' + ', '.join(game_entities) + ')')
+            continue
+
+        args_text = tag_info[paren_open + 1:paren_close].strip()
+        event_args: list[MethodArg] = []
+        if args_text:
+            skip = False
+            for arg_raw in args_text.split(','):
+                arg = arg_raw.strip()
+                # Strip a trailing identifier (arg name); whitespace before
+                # the last token is the type. Handles `int32 delta`,
+                # `Critter cr`, `hstring metric` cleanly. `int32& count` style
+                # works too because `&` sticks to the type.
+                sep = arg.rfind(' ')
+                if sep == -1:
+                    show_error('Invalid ///@ Event arg (expected `<Type> <Name>`)', location, arg)
+                    skip = True
+                    break
+                arg_type_raw = arg[:sep].rstrip()
+                arg_name = arg[sep + 1:].strip()
+                try:
+                    # Unified spelling, same rationale as Property /
+                    # RemoteCall parsers — skip the engine→unified
+                    # step which only understands C++ engine spellings.
+                    arg_type = unified_type_to_meta_type(arg_type_raw, valid_types)
+                except Exception as ex:
+                    show_error('Invalid ///@ Event arg type ' + arg_type_raw, location, ex)
+                    skip = True
+                    break
+                event_args.append(MethodArg(arg_type, arg_name))
+            if skip:
+                continue
+
+        codegen_tags['ExportEvent'].append(ExportEventTag(
+            target, entity, event_name, event_args, [], tag_meta.comment, True))
+        hash_recursive(compatibility_hasher,
+                       (target, entity, event_name, event_args, 'user_event'))
+
+    # ---- ///@ Setting custom-setting declaration -------------------------
+    # Format: `///@ Setting <Target> <Type> <Name>`. `<Name>` is dotted
+    # (`Group.Key`). Synthesizes an `ExportSettingsTag` with `user_origin=True`;
+    # `MetadataRegistration-<Target>.cpp` registers it via
+    # `meta->RegisterGameSetting(name, type)` so engine + AS see it identically.
+    # LF_NativeScriptSynth then emits a `NativeScripts::Settings::<Group_Key>`
+    # getter/setter routed through `engine->Settings.GetCustomSetting(name)`.
+    for tag_meta in user_tag_metas.get('Setting', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+        tokens = tag_info.split()
+        if len(tokens) != 3:
+            show_error('Invalid ///@ Setting tag (expected `<Target> <Type> <Name>`)',
+                       location, tag_info)
+            continue
+        target, type_str, setting_name = tokens
+
+        if target not in ('Server', 'Client', 'Common'):
+            show_error('Invalid ///@ Setting target (Common/Server/Client)', location, target)
+            continue
+        if '.' not in setting_name:
+            show_error('Invalid ///@ Setting name (must be dotted `Group.Key`)', location, setting_name)
+            continue
+
+        try:
+            # Unified spelling — settle on the unified→meta path so
+            # all user-side tag parsers (Property / Event / Setting /
+            # RemoteCall) accept the same syntax (`int32`, `int32[]`,
+            # `hstring=>int32`, etc.).
+            value_type = unified_type_to_meta_type(type_str, valid_types)
+        except Exception as ex:
+            show_error('Invalid ///@ Setting type ' + type_str, location, ex)
+            continue
+
+        group_name = setting_name.split('.', 1)[0]
+        entry = SettingsEntry(kind='Value', value_type=value_type, name=setting_name,
+                              init_values=[], comment=tag_meta.comment)
+        codegen_tags['ExportSettings'].append(ExportSettingsTag(
+            group_name, target, [entry], [], tag_meta.comment, True))
+        hash_recursive(compatibility_hasher,
+                       (group_name, target, value_type, setting_name, 'user_setting'))
+
+    # ---- ///@ RemoteCall remote-procedure declaration --------------------
+    # Format: `///@ RemoteCall <Target> <Name>(<args>)`. `<Target>` is
+    # `Server` or `Client` — the side that hosts the inbound handler. The
+    # AS baker normally synthesizes `RemoteCallDesc` metadata from `.fos`
+    # `///@ RemoteCall` declarations; for native sources we emit
+    # `meta->RegisterInboundRemoteCall(...)` / `RegisterOutboundRemoteCall(...)`
+    # calls directly in `MetadataRegistration-<Target>.cpp`, with
+    # `SubsystemHint = "native"` so AS's `BindAngelScriptRemoteCalls` skips
+    # inbound binding (it filters on `.fos` suffix). Native module init
+    # must call the generated `RemoteCalls::Subscribe_<Name>` binder on
+    # the target side or `engine->VerifyBindedRemoteCalls()` asserts at
+    # engine startup.
+    for tag_meta in user_tag_metas.get('RemoteCall', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+
+        paren_open = tag_info.find('(')
+        paren_close = tag_info.rfind(')')
+        if paren_open == -1 or paren_close == -1 or paren_close <= paren_open:
+            show_error('Invalid ///@ RemoteCall tag (expected `<Target> <Name>(args)`)',
+                       location, tag_info)
+            continue
+
+        head_parts = tag_info[:paren_open].split()
+        if len(head_parts) != 2:
+            show_error('Invalid ///@ RemoteCall header (expected `<Target> <Name>`)',
+                       location, tag_info[:paren_open])
+            continue
+        target, rc_name = head_parts
+
+        if target not in ('Server', 'Client'):
+            show_error('Invalid ///@ RemoteCall target (Server/Client)', location, target)
+            continue
+
+        args_text = tag_info[paren_open + 1:paren_close].strip()
+        rc_args: list[MethodArg] = []
+        if args_text:
+            skip = False
+            for arg_raw in args_text.split(','):
+                arg = arg_raw.strip()
+                sep = arg.rfind(' ')
+                if sep == -1:
+                    show_error('Invalid ///@ RemoteCall arg (expected `<Type> <Name>`)', location, arg)
+                    skip = True
+                    break
+                arg_type_raw = arg[:sep].rstrip()
+                arg_name = arg[sep + 1:].strip()
+                try:
+                    # User-side tags use unified spelling (e.g. `int32[]`,
+                    # `hstring=>int32`) — the internal naming layer codegen
+                    # normalizes to. Skip the engine→unified step, which
+                    # only understands C++ engine types like
+                    # `vector<int32_t>`, not unified suffixes like `int32[]`.
+                    arg_type = unified_type_to_meta_type(arg_type_raw, valid_types)
+                except Exception as ex:
+                    show_error('Invalid ///@ RemoteCall arg type ' + arg_type_raw, location, ex)
+                    skip = True
+                    break
+                rc_args.append(MethodArg(arg_type, arg_name))
+            if skip:
+                continue
+
+        codegen_tags['UserRemoteCall'].append(
+            UserRemoteCallTag(target, rc_name, rc_args, tag_meta.comment))
+        hash_recursive(compatibility_hasher,
+                       (target, rc_name, rc_args, 'user_remote_call'))
+
+    # ---- ///@ Entity <Target> <Name> [Global|HasProtos|HasStatics|HasAbstract] --
+    # Mirrors `MetadataBaker::ParseEntity` validation (target keyword,
+    # reserved name prefixes, supported flags). Runtime registration via
+    # `meta->RegisterEntityType` is intentionally left to MetadataBaker,
+    # which scans `.cppm` / `.ixx` modules from the Metadata pack and keeps
+    # proto-bin layouts synchronized with runtime metadata. The parse path
+    # remains here so authoring errors surface during codegen and other tags
+    # can resolve the declared entity.
+    valid_entity_flags = {'Global', 'HasProtos', 'HasStatics', 'HasAbstract'}
+    reserved_entity_prefixes = ('Proto', 'Abstract', 'Static')
+    for tag_meta in user_tag_metas.get('Entity', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+        tokens = tag_info.split()
+        if len(tokens) < 2:
+            show_error('Invalid ///@ Entity tag (expected `<Target> <Name> [Flags]`)',
+                       location, tag_info)
+            continue
+        ent_target = tokens[0]
+        ent_name = tokens[1]
+        ent_flags = tokens[2:]
+        if ent_target not in EXPORT_TARGETS:
+            show_error('Invalid ///@ Entity target (expected one of ' +
+                       ', '.join(EXPORT_TARGETS) + ')', location, ent_target)
+            continue
+        bad_prefix = next((p for p in reserved_entity_prefixes
+                           if ent_name.startswith(p)), None)
+        if bad_prefix is not None:
+            show_error('Invalid ///@ Entity name (cannot start with reserved prefix `' +
+                       bad_prefix + '` — codegen synthesizes ' + bad_prefix + '<Name>)',
+                       location, ent_name)
+            continue
+        bad_flag = next((f for f in ent_flags if f not in valid_entity_flags), None)
+        if bad_flag is not None:
+            show_error('Invalid ///@ Entity flag ' + bad_flag +
+                       ' (expected one of ' + ', '.join(sorted(valid_entity_flags)) + ')',
+                       location)
+            continue
+        codegen_tags['UserEntity'].append(
+            UserEntityTag(ent_target, ent_name, list(ent_flags), tag_meta.comment))
+        hash_recursive(compatibility_hasher,
+                       (ent_target, ent_name, ent_flags, 'user_entity'))
+
+    # ---- ///@ FixedType <Target> <Name> ----------------------------------
+    # Mirrors `MetadataBaker::ParseFixedType` (Engine/Source/Tools/
+    # MetadataBaker.cpp) — `.fos` and native module declarations both flow
+    # through the Metadata pack at bake time. Codegen validates and stores
+    # the declaration but does not emit a duplicate registration. No body,
+    # no flags.
+    for tag_meta in user_tag_metas.get('FixedType', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+        tokens = tag_info.split()
+        if len(tokens) != 2:
+            show_error('Invalid ///@ FixedType tag (expected `<Target> <Name>`)',
+                       location, tag_info)
+            continue
+        ft_target, ft_name = tokens
+        if ft_target not in EXPORT_TARGETS:
+            show_error('Invalid ///@ FixedType target (expected one of ' +
+                       ', '.join(EXPORT_TARGETS) + ')', location, ft_target)
+            continue
+        codegen_tags['UserFixedType'].append(
+            UserFixedTypeTag(ft_target, ft_name, tag_meta.comment))
+        hash_recursive(compatibility_hasher, (ft_target, ft_name, 'user_fixed_type'))
+
+    # ---- ///@ EntityHolder <Target> <HolderEntity> <TargetEntity> <Entry> [Flags] ---
+    # Mirrors `MetadataBaker::ParseEntityHolder`. Flags:
+    #   - sync (mutually exclusive): NoSync / OwnerSync / PublicSync
+    #   - Persistent: holder restoration cascades to inner entities under
+    #     this entry on engine load.
+    # Sync flags require non-Server target; Common target requires a sync
+    # flag. Validation here is best-effort; the engine repeats the checks
+    # at metadata-registration time.
+    valid_holder_flags = {'NoSync', 'OwnerSync', 'PublicSync', 'Persistent'}
+    sync_flags = {'NoSync', 'OwnerSync', 'PublicSync'}
+    for tag_meta in user_tag_metas.get('EntityHolder', []):
+        tag_info = (tag_meta.tag_info or '').strip()
+        location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
+        tokens = tag_info.split()
+        if len(tokens) < 4:
+            show_error(
+                'Invalid ///@ EntityHolder tag (expected `<Target> <HolderEntity> <TargetEntity> <EntryName> [Flags]`)',
+                location, tag_info)
+            continue
+        eh_target = tokens[0]
+        eh_holder = tokens[1]
+        eh_inner = tokens[2]
+        eh_entry = tokens[3]
+        eh_flags = tokens[4:]
+        if eh_target not in EXPORT_TARGETS:
+            show_error('Invalid ///@ EntityHolder target (expected one of ' +
+                       ', '.join(EXPORT_TARGETS) + ')', location, eh_target)
+            continue
+        bad_flag = next((f for f in eh_flags if f not in valid_holder_flags), None)
+        if bad_flag is not None:
+            show_error('Invalid ///@ EntityHolder flag ' + bad_flag +
+                       ' (expected one of ' + ', '.join(sorted(valid_holder_flags)) + ')',
+                       location)
+            continue
+        sync_count = sum(1 for f in eh_flags if f in sync_flags)
+        if sync_count > 1:
+            show_error('Invalid ///@ EntityHolder sync flags: only one of ' +
+                       '/'.join(sorted(sync_flags)) + ' allowed', location, tag_info)
+            continue
+        if eh_target == 'Server' and sync_count > 0:
+            show_error(
+                'Invalid ///@ EntityHolder sync flag: sync flags cannot be used with Server target',
+                location, tag_info)
+            continue
+        if eh_target == 'Common' and sync_count == 0:
+            show_error(
+                'Invalid ///@ EntityHolder: Common target requires one of NoSync/OwnerSync/PublicSync',
+                location, tag_info)
+            continue
+        codegen_tags['UserEntityHolder'].append(
+            UserEntityHolderTag(eh_target, eh_holder, eh_inner, eh_entry,
+                                list(eh_flags), tag_meta.comment))
+        hash_recursive(compatibility_hasher,
+                       (eh_target, eh_holder, eh_inner, eh_entry, eh_flags,
+                        'user_entity_holder'))
+
+
 def parse_tags() -> None:
     valid_types = create_valid_types()
 
     parse_enum_tags(valid_types)
     parse_foundation_tags(valid_types)
     parse_ref_type_tags(valid_types)
+    parse_user_tags(valid_types)
     parse_runtime_tags(valid_types)
     postprocess_tags()
 
@@ -1936,14 +2564,23 @@ def generate_generic_code() -> None:
         global_lines.append('bool CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) { return true; }')
     global_lines.append('')
     
-    # Engine properties
+    # Engine property indices
+    # User-origin properties (from unified-style `///@ Property` user tags) don't
+    # have FO_ENTITY_PROPERTY-generated `<Name>_RegIndex` statics, and
+    # crucially must not shift the indices of engine properties: those
+    # statics are global (especially SharedProperty's `EntityProperties::X`)
+    # and resolving them based on a single entity's iteration order means
+    # any shift breaks all other entities' usage of the same property.
+    # We register engine properties first (preserving their original indices)
+    # and user properties last — matched by the runtime ordering in
+    # `append_property_registration`.
     global_lines.append('// Engine property indices')
     global_lines.append('EntityProperties::EntityProperties(Properties& props) noexcept : _propsRef(&props) { }')
     common_parsed: set[str] = set()
     for entity in game_entities:
         index = 1
         for prop_tag in codegen_tags['ExportProperty']:
-            if prop_tag.entity == entity:
+            if prop_tag.entity == entity and not prop_tag.user_origin:
                 if 'SharedProperty' not in prop_tag.flags:
                     global_lines.append('uint16_t ' + entity + 'Properties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
                 elif prop_tag.name not in common_parsed:
@@ -2065,6 +2702,14 @@ def append_enum_registration(helper_lines: list[str], register_lines: list[str])
         for key_value in enum_tag.key_values:
             body_lines.append('    {"' + key_value.key + '", ' + require_enum_value_text(key_value) + '},')
         body_lines.append('});')
+        if not enum_tag.user_origin:
+            # Engine-exported enums (declared via `///@ ExportEnum` in
+            # engine source) get marked so the NativeScript bake stub
+            # re-export can distinguish them from script-declared
+            # `///@ Enum` entries — the stub re-exports the latter
+            # via `using ::NativeScripts::<EnumName>;` so user code
+            # sees the enum unqualified.
+            body_lines.append('meta->MarkEnumAsExported("' + enum_tag.group_name + '");')
 
         append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
         register_lines.append(function_name + '(meta.get_no_const());')
@@ -2081,6 +2726,15 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
 
     for value_type_tag in codegen_tags['ExportValueType']:
         body_lines.append('meta->RegisterValueType("' + value_type_tag.name + '");')
+        # NativeType annotation — only emit when the C++ alias differs
+        # from the meta name. Mismatches happen for using-aliases
+        # (`using ident_t = ident<int64_t>`, `using ipos32 = ipos<int32_t>`)
+        # where the codegen tag has both names. Skip when identical
+        # so default-registered ValueTypes (without an override) don't
+        # carry redundant data.
+        if value_type_tag.native_type and value_type_tag.native_type != value_type_tag.name:
+            body_lines.append('meta->SetValueTypeNativeType("' + value_type_tag.name +
+                              '", "' + value_type_tag.native_type + '");')
 
     body_lines.append('')
 
@@ -2137,6 +2791,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
 
         function_name = make_unique_cpp_identifier(used_names, 'RegisterRefType_', ref_type_tag.name)
         body_lines = ['meta->RegisterRefType("' + ref_type_tag.name + '");',
+                'meta->SetRefTypeTarget("' + ref_type_tag.name + '", "' + ref_type_tag.target + '");',
                 '',
         'meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {']
 
@@ -2183,6 +2838,13 @@ def append_entity_type_registration(register_lines: list[str], target: str) -> N
                 cpp_bool(entity_info.has_protos) + ', ' +
                 cpp_bool(entity_info.has_statics) + ', ' +
                 cpp_bool(entity_info.has_abstract) + ').get_no_const();')
+        # Annotate per-role C++ class names from `///@ ExportEntity` —
+        # NativeScriptSynth uses these to emit `using ::fo::<ServerClass>;`
+        # / `using ::fo::<ClientClass>;` in `NativeApi.<Target>.cppm`.
+        if entity_info.server or entity_info.client:
+            register_lines.append('meta->SetEntityClassNames("' + entity + '", "' +
+                    (entity_info.server or '') + '", "' +
+                    (entity_info.client or '') + '");')
     register_lines.append('')
 
 
@@ -2197,9 +2859,16 @@ def append_property_registration(helper_lines: list[str], register_lines: list[s
         if not entity_allowed(entity, target):
             continue
 
+        # Engine ExportProperty tags first to preserve the C++ static index
+        # (`<Name>_RegIndex`) values codegen emits in GenericCode-Common.cpp.
+        # User-origin properties register after so they get higher indices
+        # without shifting engine ones.
         body_lines: list[str] = []
         for prop_tag in codegen_tags['ExportProperty']:
-            if prop_tag.entity == entity:
+            if prop_tag.entity == entity and not prop_tag.user_origin:
+                body_lines.append('registrar->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
+        for prop_tag in codegen_tags['ExportProperty']:
+            if prop_tag.entity == entity and prop_tag.user_origin:
                 body_lines.append('registrar->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
 
         if not body_lines:
@@ -2266,6 +2935,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     (', .Getter = true' if 'Getter' in method_tag.flags or 'GlobalGetter' in method_tag.flags else '') +
                     (', .Setter = true' if 'Setter' in method_tag.flags else '') +
                     (', .PassOwnership = true' if 'PassOwnership' in method_tag.flags else '') +
+                    ', .Target = "' + method_tag.target + '"' +
                     (', .ReturnNullable = true' if method_tag.ret_nullable else '') +
                     (', .Async = true' if 'Async' in method_tag.flags else '') +
                     ' });')
@@ -2305,8 +2975,12 @@ def append_event_registration(helper_lines: list[str], register_lines: list[str]
         for event_tag in codegen_tags['ExportEvent']:
             if event_tag.target in allowed_targets and event_tag.entity == entity:
                 resolved_args = ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '"), ' + ('true' if p.nullable else 'false') + '}' for p in event_tag.args)
+                # `Exported = true` keeps Fire() hidden from scripts (engine
+                # fires, scripts only Subscribe). User-origin events declared
+                # via `///@ Event` are script-callable — keep Fire() exposed.
+                exported_flag = 'false' if event_tag.user_origin else 'true'
                 body_lines.append('meta->RegisterEntityEvent("' + entity + '", EntityEventDesc { .Name = "' + event_tag.name + '", ' +
-                        '.Args = {' + resolved_args + '}, .Exported = true });')
+                        '.Args = {' + resolved_args + '}, .Exported = ' + exported_flag + ' });')
 
         if not body_lines:
             continue
@@ -2315,6 +2989,145 @@ def append_event_registration(helper_lines: list[str], register_lines: list[str]
         append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
         register_lines.append(function_name + '(meta.get_no_const());')
 
+    register_lines.append('')
+
+
+def append_user_setting_registration(helper_lines: list[str], register_lines: list[str], target: str) -> None:
+    """Register both engine-side `///@ ExportSettings` and script-declared
+    `///@ Setting` tags through `meta->RegisterGameSetting(name, type, exported)`.
+
+    NativeScriptSynth uses the `exported` flag (via
+    `EngineMetadata::IsExportedGameSetting`) to pick the right shape of
+    accessor when synthesizing the NativeApi.<Role> Settings block — engine
+    settings get a direct-field getter (`engine->Settings.<Field>`),
+    script-declared ones round-trip through `GetCustomSetting /
+    SetCustomSetting` and additionally get a `Set_<Group_Key>` setter.
+
+    `target` is the current MetadataRegistration target (Server/Client/Mapper).
+    `Common`-target settings register everywhere; per-role settings only on
+    the matching registration.
+    """
+    allowed_targets = get_allowed_registration_targets(target)
+    body_lines: list[str] = []
+    seen: set[str] = set()
+    for settings_tag in codegen_tags['ExportSettings']:
+        if settings_tag.target not in allowed_targets:
+            continue
+        for setting in settings_tag.settings:
+            if setting.name in seen:
+                continue
+            seen.add(setting.name)
+            if settings_tag.user_origin:
+                # Script-declared `///@ Setting` — register in
+                # `_gameSettings` so AngelScript binds a get_/set_
+                # accessor pair on the matching `GlobalSettingsGroup_*`
+                # type. The AS bind path (AngelScriptGlobals.cpp) is the
+                # only consumer here; engine-exported settings have
+                # their AS accessors registered separately through the
+                # Settings-Include.h macro expansion, so they must NOT
+                # appear in `_gameSettings` or AS would assert
+                # `asALREADY_REGISTERED`.
+                body_lines.append('meta->RegisterGameSetting("' + setting.name +
+                                  '", meta->GetBaseType("' + setting.value_type +
+                                  '"));')
+            else:
+                # Engine-side `///@ ExportSettings` — accessors already
+                # exist via Settings-Include.h. Mark the name as exported
+                # so `EngineMetadata::IsExportedGameSetting(name)` returns
+                # true; NativeScriptSynth uses that to discriminate
+                # engine vs script settings when synthesizing the
+                # NativeApi.<Role> Settings block.
+                body_lines.append('meta->MarkGameSettingAsExported("' + setting.name + '");')
+                # When the value type is a primitive base, also record
+                # the BaseTypeDesc — NativeScriptSynth reads it to emit
+                # `engine->Settings.<Field>` accessors with the right
+                # return type. Complex types (`arr.*` / `dict.*`) can't
+                # be resolved through GetBaseType.
+                if '.' not in setting.value_type:
+                    body_lines.append('meta->SetExportedGameSettingType("' + setting.name +
+                                      '", meta->GetBaseType("' + setting.value_type + '"));')
+                # Capture the raw value-type string for every exported
+                # setting (including complex types). NativeScriptSynth
+                # uses this name to drive `ResolveComplexType` +
+                # `ComplexTypeToCpp` and emit the matching
+                # `vector<X>` / `map<K, V>` accessor.
+                body_lines.append('meta->SetExportedGameSettingTypeName("' + setting.name +
+                                  '", "' + setting.value_type + '");')
+
+    if not body_lines:
+        return
+
+    function_name = 'RegisterAllSettings'
+    append_static_function(helper_lines,
+                           'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
+    register_lines.append(function_name + '(meta.get_no_const());')
+    register_lines.append('')
+
+
+def append_user_remote_call_registration(helper_lines: list[str], register_lines: list[str], target: str) -> None:
+    """Register native-declared `///@ RemoteCall <Target> <Name>(args)` tags
+    via direct `meta->RegisterInbound/OutboundRemoteCall(...)` calls.
+
+    AS-baked RemoteCalls flow through `RegisterDynamicMetadataRemoteCalls`
+    (subsystem hint = `.fos` file basename), populated from the AS baker
+    bin. Native sources don't pass through that baker, so we emit the
+    `RemoteCallDesc` registration straight from codegen with
+    `SubsystemHint = "native"` — AS's `BindAngelScriptRemoteCalls` filters
+    on `.fos` suffix and skips these, letting the native module init
+    register the inbound handler via the generated
+    `RemoteCalls::Subscribe_<Name>` binder.
+
+    Per RemoteCall, two entries land in the metadata:
+      - On the side hosting the handler (target side): inbound.
+      - On the calling side (the OTHER side): outbound.
+    The current MetadataRegistration-<target>.cpp emits whichever of
+    those is appropriate for that side.
+    """
+    if not codegen_tags['UserRemoteCall']:
+        return
+
+    body_lines: list[str] = []
+    for rc in codegen_tags['UserRemoteCall']:
+        # `target` here is the registration target (Server/Client/Mapper).
+        # For a `///@ RemoteCall Server Foo(int)`:
+        #   - Server registers inbound (handler lives on server)
+        #   - Client registers outbound (caller lives on client)
+        # Mapper doesn't participate in RemoteCalls (no networking).
+        if target == 'Mapper':
+            continue
+
+        is_inbound = (rc.target == target)
+        # Cross-side: outbound on the opposite of rc.target.
+        opposite = 'Client' if rc.target == 'Server' else 'Server'
+        is_outbound = (target == opposite)
+
+        if not is_inbound and not is_outbound:
+            continue
+
+        # Build the RemoteCallDesc literal. `Args` is a list of `ArgDesc {name, type}`
+        # where `type` is the engine ComplexTypeDesc resolved via `meta->ResolveComplexType`.
+        args_init = ', '.join(
+            '{"' + arg.name + '", meta->ResolveComplexType("' +
+            meta_type_to_unified_type(arg.arg_type) + '")}' for arg in rc.args)
+
+        # Each block emits one Register{In|Out}boundRemoteCall call.
+        body_lines.append('{')
+        body_lines.append('    RemoteCallDesc desc;')
+        body_lines.append('    desc.Name = meta->Hashes.ToHashedString("' + rc.name + '");')
+        body_lines.append('    desc.SubsystemHint = "native";')
+        body_lines.append('    desc.Args = {' + args_init + '};')
+        if is_inbound:
+            body_lines.append('    meta->RegisterInboundRemoteCall(std::move(desc));')
+        else:
+            body_lines.append('    meta->RegisterOutboundRemoteCall(std::move(desc));')
+        body_lines.append('}')
+
+    if not body_lines:
+        return
+
+    append_static_function(helper_lines,
+                           'static void RegisterUserRemoteCalls(EngineMetadata* meta)', body_lines)
+    register_lines.append('RegisterUserRemoteCalls(meta.get_no_const());')
     register_lines.append('')
 
 
@@ -2367,12 +3180,30 @@ def generate_metadata_registration(target: str, is_stub: bool) -> None:
     append_value_type_registration(helper_lines, register_lines)
     append_ref_type_registration(helper_lines, register_lines, target, is_stub)
     append_entity_type_registration(register_lines, target)
+    # User-side `///@ Entity` / `///@ EntityHolder` / `///@ FixedType` /
+    # `///@ ValueType` / `///@ RefType` declarations from native scripts
+    # are NOT emitted here. MetadataBaker scans the same native `.cppm` /
+    # `.ixx` modules (via `NativeScripts/*` InputDirs on the Metadata pack)
+    # and registers them through the metadata bin path — that's the
+    # same route `.fos`-declared equivalents take. Engine startup
+    # replays the bin via `RegisterDynamicMetadata` after this codegen
+    # block runs.
+    #
+    # Emitting here would double-register and trip
+    # `meta->RegisterFixedType` / `RegisterEntityType` /
+    # `RegsiterEntityHolderEntry` duplicate-name assertions. The parsers
+    # for these tags still populate `codegen_tags['UserEntity']` etc. so
+    # the user-facing syntax errors out cleanly at codegen time and so
+    # other user tags (Property targeting a user Entity, etc.) can
+    # validate against the parsed set — but the actual emit is the
+    # baker's job.
     append_property_registration(helper_lines, register_lines, target)
     append_method_registration(extern_lines, helper_lines, register_lines, target, is_stub)
     append_event_registration(helper_lines, register_lines, target)
+    append_user_setting_registration(helper_lines, register_lines, target)
+    append_user_remote_call_registration(helper_lines, register_lines, target)
     append_migration_rule_registration(helper_lines, register_lines)
     include_lines = build_common_header_include_lines()
-    
     generated_output.create_file('MetadataRegistration-' + target + ('Stub' if is_stub else '') + '.gen.cpp', args.genoutput)
     generated_output.write_codegen_template('MetadataRegistration')
     generated_output.insert_codegen_lines(register_lines, 'Register')
@@ -2450,7 +3281,18 @@ def flush_generated_files() -> None:
     run_codegen_step(generated_output.flush, 'Can\'t flush generated files')
 
 
+
 def run_codegen() -> None:
+    # NOTE: codegen.py no longer emits ANY native scripting files.
+    # NativeApi_ContextRpcMethods.h, NativeApi.<Target>.cppm, and
+    # NativeBindings-<Target>.cpp are
+    # all produced by LF_NativeScriptSynth (an engine C++ tool, see
+    # Engine/Source/Applications/NativeScriptSynthApp.cpp) via the
+    # `NativeApiGeneration` CMake custom command. The native-side
+    # contract codegen.py still owns is purely metadata: the
+    # per-method `MethodDesc::Target` field + the
+    # MetadataRegistration-*.cpp stubs the tool links against to
+    # build its `EngineMetadata` view.
     parse_meta_files()
     parse_all_tags()
     run_generic_codegen()

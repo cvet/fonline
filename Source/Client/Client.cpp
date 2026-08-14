@@ -36,6 +36,7 @@
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
+#include "NativeScripting.h"
 #include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE
@@ -87,6 +88,14 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     MapScriptTypes(this);
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, *settings, Resources);
+#endif
+#if FO_NATIVE_SCRIPTING
+    extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
+    extern void RegisterNativeScriptModules_Client(const NativeScripts::ModuleInitContextBase&);
+    InitNativeScripting(this, *settings, Resources, [](const NativeScripts::ModuleInitContextBase& ctx) {
+        RegisterNativeScriptModules_Common(ctx);
+        RegisterNativeScriptModules_Client(ctx);
+    });
 #endif
 
     Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });

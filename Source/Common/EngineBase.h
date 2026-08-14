@@ -77,17 +77,62 @@ public:
     [[nodiscard]] auto IsValidEntityType(string_view type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityType(hstring type_name) const -> const EntityTypeDesc&;
     [[nodiscard]] auto GetEntityTypes() const noexcept -> const map<hstring, EntityTypeDesc>&;
+    [[nodiscard]] auto IsEntityRelative(string_view type_name) const noexcept -> bool { return _entityRelatives.contains(string(type_name)); }
     [[nodiscard]] auto IsFixedType(hstring type_name) const noexcept -> bool;
     [[nodiscard]] auto IsFixedType(string_view type_name) const noexcept -> bool;
     [[nodiscard]] auto GetFixedType(hstring type_name) const -> const EntityTypeDesc&;
     [[nodiscard]] auto GetFixedTypes() const noexcept -> const map<hstring, EntityTypeDesc>&;
     [[nodiscard]] auto GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) const -> ptr<const Property>;
     [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
+    [[nodiscard]] auto GetEnumUnderlyingType(string_view name) const noexcept -> nptr<const BaseTypeDesc>
+    {
+        const auto it = _enumsUnderlyingType.find(string(name));
+        return it != _enumsUnderlyingType.end() ? nptr<const BaseTypeDesc> {it->second} : nullptr;
+    }
     [[nodiscard]] auto GetOutboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_outboundRemoteCalls; }
     [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_inboundRemoteCalls; }
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
     [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
+    // Exported = declared via the engine-side `///@ Export*` tag family
+    // (`ExportEnum`, `ExportSettings`, etc.) in engine source. The
+    // complement is script-declared via the unqualified forms
+    // (`///@ Enum`, `///@ Setting`) in `.fos` / `.cppm` files. The
+    // NativeScript bake uses this distinction when synthesizing the
+    // per-target module stub — engine-exported settings emit a
+    // direct-field getter (`engine->Settings.<Field>`), script-declared
+    // ones round-trip through `GetCustomSetting/SetCustomSetting`
+    // and need both the getter and the `Set_<Group_Key>` setter.
+    [[nodiscard]] auto IsExportedEnum(string_view name) const noexcept -> bool { return _exportedEnums.contains(string(name)); }
+    [[nodiscard]] auto IsExportedGameSetting(string_view name) const noexcept -> bool { return _exportedGameSettings.contains(string(name)); }
+    [[nodiscard]] auto GetExportedGameSettings() const noexcept -> const auto& { return _exportedGameSettings; }
+    // Look up the `BaseTypeDesc` recorded for an engine-exported
+    // setting. Codegen emits the type alongside `MarkGameSettingAsExported`
+    // when the setting's value type is a primitive base type — that
+    // covers the bulk of `///@ ExportSettings`. Complex types
+    // (`arr.string`, `dict.string.string`, ...) skip the annotation;
+    // callers should fall through to the generated NativeApi.<Role>
+    // module surface for those.
+    [[nodiscard]] auto FindExportedGameSettingType(string_view name) const noexcept -> nptr<const BaseTypeDesc>
+    {
+        const auto it = _exportedGameSettingsType.find(string(name));
+        return it != _exportedGameSettingsType.end() ? nptr<const BaseTypeDesc> {it->second} : nullptr;
+    }
+    // Raw value-type string for an engine-exported setting (e.g.
+    // `int32`, `arr.string`, `dict.string.string`). Codegen emits
+    // this alongside `MarkGameSettingAsExported` for every
+    // exported setting — including complex types that
+    // `_exportedGameSettingsType` (BaseTypeDesc-only) can't
+    // represent. NativeScriptSynth uses this to call
+    // `ResolveComplexType` + `ComplexTypeToCpp` and emit the
+    // matching `vector<X>` / `map<K, V>` accessor.
+    [[nodiscard]] auto FindExportedGameSettingTypeName(string_view name) const noexcept -> nptr<const string>
+    {
+        const auto it = _exportedGameSettingsTypeName.find(string(name));
+        return it != _exportedGameSettingsTypeName.end() ? make_nptr(&it->second) : nullptr;
+    }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
+    [[nodiscard]] auto GetRefTypes() const noexcept -> const auto& { return _refTypes; }
+    [[nodiscard]] auto GetStructLayouts() const noexcept -> const auto& { return _structLayouts; }
     [[nodiscard]] auto GetAllProtos() const noexcept -> const auto& { return _protoMngr.GetAllProtos(); }
     [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _protoMngr.GetProtoItems(); }
     [[nodiscard]] auto GetProtoCritters() const noexcept -> const auto& { return _protoMngr.GetProtoCritters(); }
@@ -103,16 +148,38 @@ public:
 
     void RegisterSide(EngineSideKind side);
     auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrar>;
+    // Annotate the per-role C++ class names for a registered entity type.
+    // Codegen emits this after `RegisterEntityType` for
+    // `///@ ExportEntity <Name> <Server> <Client>` — captures the pair
+    // so NativeScriptSynth can emit `using ::fo::<Server>;` /
+    // `using ::fo::<Client>;` in `NativeApi.<Target>.cppm`. Either name
+    // may be empty for engine-only entities; empty strings tell the
+    // baker to skip that role's re-export.
+    void SetEntityClassNames(string_view name, string_view server_class, string_view client_class);
     auto RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrar>;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent);
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value);
     void RegisterValueType(string_view name);
     void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
+    // Annotate the C++ alias name for a registered ValueType. Codegen
+    // emits this after `RegisterValueType` for `///@ ExportValueType`
+    // tags whose meta name differs from the C++ source name (e.g. meta
+    // `ident` / C++ `ident_t`, meta `ipos` / C++ `ipos32`).
+    // NativeScriptSynth uses the annotation when emitting `using ::fo::*`
+    // re-exports in `NativeApi.<Target>.cppm` so the cppm references
+    // the actual engine-source alias.
+    void SetValueTypeNativeType(string_view name, string_view native_type);
     void RegisterRefType(string_view name);
     void RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout);
     void RegisterRefTypeMethods(string_view name, vector<MethodDesc>&& methods);
     void RegisterRefTypeMethod(string_view name, MethodDesc&& method);
+    // Annotate the target role (`Common` / `Server` / `Client` / `Mapper`)
+    // for a registered RefType. Codegen emits this after `RegisterRefType`
+    // from the `///@ ExportRefType <Target> <Name>` first token.
+    // NativeScriptSynth uses it to skip server-only / client-only ref
+    // types when emitting `NativeApi.<Target>.cppm`.
+    void SetRefTypeTarget(string_view name, string_view target);
     void RegisterEntityMethods(string_view entity_name, vector<MethodDesc>&& methods);
     void RegisterEntityMethod(string_view entity_name, MethodDesc&& method);
     void RegisterEntityEvents(string_view entity_name, vector<EntityEventDesc>&& events);
@@ -120,6 +187,20 @@ public:
     void RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call);
     void RegisterInboundRemoteCall(RemoteCallDesc&& remote_call);
     void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
+    void MarkGameSettingAsExported(string_view name);
+    // Annotate the BaseTypeDesc for an engine-exported setting whose
+    // value type resolves to a primitive base. Codegen emits this
+    // alongside `MarkGameSettingAsExported` so the baker can synthesise
+    // `engine->Settings.<Field>` accessors with the right return type.
+    // Skipped for complex types (`arr.*` / `dict.*`) — codegen.py's
+    // broader type mapper still owns those.
+    void SetExportedGameSettingType(string_view name, const BaseTypeDesc& type);
+    // Record the raw value-type string (`int32`, `arr.string`,
+    // `dict.string.string`, ...) for an engine-exported setting.
+    // Captures every exported setting, including complex types
+    // that `SetExportedGameSettingType` (BaseTypeDesc-only) skips.
+    void SetExportedGameSettingTypeName(string_view name, string_view type_name);
+    void MarkEnumAsExported(string_view name);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
     void RegisterProtos(const FileSystem& resources);
@@ -153,6 +234,10 @@ private:
     unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
     unordered_map<hstring, RemoteCallDesc> _inboundRemoteCalls {};
     unordered_map<string, ptr<const BaseTypeDesc>> _gameSettings {};
+    unordered_set<string> _exportedGameSettings {};
+    unordered_map<string, ptr<const BaseTypeDesc>> _exportedGameSettingsType {};
+    unordered_map<string, string> _exportedGameSettingsTypeName {};
+    unordered_set<string> _exportedEnums {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };
@@ -161,6 +246,15 @@ class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, pu
 {
 public:
     using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>)>;
+    enum class RemoteCallHandlerMode : uint8_t
+    {
+        // Reject any existing handler.
+        Strict,
+        // Register a handler that a later authoritative backend may replace.
+        Fallback,
+        // Replace only a fallback; reject duplicate authoritative handlers.
+        OverrideFallback,
+    };
 
     BaseEngine(const BaseEngine&) = delete;
     BaseEngine(BaseEngine&&) noexcept = delete;
@@ -179,8 +273,13 @@ public:
     virtual void RunScriptContext(const function<void()>& callback);
 
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
-    void SetRemoteCallHandler(hstring name, RemoteCallHandler handler);
+    void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, RemoteCallHandlerMode mode = RemoteCallHandlerMode::Strict);
     void VerifyBindedRemoteCalls() const noexcept(false);
+    // Dispatch a pre-decoded inbound RemoteCall to the registered handler.
+    // Derived `ServerEngine` / `ClientEngine` call this from the network
+    // packet handler. Also useful for synthetic in-process tests of
+    // inbound binders (no networking required).
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;
@@ -193,13 +292,13 @@ protected:
     ~BaseEngine() override = default;
 
     virtual void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) { ignore_unused(name, caller, data); } // Managed by derived class
-    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data); // Called by derived class
 
 private:
     refcount_ptr<ScriptImGui> _imgui;
     mutable mutex _randomGeneratorLocker {};
     mutable std::mt19937 _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {MakeSeededRandomGenerator()};
     unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};
+    unordered_set<hstring> _fallbackInboundRemoteCallHandlers {};
 };
 
 FO_END_NAMESPACE

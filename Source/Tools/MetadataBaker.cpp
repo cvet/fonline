@@ -58,14 +58,22 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
         return;
     }
 
-    // Collect files
+    // Collect files. `.fos` are AngelScript modules that own the full
+    // entity-type + scripting metadata authoring surface. Native sources
+    // (`.cpp`, `.h`, `.cppm`, `.ixx`) contribute only their entity-type
+    // tags (Entity / EntityHolder / FixedType / ValueType / RefType) here —
+    // language-level tags like Property / Event / Setting / RemoteCall /
+    // Enum / MigrationRule are codegen.py's job and are registered through
+    // `MetadataRegistration-<Role>.cpp` at engine startup, so processing
+    // them twice would assert on duplicate registration. The per-tag filter
+    // lives in `BakeMetadata` below.
     vector<File> filtered_files;
     uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
 
-        if (ext != "fos") {
+        if (ext != "fos" && ext != "cpp" && ext != "h" && ext != "cppm" && ext != "ixx") {
             continue;
         }
 
@@ -136,6 +144,26 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
     // Read codegen tags
     unordered_set<string_view> valid_codegen_tags = {"Entity", "EntityHolder", "FixedType", "ValueType", "RefType", "Enum", "Property", "Event", "RemoteCall", "Setting", "MigrationRule"};
+
+    // Tags that may appear in native script `.cpp` / `.h` files. The
+    // language-level surface (Event / Setting / RemoteCall / Enum /
+    // MigrationRule) is registered through
+    // `MetadataRegistration-<Role>.cpp` at engine startup by codegen.py,
+    // so the baker must ignore those when seen in a native file —
+    // otherwise the engine would register the same entries twice and
+    // assert on duplicates. The entity-relationship tags (Entity /
+    // EntityHolder / FixedType / ValueType / RefType) travel through
+    // the metadata bin: the baker registers them here, and engine
+    // startup picks them up via `RegisterDynamicMetadata`.
+    //
+    // `Property` is the cross-cutting case: Property tags targeting a
+    // game entity / FixedType / engine-side type are codegen.py's job,
+    // but Property tags targeting a NATIVE-declared `///@ RefType` are
+    // the baker's job (RefType fields live in the metadata bin). The
+    // scanner accepts all Property tags from native files; the per-tag
+    // RefType-vs-other-target dispatch happens in `ParseProperty`
+    // below, gated on `is_native_source`.
+    const unordered_set<string_view> native_file_tags = {"Entity", "EntityHolder", "FixedType", "ValueType", "RefType", "Property"};
 
     vector<string> readed_files;
     readed_files.reserve(files.size());
@@ -222,6 +250,30 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
             if (!valid_codegen_tags.contains(tag_name)) {
                 throw MetadataBakerException("Invalid codegen tag: unknown tag name", files[i].GetPath(), line_number, tag_name);
+            }
+
+            // Native script files (`.cppm` / `.ixx` / etc.) only
+            // contribute entity-relationship tags to the metadata bin.
+            // Other tag kinds from native files are silently skipped
+            // here — they travel via the codegen-emitted
+            // `MetadataRegistration-<Role>.cpp` at engine startup. The
+            // native parse path in codegen.py is what enforces grammar
+            // for those non-entity tags.
+            //
+            // `///@ Export*` tags are explicitly disallowed in native
+            // user scripts — Export-family tags are reserved for the
+            // engine-side surface (declared in `Engine/Source/`). User
+            // .cppm files use the unqualified forms (`///@ Enum`,
+            // `///@ Property`, `///@ Event`, `///@ Setting`, etc.). Hard-
+            // fail rather than silently dropping so a misspelled tag
+            // doesn't end up undermined by codegen's wrong-side parsing.
+            const string_view file_path = files[i].GetPath();
+            const bool is_native_source = !file_path.ends_with(".fos");
+            if (is_native_source && tag_name.starts_with("Export")) {
+                throw MetadataBakerException("`///@ Export*` tags are not allowed in native scripts — use the unqualified form", files[i].GetPath(), line_number, tag_name);
+            }
+            if (is_native_source && !native_file_tags.contains(tag_name)) {
+                continue;
             }
 
             CodeGenTagDesc tag_desc;
@@ -852,6 +904,21 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         if (ctx.OtherEntityTypes.contains(entity_name)) {
             continue;
         }
+        // Cross-cutting filter for Property tags from native script
+        // sources: only Property tags targeting a native-declared
+        // RefType are the baker's responsibility (RefType fields live
+        // in the metadata bin). Property tags targeting entities /
+        // FixedTypes / engine types are registered by codegen.py at
+        // engine startup via `MetadataRegistration-<Role>.cpp`, so
+        // double-processing them here would trip the engine's
+        // duplicate-name assertions on the PropertyRegistrator.
+        const string_view source_path = tag_desc.SourceFile;
+        const bool is_native_source = !source_path.ends_with(".fos");
+        const bool targets_ref_type = ctx.RefTypes.contains(string(entity_name));
+        if (is_native_source && !targets_ref_type) {
+            continue;
+        }
+
         if (target != "Common" && target != "Server" && target != "Client") {
             continue; // Re-validated in pass 2
         }
@@ -1057,6 +1124,23 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             continue;
         }
         if (ctx.RefTypes.contains(string(entity_name))) {
+            continue;
+        }
+
+        // Property tags from native script sources targeting an
+        // entity / FixedType / engine type are registered by codegen.py
+        // through `MetadataRegistration-<Role>.cpp`; the baker's stub
+        // initialization already adds them via `RegisterServerStubMetadata`.
+        // Re-registering here would trip the duplicate check at the
+        // bottom of the loop. (RefType-targeted Property tags from
+        // native files are handled in the earlier loop above and have
+        // already been `continue`-d by the `ctx.RefTypes.contains` check
+        // immediately above — so reaching this filter means we have a
+        // native-file Property targeting a non-RefType, which the baker
+        // must skip.)
+        const string_view source_path = tag_desc.SourceFile;
+        const bool is_native_source = !source_path.ends_with(".fos");
+        if (is_native_source) {
             continue;
         }
 

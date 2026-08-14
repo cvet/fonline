@@ -114,6 +114,12 @@ static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<
             }
 
             meta->RegisterEnumGroup(enum_name, enum_underlying_type, std::move(key_values));
+            // The non-empty underlying-type branch is the script-
+            // declared `///@ Enum` path (from `.fos` files via
+            // MetadataBaker → bin). We deliberately don't mark these
+            // as exported — engine-exported enums (`///@ ExportEnum`)
+            // come through the `else` branch and are marked at their
+            // codegen-emitted `RegisterEnum_<Name>` site instead.
         }
         else {
             for (size_t i = 2; i < tokens.size(); i += 2) {
