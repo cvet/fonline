@@ -209,7 +209,8 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     }
     if (has_abstract) {
         _entityRelatives.emplace(strex("Abstract{}", name), &entry.first->second);
-        RegisterBaseType(strex("Abstract{}", name));
+        auto abstract_type = RegisterBaseType(strex("Abstract{}", name));
+        abstract_type->IsAbstractEntity = true;
     }
 
     if (!exported) {

@@ -539,6 +539,7 @@ struct BaseTypeDesc
     bool IsSingleton {};
     bool IsFixedType {};
     bool IsEntityProto {};
+    bool IsAbstractEntity {};
     nptr<const BaseTypeDesc> EnumUnderlyingType {};
     nptr<const StructLayoutDesc> StructLayout {};
     nptr<const RefTypeDesc> RefType {};

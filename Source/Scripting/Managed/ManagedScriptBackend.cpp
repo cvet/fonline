@@ -3811,6 +3811,33 @@ static void CopyManagedByteArrayToNative(ptr<const ManagedScriptBackend> backend
     }
 }
 
+// The managed entity hierarchy is not the native one, and the difference is not expressible in C#: managed
+// `ProtoCritter` derives from `Critter`, while natively `ProtoCritter` derives from `ProtoEntity` and shares
+// no base with `Critter`/`ServerEntity` beyond `Entity`. So an upcast the C# compiler accepts would hand an
+// export expecting a live entity a pointer to a different subobject -- wrong vtable, wrong layout, corrupted
+// state rather than a diagnosable failure.
+//
+// Only ProtoEntity is dangerous here. Static (baked) entities are ordinary server entities natively -- a
+// StaticItem IS an Item -- so their pointers are already the right type.
+//
+// An `Abstract<Type>` parameter is exempt because spanning the live entity and its prototype is its whole
+// purpose: an unarmed critter attacks with its `UnarmedWeapon` prototype standing in for a real item, so
+// `OnCritterUseWeapon(… AbstractItem weapon …)` legitimately receives a ProtoItem.
+//
+// The type name cannot separate the rest: a prototype shares its property registrator with the live type, so
+// GetTypeName() answers "Critter" for both. The runtime type is what distinguishes them.
+static void ValidateManagedEntityKind(const BaseTypeDesc& base_type, nptr<Entity> entity)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!entity || base_type.IsEntityProto || base_type.IsFixedType || base_type.IsAbstractEntity) {
+        return;
+    }
+
+    FO_VERIFY_AND_THROW(dynamic_cast<const ProtoEntity*>(entity.get()) == nullptr,
+        "A prototype was passed where a live entity is expected -- the two are unrelated native types", base_type.Name, entity->GetName());
+}
+
 static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value, ManagedScalarValue& storage) -> void*
 {
     FO_STACK_TRACE_ENTRY();
@@ -3829,6 +3856,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
     }
     if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
         storage.EntityPtr = ExtractEntityPtr(value);
+        ValidateManagedEntityKind(base_type, storage.EntityPtr);
         return &storage.EntityPtr;
     }
     if (base_type.IsRefType) {
