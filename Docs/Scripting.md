@@ -174,11 +174,11 @@ compiled, and it also inherited ~100 methods of live behaviour -- `Disconnect()`
 
 `HasAbstract` is a **separate** decision, and it is about generalization, not safety. It emits `Abstract<Type>`
 to carry the content with `<Type>`, `Proto<Type>` and `Static<Type>` as its leaves, so one parameter can accept
-all of them. Declare it only where an API genuinely wants that: `Item` has it because an unarmed critter
-attacks with its `UnarmedWeapon` **prototype** standing in for a real item, so
-`OnCritterUseWeapon(… AbstractItem weapon …)` legitimately receives a `ProtoItem`. `Critter`, `Map`, `Location`
-and the project's own proto-backed entities have no such case and no abstract form -- adding one would put a
-type in the script API that nothing asks for.
+all of them. Declare it only where an API genuinely needs to take the live entity and its prototype through
+one parameter, because a prototype legitimately stands in for an instance there. An embedding project shows
+the shape: Last Frontier declares it on `Item`, since an unarmed attack uses a weapon **prototype** in place
+of a carried one, so its weapon-use event receives a `ProtoItem`. Where no such case exists, leave it off --
+an abstract form nothing asks for is just another type in the script API.
 
 The type graph cannot cover every path -- `object`, reflection and remote calls all bypass it -- so the
 managed bridge validates the argument as well. `ValidateManagedEntityKind` (`ManagedScriptBackend.cpp`) rejects

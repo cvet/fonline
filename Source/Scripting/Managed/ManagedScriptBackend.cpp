@@ -3821,8 +3821,8 @@ static void CopyManagedByteArrayToNative(ptr<const ManagedScriptBackend> backend
 // StaticItem IS an Item -- so their pointers are already the right type.
 //
 // An `Abstract<Type>` parameter is exempt because spanning the live entity and its prototype is its whole
-// purpose: an unarmed critter attacks with its `UnarmedWeapon` prototype standing in for a real item, so
-// `OnCritterUseWeapon(… AbstractItem weapon …)` legitimately receives a ProtoItem.
+// purpose: an embedding project declares one where a prototype legitimately stands in for an instance (Last
+// Frontier does this for items, so its weapon-use event receives a ProtoItem for an unarmed attack).
 //
 // The type name cannot separate the rest: a prototype shares its property registrator with the live type, so
 // GetTypeName() answers "Critter" for both. The runtime type is what distinguishes them.

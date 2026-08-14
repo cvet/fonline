@@ -615,8 +615,10 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     // properties, and it cost far more than it gave: `ProtoCritter` WAS a `Critter`, so the C#
                     // compiler accepted `Critter cr = proto;` and the export behind it received a pointer to
                     // an unrelated native type (`ProtoEntity`, not `ServerEntity`). Declare `HasAbstract` only
-                    // where the generalization is genuinely wanted -- an item, where a prototype legitimately
-                    // stands in for an item in the unarmed-attack path.
+                    // where the generalization is genuinely wanted: an API that must accept the live entity
+                    // and its prototype through one parameter, because a prototype legitimately stands in for
+                    // an instance there (Last Frontier does this for items, where an unarmed attack uses a
+                    // weapon prototype in place of a carried one).
                     if (desc->HasProtos) {
                         AppendEntityClass(out, strex("Proto{}", type_name).str(), "Entity", *desc, target_name, type_name, false, true);
                     }
