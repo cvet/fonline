@@ -41,7 +41,12 @@ namespace FOnline
     [System.AttributeUsage(System.AttributeTargets.Method)]
     public sealed class EventAttribute : System.Attribute { }
 
-    public class Entity { }
+    // The baker puts this on the base and overrides it on the generated prototype/static classes; the analyzer
+    // reads the override rather than a list of type names.
+    public class Entity
+    {
+        public virtual bool IsAlwaysCovered { get { return false; } }
+    }
     public class Critter : Entity
     {
         [RequiresCover]
@@ -51,10 +56,67 @@ namespace FOnline
     }
     public class Map : Entity { }
 
-    public static class Sync
+    // Item methods are declared once on the shared base and inherited by both, which is what makes the
+    // static side worth modelling explicitly.
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class PreservesCoverAttribute : System.Attribute
     {
+    }
+
+    public class AbstractItem : Entity
+    {
+        [RequiresCover]
+        public int GetCount() { return 0; }
+
+        public void Give([RequiresCover] Critter cr) { }
+
+        public static void Compare([RequiresCover] AbstractItem other) { }
+    }
+
+    public class Item : AbstractItem { }
+    public class StaticItem : AbstractItem
+    {
+        public override bool IsAlwaysCovered { get { return true; } }
+    }
+    public class ProtoItem : AbstractItem
+    {
+        public override bool IsAlwaysCovered { get { return true; } }
+    }
+
+    public class ProtoCritter : Critter
+    {
+        public override bool IsAlwaysCovered { get { return true; } }
+    }
+
+    // Stands in for the engine exports that hand back a covered set, such as Map.GetCrittersInRadius: the
+    // acquisition covered the map, and the map's cover reaches the critters on it.
+    public static class Roster
+    {
+        [return: ProvidesCover]
+        public static System.Collections.Generic.List<Critter> Nearby(Map map) { return null; }
+    }
+
+    public static partial class Sync
+    {
+        public static System.Threading.Tasks.Task<bool> Widen(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
         public static bool Lock(Entity entity) { return true; }
         public static bool WidenCritterWithMap(Critter cr) { return true; }
+        public static bool IsCovered(Entity entity) { return true; }
+        public static System.Threading.Tasks.Task<bool> LockAsync(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
+    }
+
+    public static class Game
+    {
+        public static bool IsEntityLocked(Entity entity) { return true; }
+        public static bool TrySyncEntity(int id) { return true; }
+        public static void Sync(Entity entity) { }
+
+        // The singleton bucket lock, deliberately not part of the raw-primitive rule.
+        public static void Lock() { }
+        public static void Unlock() { }
+
+        // The rest of the surface, which shares the type but takes entities as ordinary arguments.
+        public static void Verify(bool condition, string message, params object[] context) { }
     }
 }
 
@@ -354,6 +416,432 @@ namespace LastFrontier
         public static void OnSomething(Critter cr) { }
     }
 }", "FOSYNC003");
+
+            Check(failures, "probing whether cover is held is reported", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads(Critter cr)
+        {
+            if (Sync.IsCovered(cr)) { }
+        }
+    }
+}", "FOSYNC004");
+
+            Check(failures, "the engine probe is reported the same way", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads(Critter cr)
+        {
+            if (Game.IsEntityLocked(cr)) { }
+        }
+    }
+}", "FOSYNC004");
+
+            Check(failures, "a raw cover primitive outside Sync is reported", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads(Critter cr) { Game.Sync(cr); }
+    }
+}", "FOSYNC005");
+
+            Check(failures, "the Game singleton bucket lock is not a cover primitive", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads()
+        {
+            Game.Lock();
+            Game.Unlock();
+        }
+    }
+}");
+
+            Check(failures, "Sync itself may probe and use the primitives", @"
+namespace FOnline
+{
+    public static partial class Sync
+    {
+        public static void Helper(Critter cr)
+        {
+            if (IsCovered(cr)) { }
+            Game.Sync(cr);
+        }
+    }
+}");
+
+            Check(failures, "resolving an id to a live entity is not a raw primitive", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Work(int playerId)
+        {
+            if (!Game.TrySyncEntity(playerId)) { }
+        }
+    }
+}");
+
+            // FOSYNC009 -- the value-aware half: cover that an await released and nothing took back.
+            Check(failures, "a value used after an await with no re-proof is reported", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        public static async Task Run([RequiresCover] Critter cr)
+        {
+            await Pause();
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}", "FOSYNC009");
+
+            Check(failures, "re-proving the value after the await clears it", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        public static async Task Run([RequiresCover] Critter cr)
+        {
+            await Pause();
+            if (!await Sync.Widen(cr)) { return; }
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            Check(failures, "awaiting a preserving callee releases nothing", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        [PreservesCover]
+        static Task Keeps() { return Task.CompletedTask; }
+
+        public static async Task Run([RequiresCover] Critter cr)
+        {
+            await Keeps();
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            // Source order is not execution order; these two are what the position-only version got wrong.
+            Check(failures, "an await in a sibling branch does not reach the other branch", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        public static async Task Run([RequiresCover] Critter cr, bool flag)
+        {
+            if (flag) { await Pause(); }
+            else { Needs(cr); }
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            Check(failures, "an await in a guard branch that returns does not reach past it", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        public static async Task Run([RequiresCover] Critter cr, bool bad)
+        {
+            if (bad) { await Pause(); return; }
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            Check(failures, "a value the await itself produced is fresh", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        [return: ProvidesCover]
+        static Task<Critter> Find() { return Task.FromResult<Critter>(null); }
+
+        public static async Task Run()
+        {
+            Critter found = await Find();
+            Needs(found);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            // A covered collection covers what is taken out of it -- the acquisition reached the elements too.
+            Check(failures, "an element read by index carries the collection cover", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    public static class Probe
+    {
+        public static void Scan(Map map)
+        {
+            List<Critter> found = Roster.Nearby(map);
+            Critter other = found[0];
+            Needs(other);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            Check(failures, "a foreach variable carries it too", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    public static class Probe
+    {
+        public static void Scan(Map map)
+        {
+            foreach (Critter other in Roster.Nearby(map)) { Needs(other); }
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            Check(failures, "a collection parameter declaring it passes it on", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    public static class Probe
+    {
+        public static void Scan([ProvidesCover] List<Critter> critters)
+        {
+            Needs(critters[0]);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            Check(failures, "an element of an undeclared collection is still reported", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    public static class Probe
+    {
+        public static void Scan(List<Critter> critters)
+        {
+            Needs(critters[0]);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}", "FOSYNC002");
+
+            Check(failures, "static map data needs no cover", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads(StaticItem item) { item.GetCount(); }
+    }
+}");
+
+            Check(failures, "the same call on a mutable item still needs cover", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads(Item item) { item.GetCount(); }
+    }
+}", "FOSYNC002");
+
+            Check(failures, "annotating always-covered data is legal -- it is still an entity", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads([RequiresCover] StaticItem item) { }
+    }
+}");
+
+            // The reason the exemption belongs to the value and not to the type system: a prototype derives
+            // from the concrete entity, so excluding it from "entity" would drop the contract on the upcast.
+            Check(failures, "a prototype satisfies the obligation on its own", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads(ProtoCritter proto) { Needs(proto); }
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
+            Check(failures, "the same parameter still demands cover for a live critter", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads(Critter cr) { Needs(cr); }
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}", "FOSYNC002");
+
+            Check(failures, "acquiring cover on always-covered data is legal and silent", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Takes(StaticItem item) { Sync.Lock(item); }
+    }
+}");
+
+            Check(failures, "static map data as an argument needs no cover either", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Compares(StaticItem item) { AbstractItem.Compare(item); }
+    }
+}");
+
+            Check(failures, "a mutable item in the same position still does", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Compares(Item item) { AbstractItem.Compare(item); }
+    }
+}", "FOSYNC002");
+
+            // Exempting the receiver must not exempt the call.
+            Check(failures, "an argument is still checked on a static-data receiver", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Gives(StaticItem item, Critter cr) { item.Give(cr); }
+    }
+}", "FOSYNC002");
+
+            // Game carries the whole script surface, so the rule must be scoped to the acquisition methods.
+            Check(failures, "static map data as an ordinary Game argument is not an acquisition", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reports(StaticItem item) { Game.Verify(false, ""Context"", item); }
+    }
+}");
+
+            Check(failures, "a balanced singleton lock is silent", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Work()
+        {
+            Game.Lock();
+            Game.Unlock();
+        }
+    }
+}");
+
+            Check(failures, "a singleton lock left held is reported", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Work()
+        {
+            Game.Lock();
+        }
+    }
+}", "FOSYNC006");
+
+            Check(failures, "returning before the release is reported", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Work(bool skip)
+        {
+            Game.Lock();
+            if (skip) { return; }
+            Game.Unlock();
+        }
+    }
+}", "FOSYNC006");
+
+            Check(failures, "awaiting while the singleton lock is held is reported", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        public static async Task Work(Critter cr)
+        {
+            Game.Lock();
+            await Sync.LockAsync(cr);
+            Game.Unlock();
+        }
+    }
+}", "FOSYNC007");
 
             Check(failures, "a declaring entry point is silent and discharges its callees", @"
 namespace LastFrontier

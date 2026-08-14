@@ -199,4 +199,18 @@ namespace FOnline
 
         public CoverReach Reach { get; private set; }
     }
+
+    // For an awaitable method that GIVES THE CALLER BACK the cover it had. An await ordinarily releases the
+    // caller cover, so a value covered before one is not covered after it -- except when the callee restores
+    // what it found. That distinction already existed as prose ("preserves the caller cover" versus "replace
+    // or widen the caller's cover") in the `// SyncScope:` comments the cover attributes replaced, and it is
+    // the half that was never made checkable. Without it every caller of a preserving helper reads as having
+    // lost cover it still holds.
+    //
+    // It says nothing about lifetime: the entity may have been destroyed while the callee ran, so a caller
+    // that keeps using it still owes the ordinary liveness check.
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+    public sealed class PreservesCoverAttribute : Attribute
+    {
+    }
 }
