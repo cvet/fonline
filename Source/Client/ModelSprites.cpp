@@ -463,6 +463,8 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop.
     isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
+    FO_VERIFY_AND_THROW(frame_size.width <= AppRender::MAX_ATLAS_WIDTH && frame_size.height <= AppRender::MAX_ATLAS_HEIGHT, "Model sprite frame exceeds the device texture limit", frame_size.width, frame_size.height, render_frame_size.width, render_frame_size.height, ModelInstance::FRAME_SCALE, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+
     ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
         for (ptr<RenderTarget> rt : _rtIntermediate) {
             if (rt->GetTexture()->Size == frame_size) {
