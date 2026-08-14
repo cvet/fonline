@@ -33,6 +33,12 @@ namespace FOnline
                 return false;
             }
 
+            // Prototypes and static map data are readable at any time and hold no entity lock, so they are
+            // already covered and the native primitive has nothing to take for them.
+            if (entity.IsAlwaysCovered) {
+                return true;
+            }
+
             Game.Sync(entity);
 
             return !entity.IsDestroyed && !entity.IsDestroying;
@@ -42,28 +48,15 @@ namespace FOnline
         [Async]
         public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity)
         {
-            if (firstEntity.IsDestroyed || firstEntity.IsDestroying || secondEntity.IsDestroyed || secondEntity.IsDestroying) {
-                return false;
-            }
-
-            Game.Sync(firstEntity, secondEntity);
-
-            return !firstEntity.IsDestroyed && !firstEntity.IsDestroying && !secondEntity.IsDestroyed && !secondEntity.IsDestroying;
+            // Routed through the list overload so the always-covered filtering lives in one place.
+            return await Lock(new List<Entity> {firstEntity, secondEntity});
         }
 
         // Lifecycle: strict — any destroyed/destroying entity makes the call return false; no partial set is accepted.
         [Async]
         public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, Entity thirdEntity)
         {
-            if (firstEntity.IsDestroyed || firstEntity.IsDestroying || secondEntity.IsDestroyed || secondEntity.IsDestroying || thirdEntity.IsDestroyed ||
-                thirdEntity.IsDestroying) {
-                return false;
-            }
-
-            Game.Sync(firstEntity, secondEntity, thirdEntity);
-
-            return !firstEntity.IsDestroyed && !firstEntity.IsDestroying && !secondEntity.IsDestroyed && !secondEntity.IsDestroying && !thirdEntity.IsDestroyed &&
-                   !thirdEntity.IsDestroying;
+            return await Lock(new List<Entity> {firstEntity, secondEntity, thirdEntity});
         }
 
         // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying member returns false and is not skipped.
@@ -80,7 +73,15 @@ namespace FOnline
                 }
             }
 
-            Game.Sync(entities);
+            // A mixed list still acquires its live half: the always-covered members are dropped rather than
+            // failing the call, and a list of nothing but those needs no acquisition at all.
+            List<Entity> coverable = entities.FindAll(entity => !entity.IsAlwaysCovered);
+
+            if (coverable.Count == 0) {
+                return true;
+            }
+
+            Game.Sync(coverable);
 
             for (int i = 0; i < entities.Count; i++) {
                 if (entities[i].IsDestroyed || entities[i].IsDestroying) {

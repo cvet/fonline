@@ -146,11 +146,11 @@ static void AppendCustomEntityProtoGetters(std::ostringstream& out, const Engine
 static void AppendPropertyGroupGetters(std::ostringstream& out, const EngineMetadata& meta);
 static void AppendPropertyInfoAccessors(std::ostringstream& out, const EngineMetadata& meta);
 static void AppendEventAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names);
-static void AppendEntityClass(std::ostringstream& out, string_view class_name, string_view base_name, const EntityTypeDesc& desc, string_view target_name, string_view native_owner_name = {}, bool is_fixed_type = false);
+static void AppendEntityClass(std::ostringstream& out, string_view class_name, string_view base_name, const EntityTypeDesc& desc, string_view target_name, string_view native_owner_name = {}, bool is_fixed_type = false, bool data_only = false);
 static void AppendComponentClasses(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc);
 static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const EngineMetadata& meta);
 static void AppendRemoteCallerSurface(std::ostringstream& out, const EngineMetadata& meta, string_view target_name);
-static void AppendEmptyDerivedEntity(std::ostringstream& out, string_view class_name, string_view base_name);
+static void AppendEmptyDerivedEntity(std::ostringstream& out, string_view class_name, string_view base_name, bool always_covered = false);
 static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string;
 static void CollectCallbacks(const ComplexTypeDesc& type, unordered_map<string, ComplexTypeDesc>& callbacks);
 static void CollectCallbacks(const vector<ArgDesc>& args, unordered_map<string, ComplexTypeDesc>& callbacks);
@@ -600,21 +600,28 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 AppendEmptyDerivedEntity(out, type_name, abstract_name);
 
                 if (desc->HasProtos) {
-                    AppendEmptyDerivedEntity(out, strex("Proto{}", type_name).str(), abstract_name);
+                    AppendEmptyDerivedEntity(out, strex("Proto{}", type_name).str(), abstract_name, true);
                 }
                 if (desc->HasStatics) {
-                    AppendEmptyDerivedEntity(out, strex("Static{}", type_name).str(), abstract_name);
+                    AppendEmptyDerivedEntity(out, strex("Static{}", type_name).str(), abstract_name, true);
                 }
             }
             else {
                 AppendEntityClass(out, type_name, "Entity", *desc, target_name);
 
                 if (type_name != "Game") {
+                    // Without an abstract form the prototype gets its own data class off `Entity` rather than
+                    // deriving from the live type. Deriving was only ever a way to hand it the type's
+                    // properties, and it cost far more than it gave: `ProtoCritter` WAS a `Critter`, so the C#
+                    // compiler accepted `Critter cr = proto;` and the export behind it received a pointer to
+                    // an unrelated native type (`ProtoEntity`, not `ServerEntity`). Declare `HasAbstract` only
+                    // where the generalization is genuinely wanted -- an item, where a prototype legitimately
+                    // stands in for an item in the unarmed-attack path.
                     if (desc->HasProtos) {
-                        AppendEmptyDerivedEntity(out, strex("Proto{}", type_name).str(), type_name);
+                        AppendEntityClass(out, strex("Proto{}", type_name).str(), "Entity", *desc, target_name, type_name, false, true);
                     }
                     if (desc->HasStatics) {
-                        AppendEmptyDerivedEntity(out, strex("Static{}", type_name).str(), type_name);
+                        AppendEmptyDerivedEntity(out, strex("Static{}", type_name).str(), type_name, true);
                     }
                 }
             }
@@ -2570,6 +2577,16 @@ static void AppendEntityBaseClass(std::ostringstream& out)
     out << CS_INDENT << "        return global::FOnline.Native.IsEntityDestroyed(_entityPtr);\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
+    // Whether this entity carries its own synchronization cover. False for a live entity; the generated
+    // prototype and static classes override it to true. It lives on the base so a caller can ask without
+    // naming a concrete type, which is what lets an engine-owned helper answer for project-owned entities.
+    out << CS_INDENT << "public virtual bool IsAlwaysCovered\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    get\n";
+    out << CS_INDENT << "    {\n";
+    out << CS_INDENT << "        return false;\n";
+    out << CS_INDENT << "    }\n";
+    out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public bool IsDestroying\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
@@ -3606,7 +3623,7 @@ static void AppendEventAccessors(std::ostringstream& out, string_view owner_type
     }
 }
 
-static void AppendEntityClass(std::ostringstream& out, string_view class_name, string_view base_name, const EntityTypeDesc& desc, string_view target_name, string_view native_owner_name, bool is_fixed_type)
+static void AppendEntityClass(std::ostringstream& out, string_view class_name, string_view base_name, const EntityTypeDesc& desc, string_view target_name, string_view native_owner_name, bool is_fixed_type, bool data_only)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3644,7 +3661,7 @@ static void AppendEntityClass(std::ostringstream& out, string_view class_name, s
     // the built-ins, AppendProtoGetters for custom entities). Emitted on the content class, so an abstract
     // entity's whole cast graph inherits it.
     // A fixed type IS its own proto (no `Proto<X>` class exists), so it carries no `Proto` property.
-    if (!is_static && !is_fixed_type && desc.HasProtos && member_names.emplace("Proto").second) {
+    if (!is_static && !is_fixed_type && !data_only && desc.HasProtos && member_names.emplace("Proto").second) {
         out << CS_INDENT << "public Proto" << owner << " Proto\n";
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "    get\n";
@@ -3656,6 +3673,24 @@ static void AppendEntityClass(std::ostringstream& out, string_view class_name, s
     // A non-static entity class derives from the Entity base (`: base_name`), so a Name/Id/ProtoId/IsDestroyed
     // property shadows the base member and needs `new`; the static `Game` class has no such base.
     AppendEntityProperties(out, desc.PropRegistrator.get(), owner, {}, is_static, true, false, !is_static, member_names);
+
+    // A prototype is authored data, not a live entity: it carries the type's properties and components and
+    // stops there. Emitting the behaviour as well is what used to put `Disconnect()` and `DestroyItem()` on a
+    // prototype -- meaningless on something with no id, no map and no lock. Events and entity holders belong
+    // to a live entity for the same reason. It also carries its own cover, since baked data is readable at
+    // any time.
+    if (data_only) {
+        out << CS_INDENT << "public override bool IsAlwaysCovered\n";
+        out << CS_INDENT << "{\n";
+        out << CS_INDENT << "    get\n";
+        out << CS_INDENT << "    {\n";
+        out << CS_INDENT << "        return true;\n";
+        out << CS_INDENT << "    }\n";
+        out << CS_INDENT << "}\n";
+        out << "    }\n\n";
+        return;
+    }
+
     AppendEventAccessors(out, owner, desc, is_static, member_names);
     // Entity synchronization exists only on the server; client and mapper scripts run single-threaded, so a
     // cover contract there would name a guarantee with no mechanism behind it.
@@ -3835,7 +3870,7 @@ static void AppendEntityHolderAccessors(std::ostringstream& out, string_view own
     }
 }
 
-static void AppendEmptyDerivedEntity(std::ostringstream& out, string_view class_name, string_view base_name)
+static void AppendEmptyDerivedEntity(std::ostringstream& out, string_view class_name, string_view base_name, bool always_covered)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3847,6 +3882,22 @@ static void AppendEmptyDerivedEntity(std::ostringstream& out, string_view class_
     out << CS_INDENT << "internal " << EscapeCsIdentifier(class_name) << "(IntPtr entityPtr) : base(entityPtr)\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "}\n";
+
+    // Prototypes and static (baked) entities are immutable and readable at any time, so they carry their cover
+    // with them: an obligation for one is met the moment it is stated, and acquiring one succeeds trivially.
+    // Natively they are not even ServerEntity -- ProtoEntity derives straight from Entity and owns no entity
+    // lock -- so this also keeps a script-side acquisition away from a native call that expects one.
+    if (always_covered) {
+        out << "\n";
+        out << CS_INDENT << "public override bool IsAlwaysCovered\n";
+        out << CS_INDENT << "{\n";
+        out << CS_INDENT << "    get\n";
+        out << CS_INDENT << "    {\n";
+        out << CS_INDENT << "        return true;\n";
+        out << CS_INDENT << "    }\n";
+        out << CS_INDENT << "}\n";
+    }
+
     out << "    }\n\n";
 }
 
