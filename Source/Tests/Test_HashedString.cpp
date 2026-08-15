@@ -40,6 +40,12 @@ FO_BEGIN_NAMESPACE
 static_assert(std::is_invocable_r_v<uint64_t, decltype(&HashStorage::DefaultHash), const_span<byte>>);
 static_assert(!std::is_invocable_v<decltype(&HashStorage::DefaultHash), const_span<uint8_t>>);
 
+template<typename T>
+concept CanStoreHashedString = requires(HashStorage& storage, T&& value) { storage.ToHashedString(std::forward<T>(value)); };
+
+static_assert(CanStoreHashedString<string_view>);
+static_assert(!CanStoreHashedString<u8string_view>);
+
 TEST_CASE("HashedString")
 {
     SECTION("EmptyHash")
@@ -73,16 +79,14 @@ TEST_CASE("HashedString")
         CHECK(HashStorage::DefaultHash(bytes) == 0xD4769C76A82E82B0ULL);
     }
 
-    SECTION("Utf8StorageRoundtrip")
+    SECTION("StorageRejectsNonAsciiText")
     {
         HashStorage storage {};
-        u8string resource_path {u8"Ресурсы/заставка-🌍.png"};
+        array<byte, 2> non_ascii_bytes {byte {0xC2}, byte {0xA0}};
+        string non_ascii {span_to_string(non_ascii_bytes)};
 
-        hstring hashed_path = storage.ToHashedString(resource_path.view());
-
-        CHECK(hashed_path.as_hash() == HashStorage::DefaultHash(utf8_to_byte_span(resource_path.view())));
-        CHECK(storage.CheckHashedString(resource_path.view()));
-        CHECK(storage.ResolveHash(hashed_path.as_hash()) == hashed_path);
+        CHECK_FALSE(storage.CheckHashedString(non_ascii));
+        CHECK_THROWS_AS(storage.ToHashedString(non_ascii), TextValidationException);
     }
 
     SECTION("IdempotentInsertion")

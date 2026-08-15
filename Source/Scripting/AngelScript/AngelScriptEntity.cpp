@@ -436,9 +436,9 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto engine = GetGameEngine(as_engine);
-    auto entity_type = engine->Hashes.ToHashedString(*entity_name);
+    hstring entity_type = engine->Hashes.ToHashedString(*entity_name);
     string entity_type_name = utf8_to_string(u8strex("{}", entity_type));
-    auto prop_enum = static_cast<int32_t>(*GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0));
+    int32_t prop_enum = static_cast<int32_t>(*GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0));
     auto prop_value = GetGenericAddressArgAs<const any_t>(gen, 1);
     auto registrator = engine->GetPropertyRegistrator(*entity_name);
     FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
@@ -1151,7 +1151,7 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
     // Register entities
     auto const_name = [&](const char* name) -> ptr<const string> {
         hstring hname = meta->Hashes.ToHashedString(name);
-        return hname.as_str_ptr();
+        return &hname.as_str();
     };
 
     auto register_base_entity = [&](const char* name) {
@@ -1373,7 +1373,7 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
 
             if (!prop->IsDisabled() && !prop->IsComponentItself() && prop->IsMutable()) {
                 string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
-                auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+                string decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(Entity_SetPropertyValue), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
             }
         }

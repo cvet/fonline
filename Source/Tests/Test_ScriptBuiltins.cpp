@@ -1356,6 +1356,11 @@ namespace ScriptBuiltins
         return eq && neq && strCheck;
     }
 
+    bool HashString(string value)
+    {
+        return string(value.hstr()) == value;
+    }
+
     // === Global API operations ===
 
     bool GameLogWorks()
@@ -1805,6 +1810,23 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 1);
+    }
+
+    // Script strings are UTF-8, while hstring identifiers are ASCII.
+    {
+        auto func = server->FindFunc<bool, string>(fn("ScriptBuiltins::HashString"));
+        REQUIRE(func);
+        REQUIRE(func.Call(string {"AsciiIdentifier"}));
+        CHECK(func.GetResult());
+
+        auto prev_callback = GetExceptionCallback();
+        u8string message;
+        SetExceptionCallback([&](u8string_view msg, const CatchedStackTraceData&, bool) { message.assign(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+
+        string unicode_identifier = NativeScriptText::ToScriptString(u8string {u8"Ключ"});
+        CHECK_FALSE(func.Call(unicode_identifier));
+        CHECK(message.view().native_view().find(u8"Non-ASCII byte in ASCII text") != std::u8string_view::npos);
     }
 
     // Enum <-> any conversions store full enum names

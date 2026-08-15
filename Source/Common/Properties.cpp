@@ -877,7 +877,7 @@ void Properties::StoreAllData(vector<byte>& all_data, set<hstring>& str_hashes) 
     // Store hashes
     auto add_hash = [&str_hashes, this](u8string_view str) {
         if (!str.empty()) {
-            auto hstr = _registrator->_hashResolver->ToHashedString(utf8_as_char_view(str));
+            hstring hstr = _registrator->_hashResolver->ToHashedString(utf8_to_string(str));
             str_hashes.emplace(hstr);
         }
     };
@@ -1939,6 +1939,10 @@ void Properties::SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& v
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
     if (base_type.IsFixedType || base_type.IsEntityProto) {
+        if (auto issue = validate_ascii_text(value)) {
+            throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
+        }
+
         SetValue<hstring>(prop, _registrator->GetHashResolver()->ToHashedString(value));
     }
     else if (base_type.IsEnum) {

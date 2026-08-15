@@ -36,20 +36,20 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto GetRequiredSpriteInfoValue(const ConfigKeyValueMap& values, string_view file_name, string_view section_name, string_view key) -> u8string_view
+static auto GetRequiredSpriteInfoValue(const ConfigKeyValueMap& values, string_view file_name, string_view section_name, string_view key) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
     auto it = values.find(key);
     FO_VERIFY_AND_THROW(it != values.end(), "Sprite info section is missing a required key", file_name, section_name, key);
-    return it->second;
+    return utf8_to_string(it->second);
 }
 
 static auto ParseSpriteInfoIntValues(const ConfigKeyValueMap& values, string_view file_name, string_view section_name, string_view key) -> vector<int32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    string ascii_values = utf8_to_string(GetRequiredSpriteInfoValue(values, file_name, section_name, key));
+    string ascii_values = GetRequiredSpriteInfoValue(values, file_name, section_name, key);
     vector<string_view> tokens = strvex(ascii_values).split(' ');
     vector<int32_t> result;
     result.reserve(tokens.size());
@@ -91,7 +91,7 @@ auto ReadSpriteInfoFile(string_view file_name, u8string content) -> vector<Sprit
         }
 
         SpriteInfoFileEntry entry;
-        entry.SourcePath = utf8_to_string(GetRequiredSpriteInfoValue(values, file_name, section_name, "SourcePath"));
+        entry.SourcePath = GetRequiredSpriteInfoValue(values, file_name, section_name, "SourcePath");
         entry.ResourcePath = section_name;
         FO_VERIFY_AND_THROW(!entry.SourcePath.empty(), "Sprite info source path is empty", file_name, section_name);
         FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info resource contains a duplicate source path", file_name, entry.SourcePath);

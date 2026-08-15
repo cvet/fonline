@@ -929,7 +929,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, hstri
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, u8string_view sprName)
+FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::OneImage);
 }

@@ -584,7 +584,7 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        u8string source = name.as_utf8();
+        u8string source {name};
         std::u8string_view source_view = source.view().native_view();
         u8string quoted {u8"\""};
         quoted.reserve(source.size() + 2);

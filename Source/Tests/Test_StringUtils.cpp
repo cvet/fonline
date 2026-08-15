@@ -249,15 +249,15 @@ TEST_CASE("StringUtils")
         CHECK(u8strvex(u8"жПриветж").trim(u8"ж") == u8"Привет");
         CHECK(u8strvex(u8"жтж").rtrim(u8"ж") == u8"жт");
 
-        u8string metadata_line {u8"Proto Modifier Сomfortable.Сarrying ComfortableCarrying"};
+        u8string metadata_line {u8"Display Text Привет.Мир Hello"};
         auto metadata_tokens = u8strvex(metadata_line).tokenize();
         REQUIRE(metadata_tokens.size() == 6);
-        CHECK(metadata_tokens[0] == u8"Proto");
-        CHECK(metadata_tokens[1] == u8"Modifier");
-        CHECK(metadata_tokens[2] == u8"Сomfortable");
+        CHECK(metadata_tokens[0] == u8"Display");
+        CHECK(metadata_tokens[1] == u8"Text");
+        CHECK(metadata_tokens[2] == u8"Привет");
         CHECK(metadata_tokens[3] == u8".");
-        CHECK(metadata_tokens[4] == u8"Сarrying");
-        CHECK(metadata_tokens[5] == u8"ComfortableCarrying");
+        CHECK(metadata_tokens[4] == u8"Мир");
+        CHECK(metadata_tokens[5] == u8"Hello");
     }
 
     SECTION("Utf8ScalarValidity")

@@ -2699,16 +2699,14 @@ void ServerEngine::LoadReportedHashes()
     vector<string> loaded;
 
     for (const auto& reported_string : DbStorage.GetAllStringIds(HashReportsCollectionName)) {
-        u8string utf8_reported_string = reported_string;
-
         // Now resolvable - developers added the missing string after the report, so stop tracking and broadcasting it
-        if (Hashes.CheckHashedString(utf8_reported_string.view())) {
+        if (Hashes.CheckHashedString(reported_string)) {
             DbStorage.Delete(HashReportsCollectionName, reported_string);
             resolved_count++;
             continue;
         }
 
-        WriteLog(LogType::Warning, "Client-reported hash is still unresolvable on the server: '{}'", utf8_reported_string);
+        WriteLog(LogType::Warning, "Client-reported hash is still unresolvable on the server: '{}'", reported_string);
         loaded.emplace_back(reported_string);
     }
 

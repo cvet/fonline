@@ -32,18 +32,9 @@
 //
 
 #include "HashedString.h"
-#include "TextConversions.h"
-
 FO_BEGIN_NAMESPACE
 
 hstring::entry hstring::_zeroEntry;
-
-auto hstring::as_utf8() const -> u8string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return _entry->Str;
-}
 
 HashStorage::HashStorage(HashFunc hash_func) :
     _hashFunc {hash_func}
@@ -67,29 +58,16 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
     if (s.empty()) {
         return false;
     }
-
-    const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
-    auto hash_value = _hashFunc(bytes);
-
-    shared_lock locker {_hashStorageLocker};
-
-    return _hashStorage.find(hash_value) != _hashStorage.end();
-}
-
-auto HashStorage::CheckHashedString(u8string_view s) const noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (s.empty()) {
+    if (validate_ascii_text(s)) {
         return false;
     }
 
-    auto bytes = utf8_to_byte_span(s);
-    auto hash_value = _hashFunc(bytes);
+    const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
+    hstring::hash_t hash_value = _hashFunc(bytes);
 
     shared_lock locker {_hashStorageLocker};
 
-    return _hashStorage.find(hash_value) != _hashStorage.end();
+    return _hashStorage.contains(hash_value);
 }
 
 auto HashStorage::ToHashedString(string_view s) -> hstring
@@ -101,9 +79,12 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
     if (s.empty()) {
         return {};
     }
+    if (auto issue = validate_ascii_text(s)) {
+        throw TextValidationException(TextEncoding::Ascii, issue->Error, issue->Offset);
+    }
 
     const_span<byte> bytes {make_ptr(s.data()).reinterpret_as<const byte>().get(), s.length()};
-    auto hash_value = _hashFunc(bytes);
+    hstring::hash_t hash_value = _hashFunc(bytes);
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {
@@ -113,7 +94,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 #if FO_DEBUG
             bool collision_detected = s != it->second->Str;
 #else
-            auto collision_detected = s.length() != it->second->Str.length();
+            bool collision_detected = s.length() != it->second->Str.length();
 #endif
 
             if (collision_detected) {
@@ -133,18 +114,21 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         scoped_lock locker {_hashStorageLocker};
 
         auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
-        ignore_unused(inserted); // Do not assert because somebody else can insert it already
+
+        if (!inserted) {
+#if FO_DEBUG
+            bool collision_detected = s != it->second->Str;
+#else
+            bool collision_detected = s.length() != it->second->Str.length();
+#endif
+
+            if (collision_detected) {
+                throw HashCollisionException("Hash collision", s, it->second->Str, hash_value);
+            }
+        }
 
         return hstring(it->second.get());
     }
-}
-
-auto HashStorage::ToHashedString(u8string_view s) -> hstring
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string chars = utf8_to_char_string(s);
-    return ToHashedString(chars);
 }
 
 auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring

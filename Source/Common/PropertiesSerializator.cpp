@@ -109,7 +109,7 @@ auto PropertiesSerializator::LoadFromDocument(ptr<Properties> props, const AnyDa
 
         try {
             // Find property
-            auto prop = props->GetRegistrator()->FindProperty(utf8_as_char_view(doc_key_view));
+            auto prop = props->GetRegistrator()->FindProperty(utf8_to_string(doc_key));
 
             if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
@@ -1309,11 +1309,11 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     Properties field_props(fields_registrator);
 
     for (auto&& [field_name, field_value] : dict) {
-        auto field_name_chars = utf8_as_char_view(field_name.view());
-        auto field_prop = fields_registrator->FindProperty(field_name_chars);
+        string field_name_text = utf8_to_string(field_name);
+        auto field_prop = fields_registrator->FindProperty(field_name_text);
 
         if (!field_prop) {
-            throw PropertySerializationException("Unknown ref type field", owner_name, field_name_chars);
+            throw PropertySerializationException("Unknown ref type field", owner_name, field_name_text);
         }
 
         PropertiesSerializator::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
@@ -1343,7 +1343,7 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
     unordered_set<string> seen_fields;
 
     for (size_t i = 0; i < fields_arr.Size(); i += 2) {
-        string_view field_name = utf8_as_char_view(fields_arr[i].AsString());
+        string field_name = utf8_to_string(fields_arr[i].AsString());
         auto field_prop = fields_registrator->FindProperty(field_name);
 
         if (!field_prop) {
@@ -1688,7 +1688,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        string_view str = utf8_as_char_view(value.AsString());
+        string str = utf8_to_string(value.AsString());
         auto str_value = strvex(str);
 
         if (str_value.is_explicit_bool()) {
@@ -1914,7 +1914,7 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
         hstring::hash_t hash = {};
 
         if (value.Type() == AnyData::ValueType::String) {
-            auto resolved_value = hash_resolver.ToHashedString(utf8_as_char_view(value.AsString()));
+            hstring resolved_value = hash_resolver.ToHashedString(utf8_to_string(value.AsString()));
             hash = resolved_value.as_hash();
         }
         else {
@@ -1927,7 +1927,7 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
         hstring::hash_t hash = {};
 
         if (value.Type() == AnyData::ValueType::String) {
-            auto resolved_value = hash_resolver.ToHashedString(utf8_as_char_view(value.AsString()));
+            hstring resolved_value = hash_resolver.ToHashedString(utf8_to_string(value.AsString()));
             auto proto = name_resolver.GetProtoEntity(base_type.HashedName, resolved_value);
 
             if (proto) {
@@ -1955,7 +1955,7 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
         int32_t enum_value = 0;
 
         if (value.Type() == AnyData::ValueType::String) {
-            enum_value = ResolveEnumValueWithMigration(base_type, hash_resolver, name_resolver, utf8_as_char_view(value.AsString()));
+            enum_value = ResolveEnumValueWithMigration(base_type, hash_resolver, name_resolver, utf8_to_string(value.AsString()));
         }
         else if (value.Type() == AnyData::ValueType::Int64) {
             enum_value = numeric_cast<int32_t>(value.AsInt64());
@@ -2360,75 +2360,77 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
         auto write_uint32 = [&](uint32_t value) { WriteRawUInt32(data_ptr, data_pos, value); };
 
         for (auto&& [dict_key, dict_value] : dict) {
-            string_view dict_key_chars = utf8_as_char_view(dict_key.view());
-
             // Key
             if (dict_key_type->IsString) {
                 auto key_len = numeric_cast<uint32_t>(dict_key.size());
                 write_uint32(key_len);
-                WriteRawSpan(data_ptr, data_pos, utf8_to_byte_span(dict_key.view()));
+                WriteRawSpan(data_ptr, data_pos, utf8_to_byte_span(dict_key));
             }
-            else if (dict_key_type->IsHashedString) {
-                auto hash = hash_resolver.ToHashedString(dict_key_chars).as_hash();
-                write_key_data(&hash, sizeof(hash));
-            }
-            else if (dict_key_type->IsEnum) {
-                int32_t enum_value = ResolveEnumValueWithMigration(*dict_key_type, hash_resolver, name_resolver, dict_key_chars);
+            else {
+                string dict_key_text = utf8_to_string(dict_key);
 
-                if (dict_key_type->Size == sizeof(uint8_t)) {
-                    auto converted_value = numeric_cast<uint8_t>(enum_value);
+                if (dict_key_type->IsHashedString) {
+                    hstring::hash_t hash = hash_resolver.ToHashedString(dict_key_text).as_hash();
+                    write_key_data(&hash, sizeof(hash));
+                }
+                else if (dict_key_type->IsEnum) {
+                    int32_t enum_value = ResolveEnumValueWithMigration(*dict_key_type, hash_resolver, name_resolver, dict_key_text);
+
+                    if (dict_key_type->Size == sizeof(uint8_t)) {
+                        uint8_t converted_value = numeric_cast<uint8_t>(enum_value);
+                        write_key_data(&converted_value, sizeof(converted_value));
+                    }
+                    else if (dict_key_type->Size == sizeof(uint16_t)) {
+                        uint16_t converted_value = numeric_cast<uint16_t>(enum_value);
+                        write_key_data(&converted_value, sizeof(converted_value));
+                    }
+                    else {
+                        write_key_data(&enum_value, dict_key_type->Size);
+                    }
+                }
+                else if (dict_key_type->IsInt8) {
+                    int8_t converted_value = numeric_cast<int8_t>(ParseStrictIntText(dict_key_text));
                     write_key_data(&converted_value, sizeof(converted_value));
                 }
-                else if (dict_key_type->Size == sizeof(uint16_t)) {
-                    auto converted_value = numeric_cast<uint16_t>(enum_value);
+                else if (dict_key_type->IsInt16) {
+                    int16_t converted_value = numeric_cast<int16_t>(ParseStrictIntText(dict_key_text));
+                    write_key_data(&converted_value, sizeof(converted_value));
+                }
+                else if (dict_key_type->IsInt32) {
+                    int32_t converted_value = numeric_cast<int32_t>(ParseStrictIntText(dict_key_text));
+                    write_key_data(&converted_value, sizeof(converted_value));
+                }
+                else if (dict_key_type->IsInt64) {
+                    int64_t converted_value = numeric_cast<int64_t>(ParseStrictIntText(dict_key_text));
+                    write_key_data(&converted_value, sizeof(converted_value));
+                }
+                else if (dict_key_type->IsUInt8) {
+                    uint8_t converted_value = numeric_cast<uint8_t>(ParseStrictIntText(dict_key_text));
+                    write_key_data(&converted_value, sizeof(converted_value));
+                }
+                else if (dict_key_type->IsUInt16) {
+                    uint16_t converted_value = numeric_cast<uint16_t>(ParseStrictIntText(dict_key_text));
+                    write_key_data(&converted_value, sizeof(converted_value));
+                }
+                else if (dict_key_type->IsUInt32) {
+                    uint32_t converted_value = numeric_cast<uint32_t>(ParseStrictIntText(dict_key_text));
+                    write_key_data(&converted_value, sizeof(converted_value));
+                }
+                else if (dict_key_type->IsSingleFloat) {
+                    float32_t converted_value = ConvertFloat64ToNumber<float32_t>(ParseStrictFloatText(dict_key_text));
+                    write_key_data(&converted_value, sizeof(converted_value));
+                }
+                else if (dict_key_type->IsDoubleFloat) {
+                    float64_t converted_value = numeric_cast<float64_t>(ParseStrictFloatText(dict_key_text));
+                    write_key_data(&converted_value, sizeof(converted_value));
+                }
+                else if (dict_key_type->IsBool) {
+                    bool converted_value = strvex(dict_key_text).to_bool();
                     write_key_data(&converted_value, sizeof(converted_value));
                 }
                 else {
-                    write_key_data(&enum_value, dict_key_type->Size);
+                    FO_UNREACHABLE_PLACE();
                 }
-            }
-            else if (dict_key_type->IsInt8) {
-                auto converted_value = numeric_cast<int8_t>(ParseStrictIntText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsInt16) {
-                auto converted_value = numeric_cast<int16_t>(ParseStrictIntText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsInt32) {
-                auto converted_value = numeric_cast<int32_t>(ParseStrictIntText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsInt64) {
-                auto converted_value = numeric_cast<int64_t>(ParseStrictIntText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsUInt8) {
-                auto converted_value = numeric_cast<uint8_t>(ParseStrictIntText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsUInt16) {
-                auto converted_value = numeric_cast<uint16_t>(ParseStrictIntText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsUInt32) {
-                auto converted_value = numeric_cast<uint32_t>(ParseStrictIntText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsSingleFloat) {
-                auto converted_value = ConvertFloat64ToNumber<float32_t>(ParseStrictFloatText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsDoubleFloat) {
-                auto converted_value = numeric_cast<float64_t>(ParseStrictFloatText(dict_key_chars));
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else if (dict_key_type->IsBool) {
-                auto converted_value = strvex(dict_key_chars).to_bool();
-                write_key_data(&converted_value, sizeof(converted_value));
-            }
-            else {
-                FO_UNREACHABLE_PLACE();
             }
 
             // Value

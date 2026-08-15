@@ -922,39 +922,47 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
     FO_VERIFY_AND_THROW(!files.empty(), "Effekseer compiler received an empty project list");
 
     for (const File& file : files) {
-        if (!file.GetDataSource()->IsDiskDir()) {
-            throw ParticleBakerException("Effekseer text projects can only be compiled from a directory resource source", file.GetPath(), file.GetDataSource()->GetSourcePath());
-        }
-
-        u8string project_path = fs_resolve_path(file.GetDiskPath());
-        string output_path = strex(file.GetPath()).change_file_extension("efk");
-        EffekseerCompilerOutput compiled;
-
         try {
-            compiled = CompileEffekseerProject(project_path, file.GetDataSpan());
+            if (!file.GetDataSource()->IsDiskDir()) {
+                throw ParticleBakerException("Effekseer text projects can only be compiled from a directory resource source", file.GetPath(), file.GetDataSource()->GetSourcePath());
+            }
+
+            u8string project_path = fs_resolve_path(file.GetDiskPath());
+            string output_path = strex(file.GetPath()).change_file_extension("efk");
+            EffekseerCompilerOutput compiled;
+
+            try {
+                compiled = CompileEffekseerProject(project_path, file.GetDataSpan());
+            }
+            catch (const EffekseerCompilerException& ex) {
+                throw ParticleBakerException("Effekseer project compiler failed", file.GetPath(), ex.what());
+            }
+
+            ValidateEffekseerRuntimeBinary(output_path, compiled.Binary);
+            vector<u8string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
+
+            // Precompute the bounds from the pure Effekseer payload, then append them as a trailer so the runtime frames
+            // the effect from a static box. Validation above ran on the untrailered binary.
+            vec3 bounds_min;
+            vec3 bounds_max;
+            float32_t billboard_radius;
+            SimulateEffekseerBounds(output_path, file.GetDataSource()->GetSourcePath(), compiled.Binary, bounds_min, bounds_max, billboard_radius);
+            AppendEffekseerBoundsTrailer(compiled.Binary, bounds_min, bounds_max, billboard_radius);
+
+            uint64_t dependency_write_time = 0;
+            u8string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, file.GetSize(), file.GetWriteTime(), dependency_paths, dependency_write_time);
+            _context->WriteData(output_path, compiled.Binary);
+            u8string cache_path = GetEffekseerDependencyCachePath(*_context, output_path);
+
+            if (!cache_path.empty() && !fs_write_file_text(cache_path, dependency_snapshot)) {
+                throw ParticleBakerException("Failed to write Effekseer dependency cache", output_path, cache_path);
+            }
         }
-        catch (const EffekseerCompilerException& ex) {
-            throw ParticleBakerException("Effekseer project compiler failed", file.GetPath(), ex.what());
+        catch (const ParticleBakerException&) {
+            throw;
         }
-
-        ValidateEffekseerRuntimeBinary(output_path, compiled.Binary);
-        vector<u8string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
-
-        // Precompute the bounds from the pure Effekseer payload, then append them as a trailer so the runtime frames
-        // the effect from a static box. Validation above ran on the untrailered binary.
-        vec3 bounds_min;
-        vec3 bounds_max;
-        float32_t billboard_radius;
-        SimulateEffekseerBounds(output_path, file.GetDataSource()->GetSourcePath(), compiled.Binary, bounds_min, bounds_max, billboard_radius);
-        AppendEffekseerBoundsTrailer(compiled.Binary, bounds_min, bounds_max, billboard_radius);
-
-        uint64_t dependency_write_time = 0;
-        u8string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, file.GetSize(), file.GetWriteTime(), dependency_paths, dependency_write_time);
-        _context->WriteData(output_path, compiled.Binary);
-        u8string cache_path = GetEffekseerDependencyCachePath(*_context, output_path);
-
-        if (!cache_path.empty() && !fs_write_file_text(cache_path, dependency_snapshot)) {
-            throw ParticleBakerException("Failed to write Effekseer dependency cache", output_path, cache_path);
+        catch (const std::exception& ex) {
+            throw ParticleBakerException("Effekseer project baking failed", file.GetPath(), ex.what());
         }
     }
 }

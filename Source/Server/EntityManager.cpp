@@ -912,7 +912,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
             return {};
         }
 
-        string_view proto_name = utf8_as_char_view(proto_value.AsString());
+        string proto_name = utf8_to_string(proto_value.AsString());
 
         if (proto_name.empty()) {
             WriteLog(LogType::Warning, "{} '_Proto' section of entity {} is empty", collection_name, id);
@@ -1671,7 +1671,7 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
             FO_VERIFY_AND_THROW(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0, "Custom entity id is already registered for this type while loading from storage", type_name, id);
         }
 
-        auto collection_name = _engine->Hashes.ToHashedString(u8strex("{}s", type_name));
+        hstring collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {

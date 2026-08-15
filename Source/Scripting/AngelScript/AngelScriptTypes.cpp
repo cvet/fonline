@@ -275,7 +275,7 @@ static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
             }
         }
         else if constexpr (std::is_same_v<T, hstring>) {
-            v = meta->Hashes.ToHashedString(tokens[index]);
+            v = meta->Hashes.ToHashedString(NativeScriptText::FromScriptString<string>(tokens[index]));
         }
 
         index++;
@@ -387,7 +387,7 @@ static void HstringWrapper_AnyConvRev(AngelScript::asIScriptGeneric* gen)
     auto self = GetGenericObjectAs<const any_t>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
-    new (gen->GetAddressOfReturnLocation()) T(meta->Hashes.ToHashedString(*self));
+    new (gen->GetAddressOfReturnLocation()) T(meta->Hashes.ToHashedString(NativeScriptText::FromScriptString<string>(*self)));
 }
 
 static void TextPackKey_ConstructFromGen(AngelScript::asIScriptGeneric* gen, bool hstring_key1)
@@ -509,7 +509,8 @@ static void String_ToHashedString(AngelScript::asIScriptGeneric* gen)
     auto str = GetGenericObjectAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
-    hstring hstr = meta->Hashes.ToHashedString(*str);
+    hstring hstr = meta->Hashes.ToHashedString(NativeScriptText::FromScriptString<string>(*str));
+
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 }
 
@@ -707,7 +708,7 @@ static void Any_ConvGen(AngelScript::asIScriptGeneric* gen)
         new (gen->GetAddressOfReturnLocation()) T(result);
     }
     else if constexpr (std::same_as<T, hstring>) {
-        new (gen->GetAddressOfReturnLocation()) hstring(meta->Hashes.ToHashedString(*self));
+        new (gen->GetAddressOfReturnLocation()) hstring(meta->Hashes.ToHashedString(NativeScriptText::FromScriptString<string>(*self)));
     }
     else {
         static_assert(always_false_v<T>, "Unsupported type for any conversion");
@@ -1151,8 +1152,8 @@ static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> a
 
         string_view handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : string_view {});
         string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
-        auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
-        auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+        string decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
+        string decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
 
         string host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
 

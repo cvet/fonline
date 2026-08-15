@@ -588,17 +588,6 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
 {
     FO_STACK_TRACE_ENTRY();
 
-    u8string rule_name_utf8 = rule_name;
-    u8string extra_info_utf8 = extra_info;
-    u8string target_utf8 = target;
-    u8string replacement_utf8 = replacement;
-    RegisterMigrationRule(rule_name_utf8, extra_info_utf8, target_utf8, replacement_utf8);
-}
-
-void EngineMetadata::RegisterMigrationRule(u8string_view rule_name, u8string_view extra_info, u8string_view target, u8string_view replacement)
-{
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     hstring hrule_name = Hashes.ToHashedString(rule_name);
@@ -631,6 +620,13 @@ void EngineMetadata::RegisterMigrationRule(u8string_view rule_name, u8string_vie
     }
 
     rules.emplace(htarget, hreplacement);
+}
+
+void EngineMetadata::RegisterMigrationRule(u8string_view rule_name, u8string_view extra_info, u8string_view target, u8string_view replacement)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RegisterMigrationRule(utf8_to_string(rule_name), utf8_to_string(extra_info), utf8_to_string(target), utf8_to_string(replacement));
 }
 
 auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
@@ -820,7 +816,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto prop_name = Hashes.ToHashedString(u8strex("{}Ids", entry));
+    hstring prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
     auto holder_prop = holder->GetProperties()->GetRegistrator()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 

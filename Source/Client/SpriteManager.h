@@ -172,7 +172,6 @@ public:
     ~SpriteManager() = default;
 
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->ToHashedString(str); }
-    [[nodiscard]] auto ToHashedString(u8string_view str) -> hstring { return _hashResolver->ToHashedString(str); }
     [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }

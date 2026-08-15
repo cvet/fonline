@@ -489,6 +489,8 @@ enum class ImGui_StyleVar : int32_t
 
 inline void ImGuiTextUnformatted(string_view text)
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     if (text.empty()) {
         ImGui::TextUnformatted("");
         return;
@@ -501,6 +503,8 @@ inline void ImGuiTextUnformatted(string_view text)
 
 inline void ImGuiTextUnformatted(u8string_view text)
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
     if (text.empty()) {
         ImGui::TextUnformatted("");
         return;

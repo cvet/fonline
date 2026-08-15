@@ -681,26 +681,17 @@ namespace TestMigration
         CHECK(proto_rule.value() == meta.Hashes.ToHashedString("Remove"));
     }
 
-    SECTION("preserves utf8 migration rule names")
+    SECTION("rejects non-ascii migration identities during registration")
     {
-        rig.AddSourceFile("Scripts/TestUtf8Migration.fos", u8R"(
-namespace TestUtf8Migration
+        rig.AddSourceFile("Scripts/TestNonAsciiMigration.fos", u8R"(
+namespace TestNonAsciiMigration
 {
-///@ MigrationRule Proto Modifier СomfortableСarrying ComfortableCarrying
+///@ MigrationRule Proto Modifier ПрежнееИмя CurrentName
 }
 )");
 
         MetadataBaker baker(rig.MakeContext());
-        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
-        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
-
-        EngineMetadata meta {[] { }};
-        meta.RegisterSide(EngineSideKind::ClientSide);
-        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, make_byte_span(rig.Outputs.at("TestPack.fometa-client"))));
-
-        auto rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString(u8"СomfortableСarrying"));
-        REQUIRE(rule.has_value());
-        CHECK(rule.value() == meta.Hashes.ToHashedString("ComfortableCarrying"));
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), TextValidationException);
     }
 
     SECTION("serializes ref type fields declared via property tags")

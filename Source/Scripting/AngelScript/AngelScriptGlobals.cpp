@@ -250,7 +250,7 @@ static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
     auto func_name = GetGenericAddressArgAs<const string>(gen, 0);
-    hstring hashed_func_name = engine->Hashes.ToHashedString(*func_name);
+    hstring hashed_func_name = engine->Hashes.ToHashedString(NativeScriptText::FromScriptString<string>(*func_name));
     ptr<AngelScript::asIScriptGeneric> generic = gen;
     auto arg_types = ResolveInvokeArgTypes(generic, 1);
     auto func_desc = engine->FindFunc(hashed_func_name, span(arg_types));

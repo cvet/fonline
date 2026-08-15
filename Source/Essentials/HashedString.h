@@ -85,9 +85,7 @@ struct hstring
     [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_int64() const noexcept -> int64_t { return std::bit_cast<int64_t>(_entry->Hash); }
     [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64_t { return _entry->Hash; }
-    [[nodiscard]] auto as_utf8() const -> u8string;
-    [[nodiscard]] auto as_str() const noexcept -> string_view { return _entry->Str; }
-    [[nodiscard]] auto as_str_ptr() const noexcept -> ptr<const string> { return &_entry->Str; }
+    [[nodiscard]] auto as_str() const noexcept -> const string& { return _entry->Str; }
     [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return _entry->Str.c_str(); }
 
 private:
@@ -123,7 +121,6 @@ class HashResolver
 {
 public:
     [[nodiscard]] virtual auto ToHashedString(string_view s) -> hstring = 0;
-    [[nodiscard]] virtual auto ToHashedString(u8string_view s) -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring = 0;
     virtual ~HashResolver() = default;
@@ -138,9 +135,7 @@ public:
     static auto DefaultHash(const_span<byte> data) noexcept -> uint64_t;
     explicit HashStorage(HashFunc hash_func = DefaultHash);
     auto CheckHashedString(string_view s) const noexcept -> bool;
-    auto CheckHashedString(u8string_view s) const noexcept -> bool;
     auto ToHashedString(string_view s) -> hstring override;
-    auto ToHashedString(u8string_view s) -> hstring override;
     auto ResolveHash(hstring::hash_t h) const -> hstring override;
     auto ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring override;
     void SetResolveHashFailureHandler(ResolveHashFailureHandler handler);

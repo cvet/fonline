@@ -65,10 +65,13 @@ namespace text_format_detail
     };
 
     template<typename T>
-    inline constexpr bool IsUtf8StrictArg = std::same_as<plain_format_arg_t<T>, u8string> || std::same_as<plain_format_arg_t<T>, u8string_view> || std::same_as<plain_format_arg_t<T>, u8string_view_nt> || std::same_as<plain_format_arg_t<T>, hstring>;
+    inline constexpr bool IsUtf8StrictArg = std::same_as<plain_format_arg_t<T>, u8string> || std::same_as<plain_format_arg_t<T>, u8string_view> || std::same_as<plain_format_arg_t<T>, u8string_view_nt>;
 
     template<typename T>
-    inline constexpr bool IsStrictArg = IsUtf8StrictArg<T>;
+    inline constexpr bool IsAsciiStrictArg = std::same_as<plain_format_arg_t<T>, hstring>;
+
+    template<typename T>
+    inline constexpr bool IsStrictArg = IsUtf8StrictArg<T> || IsAsciiStrictArg<T>;
 
     template<typename T>
     inline constexpr bool IsVolatileStrictArg = IsStrictArg<T> && std::is_volatile_v<std::remove_reference_t<T>>;
@@ -113,7 +116,7 @@ namespace text_format_detail
     inline constexpr bool IsAsciiFormatArg = IsUtf8FormatArg<T> && !IsUtf8StrictArg<T> && !IsUtf8StringProxyArg<T>;
 
     template<typename T>
-    using mapped_format_arg_t = std::conditional_t<IsUtf8StrictArg<T> || IsNarrowCharTextArg<T> || IsStringProxyArg<T>, string_view, T>;
+    using mapped_format_arg_t = std::conditional_t<IsStrictArg<T> || IsNarrowCharTextArg<T> || IsStringProxyArg<T>, string_view, T>;
 
     [[nodiscard]] auto AdaptUtf8FormatArg(u8string_view value) -> string_view;
     [[nodiscard]] auto VFormatToString(string_view format, std::format_args args) -> string;
