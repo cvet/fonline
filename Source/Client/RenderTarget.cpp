@@ -89,6 +89,7 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool
 
     FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
     FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
+    FO_VERIFY_AND_THROW(size.width <= AppRender::MAX_ATLAS_WIDTH && size.height <= AppRender::MAX_ATLAS_HEIGHT, "Render target exceeds the device texture limit", size.width, size.height, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
 
     _flush();
 
