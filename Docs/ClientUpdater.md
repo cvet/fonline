@@ -149,7 +149,13 @@ shared file instead of truncating the host's lines. The DLL's
 `FO_QueryClientRuntimeExports` and the first pre-`InitApp` line of its `RunClientRuntime` run before the
 DLL has its own global data, so those few lines go to stdout only; the host already records the full
 load/accept/enter handoff to the file, and once the DLL's `InitApp` runs, its `WriteLog` appends to the
-shared file too.
+shared file too. The host waits synchronously for the DLL's `Run` call, so the modules do not write the
+log concurrently. Append-mode size rotation (`Common.MaxLogFileSize`) copies the numbered part and
+truncates the main file in place, preserving the host's open handle on Windows, Linux, and macOS without
+an intermodule lock. The host's successful non-append `LogToFile` at startup deletes the previous run's
+numbered parts. If settings redirect an installed client to its per-user writable log,
+`ApplicationInit` explicitly requests the same stale-part cleanup after that append-mode target opens
+successfully; a failed path switch preserves the retained diagnostics.
 
 After a successful Case 1 binary update + restart request, the embedded host's `Application` instance
 is destroyed (`App.reset()` in `RunClientRuntime`) before the host loads the freshly
