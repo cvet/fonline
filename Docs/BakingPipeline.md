@@ -201,8 +201,16 @@ bake pass has its matching report.
 
 Incremental and failed passes never overwrite `Baking.full.report.json`. The
 full snapshot therefore remains available for corpus analysis after ordinary
-incremental development bakes. Both report names are excluded from outdated
-runtime-resource cleanup.
+incremental development bakes.
+
+Outdated runtime-resource cleanup skips any file named `*.report.json` sitting
+directly in the `BakeOutput` root (`REPORT_FILE_SUFFIX` in `Baker.h`), which
+covers both reports above. The rule is a suffix rather than a list of known
+names because a baker in an embedding project may write its own diagnostic
+artifact beside them — such a file is nobody's registered output, so without the
+rule the sweep would delete it in the same pass that produced it. Baked
+resources always live under a pack directory, so restricting the rule to the
+root cannot spare a genuinely stale resource.
 
 The report is written directly into the `BakeOutput` root after runtime-resource
 cleanup finishes. It is never mounted in the baked `FileSystem`, registered as
