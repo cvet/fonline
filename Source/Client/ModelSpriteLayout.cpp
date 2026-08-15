@@ -125,10 +125,18 @@ auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpr
         return std::nullopt;
     }
 
-    int64_t left = std::max<int64_t>(current.Pivot.x, required.Pivot.x);
-    int64_t top = std::max<int64_t>(current.Pivot.y, required.Pivot.y);
-    int64_t right = std::max<int64_t>(numeric_cast<int64_t>(current.Size.width) - current.Pivot.x, numeric_cast<int64_t>(required.Size.width) - required.Pivot.x);
-    int64_t bottom = std::max<int64_t>(numeric_cast<int64_t>(current.Size.height) - current.Pivot.y, numeric_cast<int64_t>(required.Size.height) - required.Pivot.y);
+    // Quantize each side, not just the extents, so a pivot that drifts by a pixel keeps the same frame.
+    // Rounding towards +infinity also covers a negative side (the root may sit outside the tight frame).
+    auto align_up = [](int64_t value) noexcept -> int64_t {
+        constexpr int64_t alignment = MODEL_SPRITE_FRAME_ALIGNMENT;
+        int64_t steps = value >= 0 ? (value + alignment - 1) / alignment : -((-value) / alignment);
+        return steps * alignment;
+    };
+
+    int64_t left = align_up(std::max<int64_t>(current.Pivot.x, required.Pivot.x));
+    int64_t top = align_up(std::max<int64_t>(current.Pivot.y, required.Pivot.y));
+    int64_t right = align_up(std::max<int64_t>(numeric_cast<int64_t>(current.Size.width) - current.Pivot.x, numeric_cast<int64_t>(required.Size.width) - required.Pivot.x));
+    int64_t bottom = align_up(std::max<int64_t>(numeric_cast<int64_t>(current.Size.height) - current.Pivot.y, numeric_cast<int64_t>(required.Size.height) - required.Pivot.y));
     int64_t width = left + right;
     int64_t height = top + bottom;
 
@@ -372,7 +380,7 @@ static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
         return std::nullopt;
     }
 
-    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_SCALE;
+    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_ALIGNMENT;
     uint64_t rounded = (std::max<uint64_t>(value, 1) + alignment - 1) / alignment * alignment;
 
     if (rounded > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
