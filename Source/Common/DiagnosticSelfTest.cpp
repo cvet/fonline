@@ -43,6 +43,8 @@ static void RunSelfTestCrash(string_view mode);
 [[noreturn]] static void CrashByNoexceptThrow() noexcept;
 [[noreturn]] static void CrashByThrow();
 [[noreturn]] static void CrashByStrongAssert();
+[[noreturn]] static void CrashByBasicStrongAssert();
+[[noreturn]] static void CrashByFatalExit();
 static void ThrowSelfTestException();
 FO_NO_INLINE static auto RecurseUntilStackOverflow(int depth) -> int;
 using StackOverflowRecursor = int (*)(int);
@@ -110,6 +112,16 @@ static void RunSelfTestCrash(string_view mode)
     }
     else if (mode == "main_strong_assert") {
         CrashByStrongAssert();
+    }
+    else if (mode == "main_basic_strong_assert") {
+        CrashByBasicStrongAssert();
+    }
+    else if (mode == "main_fatal_exit") {
+        CrashByFatalExit();
+    }
+    else if (mode == "main_failure_exit") {
+        WriteLog("Self-test controlled failure exit");
+        ExitApp(false);
     }
     else {
         WriteLog(LogType::Warning, "Diagnostic self-test: unknown crash mode '{}', continuing", mode);
@@ -231,6 +243,22 @@ static void CrashByStrongAssert()
 
     FO_STRONG_ASSERT(false, "Self-test crash: strong assertion");
     std::abort();
+}
+
+static void CrashByBasicStrongAssert()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool self_test_condition = false;
+    FO_BASIC_STRONG_ASSERT(self_test_condition);
+    std::abort();
+}
+
+static void CrashByFatalExit()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ReportFatalAndExit("Self-test crash: fatal exit");
 }
 
 FO_END_NAMESPACE

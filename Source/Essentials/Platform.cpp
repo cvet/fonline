@@ -32,7 +32,7 @@
 //
 
 #include "Platform.h"
-#include "ExceptionHandling.h"
+#include "FatalError.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
 
@@ -515,7 +515,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     mach_msg_type_number_t processor_info_count = 0;
 
     if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &raw_processor_info, &processor_info_count) == KERN_SUCCESS) {
-        FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "Processor info pointer is null");
+        FO_BASIC_STRONG_ASSERT(raw_processor_info != nullptr);
         auto processor_info = make_ptr(raw_processor_info);
         auto load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
         const_span<processor_cpu_load_info_data_t> load_info {load_info_data.get(), static_cast<size_t>(processor_count)};

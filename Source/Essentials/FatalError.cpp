@@ -31,46 +31,53 @@
 // SOFTWARE.
 //
 
-#pragma once
-
-// Essential headers
-// In order of dependency
-//
-// This is a strict layering — each Essentials header may only include (directly or transitively
-// from another Essentials header) the headers listed above it in this block. The same rule applies
-// to each Essentials .cpp: it must not pull in an Essentials header that sits below its own .h.
-// Crossing the layer downward (e.g. MemorySystem.cpp including Platform.h) creates a cycle in the
-// dependency DAG, breaks the bootstrap order (MemorySystem must be usable before Platform is
-// initialised), and tangles features that need to stay independently buildable.
-//
-// If a low-layer module needs information that physically lives in a higher layer (e.g. an
-// allocator query that would otherwise want OS process stats as a fallback), the lower layer must
-// either expose only what it can produce on its own or let the caller supply the higher-layer
-// data through a parameter — do not back-channel the include.
-
-// clang-format off
-#include "BasicCore.h"
-#include "GlobalData.h"
-#include "StackTrace.h"
-#include "BaseLogging.h"
 #include "FatalError.h"
-#include "SmartPointers.h"
-#include "MemorySystem.h"
-#include "Containers.h"
-#include "StringUtils.h"
-#include "Platform.h"
-#include "ExceptionHandling.h"
-#include "Threading.h"
-#include "SafeArithmetics.h"
-#include "DataSerialization.h"
-#include "HashedString.h"
-#include "StrongType.h"
-#include "TimeRelated.h"
-#include "ExtendedTypes.h"
-#include "Compressor.h"
-#include "WorkThread.h"
-#include "Logging.h"
-#include "DiskFileSystem.h"
-#include "CommonHelpers.h"
-#include "NetSockets.h"
-// clang-format on
+#include "BaseLogging.h"
+#include "StackTrace.h"
+
+FO_BEGIN_NAMESPACE
+
+[[noreturn]] extern void ReportFatalAndExit(string_view message) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    SuspendAsyncLogWriting();
+
+    WriteBaseLog("\nFATAL ERROR!\n");
+    WriteBaseLog(message);
+    WriteBaseLog("\n\n");
+
+    StackTraceData st;
+    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 2);
+    SafeWriteStackTrace(st);
+
+    BreakIntoDebugger();
+    ExitApp(false);
+}
+
+[[noreturn]] extern void ReportStrongAssertAndExit(string_view expression, string_view file, int32_t line) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    SuspendAsyncLogWriting();
+
+    char line_buf[64] = {};
+
+    WriteBaseLog("\nSTRONG ASSERTION FAILED!\n");
+    WriteBaseLog("Expression: ");
+    WriteBaseLog(expression);
+    WriteBaseLog("\nFile: ");
+    WriteBaseLog(file);
+    WriteBaseLog("\nLine: ");
+    WriteBaseLog(ItoA(line, line_buf, 10));
+    WriteBaseLog("\n\n");
+
+    StackTraceData st;
+    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 2);
+    SafeWriteStackTrace(st);
+
+    BreakIntoDebugger();
+    ExitApp(false);
+}
+
+FO_END_NAMESPACE

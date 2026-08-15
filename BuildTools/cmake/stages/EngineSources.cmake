@@ -25,6 +25,8 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/MemorySystem.cpp"

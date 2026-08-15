@@ -1145,7 +1145,7 @@ void DataBaseImpl::StartPanic(string_view message)
 
     run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
         std::this_thread::sleep_for(timeout);
-        ExitApp(false);
+        ReportFatalAndExit("Database panic shutdown timed out");
     }).detach();
 }
 
