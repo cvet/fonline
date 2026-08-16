@@ -6,7 +6,7 @@ namespace FOnline
 {
     public static partial class Game
     {
-        // Coroutine suspension for [[Async]]-ported methods. Completes after `ms` via a one-shot
+        // Coroutine suspension for async methods. Completes after `ms` via a one-shot
         // engine time event, which fires on the script-processing thread; with no SynchronizationContext
         // in the embedded managed runtime, the awaiting continuation resumes inline on that same thread,
         // mirroring AngelScript's global Yield(ms) (which suspends/resumes the script context).

@@ -5282,7 +5282,6 @@ namespace FOnline
         }
 
         [TimeEvent]
-        [Async]
         public static async void HighlightProcess(List<string> data)
         {
             GuiScreen screenNum = (GuiScreen)(int.Parse(data[0], System.Globalization.CultureInfo.InvariantCulture));

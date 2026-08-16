@@ -32,14 +32,6 @@ namespace FOnline
     {
     }
 
-    // Marks a coroutine-style method (one that suspends via Game.YieldAsync). Ported [[Async]]
-    // AngelScript functions become `async Task` C# methods; this attribute documents that contract
-    // and lets reflection/codegen identify async entry points.
-    [AttributeUsage(AttributeTargets.Method)]
-    public sealed class AsyncAttribute : Attribute
-    {
-    }
-
     // Callback / codegen marker attributes mirroring the AngelScript `[[...]]` markers
     // (AngelScriptAttributes.cpp). They tag methods (or classes) for the managed runtime/baker to wire up —
     // time events, property getters/setters, remote calls, item triggers, etc. They are markers (no arguments);
