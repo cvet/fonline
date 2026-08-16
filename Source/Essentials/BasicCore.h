@@ -326,7 +326,8 @@ struct fixed_string
 };
 
 // Generic helpers
-// Mechanical process termination only; failure callers own any diagnostics they require.
+
+// Mechanical process termination only; failure callers own any diagnostics they require
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 
 

@@ -20,7 +20,7 @@ TEST_CASE("ModelSpriteParticleFrameExpansionMovesPivotWithEnvelope", "[model][pa
     optional<ModelSpriteFramePlacement> placement = CalculateModelSpriteFramePlacement(-40.0f, -71.0f, 74.0f, 85.0f, {16, 65}, 2.0f, {32, 74});
 
     REQUIRE(placement);
-    // 118 tight pixels quantize up to the frame grid; the height is already a multiple of it.
+    // 118 tight pixels quantize up to the frame grid; the height is already a multiple of it
     CHECK(placement->Size.width == 128);
     CHECK(placement->Size.height == 160);
     CHECK(placement->Pivot.x == 58);
@@ -97,8 +97,8 @@ TEST_CASE("ModelSpriteFramePlacementMergeAllowsRootOutsideTightFrame", "[model][
 
 TEST_CASE("ModelSpriteFrameSizesQuantizeSoAnimatedPosesReuseOneFrame", "[model][particle]")
 {
-    // Regression (LF-2026-0097): a breathing pose created a GPU texture per frame by missing the render-target
-    // cache. Neighbouring envelopes must share one frame, and the frame must still contain the envelope.
+    // A breathing pose missed the render-target cache and created a GPU texture per frame, so neighbouring
+    // envelopes must share one frame and that frame must still contain the envelope
     optional<isize32> small = CalculateModelSpriteFrameSize(0.0f, 0.0f, 57.0f, 85.0f);
     optional<isize32> grown = CalculateModelSpriteFrameSize(0.0f, 0.0f, 58.0f, 86.0f);
 
@@ -111,7 +111,7 @@ TEST_CASE("ModelSpriteFrameSizesQuantizeSoAnimatedPosesReuseOneFrame", "[model][
     CHECK(grown->width >= 58);
     CHECK(grown->height >= 86);
 
-    // Crossing a grid step still grows the frame, so a pose that needs more room is never clipped.
+    // Crossing a grid step still grows the frame, so a pose that needs more room is never clipped
     optional<isize32> beyond_step = CalculateModelSpriteFrameSize(0.0f, 0.0f, 65.0f, 86.0f);
 
     REQUIRE(beyond_step);
@@ -121,7 +121,7 @@ TEST_CASE("ModelSpriteFrameSizesQuantizeSoAnimatedPosesReuseOneFrame", "[model][
 
 TEST_CASE("ModelSpriteFramePlacementMergeStaysOnTheFrameGrid", "[model][particle]")
 {
-    // The atlas draw loop converges on the merge, so its output must be quantized too.
+    // The atlas draw loop converges on the merge, so its output must be quantized too
     optional<ModelSpriteFramePlacement> merged = MergeModelSpriteFramePlacements(ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {16, 65}}, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {17, 64}});
 
     REQUIRE(merged);
@@ -130,7 +130,7 @@ TEST_CASE("ModelSpriteFramePlacementMergeStaysOnTheFrameGrid", "[model][particle
     CHECK(merged->Pivot.x % MODEL_SPRITE_FRAME_ALIGNMENT == 0);
     CHECK(merged->Pivot.y % MODEL_SPRITE_FRAME_ALIGNMENT == 0);
 
-    // Idempotent, otherwise the draw loop never settles and allocates a frame every pass.
+    // Idempotent, otherwise the draw loop never settles and allocates a frame every pass
     optional<ModelSpriteFramePlacement> remerged = MergeModelSpriteFramePlacements(*merged, *merged);
 
     REQUIRE(remerged);
