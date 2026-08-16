@@ -38,6 +38,10 @@
 
 FO_BEGIN_NAMESPACE
 
+// The whole suite exercises the 3D bounds API, which `ModelBounds.h` declares only for 3D-enabled builds.
+// The source inventory stays unconditional, so the guard lives here.
+#if FO_ENABLE_3D
+
 static constexpr float32_t NOT_A_NUMBER = std::numeric_limits<float32_t>::quiet_NaN();
 static constexpr float32_t POSITIVE_INFINITY = std::numeric_limits<float32_t>::infinity();
 
@@ -221,5 +225,7 @@ TEST_CASE("ModelBoundsGuard")
         CHECK_FALSE(CalculateGuardedModelBounds(ModelBounds3D {.Min = {NOT_A_NUMBER, 0.0f, 0.0f}, .Max = {1.0f, 1.0f, 1.0f}}).has_value());
     }
 }
+
+#endif
 
 FO_END_NAMESPACE

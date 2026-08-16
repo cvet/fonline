@@ -2757,7 +2757,9 @@ TEST_CASE("MapViewLightingAndViewportOperations")
 
         REQUIRE_NOTHROW(critter->RefreshView(false));
         REQUIRE_NOTHROW(critter->RefreshView(true));
+#if FO_ENABLE_3D
         REQUIRE_NOTHROW(critter->RefreshModel());
+#endif
         process_frames(4);
 
         ignore_unused(critter->IsAnimPlaying());
