@@ -306,7 +306,7 @@ struct MasterBaker::PackBakeContext
 };
 
 // What the bakers addressed this run, in the two shapes the output sweeps need: resource identity for deciding
-// what is outdated, and exact relative paths for deciding what is merely misspelled.
+// what is outdated, and exact relative paths for deciding what is merely misspelled
 struct MasterBaker::ExpectedOutputs
 {
     unordered_set<string> ResourceNames {};
@@ -314,7 +314,7 @@ struct MasterBaker::ExpectedOutputs
 };
 
 // Resource identity ignores the extension chain (one input can produce several differently suffixed outputs) and
-// letter case, so a name folded this way answers "is this output still wanted", never "is it spelled right".
+// letter case, so a name folded this way answers "is this output still wanted", never "is it spelled right"
 static auto ExcludeAllExt(string_view path) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -363,9 +363,8 @@ auto MasterBaker::MakeOutputPath(string_view path) const -> string
     return strex(_settings->BakeOutput).combine_path(path);
 }
 
-// Decides whether this run reuses the existing output or starts from scratch, and leaves the output directory
-// ready either way. The build hash is deleted up front and only rewritten once baking succeeds, so an aborted run
-// leaves no hash behind and the next one cannot mistake a half-written tree for a complete incremental base.
+// Decides whether this run reuses the existing output or starts from scratch. The build hash is deleted up front
+// and rewritten only on success, so an aborted run cannot leave a half-written tree looking like a complete base
 auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -487,7 +486,7 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, const str
 
     auto bake_checker = [context = pack_bake_context_ptr, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
         // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
-        // to be guarded; without it concurrent emplace() races on the bucket array.
+        // to be guarded; without it concurrent emplace() races on the bucket array
         {
             scoped_lock lock {context->BakedFilePathsLocker};
 
@@ -530,7 +529,7 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, const str
 }
 
 // Bakers carry an order number and packs advance through those orders together, so a baker that depends on
-// another pack's earlier-order output always finds it already written.
+// another pack's earlier-order output always finds it already written
 void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts, FileSystem& baking_output, std::atomic_bool& force_baking)
 {
     FO_STACK_TRACE_ENTRY();
@@ -664,11 +663,8 @@ auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pa
     return expected;
 }
 
-// Directories go stale by letter case exactly like files, and nothing else repairs them: creating a directory that
-// differs from an existing one only by case reuses that one and keeps its name, so every path underneath keeps the
-// pre-rename spelling. They have to be reconciled before the files, because renaming a file into a differently-cased
-// parent resolves straight back to the existing directory and leaves its name alone. Walking shallowest first means
-// every rename lands inside a parent whose own name is already correct.
+// Directories go stale by letter case exactly like files, and nothing else repairs them. Directories before files
+// and shallowest first, so every rename lands inside a parent already spelled right (Docs/BakingPipeline.md)
 void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
 {
     FO_STACK_TRACE_ENTRY();
@@ -725,10 +721,8 @@ void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
     }
 }
 
-// Drops outputs no baker claims any more, and re-spells the ones that are still wanted but sit under a stale name.
-// The outdated check folds names to lower case, so a file left under its pre-rename spelling by a case-only content
-// rename still matches an expected resource and survives here - while the runtime, which resolves baked packs by
-// exact name, can no longer find it. Both decisions come from one pass because they read the same directory.
+// Drops outputs no baker claims any more and re-spells the ones still wanted but sitting under a stale name; one
+// pass because both decisions read the same directory (Docs/BakingPipeline.md)
 void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
 {
     FO_STACK_TRACE_ENTRY();
@@ -770,7 +764,7 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
     }
 }
 
-// Baker-private caches are keyed by the output they describe, so they go stale exactly when that output does.
+// Baker-private caches are keyed by the output they describe, so they go stale exactly when that output does
 void MasterBaker::SweepOutdatedBakerCache(const ExpectedOutputs& expected)
 {
     FO_STACK_TRACE_ENTRY();
@@ -936,9 +930,8 @@ auto BakerDataSource::Reindex() -> bool
         };
         res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
-        // Live sources: the on-demand baker serves editors and viewers, whose content is edited while the tool
-        // runs, so input dirs are mounted non-cached - a cached snapshot would go stale between the initial
-        // indexing and a later open (cached mounts stay for the client/server runtime and the one-shot batch bake).
+        // Live sources: the on-demand baker serves editors and viewers whose content is edited while the tool runs,
+        // so a cached snapshot would go stale between the initial indexing and a later open
         for (const auto& dir : res_pack.InputDirs) {
             res_entry.InputDir.AddDirSource(dir, true, true);
         }
@@ -956,10 +949,8 @@ auto BakerDataSource::Reindex() -> bool
         }
     }
 
-    // Input resources must be published before the discovery pass runs the bakers: a baker can read another
-    // baker's output while it discovers its own (for example ModelInfoBaker builds a BakerClientEngine that
-    // reads the baked metadata), which re-enters this data source through _outputResources and resolves the
-    // file via ResolveFilePath - which needs the input resources to locate or on-demand bake it.
+    // Input resources must be published before the discovery pass runs the bakers: a baker may resolve another
+    // baker's output through _outputResources, which re-enters this data source and needs the inputs to bake it
     _inputResources = std::move(input_resources);
 
     // Evaluate output files
@@ -976,9 +967,8 @@ auto BakerDataSource::Reindex() -> bool
     auto check_file = [&](string_view path, uint64_t write_time) {
         output_files.insert_or_assign(string(path), write_time);
 
-        // Publish live so a later baker in this same discovery pass can resolve an earlier baker's output
-        // on-demand (bakers run in dependency order, e.g. metadata before model info). Additive so no entry is
-        // transiently missing for a concurrent reader; the clean set replaces it once the pass completes.
+        // Published live so a later baker in this same pass can resolve an earlier one's output on-demand, and
+        // additively so no entry is transiently missing for a concurrent reader
         {
             scoped_lock locker {_outputFilesLocker};
 
@@ -1014,7 +1004,6 @@ auto BakerDataSource::Reindex() -> bool
         changed |= previous_output_files != output_files;
         _outputFiles = std::move(output_files);
     }
-
 
     return changed;
 }

@@ -175,11 +175,8 @@ TEST_CASE("DiskFileSystem")
     }
 }
 
-// Windows and default macOS resolve names without regard to letter case while preserving the name an entry was
-// created with, so a rename that changes only case is invisible to every path-based check. Callers that address
-// files by exact name - the baker rewriting its output tree, the updater promoting a downloaded file - depend on
-// knowing which primitive lands the requested name and which keeps whatever is already there. These pin that
-// split on both filesystem kinds instead of leaving it to be rediscovered from a runtime failure.
+// Which primitive lands the requested name and which keeps whatever the entry is already called, on both
+// filesystem kinds — the split callers addressing files by exact name depend on (Docs/ConfigurationAndDataSources.md)
 static auto IsCaseInsensitiveFs(string_view dir) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -231,8 +228,7 @@ TEST_CASE("DiskFileSystemNameCase")
         REQUIRE(fs_rename(source_path, lower_path));
 
         // Renaming replaces the whole directory entry, so unlike an overwriting write it does establish the
-        // requested spelling. Updater::ReplaceFileSafely relies on exactly this: it moves the live file aside
-        // and renames the downloaded temp file into place, so a case-only content rename reaches the client.
+        // requested spelling — Updater::ReplaceFileSafely relies on exactly this
         CHECK(HasExactDirEntry(temp_dir, "data.txt"));
         REQUIRE(fs_read_file(lower_path).has_value());
         CHECK(*fs_read_file(lower_path) == "after");
@@ -283,9 +279,8 @@ TEST_CASE("DiskFileSystemNameCase")
         REQUIRE(fs_create_directories(upper_dir));
         REQUIRE(fs_create_directories(lower_dir));
 
-        // Creating a directory never re-spells an existing one, so a case-only rename of a content *directory*
-        // would keep the old spelling for every path underneath. Callers that need the exact name reconcile it;
-        // the baker does, in ReconcileStaleCasedOutputDirs.
+        // Creating a directory never re-spells an existing one, so a case-only rename of a content directory keeps
+        // the old spelling for every path underneath until a caller reconciles it, as the baker does
         CHECK(HasExactDirEntry(temp_dir, "Data"));
         CHECK(HasExactDirEntry(temp_dir, "data") == !case_insensitive);
 

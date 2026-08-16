@@ -779,9 +779,8 @@ Bakers = {}
         REQUIRE(first_baker.BakeAll());
     }
 
-    // Rename the authored file by letter case only, the way a content-naming pass does. On a case-insensitive
-    // filesystem the already baked output keeps its pre-rename directory entry name unless the baker reconciles
-    // it, and incremental baking would never revisit a file it considers up to date.
+    // A case-only rename, the kind a content-naming pass makes: the baked entry keeps its pre-rename name unless
+    // the baker reconciles it, and incremental baking never revisits a file it considers up to date
     REQUIRE(fs_remove_file(lower_source_path));
     REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
 
@@ -851,7 +850,7 @@ Bakers = {}
     }
 
     // Rename the authored *directory* by letter case only. Creating the new output directory reuses the existing
-    // one and keeps its name, so every path underneath would silently keep the pre-rename spelling.
+    // one and keeps its name, so every path underneath would silently keep the pre-rename spelling
     REQUIRE(fs_remove_dir_tree(strex(input_dir).combine_path("data").str()));
     REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
 

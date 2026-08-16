@@ -113,7 +113,7 @@ public:
 
 private:
     // Per-pack baking state, and the two views of "what this run produced" that the output sweeps consume.
-    // Both are defined in the translation unit: they are pure implementation detail of one bake.
+    // Both are defined in the translation unit: they are pure implementation detail of one bake
     struct PackBakeContext;
     struct ExpectedOutputs;
 
