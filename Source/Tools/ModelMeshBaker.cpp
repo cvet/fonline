@@ -371,11 +371,8 @@ static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBone
 
         mesh->Vertices.reserve(fbx_mesh->num_indices);
 
-        // A mesh node exported with a negative scale (a mirrored object) carries a transform whose determinant is
-        // negative, which flips the surface orientation: the stored normals point into the model and the triangles
-        // wind the other way, so the shader lights the mesh from its inside and back-face culling drops the front
-        // faces - the model renders flat black. The exporter must not produce this, so reject it here instead of
-        // compensating for it: a silently corrected mesh keeps the broken source in the repository.
+        // A mirrored export (negative scale) flips surface orientation, so the mesh lights from its inside and
+        // renders flat black. Rejected rather than silently corrected here: Docs/BakingPipeline.md
         if (ufbx_matrix_determinant(&fbx_node->geometry_to_world) < 0.0) {
             throw ModelMeshBakerException("FBX mesh node is mirrored (negative transform determinant), reset its transform before exporting", fname, bone->Name);
         }
