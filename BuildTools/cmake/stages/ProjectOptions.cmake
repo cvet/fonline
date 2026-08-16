@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: ProjectOptions ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(ProjectOptions Pre|Post <macro-name>).
+# Register project options and extend through AddStageHook(ProjectOptions Pre|Post <macro-name>)
 
 if(NOT ${FO_FORCE_ENABLE_3D} STREQUAL "")
     SetValue(FO_ENABLE_3D ${FO_FORCE_ENABLE_3D})

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -267,7 +267,7 @@ void WorkThread::ThreadEntry() noexcept
                     }
 
                     // Nothing is due yet — sleep until the soonest deadline instead of spinning. AddJob /
-                    // Wake / Clear / Pause notify _workSignal, so a new or earlier job breaks the wait.
+                    // Wake / Clear / Pause notify _workSignal, so a new or earlier job breaks the wait
                     if (!job && has_pending) {
                         _workSignal.wait_until(locker, soonest_fire.value());
                         continue;

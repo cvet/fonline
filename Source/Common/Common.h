@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,25 +51,8 @@ extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
 
-// Entity method-call validation.
-// Each entity method declares the preconditions it requires with FO_VALIDATE_ENTITY(<flags>), so a method is
-// explicitly checked against being called at an incorrect time (wrong sync scope, or during/after destruction).
-// Flags (combine as needed, order-independent; they expand to the matching check on `this`):
-//   LOCKED         - the calling thread's sync context covers this entity. Throws the regular recoverable
-//                    ScriptException on an uncovered access, so at the script/job frontier the violation is
-//                    reported and the job continues instead of killing the server. An exception escaping a
-//                    noexcept method still terminates the process, so uncovered access to a noexcept-declared
-//                    accessor remains fatal — but the frontier-reachable throwing surface recovers.
-//   NOT_DESTROYED  - this entity is not already destroyed. The script access boundary already rejects a
-//                    destroyed receiver, so reaching a method on one means a stale pointer was dereferenced —
-//                    a corrupt-state invariant violation -> FO_STRONG_ASSERT (deterministic exit). noexcept-safe.
-//   NOT_DESTROYING - this entity is not mid-destruction. Recoverable (the FO_SCRIPT_API frontier rejects this
-//                    with a ScriptException; this is the internal backstop) -> FO_VERIFY_AND_THROW. NOTE: this
-//                    throws, so use it only where an exception may legally propagate; a noexcept method that
-//                    must stay alive on a destroying entity handles that case itself with FO_VERIFY_AND_RETURN*.
-//   NONE           - no precondition (explicitly validated as callable at any time). Replaces the old
-//                    FO_NO_VALIDATE_ENTITY_ACCESS marker.
-// Example: FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);
+// Every entity method declares its call-time preconditions with FO_VALIDATE_ENTITY(<flags>); the flags and
+// what each one does on violation: Docs/ServerRuntime.md, entity-access validation
 class Entity;
 inline void ValidateEntityAccess(nptr<const Entity> entity);
 
@@ -79,7 +62,7 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 #define FO_VE_CHECK_NONE
 #define FO_VE_DISPATCH(flag) FO_CONCAT(FO_VE_CHECK_, flag)
 
-// Bounded variadic dispatch (1..3 flags); the FO_VE_EXPAND wrapper keeps it correct on the MSVC preprocessor.
+// Bounded variadic dispatch (1..3 flags); the FO_VE_EXPAND wrapper keeps it correct on the MSVC preprocessor
 #define FO_VE_EXPAND(x) x
 #define FO_VE_NARGS(...) FO_VE_EXPAND(FO_VE_NARGS_IMPL(__VA_ARGS__, 3, 2, 1))
 #define FO_VE_NARGS_IMPL(_1, _2, _3, N, ...) N
@@ -90,7 +73,7 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 
 #define FO_VALIDATE_ENTITY(...) FO_VE_FOREACH(FO_VE_DISPATCH, __VA_ARGS__)
 
-// Explicit-entity access check (validates a passed-in entity argument rather than `this`).
+// Explicit-entity access check (validates a passed-in entity argument rather than `this`)
 #define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccess(entity)
 
 ///@ ExportValueType Name = ident Layout = int64-value
@@ -909,12 +892,6 @@ enum class CritterCondition : uint8_t
     Dead = 2,
 };
 
-// Critter actions
-// Flags for chosen:
-// l - hardcoded local call
-// s - hardcoded server call
-// for all others critters actions call only server
-//  flags actionExt item
 ///@ ExportEnum
 enum class CritterAction : uint16_t
 {

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -117,7 +117,7 @@ struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dc
                 result += e ? "True" : "False";
             }
             else if constexpr (std::is_integral_v<std::remove_cvref_t<decltype(e)>>) {
-                // Preserve std::to_string's integral-promotion behaviour for char-like elements.
+                // Preserve std::to_string's integral-promotion behaviour for char-like elements
                 (void)std::format_to(std::back_inserter(result), "{}", +e);
             }
             else if constexpr (std::is_floating_point_v<std::remove_cvref_t<decltype(e)>>) {

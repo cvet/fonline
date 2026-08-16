@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,14 +47,8 @@ FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 
-// The engine bakes one Vulkan-1.0 SPIR-V module per stage (native Vulkan renderer convention: set 0 = uniform
-// buffers, set 1 = combined image samplers, shared by both stages). The SDL_GPU backend needs the same SPIR-V
-// remapped to SDL_GPU's per-stage descriptor convention (SDL3 SDL_gpu.h, SDL_CreateGPUShader docs):
-//   vertex stage:   set 0 = sampled textures, set 1 = uniform buffers;
-//   fragment stage: set 2 = sampled textures, set 3 = uniform buffers;
-// with dense 0..N-1 slot indices per set. The extra `-spv_sdl` flavor and the SDL-remapped MSL are produced from
-// the native SPIR-V by rewriting the descriptor decorations, so the native `-spv` (consumed by Rendering-Vulkan)
-// stays untouched.
+// SDL_GPU mandates its own per-stage descriptor sets, so `-spv_sdl` rewrites the decorations of the native
+// SPIR-V and leaves the `-spv` that Rendering-Vulkan consumes untouched (Docs/FrontendAndRendering.md)
 static constexpr int32_t SDLGPU_MAX_SAMPLERS_PER_STAGE = 16;
 static constexpr int32_t SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE = 4;
 
@@ -339,7 +333,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             throw EffectBakerException("Storage buffers are not supported in effects", fname, program.getBufferBlock(0).name);
         }
 
-        // Per-stage SDL_GPU descriptor slots for the SDL_GPU backend (see the flavor note at the top of this file).
+        // Per-stage SDL_GPU descriptor slots for the SDL_GPU backend (see the flavor note at the top of this file)
         SdlStageSlots vert_sdl_slots = AssignSdlStageSlots(program, EShLangVertex, fname);
         SdlStageSlots frag_sdl_slots = AssignSdlStageSlots(program, EShLangFragment, fname);
 
@@ -389,13 +383,13 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     spv_options.validate = true;
 
     // Native Vulkan-1.0 SPIR-V (set 0 = uniform buffers, set 1 = samplers) consumed by Rendering-Vulkan and the
-    // GLSL / GLSL ES / HLSL cross-compilation. Left untouched.
+    // GLSL / GLSL ES / HLSL cross-compilation. Left untouched
     std::vector<uint32_t> spirv;
     spv::SpvBuildLogger logger;
     GlslangToSpv(intermediate, spirv, &logger, &spv_options);
 
     // Same SPIR-V remapped to the SDL_GPU descriptor convention, consumed by the SDL_GPU backend (Vulkan driver)
-    // and the SDL-remapped MSL (Metal driver).
+    // and the SDL-remapped MSL (Metal driver)
     std::vector<uint32_t> sdl_spirv = spirv;
     PatchSpirvForSdlGpu(sdl_spirv, sdl_slots, is_vertex, fname_wo_ext);
 

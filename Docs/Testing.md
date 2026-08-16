@@ -274,8 +274,13 @@ emitted through the base log on the first write to the crash stream, so point
 `LogToFile` at a private file, write one line into `GetCrashStream()` and read
 the report back instead of letting "FATAL ERROR!" leak into the test console.
 Restore the log with `LogToFile("/dev/null")` (`"NUL"` on Windows); there is no
-"stop logging to a file" call. `ReportExceptionAndExit` and
-`ReportStrongAssertAndExit` kill the process and stay uncovered by design.
+"stop logging to a file" call. Terminating reporters are covered out of process
+through `DiagnosticSelfTest`: `main_strong_assert` covers `ReportExceptionAndExit`,
+`main_basic_strong_assert` and `main_fatal_exit` cover the early `FatalError`
+layer, and `main_failure_exit` pins the raw status-only `ExitApp(false)` contract.
+The embedding project's
+`Tools/PipelineTests/test_crash_diagnostics_linux.py` asserts their log and exit
+contracts without killing the unit-test process.
 
 ### Covering the text formatter without a real font asset
 

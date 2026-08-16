@@ -128,6 +128,19 @@ This is why `Critter::_player`, `Player::_controlledCr`, and `Player::_sendIgnor
 
 **Covered-by-design exceptions (intentionally NOT sync-free).** Sends that read the **recipient's own** state stay validated, because that state needs the recipient's cover by construction — they are single-recipient sends issued under that cover, not broadcast distribution: `Send_LoginSuccess` (serializes the recipient itself), `Send_ViewMap` (reads the recipient's own `_viewMap`), `Send_AddCritter` (reads the recipient's controlled-critter visibility mode; sent from the visibility grant / map-load / transfer, which hold the recipient's cover — convertible only by threading the grant-computed vis-mode through its call sites). Every other `Player::Send_*` is **recipient-lock-free** (`this`-marker `FO_NO_VALIDATE_ENTITY_ACCESS()` — the recipient is never validated): every one that is handed an entity validates that **subject** via `FO_VALIDATE_ENTITY_ACCESS_VALUE`, including the ones that read only the subject's id (`Send_RemoveCritter`/`Send_CritterVisibilityMode`/`Send_RemoveItemFromMap`/`Send_ChosenRemoveItem`/`Send_Teleport`) alongside the ones that serialize it (`Send_Property`/`Send_Moving`/`Send_MovingSpeed`/`Send_Dir`/`Send_Action`/`Send_MoveItem`/`Send_Attachments`/`Send_LoadMap`/`Send_AddItemOnMap`/`Send_ChosenAddItem`/`Send_AddCustomEntity` and the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers). Only the sends handed **no entity** are pure `FO_NO_VALIDATE` with no value check: `Send_RemoveCustomEntity` (a bare `ident_t`), `Send_InfoMessage`, `Send_PlaceToGameComplete`, `Send_TimeSync`, and `Send_SomeItems` (a span — each item is validated in `SendItem`). `Map::SendProperty`'s **MapItem** case and the `Map::AddItem`/`RemoveItem` item-appearance loops are also covered-by-design: not pure fan-outs but per-critter notify-and-react loops (`AddVisibleItem`/`RemoveVisibleItem` + a re-entrant `OnItemOnMap*` event with an early-return on item-context change), which require each critter covered; their spectator legs are lock-free. The critter destructor's teardown-invariant diagnostics likewise read only raw members (no validating accessor) so a refcount-driven `~Critter` on a worker thread outside the critter's cover cannot fault.
 
+`FO_VALIDATE_ENTITY(<flags>)` at method entry declares which preconditions the method requires, so calling
+it at the wrong time (outside the sync scope, or during/after destruction) is caught rather than silently
+tolerated. The flags combine in any order and expand to the matching check on `this`:
+
+| Flag | Precondition | Disposition on violation |
+|------|--------------|--------------------------|
+| `LOCKED` | the calling thread's sync context covers this entity | recoverable `ScriptException`, so the script/job frontier reports it and the job continues; escaping a `noexcept` method still terminates |
+| `NOT_DESTROYED` | the entity is not already destroyed | `FO_STRONG_ASSERT` (deterministic exit): the script boundary already rejects a destroyed receiver, so reaching here means a stale pointer was dereferenced. noexcept-safe |
+| `NOT_DESTROYING` | the entity is not mid-destruction | `FO_VERIFY_AND_THROW` as the internal backstop behind the `FO_SCRIPT_API` frontier. It throws, so a `noexcept` method that must survive on a destroying entity uses `FO_VERIFY_AND_RETURN*` instead |
+| `NONE` | no precondition — explicitly callable at any time | — |
+
+Example: `FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);`
+
 Manual server-side entity methods that read or mutate their own entity state declare the LOCKED precondition with `FO_VALIDATE_ENTITY(LOCKED, ...)` at method entry. It expands to the regular throwing validator (`ValidateEntityAccess(this)`), which **throws a recoverable `ScriptException`** on an uncovered access — at the job/script frontier the violation is reported and the job continues, so a sync-scope bug no longer takes the whole server down. An exception escaping a `noexcept`-declared method still terminates the process, so violations inside noexcept accessors remain fatal; the frontier-reachable throwing surface recovers. Generated C++ property accessors (`GetX()`, `SetX()`, `IsNonEmptyX()`) validate the owning entity through `FO_VALIDATE_ENTITY_ACCESS_VALUE(entity)` (the same throwing form), which currently resolves the entity from `Properties::GetEntity()` before touching property storage; low-level raw `Properties` access remains reserved for serialization, loading, tooling, and other paths that already establish their own storage-access contract. These validation macros live in `Common.h` so the temporary stabilization checks can be removed or compiled out from one location later. The check is intentionally always-on while the multithreaded logic system is being stabilized. Methods used by the validator, persistence callbacks, and lock machinery itself are marked with `FO_NO_VALIDATE_ENTITY_ACCESS()` as explicit unchecked escape hatches: constructors/destructors, `GetId()`, `GetName()`, `IsPersistent()`, `GetEntityLock()`, raw parent access, `GetSyncWidenEntity()`, and low-level parent/lock lifecycle setters must not recursively validate while the access checker is trying to produce diagnostics, handle persistence hooks, or prove the current lock cover.
 
 Two ordering contracts follow from this model. **(1) Script-export functions validate an entity argument before its first property read.** Property accessors are `noexcept`, so the throwing validator inside one cannot be recovered — an uncovered read there terminates the process. Every `FO_SCRIPT_API` function that reads a property of an entity argument therefore calls `ValidateEntityAccess(arg)` first, converting a caller's sync-scope violation into the recoverable frontier `ScriptException`; the `Server_Game_DestroyCritter(s)` family is the reference pattern. **(2) Ordinary manager entry points consume caller-owned cover; they do not acquire a missing container/holder.** The script caller covers every existing destination, source holder, map/location, or destroy dependency before crossing the native boundary. Manager code may use `EnsureEntitySynced()` only to retain the own lock of an entity already in that package across a detach or reparent. A genuinely fresh unpublished entity is different: `EntityManager::CaptureFreshEntity()` uses the private `EnsureFreshEntitySynced()` boundary before publication, without granting access to any pre-existing dependency. An omitted existing container or holder is therefore a caller error that fails validation; native create/destroy code must not repair it by replacing or widening the cover.
@@ -170,6 +183,51 @@ These are engine extension points. The scripts that implement actual game rules 
 Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map. A partial-stack `MoveItem()` splits the source before delivery, and the split's init event can re-enter scripts and destroy the destination; if it does, the helper folds the split count back into the surviving source stack and destroys the undeliverable split item, so a failed split move is lossless rather than leaving an orphaned `Nowhere` item. `ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, so handlers can destroy that detached item, but ordinary script movement APIs require a current holder and do not move `Nowhere` items.
 
 Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex.
+
+## Entity synchronization and locking
+
+`Source/Server/EntitySync.{h,cpp}` implements the cover model the script contract in
+[../AGENTS.md](../AGENTS.md) describes. Every `ServerEntity` owns an `EntityLock`, and a thread proves access
+to an entity by holding that lock or a lock-free ancestor on its parent / widen chain. `IsEntityAccessValid()`
+is that read-path check; mutating an entity's parentage is stricter and requires its own lock directly.
+
+### Acquisition modes
+
+| Mode | Meaning | Compatibility |
+|------|---------|---------------|
+| `Exclusive` (`Acquire`) | the classic writer | excludes every other mode, re-entrant per thread |
+| `Shared` (`AcquireShared`) | reader, used only for Game-singleton property reads so concurrent readers do not serialize on the engine-global lock | many readers together, excluded by `Exclusive`; subsumed into the exclusive recursion if the same thread already writes |
+| `DescendantHold` (`RegisterDescendantHold`) | intention mark recording "this thread holds a descendant of you", placed on every separate-lock ancestor | compatible among threads (siblings run in parallel), conflicts with a foreign `Exclusive` **both ways**, re-entrant per thread |
+
+`DescendantHold` is bookkeeping, not access: nobody reads an entity through it. It exists so an ancestor's
+exclusive `Acquire` knows a descendant is busy and queues instead of cutting underneath it, and so a descendant
+cannot be taken under a foreign-held ancestor. A registration yields to an already-waiting exclusive writer, so
+a stream of sibling locks cannot starve a map- or location-exclusive operation. `Shared` and `DescendantHold`
+never coexist on one lock, because a Game singleton is in no entity's parent chain.
+
+### Waiting and ordering
+
+Waiters queue FIFO. Each `WaitEntry` carries an atomic state — waiting, granted, or aborted — and the hand-off
+CAS in `Release` / `AbortPendingWaiters` disambiguates the abort-races-grant window; `notify_one` then wakes
+exactly that waiter rather than the whole queue. `GrantWaiters()` grants a run of consecutive shared waiters
+together but stops at the first exclusive one, so readers batch without starving writers. Shutdown marks every
+lock and force-aborts its parked waiters, and rejects later acquisitions so a tick firing after shutdown cannot
+deadlock on an empty owner field.
+
+A multi-lock `Ensure` is all-or-nothing: it validates compatibility for the whole batch under the state mutexes
+and only then commits ownership, and it escalates in a global order, releasing an already-held ancestor down to
+zero and re-taking it the same number of times so the parent context's recursion and intention counters are
+restored exactly. `GetExclusiveRecursionForCurrentThread()` and `GetDescendantHoldCountForCurrentThread()`
+exist for that restoration.
+
+### Storage shape
+
+Per-lock holder counts are a linear inline vector rather than a hash map: entities number in the millions while
+concurrent holders per lock stay in the low single digits, so an idle lock must allocate nothing — a per-entity
+hash map would eagerly reserve bucket storage across a loaded world. The per-`Sync` cover and held-lock lists
+are `small_vector` for the same reason (a full gameplay-test run performs tens of millions of `Sync` ops), with
+capacity sized to the measured cover; the parallel owner lists stay `vector` because their `refcount_ptr`
+element needs a complete `ServerEntity`, which this header deliberately does not include.
 
 ## Entity ownership and persistence
 

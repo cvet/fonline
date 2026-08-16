@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -81,11 +81,11 @@ public:
         return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<const T>().try_hold_ref();
     }
 
-    // Unchecked parent accessor — for the lock machinery only.
+    // Unchecked parent accessor — for the lock machinery only
     [[nodiscard]] auto GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>;
 
     // Return the entity that should be auto-widened into the SyncContext alongside this one,
-    // outside of the parent-chain.
+    // outside of the parent-chain
     [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity>;
     [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>;
 

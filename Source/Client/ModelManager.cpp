@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -69,7 +69,7 @@ auto ResolveModelParticleSceneBackground(bool direct_scene_draw, bool direct_mod
 
     if (!direct_scene_draw) {
         // A direct model still renders an auxiliary atlas frame for preview/hit testing. Its distortion attachments
-        // must survive that offscreen pass and retry when the real scene draw follows.
+        // must survive that offscreen pass and retry when the real scene draw follows
         return direct_model_draw && scene_background_provider ? ParticleSceneBackgroundResult {.State = ParticleSceneBackgroundState::Deferred} : ParticleSceneBackgroundResult {};
     }
 

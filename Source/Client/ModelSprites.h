@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -103,12 +103,8 @@ private:
     AtlasType _atlasType {};
     isize32 _frameSize {};
     irect32 _cropRect {};
-    // Current-facing extent of the geometry posed for the last drawn frame, anchored on the sprite's draw position so
-    // it shares the origin of the model's draw and view rects. It is the only one of the three that answers "how much
-    // space does this critter occupy right now": the draw rect covers the whole animation clip with a guard, and the
-    // view rect is the stable idle silhouette that anchors names and UI. Consumers that scale a model to fit an area -
-    // GUI previews above all - need this one, or they either shrink the model to the clip envelope or overflow their
-    // area whenever a pose leaves the idle silhouette.
+    // Extent of the geometry posed for the last drawn frame, on the sprite's draw origin like the draw and view
+    // rects — the only one of the three that answers how much space the critter occupies right now
     irect32 _poseRect {};
     optional<isize32> _requestedFrameSize {};
     bool _boundedCropEstablished {};

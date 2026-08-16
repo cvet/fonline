@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -1384,7 +1384,7 @@ TEST_CASE("PropertiesRawDataCopy")
         derived.SetValue(short_array_prop, values);
         check_natural_layout(derived);
 
-        // The 8-byte payload starts at a naturally aligned address that is not uint64-aligned.
+        // The 8-byte payload starts at a naturally aligned address that is not uint64-aligned
         derived.SetValue(short_array_prop, values);
         check_natural_layout(derived);
 
@@ -2048,11 +2048,8 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
 TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
 {
-    // RestoreAllData's full-data POD records carry (start_pos, len) offsets straight from the blob. A
-    // corrupted or hostile snapshot whose layout-size header still matches the registrar must not be
-    // able to drive an out-of-bounds MemCopy into _podData — the offsets have to be validated against the
-    // POD layout. (The sibling RestoreData(ptrs, sizes) path already size-checks its single POD block;
-    // this is the matching guard for the sparse start_pos/len record format.)
+    // The record offsets come straight from the blob, so a hostile snapshot whose size header still matches must
+    // not drive an out-of-bounds copy: they are validated against the POD layout
     HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OobPodRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);
@@ -2454,7 +2451,7 @@ TEST_CASE("PropertiesOverlayGrowthAccountsForRepackAlignment")
     array<uint8_t, 16> growing_data = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
 
     // Allocation order produces a 14-byte tail. Stable alignment-first repacking changes it to
-    // 20 bytes, so a capacity selected only from the old tail is too small for the growing block.
+    // 20 bytes, so a capacity selected only from the old tail is too small for the growing block
     derived.SetRawData(second_aligned_prop, second_data);
     derived.SetRawData(first_aligned_prop, first_data);
     derived.SetRawData(tail_prop, tail_data);
@@ -2768,7 +2765,7 @@ TEST_CASE("PropertiesEnumValueMigration")
     HashStorage hashes {};
     TestNameResolver resolver;
 
-    // A removed/renamed enum value "ModeLegacy" should migrate to "ModeA" on load instead of failing resolution.
+    // A removed/renamed enum value "ModeLegacy" should migrate to "ModeA" on load instead of failing resolution
     resolver.AddMigrationRule(hashes.ToHashedString("Enum"), hashes.ToHashedString("Mode"), hashes.ToHashedString("ModeLegacy"), hashes.ToHashedString("ModeA"));
 
     PropertyRegistrar registrar("EnumMigrationEntity", EngineSideKind::ServerSide, &hashes, &resolver);
@@ -2776,15 +2773,15 @@ TEST_CASE("PropertiesEnumValueMigration")
 
     Properties props(&registrar);
 
-    // Removed value name resolves through the migration rule.
+    // Removed value name resolves through the migration rule
     CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeLegacy"}}, hashes, resolver));
     CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 
-    // Current value name still loads directly.
+    // Current value name still loads directly
     CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeB"}}, hashes, resolver));
     CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 2);
 
-    // Unknown value without a migration rule still throws.
+    // Unknown value without a migration rule still throws
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeNonexistent"}}, hashes, resolver));
 }
 

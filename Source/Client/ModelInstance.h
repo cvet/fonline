@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -162,9 +162,8 @@ private:
         mat44 InverseBindMatrix {1.0f};
     };
 
-    // A sweep vertex prepared once per mesh generation. GenerateCombinedMeshes already proves every blend index
-    // and weight and records that in SpriteBoundsValid, so the per-frame sweep must not re-derive it. Keeping only
-    // the positive influences beside the position also turns a scattered read of Vertex3D into a sequential one.
+    // Prepared once per mesh generation, since SpriteBoundsValid already records the proven blend data; keeping
+    // only the positive influences also turns a scattered Vertex3D read into a sequential one
     struct SpriteSweepVertex
     {
         vec3 Position {};

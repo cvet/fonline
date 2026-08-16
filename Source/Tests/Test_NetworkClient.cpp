@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -300,7 +301,7 @@ TEST_CASE("NetworkClientWrapperDisconnectsAndRethrowsOnImplExceptions")
 TEST_CASE("NetworkClientSocketsTalksToARealServer")
 {
     // The socket transports were previously assumed untestable, but a server on a loopback port is enough:
-    // the client dials 127.0.0.1 and the whole connect / send / receive / disconnect path runs for real.
+    // the client dials 127.0.0.1 and the whole connect / send / receive / disconnect path runs for real
     REQUIRE(net_sockets::startup());
 
     auto server_settings = MakeClientNetworkSettings();
@@ -332,9 +333,8 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
 
     unique_ptr<NetworkServer> server = start_server();
 
-    // `accepted` is declared before `server`, so at scope exit it would be destroyed last - after the
-    // io_context whose services its connections' asio objects still reference. Release the connections
-    // here, while that context is alive, or ~io_object_impl faults on freed service state.
+    // Declaration order would destroy these after the io_context their asio objects reference, so they are
+    // released here while it is still alive
     auto shutdown_server = scope_exit([&]() noexcept {
         safe_call([&] {
             std::scoped_lock locker {accepted_locker};
@@ -468,9 +468,8 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
 
     unique_ptr<NetworkServer> server = start_server();
 
-    // `accepted` is declared before `server`, so at scope exit it would be destroyed last - after the
-    // io_context whose services its connections' asio objects still reference. Release the connections
-    // here, while that context is alive, or ~io_object_impl faults on freed service state.
+    // Declaration order would destroy these after the io_context their asio objects reference, so they are
+    // released here while it is still alive
     auto shutdown_server = scope_exit([&]() noexcept {
         safe_call([&] {
             std::scoped_lock locker {accepted_locker};

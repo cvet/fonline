@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: EngineSources ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(EngineSources Pre|Post <macro-name>).
+# Register engine sources and extend through AddStageHook(EngineSources Pre|Post <macro-name>)
 
 # App icon
 SetValue(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
@@ -25,6 +23,8 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/MemorySystem.cpp"

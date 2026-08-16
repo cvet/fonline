@@ -1545,14 +1545,14 @@ class Panel : Object
             return;
         }
 
-        // Normal background (no 9-slice cap insets authored): draw with the sprite's stored layout.
+        // Normal background (no 9-slice cap insets authored): draw with the sprite's stored layout
         if (_CapLeft <= 0 && _CapTop <= 0 && _CapRight <= 0 && _CapBottom <= 0) {
             image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout::None, _Color);
             return;
         }
 
         // 9-slice frame: fixed corners, stretched edges and center, into the current size. Cap insets
-        // are measured in the frame sprite's own source pixels.
+        // are measured in the frame sprite's own source pixels
         if (image.Id == 0) {
             return;
         }
@@ -1567,7 +1567,7 @@ class Panel : Object
         int dh = _Size.height;
 
         // Source and destination cap sizes, clamped so malformed authored values cannot produce
-        // invalid UV ranges and opposite caps never overlap on a small frame.
+        // invalid UV ranges and opposite caps never overlap on a small frame
         int sl = Math::Clamp(_CapLeft, 0, src.width);
         int sr = Math::Clamp(_CapRight, 0, src.width - sl);
         int st = Math::Clamp(_CapTop, 0, src.height);
@@ -1578,7 +1578,7 @@ class Panel : Object
         int dt = Math::Clamp(st, 0, dh);
         int db = Math::Clamp(sb, 0, dh - dt);
 
-        // Source cap UV fractions.
+        // Source cap UV fractions
         float uL = float(sl) / float(src.width);
         float uR = float(src.width - sr) / float(src.width);
         float vT = float(st) / float(src.height);
@@ -1593,7 +1593,7 @@ class Panel : Object
         uint id = image.Id;
         ucolor color = _Color;
 
-        // Corners (drawn 1:1, kept crisp).
+        // Corners (drawn 1:1, kept crisp)
         if (!_DrawSlice(id, 0.0f, 0.0f, uL, vT, ipos(x0, y0), isize(dl, dt), color)) {
             _DrawFallbackImage(image);
             return;
@@ -1611,7 +1611,7 @@ class Panel : Object
             return;
         }
 
-        // Horizontal edges (stretched along the width).
+        // Horizontal edges (stretched along the width)
         if (!_DrawSlice(id, uL, 0.0f, uR, vT, ipos(x0 + dl, y0), isize(midW, dt), color)) {
             _DrawFallbackImage(image);
             return;
@@ -1621,7 +1621,7 @@ class Panel : Object
             return;
         }
 
-        // Vertical edges (stretched along the height).
+        // Vertical edges (stretched along the height)
         if (!_DrawSlice(id, 0.0f, vT, uL, vB, ipos(x0, y0 + dt), isize(dl, midH), color)) {
             _DrawFallbackImage(image);
             return;
@@ -1631,7 +1631,7 @@ class Panel : Object
             return;
         }
 
-        // Center fill (stretched; transparent in hollow frames).
+        // Center fill (stretched; transparent in hollow frames)
         if (!_DrawSlice(id, uL, vT, uR, vB, ipos(x0 + dl, y0 + dt), isize(midW, midH), color)) {
             _DrawFallbackImage(image);
         }
@@ -1652,7 +1652,7 @@ class Panel : Object
         image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout::Stretch, _Color);
     }
 
-    // Generic UI: enabling 9-slice for this panel/screen background. Cap insets in source pixels.
+    // Generic UI: enabling 9-slice for this panel/screen background. Cap insets in source pixels
     void SetCapInsets(int left, int top, int right, int bottom)
     {
         _CapLeft = left;
@@ -1668,7 +1668,7 @@ class Panel : Object
     }
 
     // Loads the (9-slice) frame sprite without auto-resizing to its native size, so the panel/screen
-    // keeps its authored/docked size and reslices the sprite to fit.
+    // keeps its authored/docked size and reslices the sprite to fit
     void SetFrameImage(hstring imageName)
     {
         Sprite::Sprite? curImage = _BackgroundImage;
@@ -2956,8 +2956,7 @@ class Grid : Panel
         }
 
         // Re-flow the rows relative to the first cell, which stays where it is. The scroll offset must NOT appear
-        // here: scrolling has already moved every cell, so subtracting it again would drag the whole block one more
-        // page up on each refresh. That stayed invisible while grids were only ever refreshed at scroll 0.
+        // here: scrolling has already moved every cell, so subtracting it again drags the whole block a page up
         int col = 0;
         int row = 0;
         int rowHeight = 0;
@@ -3716,7 +3715,7 @@ class ItemView : Grid
 
         // A destroyed item here is expected, not an invariant break: the grid is most often rebuilt
         // *because* the server removed an item, and the supplier still hands back the pre-refresh
-        // list. Drop those entries and render what is left instead of failing the whole refresh.
+        // list. Drop those entries and render what is left instead of failing the whole refresh
         Item[] items = {};
         for (int i = 0; i < sourceItems.length(); i++) {
             if (!sourceItems[i].IsDestroyed) {

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -533,12 +533,8 @@ TEST_CASE("ClientDataValidationPropertyBlobPadding")
 
 TEST_CASE("ClientDataValidationFuzz")
 {
-    // Broad fuzz over the untrusted remote-call validator: build one valid payload that drives the whole
-    // recursive parser (string, int array, enum, struct fields, and a ref-type sub-buffer), then feed
-    // thousands of bit-flipped / truncated variants through ValidateInboundRemoteCallData. However the wire
-    // is mangled, the validator must either accept or throw a known engine exception — never read out of
-    // bounds (ASan), trip UB (UBSan), or hang. A deterministic LCG keeps the run reproducible. Every element
-    // type consumes bytes, so a corrupted collection count can only exhaust the reader, never spin forever.
+    // However the wire is mangled, the validator must accept or throw a known exception, never read out of bounds
+    // or hang; a deterministic generator keeps the run reproducible
     EngineMetadata meta {[] { }};
     meta.RegisterSide(EngineSideKind::ServerSide);
     meta.RegisterEnumGroup("TestEnum", "int32", {{"None", 0}, {"Value", 1}});

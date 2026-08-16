@@ -5,7 +5,7 @@ namespace Core // Sort -10
 // with the given message (plus optional context values, forwarded to the
 // exception). Unlike a bare error throw, a `verify` documents a contract the
 // surrounding code expects to always hold. Because `throw` is noreturn, a passing
-// `verify(x != null, ...)` also narrows `x` to non-null.
+// `verify(x != null, ...)` also narrows `x` to non-null
 #define verify(cond, ...) \
     if (!(cond)) \
     throw(__VA_ARGS__)

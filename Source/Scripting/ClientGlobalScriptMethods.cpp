@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -1239,11 +1239,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
 #if FO_ENABLE_3D
     size_t instance_index = numeric_cast<size_t>(instance);
 
-    // x y
-    // rx ry rz
-    // sx sy sz
-    // speed
-    // scissor l t r b
+    // Layout: xy, rotation xyz, scale xyz, speed, scissor ltrb
     if (instance_index >= client->DrawCritterModel.size()) {
         client->DrawCritterModel.resize(instance_index + 1);
         client->DrawCritterModelCrType.resize(instance_index + 1);

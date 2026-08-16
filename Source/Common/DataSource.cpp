@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -969,7 +969,7 @@ ZipFile::ZipFile(string_view fname) :
     };
     ffunc.zclose_file = [](voidpf, voidpf) -> int32_t {
         // The ifstream is owned by the ZipFile object (_fileStream), not by zlib, so closing the zip must
-        // not delete it. This keeps ownership RAII-safe when the constructor throws on a malformed zip.
+        // not delete it. This keeps ownership RAII-safe when the constructor throws on a malformed zip
         return 0;
     };
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {

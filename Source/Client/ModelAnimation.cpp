@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "ModelAnimation.h"
 
@@ -1262,9 +1263,8 @@ static void ValidateModelAnimationRuntimeMatrix(const mat44& matrix, string_view
     }
 }
 
-// Per-joint variant: the index travels as a trailing context argument instead of being formatted into the
-// message. This runs per joint per model per frame, so an eager strex label would build millions of
-// strings a minute that only a throw would ever read.
+// The index travels as a context argument rather than a formatted message, because this runs per joint per
+// model per frame and an eager label would build strings only a throw would read
 static void ValidateModelAnimationRuntimeJointMatrix(const mat44& matrix, string_view context, size_t joint_index)
 {
     FO_STACK_TRACE_ENTRY();

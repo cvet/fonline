@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -112,10 +112,8 @@ public:
     }
 
 private:
-    // Plain operator new only guarantees __STDCPP_DEFAULT_NEW_ALIGNMENT__, so an element type that asks for
-    // more has to go through the aligned new/delete overloads. This has to stay a function rather than a
-    // static constexpr member: alignof(T) needs a complete T, while the allocator itself must remain usable
-    // with an incomplete one (std::vector<T> may be declared before T is defined).
+    // An over-aligned element must take the aligned new/delete overloads. A function rather than a
+    // constexpr member: alignof(T) needs a complete T, the allocator must accept an incomplete one
     static constexpr auto IsOverAligned() noexcept -> bool { return alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__; }
 
     static auto AllocateRaw(size_t size) noexcept -> nptr<void>
@@ -201,17 +199,15 @@ public:
         return ptr.get();
     }
 
-    // Raw C-style allocation carrying the same out-of-memory policy as SafeAllocator: report, drain the
-    // backup pool, retry, then exit deterministically. This is the only allocation entry point for
-    // third-party libraries whose hooks demand a realloc or an untyped byte block (SDL, spine, curl).
-    // A zero-size request is not an allocation failure and is passed through as-is.
+    // The only entry point for third-party hooks that demand realloc or an untyped byte block (SDL,
+    // spine, curl); it keeps the SafeAllocator out-of-memory policy, and a zero size passes through
     [[nodiscard]] static auto MallocRaw(size_t size) noexcept -> nptr<void>;
     [[nodiscard]] static auto CallocRaw(size_t num, size_t size) noexcept -> nptr<void>;
     [[nodiscard]] static auto ReallocRaw(nptr<void> ptr, size_t size) noexcept -> nptr<void>;
     static void FreeRaw(nptr<void> ptr) noexcept;
 
     // Aligned counterparts. Freeing needs no alignment argument, which is what lets these back library
-    // callbacks that hand back only the pointer (Effekseer's AlignedFreeFunc).
+    // callbacks that hand back only the pointer (Effekseer's AlignedFreeFunc)
     [[nodiscard]] static auto MallocAlignedRaw(size_t size, size_t alignment) noexcept -> nptr<void>;
     static void FreeAlignedRaw(nptr<void> ptr) noexcept;
 
@@ -251,11 +247,11 @@ private:
     }
 };
 
-// Memory block operations.
+// Memory block operations
 inline void MemCopy(nptr<void> dest, nptr<const void> src, size_t size) noexcept
 {
     // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero.
-    // So check size first.
+    // So check size first
     if (size != 0) {
         std::memcpy(dest.get(), src.get(), size);
     }

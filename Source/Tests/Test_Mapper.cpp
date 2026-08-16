@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include <chrono>
 #include <filesystem>
@@ -55,11 +56,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// These tests lock the CURRENT behavior of MapperEngine::MergeItemsToMultihexMeshes (the multihex-mesh
-// coalescence run at map load) so that a later O(N) optimization is guarded against regressions. They
-// construct a real, headless MapperEngine over self-contained synthetic resources: NullRenderer stubs
-// the GPU, minimal baked font sprites satisfy the mapper interface init, and two item protos carry
-// MultihexGeneration = SameSibling so their clean tiles coalesce.
+// Lock the current multihex-mesh coalescence behavior so a later optimization cannot change it silently,
+// over a real headless MapperEngine built from self-contained synthetic resources
 
 namespace
 {
@@ -80,9 +78,8 @@ namespace
 
         BakerTests::ApplySelfContainedClientSettings(settings);
 
-        // The MapperEngine ctor reads GetResourcePacks() to seed the map file system. The maps in these
-        // tests are supplied directly via LoadMapFromText, so a single named pack with no input dirs is
-        // enough to keep construction from throwing "No information about resource packs found".
+        // The maps come from LoadMapFromText, so one named pack with no input dirs is all the constructor needs
+        // to seed its file system
         auto pack_config = ConfigFile("[ResourcePack]\nName = MapperMergeTestPack\n");
         settings.ApplyConfigFile(pack_config, "");
 
@@ -105,7 +102,7 @@ namespace MapperMergeTest
     }
 
     // The inspector renders one row per index this event hands back, so with no subscriber it draws an
-    // empty panel. Listing the first properties of the entity registrator is enough to exercise the rows.
+    // empty panel. Listing the first properties of the entity registrator is enough to exercise the rows
     [[Event]]
     void OnInspectorProperties(Entity entity, int[]& properties)
     {
@@ -211,9 +208,8 @@ namespace MapperMergeTest
         Item farther = Game.AddItem("MapperMergeTileA".hstr(), mpos(16, 14));
         Game.DeleteEntities({tile, neighbour, farther});
 
-        // The sandboxed save rejects an empty name, path separators and traversal before touching anything.
-        // The two well-formed saves are rejected too, because this fixture serves maps from memory and has no
-        // maps root on disk to write into - which is itself the check that the root is resolved, not assumed.
+        // The well-formed saves are rejected too, because this fixture serves maps from memory: that rejection is
+        // itself the proof that the maps root is resolved rather than assumed
         int saveRejections = 0;
         try { Game.SaveMapToPath(map, "Generated", ""); } catch { saveRejections++; }
         try { Game.SaveMapToPath(map, "Generated", "with/separator"); } catch { saveRejections++; }
@@ -221,7 +217,7 @@ namespace MapperMergeTest
         if (saveRejections != 3) return -5;
 
         // Only the sandboxed writer is driven here. Game.SaveMap resolves against the maps root, which in a
-        // memory-only fixture lands in the working directory and would litter the repository.
+        // memory-only fixture lands in the working directory and would litter the repository
         int writeRejections = 0;
         try { Game.SaveMapToPath(map, "Generated", "MapperCoverageSaved"); } catch { writeRejections++; }
         if (writeRejections == 0) return -6;
@@ -764,7 +760,7 @@ R"(        cr.GetBodyAngle();
     )PARTICLE";
 
     // Bakes the test particle plus the effect family and texture the SPARK runtime resolves, so a fixture can
-    // serve real particle resources without a build step.
+    // serve real particle resources without a build step
     static auto MakeBakedParticleResources(string_view asset_path, string_view asset_text, string_view effect_text, string_view texture_name) -> vector<pair<string, vector<uint8_t>>>
     {
         BakerTests::TestRig particle_rig;
@@ -927,10 +923,8 @@ R"(        cr.GetBodyAngle();
         return count;
     }
 
-    // A surviving item described independently of authoring/merge order: its serialized id, normalized origin,
-    // the full hex_less-sorted set of hexes it covers, and the per-item Count value that survived the merge (the
-    // merge survivor keeps ITS OWN data, so Count is a fingerprint of which item won a path-dependent race; the
-    // id pins WHICH item became the survivor, which matters for AnyUnique where the survivor is the lowest id).
+    // Describes a survivor independently of authoring order; the survivor keeps its own data, so Count
+    // fingerprints which item won the path-dependent race and the id pins which one survived
     struct SurvivorDesc
     {
         int64_t Id;
@@ -972,7 +966,7 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Coalesces an adjacent block into one multihex-mesh item")
     {
-        // A horizontal run of four clean TileA tiles.
+        // A horizontal run of four clean TileA tiles
         string body;
         for (int32_t i = 0; i < 4; i++) {
             body += MakeItemBlock(10 + i, TILE_A, 5 + i, 5);
@@ -1002,7 +996,7 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Origin is normalized to the hex_less-smallest covered hex and mesh is sorted")
     {
-        // Authoring order intentionally does not start at the smallest hex.
+        // Authoring order intentionally does not start at the smallest hex
         string body;
         body += MakeItemBlock(30, TILE_A, 8, 5);
         body += MakeItemBlock(31, TILE_A, 6, 5);
@@ -1024,11 +1018,11 @@ TEST_CASE("MapperMultihexMeshMerge")
         auto covered = CollectMeshHexes(survivor);
         REQUIRE(covered.size() == 4);
 
-        // Origin is the smallest covered hex.
+        // Origin is the smallest covered hex
         CHECK(survivor->GetHex() == covered.front());
         CHECK(survivor->GetHex() == mpos {5, 5});
 
-        // The stored mesh (origin + remaining covered hexes) is sorted by hex_less.
+        // The stored mesh (origin + remaining covered hexes) is sorted by hex_less
         const auto& mesh = survivor->GetMultihexMesh();
         REQUIRE(!mesh.empty());
         CHECK(std::ranges::is_sorted(mesh, HexLess));
@@ -1058,7 +1052,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         auto covered_before = CollectMeshHexes(survivor);
 
         // LoadMapFromText already runs the merge twice (the second call asserts idempotency); run it once
-        // more directly to lock that the public entry point is a fixed point on an already-merged map.
+        // more directly to lock that the public entry point is a fixed point on an already-merged map
         size_t extra_merges = mapper->MergeItemsToMultihexMeshes(map);
         CHECK(extra_merges == 0);
 
@@ -1086,9 +1080,8 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Tiles with differing modified data are not merged together")
     {
-        // Two adjacent TileA tiles carrying DIFFERENT authored Count values. Neither is clean (equal to
-        // the proto) and their per-item data differs, so CompareMultihexItemForMerge keeps them apart:
-        // a merge between two non-clean items requires identical data.
+        // Neither tile is clean and their data differs, so they stay apart: merging two non-clean items requires
+        // identical data
         string body;
         body += MakeItemBlock(60, TILE_A, 5, 5, "Count = 7");
         body += MakeItemBlock(61, TILE_A, 6, 5, "Count = 9");
@@ -1107,10 +1100,8 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Current behavior: a clean tile next to a modified tile still coalesces")
     {
-        // Locks the surprising current rule: the merge has a dedicated "first merge to modified items"
-        // pass and CompareMultihexItemForMerge allows a clean source to merge into any same-proto target
-        // (allow_clean_merge). So one modified tile adjacent to clean tiles is NOT kept separate - the
-        // whole run collapses into a single multihex-mesh item and the modified per-item data is dropped.
+        // Locks the surprising rule that a clean source merges into any same-proto target, so one modified tile
+        // among clean ones is not kept separate and its authored data is dropped
         string body;
         body += MakeItemBlock(70, TILE_A, 5, 5);
         body += MakeItemBlock(71, TILE_A, 6, 5);
@@ -1136,10 +1127,10 @@ TEST_CASE("MapperMultihexMeshMerge")
     SECTION("Two disjoint clusters stay separate")
     {
         string body;
-        // Cluster 1 near the top-left.
+        // Cluster 1 near the top-left
         body += MakeItemBlock(70, TILE_A, 3, 3);
         body += MakeItemBlock(71, TILE_A, 4, 3);
-        // Cluster 2 far away so the two never touch as neighbors.
+        // Cluster 2 far away so the two never touch as neighbors
         body += MakeItemBlock(72, TILE_A, 20, 20);
         body += MakeItemBlock(73, TILE_A, 21, 20);
 
@@ -1161,14 +1152,8 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Path-dependent: a clean bridge collapses a modified..modified chain into one clean mesh")
     {
-        // ADVERSARIAL guard for the O(N) optimization. A naive static connected-component flood-fill of
-        // "~-connected same-proto tiles" would also merge this whole line, but it would NOT reproduce the
-        // exact PATH-DEPENDENT survivor: because the merge runs a dedicated "modified items first" pass and
-        // CompareMultihexItemForMerge(allow_clean_merge) lets a CLEAN source merge into ANY same-proto
-        // target, the two modified end tiles (Count 3 and Count 9) are bridged by the clean middle tiles and
-        // the WHOLE run collapses into a single multihex mesh whose surviving data is the CLEAN proto data
-        // (Count == 0, the proto default) - both authored Count values are dropped. This pins that exact
-        // result so the incremental candidate-collection optimization cannot quietly change the survivor.
+        // A naive flood-fill would merge this line too but pick a different survivor: here clean middle tiles
+        // bridge two modified ends and the clean proto data wins, which is exactly what must not change
         string body;
         body += MakeItemBlock(200, TILE_A, 5, 5, "Count = 3");
         body += MakeItemBlock(201, TILE_A, 6, 5);
@@ -1204,10 +1189,8 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Path-dependent: modified..clean..modified collapse is id-order independent")
     {
-        // Same chain as above but the modified end tiles own the LOWEST ids and the clean bridge owns the
-        // HIGHEST ids, so the per-step best-by-id merge direction differs from the ascending-id case. The
-        // collapse and the clean survivor data must match regardless: a single mesh of all four hexes with
-        // Count == 0. This catches an optimization that accidentally became sensitive to id authoring order.
+        // The same chain with the id order reversed, so the per-step merge direction differs: an identical result
+        // is what proves the optimization stayed insensitive to authoring order
         string body;
         body += MakeItemBlock(220, TILE_A, 5, 5, "Count = 3");
         body += MakeItemBlock(223, TILE_A, 6, 5);
@@ -1226,11 +1209,8 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Modified data partitions a run that no clean tile bridges (modified X - X - Y)")
     {
-        // modified(X) - modified(X) - modified(Y): the first two share authored data and merge; the third
-        // carries different data with no clean tile to bridge it, so it stays separate. A pure
-        // proto-adjacency flood-fill would over-merge all three into one mesh - this pins the data-aware
-        // partition: two survivors, a mesh of {(5,5),(6,5)} keeping Count 5 and a single {(7,5)} keeping
-        // Count 8.
+        // Two tiles share authored data and merge while the third differs with no clean tile to bridge it, which
+        // a pure proto-adjacency flood-fill would over-merge into one mesh
         string body;
         body += MakeItemBlock(230, TILE_A, 5, 5, "Count = 5");
         body += MakeItemBlock(231, TILE_A, 6, 5, "Count = 5");
@@ -1253,7 +1233,7 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Large solid block coalesces and loads")
     {
-        // Solid 24x24 block of clean TileA tiles; pins the result shape for the perf optimization.
+        // Solid 24x24 block of clean TileA tiles; pins the result shape for the perf optimization
         constexpr int32_t block = 24;
         constexpr int32_t origin = 3;
 
@@ -1268,7 +1248,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         auto map = mapper->LoadMapFromText("LargeBlockMap", "LargeBlockMap.fomap", MakeMapText(body, 64));
         REQUIRE(map != nullptr);
 
-        // Current behavior: an adjacency-connected block collapses into a single multihex-mesh item.
+        // Current behavior: an adjacency-connected block collapses into a single multihex-mesh item
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
         nptr<const ItemHexView> survivor;
@@ -1285,11 +1265,8 @@ TEST_CASE("MapperMultihexMeshMerge")
     }
 }
 
-// AnyUnique is the second multihex-mesh strategy (used by floor tiles/walls in real maps, and the dominant cost
-// of the 1000x1000 map load). Unlike SameSibling it is NOT spatial: it merges EVERY same-proto item that has the
-// same per-item data (ignoring Hex and MultihexMesh) into one mesh regardless of position, collapsing each
-// (proto, data) group into its LOWEST-id member. These sections lock that behavior so the O(N) optimization of
-// the AnyUnique coalescence stays behavior-identical.
+// AnyUnique is not spatial: it collapses every same-proto item with matching data into its lowest-id member
+// regardless of position, and these sections lock that so the optimization stays behavior-identical
 TEST_CASE("MapperAnyUniqueMeshMerge")
 {
     auto settings = MakeMapperTestSettings();
@@ -1317,7 +1294,7 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         CHECK(survivors[0].Id == 300); // lowest id wins
         CHECK(survivors[0].Origin == mpos {3, 3});
         CHECK(survivors[0].Count == 0);
-        // hex_less is y-major: (3,3) then (20,20) then (5,25).
+        // hex_less is y-major: (3,3) then (20,20) then (5,25)
         CHECK(survivors[0].Covered == vector<mpos> {{3, 3}, {20, 20}, {5, 25}});
     }
 
@@ -1336,19 +1313,19 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         auto survivors = CollectSurvivors(map, tile_u);
         REQUIRE(survivors.size() == 3);
 
-        // Clean group (310 + 312).
+        // Clean group (310 + 312)
         CHECK(survivors[0].Id == 310);
         CHECK(survivors[0].Origin == mpos {2, 2});
         CHECK(survivors[0].Count == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{2, 2}, {2, 10}});
 
-        // Count == 7 group (311 + 313).
+        // Count == 7 group (311 + 313)
         CHECK(survivors[1].Id == 311);
         CHECK(survivors[1].Origin == mpos {10, 2});
         CHECK(survivors[1].Count == 7);
         CHECK(survivors[1].Covered == vector<mpos> {{10, 2}, {25, 25}});
 
-        // Lone Count == 9 tile (314).
+        // Lone Count == 9 tile (314)
         CHECK(survivors[2].Id == 314);
         CHECK(survivors[2].Origin == mpos {18, 4});
         CHECK(survivors[2].Count == 9);
@@ -1411,17 +1388,14 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
     }
 }
 
-// Regression: MapperEngine::LoadMap resolves a map file located by a directory-qualified path (the
-// form the render/preview tooling passes, e.g. "Gambell/NewGambell_Center") and never lets a
-// same-stem sibling of another type (the map's NewGambell_Center.foloc location file) shadow the
-// .fomap during file discovery. Nearly every location map in the project ships such a .foloc sibling,
-// so the shadowing broke headless map loading for most maps.
+// A directory-qualified path must not let a same-stem sibling of another type shadow the .fomap: nearly every
+// location map ships a .foloc sibling, so shadowing would break headless loading for most maps
 TEST_CASE("MapperLoadMapResolvesNameAndPath")
 {
     auto settings = MakeMapperTestSettings();
 
     // Mirror the project's proto-extension order (LastFrontier.fomain), where .foloc precedes .fomap.
-    // That ordering is what let a same-stem location file shadow the map file during discovery.
+    // That ordering is what let a same-stem location file shadow the map file during discovery
     BakerTests::OverrideSetting(settings.ProtoFileExtensions, vector<string> {"foinfo", "fopro", "foloc", "fomap", "focr", "foitem"});
 
     auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
@@ -1429,7 +1403,7 @@ TEST_CASE("MapperLoadMapResolvesNameAndPath")
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
     // A single-map .fomap and a same-stem .foloc live side by side under a subdirectory, mirroring the
-    // real content layout. The .foloc must not shadow the .fomap for either lookup form.
+    // real content layout. The .foloc must not shadow the .fomap for either lookup form
     auto maps_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapperLoadMapTestMaps");
     maps_source->AddFile("Gambell/ShadowedMap.foloc", "[ProtoLocation]\n$Name = ShadowedMap\nMapProtos = ShadowedMap\n");
     maps_source->AddFile("Gambell/ShadowedMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 5, 5)));
@@ -1573,9 +1547,8 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
     INFO(drawn_text);
     CHECK_FALSE(drawn_text.empty());
 
-    // The inspector draws its editor widgets only for the line that is currently being edited, so every
-    // property type's editor - text, bool, array, struct fields - is unreachable until each line in turn
-    // becomes the edit target. Walking the lines is what covers that tree.
+    // The inspector draws an editor only for the line being edited, so walking every line in turn is what
+    // reaches each property type's widget
     REQUIRE_FALSE(mapper->ShowProps.empty());
 
     for (size_t prop_index = 0; prop_index < mapper->ShowProps.size(); prop_index++) {
@@ -1612,9 +1585,8 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
 
 TEST_CASE("MapperSelectionFollowsLayerVisibility")
 {
-    // Select-all walks the placed items once and admits each by its own kind, so a map of plain items only
-    // ever reaches one arm of that test. This map carries an item, a scenery piece, a wall, a floor tile,
-    // a roof tile and a critter, and the layers are switched off one at a time.
+    // Select-all admits each placed entity by its own kind, so the map carries one of every kind and the layers
+    // are switched off one at a time to reach each arm
     auto settings = MakeMapperTestSettings();
     auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
@@ -1693,9 +1665,8 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
 
     SECTION("DeselectingAnAnyUniqueItemRunsTheIncrementalMerge")
     {
-        // Dropping an item out of the selection re-merges it into its multihex mesh, and for the AnyUnique
-        // strategy that goes through the per-step incremental driver rather than the whole-map coalescer -
-        // a path no other test reaches, because every other fixture item is SameSibling or plain.
+        // Dropping an AnyUnique item out of the selection re-merges it through the per-step driver rather than the
+        // whole-map coalescer, a path no other fixture reaches
         ptr<MapView> selection_map = mapper->GetCurMap().as_ptr();
         hstring unique_pid = mapper->Hashes.ToHashedString(TILE_U);
 
@@ -1751,9 +1722,8 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
 
 TEST_CASE("MapperPanelControlsRunTheirActions")
 {
-    // The panels draw their controls in every headless frame but nothing is ever pressed, so the code
-    // behind each button stays unreachable. Saving writes real files, so the fixture keeps a private
-    // Maps root the same way the save test does.
+    // Panels draw in every headless frame but nothing is pressed, so the code behind each button needs an
+    // explicit press; saving writes real files, hence the private Maps root
     auto maps_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_controls_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(maps_dir, remove_error);
@@ -2112,10 +2082,8 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     io.IniFilename = nullptr;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-    // The viewers and the particle editor are mapper-hosted tool windows, so they take their
-    // dependencies straight off the running mapper engine
-    // The viewer only selects a critter through a list click or through its persisted "last critter"
-    // setting, so the setting is seeded here and restored afterwards to keep the user store untouched
+    // The viewer selects a critter only through a list click or its persisted "last critter" setting, so the
+    // setting is seeded here and restored afterwards to leave the user store untouched
     string saved_selected_proto;
 
     string saved_selected_particle;
@@ -2682,7 +2650,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         auto restore_fullscreen = scope_exit([saved_fullscreen]() noexcept { safe_call([saved_fullscreen] { (void)GetApp()->MainWindow.ToggleFullscreen(saved_fullscreen); }); });
 
         // With an entity selected and the inspector up, F9, Delete and Escape take their other branches.
-        // This runs before the sweep below, which toggles the layer visibility a selection depends on.
+        // This runs before the sweep below, which toggles the layer visibility a selection depends on
         mapper->SelectAll();
         REQUIRE_FALSE(mapper->SelectedEntities.empty());
         mapper->InspectorVisible = true;
@@ -2695,10 +2663,8 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
             REQUIRE_NOTHROW(mapper->HandlePrimaryMapperHotkeys(function_key, false));
         }
 
-        // The shift and ctrl tables both early-out on GetApp()->Input.IsShiftDown()/IsCtrlDown(), which the
-        // real InputSystem only ever sets from an SDL modifier state. A pushed or simulated key event does
-        // not update it, so their bodies stay unreachable from a test - see the plan note on simulated
-        // modifier state.
+        // The modifier state comes only from SDL, and a simulated key event does not set it, so these tables stay
+        // unreachable from a test
         for (KeyCode shift_key : {KeyCode::F7, KeyCode::F11, KeyCode::C0, KeyCode::Numpad0, KeyCode::Tab}) {
             REQUIRE_NOTHROW(mapper->HandleShiftMapperHotkeys(shift_key, false));
         }
@@ -2733,12 +2699,12 @@ TEST_CASE("MapViewLightingAndViewportOperations")
     mapper->InitIface();
 
     // A light-emitting item drives the light fan machinery: tracing, marking the fan ends and cleaning it up
-    // on every rebuild. Without a light source those paths never run, whatever else the map contains.
+    // on every rebuild. Without a light source those paths never run, whatever else the map contains
     string light_props = "LightSource = true\nLightIntensity = 50\nLightDistance = 6\nLightFlags = 0\nLightColor = 0xFFFFFFFF";
     string body = MakeItemBlock(10, TILE_A, 8, 8, light_props) + MakeItemBlock(11, TILE_B, 12, 12, light_props) + MakeItemBlock(12, TILE_A, 5, 5);
 
     // A map critter exercises the critter map view alongside the item paths. Its light properties are
-    // client-scoped, so they cannot be authored in the map text and are switched on at runtime below.
+    // client-scoped, so they cannot be authored in the map text and are switched on at runtime below
     body += MakeCritterBlock(20, CRITTER_A, 6, 6);
     body += MakeCritterBlock(21, CRITTER_A, 10, 10);
 
@@ -2791,7 +2757,9 @@ TEST_CASE("MapViewLightingAndViewportOperations")
 
         REQUIRE_NOTHROW(critter->RefreshView(false));
         REQUIRE_NOTHROW(critter->RefreshView(true));
+#if FO_ENABLE_3D
         REQUIRE_NOTHROW(critter->RefreshModel());
+#endif
         process_frames(4);
 
         ignore_unused(critter->IsAnimPlaying());
@@ -2902,7 +2870,7 @@ TEST_CASE("MapViewLightingAndViewportOperations")
 TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 {
     // Saving resolves the on-disk Maps root from an existing map container, so the fixture needs a real
-    // directory with a reference .fomap in it - a memory-only resource set can never reach this path.
+    // directory with a reference .fomap in it - a memory-only resource set can never reach this path
     auto maps_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_save_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(maps_dir, remove_error);
@@ -2986,9 +2954,8 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
         auto other = mapper->LoadMapFromText("OtherMap", "OtherMap.fomap", MakeMapText(MakeItemBlock(12, TILE_A, 7, 7)));
         REQUIRE(other != nullptr);
 
-        // LoadMapFromText hands back a borrow, and the engine's only owning reference lives in LoadedMaps,
-        // so unloading destroys the view outright. Hold an own reference across the unload - otherwise the
-        // rejection below reads freed memory instead of exercising the destroyed-map guard.
+        // The engine's only owning reference lives in LoadedMaps, so unloading destroys the view outright. Hold
+        // an own reference across it, or the rejection below reads freed memory instead of exercising the guard
         ptr<MapView> other_view = other.as_ptr();
         refcount_ptr<MapView> unloaded = refcount_ptr<MapView>::from_add_ref(other_view.get());
 

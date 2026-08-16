@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,10 +46,8 @@ FO_BEGIN_NAMESPACE
 
 extern void ServerInitHook(ptr<ServerEngine>);
 
-// Per-thread SyncContext bound to the lifetime of an external `ServerEngine::Lock` call. Tests
-// (and other off-thread callers) Lock to pause the main worker and then mutate engine state on
-// their own thread; that thread needs a SyncContext active for the engine-wide invariant. Lock
-// constructs+activates one, Unlock releases+deactivates it.
+// An off-thread caller that Locks to pause the main worker still mutates engine state on its own thread, and
+// the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
@@ -126,12 +124,12 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
         return EventResult::ContinueChain;
     }
 
-    // Engine-wide invariant: a primary SyncContext is always active when an event fires.
+    // Engine-wide invariant: a primary SyncContext is always active when an event fires
     FO_STRONG_ASSERT(GetCurrentSyncContext(), "Server event fired without active sync context");
 
     bool had_exception = false;
 
-    // Iterate a copy - callbacks vector may be changed/invalidated during cycle work.
+    // Iterate a copy - callbacks vector may be changed/invalidated during cycle work
     small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
 
     for (const auto& cb : callbacks_snapshot) {
@@ -692,7 +690,7 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
     _workerPool->Resume();
 
     // Set started flag AFTER workerPool is resumed and mainWorker has jobs queued so
-    // external observers (tests, network OnNewConnection) only see a fully-running server.
+    // external observers (tests, network OnNewConnection) only see a fully-running server
     _started = true;
 
     return std::nullopt;
@@ -739,7 +737,7 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 
     SyncPoint();
 
-    // Sample server stats at the sync tick: online counts, uptime, job throughput and CPU load.
+    // Sample server stats at the sync tick: online counts, uptime, job throughput and CPU load
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
 
@@ -778,9 +776,8 @@ void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
     auto key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
     ScopedSyncContext ctx;
 
-    // CreateNotLoggedInPlayer already holds the session in the not-logged-in list, but on the network
-    // thread nothing covers it yet. Capture its own lock in this context before the connection
-    // callback and the worker job can reach it.
+    // The session is listed but uncovered on the network thread, so its own lock is captured before the
+    // connection callback and the worker job can reach it
     ctx.GetContext().EnsureFreshEntitySynced(not_logged_in_player);
     not_logged_in_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
@@ -918,7 +915,7 @@ void ServerEngine::UpdateJobStats(nanotime cur_time)
 
     // Sample once per second so the rolling-minute window stays small (the counters are
     // monotonic except for a one-time drop when the worker pool is destroyed at shutdown,
-    // which the underflow guards absorb).
+    // which the underflow guards absorb)
     _stats.JobsPerSecond = completed_jobs >= _stats.JobCounterBeginTotal ? completed_jobs - _stats.JobCounterBeginTotal : 0;
     _stats.JobCounterBegin = cur_time;
     _stats.JobCounterBeginTotal = completed_jobs;
@@ -1022,11 +1019,8 @@ void ServerEngine::Shutdown()
 
     _shutdownInProgress.store(true, std::memory_order_release);
 
-    // Shutdown runs synchronously on the caller's thread (test thread or main app), which has
-    // no SyncContext active. Stand one up here so DestroyAllEntities, MapMngr.DestroyLocation
-    // and friends can satisfy the engine-wide invariant that any entity touch happens under a
-    // primary SyncContext. The whole world is locked into it below, once the sequenced teardown
-    // (network join, time-event cancel, worker-pool drain) has made this thread the sole owner.
+    // Shutdown runs on a caller thread with no SyncContext, so one is stood up here to satisfy the invariant
+    // that any entity touch happens under a primary context
     ScopedSyncContext shutdown_ctx;
 
     WriteLog("Shutdown stage: willFinishDispatcher");
@@ -1034,10 +1028,8 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: starter.Clear");
     _starter.Clear();
 
-    // Stop + join the network IO threads BEFORE tearing down the worker pool. A connection's
-    // DataArrivedCallback (`[this, key]{ _workerPool->Wake(key); }`) and `OnNewConnection` ->
-    // `_workerPool->Submit` run on the network thread; if the pool is reset first they dereference a
-    // freed pool. `conn_server->Shutdown()` joins the IO thread, so no such callback can fire after.
+    // Network IO joins before the worker pool is torn down, because its callbacks reach the pool and would
+    // otherwise dereference freed storage
     WriteLog("Shutdown stage: connection servers (count={})", _connectionServers.size());
 
     for (auto& conn_server : _connectionServers) {
@@ -1046,52 +1038,28 @@ void ServerEngine::Shutdown()
 
     _connectionServers.clear();
 
-    // Cancel every pending entity TimeEvent BEFORE draining the worker pool. Each TimeEvent
-    // schedule goes through `OnTimeEventSchedule` which Submits a `_workerPool` job. If the test
-    // run leaked critters with periodic time events (Ai / Health / Modifiers / etc.) and we go
-    // straight to `_workerPool->Clear/WaitIdle`, the in-flight jobs keep re-scheduling because
-    // `TimeEventMngr.FireAndAdvance` returns a non-empty delay. `ClearTimeEvents` calls the
-    // `Cancel` hook (`_workerPool->Cancel(event_id)`) for every event-id, which both removes
-    // pending jobs from the pool's queue and marks any currently-running job as
-    // `_cancelOnFinish` so it won't re-enqueue when it returns.
+    // Pending time events are cancelled before the drain, because a periodic event keeps re-scheduling itself
+    // and would never let the pool go idle
     WriteLog("Shutdown stage: TimeEventMngr.ClearTimeEvents (entityCount={})", EntityMngr.GetEntitiesCount());
     TimeEventMngr.ClearTimeEvents();
 
-    // `_workerPool` is created at the end of InitMetadataJob — after InitStorageJob connected the
-    // database and game time was synchronized. Its presence is therefore the marker that startup
-    // reached a running state. If a mandatory startup job aborted earlier (e.g. the database was
-    // unreachable and InitStorageJob threw), the pool is null, `DbStorage` is unconnected and game
-    // time is unsynchronized; Shutdown must still be safe to call on that half-initialized engine —
-    // both when an admin quits it and when the host fails fast on the start error itself. Without
-    // this guard the drain below dereferenced a null pool (SIGSEGV in WorkerPool::Clear, locking the
-    // pool mutex through a null `this`) and the database flushes further down tripped their
-    // connected/synchronized invariants. Networking is already stopped above, and with no world or
-    // players the remaining teardown is a no-op.
+    // The pool's presence marks that startup reached a running state, so a Shutdown after a failed start must
+    // skip the drain and the database flushes below rather than assume either exists
     bool reached_running_state = _workerPool.has_value();
 
     if (reached_running_state) {
-        // Cut the time-event dispatcher off BEFORE draining the pool: an in-flight job's script may still
-        // StartTimeEvent during the drain, and a fresh Submit would enqueue a job that WorkerPool::Clear
-        // never cancel-marked (an Asap-repeating one keeps the untimed WaitIdle below from ever returning),
-        // while after _workerPool.reset() the Submit/Cancel hooks would dereference the empty optional.
-        // Pausing is an atomic flag, so it is safe against concurrent lock-free hook reads; the hook
-        // objects themselves are cleared further down, once teardown is single-threaded.
+        // The dispatcher is cut off before the drain, or an in-flight script starting a repeating time event
+        // would enqueue a job Clear never cancel-marked and WaitIdle would never return
         WriteLog("Shutdown stage: TimeEventMngr.PauseDispatcherHooks");
         TimeEventMngr.PauseDispatcherHooks();
 
-        // Fully drain and reset the worker pool BEFORE clearing _mainWorker. Only _mainWorker drives
-        // the whole-world sync handshake: its SyncPointJob calls SyncPoint(), which releases any thread
-        // parked in Lock(). If a pool job is blocked on that handshake, stopping _mainWorker first would
-        // strand it and hang WaitIdle, so the main worker is always torn down last.
+        // The main worker is torn down last, because only it drives the sync handshake that releases a parked
+        // pool job; stopping it first would strand that job and hang WaitIdle
         WriteLog("Shutdown stage: workerPool.Clear");
         _workerPool->Clear();
 
-        // Graceful drain: give in-flight worker jobs a grace window to finish on their own. A job parked
-        // inside `EntityLock::Acquire` still counts as active, so `WaitIdle` blocks on it. If the drain
-        // does not complete within `Server.ShutdownGraceMs`, wake every parked waiter via
-        // `AbortPendingWaiters` — each wakes with `STATE_ABORTED` and throws `EntityLockWaitAbortedException`,
-        // which unwinds its job (the `WorkerPool` run loop swallows it because shutdown is in progress).
-        // Nothing converts the abort into a return value; the exception alone stops the work.
+        // A job parked in EntityLock::Acquire still counts as active, so past the grace window every waiter is
+        // aborted and the resulting throw is what unwinds the job
         WriteLog("Shutdown stage: workerPool.WaitIdle (graceMs={})", Settings->ShutdownGraceMs);
 
         if (!_workerPool->WaitIdle(std::chrono::milliseconds {Settings->ShutdownGraceMs})) {
@@ -1123,11 +1091,8 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: mainWorker.Clear");
     _mainWorker.Clear();
 
-    // Clear the dispatcher hook objects only after BOTH the worker pool and the main worker are gone:
-    // NotifySchedule/NotifyCancel read the hook std::functions lock-free from worker threads, so
-    // move-assigning them earlier raced those reads. The hooks are already inert — PauseDispatcherHooks
-    // cut them off before the pool drain — so this only releases the captured state now that teardown
-    // is single-threaded.
+    // Cleared only once both workers are gone, because the notify paths read these functions lock-free; they
+    // are already inert, so this just releases the captured state
     WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
     TimeEventMngr.ClearDispatcherHooks();
 
@@ -1139,10 +1104,8 @@ void ServerEngine::Shutdown()
         not_logged_in_players = _notLoggedInPlayers;
     }
 
-    // From here teardown is single-threaded (pool and main worker are gone) and every entity lock is
-    // free: take every registered entity and every not-logged-in player into the shutdown context explicitly
-    // so the remaining stages (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player
-    // disconnects) run covered. The scope-exit Release() drains the held locks.
+    // Teardown is single-threaded from here, so the whole world is taken into the shutdown context and every
+    // remaining stage runs covered
     WriteLog("Shutdown stage: lock whole world (count={})", EntityMngr.GetEntitiesCount());
     SyncWholeWorld(shutdown_ctx.GetContext(), not_logged_in_players);
 
@@ -1182,10 +1145,8 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: ShutdownBackends");
     ShutdownBackends();
 
-    // Persisting the exact entity-id / synchronized-time marks and committing pending writes all
-    // require a connected database and synchronized game time, which only exist once startup reached
-    // the running state (see `reached_running_state` above). After a failed start there is nothing to
-    // persist and `DbStorage` is unconnected, so skip them.
+    // These flushes need a connected database and synchronized time, which exist only after startup reached
+    // the running state; a failed start has nothing to persist anyway
     if (reached_running_state) {
         WriteLog("Shutdown stage: FlushExactEntityId");
         EntityMngr.FlushExactEntityId();
@@ -1240,10 +1201,8 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
         std::this_thread::yield();
     }
 
-    // Re-entrancy guard hoisted above any counter mutation: a re-entrant Lock on the same thread must
-    // throw before touching `_syncRequest`, so the misuse path leaves the counter balanced instead of
-    // deadlocking the main worker on a SyncPoint. Safe to check here because ExternalLockSyncCtx is
-    // thread_local and only this call's emplace below writes it.
+    // Hoisted above any counter mutation so a re-entrant Lock throws with the counter still balanced instead
+    // of deadlocking the main worker on a SyncPoint
     FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
 
     if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
@@ -1264,9 +1223,8 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
         }
     }
 
-    // Now this thread is allowed to touch engine state: stand up an active SyncContext for explicit
-    // Sync/Ensure calls made by the external lock holder. The external lock owns only the engine sync
-    // point; it does not pre-lock the world.
+    // The external lock owns only the engine sync point and pre-locks no entity, so the holder still needs an
+    // active context for its own Sync/Ensure calls
     ExternalLockSyncCtx.emplace();
     ExternalLockSyncCtx->Activate();
 
@@ -1321,12 +1279,8 @@ void ServerEngine::SyncPoint()
     unique_lock locker {_syncLocker};
 
     if (_syncRequest > 0) {
-        // Make ServerEngine::Lock a true stop-the-world. The main worker is about to park here until
-        // every external lock holder releases, but worker-pool jobs would otherwise keep mutating
-        // entities in parallel, racing the external holder's controlled access.
-        // Pause and drain the pool so the lock holder has exclusive, race-free access; resume once the
-        // last holder unlocks. `_workerPool` may already be gone during late shutdown; that reset is
-        // serialized on `_syncLocker`, so this null check under the lock is race-free.
+        // Parking the main worker alone would still leave pool jobs mutating entities, so the pool is paused and
+        // drained to make Lock a true stop-the-world; late shutdown may already have reset it
         if (_workerPool) {
             _workerPool->Pause();
         }
@@ -1899,7 +1853,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
         return;
     }
 
-    // Anti-flood: drop bursts from a single source before any per-connection allocation.
+    // Anti-flood: drop bursts from a single source before any per-connection allocation
     if (Settings->NewConnectionRatePerSec > 0) {
         constexpr size_t MAX_CONN_RATE_ENTRIES = 50000;
         int64_t now_sec = nanotime::now().seconds();
@@ -1910,7 +1864,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
             scoped_lock locker {_connRateLocker};
 
             // Bound the per-source map: when it grows large, drop entries whose one-second window has rolled
-            // over (so a spoofed-IP flood cannot turn the rate guard itself into an unbounded-memory vector).
+            // over (so a spoofed-IP flood cannot turn the rate guard itself into an unbounded-memory vector)
             if (_connRates.size() > MAX_CONN_RATE_ENTRIES) {
                 std::erase_if(_connRates, [now_sec](const auto& entry) { return entry.second.WindowSec != now_sec; });
             }
@@ -1925,7 +1879,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
         }
     }
 
-    // Population cap: reject when the connection or player ceiling is reached, before creating a player.
+    // Population cap: reject when the connection or player ceiling is reached, before creating a player
     if (Settings->MaxConnections > 0 || Settings->MaxPlayers > 0) {
         size_t cur_connections;
         size_t cur_players;
@@ -1961,12 +1915,8 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
         return _notLoggedInPlayers.back();
     }();
 
-    // Widen the outer SyncContext's cover to include the freshly-created not-logged-in player so
-    // the caller (script via `Game.CreateNotLoggedInPlayer()` or any engine path running inside
-    // a job's SyncContext) can immediately read/write its properties without a separate
-    // `Sync::Lock(player)`. This is a creation boundary - the session shell has no cover yet, so
-    // it goes through the trusted fresh capture rather than ordinary retention. Network-thread
-    // path has no current context - the conditional skips safely there.
+    // Widened so the caller can use the new session without a separate Sync::Lock; it is a creation boundary,
+    // hence the trusted fresh capture, and the network thread has no context to widen
     if (auto outermost = SyncContext::GetOutermostOnThisThread()) {
         outermost->EnsureFreshEntitySynced(not_logged_in_player);
     }
@@ -2091,9 +2041,8 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
         return;
     }
 
-    // Bound the messages drained per job pass so one flooding connection cannot monopolize a worker
-    // thread (the pool is shared with world jobs). PlayerJob reschedules periodically and wakes on
-    // new data, so any leftover buffered messages are processed on the next pass.
+    // Bounded so one flooding connection cannot monopolize a worker thread shared with world jobs; the job
+    // reschedules, so leftovers are drained on the next pass
     int32_t max_per_pass = Settings->MaxMessagesPerProcessPass;
     int32_t processed_msgs = 0;
 
@@ -2429,7 +2378,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
 
         WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetName(), prev_cr->GetName());
         // Recreate the old chosen as an ordinary critter view. RemoveCritter clears the client's
-        // chosen pointer; after DetachCritter, AddCritter serializes the same critter with is_chosen=false.
+        // chosen pointer; after DetachCritter, AddCritter serializes the same critter with is_chosen=false
         player->Send_RemoveCritter(prev_cr);
         player->DetachCritter();
         player->Send_AddCritter(prev_cr);
@@ -2779,7 +2728,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
     hstring hstr = Hashes.ResolveHash(hash, &failed);
 
     if (failed) {
-        // The server can't resolve it either - a deeper content/version mismatch. Log each one once per session.
+        // The server can't resolve it either - a deeper content/version mismatch. Log each one once per session
         bool first_report;
         {
             scoped_lock locker {_reportedHashesLocker};
@@ -2799,7 +2748,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
         scoped_lock locker {_reportedHashesLocker};
 
         // emplace is the atomic check-and-insert; already-known strings (already broadcast and persisted)
-        // return false and are skipped, so only the first reporter persists and broadcasts it.
+        // return false and are skipped, so only the first reporter persists and broadcasts it
         if (!_reportedStrings.emplace(reported_string).second) {
             return;
         }
@@ -3025,9 +2974,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         }
     }
     else {
-        // The script caller owns synchronization for the complete reconnect graph. Do not narrow
-        // its cover here: OnPlayerLogin and initial-info delivery may need the controlled critter,
-        // map, and location in addition to both player entities.
+        // The caller's cover is kept whole: login and initial-info delivery may need the controlled critter,
+        // map, and location beyond both player entities
         ValidateEntityAccess(player);
         ValidateEntityAccess(not_logged_in_player);
 
@@ -3067,7 +3015,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
     if (destroy_not_logged_in_after_login) {
         // Keep the displaced player alive until scheduling succeeds so scope_fail can still swap
-        // the connection back if OnPlayerLoggedIn throws.
+        // the connection back if OnPlayerLoggedIn throws
         not_logged_in_player->MarkAsDestroyed();
     }
 
@@ -3696,9 +3644,8 @@ void ServerEngine::Process_Property(ptr<Player> player)
         player->SetIgnoreSendEntityProperty(entity, prop);
         auto revert_send_ignore = scope_exit([player]() mutable noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); });
 
-        // Take the entity's per-property auto-lock so this network-driven write serializes
-        // through the same primitive used by script-side `Game.X` / `entity.X` access.
-        // For non-engine entities `LockForPropertyAccess` is the default no-op virtual.
+        // Serializes a network-driven write through the same per-property auto-lock as script-side access; for
+        // non-engine entities the call is the default no-op virtual
         entity->LockForPropertyAccess();
         auto unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); });
 
@@ -3769,15 +3716,13 @@ void ServerEngine::OnSaveSynchronizedTime(ptr<Entity> entity, ptr<const Property
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Dedicated PostSetter for `Game.SynchronizedTime` - throttles DB writes to ~once per
-    // `SyncTimePersistLead` of game time, persisting `live + lead` so the write provides
-    // headroom and the next write doesn't fire until live crosses the mark. Init-phase
-    // sets (before time is synchronized) and `FlushExactSyncTime` write through directly.
+    // Throttles DB writes by persisting `live + lead`, so the stored value carries headroom and the next write
+    // waits until live crosses it; init-phase sets and the explicit flush write through
     FO_VERIFY_AND_THROW(entity == this, "Synchronized time post-setter received an entity different from the server engine", string_view {prop->GetName()}, entity->GetTypeName(), entity->GetId());
     FO_VERIFY_AND_THROW(prop == GetPropertySynchronizedTime(), "Synchronized time post-setter received a different property", string_view {prop->GetName()}, GetPropertySynchronizedTime()->GetName());
 
     if (!GameTime.IsTimeSynchronized()) {
-        // Init / external pin path: persist the exact property value.
+        // Init / external pin path: persist the exact property value
         auto value = PropertiesSerializer::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
         DbStorage.Update(entity->GetTypeName(), ident_t {1}, prop->GetName(), value);
         return;
@@ -4139,11 +4084,11 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
             bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
 
             if (incorrect_final_position) {
-                // Send final position update to client to correct it.
+                // Send final position update to client to correct it
                 StopCritterMoving(cr, MovingState::Success);
             }
             else {
-                // Normal completion, skip sending of final position update.
+                // Normal completion, skip sending of final position update
                 StopCritterMoving(cr, MovingState::Success, [] { });
             }
 

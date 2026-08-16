@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -98,9 +98,8 @@ public:
     void StoreIfPassed();
 
 private:
-    // Keep the over-aligned local buffer as the first member: placed at offset 0 the alignas is
-    // satisfied without inserting any padding, so the struct's alignment matches its natural pointer
-    // alignment and MSVC's C4324 (padding added due to alignment specifier) does not fire.
+    // Keep the over-aligned local buffer first so offset zero satisfies alignas without padding.
+    // This preserves natural pointer alignment and avoids MSVC C4324
     alignas(std::max_align_t) uint8_t _localBuf[LOCAL_BUF_SIZE] {};
     size_t _dataSize {};
     bool _useDynamic {};

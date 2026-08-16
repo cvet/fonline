@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,62 +56,40 @@ struct Platform
         uint32_t LogicalCoreCount {};
     };
 
-    // Windows: OutputDebugStringW
-    // Android: __android_log_write ANDROID_LOG_INFO
-    // Other: none
+    // Windows: OutputDebugStringW; Android: __android_log_write; other: no-op
     static void InfoLog(const string& str) noexcept;
 
     // Windows (>= 10): SetThreadDescription
     // Other: none
     static void SetThreadName(const string& str) noexcept;
 
-    // Windows: GetModuleFileNameW
-    // Linux: readlink /proc/self/exe
-    // Mac: proc_pidpath
-    // Other: nullopt
+    // Windows: GetModuleFileNameW; Linux: /proc/self/exe; macOS: proc_pidpath; other: nullopt
     static auto GetExePath() noexcept -> optional<string>;
 
-    // Base directory for per-user writable application data, from environment only (no SDL/shell32).
-    // Windows: %LOCALAPPDATA% (else %APPDATA%)
-    // Mac & iOS: $HOME/Library/Application Support
-    // Linux, Android & other: $XDG_DATA_HOME (else $HOME/.local/share)
-    // Not found: empty string
+    // Per-user writable data root from environment only: LOCALAPPDATA/APPDATA, Library/Application Support, or XDG_DATA_HOME.
+    // Return an empty string when no platform path is available
     static auto GetUserDataBase() noexcept -> string;
 
     // Linux & Mac: fork
     // Other: warning log message
     static auto ForkProcess() noexcept -> bool;
 
-    // Windows: GetCurrentProcessId
-    // Linux & Mac: getpid
-    // Other: "0"
+    // Windows: GetCurrentProcessId; Linux and macOS: getpid; other: "0"
     static auto GetCurrentProcessIdStr() noexcept -> string;
 
-    // Resident memory of the current process in bytes.
-    // Windows: GetProcessMemoryInfo (PROCESS_MEMORY_COUNTERS::WorkingSetSize)
-    // Linux & Android: /proc/self/statm (RSS pages * page size)
-    // Mac: task_info MACH_TASK_BASIC_INFO (resident_size)
-    // Other: 0
+    // Resident process bytes from WorkingSetSize, /proc/self/statm, or MACH_TASK_BASIC_INFO.
+    // Return zero when unsupported
     static auto GetProcessMemoryUsage() noexcept -> size_t;
 
-    // Private/committed memory of the current process in bytes when the platform exposes it.
-    // Windows: GetProcessMemoryInfo (PROCESS_MEMORY_COUNTERS_EX::PrivateUsage)
-    // Linux & Android: /proc/self/status (VmData)
-    // Other: 0
+    // Private process bytes from PrivateUsage or /proc/self/status VmData.
+    // Return zero when unsupported
     static auto GetProcessPrivateMemoryUsage() noexcept -> size_t;
 
-    // Cumulative CPU counters for the current process, plus per-core counters where the OS exposes them
-    // through a documented API. Percent usage is calculated by comparing two snapshots. LogicalCoreCount is
-    // the logical-CPU count for normalization (always set, even when Cores holds only a system-wide aggregate).
-    // Windows: GetProcessTimes + GetSystemTimes (system-wide aggregate) + GetActiveProcessorCount
-    // Linux & Android: /proc/stat (per-core) + /proc/self/stat
-    // Mac: host_processor_info(PROCESSOR_CPU_LOAD_INFO) (per-core) + task_info(MACH_TASK_BASIC_INFO)
-    // Other: empty snapshot
+    // Cumulative process and available per-core CPU counters; compare snapshots to derive usage.
+    // LogicalCoreCount is always populated for normalization
     static auto GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot;
 
-    // Windows: LoadLibraryW/FreeLibrary/GetProcAddress
-    // Linux & Mac: dlopen/dlclose/dlsym
-    // Other: nullptr
+    // Windows: LoadLibraryW family; Linux and macOS: dlopen family; other: nullptr
     static auto LoadModule(const string& module_name) noexcept -> nptr<void>;
     static void UnloadModule(nptr<void> module_handle) noexcept;
     static auto GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> void*;

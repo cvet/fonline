@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include <chrono>
 #include <thread>
@@ -230,10 +231,8 @@ namespace ClientEngineTest
         ImGui.SetNextWindowFocus();
 
         if (ImGui.Begin("ScriptImGuiCoverage", ImGui_WindowFlags::None)) {
-            // OnRenderIface is an event handler, so the engine swallows anything that escapes it and the
-            // frame still looks successful - but ImGui.End below would be skipped and the next render
-            // aborts on the unbalanced window. Catch here so the window always closes, and record the
-            // failure instead of hiding it: the test asserts this counter stayed at zero.
+            // The engine swallows anything escaping OnRenderIface, so a throw would skip ImGui.End and abort the
+            // next render instead of failing here; catching keeps the window balanced and records the failure
             try {
                 ImGui.Text("plain text");
                 ImGui.TextDisabled("disabled text");
@@ -276,9 +275,8 @@ namespace ClientEngineTest
                 float maxX = ImGui.GetScrollMaxX();
                 float maxY = ImGui.GetScrollMaxY();
 
-                // Nonsense geometry means the window is not in a drawable state, so the probes below are
-                // skipped - but never by returning: the matching ImGui.End after this block must still run,
-                // or the next render aborts the whole frame over the unbalanced window
+                // Skipped by branching, never by returning: the matching ImGui.End must still run, or the next
+                // render aborts the whole frame over the unbalanced window
                 bool geometryIsSane = textSize.width >= 0.0f && windowPos.x >= -100000.0f && windowSize.width >= 0.0f && maxX >= 0.0f && maxY >= 0.0f;
 
                 if (geometryIsSane) {
@@ -1118,7 +1116,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
         if (effectRejections != 4) return -10;
 
         // Every effect slot resolves through its own arm of one switch, so the whole enum is walked. The
-        // fixture binds no shader, so each call is expected to be rejected once the slot is resolved.
+        // fixture binds no shader, so each call is expected to be rejected once the slot is resolved
         EffectType[] effectTypes = {
             EffectType::GenericSprite, EffectType::CritterSprite, EffectType::TileSprite,
             EffectType::RoofSprite, EffectType::RainSprite, EffectType::SkinnedMesh,
@@ -1146,9 +1144,8 @@ R"(                ImGui.ColorEdit4("", colorValue);
         try { Game.ClearEffectScriptValues(EffectType::CritterSprite, 1); } catch { subtypeRejections++; }
         if (subtypeRejections != 4) return -13;
 
-        // Binding walks the same slot table from the other side. The headless render backend builds a stub
-        // effect for any path and only logs a missing file, so a bad path installs a stub rather than
-        // failing - the point here is that every slot is addressable, not that the path is validated.
+        // The headless backend stubs any effect path, so this proves every slot is addressable rather than that
+        // the path is validated
         int bindRejections = 0;
         for (uint i = 0; i < effectTypes.length(); i++) {
             try { Game.SetEffect(effectTypes[i], 0, "Effects/UnitTestMissing.fofx"); } catch { bindRejections++; }
@@ -1279,7 +1276,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
     int UnitTestClientStateQueries()
     {
         // Without a session none of the current-context accessors have anything to hand out.
-        // These are GlobalGetter exports, so they are bare globals rather than Game members.
+        // These are GlobalGetter exports, so they are bare globals rather than Game members
         if (HasChosen) return -1;
         if (HasCurPlayer) return -2;
         if (HasCurLocation) return -3;
@@ -1402,7 +1399,7 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
     }
 
     // A minimal BMFont binary: the info/common/pages/chars blocks the loader walks, with one glyph per
-    // ASCII letter so the measurement paths behave the same as with the text descriptor.
+    // ASCII letter so the measurement paths behave the same as with the text descriptor
     static auto MakeUnitTestBmfFont(string_view image_name) -> vector<uint8_t>
     {
         vector<uint8_t> data;
@@ -1481,7 +1478,7 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
     }
 
     // A minimal .fofnt descriptor plus its atlas page. Every glyph shares one cell, which is enough for the
-    // measurement, wrapping and draw paths to run end to end without a real bitmap font.
+    // measurement, wrapping and draw paths to run end to end without a real bitmap font
     static auto MakeUnitTestFontResources() -> vector<pair<string, vector<uint8_t>>>
     {
         string descriptor = "Version 2\n";
@@ -1549,57 +1546,8 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
         return MakeClientEngine(settings, MakeClientTestResources());
     }
 
-#if FO_ENABLE_3D
-    static void WriteRuntimeModelBoneHeader(DataWriter& writer, string_view name, bool attached_mesh)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        writer.WriteString(name);
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
-    }
-
-    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<uint8_t>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        vector<uint8_t> data;
-        DataWriter writer {data};
-        WriteModelMeshHeader(writer);
-        write_root(writer);
-        return data;
-    }
-
-    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return MakeRuntimeModelMesh([&](DataWriter& writer) {
-            WriteRuntimeModelBoneHeader(writer, "Root", true);
-            array<Vertex3D, 1> vertices {vertex};
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
-            writer.Write<uint32_t>(uint32_t {0});
-            writer.WriteString({});
-            writer.Write<uint32_t>(skin_bones_count);
-
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.WriteString({});
-            }
-
-            writer.Write<uint32_t>(skin_bones_count);
-
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.Write<mat44>(mat44 {1.0f});
-            }
-
-            writer.Write<uint32_t>(uint32_t {0});
-        });
-    }
-
     // A minimal effect, baked through the real EffectBaker so the runtime accepts it. Registering one as an
-    // offscreen effect is what makes the offscreen surface bindings usable at all.
+    // offscreen effect is what makes the offscreen surface bindings usable at all
     static auto MakeBakedEffectResources(string_view effect_path) -> vector<pair<string, vector<uint8_t>>>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1649,8 +1597,57 @@ void main(void)
         return resources;
     }
 
+#if FO_ENABLE_3D
+    static void WriteRuntimeModelBoneHeader(DataWriter& writer, string_view name, bool attached_mesh)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        writer.WriteString(name);
+        writer.Write<mat44>(mat44 {1.0f});
+        writer.Write<mat44>(mat44 {1.0f});
+        writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
+    }
+
+    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        vector<uint8_t> data;
+        DataWriter writer {data};
+        WriteModelMeshHeader(writer);
+        write_root(writer);
+        return data;
+    }
+
+    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return MakeRuntimeModelMesh([&](DataWriter& writer) {
+            WriteRuntimeModelBoneHeader(writer, "Root", true);
+            array<Vertex3D, 1> vertices {vertex};
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+            writer.Write<uint32_t>(uint32_t {0});
+            writer.WriteString({});
+            writer.Write<uint32_t>(skin_bones_count);
+
+            for (uint32_t i = 0; i < skin_bones_count; i++) {
+                writer.WriteString({});
+            }
+
+            writer.Write<uint32_t>(skin_bones_count);
+
+            for (uint32_t i = 0; i < skin_bones_count; i++) {
+                writer.Write<mat44>(mat44 {1.0f});
+            }
+
+            writer.Write<uint32_t>(uint32_t {0});
+        });
+    }
+
     // A real triangle, so the model-info baker can compute static bounds from it. The origin moves the whole
-    // triangle, which lets a test place it far outside the declared bounds and tell a swept mesh from a skipped one.
+    // triangle, which lets a test place it far outside the bounds and tell a swept mesh from a skipped one
     static auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1684,9 +1681,8 @@ void main(void)
         });
     }
 
-    // A two-bone skinned box. The second bone carries an offset of its own, so half the corners are placed by a
-    // different matrix than the other half and the posed silhouette is genuinely skeleton-driven rather than a
-    // rigid copy of the root transform.
+    // The second bone carries its own offset, so half the corners move by a different matrix and the posed
+    // silhouette is genuinely skeleton-driven
     static auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1784,7 +1780,7 @@ void main(void)
     }
 
     // The runtime requires the baked animation-info document: a plain config keyed by the model resource
-    // name, carrying the bounds version, the twelve model/view bounds keys and one duration record.
+    // name, carrying the bounds version, the twelve model/view bounds keys and one duration record
     static auto MakeUnitTestModelAnimationInfo(string_view model_path) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1822,15 +1818,14 @@ BoundsMaxZ = 1 1 1 1
     }
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
-    // source asset directly through the loader callback, so no source-file format has to be reproduced.
+    // source asset directly through the loader callback, so no source-file format has to be reproduced
     static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
 
         BakerTests::TestRig rig;
-        // A one-line description leaves the whole layer machinery unreachable: animation-data layers,
-        // per-animation speeds and the link transforms are all authored here and nowhere else. Anything the caller
-        // adds goes right after the model line, which is where the description's own default link is authored.
+        // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
+        // after the model line — where the description's own default link is authored
         string mesh_name = strex(mesh_path).extract_file_name().str();
         string description = strex("Model {}\n"
                                    "{}"
@@ -2090,17 +2085,8 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 
 TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 {
-    // The sprite frame must follow the model's scale, camera tilt, facing and shadow state, and it is derived through
-    // per-instance state that survives across calls - the posed-frame flag, the frame layout, the configuration
-    // bounds keyed on the combined-mesh generation. State that outlives a call is exactly what can go stale, and a
-    // stale frame rectangle is a silent bug: the model is clipped only in some states, with nothing logged.
-    //
-    // So pin it differentially rather than against hardcoded rectangles. Drive one instance through a sequence of
-    // state changes, measuring after each, and compare every measurement against a freshly created instance driven
-    // to the same state, which by construction carries nothing forward. Anything the reused instance fails to
-    // refresh surfaces as it still reporting the previous state's rectangle while the fresh one reports the new one.
-    // This was verified to detect real staleness: an experimental cache of the vertex sweep with a deliberately
-    // incomplete invalidation key failed here at exactly the step whose input the key was missing.
+    // Pinned differentially against a fresh instance rather than hardcoded rectangles, because the frame is derived
+    // through per-instance state that can go stale, and a stale rectangle clips the model with nothing logged
     constexpr string_view model_path = "Models/SkinnedSpriteBounds.fbx";
 
     auto settings = MakeClientTestSettings();
@@ -2150,7 +2136,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 
     auto warm_model = make_model();
 
-    // The hit path on its own: measuring twice without touching anything must reproduce the first answer exactly.
+    // The hit path on its own: measuring twice without touching anything must reproduce the first answer exactly
     optional<ModelSpriteBounds> first_bounds = measure(warm_model.as_ptr());
     optional<ModelSpriteBounds> repeated_bounds = measure(warm_model.as_ptr());
 
@@ -2186,7 +2172,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     }
 
     // Guard the guard: a step that leaves the envelope where it was cannot tell a stale cache from a correct one, so
-    // the sequence above only tests anything as long as it keeps moving the rectangle.
+    // the sequence above only tests anything as long as it keeps moving the rectangle
     CHECK(moved_steps + 1 >= steps.size() - 1);
 }
 #endif
@@ -2194,14 +2180,12 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 #if FO_ENABLE_3D
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
-    // A description hides a permanently invisible mesh once, at its top, through the model's own default link - the
-    // same disabled-mesh list a layer value or a child attachment carries. Baked model and animation bounds are
-    // calculated with those meshes excluded, so a runtime that left them enabled would sweep geometry the baked
-    // layout never budgeted for and settle on a frame no renderer can allocate.
+    // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so a
+    // runtime that left them enabled would sweep geometry the baked layout never budgeted for
     constexpr string_view MESH_PATH = "Models/DefaultLinkDisabled.fbx";
     constexpr string_view MODEL_PATH = "Models/DefaultLinkDisabled.fo3d";
 
-    // Far outside the declared bounds, so a mesh that still reached the sweep could not hide inside the layout frame.
+    // Far outside the declared bounds, so a mesh that still reached the sweep could not hide inside the layout frame
     vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh(vec3 {12.0f, 12.0f, 0.0f});
 
     vector<pair<string, vector<uint8_t>>> model_resources;
@@ -2224,13 +2208,13 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
     auto model = model_mngr->CreateModel(MODEL_PATH);
     REQUIRE(static_cast<bool>(model));
 
-    // The sweep only measures generated combined meshes, so without this the frame would stay at the layout size no
-    // matter what the default link did.
+    // The sweep only measures generated combined meshes, so without this the frame would stay at the layout size
+    // no matter what the default link did
     model->StartMeshGeneration();
     model->PrepareFrameLayout();
 
-    // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already inside
-    // the frame and the check below would pass without proving anything.
+    // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already
+    // inside the frame and the check below would pass without proving anything
     isize32 layout_size = model->GetDrawSize();
     int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->ModelProjFactor);
     REQUIRE(layout_size.width <= bounds_span_limit);
@@ -2247,7 +2231,7 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 TEST_CASE("ModelManagerInstantiatesABakedModel")
 {
     // The 3D instance surface was assumed to need a GPU, but the headless Null renderer serves it: with a
-    // baked mesh and a valid baked description the manager builds a real ModelInstance.
+    // baked mesh and a valid baked description the manager builds a real ModelInstance
     constexpr string_view MESH_PATH = "Models/RuntimeInstance.fbx";
     constexpr string_view MODEL_PATH = "Models/RuntimeInstance.fo3d";
 
@@ -2344,9 +2328,8 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
     SECTION("AFrameLargerThanTheMaximumRenderTextureIsRejected")
     {
-        // The frame is rendered into a render texture of draw_size * FRAME_SCALE. A model whose posed geometry demands
-        // more than the renderer can allocate has to be rejected here, while the model is still identifiable, instead
-        // of reaching the graphics API and failing there as an anonymous invalid argument.
+        // Rejected while the model is still identifiable, instead of reaching the graphics API and failing there as
+        // an anonymous invalid argument
         int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
         int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
 
@@ -2359,9 +2342,8 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
     SECTION("LayerValuesDriveTheAnimationDataAndLinkTransforms")
     {
-        // Every link block in the description - the transform one, the disabling one and the second
-        // layer - is applied only when the matching layer value is requested, so nothing under
-        // SetAnimData runs until an animation is played with layers set
+        // Each link block applies only when its layer value is requested, so nothing under SetAnimData runs until
+        // an animation plays with layers set
         model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
 
         auto state_anim = static_cast<CritterStateAnim>(1);
@@ -2540,7 +2522,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
 {
     // The debugger was assumed to need an attached debugger client, but the endpoint server is ordinary
-    // engine code: it binds a loopback port and runs its worker threads without anyone connecting.
+    // engine code: it binds a loopback port and runs its worker threads without anyone connecting
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings);
 
@@ -2559,7 +2541,7 @@ TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
     REQUIRE_NOTHROW(debugger.EmitEvent("unitTestEventWithBody", R"({"value":1})"));
 
     // Attaching a plain socket drives the accept path, the handshake write and the request reader. The
-    // listener picks its port from the process id inside a fixed span, so the same arithmetic finds it.
+    // listener picks its port from the process id inside a fixed span, so the same arithmetic finds it
     REQUIRE(net_sockets::startup());
 
     constexpr uint16_t DEBUGGER_BASE_PORT = 43000;
@@ -2737,10 +2719,8 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
 
 TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
 {
-    // The legacy Fallout animation path only runs for model names under art/critters/, and derives its
-    // sprite names by dropping the extension and the last two characters, then appending one index letter
-    // per animation from "_abcdefghijklmnopqrstuvwxyz0123456789". The loader casts the result to a
-    // SpriteSheet, so the fixture sprites carry several frames.
+    // The legacy path only runs under art/critters/ and builds sprite names by index letter, then casts the result
+    // to a SpriteSheet — hence the multi-frame fixtures
     constexpr string_view FRM_IND = "_abcdefghijklmnopqrstuvwxyz0123456789";
     constexpr string_view MODEL_NAME = "art/critters/utxx.frm";
     constexpr string_view MODEL_STEM = "art/critters/ut";
@@ -2886,18 +2866,15 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
 
     int32_t rejection_count = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
-    // Bits 8/16/128/256 are the probes that must reject: a missing video file, an unknown font extension and
-    // the two empty output paths. The rest legitimately answer instead of throwing - the sound and music
-    // players report a bool, a video request with no file queues nothing, SetEffect with subtype 0 addresses
-    // no drawable, and language selection accepts a pack that resolves to no entries.
+    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool, queueing
+    // nothing, or accepting a pack that resolves to no entries
     CHECK(rejection_count == 8 + 16 + 128 + 256);
 }
 
 TEST_CASE("MultiFrameSpritesPlayAndCopy")
 {
-    // A single-frame sprite resolves to an atlas sprite, so the sheet's own playback - frame stepping,
-    // looping, reversing and the copy that a second user of the same animation gets - has nothing to run
-    // on until the fixture serves a real multi-frame sprite.
+    // A single-frame sprite resolves to an atlas sprite, so sheet playback has nothing to run on until the fixture
+    // serves a real multi-frame one
     auto settings = MakeClientTestSettings();
 
     vector<pair<string, vector<uint8_t>>> sprite_resources;
@@ -3592,9 +3569,8 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
         ImGui::Render();
     }
 
-    // Every ImGui binding validates its label/id before touching ImGui, so an empty one must surface as a
-    // script exception rather than an unaddressable widget. The sweep runs inside the render pass because
-    // the ImGui accessor itself is only available while a frame is open.
+    // An empty label must surface as a script exception rather than an unaddressable widget; the sweep runs inside
+    // the render pass because the accessor exists only while a frame is open
     int32_t probe_count = 0;
     int32_t rejections = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));
