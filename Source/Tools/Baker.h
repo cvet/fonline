@@ -112,7 +112,24 @@ public:
     auto BakeAll() noexcept -> bool;
 
 private:
+    // Per-pack baking state, and the two views of "what this run produced" that the output sweeps consume.
+    // Both are defined in the translation unit: they are pure implementation detail of one bake.
+    struct PackBakeContext;
+    struct ExpectedOutputs;
+
+    auto MakeOutputPath(string_view path) const -> string;
+    auto CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts) const -> ExpectedOutputs;
+
     void BakeAllInternal();
+    auto ResolveRebuildMode(string_view build_hash_path) -> bool;
+    auto PreparePackContexts(FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>;
+    auto PreparePackContext(const ResourcePackInfo& res_pack, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>;
+    void RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts, FileSystem& baking_output, std::atomic_bool& force_baking);
+    void ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected);
+    void SweepOutdatedOutputs(const ExpectedOutputs& expected);
+    void SweepOutdatedBakerCache(const ExpectedOutputs& expected);
+
+    static void BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_order);
 
     ptr<BakingSettings> _settings;
     shared_ptr<BakingReport> _report {};

@@ -39,6 +39,25 @@ The client has the same shape at frame granularity, and one extra obligation. `M
 
 `EndScene` is deliberately *not* moved into a `scope_success`. Its own `FO_VERIFY_AND_THROW` checks (render-target mismatch, non-empty render-target or scissor stack) must stay ordinary exceptions: raised from a normal call they leave the `scope_fail` armed, so `AbortScene` still runs and the frame host recovers, whereas a `scope_success` body throws out of a destructor that is implicitly `noexcept` and terminates before any unwind guard fires.
 
+## 2.1 Nothing outside `std::exception` may be thrown
+
+Every exception type raised by the engine and its embedding projects derives from `std::exception` — the `FO_DECLARE_EXCEPTION` hierarchy does, and so does everything we call in the standard library. Throwing anything else (an integer, a bare struct, a third-party type that opted out) is **forbidden in native code**: it walks straight past every `catch (const std::exception&)` recovery path, arrives at the top with no message to report, and leaves no way to tell what failed.
+
+Because of that, `catch (...)` is not an error handler. Wherever its sibling branch is `catch (const std::exception& ex)` — a worker job, a frame, a bake step, an app entry point — reaching `catch (...)` means an invariant is already broken, and the whole body is:
+
+```cpp
+catch (...) {
+    FO_UNKNOWN_EXCEPTION();
+}
+```
+
+`FO_UNKNOWN_EXCEPTION()` raises `StrongAssertationException` and routes it through `ReportExceptionAndExit`, so the process is reported and terminated. Do **not** log the unknown exception and continue, fabricate an `"Unknown exception"` string for it, count it as an ordinary failure alongside real errors, or rethrow it as a domain exception — each of those turns a defect into a plausible-looking runtime error and buries the actual cause.
+
+Two narrow places legitimately swallow instead, and they are exemptions from the *disposition*, never from the prohibition itself:
+
+- **No-throw teardown and unwind paths** — `noexcept` bodies, `scope_exit` / `scope_fail` bodies, `safe_call` targets, destructors, and C-ABI callbacks. Nothing may escape these at all, and terminating on the way out of an already-failing path destroys the original diagnosis. §8 covers when `noexcept` is the right contract.
+- **The reporting and logging machinery itself** — `Source/Essentials/ExceptionHandling.cpp` and `Source/Essentials/BaseLogging.cpp` cannot re-enter themselves while reporting a failure.
+
 ## 3. The entity-lifecycle contract (create / destroy)
 
 Entity lifecycle is deliberately **not** "transactional rollback". The contract, encoded by the tests in `Source/Tests/Test_EntityLifecycle.cpp` and `Source/Tests/Test_ServerMapOperations.cpp`, is:
