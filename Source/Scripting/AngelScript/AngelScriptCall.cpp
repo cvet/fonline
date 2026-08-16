@@ -132,6 +132,25 @@ void ScriptDataAccessor::AddDictElement(ptr<void> data, ptr<void> key, ptr<void>
     dict->Set(key.get(), value.get());
 }
 
+void ScriptDataAccessor::AddDictArrayElement(ptr<void> data, ptr<void> key, const BaseTypeDesc& element_type, const_span<ptr<void>> values) const
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(element_type);
+
+    auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
+    FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
+
+    auto arr = ScriptArray::Create(dict->GetDictObjectType()->GetSubType(1));
+    arr->Reserve(numeric_cast<int32_t>(values.size()));
+
+    for (ptr<void> value : values) {
+        arr->InsertLast(value);
+    }
+
+    dict->Set(key.get(), arr.get());
+}
+
 auto ResolveScriptFuncType(ptr<AngelScript::asIScriptEngine> as_engine, int32_t type_id, uint32_t flags, bool is_ret) -> ComplexTypeDesc
 {
     FO_STACK_TRACE_ENTRY();

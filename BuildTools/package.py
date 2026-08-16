@@ -53,6 +53,13 @@ ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
+WEB_WASM_PACKAGE_DIR = 'WasmScripts'
+WASM_TYPE_NAMES = {
+	0x7F: 'i32',
+	0x7E: 'i64',
+	0x7D: 'f32',
+	0x7C: 'f64',
+}
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -106,6 +113,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-binary-output-postfix', dest='binary_output_postfix', default='', help='suffix appended to binary output dir names')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
+	parser.add_argument('-wasm-scripting', dest='wasm_scripting', action='store_true', help='package WebAssembly scripting sidecars')
 	return parser.parse_args()
 
 
@@ -478,6 +486,178 @@ def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> 
 
 def make_embedded_marker(size: int) -> bytearray:
 	return bytearray([(index + 42) % 200 for index in range(size)])
+
+
+def read_wasm_uleb(data: bytes, pos: int) -> tuple[int, int]:
+	value = 0
+	shift = 0
+	while True:
+		assert pos < len(data), 'Unexpected end of wasm LEB128 value'
+		byte = data[pos]
+		pos += 1
+		value |= (byte & 0x7F) << shift
+		if (byte & 0x80) == 0:
+			return value, pos
+		shift += 7
+		assert shift < 64, 'Wasm LEB128 value is too large'
+
+
+def read_wasm_name(data: bytes, pos: int) -> tuple[str, int]:
+	size, pos = read_wasm_uleb(data, pos)
+	end = pos + size
+	assert end <= len(data), 'Unexpected end of wasm name'
+	return data[pos:end].decode('utf-8'), end
+
+
+def parse_wasm_value_type(data: bytes, pos: int) -> tuple[str, int]:
+	assert pos < len(data), 'Unexpected end of wasm value type'
+	value_type = data[pos]
+	pos += 1
+	type_name = WASM_TYPE_NAMES.get(value_type)
+	assert type_name is not None, f'Unsupported wasm value type 0x{value_type:02x}'
+	return type_name, pos
+
+
+def parse_wasm_type_section(payload: bytes) -> list[dict[str, list[str]]]:
+	pos = 0
+	type_count, pos = read_wasm_uleb(payload, pos)
+	types: list[dict[str, list[str]]] = []
+	for _ in range(type_count):
+		assert pos < len(payload) and payload[pos] == 0x60, 'Only wasm function types are supported'
+		pos += 1
+		param_count, pos = read_wasm_uleb(payload, pos)
+		params: list[str] = []
+		for _ in range(param_count):
+			type_name, pos = parse_wasm_value_type(payload, pos)
+			params.append(type_name)
+		result_count, pos = read_wasm_uleb(payload, pos)
+		results: list[str] = []
+		for _ in range(result_count):
+			type_name, pos = parse_wasm_value_type(payload, pos)
+			results.append(type_name)
+		types.append({'params': params, 'results': results})
+	return types
+
+
+def parse_wasm_manifest(path: Path, module_name: str, package_path: str, source_path: str) -> dict[str, object]:
+	data = path.read_bytes()
+	assert data.startswith(b'\x00asm'), f'Invalid wasm magic: {path}'
+	assert len(data) >= 8, f'Invalid wasm header: {path}'
+	pos = 8
+	types: list[dict[str, list[str]]] = []
+	function_type_indices: list[int] = []
+	imports: list[dict[str, object]] = []
+	exports: list[dict[str, object]] = []
+	imported_function_type_indices: list[int] = []
+
+	while pos < len(data):
+		section_id = data[pos]
+		pos += 1
+		section_size, pos = read_wasm_uleb(data, pos)
+		payload = data[pos:pos + section_size]
+		assert len(payload) == section_size, f'Invalid wasm section size in {path}'
+		pos += section_size
+
+		if section_id == 1:
+			types = parse_wasm_type_section(payload)
+		elif section_id == 2:
+			payload_pos = 0
+			import_count, payload_pos = read_wasm_uleb(payload, payload_pos)
+			for _ in range(import_count):
+				import_module, payload_pos = read_wasm_name(payload, payload_pos)
+				import_name, payload_pos = read_wasm_name(payload, payload_pos)
+				assert payload_pos < len(payload), f'Invalid wasm import in {path}'
+				import_kind = payload[payload_pos]
+				payload_pos += 1
+				if import_kind == 0:
+					type_index, payload_pos = read_wasm_uleb(payload, payload_pos)
+					assert type_index < len(types), f'Invalid wasm import type index in {path}'
+					imported_function_type_indices.append(type_index)
+					type_desc = types[type_index]
+					imports.append({
+						'module': import_module,
+						'name': import_name,
+						'kind': 'func',
+						'params': type_desc['params'],
+						'results': type_desc['results'],
+					})
+				elif import_kind == 1:
+					payload_pos += 1
+					flags, payload_pos = read_wasm_uleb(payload, payload_pos)
+					_, payload_pos = read_wasm_uleb(payload, payload_pos)
+					if flags & 1:
+						_, payload_pos = read_wasm_uleb(payload, payload_pos)
+				elif import_kind == 2:
+					flags, payload_pos = read_wasm_uleb(payload, payload_pos)
+					_, payload_pos = read_wasm_uleb(payload, payload_pos)
+					if flags & 1:
+						_, payload_pos = read_wasm_uleb(payload, payload_pos)
+				elif import_kind == 3:
+					payload_pos += 2
+				else:
+					raise AssertionError(f'Invalid wasm import kind {import_kind} in {path}')
+		elif section_id == 3:
+			payload_pos = 0
+			function_count, payload_pos = read_wasm_uleb(payload, payload_pos)
+			function_type_indices = []
+			for _ in range(function_count):
+				type_index, payload_pos = read_wasm_uleb(payload, payload_pos)
+				assert type_index < len(types), f'Invalid wasm function type index in {path}'
+				function_type_indices.append(type_index)
+		elif section_id == 7:
+			payload_pos = 0
+			export_count, payload_pos = read_wasm_uleb(payload, payload_pos)
+			for _ in range(export_count):
+				export_name, payload_pos = read_wasm_name(payload, payload_pos)
+				assert payload_pos < len(payload), f'Invalid wasm export in {path}'
+				export_kind = payload[payload_pos]
+				payload_pos += 1
+				export_index, payload_pos = read_wasm_uleb(payload, payload_pos)
+				if export_kind != 0:
+					continue
+				all_function_type_indices = imported_function_type_indices + function_type_indices
+				assert export_index < len(all_function_type_indices), f'Invalid wasm export function index in {path}'
+				type_desc = types[all_function_type_indices[export_index]]
+				exports.append({
+					'name': export_name,
+					'kind': 'func',
+					'params': type_desc['params'],
+					'results': type_desc['results'],
+				})
+
+	return {
+		'name': module_name,
+		'path': package_path,
+		'sourcePath': source_path,
+		'imports': imports,
+		'exports': exports,
+	}
+
+
+def iter_wasm_debug_sidecars(path: Path) -> Iterable[Path]:
+	source_map_path = path.with_name(path.name + '.map')
+
+	if source_map_path.is_file():
+		yield source_map_path
+
+
+def is_wasm_visible_to_target(path: str, target: str) -> bool:
+	lower_path = path.replace('\\', '/').lower()
+	server_only = lower_path.endswith('.server.wasm')
+	client_only = lower_path.endswith('.client.wasm')
+	mapper_only = lower_path.endswith('.mapper.wasm')
+	if not server_only and not client_only and not mapper_only:
+		return True
+	return (target == 'Server' and server_only) or (target == 'Client' and client_only) or (target == 'Mapper' and mapper_only)
+
+
+def make_wasm_module_name(file_name: str) -> str:
+	module_name = Path(file_name).stem
+	lower_name = module_name.lower()
+	for suffix in ('.server', '.client', '.mapper'):
+		if lower_name.endswith(suffix):
+			return module_name[:-len(suffix)]
+	return module_name
 
 
 @dataclass
@@ -1137,6 +1317,42 @@ class Packager:
 		if self.has_pack('AppImage'):
 			pass
 
+	def package_web_wasm_scripts(self) -> None:
+		resource_root = Path(self.target_output_path) / self.client_res_dir
+		wasm_output_root = Path(self.target_output_path) / WEB_WASM_PACKAGE_DIR
+		shutil.rmtree(wasm_output_root, True)
+		wasm_output_root.mkdir(parents=True, exist_ok=True)
+
+		manifest: dict[str, object] = {
+			'version': 1,
+			'modules': [],
+		}
+		used_module_names: set[str] = set()
+
+		if resource_root.is_dir():
+			for wasm_path in sorted(resource_root.rglob('*.wasm')):
+				rel_path = wasm_path.relative_to(resource_root).as_posix()
+				if not is_wasm_visible_to_target(rel_path, self.args.target):
+					continue
+
+				module_name = make_wasm_module_name(wasm_path.name)
+				assert module_name not in used_module_names, f'Duplicate Web WASM module name: {module_name}'
+				used_module_names.add(module_name)
+
+				package_rel_path = f'{WEB_WASM_PACKAGE_DIR}/{rel_path}'
+				output_path = Path(self.target_output_path) / package_rel_path
+				output_path.parent.mkdir(parents=True, exist_ok=True)
+				shutil.copy(wasm_path, output_path)
+
+				for debug_sidecar_path in iter_wasm_debug_sidecars(wasm_path):
+					shutil.copy(debug_sidecar_path, output_path.with_name(debug_sidecar_path.name))
+
+				manifest['modules'].append(parse_wasm_manifest(wasm_path, module_name, package_rel_path, rel_path))  # type: ignore[index]
+
+		manifest_path = wasm_output_root / 'manifest.json'
+		manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding='utf-8')
+		shutil.copy(os.path.join(self.build_tools_path, 'web', 'wasm-host.js'), os.path.join(self.target_output_path, 'wasm-host.js'))
+
 	def package_web(self) -> None:
 		assert self.args.arch == 'wasm'
 		assert not self.has_pack('NoRes'), 'Web package requires resources'
@@ -1171,6 +1387,10 @@ class Packager:
 
 		index_path = os.path.join(self.target_output_path, 'index.html')
 		shutil.copy(os.path.join(self.build_tools_path, 'web', 'default-index.html'), index_path)
+		wasm_host_js = ''
+		if self.args.wasm_scripting:
+			self.package_web_wasm_scripts()
+			wasm_host_js = '<script type="text/javascript" src="wasm-host.js"></script>'
 
 		if self.has_pack('WebServer'):
 			shutil.copy(os.path.join(self.build_tools_path, 'web', 'simple-web-server.py'), os.path.join(self.target_output_path, 'web-server.py'))
@@ -1204,6 +1424,7 @@ class Packager:
 		patch_file(index_path, '$LOADING_IMAGE$', web_loading_image_out if web_loading_image_out else 'data:,')
 		patch_file(index_path, '$LOADING_IMAGE_STYLE$', web_loading_image_style)
 		patch_file(index_path, '$RESOURCESJS$', 'Resources.js')
+		patch_file(index_path, '$WASMHOSTJS$', wasm_host_js)
 		patch_file(index_path, '$MAINJS$', bin_out_name + '.js')
 
 	def resolve_config_relative_path(self, config_path: str) -> str:

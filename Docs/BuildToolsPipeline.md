@@ -30,6 +30,8 @@ FOnline is normally configured from an embedding game project. The engine suppli
 - `BuildTools/package.py`
 - `BuildTools/tests/test_package_include.py`
 - `BuildTools/msicreator/createmsi.py`
+- `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_wasm_host.js`
 
 Important consequences:
 
@@ -143,7 +145,7 @@ See [Applications.md](Applications.md).
 
 ### `Packages.cmake`
 
-Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix.
+Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix. When `FO_WASM_SCRIPTING` is enabled, this stage also passes `-wasm-scripting` so Web packaging emits browser-shell companion files such as `wasm-host.js` and generated `WasmScripts/manifest.json`; the manifest carries function import/export signatures consumed by the Web WASM backend.
 
 `package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, and creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` on POSIX hosts — on Debian/Ubuntu it ships in its own `wixl` apt package, not in `msitools`; WiX `candle`/`light` on Windows) or a generator/build error fails the package (it is not a silent best-effort step). All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 

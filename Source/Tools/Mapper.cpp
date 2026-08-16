@@ -40,6 +40,7 @@
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
 #include "ParticleSprites.h"
+#include "Wasm/WasmScripting.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -85,6 +86,9 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, *Settings, Resources);
+#endif
+#if FO_WASM_SCRIPTING
+    InitWasmScripting(this, *Settings, Resources);
 #endif
 
     _curLang = TextPack {&Hashes};

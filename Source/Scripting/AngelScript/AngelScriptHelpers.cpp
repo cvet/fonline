@@ -223,6 +223,9 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
             else if (cb_arg->Kind == ComplexTypeKind::Array) {
                 result += strex("{}_arr", cb_arg->BaseType.Name);
             }
+            else if (cb_arg->Kind == ComplexTypeKind::Callback) {
+                result += MakeScriptTypeName(*cb_arg);
+            }
             else {
                 result += cb_arg->BaseType.Name;
             }

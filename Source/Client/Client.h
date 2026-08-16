@@ -143,6 +143,7 @@ public:
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
     auto GetEntity(ident_t id) -> nptr<ClientEntity>;
+    auto ResolveScriptEntityHandle(string_view entity_type_name, ident_t id) -> nptr<Entity> override;
     void RegisterEntity(ptr<ClientEntity> entity);
     void UnregisterEntity(ptr<ClientEntity> entity);
 

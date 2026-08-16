@@ -733,6 +733,71 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
 endif()
 
+# WebAssembly scripting
+if(FO_WASM_SCRIPTING AND NOT FO_WEB)
+    StatusMessage("+ WAMR")
+
+    SetValue(FO_WAMR_DIR "${FO_ENGINE_ROOT}/ThirdParty/wamr")
+    if(NOT EXISTS "${FO_WAMR_DIR}/build-scripts/runtime_lib.cmake" AND EXISTS "${FO_ENGINE_ROOT}/ThirdParty/wamr-2.4.4/build-scripts/runtime_lib.cmake")
+        SetValue(FO_WAMR_DIR "${FO_ENGINE_ROOT}/ThirdParty/wamr-2.4.4")
+    endif()
+
+    GetFilenameComponent(FO_WAMR_ROOT_DIR "${FO_WAMR_DIR}" ABSOLUTE)
+
+    if(NOT EXISTS "${FO_WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake")
+        AbortMessage("FO_WASM_SCRIPTING is enabled, but bundled WAMR is missing or incomplete: ${FO_WAMR_ROOT_DIR}")
+    endif()
+
+    if(FO_WINDOWS)
+        SetValue(WAMR_BUILD_PLATFORM "windows")
+    elseif(FO_LINUX)
+        SetValue(WAMR_BUILD_PLATFORM "linux")
+    elseif(FO_MAC)
+        SetValue(WAMR_BUILD_PLATFORM "darwin")
+    elseif(FO_ANDROID)
+        SetValue(WAMR_BUILD_PLATFORM "android")
+    else()
+        AbortMessage("FO_WASM_SCRIPTING is not configured for this platform")
+    endif()
+
+    SetValue(WAMR_BUILD_INTERP 1)
+    SetValue(WAMR_BUILD_AOT 0)
+    SetValue(WAMR_BUILD_JIT 0)
+    SetValue(WAMR_BUILD_FAST_JIT 0)
+    SetValue(WAMR_BUILD_LIBC_BUILTIN 1)
+    SetValue(WAMR_BUILD_LIBC_WASI 0)
+    SetValue(WAMR_BUILD_APP_FRAMEWORK 0)
+    SetValue(WAMR_BUILD_MULTI_MODULE 0)
+    SetValue(WAMR_BUILD_THREAD_MGR 0)
+    SetValue(WAMR_BUILD_LIB_PTHREAD 0)
+    SetValue(WAMR_BUILD_SIMD 0)
+    SetValue(WAMR_ROOT_DIR "${FO_WAMR_ROOT_DIR}")
+
+    include("${FO_WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake")
+    SetValue(FO_WAMR_SOURCE ${WAMR_RUNTIME_LIB_SOURCE})
+
+    AddStaticThirdPartyLibrary(WasmMicroRuntime
+        SOURCE_LIST FO_WAMR_SOURCE
+        APPEND_TO FO_COMMON_LIBS
+        INCLUDE_DIRS
+            "${FO_WAMR_ROOT_DIR}/core/iwasm/include"
+            "${FO_WAMR_ROOT_DIR}/core/shared/utils"
+            "${FO_WAMR_ROOT_DIR}/core/shared/platform/${WAMR_BUILD_PLATFORM}"
+            "${FO_WAMR_ROOT_DIR}/core/shared/platform/include")
+
+    if(MSVC)
+        TargetCompileDefinitions(WasmMicroRuntime PRIVATE "_CRT_SECURE_NO_WARNINGS")
+    endif()
+
+    if(FO_LINUX)
+        AppendList(FO_COMMON_SYSTEM_LIBS m dl pthread)
+    elseif(FO_MAC)
+        AppendList(FO_COMMON_SYSTEM_LIBS m pthread)
+    elseif(FO_ANDROID)
+        AppendList(FO_COMMON_SYSTEM_LIBS m)
+    endif()
+endif()
+
 # Mono scripting
 if(FO_MONO_SCRIPTING)
     StatusMessage("+ Mono")

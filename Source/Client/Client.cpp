@@ -37,6 +37,7 @@
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
+#include "Wasm/WasmScripting.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -87,6 +88,9 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     MapScriptTypes(this);
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, *settings, Resources);
+#endif
+#if FO_WASM_SCRIPTING
+    InitWasmScripting(this, *settings, Resources);
 #endif
 
     Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
@@ -2097,6 +2101,15 @@ auto ClientEngine::GetEntity(ident_t id) -> nptr<ClientEntity>
     }
 
     return it->second;
+}
+
+auto ClientEngine::ResolveScriptEntityHandle(string_view entity_type_name, ident_t id) -> nptr<Entity>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(entity_type_name);
+
+    return GetEntity(id);
 }
 
 void ClientEngine::RegisterEntity(ptr<ClientEntity> entity)

@@ -516,6 +516,7 @@ Current count: **100** `Test_*.cpp` suites.
 - `Source/Tests/Test_RawCopyBaker.cpp`
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_TextureAtlas.cpp`
+- `Source/Tests/Test_WasmBaker.cpp` — WASM baker, AssemblyScript frontend binding/default-command generation, import registry, callback-token retain/release lifecycle, metadata-owned side-aware API bridge inventory, borrowed ref-type import receivers and read-only/mutable ref arrays/dictionaries/ref-key dictionaries, ref lifecycle/`PassOwnership`/`__Factory` imports, dynamic ref layout properties, mutable direct text imports, direct method/property value imports, and property array/dictionary imports including fixed-size object-shaped value structs, Web host trampoline, and native WAMR scalar plus metadata-suffixed runtime-call coverage, including text-input, text-return, direct object-shaped value input/return/ref, array, dictionary, dict-of-array with primitive numeric/bool/text/handle/value-type/object-shaped/ref nested arrays, mutable scalar, mutable text, mutable array, mutable dictionary, mutable dict-of-array, callback, nested callback, and retained temporary callback delegate token arguments, entity/proto/fixed handle refs, simple borrowed ref-type handle exports, borrowed ref collection exports, call-scoped validated mutable ref copy-back, and forged-handle rejection
 
 The model-animation tests divide the production contract explicitly.
 `Test_ModelMeshData.cpp` exercises the mandatory `LFMODMSH` schema-1 mesh-only

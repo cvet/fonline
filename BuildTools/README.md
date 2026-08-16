@@ -12,10 +12,11 @@ Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
-BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can be run directly:
+BuildTools Python and JavaScript regression tests live under `Engine/BuildTools/tests/` and can be run directly:
 
 ```bash
 pytest -q Engine/BuildTools/tests
+node Engine/BuildTools/tests/test_wasm_host.js
 ```
 
 ## CMake layout
@@ -151,6 +152,11 @@ Host wrapper scripts now delegate to the unified workspace preparation command:
 - `buildtools.py prepare-host-workspace macos ...`
 
 Emscripten version is pinned by `Engine/ThirdParty/emscripten` and installed into `Workspace/emsdk`.
+Web builds reject CMake 4.2.0-4.2.5 and 4.3.0-4.3.2 because those releases disable
+Emscripten shared-library support. On Windows, BuildTools checks the `PATH` CMake
+first and then compatible Visual Studio-bundled installations; single-config
+Unix web builds receive `CMAKE_BUILD_TYPE`, while Windows Ninja Multi-Config
+builds select the configuration only at build time.
 
 Examples:
 
@@ -211,7 +217,8 @@ commit can decide which spelling is correct.
 The local Windows web debug flow uses these shared commands:
 
 - `buildtools.py build web client RelWithDebInfo`
-- `buildtools.py package-web-debug`
+- `buildtools.py package-web-debug LF LocalTest`
+- `buildtools.py package-web-debug --wasm-scripting LF LocalTest` when the project enables WebAssembly scripting
 
 For an optimized browser build use:
 

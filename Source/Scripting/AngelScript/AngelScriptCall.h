@@ -61,6 +61,7 @@ struct ScriptDataAccessor final : DataAccessor
     void AddArrayElement(ptr<void> data, ptr<void> value) const override;
     void ClearDict(ptr<void> data) const override;
     void AddDictElement(ptr<void> data, ptr<void> key, ptr<void> value) const override;
+    void AddDictArrayElement(ptr<void> data, ptr<void> key, const BaseTypeDesc& element_type, const_span<ptr<void>> values) const override;
 };
 
 static constexpr ScriptDataAccessor SCRIPT_DATA_ACCESSOR;

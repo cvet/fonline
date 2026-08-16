@@ -42,6 +42,436 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr string_view TEMPORARY_SCRIPT_CALLBACK_TOKEN_PREFIX = "__fonline_callback_";
+
+static auto IsSameScriptComplexType(const ComplexTypeDesc& left, const ComplexTypeDesc& right) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (left.Kind != right.Kind || left.IsMutable != right.IsMutable) {
+        return false;
+    }
+
+    switch (left.Kind) {
+    case ComplexTypeKind::None:
+        return true;
+    case ComplexTypeKind::Simple:
+    case ComplexTypeKind::Array:
+        return left.BaseType == right.BaseType;
+    case ComplexTypeKind::Dict:
+    case ComplexTypeKind::DictOfArray:
+        return left.BaseType == right.BaseType && left.KeyType == right.KeyType;
+    case ComplexTypeKind::Callback: {
+        if (!left.CallbackArgs || !right.CallbackArgs || left.CallbackArgs->size() != right.CallbackArgs->size()) {
+            return false;
+        }
+
+        for (size_t i = 0; i < left.CallbackArgs->size(); i++) {
+            if (!IsSameScriptComplexType((*left.CallbackArgs)[i], (*right.CallbackArgs)[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
+static auto IsScriptFuncCompatibleWithCallback(nptr<const ScriptFuncDesc> func, const ComplexTypeDesc& callback_type) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!func || !func->Call || callback_type.Kind != ComplexTypeKind::Callback || !callback_type.CallbackArgs || callback_type.CallbackArgs->empty()) {
+        return false;
+    }
+
+    const vector<ComplexTypeDesc>& callback_args = *callback_type.CallbackArgs;
+
+    if (!IsSameScriptComplexType(func->Ret, callback_args.front())) {
+        return false;
+    }
+    if (func->Args.size() != callback_args.size() - 1) {
+        return false;
+    }
+
+    for (size_t i = 0; i < func->Args.size(); i++) {
+        if (!IsSameScriptComplexType(func->Args[i].Type, callback_args[i + 1])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+auto NativeDataProvider::NativeDataAccessor::GetNestedArraySize(const BaseTypeDesc& element_type, ptr<void> data) const -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (element_type.Name == "any") {
+        return GetVectorSizeByType<any_t>(data);
+    }
+    if (element_type.IsString) {
+        return GetVectorSizeByType<string>(data);
+    }
+    if (element_type.IsHashedString) {
+        return GetVectorSizeByType<hstring>(data);
+    }
+    if (element_type.Name == "ident") {
+        return GetVectorSizeByType<ident_t>(data);
+    }
+    if (element_type.Name == "timespan") {
+        return GetVectorSizeByType<timespan>(data);
+    }
+    if (element_type.Name == "nanotime") {
+        return GetVectorSizeByType<nanotime>(data);
+    }
+    if (element_type.Name == "synctime") {
+        return GetVectorSizeByType<synctime>(data);
+    }
+    if (element_type.Name == "ucolor") {
+        return GetVectorSizeByType<ucolor>(data);
+    }
+    if (element_type.Name == "isize") {
+        return GetVectorSizeByType<isize32>(data);
+    }
+    if (element_type.Name == "ipos") {
+        return GetVectorSizeByType<ipos32>(data);
+    }
+    if (element_type.Name == "irect") {
+        return GetVectorSizeByType<irect32>(data);
+    }
+    if (element_type.Name == "ipos16") {
+        return GetVectorSizeByType<ipos16>(data);
+    }
+    if (element_type.Name == "ipos8") {
+        return GetVectorSizeByType<ipos8>(data);
+    }
+    if (element_type.Name == "fsize") {
+        return GetVectorSizeByType<fsize32>(data);
+    }
+    if (element_type.Name == "fpos") {
+        return GetVectorSizeByType<fpos32>(data);
+    }
+    if (element_type.Name == "frect") {
+        return GetVectorSizeByType<frect32>(data);
+    }
+    if (element_type.Name == "mpos") {
+        return GetVectorSizeByType<mpos>(data);
+    }
+    if (element_type.Name == "msize") {
+        return GetVectorSizeByType<msize>(data);
+    }
+    if (element_type.Name == "mdir") {
+        return GetVectorSizeByType<mdir>(data);
+    }
+    if (element_type.Name == "hdir") {
+        return GetVectorSizeByType<hdir>(data);
+    }
+    if (element_type.Name == "GameProperty" || element_type.Name == "PlayerProperty" || element_type.Name == "ItemProperty" || element_type.Name == "CritterProperty" || element_type.Name == "MapProperty" || element_type.Name == "LocationProperty") {
+        return GetVectorSizeByType<ScriptEnum_uint16>(data);
+    }
+    if (element_type.IsEntity || element_type.IsEntityProto || element_type.IsFixedType || element_type.IsRefType) {
+        return GetVectorSizeByType<nptr<void>>(data);
+    }
+    if (element_type.IsBool) {
+        return GetVectorSizeByType<bool>(data);
+    }
+    if (element_type.IsInt8) {
+        return GetVectorSizeByType<int8_t>(data);
+    }
+    if (element_type.IsInt16) {
+        return GetVectorSizeByType<int16_t>(data);
+    }
+    if (element_type.IsInt32) {
+        return GetVectorSizeByType<int32_t>(data);
+    }
+    if (element_type.IsInt64) {
+        return GetVectorSizeByType<int64_t>(data);
+    }
+    if (element_type.IsUInt8) {
+        return GetVectorSizeByType<uint8_t>(data);
+    }
+    if (element_type.IsUInt16) {
+        return GetVectorSizeByType<uint16_t>(data);
+    }
+    if (element_type.IsUInt32) {
+        return GetVectorSizeByType<uint32_t>(data);
+    }
+    if (element_type.IsUInt64) {
+        return GetVectorSizeByType<uint64_t>(data);
+    }
+    if (element_type.IsSingleFloat) {
+        return GetVectorSizeByType<float32_t>(data);
+    }
+    if (element_type.IsDoubleFloat) {
+        return GetVectorSizeByType<float64_t>(data);
+    }
+
+    throw InvalidCallException(element_type.Name);
+}
+
+auto NativeDataProvider::NativeDataAccessor::GetNestedArrayElement(const BaseTypeDesc& element_type, ptr<void> data, size_t index) const -> ptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (element_type.Name == "any") {
+        return GetVectorElementByType<any_t>(data, index);
+    }
+    if (element_type.IsString) {
+        return GetVectorElementByType<string>(data, index);
+    }
+    if (element_type.IsHashedString) {
+        return GetVectorElementByType<hstring>(data, index);
+    }
+    if (element_type.Name == "ident") {
+        return GetVectorElementByType<ident_t>(data, index);
+    }
+    if (element_type.Name == "timespan") {
+        return GetVectorElementByType<timespan>(data, index);
+    }
+    if (element_type.Name == "nanotime") {
+        return GetVectorElementByType<nanotime>(data, index);
+    }
+    if (element_type.Name == "synctime") {
+        return GetVectorElementByType<synctime>(data, index);
+    }
+    if (element_type.Name == "ucolor") {
+        return GetVectorElementByType<ucolor>(data, index);
+    }
+    if (element_type.Name == "isize") {
+        return GetVectorElementByType<isize32>(data, index);
+    }
+    if (element_type.Name == "ipos") {
+        return GetVectorElementByType<ipos32>(data, index);
+    }
+    if (element_type.Name == "irect") {
+        return GetVectorElementByType<irect32>(data, index);
+    }
+    if (element_type.Name == "ipos16") {
+        return GetVectorElementByType<ipos16>(data, index);
+    }
+    if (element_type.Name == "ipos8") {
+        return GetVectorElementByType<ipos8>(data, index);
+    }
+    if (element_type.Name == "fsize") {
+        return GetVectorElementByType<fsize32>(data, index);
+    }
+    if (element_type.Name == "fpos") {
+        return GetVectorElementByType<fpos32>(data, index);
+    }
+    if (element_type.Name == "frect") {
+        return GetVectorElementByType<frect32>(data, index);
+    }
+    if (element_type.Name == "mpos") {
+        return GetVectorElementByType<mpos>(data, index);
+    }
+    if (element_type.Name == "msize") {
+        return GetVectorElementByType<msize>(data, index);
+    }
+    if (element_type.Name == "mdir") {
+        return GetVectorElementByType<mdir>(data, index);
+    }
+    if (element_type.Name == "hdir") {
+        return GetVectorElementByType<hdir>(data, index);
+    }
+    if (element_type.Name == "GameProperty" || element_type.Name == "PlayerProperty" || element_type.Name == "ItemProperty" || element_type.Name == "CritterProperty" || element_type.Name == "MapProperty" || element_type.Name == "LocationProperty") {
+        return GetVectorElementByType<ScriptEnum_uint16>(data, index);
+    }
+    if (element_type.IsEntity || element_type.IsEntityProto || element_type.IsFixedType || element_type.IsRefType) {
+        return GetVectorElementByType<nptr<void>>(data, index);
+    }
+    if (element_type.IsBool) {
+        throw InvalidCallException(element_type.Name);
+    }
+    if (element_type.IsInt8) {
+        return GetVectorElementByType<int8_t>(data, index);
+    }
+    if (element_type.IsInt16) {
+        return GetVectorElementByType<int16_t>(data, index);
+    }
+    if (element_type.IsInt32) {
+        return GetVectorElementByType<int32_t>(data, index);
+    }
+    if (element_type.IsInt64) {
+        return GetVectorElementByType<int64_t>(data, index);
+    }
+    if (element_type.IsUInt8) {
+        return GetVectorElementByType<uint8_t>(data, index);
+    }
+    if (element_type.IsUInt16) {
+        return GetVectorElementByType<uint16_t>(data, index);
+    }
+    if (element_type.IsUInt32) {
+        return GetVectorElementByType<uint32_t>(data, index);
+    }
+    if (element_type.IsUInt64) {
+        return GetVectorElementByType<uint64_t>(data, index);
+    }
+    if (element_type.IsSingleFloat) {
+        return GetVectorElementByType<float32_t>(data, index);
+    }
+    if (element_type.IsDoubleFloat) {
+        return GetVectorElementByType<float64_t>(data, index);
+    }
+
+    throw InvalidCallException(element_type.Name);
+}
+
+auto NativeDataProvider::NativeDataAccessor::GetNestedArrayBoolElement(const BaseTypeDesc& element_type, ptr<void> data, size_t index) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (element_type.IsBool) {
+        return (*cast_from_void<vector<bool>*>(data.get()))[index];
+    }
+
+    return DataAccessor::GetNestedArrayBoolElement(element_type, data, index);
+}
+
+void NativeDataProvider::NativeDataAccessor::AddDictArrayElement(ptr<void> data, ptr<void> key, const BaseTypeDesc& element_type, const_span<ptr<void>> values) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<DictDataProxy> dict = cast_from_void<DictDataProxy*>(data.get());
+
+    if (element_type.Name == "any") {
+        AddDictVectorElementByType<any_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsString) {
+        AddDictVectorElementByType<string>(dict, key, values);
+        return;
+    }
+    if (element_type.IsHashedString) {
+        AddDictVectorElementByType<hstring>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "ident") {
+        AddDictVectorElementByType<ident_t>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "timespan") {
+        AddDictVectorElementByType<timespan>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "nanotime") {
+        AddDictVectorElementByType<nanotime>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "synctime") {
+        AddDictVectorElementByType<synctime>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "ucolor") {
+        AddDictVectorElementByType<ucolor>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "isize") {
+        AddDictVectorElementByType<isize32>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "ipos") {
+        AddDictVectorElementByType<ipos32>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "irect") {
+        AddDictVectorElementByType<irect32>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "ipos16") {
+        AddDictVectorElementByType<ipos16>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "ipos8") {
+        AddDictVectorElementByType<ipos8>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "fsize") {
+        AddDictVectorElementByType<fsize32>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "fpos") {
+        AddDictVectorElementByType<fpos32>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "frect") {
+        AddDictVectorElementByType<frect32>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "mpos") {
+        AddDictVectorElementByType<mpos>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "msize") {
+        AddDictVectorElementByType<msize>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "mdir") {
+        AddDictVectorElementByType<mdir>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "hdir") {
+        AddDictVectorElementByType<hdir>(dict, key, values);
+        return;
+    }
+    if (element_type.Name == "GameProperty" || element_type.Name == "PlayerProperty" || element_type.Name == "ItemProperty" || element_type.Name == "CritterProperty" || element_type.Name == "MapProperty" || element_type.Name == "LocationProperty") {
+        AddDictVectorElementByType<ScriptEnum_uint16>(dict, key, values);
+        return;
+    }
+    if (element_type.IsEntity || element_type.IsEntityProto || element_type.IsFixedType || element_type.IsRefType) {
+        AddDictVectorElementByType<nptr<void>>(dict, key, values);
+        return;
+    }
+    if (element_type.IsBool) {
+        AddDictVectorElementByType<bool>(dict, key, values);
+        return;
+    }
+    if (element_type.IsInt8) {
+        AddDictVectorElementByType<int8_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsInt16) {
+        AddDictVectorElementByType<int16_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsInt32) {
+        AddDictVectorElementByType<int32_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsInt64) {
+        AddDictVectorElementByType<int64_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsUInt8) {
+        AddDictVectorElementByType<uint8_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsUInt16) {
+        AddDictVectorElementByType<uint16_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsUInt32) {
+        AddDictVectorElementByType<uint32_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsUInt64) {
+        AddDictVectorElementByType<uint64_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsSingleFloat) {
+        AddDictVectorElementByType<float32_t>(dict, key, values);
+        return;
+    }
+    if (element_type.IsDoubleFloat) {
+        AddDictVectorElementByType<float64_t>(dict, key, values);
+        return;
+    }
+
+    throw InvalidCallException(element_type.Name);
+}
+
 DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrar> registrar) noexcept :
     _registrar {registrar},
     _props {std::in_place, _registrar}
@@ -295,6 +725,8 @@ void ScriptSystem::ShutdownBackends()
 
     _engineTypes.clear();
     _globalFuncMap.clear();
+    _temporaryScriptCallbacks.clear();
+    _temporaryScriptCallbackCounter = 0;
     _initFunc.clear();
     _backends.clear();
 }
@@ -325,7 +757,7 @@ auto ScriptSystem::ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_
     auto check_type = [this](const ComplexTypeDesc& left, size_t right) -> bool {
         auto it = _engineTypes.find(right);
         FO_VERIFY_AND_RETURN_VALUE(it != _engineTypes.end(), false, "Script engine type index is not registered while validating arguments", right);
-        return left == it->second;
+        return IsSameScriptComplexType(left, it->second);
     };
 
     if (func->Ret.Kind != ComplexTypeKind::None && !check_type(func->Ret, ret_type)) {
@@ -339,6 +771,182 @@ auto ScriptSystem::ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_
     }
 
     return true;
+}
+
+auto ScriptSystem::FindFuncDesc(hstring func_name, const ComplexTypeDesc& callback_type) noexcept -> nptr<ScriptFuncDesc>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto range = _globalFuncMap.equal_range(func_name);
+
+    for (auto it = range.first; it != range.second; ++it) {
+        ptr<ScriptFuncDesc> func = it->second;
+
+        if (IsScriptFuncCompatibleWithCallback(func, callback_type)) {
+            return func;
+        }
+    }
+
+    return nullptr;
+}
+
+auto ScriptSystem::FindFuncDesc(hstring func_name, const ComplexTypeDesc& ret_type, const_span<ComplexTypeDesc> arg_types) noexcept -> nptr<ScriptFuncDesc>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto range = _globalFuncMap.equal_range(func_name);
+
+    for (auto it = range.first; it != range.second; ++it) {
+        ptr<ScriptFuncDesc> func = it->second;
+
+        if (!func->Call || func->Args.size() != arg_types.size()) {
+            continue;
+        }
+        if (!IsSameScriptComplexType(func->Ret, ret_type)) {
+            continue;
+        }
+
+        bool args_match = true;
+
+        for (size_t i = 0; i < arg_types.size(); i++) {
+            if (!IsSameScriptComplexType(func->Args[i].Type, arg_types[i])) {
+                args_match = false;
+                break;
+            }
+        }
+
+        if (args_match) {
+            return func;
+        }
+    }
+
+    return nullptr;
+}
+
+auto ScriptSystem::IsTemporaryScriptCallbackToken(string_view token) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return token.starts_with(TEMPORARY_SCRIPT_CALLBACK_TOKEN_PREFIX);
+}
+
+auto ScriptSystem::PushTemporaryScriptCallbackScope() const noexcept -> size_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _temporaryScriptCallbacks.size();
+}
+
+void ScriptSystem::PopTemporaryScriptCallbackScope(size_t scope) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (scope > _temporaryScriptCallbacks.size()) {
+        FO_STRONG_ASSERT(false, "Temporary script callback scope is out of range");
+        return;
+    }
+
+    size_t index = _temporaryScriptCallbacks.size();
+
+    while (index > scope) {
+        index--;
+
+        TemporaryScriptCallback& callback = _temporaryScriptCallbacks[index];
+
+        if (callback.RetainCount != 0) {
+            callback.ScopeReleased = true;
+            continue;
+        }
+
+        _temporaryScriptCallbacks.erase(std::next(_temporaryScriptCallbacks.begin(), numeric_cast<ptrdiff_t>(index)));
+    }
+}
+
+auto ScriptSystem::RegisterTemporaryScriptCallback(unique_del_ptr<ScriptFuncDesc> func) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(func->Call, "Temporary script callback has no call entry");
+
+    _temporaryScriptCallbackCounter++;
+    string token = strex("{}{}", TEMPORARY_SCRIPT_CALLBACK_TOKEN_PREFIX, _temporaryScriptCallbackCounter).str();
+    _temporaryScriptCallbacks.emplace_back(TemporaryScriptCallback {
+        .Token = token,
+        .Func = std::move(func),
+    });
+    return token;
+}
+
+auto ScriptSystem::RetainTemporaryScriptCallback(string_view token) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!IsTemporaryScriptCallbackToken(token)) {
+        return false;
+    }
+
+    for (size_t index = _temporaryScriptCallbacks.size(); index != 0; index--) {
+        TemporaryScriptCallback& callback = _temporaryScriptCallbacks[index - 1];
+
+        if (callback.Token != token) {
+            continue;
+        }
+
+        callback.RetainCount++;
+        return true;
+    }
+
+    return false;
+}
+
+auto ScriptSystem::ReleaseTemporaryScriptCallback(string_view token) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!IsTemporaryScriptCallbackToken(token)) {
+        return false;
+    }
+
+    for (size_t index = _temporaryScriptCallbacks.size(); index != 0; index--) {
+        TemporaryScriptCallback& callback = _temporaryScriptCallbacks[index - 1];
+
+        if (callback.Token != token) {
+            continue;
+        }
+        if (callback.RetainCount == 0) {
+            return false;
+        }
+
+        callback.RetainCount--;
+
+        if (callback.RetainCount == 0 && callback.ScopeReleased) {
+            _temporaryScriptCallbacks.erase(std::next(_temporaryScriptCallbacks.begin(), numeric_cast<ptrdiff_t>(index - 1)));
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+auto ScriptSystem::FindTemporaryScriptCallback(string_view token, const ComplexTypeDesc& callback_type) noexcept -> nptr<ScriptFuncDesc>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!IsTemporaryScriptCallbackToken(token)) {
+        return nullptr;
+    }
+
+    for (auto it = _temporaryScriptCallbacks.rbegin(); it != _temporaryScriptCallbacks.rend(); ++it) {
+        if (it->Token != token) {
+            continue;
+        }
+
+        ptr<ScriptFuncDesc> func = it->Func;
+        return IsScriptFuncCompatibleWithCallback(func, callback_type) ? nptr<ScriptFuncDesc> {func} : nullptr;
+    }
+
+    return nullptr;
 }
 
 auto ScriptSystem::FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> nptr<ScriptFuncDesc>

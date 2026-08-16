@@ -90,16 +90,48 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
 endif()
 
+if(FO_WASM_SCRIPTING)
+    SetValue(FO_WASM_SCRIPTING_DIR
+        "${FO_ENGINE_ROOT}/Source/Scripting/Wasm")
+    SetValue(FO_WASM_SCRIPTING_SOURCE
+        "${FO_WASM_SCRIPTING_DIR}/WasmApiBridge.cpp"
+        "${FO_WASM_SCRIPTING_DIR}/WasmApiBridge.h"
+        "${FO_WASM_SCRIPTING_DIR}/WasmImports.cpp"
+        "${FO_WASM_SCRIPTING_DIR}/WasmImports.h"
+        "${FO_WASM_SCRIPTING_DIR}/WasmRefHandles.cpp"
+        "${FO_WASM_SCRIPTING_DIR}/WasmRefHandles.h"
+        "${FO_WASM_SCRIPTING_DIR}/WasmScripting.cpp"
+        "${FO_WASM_SCRIPTING_DIR}/WasmScripting.h")
+
+    if(FO_WEB)
+        AppendList(FO_WASM_SCRIPTING_SOURCE
+            "${FO_WASM_SCRIPTING_DIR}/WebWasmBackend.cpp"
+            "${FO_WASM_SCRIPTING_DIR}/WebWasmBackend.h")
+        SetValue(FO_WASM_SCRIPTING_LINK_LIBS CommonLib)
+    else()
+        AppendList(FO_WASM_SCRIPTING_SOURCE
+            "${FO_WASM_SCRIPTING_DIR}/WasmBackend.cpp"
+            "${FO_WASM_SCRIPTING_DIR}/WasmBackend.h")
+        SetValue(FO_WASM_SCRIPTING_LINK_LIBS CommonLib WasmMicroRuntime)
+    endif()
+
+    AddCoreStaticLibrary(WasmScripting FO_WASM_SCRIPTING_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS ${FO_WASM_SCRIPTING_LINK_LIBS})
+    TargetIncludeDirectories(WasmScripting PUBLIC
+        "${FO_WASM_SCRIPTING_DIR}")
+endif()
+
 if(FO_BUILD_CLIENT_LIB)
     AddCoreStaticLibrary(ClientLib FO_CLIENT_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS CommonLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
+        LINK_LIBS CommonLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting> $<$<BOOL:${FO_WASM_SCRIPTING}>:WasmScripting>)
 endif()
 
 if(FO_BUILD_SERVER_LIB)
     AddCoreStaticLibrary(ServerLib FO_SERVER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
+        LINK_LIBS CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting> $<$<BOOL:${FO_WASM_SCRIPTING}>:WasmScripting>)
 endif()
 
 if(FO_BUILD_MAPPER_LIB)
@@ -113,11 +145,11 @@ if(FO_BUILD_MAPPER_LIB)
 
     AddCoreStaticLibrary(MapperLib FO_MAPPER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS AnimationViewerLib ParticleViewerLib ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
+        LINK_LIBS AnimationViewerLib ParticleViewerLib ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting> $<$<BOOL:${FO_WASM_SCRIPTING}>:WasmScripting>)
 endif()
 
 if(FO_BUILD_BAKER_LIB)
     AddCoreStaticLibrary(BakerLib FO_BAKER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS ClientLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
+        LINK_LIBS ClientLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting> $<$<BOOL:${FO_WASM_SCRIPTING}>:WasmScripting>)
 endif()

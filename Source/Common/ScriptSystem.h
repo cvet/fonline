@@ -93,6 +93,7 @@ public:
 
     [[nodiscard]] auto GetRawData(ptr<const Property> prop) const -> span<const uint8_t>;
     [[nodiscard]] auto GetSerializedRawData(const BaseTypeDesc& base_type) -> const_span<uint8_t>;
+    [[nodiscard]] auto GetRegistrar() const noexcept -> ptr<const PropertyRegistrar> { return _registrar; }
 
     void LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data);
     void SetValue(ptr<const Property> prop, PropertyRawData& prop_data);
@@ -121,11 +122,20 @@ struct DataAccessor
     [[nodiscard]] virtual auto GetArrayElement(ptr<void> /*data*/, size_t /*index*/) const -> ptr<void> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto GetDictSize(ptr<void> /*data*/) const -> size_t { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto GetDictElement(ptr<void> /*data*/, size_t /*index*/) const -> pair<ptr<void>, ptr<void>> { throw InvalidCallException(FO_LINE_STR); }
+    [[nodiscard]] virtual auto HasUntypedNestedArrayAccess() const noexcept -> bool { return false; }
+    [[nodiscard]] virtual auto GetNestedArraySize(const BaseTypeDesc& /*element_type*/, ptr<void> data) const -> size_t { return GetArraySize(data); }
+    [[nodiscard]] virtual auto GetNestedArrayElement(const BaseTypeDesc& /*element_type*/, ptr<void> data, size_t index) const -> ptr<void> { return GetArrayElement(data, index); }
+    [[nodiscard]] virtual auto GetNestedArrayBoolElement(const BaseTypeDesc& element_type, ptr<void> data, size_t index) const -> bool { return *cast_from_void<bool*>(GetNestedArrayElement(element_type, data, index).get()); }
+    [[nodiscard]] virtual auto GetNestedArraySize(ptr<void> /*data*/) const -> size_t { throw InvalidCallException(FO_LINE_STR); }
+    [[nodiscard]] virtual auto GetNestedArrayElement(ptr<void> /*data*/, size_t /*index*/) const -> ptr<void> { throw InvalidCallException(FO_LINE_STR); }
+    [[nodiscard]] virtual auto GetNestedArrayBoolElement(ptr<void> data, size_t index) const -> bool { return *cast_from_void<bool*>(GetNestedArrayElement(data, index).get()); }
     [[nodiscard]] virtual auto GetCallback(ptr<void> /*data*/) const -> unique_del_nptr<ScriptFuncDesc> { throw InvalidCallException(FO_LINE_STR); }
     virtual void ClearArray(ptr<void> /*data*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void AddArrayElement(ptr<void> /*data*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void ClearDict(ptr<void> /*data*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void AddDictElement(ptr<void> /*data*/, ptr<void> /*key*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
+    virtual void AddDictArrayElement(ptr<void> /*data*/, ptr<void> /*key*/, const BaseTypeDesc& /*element_type*/, const_span<ptr<void>> /*values*/) const { throw InvalidCallException(FO_LINE_STR); }
+    virtual void AddDictArrayElement(ptr<void> /*data*/, ptr<void> /*key*/, const_span<ptr<void>> /*values*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual ~DataAccessor() = default;
 };
 
@@ -212,6 +222,31 @@ namespace NativeDataProvider
         function<void(ptr<void>, ptr<void>)> _addCallback {};
     };
 
+    template<typename T>
+    static auto GetVectorSizeByType(ptr<void> data) -> size_t
+    {
+        return cast_from_void<vector<T>*>(data.get())->size();
+    }
+
+    template<typename T>
+    static auto GetVectorElementByType(ptr<void> data, size_t index) -> ptr<void>
+    {
+        return make_ptr(&(*cast_from_void<vector<T>*>(data.get()))[index]).void_cast();
+    }
+
+    template<typename T>
+    static void AddDictVectorElementByType(ptr<DictDataProxy> dict, ptr<void> key, const_span<ptr<void>> values)
+    {
+        vector<T> array_value;
+        array_value.reserve(values.size());
+
+        for (ptr<void> value : values) {
+            array_value.emplace_back(*cast_from_void<T*>(value.get()));
+        }
+
+        dict->Add(key, make_ptr(&array_value).void_cast());
+    }
+
     using StorageEntryType = variant<int32_t, ArrayDataProxy, DictDataProxy, nptr<Entity>>;
 
     struct NativeDataAccessor final : DataAccessor
@@ -221,18 +256,22 @@ namespace NativeDataProvider
         [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override { return cast_from_void<ArrayDataProxy*>(data.get())->Get(index); }
         [[nodiscard]] auto GetDictSize(ptr<void> data) const -> size_t override { return cast_from_void<DictDataProxy*>(data.get())->Size(); }
         [[nodiscard]] auto GetDictElement(ptr<void> data, size_t index) const -> pair<ptr<void>, ptr<void>> override { return cast_from_void<DictDataProxy*>(data.get())->Get(index); }
+        [[nodiscard]] auto GetNestedArraySize(const BaseTypeDesc& element_type, ptr<void> data) const -> size_t override;
+        [[nodiscard]] auto GetNestedArrayElement(const BaseTypeDesc& element_type, ptr<void> data, size_t index) const -> ptr<void> override;
+        [[nodiscard]] auto GetNestedArrayBoolElement(const BaseTypeDesc& element_type, ptr<void> data, size_t index) const -> bool override;
         [[nodiscard]] auto GetCallback(ptr<void> /*data*/) const -> unique_del_nptr<ScriptFuncDesc> override { throw NotSupportedException(FO_LINE_STR); }
 
         void ClearArray(ptr<void> data) const override { cast_from_void<ArrayDataProxy*>(data.get())->Clear(); }
         void AddArrayElement(ptr<void> data, ptr<void> value) const override { cast_from_void<ArrayDataProxy*>(data.get())->Add(value); }
         void ClearDict(ptr<void> data) const override { cast_from_void<DictDataProxy*>(data.get())->Clear(); }
         void AddDictElement(ptr<void> data, ptr<void> key, ptr<void> value) const override { cast_from_void<DictDataProxy*>(data.get())->Add(key, value); }
+        void AddDictArrayElement(ptr<void> data, ptr<void> key, const BaseTypeDesc& element_type, const_span<ptr<void>> values) const override;
     };
 
     static constexpr NativeDataAccessor NATIVE_DATA_ACCESSOR;
 
     template<class T>
-    static auto NormalizeArg(T&& arg, StorageEntryType& temp_storage) -> ptr<void> // NOLINT(cppcoreguidelines-missing-std-forward)
+    static auto NormalizeArg(T&& arg, StorageEntryType& temp_storage, bool allow_direct_entity_ref = true) -> ptr<void> // NOLINT(cppcoreguidelines-missing-std-forward)
     {
         using raw_t = std::remove_cvref_t<T>;
 
@@ -245,6 +284,12 @@ namespace NativeDataProvider
         else if constexpr (is_borrow_pointer_wrapper_v<raw_t>) {
             using wrapped_t = std::remove_const_t<typename raw_t::element_type>;
             if constexpr (std::is_base_of_v<Entity, wrapped_t>) {
+                if constexpr (is_nptr_v<raw_t> && std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
+                    if (allow_direct_entity_ref) {
+                        return make_ptr(arg.get_pp()).void_cast();
+                    }
+                }
+
                 ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(arg);
                 return make_ptr(entity->get_pp()).void_cast();
             }
@@ -404,10 +449,29 @@ public:
             auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
-            call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
+            size_t ret_storage_index = storage_index;
+            call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[ret_storage_index], false);
 
             try {
                 _func->Call(call);
+
+                using raw_ret_t = std::remove_cvref_t<TRet>;
+                if constexpr (is_borrow_pointer_wrapper_v<raw_ret_t>) {
+                    using elem_t = std::remove_const_t<typename raw_ret_t::element_type>;
+                    if constexpr (std::is_base_of_v<Entity, elem_t>) {
+                        nptr<Entity> base_entity = std::get<nptr<Entity>>(temp_storage[ret_storage_index]);
+                        nptr<elem_t> target_entity = base_entity.template dyn_cast<elem_t>();
+                        FO_VERIFY_AND_THROW(!base_entity || target_entity, "Base entity exists but target entity lookup failed");
+
+                        if constexpr (is_nptr_v<raw_ret_t>) {
+                            _ret = target_entity;
+                        }
+                        else {
+                            _ret = ptr<elem_t> {target_entity};
+                        }
+                    }
+                }
+
                 return true;
             }
             catch (const std::exception& ex) {
@@ -557,7 +621,31 @@ namespace NativeDataCaller
 
             for (size_t i = 0; i < size; i++) {
                 auto kv = accessor.GetDictElement(data, i);
-                m.emplace(*cast_from_void<const typename raw_t::key_type*>(kv.first.get()), *cast_from_void<const typename raw_t::mapped_type*>(kv.second.get()));
+
+                if constexpr (vector_collection<typename raw_t::mapped_type>) {
+                    if (accessor.HasUntypedNestedArrayAccess()) {
+                        typename raw_t::mapped_type values;
+                        size_t values_size = accessor.GetNestedArraySize(kv.second);
+                        values.reserve(values_size);
+
+                        for (size_t value_index = 0; value_index < values_size; value_index++) {
+                            if constexpr (std::is_same_v<typename raw_t::mapped_type::value_type, bool>) {
+                                values.emplace_back(accessor.GetNestedArrayBoolElement(kv.second, value_index));
+                            }
+                            else {
+                                values.emplace_back(*cast_from_void<typename raw_t::mapped_type::value_type*>(accessor.GetNestedArrayElement(kv.second, value_index).get()));
+                            }
+                        }
+
+                        m.emplace(*cast_from_void<const typename raw_t::key_type*>(kv.first.get()), std::move(values));
+                    }
+                    else {
+                        m.emplace(*cast_from_void<const typename raw_t::key_type*>(kv.first.get()), *cast_from_void<const typename raw_t::mapped_type*>(kv.second.get()));
+                    }
+                }
+                else {
+                    m.emplace(*cast_from_void<const typename raw_t::key_type*>(kv.first.get()), *cast_from_void<const typename raw_t::mapped_type*>(kv.second.get()));
+                }
             }
 
             return m;
@@ -628,7 +716,37 @@ namespace NativeDataCaller
                 accessor.ClearDict(data);
 
                 for (auto& e : v) {
-                    accessor.AddDictElement(data, make_nptr(&e.first).void_cast(), make_nptr(&e.second).void_cast());
+                    if constexpr (vector_collection<typename raw_t::mapped_type>) {
+                        if (accessor.HasUntypedNestedArrayAccess()) {
+                            vector<ptr<void>> values;
+                            values.reserve(e.second.size());
+
+                            if constexpr (std::is_same_v<typename raw_t::mapped_type::value_type, bool>) {
+                                vector<unique_ptr<bool>> bool_values;
+                                bool_values.reserve(e.second.size());
+
+                                for (bool value : e.second) {
+                                    bool_values.emplace_back(SafeAlloc::MakeUnique<bool>(value));
+                                    values.emplace_back(make_ptr(bool_values.back().get()).void_cast());
+                                }
+
+                                accessor.AddDictArrayElement(data, make_ptr(&e.first).void_cast(), values);
+                            }
+                            else {
+                                for (auto& value : e.second) {
+                                    values.emplace_back(make_ptr(&value).void_cast());
+                                }
+
+                                accessor.AddDictArrayElement(data, make_ptr(&e.first).void_cast(), values);
+                            }
+                        }
+                        else {
+                            accessor.AddDictElement(data, make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast());
+                        }
+                    }
+                    else {
+                        accessor.AddDictElement(data, make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast());
+                    }
                 }
             }
             else if constexpr (specialization_of<raw_t, ptr> || specialization_of<raw_t, nptr>) {
@@ -687,7 +805,8 @@ class ScriptSystemBackend
 {
 public:
     static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
-    // static constexpr int32_t MONO_BACKEND_INDEX = 1;
+    static constexpr int32_t WASM_BACKEND_INDEX = 1;
+    // static constexpr int32_t MONO_BACKEND_INDEX = 2;
     virtual ~ScriptSystemBackend() = default;
 };
 
@@ -760,6 +879,15 @@ public:
 
     [[nodiscard]] auto FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> nptr<ScriptFuncDesc>;
     [[nodiscard]] auto FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> nptr<ScriptFuncDesc>;
+    [[nodiscard]] auto FindFuncDesc(hstring func_name, const ComplexTypeDesc& callback_type) noexcept -> nptr<ScriptFuncDesc>;
+    [[nodiscard]] auto FindFuncDesc(hstring func_name, const ComplexTypeDesc& ret_type, const_span<ComplexTypeDesc> arg_types) noexcept -> nptr<ScriptFuncDesc>;
+    [[nodiscard]] static auto IsTemporaryScriptCallbackToken(string_view token) noexcept -> bool;
+    [[nodiscard]] auto PushTemporaryScriptCallbackScope() const noexcept -> size_t;
+    void PopTemporaryScriptCallbackScope(size_t scope) noexcept;
+    [[nodiscard]] auto RegisterTemporaryScriptCallback(unique_del_ptr<ScriptFuncDesc> func) -> string;
+    [[nodiscard]] auto RetainTemporaryScriptCallback(string_view token) noexcept -> bool;
+    [[nodiscard]] auto ReleaseTemporaryScriptCallback(string_view token) noexcept -> bool;
+    [[nodiscard]] auto FindTemporaryScriptCallback(string_view token, const ComplexTypeDesc& callback_type) noexcept -> nptr<ScriptFuncDesc>;
 
     template<typename TRet, typename... Args>
     [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool
@@ -888,9 +1016,19 @@ private:
         }
     }
 
+    struct TemporaryScriptCallback
+    {
+        string Token;
+        unique_del_ptr<ScriptFuncDesc> Func;
+        size_t RetainCount {};
+        bool ScopeReleased {};
+    };
+
     unordered_map<size_t, unique_ptr<ScriptSystemBackend>> _backends {};
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, ptr<ScriptFuncDesc>> _globalFuncMap {};
+    vector<TemporaryScriptCallback> _temporaryScriptCallbacks {};
+    uint64_t _temporaryScriptCallbackCounter {};
     vector<pair<ScriptFunc<void>, int32_t>> _initFunc {};
     std::atomic_bool _globalVarsFrozen {};
 };

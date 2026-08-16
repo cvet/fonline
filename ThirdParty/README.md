@@ -31,6 +31,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * sqlite - [sqlite-amalgamation-3.48.0](https://sqlite.org), public domain
 * ufbx - [ufbx-0.23.0](https://github.com/ufbx/ufbx)
 * unordered_dense - [unordered_dense-4.8.1](https://github.com/martinus/unordered_dense)
+* WAMR - [WAMR-2.4.4](https://github.com/bytecodealliance/wasm-micro-runtime/releases/tag/WAMR-2.4.4)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
 * zlib - [zlib-1.3.2](https://www.zlib.net)
 

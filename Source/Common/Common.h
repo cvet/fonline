@@ -836,6 +836,7 @@ FO_DECLARE_EXCEPTION(TypeResolveException);
 FO_DECLARE_EXCEPTION(EnumResolveException);
 
 class ProtoEntity;
+class Property;
 
 class NameResolver
 {
@@ -847,6 +848,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed = nullptr) const -> string_view = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
     [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> = 0;
+    virtual void OnPropertyRegistered(string_view, const Property&) { }
     virtual ~NameResolver() = default;
 };
 

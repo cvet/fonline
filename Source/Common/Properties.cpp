@@ -2365,6 +2365,7 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
     if (type.Kind == ComplexTypeKind::Dict || type.Kind == ComplexTypeKind::DictOfArray) {
         FO_VERIFY_AND_THROW(type.KeyType.has_value(), "Dictionary property declaration has no key type", _typeName, tokens[2], tokens[1]);
         FO_VERIFY_AND_THROW(!type.KeyType->IsEntity, "Dictionary property declaration uses an entity type as a key", _typeName, tokens[2], tokens[1], type.KeyType->Name);
+        FO_VERIFY_AND_THROW(!type.KeyType->IsRefType, "Dictionary property declaration uses an unsupported RefType key", _typeName, tokens[2], tokens[1], type.KeyType->Name);
 
         prop->_isDict = true;
         prop->_dictKeyType = type.KeyType.value();
@@ -2777,7 +2778,11 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
     }
 
     _registeredProperties.emplace_back(std::move(prop));
-    return _registeredProperties.back();
+
+    ptr<const Property> result_prop = _registeredProperties.back();
+    _nameResolver->OnPropertyRegistered(_typeName.as_str(), *result_prop);
+
+    return result_prop;
 }
 
 FO_END_NAMESPACE

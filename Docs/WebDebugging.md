@@ -9,7 +9,7 @@ The current web-debug flow is task-driven, but the tasks are thin wrappers aroun
 - on Linux, `../BuildTools/prepare-workspace.sh web` delegates to `buildtools.py prepare-host-workspace linux web` and prepares only workspace-local web parts; use `web-packages` explicitly on a fresh host that still needs system packages
 - on Windows, `../BuildTools/prepare-win-workspace.ps1 web` delegates to `buildtools.py prepare-host-workspace windows web`
 - web client builds go through `buildtools.py build web client <Config>`
-- browser packaging goes through `buildtools.py package-web-debug LF RemoteSceneLaunch LocalTest`
+- browser packaging goes through `buildtools.py package-web-debug --wasm-scripting LF RemoteSceneLaunch LocalTest` when the project enables WebAssembly scripting
 
 That last point matters: the current local/scene packaging task generates **both** debug package variants in one pass, not just the one you are about to launch. The staging task is separate and packages only the `Staging` variant.
 
@@ -54,13 +54,23 @@ py -3 ../BuildTools/buildtools.py build web client Release
 Create the browser debug packages used by the VS Code launch configurations:
 
 ```powershell
-py -3 ../BuildTools/buildtools.py package-web-debug LF RemoteSceneLaunch LocalTest
+py -3 ../BuildTools/buildtools.py package-web-debug --wasm-scripting LF RemoteSceneLaunch LocalTest
 ```
 
 Current package layout:
 - `Workspace/web-debug/LF-Client-LocalTest-Web`
 - `Workspace/web-debug/LF-Client-RemoteSceneLaunch-Web`
 - `Workspace/web-debug/LF-Client-Staging-Web` for the staging task flow
+
+When `FO_WASM_SCRIPTING` is enabled, generated CMake package targets pass `package.py -wasm-scripting` automatically. Direct `package-web-debug` calls must pass `--wasm-scripting`; the Last Frontier local, scene, and staging web tasks do so. Those Web packages also include:
+- `wasm-host.js` — browser-side WASM host loaded before the Emscripten client starts.
+- `WasmScripts/manifest.json` — package-time manifest generated from client-visible `.wasm` modules.
+- `WasmScripts/**/*.wasm` — sidecar script modules fetched by `wasm-host.js`.
+- `WasmScripts/**/*.wasm.map` — optional adjacent source maps copied only when the script toolchain emitted them next to the source `.wasm`.
+
+The host's scalar call bridge, runtime context imports, `log_utf8`, metadata-suffixed text-input/text-return/array/dictionary/dict-of-array/mutable-value/mutable-text/mutable-array/mutable-dictionary/mutable-dict-of-array/callback export calls, and manifest import-signature error path are covered by the Node regression test `node Engine/BuildTools/tests/test_wasm_host.js`. Metadata-suffixed exports are validated by `WebWasmBackend` from the same manifest export signatures: a name such as `Func__TestMode__TestMode` still needs physical `i32 -> i32` export types that match the metadata suffix, while `Func__string__int32`, `Func__int32_array__int32`, `Func__string_string_dict__int32`, `Func__string_int32_array_dict__int32`, `Func__string_bool_array_dict__int32`, `Func__string_ucolor_array_dict__int32`, `Func__string_Rule_array_dict__int32`, `Func__int32_mut__void`, `Func__Critter_mut__void`, and `Func__callback_int32_int32_callback__int32` need physical `(i32, i32) -> i32` or `(i32, i32) -> void` so the host can copy UTF-8, array, dictionary, dict-of-array, mutable-value/handle bytes, or callback-name bytes into the sidecar module before calling it. Mutable text, array, dictionary, and dict-of-array exports such as `Func__string_mut__void`, `Func__int32_array_mut__void`, `Func__string_string_dict_mut__void`, and `Func__string_Rule_array_dict_mut__void` need physical `(i32, i32, i32, i32) -> void` for `ptr, byte_len, capacity_byte_len, required_byte_len_ptr`; the host copies back only when the required length fits the provided capacity. Mutable scalar/value-type and runtime entity/proto/fixed handle export arguments are copied back into the engine heap after the export returns. A text-return export such as `Func__void__string`, an array-return export such as `Func__void__uint8_array`, a dictionary-return export such as `Func__void__string_string_dict`, and a dict-of-array return export such as `Func__void__string_Rule_array_dict` need physical `() -> i64`; the returned value packs the sidecar module pointer in the low 32 bits and the byte length in the high 32 bits, then the host copies those bytes into a temporary engine heap buffer and C++ frees that temporary buffer after copying the result. A Web sidecar module that receives `string`/`any`, array, dictionary, dict-of-array, callback, mutable-value/handle, mutable-text, mutable-array, mutable-dictionary, or mutable-dict-of-array export inputs must export `memory` and one allocator pair: `fonline_malloc`/`fonline_free`, `malloc`/`free`, or `__wasm_malloc`/`__wasm_free`; a module that only returns text, arrays, dictionaries, or dict-of-array values still needs `memory` but not a sidecar allocator.
+
+Browser source mapping is handled by the script toolchain and DevTools, not by the engine runtime. Keep source-map URLs relative to the packaged sidecar `.wasm`; `package.py -wasm-scripting` preserves adjacent `*.wasm.map` files but does not list them in `manifest.json`.
 
 `package-web-debug` currently packages with `-pack Raw+WebServer`, which is why each output directory includes a generated `web-server.py` used by the launch tasks.
 
@@ -105,6 +115,9 @@ On the client side, scene transitions are surfaced through `PrepareToLoadScene()
 ## Source paths inspected
 
 - `../BuildTools/buildtools.py`
+- `../BuildTools/package.py`
+- `../BuildTools/web/default-index.html`
+- `../BuildTools/web/wasm-host.js`
 - `../BuildTools/prepare-workspace.sh`
 - `../BuildTools/prepare-win-workspace.ps1`
 - `../ThirdParty/emscripten`
@@ -121,6 +134,7 @@ When a web-debug run fails, separate browser packaging, HTTP serving, and game-s
 
 - **`Workspace/web-debug/...` is missing** -> run `Web :: Build Debug Package` / `package-web-debug`; a fresh checkout has no generated browser package until packaging completes.
 - **browser opens but assets or `.wasm` fail to load** -> inspect the generated package directory and `web-server.py`; web debug packages use `Raw+WebServer`, so serving from a different directory can hide packaged files.
+- **`FO_WASM_SCRIPTING` web package starts with `Web WASM Error`** -> inspect `WasmScripts/manifest.json`, ensure every listed `.wasm` exists next to it, and check whether the module imports only registered host functions with the exact signatures from `Source/Scripting/Wasm/WasmImports.*` and `BuildTools/web/wasm-host.js`, such as `fonline.log_i32`, `fonline.log_utf8`, `fonline.get_side`, and `fonline.get_frame_time_ms`. Also check that metadata-suffixed exports use physical scalar signatures matching their suffix. Pointer-style imports such as `log_utf8(ptr, len)`, `fonline.api` string/`any` input/output buffers, callback-name `ptr,len` pairs, scalar-compatible array `ptr,byte_len` buffers, mutable value/handle `ptr,len` buffers, mutable text/array/dictionary/dict-of-array `ptr,byte_len,capacity_byte_len,required_byte_len_ptr` buffers, read-only dictionary/dict-of-array `ptr,byte_len` buffers, and metadata-suffixed array/dictionary/dict-of-array/callback/mutable-value/mutable-text/mutable-array/mutable-dictionary/mutable-dict-of-array export buffers require the calling module to export `memory`.
 - **port `7000`, `4025`, or `4026` is already in use** -> run the hidden web stop/prepare tasks or kill the stale listener; web launch cleanup is port-based, not tied to a remembered process id.
 - **local web client cannot connect to server** -> check `../../LastFrontier.fomain` base `ClientNetwork.ServerHost = localhost`, `ServerPort = 4025`, and whether the local headless server actually started.
 - **remote-scene web launch connects but loads the wrong scene** -> inspect `RemoteSceneLaunch`, `--Scene.Startup <SceneId>`, and the selected VS Code scene task rather than changing scene scripts first.

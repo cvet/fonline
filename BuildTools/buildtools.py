@@ -395,6 +395,65 @@ def resolve_emscripten_toolchain(env: Mapping[str, str]) -> Path:
 	return Path(env['FO_EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
 
 
+def parse_cmake_version(executable: str) -> tuple[int, int, int]:
+	output = run_capture_text([executable, '--version'])
+	match = re.search(r'^cmake version (\d+)\.(\d+)\.(\d+)', output)
+	if not match:
+		raise ValueError(f'Unable to parse CMake version from {executable}')
+	return tuple(int(part) for part in match.groups())
+
+
+def is_emscripten_cmake_version_compatible(version: tuple[int, int, int]) -> bool:
+	return not ((4, 2, 0) <= version < (4, 2, 6) or (4, 3, 0) <= version < (4, 3, 3))
+
+
+def discover_windows_cmake_candidates() -> list[str]:
+	candidates: list[str] = []
+	program_files_roots = [
+		Path(os.environ.get('ProgramFiles', r'C:\Program Files')),
+		Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')),
+	]
+
+	for root in program_files_roots:
+		for candidate in root.glob('Microsoft Visual Studio/*/*/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'):
+			if candidate.is_file():
+				candidates.append(str(candidate))
+
+	return candidates
+
+
+def resolve_emscripten_cmake() -> str:
+	candidates: list[str] = []
+	path_cmake = shutil.which('cmake')
+	if path_cmake:
+		candidates.append(path_cmake)
+	if os.name == 'nt':
+		candidates.extend(discover_windows_cmake_candidates())
+
+	seen: set[str] = set()
+	found_versions: list[str] = []
+	for candidate in candidates:
+		canonical_candidate = os.path.normcase(os.path.abspath(candidate))
+		if canonical_candidate in seen:
+			continue
+		seen.add(canonical_candidate)
+
+		try:
+			version = parse_cmake_version(candidate)
+		except (FileNotFoundError, subprocess.CalledProcessError, ValueError):
+			continue
+
+		found_versions.append(f'{candidate} ({".".join(str(part) for part in version)})')
+		if is_emscripten_cmake_version_compatible(version):
+			return candidate
+
+	versions = ', '.join(found_versions) if found_versions else 'none'
+	raise SystemExit(
+		'Emscripten requires a CMake version outside the unsupported ranges '
+		f'4.2.0-4.2.5 and 4.3.0-4.3.2; found: {versions}'
+	)
+
+
 def resolve_apple_cmake() -> str:
 	return shutil.which('cmake') or '/Applications/CMake.app/Contents/bin/cmake'
 
@@ -427,8 +486,8 @@ def run_cmake_target(build_dir: Path, config: str, target_name: str, env: Mappin
 	run(make_cmake_build_cmd(config, target_name=target_name, env=env), cwd=build_dir, env=env)
 
 
-def run_emsdk_cmake_build(workspace: Path, build_dir: Path, config: str) -> None:
-	run_in_emsdk_env(make_cmake_build_cmd(config), workspace, cwd=build_dir)
+def run_emsdk_cmake_build(workspace: Path, build_dir: Path, config: str, cmake_bin: str = 'cmake') -> None:
+	run_in_emsdk_env(make_cmake_build_cmd(config, cmake_bin=cmake_bin), workspace, cwd=build_dir)
 
 
 def stringify_args(*args: object) -> list[str]:
@@ -443,8 +502,8 @@ def make_unix_makefiles_configure_cmd(*args: object) -> list[str]:
 	return ['cmake', '-G', 'Unix Makefiles', *stringify_args(*args)]
 
 
-def make_emsdk_configure_cmd(toolchain_file: Path, *args: object) -> list[str]:
-	configure_cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE=' + to_cmake_path(toolchain_file), *stringify_args(*args)]
+def make_emsdk_configure_cmd(toolchain_file: Path, *args: object, cmake_bin: str = 'cmake') -> list[str]:
+	configure_cmd = [cmake_bin, '-DCMAKE_TOOLCHAIN_FILE=' + to_cmake_path(toolchain_file), *stringify_args(*args)]
 	if os.name == 'nt':
 		configure_cmd[1:1] = ['-G', 'Ninja Multi-Config', f'-DCMAKE_MAKE_PROGRAM={discover_windows_ninja()}']
 	else:
@@ -1602,12 +1661,12 @@ def resolve_build_hash(env: Mapping[str, str]) -> str:
 	return build_hash
 
 
-def package_web_debug(env: Mapping[str, str], devname: str, configs: Sequence[str]) -> None:
+def package_web_debug(env: Mapping[str, str], devname: str, configs: Sequence[str], *, wasm_scripting: bool = False) -> None:
 	for config in configs:
-		_package_web_debug_config(env, devname, config)
+		_package_web_debug_config(env, devname, config, wasm_scripting=wasm_scripting)
 
 
-def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str) -> None:
+def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str, *, wasm_scripting: bool = False) -> None:
 	import foconfig
 
 	project_root = Path(env['FO_PROJECT_ROOT'])
@@ -1648,6 +1707,8 @@ def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str)
 		'-output',
 		str(output_root),
 	]
+	if wasm_scripting:
+		command.append('-wasm-scripting')
 	for input_root in input_roots:
 		command.extend(['-input', str(input_root)])
 
@@ -1769,7 +1830,7 @@ def run_apple_cmake_build(cmake_bin: str, build_dir: Path, config: str) -> None:
 
 
 def make_platform_build_flag_args(platform_name: str, target_name: str, config: str) -> list[str]:
-	if platform_name in ('linux', 'web', *ANDROID_PLATFORMS):
+	if platform_name == 'linux' or (platform_name in ('web', *ANDROID_PLATFORMS) and os.name != 'nt'):
 		return build_flag_args(target_name, config=config)
 	if platform_name.startswith('win') and os.name != 'nt':
 		# Cross-compile path uses the Ninja single-config generator; CMAKE_BUILD_TYPE
@@ -1806,7 +1867,7 @@ def make_platform_configure_cmd(
 		return make_unix_makefiles_configure_cmd(*configure_args, to_cmake_path(source_path))
 	if platform_name == 'web':
 		toolchain_file = resolve_emscripten_toolchain(env)
-		configure_cmd = make_emsdk_configure_cmd(toolchain_file, *configure_args)
+		configure_cmd = make_emsdk_configure_cmd(toolchain_file, *configure_args, cmake_bin=resolve_emscripten_cmake())
 		configure_cmd.append(to_cmake_path(source_path))
 		return configure_cmd
 	if platform_name in ANDROID_PLATFORMS:
@@ -1839,7 +1900,7 @@ def run_platform_build_step(
 	build_runner = resolve_platform_build_runner(platform_name)
 	if build_runner == 'emsdk':
 		workspace = Path(env['FO_WORKSPACE'])
-		run_emsdk_cmake_build(workspace, build_dir, config)
+		run_emsdk_cmake_build(workspace, build_dir, config, cmake_bin=resolve_emscripten_cmake())
 	elif build_runner == 'apple':
 		cmake_bin = resolve_apple_cmake()
 		run_apple_cmake_build(cmake_bin, build_dir, config)
@@ -2399,6 +2460,7 @@ def create_parser() -> argparse.ArgumentParser:
 	repair_case_parser.add_argument('--check', action='store_true')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
+	package_web_parser.add_argument('--wasm-scripting', action='store_true', help='package WebAssembly scripting sidecars and host support')
 	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
 	package_web_parser.add_argument('configs', nargs='+', help='config names to package (e.g. RemoteSceneLaunch LocalTest)')
 
@@ -2482,7 +2544,7 @@ def main() -> None:
 		repair_checkout_case(args.check, env)
 		return
 	if args.command == 'package-web-debug':
-		package_web_debug(env, args.devname, args.configs)
+		package_web_debug(env, args.devname, args.configs, wasm_scripting=args.wasm_scripting)
 		return
 	if args.command == 'package-android-debug':
 		package_android_debug(env, args.devname, args.platform, args.configs)

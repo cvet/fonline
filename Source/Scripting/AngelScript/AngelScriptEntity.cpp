@@ -974,6 +974,29 @@ static void ValidateCallbackFunc(nptr<AngelScript::asIScriptFunction> func)
     }
 }
 
+static void RegisterCallbackFuncdef(ptr<AngelScript::asIScriptEngine> as_engine, const ComplexTypeDesc& callback_type, unordered_set<string>& registered_funcdefs)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(callback_type.Kind == ComplexTypeKind::Callback, "Callback funcdef type is not a callback");
+    FO_VERIFY_AND_THROW(callback_type.CallbackArgs, "Callback funcdef has no arguments");
+    FO_VERIFY_AND_THROW(!callback_type.CallbackArgs->empty(), "Callback funcdef has an empty signature");
+
+    for (const ComplexTypeDesc& arg : span(*callback_type.CallbackArgs).subspan(1)) {
+        if (arg.Kind == ComplexTypeKind::Callback) {
+            RegisterCallbackFuncdef(as_engine, arg, registered_funcdefs);
+        }
+    }
+
+    string cb_args = strex(",").join(vec_transform(span(*callback_type.CallbackArgs).subspan(1), [](auto&& type) -> string { return MakeScriptArgName(type); }));
+    string funcdef = strex("{} {}({})", MakeScriptReturnName(callback_type.CallbackArgs->front()), MakeScriptTypeName(callback_type), cb_args);
+
+    if (registered_funcdefs.emplace(funcdef).second) {
+        int32_t as_result = 0;
+        FO_AS_VERIFY(as_engine->RegisterFuncdef(funcdef.c_str()));
+    }
+}
+
 static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1419,12 +1442,7 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
             // Funcdef variants
             for (const auto& arg : method.Args) {
                 if (arg.Type.Kind == ComplexTypeKind::Callback) {
-                    string cb_args = strex(",").join(vec_transform(span(*arg.Type.CallbackArgs).subspan(1), [](auto&& t) -> string { return MakeScriptArgName(t); }));
-                    string funcdef = strex("{} {}({})", MakeScriptReturnName(arg.Type.CallbackArgs->front()), MakeScriptTypeName(arg.Type), cb_args);
-
-                    if (registered_funcdefs.emplace(funcdef).second) {
-                        FO_AS_VERIFY(as_engine->RegisterFuncdef(funcdef.c_str()));
-                    }
+                    RegisterCallbackFuncdef(as_engine, arg.Type, registered_funcdefs);
                 }
             }
 
