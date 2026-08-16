@@ -3508,6 +3508,12 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 
 TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 {
+    // The ImGui sweep below logs and saves settings under `Workspace/`, a path relative to the process
+    // working directory. `ImGui::LogToFile` raises a recoverable assert when the file cannot be opened, so a
+    // run started from a directory without that folder would abort the frame instead of exercising the
+    // remaining bindings. Create it up front rather than depending on where the test binary was launched.
+    (void)fs_create_directories("Workspace");
+
     auto settings = MakeClientTestSettings();
     auto client_resources = MakeUnitTestFontResources();
     client_resources.emplace_back("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
