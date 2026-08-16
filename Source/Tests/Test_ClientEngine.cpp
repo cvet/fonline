@@ -1549,55 +1549,6 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
         return MakeClientEngine(settings, MakeClientTestResources());
     }
 
-#if FO_ENABLE_3D
-    static void WriteRuntimeModelBoneHeader(DataWriter& writer, string_view name, bool attached_mesh)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        writer.WriteString(name);
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
-    }
-
-    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<uint8_t>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        vector<uint8_t> data;
-        DataWriter writer {data};
-        WriteModelMeshHeader(writer);
-        write_root(writer);
-        return data;
-    }
-
-    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return MakeRuntimeModelMesh([&](DataWriter& writer) {
-            WriteRuntimeModelBoneHeader(writer, "Root", true);
-            array<Vertex3D, 1> vertices {vertex};
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
-            writer.Write<uint32_t>(uint32_t {0});
-            writer.WriteString({});
-            writer.Write<uint32_t>(skin_bones_count);
-
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.WriteString({});
-            }
-
-            writer.Write<uint32_t>(skin_bones_count);
-
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.Write<mat44>(mat44 {1.0f});
-            }
-
-            writer.Write<uint32_t>(uint32_t {0});
-        });
-    }
-
     // A minimal effect, baked through the real EffectBaker so the runtime accepts it. Registering one as an
     // offscreen effect is what makes the offscreen surface bindings usable at all.
     static auto MakeBakedEffectResources(string_view effect_path) -> vector<pair<string, vector<uint8_t>>>
@@ -1647,6 +1598,55 @@ void main(void)
         }
 
         return resources;
+    }
+
+#if FO_ENABLE_3D
+    static void WriteRuntimeModelBoneHeader(DataWriter& writer, string_view name, bool attached_mesh)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        writer.WriteString(name);
+        writer.Write<mat44>(mat44 {1.0f});
+        writer.Write<mat44>(mat44 {1.0f});
+        writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
+    }
+
+    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        vector<uint8_t> data;
+        DataWriter writer {data};
+        WriteModelMeshHeader(writer);
+        write_root(writer);
+        return data;
+    }
+
+    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return MakeRuntimeModelMesh([&](DataWriter& writer) {
+            WriteRuntimeModelBoneHeader(writer, "Root", true);
+            array<Vertex3D, 1> vertices {vertex};
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+            writer.Write<uint32_t>(uint32_t {0});
+            writer.WriteString({});
+            writer.Write<uint32_t>(skin_bones_count);
+
+            for (uint32_t i = 0; i < skin_bones_count; i++) {
+                writer.WriteString({});
+            }
+
+            writer.Write<uint32_t>(skin_bones_count);
+
+            for (uint32_t i = 0; i < skin_bones_count; i++) {
+                writer.Write<mat44>(mat44 {1.0f});
+            }
+
+            writer.Write<uint32_t>(uint32_t {0});
+        });
     }
 
     // A real triangle, so the model-info baker can compute static bounds from it. The origin moves the whole
