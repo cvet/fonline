@@ -1319,6 +1319,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return std::nullopt;
     }
 
+    // The posed model alone, taken before the particle pass joins live effects to the envelope: a fit converges only
+    // while the measured extent scales with the model, and world-space particles keep their size when it shrinks
+    bool has_pose_point = has_projected_point;
+    float32_t pose_min_x = min_x;
+    float32_t pose_min_y = min_y;
+    float32_t pose_max_x = max_x;
+    float32_t pose_max_y = max_y;
+
     auto include_particle_bounds = [&](ptr<const ModelInstance> model, const auto& recurse) -> bool {
         for (const auto& model_particle : model->_modelParticles) {
             // A dormant system reserves nothing, or every model with an occasional effect would carry an inflated
@@ -1403,6 +1411,21 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return std::nullopt;
     }
 
+    // Never widened by force_full_frame like the crop above: that flag keeps every pixel an effect or custom shader
+    // may touch, which says nothing about the space the model occupies. A frame holding only an effect reports no pose
+    irect32 pose_rect {};
+
+    if (has_pose_point) {
+        int32_t pose_left = iround<int32_t>(std::clamp(std::floor(pose_min_x) - guard_padding, 0.0f, frame_width_float));
+        int32_t pose_top = iround<int32_t>(std::clamp(std::floor(pose_min_y) - guard_padding, 0.0f, frame_height_float));
+        int32_t pose_right = iround<int32_t>(std::clamp(std::ceil(pose_max_x) + guard_padding, 0.0f, frame_width_float));
+        int32_t pose_bottom = iround<int32_t>(std::clamp(std::ceil(pose_max_y) + guard_padding, 0.0f, frame_height_float));
+
+        if (pose_right > pose_left && pose_bottom > pose_top) {
+            pose_rect = {pose_left, pose_top, pose_right - pose_left, pose_bottom - pose_top};
+        }
+    }
+
     auto collect_enabled_clip_indices = [](const optional<ModelAnimationController>& controller) -> pair<array<int32_t, 2>, uint8_t> {
         array<int32_t, 2> clip_indices {-1, -1};
         uint8_t clip_count = 0;
@@ -1431,6 +1454,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     return ModelSpriteBounds {
         .Rect = {left, top, right - left, bottom - top},
+        .PoseRect = pose_rect,
         .RequiredFrameSize = required_frame->Size,
         .Pivot = required_frame->Pivot,
         .EnvelopeId =

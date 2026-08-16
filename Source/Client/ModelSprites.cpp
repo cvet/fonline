@@ -453,7 +453,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     // re-anchored on the frame pivot so it shares an origin with the model's draw and view rects
     if (bounds) {
         ipos32 frame_pivot = model_spr->GetModel()->GetFramePivot();
-        model_spr->_poseRect = {bounds->Rect.x - frame_pivot.x, bounds->Rect.y - frame_pivot.y, bounds->Rect.width, bounds->Rect.height};
+        model_spr->_poseRect = {bounds->PoseRect.x - frame_pivot.x, bounds->PoseRect.y - frame_pivot.y, bounds->PoseRect.width, bounds->PoseRect.height};
     }
 
     // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop
