@@ -28,32 +28,8 @@ macro(IncludeBuildTool)
 	endforeach()
 endmacro()
 
-# ---------------------------------------------------------------------------
-# find_package interception
-#
-# On Windows we route every find_package() call through an explicit registry
-# of handler macros so that no third-party CMakeLists.txt accidentally pulls
-# a system library install. Each looked-up package either gets remapped onto
-# a bundled in-tree dependency or is explicitly allowed to fall through to
-# CMake's stock search via PassThroughFindPackage.
-#
-# Use:
-#   RegisterFindPackageHandler(<Name> <macro-name>) — register a handler
-#                                                     for find_package(<Name>)
-#   PassThroughFindPackage                          — built-in handler that
-#                                                     forwards to the original
-#                                                     find_package() (use for
-#                                                     build tools / system
-#                                                     packages we accept)
-#
-# The handler macro receives the original find_package() arguments, with the
-# package name as the first positional argument. Variables set inside the
-# handler land in the find_package() caller's scope, mirroring CMake's
-# normal find_package semantics.
-#
-# The interceptor itself is installed at the top of the ThirdParty stage,
-# before any AddSubdirectory() reaches a third-party tree.
-# ---------------------------------------------------------------------------
+# Route find_package through registered remaps or explicit PassThroughFindPackage handlers.
+# ThirdParty installs interception before any vendored AddSubdirectory call
 
 macro(RegisterFindPackageHandler packageName handlerMacroName)
 	set(_FO_FIND_PKG_HANDLER_${packageName} "${handlerMacroName}")
@@ -63,10 +39,7 @@ macro(PassThroughFindPackage)
 	_find_package(${ARGV})
 endmacro()
 
-# Built-in handler: report the package as missing without reaching the host
-# system. If the consumer marked it REQUIRED, abort configure with a clear
-# diagnostic. Use for optional probes that we deliberately don't ship
-# (e.g. SDL's LibUSB, glslang's SPIRV-Tools-opt, ...).
+# Report a package missing without probing the host; abort clearly when REQUIRED
 macro(NotFoundFindPackage _fo_nf_pkg)
 	list(FIND ARGN "REQUIRED" _fo_nf_required_idx)
 	if(NOT _fo_nf_required_idx EQUAL -1)
@@ -75,30 +48,8 @@ macro(NotFoundFindPackage _fo_nf_pkg)
 	set(${_fo_nf_pkg}_FOUND FALSE)
 endmacro()
 
-# ---------------------------------------------------------------------------
-# Pipeline stages
-#
-# The build is structured as a strict sequence of named stages. Each stage
-# is exposed via a public macro and must be invoked exactly once, in the
-# canonical order. Stage helpers validate ordering: invoking a stage out of
-# order, twice, or skipping it produces a hard error during CMake configure.
-#
-# Stage entry-point macros (call in this order, each exactly once):
-#   1. StartProjectGeneration       (Init)
-#   2. RegisterProjectOptions       (ProjectOptions)
-#   3. AddThirdPartyLibraries       (ThirdParty)
-#   4. RegisterEngineSources        (EngineSources)
-#   5. SetupCodeGeneration          (Codegen)
-#   6. BuildCoreLibraries           (CoreLibs)
-#   7. BuildApplications            (Applications)
-#   8. SetupScriptsAndBaking        (ScriptsAndBaking)
-#   9. BuildPackages                (Packages)
-#  10. FinalizeProjectGeneration    (Finalize)
-#
-# Each stage exposes Pre and Post hook lists. Hooks are macros (or functions)
-# invoked in registration order at the boundaries of the stage. Register a
-# hook with AddStageHook(<Stage> Pre|Post <macro-name>).
-# ---------------------------------------------------------------------------
+# Invoke every public pipeline stage exactly once in its validated canonical order.
+# AddStageHook registers ordered Pre or Post extensions at stage boundaries
 
 set(FO_KNOWN_STAGES
 	Init
@@ -134,18 +85,18 @@ macro(InvokeStageHooks stage when)
 endmacro()
 
 macro(_RunStage stage)
-	# Validate stage name.
+	# Validate stage name
 	list(FIND FO_KNOWN_STAGES "${stage}" _stage_index)
 	if(_stage_index EQUAL -1)
 		AbortMessage("Pipeline: unknown stage '${stage}'. Known: ${FO_KNOWN_STAGES}")
 	endif()
 
-	# Each stage runs exactly once.
+	# Each stage runs exactly once
 	if("${stage}" IN_LIST FO_STAGES_EXECUTED)
 		AbortMessage("Pipeline: stage '${stage}' has already been executed; each stage must run exactly once")
 	endif()
 
-	# All preceding stages must have run.
+	# All preceding stages must have run
 	if(_stage_index GREATER 0)
 		math(EXPR _last_required "${_stage_index} - 1")
 		foreach(_idx RANGE 0 ${_last_required})
@@ -163,7 +114,7 @@ macro(_RunStage stage)
 endmacro()
 
 # Public stage entry points — strict, no auto-cascade. Calling a stage out of
-# sequence, twice, or skipping any predecessor aborts CMake configure.
+# sequence, twice, or skipping any predecessor aborts CMake configure
 macro(StartProjectGeneration)
 	_RunStage(Init)
 endmacro()
@@ -203,7 +154,7 @@ endmacro()
 macro(FinalizeProjectGeneration)
 	_RunStage(Finalize)
 
-	# Sanity check: by the time Finalize finishes, every stage must have run.
+	# Finalize requires every stage to have run
 	foreach(_stage IN LISTS FO_KNOWN_STAGES)
 		if(NOT "${_stage}" IN_LIST FO_STAGES_EXECUTED)
 			AbortMessage("Pipeline: stage '${_stage}' was never executed. Project must call every stage in order before FinalizeProjectGeneration().")

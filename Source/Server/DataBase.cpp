@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -100,16 +100,8 @@ static void BsonFree(void* mem) noexcept
     SafeAlloc::FreeRaw(mem);
 }
 
-// bson releases every block through the plain free member — it never records that an allocation came
-// from the aligned path, so the aligned allocator must produce blocks that BsonFree can release. That
-// holds under rpmalloc (rpaligned_alloc and rpmalloc both end in rpfree) and on POSIX without it
-// (posix_memalign blocks are free()-able by definition). The one combination where it does not hold is
-// Windows without rpmalloc — the sanitizer configs — because there the aligned path is
-// _aligned_malloc/_aligned_free. bson's own default vtable resolves this the same way: its
-// _aligned_alloc_impl falls back to plain malloc on MSVC and deliberately does not use _aligned_malloc,
-// precisely because that would break the free symmetry. Match it. Every aligned request in mongoc is a
-// BSON_ALIGNOF of an ordinary C struct (plus mongoc-ts-pool's promotion to BSON_ALIGN_OF_PTR), so
-// malloc's fundamental alignment already covers them.
+// bson frees every block through the plain free member, so the aligned path must stay free()-compatible — on
+// Windows without rpmalloc it is not, which is why bson's own vtable also falls back to plain malloc
 static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();

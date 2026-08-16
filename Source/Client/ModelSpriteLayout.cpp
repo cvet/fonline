@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "ModelSpriteLayout.h"
 
@@ -37,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr float32_t MODEL_SPRITE_LAYOUT_GUARD = 2.0f;
-// Keep in sync with the default 3D_Skinned shadow pass.
+// Keep in sync with the default 3D_Skinned shadow pass
 static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
 static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
@@ -116,9 +117,8 @@ auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpr
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The model origin is not required to lie inside a tight frame: an animation or attached effect may put the
-    // complete visible envelope on one side of the root. Treat the pivot as a signed root-relative interval anchor;
-    // only the frame dimensions themselves must be positive.
+    // An animation or attached effect may put the whole visible envelope on one side of the root, so the pivot is
+    // a signed root-relative anchor and only the frame dimensions must be positive
     auto is_valid = [](const ModelSpriteFramePlacement& placement) noexcept { return placement.Size.width > 0 && placement.Size.height > 0; };
 
     if (!is_valid(current) || !is_valid(required)) {
@@ -154,13 +154,8 @@ auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<Mode
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The view box anchors names and UI, so it is the model's stable idle silhouette rather than the pose of the moment:
-    // a raised weapon or a swung arm must not push the name up, and a box derived from the live pose would drift.
-    // A pose that puts the critter *lower* is the one case that must be followed - a corpse or a prone body would
-    // otherwise wear its name at standing height, far above itself. Compare the projected tops after the same base
-    // transforms as the eventual view layout: imported models may rotate their source Y away from screen-up, so raw
-    // model-space Max.y is not a height. Both inputs are baked per clip, so the choice is fixed for a given animation
-    // and never accumulates.
+    // Names anchor to the stable idle silhouette so a raised weapon cannot lift them, except for a pose that sits
+    // lower; tops are compared after the base transforms, since an imported model's raw Max.y is not a height
     if (!active_animation_bounds || !IsValidModelBounds(*active_animation_bounds) || !IsValidModelBounds(idle_bounds)) {
         return idle_bounds;
     }

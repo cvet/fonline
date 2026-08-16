@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -42,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // The global-map group fan-out is a script-driven follow-up to initial info, so its cover contract is pinned
-// through the script export itself.
+// through the script export itself
 void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self);
 
 namespace
@@ -624,7 +625,7 @@ namespace EntityLifecycle
     }
 
     // A map spectator is an ordinary Player entity, so the fixture only needs the connection shell — not a
-    // login. The caller covers the returned player explicitly through its own SyncEntities call.
+    // login. The caller covers the returned player explicitly through its own SyncEntities call
     static auto MakeSpectatorPlayer(ptr<ServerEngine> server) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
@@ -1335,7 +1336,7 @@ TEST_CASE("CritterCppApi")
     SECTION("CritterDestroyState")
     {
         // Hold a ref so the critter object survives DestroyCritter (which drops the manager's last
-        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object
         auto cr = server->CreateCritter(fn("TestCritter"), false).hold_ref();
 
         CHECK_FALSE(cr->IsDestroyed());
@@ -1346,9 +1347,8 @@ TEST_CASE("CritterCppApi")
 
 // ========== Independent-Root Cover Enumeration Tests ==========
 
-// A global-map group member and a map spectator are entity-lock roots of their own: neither is reachable
-// through the map/location ancestry the caller already covers, so the engine has to let the caller enumerate
-// them before it can acquire the cover the native fan-outs then validate.
+// Group members and spectators are entity-lock roots outside the caller's ancestry, so the engine must let them
+// be enumerated before the cover the native fan-outs validate can be acquired
 TEST_CASE("IndependentRootCoverEnumeration")
 {
     auto settings = MakeSettings();
@@ -1383,24 +1383,24 @@ TEST_CASE("IndependentRootCoverEnumeration")
         CHECK(std::ranges::find(ids, leader->GetId()) != ids.end());
         CHECK(std::ranges::find(ids, member->GetId()) != ids.end());
 
-        // One group object is shared by every member, so each of them reports the same membership and revision.
+        // One group object is shared by every member, so each of them reports the same membership and revision
         uint64_t member_revision = 0;
         CHECK(member->GetGlobalMapGroupIds(member_revision).size() == ids.size());
         CHECK(member_revision == revision);
 
-        // Reading again without a membership change must not move the revision.
+        // Reading again without a membership change must not move the revision
         uint64_t repeated_revision = 0;
         CHECK(leader->GetGlobalMapGroupIds(repeated_revision).size() == 2);
         CHECK(repeated_revision == revision);
 
-        // Leaving is a membership change: the reported ids shrink and the revision advances.
+        // Leaving is a membership change: the reported ids shrink and the revision advances
         server->MapMngr.RemoveCritterFromMap(member, nullptr);
 
         uint64_t shrunk_revision = 0;
         CHECK(leader->GetGlobalMapGroupIds(shrunk_revision) == vector<ident_t> {leader->GetId()});
         CHECK(shrunk_revision > revision);
 
-        // A critter with no global-map group has nothing to enumerate.
+        // A critter with no global-map group has nothing to enumerate
         uint64_t detached_revision = 42;
         CHECK(member->GetGlobalMapGroupIds(detached_revision).empty());
         CHECK(detached_revision == 0);
@@ -1419,7 +1419,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
         auto ctx = server->RequireCurrentSyncContext();
 
-        // Bootstrap: with nothing but the critter itself covered, the enumeration still reports the group.
+        // Bootstrap: with nothing but the critter itself covered, the enumeration still reports the group
         small_vector<ptr<ServerEntity>, 1> leader_only_cover {leader};
         ctx->SyncEntities(leader_only_cover);
 
@@ -1428,10 +1428,10 @@ TEST_CASE("IndependentRootCoverEnumeration")
         REQUIRE(ids.size() == 2);
         REQUIRE(std::ranges::find(ids, member->GetId()) != ids.end());
 
-        // The group fan-out validates every group member, which that minimal cover does not include.
+        // The group fan-out validates every group member, which that minimal cover does not include
         CHECK_THROWS_WITH(leader->Send_AddCritter(member), Catch::Matchers::ContainsSubstring("Entity access without sync"));
 
-        // Covering exactly what the enumeration reported makes the same fan-out legal.
+        // Covering exactly what the enumeration reported makes the same fan-out legal
         small_vector<ptr<ServerEntity>, 2> group_cover {leader, member};
         ctx->SyncEntities(group_cover);
         CHECK_NOTHROW(leader->Send_AddCritter(member));
@@ -1458,7 +1458,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         auto ctx = server->RequireCurrentSyncContext();
 
         // The critter to attach is chosen inside the login callback, so the travelling companion is an
-        // independent root the caller could not pre-cover. Initial info must work with the attach pair alone.
+        // independent root the caller could not pre-cover. Initial info must work with the attach pair alone
         small_vector<ptr<ServerEntity>, 2> attach_cover {player, cr};
         ctx->SyncEntities(attach_cover);
 
@@ -1468,7 +1468,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         test_connection->Dispatch();
 
         CHECK(player->GetControlledCritter() == cr.get());
-        // Only the chosen critter itself: the companion is delivered later by Critter.SendGlobalMapGroupInfo.
+        // Only the chosen critter itself: the companion is delivered later by Critter.SendGlobalMapGroupInfo
         CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 1);
 
         server->SwitchPlayerCritter(player, nullptr);
@@ -1500,13 +1500,13 @@ TEST_CASE("IndependentRootCoverEnumeration")
         test_connection->Dispatch();
         test_connection->ResetSentPacketCount();
 
-        // The export validates the group instead of acquiring it, so an incomplete cover sends nothing at all.
+        // The export validates the group instead of acquiring it, so an incomplete cover sends nothing at all
         ctx->SyncEntities(attach_cover);
         CHECK_THROWS_WITH(Server_Critter_SendGlobalMapGroupInfo(cr), Catch::Matchers::ContainsSubstring("Entity access without sync"));
         test_connection->Dispatch();
         CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 0);
 
-        // Covering exactly what Critter.GetGlobalMapCritterIds reports delivers the travelling companion.
+        // Covering exactly what Critter.GetGlobalMapCritterIds reports delivers the travelling companion
         small_vector<ptr<ServerEntity>, 3> group_cover {player, cr, group_member};
         ctx->SyncEntities(group_cover);
         CHECK_NOTHROW(Server_Critter_SendGlobalMapGroupInfo(cr));
@@ -1536,16 +1536,16 @@ TEST_CASE("IndependentRootCoverEnumeration")
         REQUIRE(spectators.size() == 1);
         CHECK(spectators.front() == spectator);
 
-        // The spectator is not a map descendant, so the map tree cover alone cannot eject it.
+        // The spectator is not a map descendant, so the map tree cover alone cannot eject it
         small_vector<ptr<ServerEntity>, 2> tree_only_cover {loc, map};
         ctx->SyncEntities(tree_only_cover);
         CHECK_THROWS_WITH(server->MapMngr.DestroyLocation(loc), Catch::Matchers::ContainsSubstring("Entity access without sync"));
 
-        // Detach the spectator from the location that stayed half-destroyed by that throw-as-signal failure.
+        // Detach the spectator from the location that stayed half-destroyed by that throw-as-signal failure
         ctx->SyncEntities(full_cover);
         spectator->ResetViewMap();
 
-        // The same destroy succeeds once the reported spectator is part of the cover.
+        // The same destroy succeeds once the reported spectator is part of the cover
         auto covered_loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
         auto covered_map = covered_loc->GetMapByIndex(0);
         REQUIRE(static_cast<bool>(covered_map));
@@ -1586,7 +1586,7 @@ TEST_CASE("ItemCppApi")
     SECTION("ItemCreationAndDestruction")
     {
         // Hold a ref so the item survives DestroyItem (which drops the manager's last reference and
-        // frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        // frees it) and the post-destroy IsDestroyed() check reads a valid object
         auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr).hold_ref();
 
         CHECK(item->GetId() != ident_t {});
@@ -1677,7 +1677,7 @@ TEST_CASE("LocationCppApi")
     SECTION("CreateAndDestroyLocation")
     {
         // Hold a ref so the location survives DestroyLocation (which drops the manager's last
-        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation")).hold_ref();
 
         CHECK(loc->GetId() != ident_t {});
@@ -2096,7 +2096,7 @@ TEST_CASE("PlayerRegistrationCppApi")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server and the later SyncEntities cover holds only
-                    // the map subtree, so the caller re-establishes the location cover for the destroy.
+                    // the map subtree, so the caller re-establishes the location cover for the destroy
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -2155,7 +2155,7 @@ TEST_CASE("PlayerRegistrationCppApi")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server and the later SyncEntities cover holds only
-                    // the map subtree, so the caller re-establishes the location cover for the destroy.
+                    // the map subtree, so the caller re-establishes the location cover for the destroy
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }

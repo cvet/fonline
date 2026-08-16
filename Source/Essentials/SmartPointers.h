@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -72,7 +72,7 @@ template<typename T>
 class nptr;
 
 // True for the borrow pointer-wrapper vocabulary (ptr/nptr/refcount_ptr/refcount_nptr).
-// Used by marshalling layers to treat a wrapped entity pointer like the raw pointer it borrows.
+// Used by marshalling layers to treat a wrapped entity pointer like the raw pointer it borrows
 template<typename>
 inline constexpr bool is_borrow_pointer_wrapper_v = false;
 template<typename T>
@@ -98,7 +98,7 @@ template<typename T>
 class shared_ptr;
 
 // Owning smart pointers (refcount_ptr/unique_ptr/shared_ptr/unique_del_ptr and their nullable variants)
-// implicitly convert to a borrowed view (ptr/nptr) via ptr's/nptr's converting constructors below.
+// implicitly convert to a borrowed view (ptr/nptr) via ptr's/nptr's converting constructors below
 template<typename>
 inline constexpr bool is_nonnull_owning_pointer_v = false;
 template<typename T>
@@ -122,7 +122,7 @@ template<typename T>
 inline constexpr bool is_owning_pointer_v<shared_ptr<T>> = true;
 
 // The nullable borrow wrapper. A guard-checked nptr implicitly narrows to a non-null ptr (with an always-on
-// non-null assert) through ptr's converting constructor below, so a checked nptr needs no manual .as_ptr().
+// non-null assert) through ptr's converting constructor below, so a checked nptr needs no manual .as_ptr()
 template<typename>
 inline constexpr bool is_nptr_v = false;
 template<typename T>
@@ -210,7 +210,7 @@ public:
     }
 
     // Implicit non-null borrow from an owning pointer: reads out the raw pointer without taking ownership and
-    // asserts non-null exactly like as_ptr() did. Const-propagating through the owner's get().
+    // asserts non-null exactly like as_ptr() did. Const-propagating through the owner's get()
     template<typename Owner>
         requires(is_owning_pointer_v<std::remove_cvref_t<Owner>> && std::is_convertible_v<decltype(std::declval<Owner>().get()), T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
@@ -220,10 +220,8 @@ public:
         FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
     }
 
-    // Implicit narrow from a nullable borrow (nptr): reads out the pointer and asserts non-null at the conversion
-    // point, exactly like the raw-pointer constructor above. This lets a guard-checked nptr flow straight into a
-    // ptr<T> parameter/member/return without a manual .as_ptr(). Const-propagating and mutability-preserving through
-    // the source's get(), mirroring the owning-pointer borrow constructor: a const nptr<T> yields ptr<const T>.
+    // Implicit so a guard-checked nptr reaches a ptr<T> parameter without a manual .as_ptr(); non-null
+    // is asserted at the conversion point, and constness propagates from the source
     template<typename NPtr>
         requires(is_nptr_v<std::remove_cvref_t<NPtr>> && std::is_convertible_v<decltype(std::declval<NPtr>().get()), T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
@@ -263,7 +261,7 @@ public:
         return *_ptr;
     }
     // Pointer-to-member access. A raw `p->*pmf` expression is not a first-class value, so to support
-    // `(sp->*pmf)(args...)` the operator returns a small forwarding callable bound to the pointee.
+    // `(sp->*pmf)(args...)` the operator returns a small forwarding callable bound to the pointee
     template<typename M>
     [[nodiscard]] FO_FORCE_INLINE auto operator->*(M member) noexcept
     {
@@ -318,10 +316,8 @@ public:
         requires(dynamically_castable_to<T, const U>)
     FO_FORCE_INLINE auto dyn_cast() const noexcept -> nptr<const U>;
 
-    // Reinterpret the pointee type through void for low-level byte/ABI views (e.g. `ucolor` <-> `uint8_t`),
-    // replacing the `cast_from_void<U*>(cast_to_void(p.get()))` idiom. A `ptr<void>` source is also supported
-    // (`void` -> `U`, as `GetPtrAs<U>()` uses). Source-pointee constness is preserved, so this can never
-    // silently strip `const`.
+    // Replaces the `cast_from_void<U*>(cast_to_void(p.get()))` idiom for byte/ABI views; pointee
+    // constness is preserved, so it can never silently strip `const`
     template<typename U>
     FO_FORCE_INLINE auto reinterpret_as() const noexcept -> ptr<std::conditional_t<std::is_const_v<T>, const U, U>>
     {
@@ -335,7 +331,7 @@ public:
     }
 
     // Borrow this pointer as a raw opaque `void*` for immediate ABI handoff. `void*` is an opaque handle
-    // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did.
+    // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did
     [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
 
     template<typename U = T>
@@ -477,7 +473,7 @@ public:
     }
 
     // Implicit nullable borrow from any owning pointer (including the nullable refcount_nptr/unique_nptr): reads
-    // out the raw pointer without taking ownership. Const-propagating through the owner's get().
+    // out the raw pointer without taking ownership. Const-propagating through the owner's get()
     template<typename Owner>
         requires(is_owning_pointer_v<std::remove_cvref_t<Owner>> && std::is_convertible_v<decltype(std::declval<Owner>().get()), T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
@@ -558,9 +554,8 @@ public:
         return nptr<const U>(dynamic_cast<const U*>(_ptr));
     }
 
-    // Reinterpret the pointee type through void for low-level byte/ABI views, replacing the
-    // `cast_from_void<U*>(cast_to_void(p.get()))` idiom. Nullability and source-pointee constness are
-    // preserved (null reinterprets to null), so this can never silently strip `const`.
+    // Replaces the `cast_from_void<U*>(cast_to_void(p.get()))` idiom for byte/ABI views; null stays
+    // null and pointee constness is preserved, so it can never silently strip `const`
     template<typename U>
     FO_FORCE_INLINE auto reinterpret_as() const noexcept -> nptr<std::conditional_t<std::is_const_v<T>, const U, U>>
     {
@@ -574,7 +569,7 @@ public:
     }
 
     // Borrow this pointer as a raw opaque `void*` for immediate ABI handoff. `void*` is an opaque handle
-    // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did.
+    // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did
     [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
 
     template<typename U = T>
@@ -1460,9 +1455,8 @@ struct FO_NAMESPACE hashing::hash<FO_NAMESPACE refcount_nptr<T>>
 };
 FO_BEGIN_NAMESPACE
 
-// Shared-ownership control block: the strong count owns the object, the weak count owns the block.
-// destroy_object() is a virtual hook, so shared_ptr/weak_ptr never need the complete pointee type at
-// the destruction site (the same type erasure std::shared_ptr provides).
+// The strong count owns the object, the weak count owns the block. destroy_object() is virtual so the
+// destruction site never needs the complete pointee type
 class shared_ptr_control_block
 {
 public:
@@ -1900,9 +1894,8 @@ private:
     weak_ptr<T> _weakThis {};
 };
 
-// SafeAlloc::MakeShared wires the embedded weak reference right after construction through the public
-// weak-from-shared assignment; the second overload is the no-op fallback for types that do not derive
-// from enable_shared_from_this
+// Called by SafeAlloc::MakeShared right after construction; the second overload is the no-op fallback
+// for types that do not derive from enable_shared_from_this
 template<typename T, typename X>
 FO_FORCE_INLINE void init_shared_from_this_weak(const shared_ptr<T>& owner, enable_shared_from_this<X>* base) noexcept
 {

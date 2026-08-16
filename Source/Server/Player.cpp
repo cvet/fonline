@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -176,9 +176,7 @@ void Player::DetachCritter()
     }
 }
 
-// FO_TSA_NO_ANALYSIS: swaps this->_connection (guarded, held below) with other->_connection (guarded by the
-// other player's lock, which is deliberately not taken — see below); the cross-object guarded access cannot be
-// expressed to TSA.
+// FO_TSA_NO_ANALYSIS: TSA cannot express the deliberate cross-object connection swap
 void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
@@ -187,9 +185,8 @@ void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
     FO_VALIDATE_ENTITY_ACCESS_VALUE(other);
     FO_STRONG_ASSERT(other != this, "Player connection swap target is the same player");
 
-    // Exclude a concurrent lock-free send on this player while its connection pointer is swapped. `other` is the
-    // freshly-connected, not-yet-in-world player (reconnect, Server.cpp): it is in no critter's visible set and is
-    // no spectator, so it can never be a lock-free send target and needs no guard here.
+    // Exclude lock-free sends while swapping this player's connection.
+    // The not-yet-visible reconnect player cannot be a send target and needs no guard
     scoped_lock conn_lock {_connectionLock};
 
     std::swap(_connection, other->_connection);
@@ -763,7 +760,7 @@ void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outd
     FO_VALIDATE_ENTITY(NONE);
 
     // The out-buffer encrypt key must be installed on the same connection the answer was written to, so
-    // both steps happen under one connection-lock hold.
+    // both steps happen under one connection-lock hold
     scoped_lock conn_lock {_connectionLock};
 
     {

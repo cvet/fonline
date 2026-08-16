@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -646,13 +646,13 @@ namespace LocEntity
  )" + R"(
     // ========== Load/Unload Critter ==========
 
-    // Plain void callback resolved by the native time-event tests through Game.FindFunc.
+    // Plain void callback resolved by the native time-event tests through Game.FindFunc
     void OnUnloadTimer()
     {
     }
 
     // Self-entity callbacks the native time-event tests fire through the manager. They record their
-    // effect on the critter's LookDistance so C++ can observe that the dispatch really happened.
+    // effect on the critter's LookDistance so C++ can observe that the dispatch really happened
     void OnCritterTickTimer(Entity self)
     {
         Critter cr = cast<Critter>(self);
@@ -1629,9 +1629,8 @@ TEST_CASE("LoadUnloadCritter")
 
 TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 {
-    // Custom inner entities are written by one server and read back by the next one, and that read path -
-    // the inner-entities entry walk and the per-entity load - runs nowhere else in the suite: every other
-    // test in this file keeps the world in memory for the lifetime of one engine.
+    // The inner-entity read path runs nowhere else in the suite, because every other test here keeps the world in
+    // memory for one engine's lifetime
     auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_custom_entity_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(storage_dir, remove_error);
@@ -1699,9 +1698,8 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 
         hstring custom_type = server->Hashes.ToHashedString("CoverageTarget");
 
-        // Only the registry lookups are asserted here: reading an entity's properties needs that entity
-        // covered by the current sync context, and a test holding just the engine lock has no way to take
-        // a pre-existing entity into it
+        // Only registry lookups are asserted, because reading properties needs the entity covered and a test
+        // holding just the engine lock cannot take a pre-existing one into its context
         CHECK(server->EntityMngr.GetLocation(location_id) != nullptr);
         CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id) != nullptr);
         CHECK(server->EntityMngr.GetCustomEntity(custom_type, ident_t {}) == nullptr);
@@ -1915,7 +1913,7 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
         REQUIRE(timer_func);
 
         // The consuming call stays out of REQUIRE: the macro re-expands its argument in the
-        // never-executed while clause, which reads as a second use of the moved-from function.
+        // never-executed while clause, which reads as a second use of the moved-from function
         uint32_t event_id = server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {});
         REQUIRE(event_id != 0);
     }

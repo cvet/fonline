@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -158,15 +159,15 @@ TEST_CASE("DiskFileSystem")
         string root = strex("/data").combine_path("user").str();
         string nested_relative = strex("Resources").combine_path("Sub").str();
 
-        // Portable layout (empty root): the relative path is returned unchanged, written next to the exe.
+        // Portable layout (empty root): the relative path is returned unchanged, written next to the exe
         CHECK(fs_make_writable_path("", "Cache") == "Cache");
         CHECK(fs_make_writable_path("", nested_relative) == nested_relative);
 
-        // Installed layout: the relative path is layered under the writable root.
+        // Installed layout: the relative path is layered under the writable root
         CHECK(fs_make_writable_path(root, "Cache") == strex(root).combine_path("Cache").str());
         CHECK(fs_make_writable_path(root, nested_relative) == strex(root).combine_path(nested_relative).str());
 
-        // An already-absolute relative path is never relocated under the root, in either layout.
+        // An already-absolute relative path is never relocated under the root, in either layout
         string absolute_input = MakeTempTestDir("diskfs_writable_abs");
         CHECK(fs_is_absolute_path(absolute_input));
         CHECK(fs_make_writable_path(root, absolute_input) == absolute_input);
@@ -174,11 +175,8 @@ TEST_CASE("DiskFileSystem")
     }
 }
 
-// Windows and default macOS resolve names without regard to letter case while preserving the name an entry was
-// created with, so a rename that changes only case is invisible to every path-based check. Callers that address
-// files by exact name - the baker rewriting its output tree, the updater promoting a downloaded file - depend on
-// knowing which primitive lands the requested name and which keeps whatever is already there. These pin that
-// split on both filesystem kinds instead of leaving it to be rediscovered from a runtime failure.
+// Which primitive lands the requested name and which keeps whatever the entry is already called, on both
+// filesystem kinds — the split callers addressing files by exact name depend on (Docs/ConfigurationAndDataSources.md)
 static auto IsCaseInsensitiveFs(string_view dir) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -230,8 +228,7 @@ TEST_CASE("DiskFileSystemNameCase")
         REQUIRE(fs_rename(source_path, lower_path));
 
         // Renaming replaces the whole directory entry, so unlike an overwriting write it does establish the
-        // requested spelling. Updater::ReplaceFileSafely relies on exactly this: it moves the live file aside
-        // and renames the downloaded temp file into place, so a case-only content rename reaches the client.
+        // requested spelling — Updater::ReplaceFileSafely relies on exactly this
         CHECK(HasExactDirEntry(temp_dir, "data.txt"));
         REQUIRE(fs_read_file(lower_path).has_value());
         CHECK(*fs_read_file(lower_path) == "after");
@@ -282,9 +279,8 @@ TEST_CASE("DiskFileSystemNameCase")
         REQUIRE(fs_create_directories(upper_dir));
         REQUIRE(fs_create_directories(lower_dir));
 
-        // Creating a directory never re-spells an existing one, so a case-only rename of a content *directory*
-        // would keep the old spelling for every path underneath. Callers that need the exact name reconcile it;
-        // the baker does, in ReconcileStaleCasedOutputDirs.
+        // Creating a directory never re-spells an existing one, so a case-only rename of a content directory keeps
+        // the old spelling for every path underneath until a caller reconciles it, as the baker does
         CHECK(HasExactDirEntry(temp_dir, "Data"));
         CHECK(HasExactDirEntry(temp_dir, "data") == !case_insensitive);
 

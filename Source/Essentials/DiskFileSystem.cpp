@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "DiskFileSystem.h"
 #include "SafeArithmetics.h"
@@ -93,12 +94,12 @@ auto fs_make_writable_path(string_view user_writable_path, string_view relative)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Portable layout, or an already-absolute path: leave it as-is (written next to the exe / as given).
+    // Portable layout, or an already-absolute path: leave it as-is (written next to the exe / as given)
     if (user_writable_path.empty() || fs_is_absolute_path(relative)) {
         return string(relative);
     }
 
-    // Installed layout: layer the relative writable path under the writable root.
+    // Installed layout: layer the relative writable path under the writable root
     return strex(user_writable_path).combine_path(relative).str();
 }
 
@@ -294,7 +295,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    // FNV-1a 64.
+    // FNV-1a 64
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
@@ -337,7 +338,7 @@ auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    // FNV-1a 64.
+    // FNV-1a 64
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 

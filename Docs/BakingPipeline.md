@@ -757,6 +757,16 @@ baker, `ModelInfoBaker`, source loader, and client all enforce the applicable
 limits. Malformed resources therefore fail with contextual
 `DataReadingException` instead of allocation, out-of-bounds palette access, or
 recursive-stack failure.
+
+`ModelMeshBaker` also rejects a mesh node whose `geometry_to_world` determinant
+is negative. That is a node exported with a negative scale — a mirrored object —
+and the reflection flips surface orientation: stored normals point into the model
+and triangles wind the other way, so the shader lights the mesh from its inside
+while back-face culling drops the front faces, and the model renders flat black.
+The baker does not compensate for it. Flipping normals and winding at bake time
+would leave the broken source in the repository, where the next export and every
+other tool reading that file keep the reflection; the exporter is where a mirrored
+object has to be frozen back to a positive scale.
 Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
 envelopes below, a future big-endian mesh consumer requires a converted wire

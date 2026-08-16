@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -813,7 +813,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
     }
 
     if (has_value_ref) {
-        // Value-transforming setter: runs before the value is stored so it can rewrite prop_data.
+        // Value-transforming setter: runs before the value is stored so it can rewrite prop_data
         prop->AddSetter([=](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) mutable FO_DEFERRED {
             int32_t as_result = 0;
             FO_VERIFY_AND_THROW(entity, "Property setter target entity is null");
@@ -846,7 +846,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
     }
     else {
         // React-only setter: runs after the value is committed (post-setter), so the callback sees the new value
-        // and executes inside the writing caller's lock cover.
+        // and executes inside the writing caller's lock cover
         prop->AddPostSetter([=](nptr<Entity> entity, ptr<const Property>) mutable FO_DEFERRED {
             int32_t as_result = 0;
             FO_VERIFY_AND_THROW(entity, "Property setter target entity is null");

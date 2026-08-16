@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -307,13 +307,8 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
     return stored_func_desc;
 }
 
-// AngelScript passes reference parameters as a pointer on the stack: GetAddressOfArg() returns the
-// address of that stack slot (T**), while the unified FuncCallData slot contract (shared with the
-// managed backend and consumed by NativeDataCaller) is "address of the caller's variable" - the value
-// itself for primitives/enums/value types (T*) and the handle cell for object handles ('Type@&').
-// Mutability comes from the registration-time descriptor, which produced the declaration in the first
-// place (MakeScriptArgName emits '&'/'@&' exactly for mutable args), so no per-call type interrogation
-// is needed: mutable args resolve through GetArgAddress(), which returns the pointer held on the stack.
+// FuncCallData mutable slots address the caller's value or object-handle cell, not AngelScript's stack slot.
+// Registration descriptors identify mutable arguments, whose pointee comes from GetArgAddress
 static auto GetGenericArgSlot(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index, const ComplexTypeDesc& arg_type) -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();

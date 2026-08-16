@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -65,9 +65,8 @@ auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // The radius is a length in the emitter's own space, so it follows the placement's scale - the same scale the
-    // renderers apply to the sprite - but never its rotation: a camera-facing quad keeps the same screen footprint at
-    // every orientation.
+    // The radius follows the placement's scale but never its rotation, because a camera-facing quad keeps the
+    // same screen footprint at every orientation
     float32_t placement_scale = std::max({glm::length(vec3 {matrix[0]}), glm::length(vec3 {matrix[1]}), glm::length(vec3 {matrix[2]})});
 
     if (!std::isfinite(placement_scale) || placement_scale <= 0.0f) {

@@ -1,3 +1,36 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 #include "catch_amalgamated.hpp"
 
 #include "BaseLogging.h"
@@ -37,7 +70,7 @@ TEST_CASE("ExceptionHandling")
     SECTION("FormatStackTraceListsNewestCallFirst")
     {
         // Order matches the unified trace contract: provider emits most-recent first, so
-        // SecondFunc (the deeper call) appears before FirstFunc (its caller).
+        // SecondFunc (the deeper call) appears before FirstFunc (its caller)
         ScriptStackTraceLayer layer;
         layer.ScriptFrames.push_back({StackTraceFrame::FrameType::Script, "SecondFunc", "/tmp/second.cpp", 22});
         layer.ScriptFrames.push_back({StackTraceFrame::FrameType::Script, "FirstFunc", "/tmp/first.cpp", 11});
@@ -97,7 +130,7 @@ TEST_CASE("ExceptionHandling")
     SECTION("DerivedExceptionPreservesOwnNameMessageAndParams")
     {
         // Regression: a macro exception derived from another macro exception (not BaseEngineException
-        // directly) must still report its own name/message/params, with no stray null pushed into params.
+        // directly) must still report its own name/message/params, with no stray null pushed into params
         static_assert(std::is_base_of_v<ExceptionHandlingTestBaseException, ExceptionHandlingTestDerivedException>);
         static_assert(std::is_base_of_v<BaseEngineException, ExceptionHandlingTestDerivedException>);
 
@@ -343,9 +376,8 @@ TEST_CASE("CrashReporterHooks")
 
     SECTION("EverySignalAndSehCodeResolvesToAName")
     {
-        // The reporter must survive any code the platform hands it, including ones it does not know.
-        // Only the C-standard six exist everywhere; the rest are POSIX and are not declared by the MSVC
-        // runtime, so listing them unconditionally does not compile on Windows.
+        // Only the C-standard six signals exist everywhere, and the POSIX rest are undeclared by the MSVC runtime,
+        // so they cannot be listed unconditionally
         constexpr std::array KNOWN_SIGNALS = {
             SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM,
 #if !FO_WINDOWS

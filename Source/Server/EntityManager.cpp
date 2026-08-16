@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -366,10 +366,8 @@ auto EntityManager::GetItemsCount() const noexcept -> size_t
     return _allItems.size();
 }
 
-// Thread-safety analysis is disabled here: LoadEntities runs single-threaded during server init (before the worker
-// pool processes any entity), so it reads the registry maps without _registryLock and iterates them while calling
-// back into the engine (CallInit / ProcessVisible*), which itself re-locks the registry - holding the lock across
-// that would self-deadlock. See Engine/Docs/ThreadSafetyAnalysis.md.
+// Runs single-threaded during init and calls back into the engine, which re-locks the registry, so holding
+// `_registryLock` across it would self-deadlock (Docs/ThreadSafetyAnalysis.md)
 void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
@@ -687,9 +685,8 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
         // Inner entities
         LoadInnerEntities(cr, is_error);
 
-        // Give scripts a fully restored critter before it is attached to a map or exposed through
-        // world-entry and regular initialization events. This is the persistence-migration boundary.
-        // Player-bound critters are marked before the event so handlers observe the real controllable state.
+        // The persistence-migration boundary: scripts see a fully restored critter before any map attachment or
+        // world-entry event, with player binding already marked so handlers see the real state
         if (!is_error) {
             ValidateEntityAccess(cr);
 
@@ -922,9 +919,8 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
 
         hstring proto_id = _engine->Hashes.ToHashedString(proto_name);
 
-        // A proto whose migration rule resolves to the "Remove" sentinel was deleted on purpose: skip
-        // the entity cleanly (without is_error) so callers drop it instead of failing the whole load.
-        // A genuinely missing proto (no rule) keeps proto_id and surfaces later as proto-not-found.
+        // A proto removed on purpose by a migration rule skips cleanly so callers drop the entity, while a
+        // genuinely missing one keeps its id and surfaces later as proto-not-found
         if (auto migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && migrated.value() == _removeMigrationReplacement) {
             WriteLog(LogType::Info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
             return {};
@@ -1077,7 +1073,7 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
     FO_STACK_TRACE_ENTRY();
 
     // Connection shells are covered before publication. Registration validates that caller-owned
-    // cover; it is not a trusted fresh-entity publication boundary.
+    // cover; it is not a trusted fresh-entity publication boundary
     ValidateEntityAccess(player);
 
     ident_t assigned_id = player->GetId();
@@ -1415,7 +1411,7 @@ void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Caller must hold _registryLock (unique).
+    // Caller must hold _registryLock (unique)
     if (!entity->GetId()) {
         int64_t id_num = ++_lastEntityId;
         ident_t id {numeric_cast<int64_t>(id_num)};
@@ -1444,7 +1440,7 @@ void EntityManager::UnregisterEntity(ptr<ServerEntity> entity, bool delete_from_
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Caller must hold _registryLock (unique) for the erase portion.
+    // Caller must hold _registryLock (unique) for the erase portion
     ident_t entity_id = entity->GetId();
     hstring type_name_plural = entity->GetTypeNamePlural();
     bool is_persistent = entity->IsPersistent();
@@ -1452,7 +1448,7 @@ void EntityManager::UnregisterEntity(ptr<ServerEntity> entity, bool delete_from_
 
     auto it = _allEntities.find(entity_id);
     FO_STRONG_ASSERT(it != _allEntities.end(), "Lookup failed in all entities");
-    _allEntities.erase(it); // This may be the last ptr to the entity, so it may be destroyed here.
+    _allEntities.erase(it); // This may be the last ptr to the entity, so it may be destroyed here
 
     if (delete_from_db && is_persistent) {
         _engine->DbStorage.Delete(type_name_plural, entity_id);
@@ -1505,7 +1501,7 @@ void EntityManager::DestroyInnerEntities(ptr<Entity> holder)
             }
         }
 
-        // Each pass must strictly reduce the holder's remaining inner entities; non-convergence is corruption.
+        // Each pass must strictly reduce the holder's remaining inner entities; non-convergence is corruption
         size_t remaining_deps = holder->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Inner-entity destruction made no progress", holder->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
@@ -1554,7 +1550,7 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
     auto entity = ConstructCustomEntity(type_name, pid);
 
     // Publication makes the entity globally reachable and is validated against its final holder
-    // linkage, so the parent, the nearest-holder lock and the holder entry are established first.
+    // linkage, so the parent, the nearest-holder lock and the holder entry are established first
     AttachCustomEntityToHolder(entity, holder);
     entity->SetCustomHolderEntry(entry);
 
@@ -1594,9 +1590,8 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> ptr<Cu
     return entity;
 }
 
-// Binds a still-unpublished custom entity to its holder: a ServerEntity holder supplies the parent link
-// and its own lock, the engine singleton supplies its EntityLock (the same one Game.Lock()/Unlock() use)
-// without a parent link, so the validator's chain walk finds a real cover on the entity itself.
+// A ServerEntity holder supplies both the parent link and its lock, while the engine singleton supplies only
+// its lock, so either way the validator's chain walk finds a real cover on the entity
 void EntityManager::AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1714,7 +1709,7 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
         }
 
         // The loaded document carries the holder entry, but the parent link and the nearest-holder lock
-        // still have to be in place before publication makes the entity globally reachable.
+        // still have to be in place before publication makes the entity globally reachable
         AttachCustomEntityToHolder(entity, holder);
 
         RegisterCustomEntity(entity);
@@ -1765,7 +1760,7 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); entity->HasInnerEntities();) {
         DestroyInnerEntities(entity);
 
-        // Each pass must strictly reduce the entity's remaining inner entities; non-convergence is corruption.
+        // Each pass must strictly reduce the entity's remaining inner entities; non-convergence is corruption
         size_t remaining_deps = entity->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Custom-entity destruction made no progress", entity->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;

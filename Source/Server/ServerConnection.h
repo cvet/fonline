@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -132,7 +132,7 @@ public:
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
     // These factories deliberately return a guard that still holds the buffer lock (released when the caller's
-    // accessor leaves scope); TSA cannot express "returns holding a lock", so the trivial bodies are exempt.
+    // accessor leaves scope); TSA cannot express "returns holding a lock", so the trivial bodies are exempt
     OutBufAccessor WriteMsg(NetMessage msg) FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), msg); }
     OutBufAccessor WriteBuf() FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), std::nullopt); }
     InBufAccessor ReadBuf() FO_TSA_NO_ANALYSIS { return InBufAccessor(make_ptr(this)); }

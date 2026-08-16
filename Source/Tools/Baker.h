@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -113,7 +113,7 @@ public:
 
 private:
     // Per-pack baking state, and the two views of "what this run produced" that the output sweeps consume.
-    // Both are defined in the translation unit: they are pure implementation detail of one bake.
+    // Both are defined in the translation unit: they are pure implementation detail of one bake
     struct PackBakeContext;
     struct ExpectedOutputs;
 

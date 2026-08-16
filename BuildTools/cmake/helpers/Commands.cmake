@@ -40,11 +40,8 @@ macro(StringToUpper input outputVar)
 	string(TOUPPER "${input}" ${outputVar})
 endmacro()
 
-# Reads the environment variable with the given name, parses it as a boolean and
-# stores the result in a CMake variable of the same name. Accepted truthy spellings:
-# 1 / ON / TRUE / YES; falsy: 0 / OFF / FALSE / NO (case-insensitive). Empty value
-# falls back to defaultValue; any other value aborts the configure step via
-# AbortMessage. Useful for opt-in feature gates driven by CI env vars.
+# Parse a named environment variable into a same-named CMake boolean.
+# Empty uses defaultValue; unsupported spellings abort configuration
 macro(ParseBoolEnv name defaultValue)
 	set(${name} ${defaultValue})
 	set(_parseBoolEnvRaw "$ENV{${name}}")

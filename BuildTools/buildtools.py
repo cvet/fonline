@@ -196,7 +196,7 @@ DOWNLOAD_RETRY_DELAY_SEC = 3
 # and optional `[]` (covers `Critter`, `Critter[]`, `TutorialSystem::Point`,
 # etc.) or a lowercase primitive followed by `[]` (covers `hstring[]`,
 # `int[]`, `string[]` â€" array-of-primitive is itself a handle and can carry
-# `?`, but the bare primitive cannot, so the `[]` is mandatory here).
+# `?`, but the bare primitive cannot, so the `[]` is mandatory here)
 _FOS_NULLABLE_TYPE = r'(?:[A-Z][\w:]*(?:\[\])?|[a-z][\w]*\[\])'
 FOS_NULLABLE_SUFFIX_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*(?:[(,)=;]|\[\]))'
@@ -204,7 +204,7 @@ FOS_NULLABLE_SUFFIX_RE = re.compile(
 # Inside function bodies we also need to repair uninitialized declarations
 # `Critter ? targetCr;` â€" the trailing `;` (no `=`) form. A ternary always
 # carries `:` between its branches and never `;` directly after the candidate
-# identifier, so adding `;` here doesn't collide with ternary parsing.
+# identifier, so adding `;` here doesn't collide with ternary parsing
 FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*[=;])'
 )
@@ -216,7 +216,7 @@ FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 # `[]`, and a `:` whose left side is an argument-position identifier, are all
 # unambiguous markers, so the inserted spacing is collapsed back. String / char
 # literals and comments are masked first so literal text is never rewritten. Kept
-# in sync with `Tools/Formatter/format_project.py` in the embedding project.
+# in sync with `Tools/Formatter/format_project.py` in the embedding project
 _FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
 _FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
 FOS_NULLABLE_ANGLE_CALL_RE = re.compile(
@@ -274,7 +274,7 @@ LINUX_PACKAGE_GROUPS = {
 		'1',
 		# wixl builds the Windows MSI installer (Wix pack) on the Linux package runner. On
 		# Debian/Ubuntu it ships in its own "wixl" package — the "msitools" package only carries
-		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl.
+		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl
 		['wixl'],
 	),
 }
@@ -410,7 +410,7 @@ def make_cmake_build_cmd(
 		command.extend(['--target', target_name])
 	# CMake `--parallel` without a value translates to `make -j` (unbounded) for the Unix Makefiles
 	# generator and ignores CMAKE_BUILD_PARALLEL_LEVEL. Always pick an explicit number so callers
-	# that need a memory-safe cap (e.g. GCC Debug on small CI runners) can set it via env.
+	# that need a memory-safe cap (e.g. GCC Debug on small CI runners) can set it via env
 	env_for_lookup = env if env is not None else os.environ
 	parallel_jobs = env_for_lookup.get('CMAKE_BUILD_PARALLEL_LEVEL')
 	if not parallel_jobs:
@@ -731,9 +731,8 @@ def copy_directory(source_path: str | Path, target_path: str | Path, dirs_exist_
 def download_file(url: str, target_path: Path, label: str) -> None:
 	log(f'Download {label}:', url)
 
-	# Release CDNs drop connections when several jobs start at once, and every caller here fetches a large
-	# archive the rest of the job depends on, so one hiccup must not fail the build. xwin already retries
-	# its own downloads (XWIN_HTTP_RETRY_COUNT); this covers fetching xwin itself and the Android archives.
+	# Release CDNs drop connections when several jobs start at once and every caller here fetches an archive the
+	# rest of the job depends on; xwin retries its own downloads, this covers fetching xwin and the Android archives
 	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
 		try:
 			urllib.request.urlretrieve(url, target_path)
@@ -1046,7 +1045,7 @@ def upload_codecov(build_dir: Path, token: str) -> None:
 def ensure_llvm_apt_source(workspace: Path, check_only: bool) -> None:
 	# Pin the LLVM apt.llvm.org repository to the same major as the project's
 	# minimum-required Clang (currently 20). Idempotent — llvm.sh detects an
-	# existing sources.list entry and reuses it.
+	# existing sources.list entry and reuses it
 	marker_version = '20-1'
 	if is_workspace_part_ready(workspace, 'llvm-apt-source', marker_version):
 		return
@@ -1097,7 +1096,7 @@ _LLVM_VERSIONED_RE = re.compile(r'-(\d+)$')
 
 def _pkg_needs_llvm_apt_source(package_name: str) -> bool:
 	# Any package ending in -<digits> coming from LLVM-versioned apt set
-	# (clang-20, llvm-20, lld-20, clang-tools-20, ...) needs apt.llvm.org.
+	# (clang-20, llvm-20, lld-20, clang-tools-20, ...) needs apt.llvm.org
 	match = _LLVM_VERSIONED_RE.search(package_name)
 	if not match:
 		return False
@@ -1131,7 +1130,7 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 	if os.name == 'nt':
 		# No explicit -G: let CMake pick the newest installed Visual Studio (same as
-		# make_windows_configure_cmd), so the toolset workspace follows the box's VS version.
+		# make_windows_configure_cmd), so the toolset workspace follows the box's VS version
 		run([
 			'cmake',
 			'-A',
@@ -1739,7 +1738,7 @@ def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	# multi-GB link step; on the GitHub-hosted Linux runner (4 vCPU, 16 GB RAM) the full-parallel
 	# value trips the cgroup OOM killer for the heavier targets (all linux-gcc-*
 	# heavy variants, code-coverage). Cap concurrency on GitHub Actions only — local boxes have
-	# plenty of headroom and benefit from full parallelism.
+	# plenty of headroom and benefit from full parallelism
 	if build_env.get('GITHUB_ACTIONS') == 'true':
 		build_env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
 	return build_env
@@ -1774,7 +1773,7 @@ def make_platform_build_flag_args(platform_name: str, target_name: str, config: 
 		return build_flag_args(target_name, config=config)
 	if platform_name.startswith('win') and os.name != 'nt':
 		# Cross-compile path uses the Ninja single-config generator; CMAKE_BUILD_TYPE
-		# must be set at configure time.
+		# must be set at configure time
 		return build_flag_args(target_name, config=config)
 	return build_flag_args(target_name)
 
@@ -1899,7 +1898,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 	# Wipe stale CMake state when the cached compiler no longer matches what
 	# make_platform_configure_env wants to inject; otherwise CMake silently keeps
 	# the old compiler (e.g. a previously-cached clang-18 after the project bumps
-	# to clang-20) and the version gate trips at configure time.
+	# to clang-20) and the version gate trips at configure time
 	build_env = make_platform_configure_env(platform_name, 'clang')
 	if _cached_compiler_mismatch(build_dir, build_env):
 		log(f'Reset stale build dir {build_dir} (cached compiler differs from current toolchain)')
@@ -1910,7 +1909,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 	# San_Memory needs the MSan-instrumented libc++ prefix at configure time (the build embeds an
 	# rpath to it, so the resulting binary needs no runtime LD_LIBRARY_PATH). The workspace part is
 	# prepared separately (prepare-workspace msan-libcxx); mirror what run_validation() passes so
-	# `build <platform> <target> San_Memory*` works the same as the validate path.
+	# `build <platform> <target> San_Memory*` works the same as the validate path
 	if config.startswith('San_Memory'):
 		extra_cmake_args.append(f'-DFO_MSAN_LIBCXX_ROOT={to_cmake_path(resolve_msan_libcxx_root(env))}')
 
@@ -2039,7 +2038,7 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
 	# dotnet/runtime build expects ARMv7 32-bit as 'arm', but our project-wide arch
 	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
-	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent.
+	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent
 	dotnet_runtime_arch = 'arm' if arch == 'arm32' else arch
 	triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
 	workspace = Path(env['FO_WORKSPACE'])
@@ -2085,7 +2084,7 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 def discover_clang_format() -> str:
 	# An embedding project can point BuildTools at a specific clang-format binary
 	# (e.g. a bundled one) through FO_CLANG_FORMAT; it still has to satisfy the
-	# version-20 gate below. When unset, fall back to the system PATH lookup.
+	# version-20 gate below. When unset, fall back to the system PATH lookup
 	override = os.environ.get('FO_CLANG_FORMAT', '').strip()
 	candidates = [override] if override else []
 	candidates.extend(shutil.which(executable) for executable in ('clang-format-20', 'clang-format'))
@@ -2237,7 +2236,7 @@ def _split_outside_function_bodies(text: str) -> list[tuple[int, int, bool]]:
 
 def fix_fos_nullable_suffix(text: str) -> str:
 	# Mask string/char literals and comments so none of the repairs below touch
-	# literal text (e.g. a UI string that happens to contain `(name : value)`).
+	# literal text (e.g. a UI string that happens to contain `(name : value)`)
 	stash: list[str] = []
 
 	def _stash(match: 're.Match[str]') -> str:
@@ -2257,14 +2256,14 @@ def fix_fos_nullable_suffix(text: str) -> str:
 		out.append(chunk)
 	result = ''.join(out)
 	# Repair nullable markers inside template / cast angle brackets (call form first
-	# so the space before a call's `(` is removed, then the bare declaration form).
+	# so the space before a call's `(` is removed, then the bare declaration form)
 	result = FOS_NULLABLE_ANGLE_CALL_RE.sub(lambda m: _fos_collapse_nullable_angle(m, '('), result)
 	result = FOS_NULLABLE_ANGLE_RE.sub(lambda m: _fos_collapse_nullable_angle(m, ''), result)
-	# Reattach the bracket nullable-element array marker (`Item ? []` -> `Item?[]`).
+	# Reattach the bracket nullable-element array marker (`Item ? []` -> `Item?[]`)
 	result = FOS_NULLABLE_BRACKET_RE.sub(r'\1?[]', result)
-	# Drop the space clang-format inserts before a named call argument's `:`.
+	# Drop the space clang-format inserts before a named call argument's `:`
 	result = FOS_NAMED_ARG_RE.sub(r'\1:', result)
-	# Restore the masked literals/comments.
+	# Restore the masked literals/comments
 	result = FOS_STASH_RE.sub(lambda m: stash[int(m.group(1))], result)
 	return result
 
@@ -2349,7 +2348,7 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 			'-BuildRoot',
 			# Kept deliberately short: Effekseer nests its own ExternalProject trees (ThirdParty/Build/<lib>/src/
 			# ExternalProject_<lib>-build/CMakeFiles/CMakeScratch/TryCompile-*/...) under this root, and with a
-			# descriptive name the deepest MSBuild tracker log exceeded the 260-character Windows path limit.
+			# descriptive name the deepest MSBuild tracker log exceeded the 260-character Windows path limit
 			workspace / 'aux-builds' / 'efk',
 			'-OutputPath',
 			output / 'Binaries' / 'EffekseerEditor-Windows-win64',

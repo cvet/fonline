@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -406,12 +406,8 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
 
     auto load_spk = [&spark_io](const vector<uint8_t>& binary) -> SPK::Ref<SPK::System> { return spark_io.loadFromBuffer("spk", ptr<const uint8_t> {binary.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(binary.size())); };
 
-    // The baker simulates the effect and records its extent so the runtime frames an emitting instance from a static
-    // measurement instead of computing an axis-aligned bounding box every frame. Position extent and billboard radius
-    // are recorded apart: the fixture emits one motionless particle at the origin from a point zone, so its position
-    // box is degenerate and the whole extent lives in the quad radius. That radius is the group's graphical radius
-    // (default 1) times the renderer's quad diagonal, sqrt(1.5^2 + 2^2) = 2.5 - it must not leak into the box, because
-    // the runtime transforms the box with the emitter's world placement but never scales the quad.
+    // The fixture emits one motionless particle, so its position box is degenerate and the whole extent must land in
+    // the quad radius, which the runtime never scales with the emitter placement
     SECTION("BakerComputesAndStoresBoundsFromSimulation")
     {
         TestRig rig;
@@ -440,7 +436,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     }
 
     // An explicit box must survive the binary save/load unchanged so the runtime reads back exactly what the baker
-    // measured.
+    // measured
     SECTION("ExplicitBoundsSurviveBinaryRoundtrip")
     {
         TestRig rig;
@@ -476,7 +472,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     }
 
     // Baked bounds are mandatory: a particle system that never emits cannot be measured, so the baker rejects it
-    // rather than shipping a system without a frame extent.
+    // rather than shipping a system without a frame extent
     SECTION("RejectsSystemThatEmitsNoParticles")
     {
         TestRig rig;
@@ -488,7 +484,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     }
 
     // A fully transparent particle draws nothing, so it must not reserve frame space. Measuring it would inflate every
-    // effect whose colour graph fades out at the end of life, where the particle is also at its largest.
+    // effect whose colour graph fades out at the end of life, where the particle is also at its largest
     SECTION("RejectsSystemWhoseParticlesAreFullyTransparent")
     {
         TestRig rig;

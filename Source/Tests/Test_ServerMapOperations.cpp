@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -769,7 +770,7 @@ namespace MapOpsTest
         Critter? deadExact = map.GetCritterOnHex(cr.Hex);
         if (deadExact is null) return -5;
 
-        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
+        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area
         array<Critter> nearby = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (nearby.length() < 1) return -6;
 
@@ -862,7 +863,7 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
-        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
+        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area
         array<Critter> onHex = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (onHex.length() < 1) return -4;
 
@@ -914,12 +915,8 @@ namespace MapOpsTest
         return 0;
     }
 
-    // Map::GetCrittersInRadius walks the hex field only while GeometryHelper::HexesInRadius(radius) stays below the map
-    // critter count, and otherwise scans every critter and filters by distance arithmetic. The two arms answer through
-    // completely different machinery: the walk relies on the multihex field registration done by Map::SetMultihexCritter,
-    // the scan subtracts Multihex from the centre distance. HexesInRadius(2) is 19 on hexagonal geometry and 25 on square
-    // geometry, so this many fillers keep both a radius 1 and a radius 2 probe on the walk arm in either build. Fillers
-    // spawn far from every probe hex, so they never enter a result set.
+    // The radius query picks between a hex walk and a full scan by critter count, and the two arms answer through
+    // different machinery, so the filler count keeps both probes on the walk arm in either geometry
     const int HexWalkFillerCritterCount = 32;
 
     // Largest HexesInRadius(2) across the supported geometries (square: 1 + 8 * 3; hexagonal: 1 + 6 * 3)
@@ -932,9 +929,8 @@ namespace MapOpsTest
             if (filler is null) return false;
         }
 
-        // Pin the arm selector itself rather than trusting the filler count: GetCritters reports the very
-        // vector the predicate measures, so a live count above the hex threshold proves the radius 1 and
-        // radius 2 probes below cannot silently fall back to the full scan
+        // The selector is pinned rather than trusted: this is the very count the predicate measures, so both probes
+        // below provably stay on the walk arm
         return map.GetCritters(CritterFindType::Any).length() > uint(MaxHexesInRadius2);
     }
 
@@ -4609,10 +4605,8 @@ namespace MapOpsTest
         return 0;
     }
 
-    // ========== Script-boundary argument validation (2026-06-16 hardening) ==========
-    // Each function passes an out-of-range argument that must be rejected with an early, clearly
-    // messaged ScriptException at the script-export boundary, instead of reaching a deep numeric_cast
-    // / FO_VERIFY_* / std::string::resize. Driven by RUN_FUNC_THROWS, which asserts the message.
+    // Reject out-of-range arguments with a clear ScriptException at the export boundary.
+    // RUN_FUNC_THROWS pins each message
 
     bool ArgValidationDummyGag(Critter cr, Item item)
     {

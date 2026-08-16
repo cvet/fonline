@@ -39,7 +39,7 @@ EXCLUDED_SOURCE_FRAGMENTS = (
 # does not exist here. A file that already executes (any meaningful coverage) does NOT belong here
 # even if it is rendering-adjacent: its uncovered lines are ordinary untested code, and listing it
 # would both hide that work and remove its covered lines from the numerator. Re-check this table
-# against the report when adding to it.
+# against the report when adding to it
 ENVIRONMENT_EXCLUDED_SOURCES = (
     ("Client/SoundManager.cpp", "audio mixing and playback: needs an audio device"),
     ("Client/VideoClip.cpp", "video decoding and presentation: needs a video decoder"),

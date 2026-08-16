@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -1346,17 +1347,12 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    // Regression for the roster-switch server crash. That crash was Game.LoadCritter under a held
-    // Sync: the freshly loaded critter (a Critter owns its EntityLock from construction) was mutated
-    // via the LOCKED-validated SetMapId before registration pulled it into the sync context, and the
-    // LOCKED validation rejects an uncovered access (ScriptException). The crash MECHANISM
-    // is reproduced here without the DB (the in-memory test DB cannot reload an unloaded entity):
-    // creating a critter under a NON-EMPTY context runs the very same AddCritterToMap -> SetMapId on a
-    // fresh critter, so if registration ever stopped syncing fresh entities this would fail the call.
+    // Creating under a non-empty context must sync the fresh critter before AddCritterToMap calls SetMapId.
+    // This in-memory path pins the same cover requirement as Game.LoadCritter
     [[Async]]
     int TestCreateCritterUnderSyncContext()
     {
-        // Hold a lock on an unrelated anchor so the sync context is non-empty (the roster-switch condition).
+        // Hold an unrelated anchor so the sync context is non-empty
         Critter anchor = Game.CreateCritter("TestCritter".hstr(), false);
         if (anchor is null) return -1;
 
@@ -1364,14 +1360,13 @@ namespace ScriptMethodsTest
         if (!Game.IsEntityLocked(anchor)) return -2;
 
         // Create a fresh critter under the non-empty context. Registration must sync it before the
-        // strong-validated SetMapId, and it must be covered (own lock held) afterwards.
+        // strong-validated SetMapId, and it must be covered by its own lock afterwards
         Critter created = Game.CreateCritter("TestCritter".hstr(), false);
         if (created is null) return -3;
         if (!Game.IsEntityLocked(created)) return -4;
 
-        // Destroy while both critters are still covered ({anchor} from the explicit Sync, {created}
-        // from registration self-sync): destroying restricts the context, so a released-then-destroy
-        // sequence would leave the second critter uncovered.
+        // Destroy while explicit and registration covers remain active.
+        // Releasing first would leave the second destroy uncovered
         Game.DestroyCritter(created);
         Game.DestroyCritter(anchor);
 
@@ -1380,10 +1375,8 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    // A caller can test an entity for liveness and then call Game.Sync, but never both at once, so a
-    // concurrent destroy always fits between the two. The primitive therefore accepts an already
-    // destroyed handle and covers only what is still alive, instead of rejecting the argument and
-    // making the recoverable-false contract of its Sync::Lock-style wrappers impossible to honour.
+    // A concurrent destroy always fits between a liveness test and the call, so the primitive accepts a destroyed
+    // handle and covers what is still alive, keeping its wrappers' recoverable-false contract honourable
     [[Async]]
     int TestSyncAcceptsDestroyedEntity()
     {
@@ -2745,9 +2738,8 @@ namespace ScriptMethodsTest
         Game.Lock();
         Game.SyncRelease();
 
-        // SyncRelease drained both buckets (entity cover and the singleton), so no Unlock is
-        // needed. Re-cover each critter immediately before destroying: each destroy restricts
-        // the context to its own target, so consecutive uncovered destroys would be rejected.
+        // SyncRelease drained both regular and singleton buckets.
+        // Re-cover each critter because every destroy restricts the context to its target
         Game.Sync(cr1);
         Game.DestroyCritter(cr1);
         Game.Sync(cr2);

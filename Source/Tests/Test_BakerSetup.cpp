@@ -4,6 +4,32 @@
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -472,13 +498,8 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
 {
     using namespace BakerTests;
 
-    // Regression: a baker may read another baker's output while the data source is still discovering outputs.
-    // ModelInfoBaker builds a BakerClientEngine during the discovery pass, which reads the baked metadata back
-    // through the data source (re-entrancy). Reindex must publish the input resources before the discovery loop
-    // and each discovered output to the live index as it goes, so this mid-loop on-demand read resolves; before
-    // the fix it found neither and threw MetadataNotFoundException, crashing every standalone tool that boots a
-    // BakerDataSource. A .fo3d input is required to make ModelInfoBaker build the engine at all - the plain
-    // dependency-order case above uses a non-model placeholder, so ModelInfoBaker returns before that point.
+    // A baker reading another's output mid-discovery only resolves if inputs are published before the loop and
+    // outputs as they appear; the .fo3d input is what makes ModelInfoBaker build its engine at all
     string temp_dir = MakeTempBakerSetupDir("baker_data_source_reentrant_metadata");
     string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
     string model_desc_path = strex(temp_dir).combine_path("model_input/Test.fo3d").str();
@@ -497,7 +518,7 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     SetBakerSetupFileWriteTime(model_mesh_path, source_time);
 
     // RegisterClientStubMetadata reads the server, client and mapper metadata; write all three newer than the
-    // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery.
+    // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery
     array<string_view, 3> metadata_targets = {"server", "client", "mapper"};
 
     for (string_view target : metadata_targets) {
@@ -527,7 +548,7 @@ Bakers = {}
 
     settings.ApplyConfigFile(config, temp_dir);
 
-    // Construction runs Reindex, whose output-discovery pass triggers the re-entrant metadata read.
+    // Construction runs Reindex, whose output-discovery pass triggers the re-entrant metadata read
     CHECK_NOTHROW(BakerDataSource {&settings});
 
     BakerDataSource data_source {&settings};
@@ -758,9 +779,8 @@ Bakers = {}
         REQUIRE(first_baker.BakeAll());
     }
 
-    // Rename the authored file by letter case only, the way a content-naming pass does. On a case-insensitive
-    // filesystem the already baked output keeps its pre-rename directory entry name unless the baker reconciles
-    // it, and incremental baking would never revisit a file it considers up to date.
+    // A case-only rename, the kind a content-naming pass makes: the baked entry keeps its pre-rename name unless
+    // the baker reconciles it, and incremental baking never revisits a file it considers up to date
     REQUIRE(fs_remove_file(lower_source_path));
     REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
 
@@ -830,7 +850,7 @@ Bakers = {}
     }
 
     // Rename the authored *directory* by letter case only. Creating the new output directory reuses the existing
-    // one and keeps its name, so every path underneath would silently keep the pre-rename spelling.
+    // one and keeps its name, so every path underneath would silently keep the pre-rename spelling
     REQUIRE(fs_remove_dir_tree(strex(input_dir).combine_path("data").str()));
     REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
 

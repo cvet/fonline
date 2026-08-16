@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -80,7 +80,7 @@ TEST_CASE("BaseLogging")
         LogToFile(string(log_path.string()));
         WriteBaseLog("first round content\n");
 
-        // Reopen the same file. Truncation should drop the previous payload.
+        // Reopen the same file. Truncation should drop the previous payload
         LogToFile(string(log_path.string()));
         WriteBaseLog("second\n");
 
@@ -142,7 +142,7 @@ TEST_CASE("BaseLogging")
             WriteBaseLog(strex("async-line-{}\n", i));
         }
 
-        // Disabling async joins the worker, draining whatever is still queued.
+        // Disabling async joins the worker, draining whatever is still queued
         SetAsyncLogWriting(false);
         LogToFile(NullLogPath);
 
@@ -177,7 +177,7 @@ TEST_CASE("BaseLogging")
         WriteBaseLog("async-payload\n");
         SetAsyncLogWriting(false);
 
-        // Re-enable to make sure the worker can be restarted cleanly.
+        // Re-enable to make sure the worker can be restarted cleanly
         SetAsyncLogWriting(true);
         WriteBaseLog("async-second-round\n");
         SetAsyncLogWriting(false);
@@ -211,11 +211,11 @@ TEST_CASE("BaseLogging")
         LogToFile(string(log_path.string()));
         SetAsyncLogWriting(true);
 
-        // Simulate the crash path: route to the synchronous writer without stopping/joining the worker.
+        // Simulate the crash path: route to the synchronous writer without stopping/joining the worker
         SuspendAsyncLogWriting();
         WriteBaseLog("crash-trace-line\n");
 
-        // The line must already be on disk while the async worker is still running (no join happened).
+        // The line must already be on disk while the async worker is still running (no join happened)
         {
             std::ifstream input(log_path, std::ios::binary);
             REQUIRE(input);

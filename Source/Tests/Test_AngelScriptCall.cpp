@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -45,19 +46,8 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
-// Regression coverage for every script CALL shape that establishes a frame, with 8-byte locals and
-// argument blocks of varying DWORD parity at each level — so any frame-base or argument-slot
-// alignment regression trips a hard `alignment` runtime error under the UBSan leg, and any
-// value/aliasing regression fails the exact checksums on every build:
-//   - free function calls and a deep chain with different argument parity per level;
-//   - class methods (`this` + small argument = odd combined block) and constructors with arguments;
-//   - virtual override through a base handle, interface method, funcdef call and a method delegate;
-//   - by-value parameters of every width (8-byte value types included), const in-references read
-//     from the caller's 8-byte locals, and out-references written back across frames;
-//   - a script call into a registered engine method returning `vector<ptr<T>>`, pinning the
-//     generated native-call cast's return-type spelling under `-fsanitize=function`.
-// Storage-layout coverage (class member offsets, globals, arrays) lives in
-// Test_AngelScriptAlignment.cpp.
+// Exercise every call-frame shape with 8-byte locals and both argument-slot parities.
+// Exact checksums pin values and aliasing while UBSan pins alignment
 namespace
 {
     struct CallTestRig
@@ -86,7 +76,7 @@ namespace CallTest
 {
     funcdef int64 UnaryOp(int8);
 
-    // Deep call chain with varying argument-block parity at every level, 8-byte locals at each.
+    // Vary argument-block parity across a deep call chain with 8-byte locals
     int64 Chain3(int8 a, int16 b, int8 c)
     {
         int64 wide = 1;
@@ -112,7 +102,7 @@ namespace CallTest
     }
 
     // Class method with `this` + one small argument (odd combined block) and 8-byte locals inside;
-    // the constructor itself takes a small argument and initializes 8-byte members.
+    // the constructor itself takes a small argument and initializes 8-byte members
     class OpHost
     {
         int8 Bias;
@@ -200,7 +190,7 @@ namespace CallTest
     }
 
     // Reference parameters: out-references written by the callee, const in-references read from
-    // 8-byte locals of the caller.
+    // 8-byte locals of the caller
     void WriteRefs(int64 &out wide, timespan &out ts, double &out real)
     {
         wide = 70;
@@ -235,7 +225,7 @@ namespace CallTest
     }
 
     // By-value parameters of every width, 8-byte value types included: the caller constructs them
-    // into argument slots, the callee reads them from its frame.
+    // into argument slots, the callee reads them from its frame
     int64 SumMixedParams(int8 a, int64 b, int16 c, double d, bool e, ident id, timespan ts)
     {
         return a + b + c + int64(d) + (e ? 1 : 0) + ts.seconds;
@@ -247,7 +237,7 @@ namespace CallTest
     }
 
     // Script call into a registered engine method returning vector<ptr<T>>: pins the generated
-    // native-call cast's return-type spelling under -fsanitize=function.
+    // native-call cast's return-type spelling under -fsanitize=function
     int64 CallVectorReturningApi()
     {
         Entity[] held = Game.GetHeldSyncEntities();
@@ -377,7 +367,7 @@ TEST_CASE("AngelScriptCallShapes")
     }
 
     // The vector<ptr<T>>-returning call is about the generated cast, not the value: with the
-    // test-side server lock held the sync context may legitimately hold entities.
+    // test-side server lock held the sync context may legitimately hold entities
     {
         auto func = server->FindFunc<int64_t>(fn("CallTest::CallVectorReturningApi"));
         REQUIRE(func);

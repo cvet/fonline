@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -71,11 +71,11 @@ public:
     [[nodiscard]] auto native_handle() const noexcept -> socket_t { return _sock ? *_sock : socket_t {}; }
 
     auto connect(string_view host, uint16_t port) noexcept -> bool;
-    auto connect_async(string_view host, uint16_t port) noexcept -> bool; // Use can_write(timeout) + peek_socket_error() to detect completion.
+    auto connect_async(string_view host, uint16_t port) noexcept -> bool; // Use can_write(timeout) + peek_socket_error() to detect completion
     auto can_read(timespan timeout = {}) const noexcept -> bool;
     auto can_write(timespan timeout = {}) const noexcept -> bool;
     auto set_nodelay(bool enabled) noexcept -> bool;
-    auto peek_socket_error() const noexcept -> int32_t; // SO_ERROR via getsockopt; 0 if no pending error, -1 if call itself failed.
+    auto peek_socket_error() const noexcept -> int32_t; // SO_ERROR via getsockopt; 0 if no pending error, -1 if call itself failed
     auto send(const_span<uint8_t> data) noexcept -> int32_t;
     auto receive(span<uint8_t> data) noexcept -> int32_t;
     void close() noexcept;

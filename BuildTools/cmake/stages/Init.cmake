@@ -112,13 +112,13 @@ StatusMessage("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"
 StatusMessage("Generator: ${CMAKE_GENERATOR}")
 StatusMessage("Operating system: ${CMAKE_SYSTEM_NAME}")
 
-# Minimum supported toolchains.
+# Minimum supported toolchains
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 20)
         AbortMessage("Clang ${CMAKE_CXX_COMPILER_VERSION} is below the required minimum 20.0")
     endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-    # TODO: pin AppleClang/Xcode minimum once the macOS baseline is decided.
+    # TODO: pin AppleClang/Xcode minimum once the macOS baseline is decided
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
         AbortMessage("GCC ${CMAKE_CXX_COMPILER_VERSION} is below the required minimum 13.0")
@@ -238,7 +238,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
 	# Sanitizers require the real -fsanitize= flags at BOTH compile and link time (the matching runtime is
 	# linked into the image). LLVM_USE_SANITIZER is LLVM's own project build switch and has no effect on a
 	# normal project, so set the actual Clang flags per config. rpmalloc is already disabled for these
-	# configs (see expr_RpmallocEnabled) so the sanitizer allocator can interpose.
+	# configs (see expr_RpmallocEnabled) so the sanitizer allocator can interpose
 	AddCompileOptionsList(
 		$<$<CONFIG:San_Address>:-fsanitize=address>
 		$<$<CONFIG:San_Memory>:-fsanitize=memory>
@@ -302,13 +302,13 @@ endif()
 # UBSan: there is no file-based ignorelist. The AngelScript value-type alignment UB was fixed at the source, so the
 # ubsan-ignorelist.txt is gone entirely. The only UBSan suppressions left are the per-target vendored-third-party
 # excuses in BuildTools/cmake/helpers/Build.cmake (DisableLibWarnings: -fno-sanitize=function,alignment for SQLite /
-# AngelScript bytecode packing / C-callback idioms) — those are genuine upstream design, not our code.
+# AngelScript bytecode packing / C-callback idioms) — those are genuine upstream design, not our code
 
-# Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
+# Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html)
 # Enforced as a hard error on every Clang toolchain (native clang, clang-cl, AppleClang, Emscripten, Android NDK).
 # FO_TSA_* annotation macros are no-ops on MSVC/GCC, and third-party code is silenced via DisableLibWarnings, so the
 # analysis is confined to first-party engine + SourceExt code. clang-cl uses the cl-style driver, so the GNU-style
-# warning flags are routed through the clang front end with /clang:.
+# warning flags are routed through the clang front end with /clang:
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	if(MSVC)
 		AddCompileOptionsList(/clang:-Wthread-safety /clang:-Werror=thread-safety)
@@ -320,7 +320,7 @@ endif()
 # Engine feature/backend toggles. These stay -D compiler defines because they gate whole files and headers
 # and are evaluated as the first preprocessor decision — often before any engine header is included (e.g.
 # test harnesses that lead with catch_amalgamated.hpp, or headers self-guarded with #if FO_ANGELSCRIPT_SCRIPTING
-# before their own includes), so they must be defined without first pulling in EngineConfig.gen.h.
+# before their own includes), so they must be defined without first pulling in EngineConfig.gen.h
 AddCompileDefinitionsList(
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
 	FO_SPARK_PARTICLES=$<BOOL:${FO_SPARK_PARTICLES}>
@@ -334,7 +334,7 @@ AddCompileDefinitionsList(
 # them into EngineConfig.gen.h (pulled in at the top of BasicCore.h) to keep the compile command clean.
 # Per-config defines (FO_DEBUG above) also stay compiler-side.
 # Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors, which would
-# make it per-config and keep it a compiler define.
+# make it per-config and keep it a compiler define
 
 # Basic includes
 AddIncludeDirectories(
@@ -475,7 +475,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# PIC objects link into both shared libraries and PIE executables. Do not append -fPIE
 		# after the global -fPIC above: Clang uses the last relocation model and would make
-		# static Baker dependencies unsuitable for LF_BakerLib.so.
+		# static Baker dependencies unsuitable for LF_BakerLib.so
 		if(NOT FO_BUILD_BAKER AND NOT (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
 			AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fPIE>)
 		endif()
@@ -618,7 +618,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		# mongo-c-driver, which reference POSIX functions/syscalls Emscripten does not implement (flock,
 		# getpwuid_r, setsockopt, uname, getuid/geteuid). The web-runnable tests (AngelScript / serializer /
 		# in-memory) never call those paths, so allow them as abort-if-called stubs purely so the test binary
-		# links and runs under node. The shipping web client keeps the strict defaults above.
+		# links and runs under node. The shipping web client keeps the strict defaults above
 		AddLinkOptionsList(
 			-sERROR_ON_UNDEFINED_SYMBOLS=0
 			-sALLOW_UNIMPLEMENTED_SYSCALLS=1)
@@ -631,7 +631,7 @@ endif()
 # Vulkan support (enabled by default; opt out with FO_DISABLE_VULKAN). No external Vulkan SDK is
 # needed: the build compiles against the Vulkan headers vendored with SDL3, and the loader is resolved
 # dynamically through SDL at runtime (see Rendering-Vulkan.cpp), so vulkan-1.lib is not linked and the
-# executable keeps no load-time vulkan-1.dll import.
+# executable keeps no load-time vulkan-1.dll import
 if(NOT FO_DISABLE_VULKAN AND NOT FO_HEADLESS_ONLY AND NOT FO_WEB)
 	SetValue(FO_HAVE_VULKAN 1)
 endif()

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,9 +56,8 @@ WorkerPool::WorkerPool(string_view name, int32_t thread_count, ptr<const std::at
         }
     }
     catch (...) {
-        // Thread spawning can throw (e.g. OS thread exhaustion). Any workers already started are
-        // referencing *this via their captured lambda; the constructor is unwinding and ~WorkerPool
-        // will not run, so stop and join them here before the storage is torn down, then rethrow.
+        // Workers already started reference *this through their lambda, and an unwinding constructor never runs
+        // ~WorkerPool, so they are stopped and joined here before the storage goes away
         StopWorkers();
         throw;
     }
@@ -167,7 +166,7 @@ auto WorkerPool::Wake(JobKey key) -> bool
 
         if (_queuedKeys.contains(key)) {
             // Pull the queued entry out, set its FireTime to now, and re-insert sorted so workers
-            // that are wait_until-ing on the previous front fire time get woken to pick it up.
+            // that are wait_until-ing on the previous front fire time get woken to pick it up
             for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
                 if (it->Key == key) {
                     auto entry = std::move(*it);
@@ -183,7 +182,7 @@ auto WorkerPool::Wake(JobKey key) -> bool
         }
         else if (_runningKeys.contains(key)) {
             // The body is in flight; arm a wake-on-finish so its self-reschedule (return value)
-            // is overridden to fire immediately when the worker finalizes.
+            // is overridden to fire immediately when the worker finalizes
             _wakeRequests.insert(key);
             result = true;
         }
@@ -226,12 +225,12 @@ auto WorkerPool::Cancel(JobKey key) -> bool
         }
 
         if (_runningKeys.contains(key)) {
-            // Drop the in-flight run's self-reschedule when it finishes.
+            // Drop the in-flight run's self-reschedule when it finishes
             _cancelOnFinish.insert(key);
             removed = true;
         }
 
-        // Cancel supersedes any pending wake.
+        // Cancel supersedes any pending wake
         _wakeRequests.erase(key);
     }
 
@@ -254,7 +253,7 @@ void WorkerPool::Clear()
     _wakeRequests.clear();
 
     // Any in-flight run should drop its self-reschedule. We can't know its key from here, so mark
-    // every currently-running key.
+    // every currently-running key
     for (const auto& key : _runningKeys) {
         _cancelOnFinish.insert(key);
     }
@@ -415,7 +414,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                 nanotime now = nanotime::now();
 
                 if (front_fire > now) {
-                    // Wait until the earliest job becomes due, or until something nearer arrives.
+                    // Wait until the earliest job becomes due, or until something nearer arrives
                     _workSignal.wait_until(locker, front_fire.value());
                     continue;
                 }
@@ -508,13 +507,8 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
             _activeWorkers--;
         }
 
-        // If the job did not reschedule (its entity was destroyed/cancelled, the pending-rerun branch
-        // replaced it, or shutdown skipped execution), `job.Body` still owns its captured state — possibly
-        // the last refcount_ptr to an entity (e.g. a TimeEvent closure holding a critter that has since
-        // died). Destroying that closure releases the ref, and ~Entity -> ValidateAccess strong-asserts
-        // unless a sync context is active on this thread; the body ran under one above, but it was
-        // deactivated at the end of that scope. Drop the closure under a fresh, empty context so the entity
-        // release is valid — an empty context locks nothing, it only satisfies the access check.
+        // A non-rescheduled body may own the last entity reference after its execution context closes.
+        // Destroy the closure under an empty sync context so entity validation remains legal
         if (!body_rescheduled) {
             ScopedSyncContext sync_ctx;
 

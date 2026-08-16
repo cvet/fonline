@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -173,10 +173,8 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         ptr<void> arg_data = gen->GetArgAddress(first_arg + numeric_cast<AngelScript::asUINT>(index));
         auto arg_type = make_ptr(&func_desc->Args[index].Type);
 
-        // Mutable simple arguments follow the unified slot contract: the slot is the address of the
-        // caller's variable (the value itself or the handle cell), which GetArgAddress already returns
-        // for the '?&' variadic reference. Non-mutable entity/ref-type and collection arguments are
-        // re-packed into a local handle cell so the callee sees a plain handle slot.
+        // Slot contract: a mutable simple argument is already the caller's variable address, so only
+        // the other kinds are re-packed into a local handle cell for the callee to read as a handle
         bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {
@@ -499,7 +497,7 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
     auto arr = CreateScriptArray(as_engine, SettingScalarTypeNames<T>::ArrayName);
     arr->Reserve(numeric_cast<int32_t>(vec->size()));
 
-    // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
+    // Handle vector<bool> in a special way since it has a non-standard reference proxy type
     for (size_t i = 0; i < vec->size(); i++) {
         T value = (*vec)[i];
         arr->InsertLast(make_nptr(&value).void_cast());
@@ -564,7 +562,7 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
             }
 
             // The textual check above misses numeric overflow: a value finite in float64 can still
-            // become infinity when narrowed to float32, so the parsed result is validated too.
+            // become infinity when narrowed to float32, so the parsed result is validated too
             float32_t float_value = strvex(value).to_float32();
 
             if (!std::isfinite(float_value)) {
@@ -791,7 +789,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
 
             // Hand the array's owned reference to the shutdown cleanup so it outlives this scope but is
-            // released exactly once at teardown (the `get_*()` accessor returns a borrowed auto-handle).
+            // released exactly once at teardown (the `get_*()` accessor returns a borrowed auto-handle)
             backend->AddCleanupCallback([raw = enums_arr.release_ownership()]() FO_DEFERRED { raw->Release(); });
         }
     }
