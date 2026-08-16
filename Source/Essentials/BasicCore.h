@@ -326,16 +326,9 @@ struct fixed_string
 };
 
 // Generic helpers
+// Mechanical process termination only; failure callers own any diagnostics they require.
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 
-// Always-on assertion for Essentials layers that cannot depend on ExceptionHandling.
-// It reports and exits like FO_STRONG_ASSERT
-[[noreturn]] extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept;
-
-#define FO_BASIC_STRONG_ASSERT(expr) \
-    if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
-    }
 
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;

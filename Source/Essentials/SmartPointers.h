@@ -34,6 +34,7 @@
 #pragma once
 
 #include "BasicCore.h"
+#include "FatalError.h"
 
 FO_BEGIN_NAMESPACE
 

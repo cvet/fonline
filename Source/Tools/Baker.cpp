@@ -597,10 +597,11 @@ void MasterBaker::BakeAllInternal()
     fs_iterate_dir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
 
+        // Skip cache dir and report files
         if (path.starts_with(BAKER_CACHE_DIR) && (path.size() == BAKER_CACHE_DIR.size() || path[BAKER_CACHE_DIR.size()] == '/')) {
             return;
         }
-        if (strex(path).lower() == "baking.report.json" || strex(path).lower() == "baking.full.report.json") {
+        if (path.find('/') == string_view::npos && strex(path).lower().str().ends_with(REPORT_FILE_SUFFIX)) {
             return;
         }
 

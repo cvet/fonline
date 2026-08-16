@@ -20,7 +20,8 @@ TEST_CASE("ModelSpriteParticleFrameExpansionMovesPivotWithEnvelope", "[model][pa
     optional<ModelSpriteFramePlacement> placement = CalculateModelSpriteFramePlacement(-40.0f, -71.0f, 74.0f, 85.0f, {16, 65}, 2.0f, {32, 74});
 
     REQUIRE(placement);
-    CHECK(placement->Size.width == 118);
+    // 118 tight pixels quantize up to the frame grid; the height is already a multiple of it.
+    CHECK(placement->Size.width == 128);
     CHECK(placement->Size.height == 160);
     CHECK(placement->Pivot.x == 58);
     CHECK(placement->Pivot.y == 138);
@@ -55,10 +56,10 @@ TEST_CASE("ModelSpriteFramePlacementMergeContainsAlternatingEqualSizePivots", "[
     optional<ModelSpriteFramePlacement> merged = MergeModelSpriteFramePlacements(ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {16, 65}}, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {17, 64}});
 
     REQUIRE(merged);
-    CHECK(merged->Size.width == 59);
-    CHECK(merged->Size.height == 87);
-    CHECK(merged->Pivot.x == 17);
-    CHECK(merged->Pivot.y == 65);
+    CHECK(merged->Size.width == 80);
+    CHECK(merged->Size.height == 112);
+    CHECK(merged->Pivot.x == 32);
+    CHECK(merged->Pivot.y == 80);
 
     optional<ModelSpriteFramePlacement> contains_first = MergeModelSpriteFramePlacements(*merged, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {16, 65}});
     optional<ModelSpriteFramePlacement> contains_second = MergeModelSpriteFramePlacements(*merged, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {17, 64}});
@@ -78,10 +79,10 @@ TEST_CASE("ModelSpriteFramePlacementMergeAllowsRootOutsideTightFrame", "[model][
     optional<ModelSpriteFramePlacement> merged = MergeModelSpriteFramePlacements(ModelSpriteFramePlacement {.Size = {130, 266}, .Pivot = {135, 210}}, ModelSpriteFramePlacement {.Size = {270, 274}, .Pivot = {98, 191}});
 
     REQUIRE(merged);
-    CHECK(merged->Size.width == 307);
-    CHECK(merged->Size.height == 293);
-    CHECK(merged->Pivot.x == 135);
-    CHECK(merged->Pivot.y == 210);
+    CHECK(merged->Size.width == 320);
+    CHECK(merged->Size.height == 320);
+    CHECK(merged->Pivot.x == 144);
+    CHECK(merged->Pivot.y == 224);
 
     optional<ModelSpriteFramePlacement> contains_current = MergeModelSpriteFramePlacements(*merged, ModelSpriteFramePlacement {.Size = {130, 266}, .Pivot = {135, 210}});
     optional<ModelSpriteFramePlacement> contains_required = MergeModelSpriteFramePlacements(*merged, ModelSpriteFramePlacement {.Size = {270, 274}, .Pivot = {98, 191}});
@@ -92,6 +93,49 @@ TEST_CASE("ModelSpriteFramePlacementMergeAllowsRootOutsideTightFrame", "[model][
     CHECK(contains_current->Pivot == merged->Pivot);
     CHECK(contains_required->Size == merged->Size);
     CHECK(contains_required->Pivot == merged->Pivot);
+}
+
+TEST_CASE("ModelSpriteFrameSizesQuantizeSoAnimatedPosesReuseOneFrame", "[model][particle]")
+{
+    // Regression (LF-2026-0097): a breathing pose created a GPU texture per frame by missing the render-target
+    // cache. Neighbouring envelopes must share one frame, and the frame must still contain the envelope.
+    optional<isize32> small = CalculateModelSpriteFrameSize(0.0f, 0.0f, 57.0f, 85.0f);
+    optional<isize32> grown = CalculateModelSpriteFrameSize(0.0f, 0.0f, 58.0f, 86.0f);
+
+    REQUIRE(small);
+    REQUIRE(grown);
+    CHECK(small->width == grown->width);
+    CHECK(small->height == grown->height);
+    CHECK(small->width % MODEL_SPRITE_FRAME_ALIGNMENT == 0);
+    CHECK(small->height % MODEL_SPRITE_FRAME_ALIGNMENT == 0);
+    CHECK(grown->width >= 58);
+    CHECK(grown->height >= 86);
+
+    // Crossing a grid step still grows the frame, so a pose that needs more room is never clipped.
+    optional<isize32> beyond_step = CalculateModelSpriteFrameSize(0.0f, 0.0f, 65.0f, 86.0f);
+
+    REQUIRE(beyond_step);
+    CHECK(beyond_step->width > grown->width);
+    CHECK(beyond_step->width >= 65);
+}
+
+TEST_CASE("ModelSpriteFramePlacementMergeStaysOnTheFrameGrid", "[model][particle]")
+{
+    // The atlas draw loop converges on the merge, so its output must be quantized too.
+    optional<ModelSpriteFramePlacement> merged = MergeModelSpriteFramePlacements(ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {16, 65}}, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {17, 64}});
+
+    REQUIRE(merged);
+    CHECK(merged->Size.width % MODEL_SPRITE_FRAME_ALIGNMENT == 0);
+    CHECK(merged->Size.height % MODEL_SPRITE_FRAME_ALIGNMENT == 0);
+    CHECK(merged->Pivot.x % MODEL_SPRITE_FRAME_ALIGNMENT == 0);
+    CHECK(merged->Pivot.y % MODEL_SPRITE_FRAME_ALIGNMENT == 0);
+
+    // Idempotent, otherwise the draw loop never settles and allocates a frame every pass.
+    optional<ModelSpriteFramePlacement> remerged = MergeModelSpriteFramePlacements(*merged, *merged);
+
+    REQUIRE(remerged);
+    CHECK(remerged->Size == merged->Size);
+    CHECK(remerged->Pivot == merged->Pivot);
 }
 
 TEST_CASE("ModelSpriteViewRectStaysInsideTheDrawRectOfWiderBounds", "[model]")

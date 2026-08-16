@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,32 +33,16 @@
 
 #pragma once
 
-// Strict dependency order: each Essentials header and implementation may depend only on entries above it.
-// Pass higher-layer data downward explicitly instead of creating an include cycle
-
-// clang-format off
 #include "BasicCore.h"
-#include "GlobalData.h"
-#include "StackTrace.h"
-#include "BaseLogging.h"
-#include "FatalError.h"
-#include "SmartPointers.h"
-#include "MemorySystem.h"
-#include "Containers.h"
-#include "StringUtils.h"
-#include "Platform.h"
-#include "ExceptionHandling.h"
-#include "Threading.h"
-#include "SafeArithmetics.h"
-#include "DataSerialization.h"
-#include "HashedString.h"
-#include "StrongType.h"
-#include "TimeRelated.h"
-#include "ExtendedTypes.h"
-#include "Compressor.h"
-#include "WorkThread.h"
-#include "Logging.h"
-#include "DiskFileSystem.h"
-#include "CommonHelpers.h"
-#include "NetSockets.h"
-// clang-format on
+
+FO_BEGIN_NAMESPACE
+
+[[noreturn]] extern void ReportFatalAndExit(string_view message) noexcept;
+[[noreturn]] extern void ReportStrongAssertAndExit(string_view expression, string_view file, int32_t line) noexcept;
+
+#define FO_BASIC_STRONG_ASSERT(expr) \
+    if (!(expr)) [[unlikely]] { \
+        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+    }
+
+FO_END_NAMESPACE
