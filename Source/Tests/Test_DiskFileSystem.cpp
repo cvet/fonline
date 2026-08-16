@@ -175,4 +175,122 @@ TEST_CASE("DiskFileSystem")
     }
 }
 
+// Windows and default macOS resolve names without regard to letter case while preserving the name an entry was
+// created with, so a rename that changes only case is invisible to every path-based check. Callers that address
+// files by exact name - the baker rewriting its output tree, the updater promoting a downloaded file - depend on
+// knowing which primitive lands the requested name and which keeps whatever is already there. These pin that
+// split on both filesystem kinds instead of leaving it to be rediscovered from a runtime failure.
+static auto IsCaseInsensitiveFs(string_view dir) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string upper_probe = strex(dir).combine_path("CaseProbe.tmp").str();
+    string lower_probe = strex(dir).combine_path("caseprobe.tmp").str();
+
+    if (!fs_write_file(upper_probe, string_view {"probe"})) {
+        return false;
+    }
+
+    bool case_insensitive = fs_exists(lower_probe);
+    ignore_unused(fs_remove_file(upper_probe));
+
+    return case_insensitive;
+}
+
+static auto HasExactDirEntry(string_view dir, string_view name) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::error_code ec;
+
+    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(dir)}, ec}) {
+        if (fs_path_to_string(entry.path().filename()) == name) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+TEST_CASE("DiskFileSystemNameCase")
+{
+    SECTION("RenameLandsTheRequestedNameOverADifferentlyCasedTarget")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_case_rename");
+        string upper_path = strex(temp_dir).combine_path("Data.txt").str();
+        string lower_path = strex(temp_dir).combine_path("data.txt").str();
+        string source_path = strex(temp_dir).combine_path("Source.tmp").str();
+
+        ignore_unused(fs_remove_dir_tree(temp_dir));
+        REQUIRE(fs_create_directories(temp_dir));
+
+        bool case_insensitive = IsCaseInsensitiveFs(temp_dir);
+
+        REQUIRE(fs_write_file(upper_path, string_view {"before"}));
+        REQUIRE(fs_write_file(source_path, string_view {"after"}));
+        REQUIRE(fs_rename(source_path, lower_path));
+
+        // Renaming replaces the whole directory entry, so unlike an overwriting write it does establish the
+        // requested spelling. Updater::ReplaceFileSafely relies on exactly this: it moves the live file aside
+        // and renames the downloaded temp file into place, so a case-only content rename reaches the client.
+        CHECK(HasExactDirEntry(temp_dir, "data.txt"));
+        REQUIRE(fs_read_file(lower_path).has_value());
+        CHECK(*fs_read_file(lower_path) == "after");
+        CHECK_FALSE(fs_exists(source_path));
+
+        if (case_insensitive) {
+            CHECK_FALSE(HasExactDirEntry(temp_dir, "Data.txt"));
+        }
+
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
+    SECTION("WriteFileTargetsTheSameFileRegardlessOfNameCase")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_case_write");
+        string upper_path = strex(temp_dir).combine_path("Data.txt").str();
+        string lower_path = strex(temp_dir).combine_path("data.txt").str();
+
+        ignore_unused(fs_remove_dir_tree(temp_dir));
+        REQUIRE(fs_create_directories(temp_dir));
+
+        bool case_insensitive = IsCaseInsensitiveFs(temp_dir);
+
+        REQUIRE(fs_write_file(upper_path, string_view {"first"}));
+        REQUIRE(fs_write_file(lower_path, string_view {"second"}));
+
+        // The content written last always wins under the name it was written with; which directory entry name
+        // survives is deliberately not guaranteed, so a caller needing the exact name reconciles it itself
+        REQUIRE(fs_read_file(lower_path).has_value());
+        CHECK(*fs_read_file(lower_path) == "second");
+        REQUIRE(fs_read_file(upper_path).has_value());
+        CHECK(*fs_read_file(upper_path) == (case_insensitive ? "second" : "first"));
+
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
+    SECTION("CreateDirectoriesKeepsAnExistingDifferentlyCasedDirectory")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_case_dir");
+        string upper_dir = strex(temp_dir).combine_path("Data").str();
+        string lower_dir = strex(temp_dir).combine_path("data").str();
+
+        ignore_unused(fs_remove_dir_tree(temp_dir));
+        REQUIRE(fs_create_directories(temp_dir));
+
+        bool case_insensitive = IsCaseInsensitiveFs(temp_dir);
+
+        REQUIRE(fs_create_directories(upper_dir));
+        REQUIRE(fs_create_directories(lower_dir));
+
+        // Creating a directory never re-spells an existing one, so a case-only rename of a content *directory*
+        // would keep the old spelling for every path underneath. Callers that need the exact name reconcile it;
+        // the baker does, in ReconcileStaleCasedOutputDirs.
+        CHECK(HasExactDirEntry(temp_dir, "Data"));
+        CHECK(HasExactDirEntry(temp_dir, "data") == !case_insensitive);
+
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+}
+
 FO_END_NAMESPACE

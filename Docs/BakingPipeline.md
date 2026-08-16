@@ -89,6 +89,19 @@ At runtime/source level, baking is owned by:
 - `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
 - `Source/Tools/BakingReport.h` / `Source/Tools/BakingReport.cpp` — report data contracts, thread-safe aggregation, JSON serialization, and report-path construction.
 
+### Output names are reconciled with the names bakers addressed
+
+`MasterBaker::BakeAllInternal()` reconciles the output tree with the names the bakers actually addressed, in two steps around the outdated-output sweep:
+
+1. `ReconcileStaleCasedOutputDirs()` walks the expected output directories shallowest first and renames any that differ from the expected spelling by letter case only, logging `Rename stale-cased dir <from> to <to>`. Directories go first because renaming a file into a differently-cased parent resolves straight back to the existing directory and leaves its name untouched, and shallowest-first means every rename lands inside a parent whose own name is already correct.
+2. After the sweep, the same comparison is applied to files, logging `Rename stale-cased file <from> to <to>`.
+
+This exists because a case-only rename of an input is invisible to everything else in the pipeline. On a case-insensitive filesystem (Windows, default macOS) an output stream opened on the new name reuses the pre-rename directory entry and keeps its name; creating a directory that differs only by case reuses the existing one the same way; the outdated sweep compares through `exclude_all_ext`, which folds to lower case, so the stale entry still matches an expected resource and is kept; and incremental baking then skips the file entirely once it looks up to date. The runtime resolves baked packs by exact name, so the stale entry becomes an unresolvable resource — reported far from the rename, and only for the content that happens to use it.
+
+The reconciliation runs once per bake over the set the bakers already produced, so it costs no per-write work, never deletes and recreates a file, and — unlike a check on the write path — also repairs outputs that the current bake skipped as up to date. On a case-sensitive filesystem the pre-rename name does not collide with the new one, the outdated sweep removes it normally, and both steps find nothing to do.
+
+Covered by `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename` and `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` in `Source/Tests/Test_BakerSetup.cpp`. The underlying per-primitive behavior — `fs_rename()` establishes the requested spelling, `fs_write_file()` and `fs_create_directories()` keep whatever is already there — is pinned on both filesystem kinds by `DiskFileSystemNameCase` in `Source/Tests/Test_DiskFileSystem.cpp`.
+
 ## CMake entry points
 
 `BuildTools/cmake/stages/ScriptsAndBaking.cmake` creates baking commands after application targets are available.

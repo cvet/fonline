@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -286,6 +286,44 @@ auto MasterBaker::BakeAll() noexcept -> bool
     return success;
 }
 
+struct MasterBaker::PackBakeContext
+{
+    string PackName {};
+    string OutputDir {};
+    FileSystem InputFiles {};
+    FileSystem PackBakedFiles {};
+    FileCollection FilteredFiles {};
+    vector<unique_ptr<BaseBaker>> Bakers {};
+    shared_ptr<BakingReport> Report {};
+    uint64_t InputBytes {};
+    std::atomic_int BakedFiles {};
+    mutex BakedFilePathsLocker {};
+    unordered_set<string> BakedFilePaths FO_TSA_GUARDED_BY(BakedFilePathsLocker) {};
+    bool FirstBake {};
+    bool OutputAdded {};
+    TimeMeter BakingTime {};
+    bool Done {};
+};
+
+// What the bakers addressed this run, in the two shapes the output sweeps need: resource identity for deciding
+// what is outdated, and exact relative paths for deciding what is merely misspelled.
+struct MasterBaker::ExpectedOutputs
+{
+    unordered_set<string> ResourceNames {};
+    unordered_map<string, string> Paths {};
+};
+
+// Resource identity ignores the extension chain (one input can produce several differently suffixed outputs) and
+// letter case, so a name folded this way answers "is this output still wanted", never "is it spelled right".
+static auto ExcludeAllExt(string_view path) -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    size_t pos = path.rfind('/');
+    pos = path.find('.', pos != string::npos ? pos : 0);
+    return strex(pos != string::npos ? path.substr(0, pos) : path).lower();
+}
+
 void MasterBaker::BakeAllInternal()
 {
     FO_STACK_TRACE_ENTRY();
@@ -295,14 +333,48 @@ void MasterBaker::BakeAllInternal()
     WriteLog("Start baking");
 
     FO_VERIFY_AND_THROW(!_settings->BakeOutput.empty(), "Resource baker cannot write outputs because BakeOutput is empty", _settings->GetResourcePacks().size());
-    auto make_output_path = [this](string_view path) -> string { return strex(_settings->BakeOutput).combine_path(path); };
 
-    string build_hash_path = make_output_path("Resources.build-hash");
+    string build_hash_path = MakeOutputPath("Resources.build-hash");
+    std::atomic_bool force_baking = ResolveRebuildMode(build_hash_path);
+
+    // Outputs of already baked packs are mounted here as they complete, so a later pack can read what an earlier
+    // one produced
+    FileSystem baking_output;
+
+    vector<unique_ptr<PackBakeContext>> pack_bake_contexts = PreparePackContexts(baking_output, force_baking);
+    RunPackBakers(pack_bake_contexts, baking_output, force_baking);
+
+    ExpectedOutputs expected = CollectExpectedOutputs(pack_bake_contexts);
+    ReconcileStaleCasedOutputDirs(expected);
+    SweepOutdatedOutputs(expected);
+    SweepOutdatedBakerCache(expected);
+
+    WriteLog("Time {}", backing_time.GetDuration());
+    WriteLog("Baking complete!");
+
+    bool build_hash_write_ok = fs_write_file(build_hash_path, FO_BUILD_HASH);
+    FO_VERIFY_AND_THROW(build_hash_write_ok, "Unable to write the build hash file", build_hash_path);
+}
+
+auto MasterBaker::MakeOutputPath(string_view path) const -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return strex(_settings->BakeOutput).combine_path(path);
+}
+
+// Decides whether this run reuses the existing output or starts from scratch, and leaves the output directory
+// ready either way. The build hash is deleted up front and only rewritten once baking succeeds, so an aborted run
+// leaves no hash behind and the next one cannot mistake a half-written tree for a complete incremental base.
+auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
     auto prev_build_hash = fs_read_file(build_hash_path);
     bool build_hash_deleted = fs_remove_file(build_hash_path);
     FO_VERIFY_AND_THROW(build_hash_deleted, "Unable to delete the previous build hash file", build_hash_path);
 
-    std::atomic_bool force_baking = false;
+    bool force_baking = false;
     string rebuild_reason = "incremental";
 
     if (_settings->ForceBaking) {
@@ -321,8 +393,11 @@ void MasterBaker::BakeAllInternal()
         FO_VERIFY_AND_THROW(delete_output_ok, "Unable to delete baking output dir");
     }
 
+    // A missing hash means the previous run never finished, so the tree is rebuilt - but not deleted, since the
+    // partial output is still a valid starting point once every file is re-checked
     if (!prev_build_hash.has_value()) {
         force_baking = true;
+
         if (rebuild_reason == "incremental") {
             rebuild_reason = "missing_build_hash";
         }
@@ -333,206 +408,145 @@ void MasterBaker::BakeAllInternal()
     bool make_output_ok = fs_create_directories(_settings->BakeOutput);
     FO_VERIFY_AND_THROW(make_output_ok, "Unable to recreate baking output dir");
 
-    FileSystem baking_output;
+    return force_baking;
+}
 
-    // Resource packs
-    struct PackBakeContext
-    {
-        string PackName {};
-        string OutputDir {};
-        FileSystem InputFiles {};
-        FileSystem PackBakedFiles {};
-        FileCollection FilteredFiles {};
-        vector<unique_ptr<BaseBaker>> Bakers {};
-        shared_ptr<BakingReport> Report {};
-        uint64_t InputBytes {};
-        std::atomic_int BakedFiles {};
-        mutex BakedFilePathsLocker {};
-        unordered_set<string> BakedFilePaths FO_TSA_GUARDED_BY(BakedFilePathsLocker) {};
-        bool FirstBake {};
-        bool OutputAdded {};
-        TimeMeter BakingTime {};
-        bool Done {};
-    };
+auto MasterBaker::PreparePackContexts(FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>
+{
+    FO_STACK_TRACE_ENTRY();
 
-    auto prepare_bake_pack = [ // clang-format off
-            &settings = *_settings,
-            &baking_output_ = baking_output,
-            &force_baking,
-            report = _report // clang-format on
-    ](const ResourcePackInfo& res_pack, const string& output_dir) -> unique_ptr<PackBakeContext> {
-        auto pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
-        auto pack_bake_context_ptr = pack_bake_context.as_ptr();
-        shared_ptr<BakingReport> pack_report = report;
-
-        pack_bake_context->PackName = res_pack.Name;
-        pack_bake_context->OutputDir = output_dir;
-        pack_bake_context->Report = pack_report;
-        pack_bake_context->PackBakedFiles.AddDirSource(output_dir, true, true, true);
-
-        for (const auto& input_dir : res_pack.InputDirs) {
-            pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, true);
-        }
-        for (const auto& input_file : res_pack.InputFiles) {
-            string dir = strex(input_file).extract_dir().str();
-            string pack = strex(input_file).extract_file_name().erase_file_extension().str();
-            pack_bake_context_ptr->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
-        }
-
-        pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
-
-        for (const FileHeader& file : pack_bake_context->FilteredFiles) {
-            pack_report->RecordPackInput(res_pack.Name, file.GetPath(), file.GetSize());
-            pack_bake_context->InputBytes += numeric_cast<uint64_t>(file.GetSize());
-        }
-
-        auto bake_checker = [context = pack_bake_context_ptr, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
-            // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
-            // to be guarded; without it concurrent emplace() races on the bucket array
-            {
-                scoped_lock lock {context->BakedFilePathsLocker};
-
-                context->BakedFilePaths.emplace(path);
-            }
-
-            if (!force_baking) {
-                uint64_t file_write_time = fs_last_write_time(strex(context->OutputDir).combine_path(path));
-                return write_time > file_write_time;
-            }
-            else {
-                return true;
-            }
-        };
-
-        auto write_data = [context = pack_bake_context_ptr](string_view path, span<const uint8_t> baked_data) mutable -> BakingWriteResult {
-            string res_path = strex(context->OutputDir).combine_path(path).str();
-
-            if (!fs_compare_file_content(res_path, baked_data)) {
-                bool res_file_write_ok = fs_write_file(res_path, baked_data);
-                FO_VERIFY_AND_THROW(res_file_write_ok, "Unable to write baked resource file", res_path);
-                ++context->BakedFiles;
-                return BakingWriteResult::Changed;
-            }
-            else {
-                bool res_file_touch_ok = fs_touch_file(res_path);
-                FO_VERIFY_AND_THROW(res_file_touch_ok, "Unable to update the timestamp of an unchanged baked resource file", res_path);
-                return BakingWriteResult::Unchanged;
-            }
-        };
-
-        pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, &baking_output_, pack_report, false, &pack_bake_context->PackBakedFiles);
-        for (const auto& baker : pack_bake_context->Bakers) {
-            pack_report->RecordBakerRegistration(res_pack.Name, baker->GetName(), baker->GetOrder());
-        }
-
-        pack_bake_context->BakingTime.Pause();
-        return pack_bake_context;
-    };
-
-    auto bake_pack = [](ptr<PackBakeContext> bake_context, int32_t bake_order) {
-        for (size_t i = 0; i != bake_context->Bakers.size(); ++i) {
-            auto baker = bake_context->Bakers[i].as_ptr();
-
-            if (baker->GetOrder() == bake_order) {
-                if (!bake_context->FirstBake) {
-                    WriteLog("Bake {}", bake_context->PackName);
-                    bake_context->FirstBake = true;
-
-                    bake_context->BakingTime.Resume();
-                    bool make_res_output_ok = fs_create_directories(bake_context->OutputDir);
-                    FO_VERIFY_AND_THROW(make_res_output_ok, "Unable to create the resource pack output directory", bake_context->OutputDir);
-                    bake_context->BakingTime.Pause();
-                }
-
-                bake_context->BakingTime.Resume();
-                TimeMeter baker_time;
-                try {
-                    baker->BakeFiles(bake_context->FilteredFiles);
-                    bake_context->BakingTime.Pause();
-                    bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.GetDuration().milliseconds(), true, {});
-                }
-                catch (const std::exception& ex) {
-                    bake_context->BakingTime.Pause();
-                    bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.GetDuration().milliseconds(), false, ex.what());
-                    throw;
-                }
-                catch (...) {
-                    bake_context->BakingTime.Pause();
-                    bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.GetDuration().milliseconds(), false, "Unknown exception");
-                    throw;
-                }
-            }
-        }
-
-        // Check if it's last iteration for this pack
-        if (bake_context->FirstBake && !bake_context->Done) {
-            auto it = std::ranges::max_element(bake_context->Bakers, {}, [](auto&& baker) { return baker->GetOrder(); });
-            FO_VERIFY_AND_THROW(it != bake_context->Bakers.end(), "Lookup failed in bake context bakers");
-            int32_t max_order = (*it)->GetOrder();
-
-            if (bake_order == max_order) {
-                WriteLog("Baking of {} complete in {}, baked {} file{}", bake_context->PackName, //
-                    bake_context->BakingTime.GetDuration(), bake_context->BakedFiles, bake_context->BakedFiles != 1 ? "s" : "");
-                bake_context->Report->RecordPackDuration(bake_context->PackName, bake_context->BakingTime.GetDuration().milliseconds());
-                bake_context->Done = true;
-            }
-        }
-    };
-
-    size_t errors = 0;
     const auto& res_packs = _settings->GetResourcePacks();
     async_launch_mode async_mode = _settings->SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
 
-    // Prepare bake contexts
+    vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings;
+
+    for (const auto& res_pack : res_packs) {
+        auto res_pack_ptr = make_ptr(&res_pack);
+        string output_path = MakeOutputPath(res_pack.Name);
+        prepare_res_bakings.emplace_back(run_async(async_mode, strex("PreparePack-{}", res_pack_ptr->Name), [this, res_pack_ptr, output_path, &baking_output, &force_baking]() FO_DEFERRED { return PreparePackContext(*res_pack_ptr, output_path, baking_output, force_baking); }));
+    }
+
     vector<unique_ptr<PackBakeContext>> pack_bake_contexts;
+    string first_prepare_error;
+    size_t errors = 0;
 
-    {
-        vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings;
-        string first_prepare_error;
-
-        for (const auto& res_pack : res_packs) {
-            auto res_pack_ptr = make_ptr(&res_pack);
-            string output_path = make_output_path(res_pack.Name);
-            prepare_res_bakings.emplace_back(run_async(async_mode, strex("PreparePack-{}", res_pack_ptr->Name), [&, res_pack_ptr, output_path]() FO_DEFERRED { return prepare_bake_pack(*res_pack_ptr, output_path); }));
+    for (auto& prepare_res_baking : prepare_res_bakings) {
+        try {
+            auto pack_bake_context = prepare_res_baking.get();
+            pack_bake_contexts.emplace_back(std::move(pack_bake_context));
         }
+        catch (const std::exception& ex) {
+            WriteLog("Resource pack prepare for baking error: {}", ex.what());
 
-        for (auto& prepare_res_baking : prepare_res_bakings) {
-            try {
-                auto pack_bake_context = prepare_res_baking.get();
-                pack_bake_contexts.emplace_back(std::move(pack_bake_context));
+            if (first_prepare_error.empty()) {
+                first_prepare_error = ex.what();
             }
-            catch (const std::exception& ex) {
-                WriteLog("Resource pack prepare for baking error: {}", ex.what());
-                if (first_prepare_error.empty()) {
-                    first_prepare_error = ex.what();
-                }
-                errors++;
-            }
-            catch (...) {
-                WriteLog("Resource pack prepare for baking error: unknown exception");
-                if (first_prepare_error.empty()) {
-                    first_prepare_error = "Unknown exception";
-                }
-                errors++;
-            }
+
+            errors++;
         }
-
-        if (errors != 0) {
-            throw ResourceBakingException("Resource pack preparation failed", first_prepare_error, errors);
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
-    // Run bake contexts
+    if (errors != 0) {
+        throw ResourceBakingException("Resource pack preparation failed", first_prepare_error, errors);
+    }
+
+    return pack_bake_contexts;
+}
+
+auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
+    auto pack_bake_context_ptr = pack_bake_context.as_ptr();
+    shared_ptr<BakingReport> pack_report = _report;
+
+    pack_bake_context->PackName = res_pack.Name;
+    pack_bake_context->OutputDir = output_dir;
+    pack_bake_context->Report = pack_report;
+    pack_bake_context->PackBakedFiles.AddDirSource(output_dir, true, true, true);
+
+    for (const auto& input_dir : res_pack.InputDirs) {
+        pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, true);
+    }
+    for (const auto& input_file : res_pack.InputFiles) {
+        string dir = strex(input_file).extract_dir().str();
+        string pack = strex(input_file).extract_file_name().erase_file_extension().str();
+        pack_bake_context_ptr->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
+    }
+
+    pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
+
+    for (const FileHeader& file : pack_bake_context->FilteredFiles) {
+        pack_report->RecordPackInput(res_pack.Name, file.GetPath(), file.GetSize());
+        pack_bake_context->InputBytes += numeric_cast<uint64_t>(file.GetSize());
+    }
+
+    auto bake_checker = [context = pack_bake_context_ptr, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
+        // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
+        // to be guarded; without it concurrent emplace() races on the bucket array.
+        {
+            scoped_lock lock {context->BakedFilePathsLocker};
+
+            context->BakedFilePaths.emplace(path);
+        }
+
+        if (!force_baking) {
+            uint64_t file_write_time = fs_last_write_time(strex(context->OutputDir).combine_path(path));
+            return write_time > file_write_time;
+        }
+        else {
+            return true;
+        }
+    };
+
+    auto write_data = [context = pack_bake_context_ptr](string_view path, span<const uint8_t> baked_data) mutable -> BakingWriteResult {
+        string res_path = strex(context->OutputDir).combine_path(path).str();
+
+        if (!fs_compare_file_content(res_path, baked_data)) {
+            bool res_file_write_ok = fs_write_file(res_path, baked_data);
+            FO_VERIFY_AND_THROW(res_file_write_ok, "Unable to write baked resource file", res_path);
+            ++context->BakedFiles;
+            return BakingWriteResult::Changed;
+        }
+        else {
+            bool res_file_touch_ok = fs_touch_file(res_path);
+            FO_VERIFY_AND_THROW(res_file_touch_ok, "Unable to update the timestamp of an unchanged baked resource file", res_path);
+            return BakingWriteResult::Unchanged;
+        }
+    };
+
+    pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &baking_output, pack_report, false, &pack_bake_context->PackBakedFiles);
+
+    for (const auto& baker : pack_bake_context->Bakers) {
+        pack_report->RecordBakerRegistration(res_pack.Name, baker->GetName(), baker->GetOrder());
+    }
+
+    pack_bake_context->BakingTime.Pause();
+    return pack_bake_context;
+}
+
+// Bakers carry an order number and packs advance through those orders together, so a baker that depends on
+// another pack's earlier-order output always finds it already written.
+void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts, FileSystem& baking_output, std::atomic_bool& force_baking)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    async_launch_mode async_mode = _settings->SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
     int32_t bake_order = -10;
 
     while (true) {
         vector<std::future<void>> res_bakings;
         string first_bake_error;
+        size_t errors = 0;
 
         for (auto& bake_context_holder : pack_bake_contexts) {
             if (!bake_context_holder->Done) {
                 auto bake_context = bake_context_holder.as_ptr();
-                res_bakings.emplace_back(run_async(async_mode, strex("BakePack-{}-order{}", bake_context->PackName, bake_order), [&bake_pack, bake_context, bake_order]() FO_DEFERRED { bake_pack(bake_context, bake_order); }));
+                res_bakings.emplace_back(run_async(async_mode, strex("BakePack-{}-order{}", bake_context->PackName, bake_order), [bake_context, bake_order]() FO_DEFERRED { BakePackOrder(bake_context, bake_order); }));
             }
         }
 
@@ -542,17 +556,15 @@ void MasterBaker::BakeAllInternal()
             }
             catch (const std::exception& ex) {
                 WriteLog("Resource pack baking error: {}", ex.what());
+
                 if (first_bake_error.empty()) {
                     first_bake_error = ex.what();
                 }
+
                 errors++;
             }
             catch (...) {
-                WriteLog("Resource pack baking error: unknown exception");
-                if (first_bake_error.empty()) {
-                    first_bake_error = "Unknown exception";
-                }
-                errors++;
+                FO_UNKNOWN_EXCEPTION();
             }
         }
 
@@ -565,6 +577,9 @@ void MasterBaker::BakeAllInternal()
                 baking_output.AddDirSource(bake_context->OutputDir, true, true);
                 bake_context->OutputAdded = true;
             }
+
+            // Any produced file invalidates the incremental assumption for the orders still to come, because a
+            // later baker may read what was just rewritten
             if (bake_context->BakedFiles != 0) {
                 force_baking = true;
             }
@@ -576,23 +591,149 @@ void MasterBaker::BakeAllInternal()
 
         bake_order++;
     }
+}
 
-    // Delete outdated files
-    auto exclude_all_ext = [](string_view path) -> string {
-        size_t pos = path.rfind('/');
-        pos = path.find('.', pos != string::npos ? pos : 0);
-        return strex(pos != string::npos ? path.substr(0, pos) : path).lower();
-    };
+void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_order)
+{
+    FO_STACK_TRACE_ENTRY();
 
-    unordered_set<string> actual_resource_names;
+    for (size_t i = 0; i != bake_context->Bakers.size(); ++i) {
+        auto baker = bake_context->Bakers[i].as_ptr();
+
+        if (baker->GetOrder() == bake_order) {
+            if (!bake_context->FirstBake) {
+                WriteLog("Bake {}", bake_context->PackName);
+                bake_context->FirstBake = true;
+
+                bake_context->BakingTime.Resume();
+                bool make_res_output_ok = fs_create_directories(bake_context->OutputDir);
+                FO_VERIFY_AND_THROW(make_res_output_ok, "Unable to create the resource pack output directory", bake_context->OutputDir);
+                bake_context->BakingTime.Pause();
+            }
+
+            bake_context->BakingTime.Resume();
+            TimeMeter baker_time;
+
+            try {
+                baker->BakeFiles(bake_context->FilteredFiles);
+                bake_context->BakingTime.Pause();
+                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.GetDuration().milliseconds(), true, {});
+            }
+            catch (const std::exception& ex) {
+                bake_context->BakingTime.Pause();
+                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.GetDuration().milliseconds(), false, ex.what());
+                throw;
+            }
+            catch (...) {
+                FO_UNKNOWN_EXCEPTION();
+            }
+        }
+    }
+
+    // Check if it's last iteration for this pack
+    if (bake_context->FirstBake && !bake_context->Done) {
+        auto it = std::ranges::max_element(bake_context->Bakers, {}, [](auto&& baker) { return baker->GetOrder(); });
+        FO_VERIFY_AND_THROW(it != bake_context->Bakers.end(), "Lookup failed in bake context bakers");
+        int32_t max_order = (*it)->GetOrder();
+
+        if (bake_order == max_order) {
+            WriteLog("Baking of {} complete in {}, baked {} file{}", bake_context->PackName, //
+                bake_context->BakingTime.GetDuration(), bake_context->BakedFiles, bake_context->BakedFiles != 1 ? "s" : "");
+            bake_context->Report->RecordPackDuration(bake_context->PackName, bake_context->BakingTime.GetDuration().milliseconds());
+            bake_context->Done = true;
+        }
+    }
+}
+
+auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts) const -> ExpectedOutputs
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ExpectedOutputs expected;
 
     for (auto& bake_context : pack_bake_contexts) {
         scoped_lock lock {bake_context->BakedFilePathsLocker};
 
         for (const auto& res_name : bake_context->BakedFilePaths) {
-            actual_resource_names.emplace(exclude_all_ext(strex(bake_context->PackName).combine_path(res_name)));
+            string expected_path = strex(bake_context->PackName).combine_path(res_name);
+            expected.ResourceNames.emplace(ExcludeAllExt(expected_path));
+            expected.Paths.insert_or_assign(strex(expected_path).lower().str(), expected_path);
         }
     }
+
+    return expected;
+}
+
+// Directories go stale by letter case exactly like files, and nothing else repairs them: creating a directory that
+// differs from an existing one only by case reuses that one and keeps its name, so every path underneath keeps the
+// pre-rename spelling. They have to be reconciled before the files, because renaming a file into a differently-cased
+// parent resolves straight back to the existing directory and leaves its name alone. Walking shallowest first means
+// every rename lands inside a parent whose own name is already correct.
+void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    set<string> expected_dirs;
+
+    for (const auto& expected_path : expected.Paths | std::views::values) {
+        for (size_t pos = expected_path.find('/'); pos != string::npos; pos = expected_path.find('/', pos + 1)) {
+            expected_dirs.emplace(expected_path.substr(0, pos));
+        }
+    }
+
+    vector<string> ordered_dirs {expected_dirs.begin(), expected_dirs.end()};
+
+    std::ranges::sort(ordered_dirs, [](const string& lhs, const string& rhs) {
+        size_t lhs_depth = numeric_cast<size_t>(std::count(lhs.begin(), lhs.end(), '/'));
+        size_t rhs_depth = numeric_cast<size_t>(std::count(rhs.begin(), rhs.end(), '/'));
+        return lhs_depth != rhs_depth ? lhs_depth < rhs_depth : lhs < rhs;
+    });
+
+    for (const string& expected_dir : ordered_dirs) {
+        string parent_dir = MakeOutputPath(strex(expected_dir).extract_dir().str());
+        string expected_name = strex(expected_dir).extract_file_name().str();
+
+        if (!fs_is_dir(parent_dir)) {
+            continue;
+        }
+
+        string stale_name;
+        std::error_code ec;
+
+        for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(parent_dir)}, ec}) {
+            if (!entry.is_directory()) {
+                continue;
+            }
+
+            string entry_name = fs_path_to_string(entry.path().filename());
+
+            if (entry_name == expected_name) {
+                stale_name.clear();
+                break;
+            }
+
+            if (strvex(entry_name).compare_ignore_case(expected_name)) {
+                stale_name = entry_name;
+            }
+        }
+
+        if (!stale_name.empty()) {
+            bool rename_ok = fs_rename(strex(parent_dir).combine_path(stale_name), strex(parent_dir).combine_path(expected_name));
+            FO_VERIFY_AND_THROW(rename_ok, "Unable to rename the stale-cased baked output dir", parent_dir, stale_name, expected_name);
+            WriteLog("Rename stale-cased dir {} to {}", strex(parent_dir).combine_path(stale_name), expected_dir);
+        }
+    }
+}
+
+// Drops outputs no baker claims any more, and re-spells the ones that are still wanted but sit under a stale name.
+// The outdated check folds names to lower case, so a file left under its pre-rename spelling by a case-only content
+// rename still matches an expected resource and survives here - while the runtime, which resolves baked packs by
+// exact name, can no longer find it. Both decisions come from one pass because they read the same directory.
+void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<pair<string, string>> stale_cased_paths;
 
     fs_iterate_dir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
@@ -605,39 +746,55 @@ void MasterBaker::BakeAllInternal()
             return;
         }
 
-        if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
-            bool remove_outdated_ok = fs_remove_file(strex(_settings->BakeOutput).combine_path(path));
+        if (expected.ResourceNames.count(ExcludeAllExt(path)) == 0) {
+            bool remove_outdated_ok = fs_remove_file(MakeOutputPath(path));
             FO_VERIFY_AND_THROW(remove_outdated_ok, "Unable to delete outdated baked resource", path);
             _report->RecordOutdatedFile(path);
             WriteLog("Delete outdated file {}", path);
+            return;
+        }
+
+        // Collected rather than renamed in place: renaming an entry while its directory is being iterated is
+        // not defined, and the iterator could hand the same file back under its new name
+        const auto it = expected.Paths.find(strex(path).lower().str());
+
+        if (it != expected.Paths.end() && it->second != path) {
+            stale_cased_paths.emplace_back(string(path), it->second);
         }
     });
 
-    string effekseer_cache_dir = strex(_settings->BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer");
+    for (const auto& [stale_path, expected_path] : stale_cased_paths) {
+        bool rename_ok = fs_rename(MakeOutputPath(stale_path), MakeOutputPath(expected_path));
+        FO_VERIFY_AND_THROW(rename_ok, "Unable to rename the stale-cased baked resource", stale_path, expected_path);
+        WriteLog("Rename stale-cased file {} to {}", stale_path, expected_path);
+    }
+}
 
-    if (fs_is_dir(effekseer_cache_dir)) {
-        constexpr string_view dependency_cache_suffix = ".deps";
+// Baker-private caches are keyed by the output they describe, so they go stale exactly when that output does.
+void MasterBaker::SweepOutdatedBakerCache(const ExpectedOutputs& expected)
+{
+    FO_STACK_TRACE_ENTRY();
 
-        fs_iterate_dir(effekseer_cache_dir, true, [&](string_view path, size_t size, uint64_t write_time) {
-            ignore_unused(size, write_time);
+    string effekseer_cache_dir = MakeOutputPath(strex(BAKER_CACHE_DIR).combine_path("Effekseer").str());
 
-            if (path.ends_with(dependency_cache_suffix)) {
-                string_view cached_output_path = path.substr(0, path.size() - dependency_cache_suffix.size());
-
-                if (actual_resource_names.count(exclude_all_ext(cached_output_path)) == 0) {
-                    fs_remove_file(strex(effekseer_cache_dir).combine_path(path));
-                    WriteLog("Delete outdated baker cache {}", path);
-                }
-            }
-        });
+    if (!fs_is_dir(effekseer_cache_dir)) {
+        return;
     }
 
-    // Finalize
-    WriteLog("Time {}", backing_time.GetDuration());
-    WriteLog("Baking complete!");
+    constexpr string_view dependency_cache_suffix = ".deps";
 
-    bool build_hash_write_ok = fs_write_file(build_hash_path, FO_BUILD_HASH);
-    FO_VERIFY_AND_THROW(build_hash_write_ok, "Unable to write the build hash file", build_hash_path);
+    fs_iterate_dir(effekseer_cache_dir, true, [&](string_view path, size_t size, uint64_t write_time) {
+        ignore_unused(size, write_time);
+
+        if (path.ends_with(dependency_cache_suffix)) {
+            string_view cached_output_path = path.substr(0, path.size() - dependency_cache_suffix.size());
+
+            if (expected.ResourceNames.count(ExcludeAllExt(cached_output_path)) == 0) {
+                fs_remove_file(strex(effekseer_cache_dir).combine_path(path));
+                WriteLog("Delete outdated baker cache {}", path);
+            }
+        }
+    });
 }
 
 auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t
@@ -779,8 +936,9 @@ auto BakerDataSource::Reindex() -> bool
         };
         res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
-        // Editors and viewers edit content while the tool runs, so a cached mount would go stale between the
-        // initial indexing and a later open; caching stays for the runtime and the one-shot batch bake
+        // Live sources: the on-demand baker serves editors and viewers, whose content is edited while the tool
+        // runs, so input dirs are mounted non-cached - a cached snapshot would go stale between the initial
+        // indexing and a later open (cached mounts stay for the client/server runtime and the one-shot batch bake).
         for (const auto& dir : res_pack.InputDirs) {
             res_entry.InputDir.AddDirSource(dir, true, true);
         }
@@ -798,8 +956,10 @@ auto BakerDataSource::Reindex() -> bool
         }
     }
 
-    // Published before the discovery pass, because a baker reading another baker's output re-enters this data
-    // source and resolves the file through the input resources to locate or on-demand bake it
+    // Input resources must be published before the discovery pass runs the bakers: a baker can read another
+    // baker's output while it discovers its own (for example ModelInfoBaker builds a BakerClientEngine that
+    // reads the baked metadata), which re-enters this data source through _outputResources and resolves the
+    // file via ResolveFilePath - which needs the input resources to locate or on-demand bake it.
     _inputResources = std::move(input_resources);
 
     // Evaluate output files
@@ -816,8 +976,9 @@ auto BakerDataSource::Reindex() -> bool
     auto check_file = [&](string_view path, uint64_t write_time) {
         output_files.insert_or_assign(string(path), write_time);
 
-        // Published live so a later baker in the same pass resolves an earlier one's output on demand, and
-        // additive so no entry is transiently missing for a concurrent reader
+        // Publish live so a later baker in this same discovery pass can resolve an earlier baker's output
+        // on-demand (bakers run in dependency order, e.g. metadata before model info). Additive so no entry is
+        // transiently missing for a concurrent reader; the clean set replaces it once the pass completes.
         {
             scoped_lock locker {_outputFilesLocker};
 
@@ -853,6 +1014,7 @@ auto BakerDataSource::Reindex() -> bool
         changed |= previous_output_files != output_files;
         _outputFiles = std::move(output_files);
     }
+
 
     return changed;
 }

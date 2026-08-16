@@ -744,6 +744,147 @@ Bakers = {}
     CHECK(fs_remove_dir_tree(temp_dir));
 }
 
+TEST_CASE("BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename")
+{
+    string temp_dir = MakeTempBakerSetupDir("master_baker_case_rename");
+    string input_dir = strex(temp_dir).combine_path("input").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string lower_source_path = strex(input_dir).combine_path("Data/keep.json").str();
+    string upper_source_path = strex(input_dir).combine_path("Data/Keep.json").str();
+    string output_data_dir = strex(output_dir).combine_path("Core/Data").str();
+    string upper_output_path = strex(output_data_dir).combine_path("Keep.json").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(lower_source_path, string_view {"before-rename"}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Core
+InputDirs = input
+IncludePatterns = **/*.json
+Bakers = {}
+)",
+        output_dir, RawCopyBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    {
+        MasterBaker first_baker {&settings};
+        REQUIRE(first_baker.BakeAll());
+    }
+
+    // Rename the authored file by letter case only, the way a content-naming pass does. On a case-insensitive
+    // filesystem the already baked output keeps its pre-rename directory entry name unless the baker reconciles
+    // it, and incremental baking would never revisit a file it considers up to date.
+    REQUIRE(fs_remove_file(lower_source_path));
+    REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
+
+    {
+        MasterBaker second_baker {&settings};
+        REQUIRE(second_baker.BakeAll());
+    }
+
+    bool exact_upper_name_found = false;
+    bool exact_lower_name_found = false;
+
+    std::error_code ec;
+
+    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(output_data_dir)}, ec}) {
+        string entry_name = fs_path_to_string(entry.path().filename());
+
+        if (entry_name == "Keep.json") {
+            exact_upper_name_found = true;
+        }
+        if (entry_name == "keep.json") {
+            exact_lower_name_found = true;
+        }
+    }
+
+    CHECK_FALSE(ec);
+    CHECK(exact_upper_name_found);
+    CHECK_FALSE(exact_lower_name_found);
+    REQUIRE(fs_read_file(upper_output_path).has_value());
+    CHECK(*fs_read_file(upper_output_path) == "after-rename");
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
+TEST_CASE("BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename")
+{
+    string temp_dir = MakeTempBakerSetupDir("master_baker_case_dir_rename");
+    string input_dir = strex(temp_dir).combine_path("input").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string lower_source_path = strex(input_dir).combine_path("data/keep.json").str();
+    string upper_source_path = strex(input_dir).combine_path("Data/keep.json").str();
+    string output_pack_dir = strex(output_dir).combine_path("Core").str();
+    string upper_output_path = strex(output_pack_dir).combine_path("Data/keep.json").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(lower_source_path, string_view {"before-rename"}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Core
+InputDirs = input
+IncludePatterns = **/*.json
+Bakers = {}
+)",
+        output_dir, RawCopyBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    {
+        MasterBaker first_baker {&settings};
+        REQUIRE(first_baker.BakeAll());
+    }
+
+    // Rename the authored *directory* by letter case only. Creating the new output directory reuses the existing
+    // one and keeps its name, so every path underneath would silently keep the pre-rename spelling.
+    REQUIRE(fs_remove_dir_tree(strex(input_dir).combine_path("data").str()));
+    REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
+
+    {
+        MasterBaker second_baker {&settings};
+        REQUIRE(second_baker.BakeAll());
+    }
+
+    bool exact_upper_dir_found = false;
+    bool exact_lower_dir_found = false;
+
+    std::error_code ec;
+
+    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(output_pack_dir)}, ec}) {
+        string entry_name = fs_path_to_string(entry.path().filename());
+
+        if (entry_name == "Data") {
+            exact_upper_dir_found = true;
+        }
+        if (entry_name == "data") {
+            exact_lower_dir_found = true;
+        }
+    }
+
+    CHECK_FALSE(ec);
+    CHECK(exact_upper_dir_found);
+    CHECK_FALSE(exact_lower_dir_found);
+    REQUIRE(fs_read_file(upper_output_path).has_value());
+    CHECK(*fs_read_file(upper_output_path) == "after-rename");
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
 TEST_CASE("BakerResourcePacksCanSplitSharedInputDirectoryByGlob")
 {
     string temp_dir = MakeTempBakerSetupDir("resource_pack_glob_split");
