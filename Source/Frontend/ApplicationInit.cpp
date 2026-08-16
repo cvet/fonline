@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@
 FO_BEGIN_NAMESPACE
 
 // File the installer drops next to the exe to mark an installed (non-portable) build. The portable
-// zip has no marker and keeps writing next to the exe.
+// zip has no marker and keeps writing next to the exe
 static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
 
 static unique_nptr<Application> App {};
@@ -130,7 +130,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
 
     // Installed client: the install dir is read-only, so move the log file into the per-user writable
-    // data dir now that settings (and the resolved writable path) are known.
+    // data dir now that settings (and the resolved writable path) are known
     if (!settings.UserWritablePath.empty()) {
         string log_path = fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName());
         WriteLog("Switch log to path '{}'", log_path);
@@ -151,7 +151,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     }
 
     // Diagnostic self-test: with logging, the exception callback and the async-log mode all live, verify
-    // that crash diagnostics reach the log for the crash class named by FO_SELFTEST_CRASH. Inert otherwise.
+    // that crash diagnostics reach the log for the crash class named by FO_SELFTEST_CRASH. Inert otherwise
     DiagnosticSelfTest::RunIfRequested();
 
     // Project-side early init (before App frontend, after settings + exception/log callbacks)
@@ -307,7 +307,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     }
 
     // Resolve the installed-client writable root now that the config is applied, so the local-config
-    // cache below — and all later cache/log/update writes — land in the per-user writable directory.
+    // cache below — and all later cache/log/update writes — land in the per-user writable directory
     ResolveUserWritablePath(settings);
 
     string cache_dir = fs_make_writable_path(settings.UserWritablePath, settings.CacheResources);
@@ -330,12 +330,12 @@ void ResolveUserWritablePath(GlobalSettings& settings)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Resolve settings.UserWritablePath to an absolute writable root, or "" to stay portable.
+    // Resolve settings.UserWritablePath to an absolute writable root, or "" to stay portable
     string root = string(settings.UserWritablePath);
 
     if (root.empty()) {
         // No explicit path: switch to the per-user writable layout only when the installer marker is
-        // present next to the exe; otherwise stay portable.
+        // present next to the exe; otherwise stay portable
         auto exe_path = Platform::GetExePath();
 
         if (!exe_path.has_value() || !fs_exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
@@ -369,7 +369,7 @@ void ResolveUserWritablePath(GlobalSettings& settings)
     settings.UserWritablePath = root;
 
     // Pre-create the writable cache + resource-overlay subdirs so the cache and the self-update
-    // resource writer never fail on a missing parent directory.
+    // resource writer never fail on a missing parent directory
     fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources));
     fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
 
@@ -430,10 +430,8 @@ auto GetExeLogFileName() -> string
 }
 
 #if FO_LINUX || FO_MAC
-// Written from the signal handler, so it must stay async-signal-safe: a lock-free atomic store is
-// the only thing the handler may do (no logging, allocation or condition-variable work — malloc or
-// a cv notify from a signal can deadlock against the interrupted thread). Process-global by nature:
-// a signal targets the process, not an engine instance. Consumed via IsQuitSignalReceived().
+// Written from a signal handler, where a lock-free store is the only async-signal-safe move; global
+// because a signal targets the process, not an engine instance
 static std::atomic<bool> QuitSignalReceived {};
 static_assert(std::atomic<bool>::is_always_lock_free);
 

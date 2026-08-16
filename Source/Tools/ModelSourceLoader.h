@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -108,11 +108,11 @@ struct ModelSourceAsset
 void ValidateModelSourceAsset(const ModelSourceAsset& asset);
 
 // One cache belongs to one immutable FileCollection/bake pass. Concurrent Get()
-// calls for the same path share both a successful result and a failing load.
+// calls for the same path share both a successful result and a failing load
 class ModelSourceAssetCache final
 {
 public:
-    // The callback may run concurrently for different paths; same-path calls are single-flight.
+    // The callback may run concurrently for different paths; same-path calls are single-flight
     using LoadCallback = function<ModelSourceAsset(string_view, const File&)>;
 
     explicit ModelSourceAssetCache(const FileCollection& files, LoadCallback load_callback = {});

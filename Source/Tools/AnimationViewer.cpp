@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,18 +47,18 @@
 FO_BEGIN_NAMESPACE
 
 // Preview surface: large enough for oversized creatures at in-game scale, and
-// the same for every critter so silhouettes stay comparable between takes.
+// the same for every critter so silhouettes stay comparable between takes
 static constexpr isize32 PREVIEW_SIZE = {512, 512};
 
 // Fixed screen point the critter root (hex center) is pinned to. Kept below the
-// middle so the body, which rises from the ground point, has headroom above.
+// middle so the body, which rises from the ground point, has headroom above
 static constexpr ipos32 ROOT_ANCHOR = {PREVIEW_SIZE.width / 2, PREVIEW_SIZE.height * 2 / 3};
 
 // Faint cyan so the ground crosshair reads as a reference without competing
-// with the model drawn over it.
+// with the model drawn over it
 static constexpr ucolor ROOT_CROSSHAIR_COLOR = {100, 200, 220, 110};
 
-// Overlay colours, drawn over the model so they stay legible.
+// Overlay colours, drawn over the model so they stay legible
 static constexpr ucolor NAME_POINT_COLOR = {255, 220, 40, 230}; // where the name would sit
 static constexpr ucolor RENDER_RECT_COLOR = {90, 220, 90, 200}; // full sprite frame
 static constexpr ucolor VIEW_RECT_COLOR = {235, 90, 220, 200}; // visual (view) rect
@@ -67,7 +67,7 @@ static constexpr ucolor MODEL_ATTACH_COLOR = {240, 175, 70, 230}; // where a bon
 static constexpr int32_t OVERLAY_CROSS_HALF = 5; // marker cross arm length, screen pixels
 
 // Distinct bright colours cycled by bone-name hash so a bone's tree entry and
-// its viewport marker share the same colour.
+// its viewport marker share the same colour
 static constexpr array<ucolor, 10> BONE_PALETTE = {
     ucolor {239, 83, 80},
     ucolor {255, 167, 38},
@@ -81,9 +81,8 @@ static constexpr array<ucolor, 10> BONE_PALETTE = {
     ucolor {189, 189, 189},
 };
 
-// 2D critters have no authored clip table, so the viewer probes the sprite
-// resources across the declared enum ranges. The bound stays generous enough
-// for project-defined action values while keeping the probe cheap.
+// 2D critters have no authored clip table, so the viewer probes the sprite resources across the enum
+// ranges; the bound stays generous for project-defined actions while keeping the probe cheap
 static constexpr int32_t PROBE_STATE_ANIM_MAX = 32;
 static constexpr int32_t PROBE_ACTION_ANIM_MAX = 700;
 static constexpr float32_t MIN_ZOOM = 0.25f;
@@ -91,10 +90,10 @@ static constexpr float32_t MAX_ZOOM = 8.0f;
 static constexpr float32_t ZOOM_WHEEL_STEP = 1.15f;
 
 // Held-LMB drag over the preview turns the critter: degrees of facing per pixel
-// of horizontal drag (about one full turn per screen width).
+// of horizontal drag (about one full turn per screen width)
 static constexpr float32_t DRAG_DEG_PER_PX = 0.7f;
 
-// Wrap a facing angle into [0, 360).
+// Wrap a facing angle into [0, 360)
 static auto NormalizeAngle(float32_t angle) -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -139,8 +138,8 @@ void AnimationViewer::LoadSettings()
     _drawViewRect = _settings.GetBool("DrawViewRect", _drawViewRect);
 
     // Re-open the last previewed critter, but only if that prototype still exists (content may have changed since
-    // the last run), so a stale id never surfaces as a selection error on startup.
-    auto last_proto = _settings.GetString("SelectedProto");
+    // the last run), so a stale id never surfaces as a selection error on startup
+    string last_proto = _settings.GetString("SelectedProto");
 
     if (!last_proto.empty()) {
         for (const auto& [proto_id, proto] : _engine->GetProtoCritters()) {
@@ -203,7 +202,7 @@ void AnimationViewer::Draw()
     }
 
     // A viewport-filling window has no close button, so it must not be handed a
-    // visibility flag it could never turn back on.
+    // visibility flag it could never turn back on
     if (!ImGui::Begin("Animation Viewer", _fillViewport ? nullptr : &keep_open, window_flags)) {
         ImGui::End();
         return;
@@ -227,7 +226,7 @@ void AnimationViewer::Draw()
 
     ImGui::SameLine();
 
-    // Right column split: animation list on top, model hierarchy below it.
+    // Right column split: animation list on top, model hierarchy below it
     if (ImGui::BeginChild("RightColumn", {0.0f, 0.0f}, ImGuiChildFlags_None)) {
         float32_t column_height = ImGui::GetContentRegionAvail().y;
 
@@ -292,7 +291,7 @@ void AnimationViewer::DrawPreview()
     }
 
     // Facing is an angle; a 2D sprite snaps it to the nearest hex frame, a model
-    // turns to it. Drag the preview with the left button to rotate, too.
+    // turns to it. Drag the preview with the left button to rotate, too
     ImGui::SetNextItemWidth(110.0f);
     if (ImGui::SliderFloat("Angle", &_dirAngle, 0.0f, 360.0f, "%.0f deg")) {
         _dirAngle = NormalizeAngle(_dirAngle);
@@ -323,19 +322,19 @@ void AnimationViewer::DrawPreview()
         }
 
         // Invisible button over the image so the preview captures the mouse:
-        // held-left drag turns the critter, held-right drag pans, wheel zooms.
+        // held-left drag turns the critter, held-right drag pans, wheel zooms
         ImGui::InvisibleButton("PreviewArea", {numeric_cast<float32_t>(PREVIEW_SIZE.width), numeric_cast<float32_t>(PREVIEW_SIZE.height)}, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
         if (ImGui::IsItemActive()) {
             ImVec2 drag = ImGui::GetIO().MouseDelta;
 
-            // Held-LMB horizontal drag rotates the facing left/right.
+            // Held-LMB horizontal drag rotates the facing left/right
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && drag.x != 0.0f) {
                 _dirAngle = NormalizeAngle(_dirAngle - drag.x * DRAG_DEG_PER_PX);
                 ApplyDir();
             }
 
-            // Held-RMB drag pans the view (moves the camera anchor).
+            // Held-RMB drag pans the view (moves the camera anchor)
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
                 _pan.x += drag.x;
                 _pan.y += drag.y;
@@ -343,7 +342,7 @@ void AnimationViewer::DrawPreview()
         }
 
         // Wheel over the preview zooms, which is what the hand reaches for
-        // first when judging a model's size.
+        // first when judging a model's size
         if (ImGui::IsItemHovered()) {
             float32_t wheel = ImGui::GetIO().MouseWheel;
 
@@ -427,7 +426,7 @@ void AnimationViewer::SelectCritter(hstring proto_id)
     }
 
     // Per-critter name offset (engine property, present on the proto) — combined
-    // with the global setting to place the name-level marker like the game does.
+    // with the global setting to place the name-level marker like the game does
     _protoNameOffset = proto->GetNameOffset();
 
     hstring model_name = proto->GetModelName();
@@ -464,10 +463,8 @@ void AnimationViewer::ApplyDir()
     _previewSprite->SetDir(dir);
 
 #if FO_ENABLE_3D
-    // Sprite::SetDir starts a *smooth* turn on the model, which only converges
-    // while frames advance with the model considered "moving". A review window
-    // wants the pose immediately, so snap the model's look and move direction
-    // and force a redraw.
+    // Sprite::SetDir starts a smooth turn that converges only while frames advance, but a review window
+    // wants the pose at once, so the directions are snapped and a redraw forced
     if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
         auto model = model_spr->GetModel();
         model->SetLookDir(dir);
@@ -483,18 +480,15 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
 
     _modelLayers.clear();
 
-    // Prototypes author their visual slots as ordinary critter properties
-    // (armor, clothing, hair...), but which property feeds which model layer is
-    // game-specific. `Render.ModelLayerProperties` declares that mapping as
-    // "<PropertyName>=<LayerIndex>" pairs, so a prototype can be dressed here
-    // exactly the way the game dresses it, without game knowledge in the engine.
+    // Which critter property feeds which model layer is game-specific, so `Render.ModelLayerProperties`
+    // declares the mapping and a prototype is dressed here without game knowledge in the engine
     const auto& mapping = _engine->Settings->ModelLayerProperties;
 
     if (mapping.empty()) {
         return;
     }
 
-    auto registrator = proto->GetProperties()->GetRegistrator();
+    auto registrar = proto->GetProperties()->GetRegistrar();
 
     for (const auto& pair_text : mapping) {
         auto sep = pair_text.find('=');
@@ -506,7 +500,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
 
         string prop_name = string(strvex(string_view(pair_text).substr(0, sep)).trim());
         string index_text = string(strvex(string_view(pair_text).substr(sep + 1)).trim());
-        auto prop = registrator->FindProperty(prop_name);
+        auto prop = registrar->FindProperty(prop_name);
 
         if (!prop || prop->IsDisabled()) {
             continue;
@@ -543,7 +537,7 @@ void AnimationViewer::CollectAnimations()
 
 #if FO_ENABLE_3D
     // 3D: the model description carries the authored clip table, so the list is
-    // exactly what the critter has - no probing, no false entries.
+    // exactly what the critter has - no probing, no false entries
     if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
         auto model = model_spr->GetModel();
 
@@ -556,7 +550,7 @@ void AnimationViewer::CollectAnimations()
 #endif
 
     // 2D: sprite-sheet critters have no clip table; a frame set that resolves
-    // for a given pair is the evidence that the animation exists.
+    // for a given pair is the evidence that the animation exists
     for (int32_t state_anim = 1; state_anim <= PROBE_STATE_ANIM_MAX; state_anim++) {
         for (int32_t action_anim = 1; action_anim <= PROBE_ACTION_ANIM_MAX; action_anim++) {
             auto state_value = static_cast<CritterStateAnim>(state_anim);
@@ -583,9 +577,8 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
 
         auto flags = looped ? ModelAnimFlags::None : CombineEnum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
 
-        // Instant playback drops the cross-fade so the pose is settled at once
-        // (used by the prewarm so the first frame is already the idle pose, not a
-        // blend from the bind pose).
+        // Instant playback drops the cross-fade, which is what lets the prewarm open on the idle pose
+        // instead of a blend from the bind pose
         if (instant) {
             flags = CombineEnum(flags, ModelAnimFlags::NoSmooth);
         }
@@ -618,7 +611,7 @@ void AnimationViewer::PlayIdle(bool instant)
         return;
     }
 
-    // Idle is the resting state a reviewer expects to see between clips.
+    // Idle is the resting state a reviewer expects to see between clips
     auto idle_entry = AnimationEntry {.StateAnim = CritterStateAnim::Unarmed, .ActionAnim = CritterActionAnim::Idle, .Label = {}};
     PlayAnimation(idle_entry, true, instant);
 }
@@ -631,9 +624,8 @@ void AnimationViewer::PrewarmModel()
         return;
     }
 
-    // Settle the idle instantly so the first shown frame is the idle pose rather
-    // than a blend from the bind pose, and warm the particle systems so any
-    // effects are already emitting (no cold start).
+    // Settle the idle and warm the particle systems, so the first shown frame is the real idle pose
+    // with its effects already emitting
     PlayIdle(true);
     _previewSprite->Prewarm();
 }
@@ -647,25 +639,20 @@ void AnimationViewer::RenderPreview()
     }
 
     if (!_renderTarget || _renderTargetSize != PREVIEW_SIZE) {
-        // Nearest filtering: ImGui presents the target scaled by the display's
-        // framebuffer (DPI) scale, and a linear target would blur the magnified
-        // sprite there. Nearest keeps the honest sprite pixelation crisp.
+        // Nearest filtering, because ImGui presents the target scaled by the display's DPI scale and a
+        // linear target would blur the magnified sprite
         _renderTarget = GetApp()->Render.CreateTexture(PREVIEW_SIZE, false, true);
         _renderTargetSize = PREVIEW_SIZE;
     }
 
     // A finished one-shot clip would otherwise leave the critter frozen on its
-    // last frame; fall back to idle so the window keeps showing a live pose.
+    // last frame; fall back to idle so the window keeps showing a live pose
     if (_playingIndex >= 0 && !_looped && !_previewSprite->IsPlaying()) {
         PlayIdle();
     }
 
-    // Sprite mode renders the model at native scale into the atlas (2x-supersampled
-    // to the atlas frame, so edges are anti-aliased at native resolution) and then
-    // magnifies that baked frame, so zoom shows honest sprite pixelation exactly
-    // like the game's cached sprite. Direct draw instead renders the model itself
-    // as real geometry into the scene at the zoom (crisp at any magnification, no
-    // atlas). Only 3D models can draw directly; 2D critters always use the atlas.
+    // Sprite mode magnifies the baked atlas frame, so zoom shows the same pixelation the game shows;
+    // direct draw renders real geometry at the zoom and is possible only for 3D models
     float32_t draw_scale = _zoom;
     bool direct = false;
 
@@ -676,7 +663,7 @@ void AnimationViewer::RenderPreview()
         direct = _directDraw;
 
         // Direct: scale the model to the zoom and draw it 1:1. Sprite: keep it at
-        // native scale and let the baked frame be magnified (`draw_scale`).
+        // native scale and let the baked frame be magnified (`draw_scale`)
         float32_t model_scale = direct ? _zoom : 1.0f;
 
         if (model_scale != _appliedModelScale) {
@@ -689,7 +676,7 @@ void AnimationViewer::RenderPreview()
 #endif
 
     // Direct mode draws the model itself below; atlas mode renders it to the
-    // atlas now (skipped for direct so the global atlas path is not triggered).
+    // atlas now (skipped for direct so the global atlas path is not triggered)
     if (direct) {
 #if FO_ENABLE_3D
         model_spr->GetModel()->PrepareFrameLayout();
@@ -704,21 +691,17 @@ void AnimationViewer::RenderPreview()
     auto rt_guard = scope_fail([&]() noexcept { GetApp()->Render.SetRenderTarget(prev_rt); });
     GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
 
-    // Camera pan shifts the whole view (model + crosshair + overlays) together.
+    // Camera pan shifts the whole view (model + crosshair + overlays) together
     ipos32 anchor = {ROOT_ANCHOR.x + iround<int32_t>(_pan.x), ROOT_ANCHOR.y + iround<int32_t>(_pan.y)};
 
     // Background crosshair through the (panned) root anchor, drawn first so it
-    // reads as a ground reference behind the model.
+    // reads as a ground reference behind the model
     if (_drawRoot) {
         DrawRootCrosshair(anchor);
     }
 
-    // Anchor by the root — the hex ground point the game stands critters on —
-    // rather than centering the bounds, so it stays put while clips change the
-    // silhouette. The root inside a sprite is bottom-centre adjusted by its
-    // offset, exactly as MapSprite::GetSpriteRootOffset computes it for the map.
-    // `draw_scale` is the residual on-screen scale after the model's own render
-    // scale (1.0 when the render resolution already matches the zoom).
+    // Anchored by the root — the hex ground point critters stand on, as MapSprite::GetSpriteRootOffset
+    // computes it — rather than by the bounds, so the preview holds still while a clip changes the shape
     isize32 sprite_size = _previewSprite->GetSize();
     ipos32 sprite_offset = _previewSprite->GetOffset();
     ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
@@ -729,9 +712,8 @@ void AnimationViewer::RenderPreview()
 
     if (direct) {
 #if FO_ENABLE_3D
-        // Clear depth again so the crosshair's 2D draw cannot occlude the model,
-        // and widen the ortho depth range so a scaled-up model is not clipped by
-        // the near/far planes. DrawInScene anchors the model root to `anchor`.
+        // Clear depth again so the crosshair cannot occlude the model, and widen the ortho range so a
+        // scaled-up model is not clipped by the near/far planes
         GetApp()->Render.ClearRenderTarget(std::nullopt, true);
         float32_t depth_half = std::max(64.0f, _appliedModelScale * 64.0f);
         GetApp()->Render.SetOrthoDepthRange(-depth_half, depth_half);
@@ -745,7 +727,7 @@ void AnimationViewer::RenderPreview()
         _sprMngr->Flush();
     }
 
-    // Diagnostic overlays go on top of the model so they stay readable.
+    // Diagnostic overlays go on top of the model so they stay readable
     DrawOverlays(pos, sprite_size, draw_scale);
 
     GetApp()->Render.SetRenderTarget(prev_rt);
@@ -756,7 +738,7 @@ void AnimationViewer::DrawRootCrosshair(ipos32 anchor)
     FO_STACK_TRACE_ENTRY();
 
     // Two full-span segments (LineList draws consecutive point pairs), crossing
-    // at the anchor to mark the root the same way for every clip.
+    // at the anchor to mark the root the same way for every clip
     array<PrimitivePoint, 4> lines = {
         PrimitivePoint {.PointPos = {anchor.x, 0}, .PointColor = ROOT_CROSSHAIR_COLOR},
         PrimitivePoint {.PointPos = {anchor.x, PREVIEW_SIZE.height}, .PointColor = ROOT_CROSSHAIR_COLOR},
@@ -773,7 +755,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
 
     // Map a sprite-local pixel to the preview render target (same transform the
     // model draw uses: top-left at sprite_pos, scaled by the residual draw scale;
-    // sprite-local geometry already carries the model's own render scale).
+    // sprite-local geometry already carries the model's own render scale)
     auto to_screen = [&](ipos32 sl) -> ipos32 { return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)}; };
 
     vector<PrimitivePoint> lines;
@@ -793,23 +775,20 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
         add_segment(bl, tl, color);
     };
     // Fixed screen-size cross (takes an already-mapped screen point) so a marker
-    // stays the same size at any zoom.
+    // stays the same size at any zoom
     auto add_cross = [&](ipos32 c, ucolor color) {
         add_segment({c.x - OVERLAY_CROSS_HALF, c.y}, {c.x + OVERLAY_CROSS_HALF, c.y}, color);
         add_segment({c.x, c.y - OVERLAY_CROSS_HALF}, {c.x, c.y + OVERLAY_CROSS_HALF}, color);
     };
 
     if (_drawRenderRect) {
-        // The render/draw rect is the whole frame the model rasterizes into — the
-        // maximal drawing area. For a 3D model that is GetDrawSize(), which is
-        // larger than the cropped sprite (GetSize()) and always contains the view
-        // rect; place it so the model origin sits where the crop's root does (the
-        // origin projects to (drawW/2, drawH - drawH/4) inside the draw frame).
+        // The draw rect is the maximal area the model rasterizes into, larger than the cropped sprite,
+        // so it is placed to put the model origin at (drawW/2, drawH - drawH/4) where the crop's root sits
         irect32 render_local = {0, 0, sprite_size.width, sprite_size.height};
 #if FO_ENABLE_3D
         if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
             // The frame's top-left in sprite-local space: the model origin sits at the exact frame pivot inside the
-            // frame and at root_in_sprite inside the crop, so the frame origin (0,0) maps to root_in_sprite - pivot.
+            // frame and at root_in_sprite inside the crop, so the frame origin (0,0) maps to root_in_sprite - pivot
             isize32 draw_size = model_spr->GetModel()->GetDrawSize();
             ipos32 pivot = model_spr->GetModel()->GetFramePivot();
             ipos32 sprite_offset = _previewSprite->GetOffset();
@@ -826,8 +805,8 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
     }
 
     // View rect / name point live in the sprite's view size, which the map
-    // renderer positions bottom-centred inside the frame (MapSprite::GetViewRect).
-    if (const auto view_size = _previewSprite->GetViewSize(); view_size.has_value() && (_drawViewRect || _drawNameLevel)) {
+    // renderer positions bottom-centred inside the frame (MapSprite::GetViewRect)
+    if (auto view_size = _previewSprite->GetViewSize(); view_size.has_value() && (_drawViewRect || _drawNameLevel)) {
         irect32 view_local = {
             sprite_size.width / 2 - view_size->width / 2 + view_size->x,
             sprite_size.height - view_size->height + view_size->y,
@@ -839,10 +818,8 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
             add_rect(view_local, VIEW_RECT_COLOR);
         }
         if (_drawNameLevel) {
-            // Full-width line at the name's height, matching CritterHexView's
-            // GetNameTextPos: view-rect top + global NameOffset + the per-critter
-            // NameOffset from the proto. Those offsets are game pixels, so they
-            // scale by the full on-screen zoom (`_zoom`), not the residual draw scale.
+            // Matches CritterHexView::GetNameTextPos, whose offsets are game pixels and therefore scale
+            // by the full on-screen zoom rather than the residual draw scale
             ipos32 name_top = to_screen({view_local.x + view_local.width / 2, view_local.y});
             int32_t name_y = name_top.y + iround<int32_t>(numeric_cast<float32_t>(_engine->Settings->NameOffset + _protoNameOffset) * _zoom);
             add_segment({0, name_y}, {PREVIEW_SIZE.width, name_y}, NAME_POINT_COLOR);
@@ -855,13 +832,13 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
             auto model = model_spr->GetModel();
 
             for (const auto& bone : _enabledBones) {
-                if (const auto bone_pos = model->GetBoneSpritePos(bone); bone_pos.has_value()) {
+                if (auto bone_pos = model->GetBoneSpritePos(bone); bone_pos.has_value()) {
                     add_cross(to_screen(*bone_pos), BoneColor(bone));
                 }
             }
 
             // A ticked attachment is marked where it actually ends up - its bone displaced by the authored offset - so
-            // the offset can be read off the preview instead of inferred from where the smoke or the weapon looks to be.
+            // the offset can be read off the preview instead of inferred from where the smoke or the weapon looks to be
             if (!_enabledAttachments.empty()) {
                 for (const auto& point : model->GetAttachPoints()) {
                     if (point.SpritePos.has_value() && _enabledAttachments.count(AttachKey(point)) != 0) {
@@ -912,7 +889,7 @@ void AnimationViewer::DrawHierarchy()
     }
 
     // Attachments are listed as sub-nodes of the bone they connect to, so the tree shows what actually hangs where
-    // instead of a global toggle that gives no clue which bone an effect or a weapon belongs to.
+    // instead of a global toggle that gives no clue which bone an effect or a weapon belongs to
     vector<ModelAttachPoint> attach_points = model->GetAttachPoints();
 
     DrawHierarchyNode(root_bone, attach_points);
@@ -952,7 +929,7 @@ void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone, const vector<
 
     ImGui::SameLine();
 
-    // Colour the label with the bone's marker colour so tree and preview match.
+    // Colour the label with the bone's marker colour so tree and preview match
     ucolor color = BoneColor(name);
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(color.comp.r, color.comp.g, color.comp.b, 255));
 
@@ -966,7 +943,7 @@ void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone, const vector<
     ImGui::PopStyleColor();
 
     if (open && (!bone->Children.empty() || has_attachments)) {
-        // Attachments first: they belong to this bone, while the child bones continue the skeleton below it.
+        // Attachments first: they belong to this bone, while the child bones continue the skeleton below it
         for (size_t i = 0; i != attach_points.size(); ++i) {
             if (attach_points[i].ParentIndex < 0 && attach_points[i].BoneName == name) {
                 DrawAttachNode(attach_points, numeric_cast<int32_t>(i));
@@ -1014,7 +991,7 @@ void AnimationViewer::DrawAttachNode(const vector<ModelAttachPoint>& attach_poin
 
     ImGui::SameLine();
 
-    // Colour the label with the marker colour the preview uses for this kind so tree and cross match.
+    // Colour the label with the marker colour the preview uses for this kind so tree and cross match
     ucolor color = particle ? PARTICLE_ATTACH_COLOR : MODEL_ATTACH_COLOR;
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(color.comp.r, color.comp.g, color.comp.b, 255));
 
@@ -1054,7 +1031,7 @@ auto AnimationViewer::AttachKey(const ModelAttachPoint& point) -> string
     FO_STACK_TRACE_ENTRY();
 
     // Keep the key stable when live attachment indices shift as effects finish, but distinguish repeated uses of the
-    // same resource on one bone at different authored offsets.
+    // same resource on one bone at different authored offsets
     return strex("{}@{}@{}@{}:{}:{}", static_cast<int32_t>(point.Kind), point.Name, point.BoneName, std::bit_cast<uint32_t>(point.Move.x), std::bit_cast<uint32_t>(point.Move.y), std::bit_cast<uint32_t>(point.Move.z)).str();
 }
 #endif
@@ -1067,8 +1044,8 @@ auto AnimationViewer::BoneColor(hstring bone_name) -> ucolor
     uint32_t hash = 2166136261u;
 
     // FNV-1a over the raw bytes; static_cast is the byte reinterpretation a hash
-    // wants (numeric_cast would throw on the high-bit bytes of non-ASCII names).
-    for (const char c : name) {
+    // wants (numeric_cast would throw on the high-bit bytes of non-ASCII names)
+    for (char c : name) {
         hash = (hash ^ static_cast<uint8_t>(c)) * 16777619u;
     }
 
@@ -1081,11 +1058,11 @@ auto AnimationViewer::MakeAnimationLabel(CritterStateAnim state_anim, CritterAct
 
     bool state_failed = false;
     bool action_failed = false;
-    auto state_name = _engine->ResolveEnumValueName("CritterStateAnim", static_cast<int32_t>(state_anim), &state_failed);
-    auto action_name = _engine->ResolveEnumValueName("CritterActionAnim", static_cast<int32_t>(action_anim), &action_failed);
+    string_view state_name = _engine->ResolveEnumValueName("CritterStateAnim", static_cast<int32_t>(state_anim), &state_failed);
+    string_view action_name = _engine->ResolveEnumValueName("CritterActionAnim", static_cast<int32_t>(action_anim), &action_failed);
 
     // Unnamed values still deserve a row: authored content may use a raw value
-    // the enum does not spell out, and hiding it would misreport coverage.
+    // the enum does not spell out, and hiding it would misreport coverage
     string state_label = state_failed ? strex("{}", static_cast<int32_t>(state_anim)).str() : string(state_name);
     string action_label = action_failed ? strex("{}", static_cast<int32_t>(action_anim)).str() : string(action_name);
 

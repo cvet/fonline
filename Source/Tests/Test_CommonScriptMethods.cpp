@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -949,6 +949,17 @@ namespace CommonMethods
         return 0;
     }
 
+    uint32 StartFutureGameTimeEventForEarlyDispatchTest()
+    {
+        globalTimerFired = false;
+        return Game.StartTimeEvent(timespan(60, 3), OnGlobalTimer);
+    }
+
+    bool IsFutureGameTimeEventFired()
+    {
+        return globalTimerFired;
+    }
+
  )") + R"(
 
     // ========== Invoke ==========
@@ -1599,12 +1610,8 @@ namespace CommonMethods
         return 0;
     }
 
-    // ========== Argument slot alignment (8-byte aligned call-argument layout) ==========
-    // Regression shapes for the even-argument-slot ABI: padded 1-DWORD slots between pointer/8-byte
-    // arguments, nested calls inside padded argument expressions (stack parity), the asBC_Thiscall1
-    // fast path (array opIndex with int argument), try/catch stack restore with odd variableSpace,
-    // and variadic '?' slots. All of it additionally runs through the bytecode save/load round-trip
-    // of this fixture, covering the serializer's argument-offset translation.
+    // Exercise even-slot ABI padding, nested calls, Thiscall1, odd try/catch frames, and variadic slots.
+    // Bytecode round-trip also pins serialized argument offsets
 
     int AlignAddMixed(int a, string s, int b, int64 c, int d)
     {
@@ -2134,6 +2141,26 @@ TEST_CASE("GameLevelTimeEvents")
     {
         RUN_CM_FUNC("TestGameTimeEventWithArrayData");
     }
+
+    SECTION("EarlyDispatcherWakeDoesNotFire")
+    {
+        auto start_func = server->FindFunc<uint32_t>(get_func("CommonMethods::StartFutureGameTimeEventForEarlyDispatchTest"));
+        REQUIRE(start_func);
+        REQUIRE(start_func.Call());
+        uint32_t event_id = start_func.GetResult();
+        REQUIRE(event_id != 0);
+
+        optional<timespan> remaining = server->TimeEventMngr.FireAndAdvance(server, event_id);
+        REQUIRE(remaining.has_value());
+        CHECK(remaining->milliseconds() > 0);
+
+        auto fired_func = server->FindFunc<bool>(get_func("CommonMethods::IsFutureGameTimeEventFired"));
+        REQUIRE(fired_func);
+        REQUIRE(fired_func.Call());
+        CHECK_FALSE(fired_func.GetResult());
+
+        server->TimeEventMngr.StopTimeEvent(server, ScriptFuncName {}, event_id);
+    }
 }
 
 // ========== Invoke Tests ==========
@@ -2182,11 +2209,8 @@ TEST_CASE("GameInvokeOperations")
 
 TEST_CASE("ScriptArgumentSlotAlignment")
 {
-    // Regression coverage for the 8-byte aligned call-argument layout (even argument slots, see
-    // asCDataType::GetArgSlotSizeOnStackDWords): padded 1-DWORD slots, nested calls inside padded
-    // argument expressions, the asBC_Thiscall1 fast path, the try/catch stack restore with an odd
-    // variableSpace, and variadic '?' slots. The fixture loads scripts through the bytecode
-    // save/load round-trip, so the serializer's argument-offset translation is covered too.
+    // Exercise 8-byte call slots across padding, nested calls, Thiscall1, odd frames, and variadic values.
+    // Bytecode reload pins argument-offset translation
     MAKE_CM_SERVER();
 
     SECTION("MixedParams")

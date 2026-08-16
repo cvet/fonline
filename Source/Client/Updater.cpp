@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -341,7 +341,7 @@ void Updater::GetNextFile()
             WriteLog("Client updater: finished binary update, binaries staged for reload");
             _result = UpdaterResult::BinariesStaged;
 
-            // Headless clients have no UI / no user to dismiss it, so they finish immediately (no hold).
+            // Headless clients have no UI / no user to dismiss it, so they finish immediately (no hold)
             if (!GetApp()->IsHeadless()) {
                 AddText(StrRestartRequired);
                 _restartPrompt = true;
@@ -725,7 +725,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     uint64_t local_mtime = fs_last_write_time(file_path);
 
     // Keyed by the whole path: two same-named files in different directories would otherwise share one
-    // entry, and a size plus write-time collision would answer this check with the other file's hash.
+    // entry, and a size plus write-time collision would answer this check with the other file's hash
     string cache_key = strex("{}-{:016x}.hash", strex(file_path).extract_file_name(), hashing::hash<string_view> {}(file_path)).str();
 
     if (_cache.HasEntry(cache_key)) {
@@ -808,7 +808,7 @@ auto Updater::GetClientBinaryDir() -> string
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (FO_WEB) {
-        // The web client runs from the virtual filesystem root and has no on-disk exe path.
+        // The web client runs from the virtual filesystem root and has no on-disk exe path
         return "/";
     }
     else {
@@ -963,7 +963,7 @@ auto GetClientRuntimeLivePath() -> string
     string binary_dir;
 
     if constexpr (FO_WEB) {
-        // No on-disk runtime companion on web; the runtime lives at the virtual filesystem root.
+        // No on-disk runtime companion on web; the runtime lives at the virtual filesystem root
         binary_dir = "/";
     }
     else {

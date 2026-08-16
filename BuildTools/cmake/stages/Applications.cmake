@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: Applications ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(Applications Pre|Post <macro-name>).
+# Build applications and extend through AddStageHook(Applications Pre|Post <macro-name>)
 
 # Applications
 StatusMessage("Applications:")
@@ -36,7 +34,7 @@ if(FO_BUILD_CLIENT)
                 COMMENT "Copy client runtime library to host-derived module name")
 
             # A native client launch loads the sibling runtime module by default. Keep the
-            # runnable host target from leaving a stale module next to a fresh executable.
+            # runnable host target from leaving a stale module next to a fresh executable
             add_dependencies(${FO_DEV_NAME}_Client ${FO_DEV_NAME}_ClientLib)
 
             AddExecutableApplication(${FO_DEV_NAME}_ClientHeadless "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
@@ -205,7 +203,7 @@ if(FO_BUILD_BAKER)
         if(FO_LINUX)
             # The baker is loaded into hosts built with different allocator/sanitizer settings. Keep
             # every implementation symbol local so the plugin cannot interpose its allocator or
-            # engine globals on the host; FO_BakeResources is the complete C ABI boundary.
+            # engine globals on the host; FO_BakeResources is the complete C ABI boundary
             SetValue(bakerLibExports "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/exports/BakerLib.map")
             SetValue(verifyDynamicExports "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/VerifyDynamicExports.cmake")
             TargetLinkOptions(${FO_DEV_NAME}_BakerLib PRIVATE

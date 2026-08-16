@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -466,7 +466,7 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
     int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
     int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
-    // No cut: move exactly onto the hex and stand at the requested sub-hex offset.
+    // No cut: move exactly onto the hex and stand at the requested sub-hex offset
     auto engine = self->GetEngine();
     engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
     auto moving = hex_cr->GetMoving();

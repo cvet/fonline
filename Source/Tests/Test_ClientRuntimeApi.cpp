@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -117,19 +117,19 @@ TEST_CASE("ClientRuntimeApi")
         result.ResultKind = ClientRuntimeResultKind::ReloadRequested;
         result.Success = true;
 
-        // ReloadRequested without a path is a contract violation.
+        // ReloadRequested without a path is a contract violation
         result.RequestedRuntimePath = nullptr;
         CHECK_FALSE(IsValidClientRuntimeResult(result));
 
-        // Empty string is treated the same way — host has nothing to reload from.
+        // Empty string is treated the same way — host has nothing to reload from
         result.RequestedRuntimePath = "";
         CHECK_FALSE(IsValidClientRuntimeResult(result));
 
-        // Any non-empty path is accepted; the host promotes it and exits for a clean next launch.
+        // Any non-empty path is accepted; the host promotes it and exits for a clean next launch
         result.RequestedRuntimePath = "runtime";
         CHECK(IsValidClientRuntimeResult(result));
 
-        // Other result kinds do not require a path.
+        // Other result kinds do not require a path
         result.ResultKind = ClientRuntimeResultKind::Shutdown;
         result.RequestedRuntimePath = nullptr;
         CHECK(IsValidClientRuntimeResult(result));
@@ -197,7 +197,7 @@ TEST_CASE("ClientRuntimeApi")
     SECTION("StagingPathDerivesFromLivePath")
     {
         // Both helpers depend on Platform::GetExePath, so the test only validates the
-        // structural contract: staging is the live path with a non-empty suffix appended.
+        // structural contract: staging is the live path with a non-empty suffix appended
         string live = GetClientRuntimeLivePath();
         string staging = MakeClientRuntimeStagingPath(live);
 
@@ -213,7 +213,7 @@ TEST_CASE("ClientRuntimeApi")
         string name = GetCurrentClientRuntimeLibraryName();
 
         CHECK_FALSE(name.empty());
-        // Library name must not contain a path separator — it is a basename, not a path.
+        // Library name must not contain a path separator — it is a basename, not a path
         CHECK(name.find('/') == string::npos);
         CHECK(name.find('\\') == string::npos);
     }

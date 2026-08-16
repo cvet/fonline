@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -1239,11 +1239,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
 #if FO_ENABLE_3D
     size_t instance_index = numeric_cast<size_t>(instance);
 
-    // x y
-    // rx ry rz
-    // sx sy sz
-    // speed
-    // scissor l t r b
+    // Layout: xy, rotation xyz, scale xyz, speed, scissor ltrb
     if (instance_index >= client->DrawCritterModel.size()) {
         client->DrawCritterModel.resize(instance_index + 1);
         client->DrawCritterModelCrType.resize(instance_index + 1);
@@ -1345,7 +1341,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, uint32_t instance, irect32& drawRect, irect32& viewRect)
+FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, uint32_t instance, irect32& drawRect, irect32& viewRect, irect32& poseRect)
 {
 #if FO_ENABLE_3D
     size_t instance_index = numeric_cast<size_t>(instance);
@@ -1362,13 +1358,15 @@ FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, 
 
     irect32 draw_rect = model_spr->GetModel()->GetDrawRect();
     irect32 view_rect = model_spr->GetModel()->GetViewRect();
+    irect32 pose_rect = model_spr->GetPoseRect();
 
-    if (draw_rect.width <= 0 || draw_rect.height <= 0 || view_rect.width <= 0 || view_rect.height <= 0) {
+    if (draw_rect.width <= 0 || draw_rect.height <= 0 || view_rect.width <= 0 || view_rect.height <= 0 || pose_rect.width <= 0 || pose_rect.height <= 0) {
         return false;
     }
 
     drawRect = draw_rect;
     viewRect = view_rect;
+    poseRect = pose_rect;
     return true;
 
 #else
@@ -1376,6 +1374,7 @@ FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, 
     ignore_unused(instance);
     ignore_unused(drawRect);
     ignore_unused(viewRect);
+    ignore_unused(poseRect);
 
     throw NotEnabled3DException("3D submodule not enabled");
 #endif

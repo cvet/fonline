@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -659,7 +659,7 @@ void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view
                 }
 
                 // Merge, not assign: with multiple parents (Parent = A B) later parents override earlier
-                // ones per key, and the section's own settings (below) override all parents.
+                // ones per key, and the section's own settings (below) override all parents
                 for (auto&& [key, value] : it->Settings) {
                     config_info.Settings[key] = value;
                 }

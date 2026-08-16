@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -232,16 +233,10 @@ TEST_CASE("NetBuffer")
     }
 }
 
-// ============================================================================
-// NetBuffer — adversarial / malformed wire input (untrusted-client boundary)
-// ============================================================================
-
 TEST_CASE("NetBufferAdversarial")
 {
-    // Drive the full receive pipeline with deliberately corrupted encrypted frames. No matter which
-    // bytes the wire flips, the parser must either consume a frame or throw a known engine exception —
-    // never read out of bounds (ASan), trip UB (UBSan), or desync the rolling encryption key into an
-    // over-read. Deterministic LCG corruption keeps the run reproducible.
+    // Deterministically corrupt encrypted frames through the full receive pipeline.
+    // Parsing may succeed or throw a known exception, but must not over-read, hit UB, or desync the key
     SECTION("CorruptedFramesNeverOverread")
     {
         constexpr uint32_t key = 0x00BEEF01;
@@ -270,7 +265,7 @@ TEST_CASE("NetBufferAdversarial")
         for (int iter = 0; iter < 5000; iter++) {
             auto frame = build_frame(static_cast<uint32_t>(iter));
 
-            // Every 8th frame is left intact as a control; the rest get 1..3 random bit flips.
+            // Every 8th frame is left intact as a control; the rest get 1..3 random bit flips
             if (iter % 8 != 0 && !frame.empty()) {
                 int32_t flips = static_cast<int32_t>(next() % 3) + 1;
                 for (int f = 0; f < flips; f++) {
@@ -292,7 +287,7 @@ TEST_CASE("NetBufferAdversarial")
                 }
             }
             catch (const std::exception&) {
-                // Any malformed input must surface as a thrown engine exception, not a crash/overread.
+                // Any malformed input must surface as a thrown engine exception, not a crash/overread
                 threw++;
             }
         }
@@ -302,9 +297,8 @@ TEST_CASE("NetBufferAdversarial")
         CHECK(parsed + threw <= 5000);
     }
 
-    // ReadPropsData is parsed straight off the wire (entity property sync) but no test feeds it malformed
-    // input. A declared block count or size larger than the bytes actually buffered must be rejected
-    // before allocating, and a well-formed blob must round-trip.
+    // Reject property block counts and sizes beyond buffered wire data before allocation.
+    // Preserve well-formed round trips
     SECTION("PropsDataWireRoundtripAndCorruption")
     {
         vector<uint8_t> a {1, 2, 3, 4};
@@ -326,7 +320,7 @@ TEST_CASE("NetBufferAdversarial")
         CHECK(read_back[1] == b);
         CHECK(read_back[2] == c);
 
-        // Malformed: one block declares 0xFFFFFFFF bytes with nothing behind it → reject before resize.
+        // Malformed: one block declares 0xFFFFFFFF bytes with nothing behind it → reject before resize
         NetOutBuffer bad {16};
         bad.Write<uint16_t>(1);
         bad.Write<uint32_t>(0xFFFFFFFF);
@@ -338,7 +332,7 @@ TEST_CASE("NetBufferAdversarial")
         CHECK_THROWS_AS(bad_in.ReadPropsData(bad_out), NetBufferException);
         CHECK(bad_in.GetDataSize() == 0); // buffer reset on rejection
 
-        // Malformed: the block count far exceeds what the remaining bytes could possibly carry.
+        // Malformed: the block count far exceeds what the remaining bytes could possibly carry
         NetOutBuffer bad2 {16};
         bad2.Write<uint16_t>(0xFFFF);
         bad2.Write<uint32_t>(0); // only 4 trailing bytes, nowhere near 0xFFFF blocks

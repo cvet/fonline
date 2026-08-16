@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -398,7 +398,7 @@ void ServerConnection::SetDataArrivedCallback(DataArrivedCallback callback)
     FO_STACK_TRACE_ENTRY();
 
     // Same lock as AsyncReceiveData: that runs on the network thread and may read this callback
-    // concurrently, so the assignment must be synchronized to avoid a torn std::function move.
+    // concurrently, so the assignment must be synchronized to avoid a torn std::function move
     scoped_lock locker {_inBufLocker};
 
     _dataArrivedCallback = std::move(callback);

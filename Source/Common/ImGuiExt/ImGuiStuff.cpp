@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@
 FO_USING_NAMESPACE();
 
 ScriptImGui::ScriptImGui(ptr<BaseEngine> engine) :
-    Entity(engine->GetPropertyRegistratorForEdit("ImGui"), nullptr, nullptr),
+    Entity(engine->GetPropertyRegistrarForEdit("ImGui"), nullptr, nullptr),
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();
@@ -70,6 +70,16 @@ static void ImGuiFree(void* raw_mem, void* user_data)
     allocator.deallocate(bytes.get(), 0);
 }
 
+static void ImGuiLogError(ImGuiContext* ctx, void* user_data, const char* msg) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(user_data);
+
+    const ImGuiWindow* window = ctx != nullptr ? ctx->CurrentWindow : nullptr;
+    WriteLog(LogType::Error, "ImGui error in window '{}': {}", window != nullptr ? window->Name : "(none)", msg != nullptr ? msg : "(no message)");
+}
+
 void ImGuiExt::Init()
 {
     FO_STACK_TRACE_ENTRY();
@@ -77,6 +87,7 @@ void ImGuiExt::Init()
     IMGUI_CHECKVERSION();
     ImGui::SetAllocatorFunctions(&ImGuiAlloc, &ImGuiFree, nullptr);
     ImGui::CreateContext();
+    ImGui::GetCurrentContext()->ErrorCallback = &ImGuiLogError;
 }
 
 auto ImGuiExt::LoadIniSettingsIfContext(std::string_view ini_data) -> bool

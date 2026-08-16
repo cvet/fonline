@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: Packages ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(Packages Pre|Post <macro-name>).
+# Build packages and extend through AddStageHook(Packages Pre|Post <macro-name>)
 
 # Packaging
 StatusMessage("Packages:")

@@ -48,8 +48,13 @@ InstanceContainer::~InstanceContainer()
 	assert(headGroups_ == nullptr);
 	assert(tailGroups_ == nullptr);
 
-	for (auto child : children_)
+	// (FOnline Patch) ReleaseInstanceContainer runs the child's destructor and pools its memory, so a
+	// range-for over the intrusive list advanced through an already-destroyed node. Detach each child
+	// before releasing it.
+	while (!children_.empty())
 	{
+		auto* child = children_.front();
+		children_.pop_front();
 		manager_->ReleaseInstanceContainer(child);
 	}
 }

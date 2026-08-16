@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,23 +31,23 @@
 // SOFTWARE.
 //
 
-#include "PropertiesSerializator.h"
+#include "PropertiesSerializer.h"
 #include "EntityProtos.h"
 
 FO_BEGIN_NAMESPACE
 
 static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> bool;
 
-auto PropertiesSerializator::SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
+auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!base || props->GetRegistrator() == base->GetRegistrator(), "Serialized properties use a different base registrator");
+    FO_VERIFY_AND_THROW(!base || props->GetRegistrar() == base->GetRegistrar(), "Serialized properties use a different base registrar");
 
     AnyData::Document doc;
 
-    for (size_t i = 1; i < props->GetRegistrator()->GetPropertiesCount(); i++) {
-        auto prop = props->GetRegistrator()->GetPropertyByIndex(numeric_cast<int32_t>(i));
+    for (size_t i = 1; i < props->GetRegistrar()->GetPropertiesCount(); i++) {
+        auto prop = props->GetRegistrar()->GetPropertyByIndex(numeric_cast<int32_t>(i));
         FO_VERIFY_AND_THROW(prop, "Property is null");
 
         if (prop->IsDisabled()) {
@@ -90,7 +90,7 @@ auto PropertiesSerializator::SaveToDocument(ptr<const Properties> props, nptr<co
     return doc;
 }
 
-auto PropertiesSerializator::LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool
+auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -106,7 +106,7 @@ auto PropertiesSerializator::LoadFromDocument(ptr<Properties> props, const AnyDa
 
         try {
             // Find property, migrating an obsolete stored name onto its replacement
-            auto prop = props->GetRegistrator()->FindPersistedProperty(doc_key);
+            auto prop = props->GetRegistrar()->FindPersistedProperty(doc_key);
 
             if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
@@ -121,7 +121,7 @@ auto PropertiesSerializator::LoadFromDocument(ptr<Properties> props, const AnyDa
     return !is_error;
 }
 
-auto PropertiesSerializator::SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+auto PropertiesSerializer::SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -817,7 +817,7 @@ static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, HashRes
         return name_resolver.ResolveEnumValue(base_type.Name, migrated.value().as_str());
     }
 
-    // No migration rule: keep the original throwing behavior for genuinely unknown values.
+    // No migration rule: keep the original throwing behavior for genuinely unknown values
     return name_resolver.ResolveEnumValue(base_type.Name, value_name);
 }
 
@@ -1129,25 +1129,25 @@ static auto IsDefaultPropertyRawData(ptr<const Property> prop, span<const uint8_
     return true;
 }
 
-static auto GetRefTypeFieldsRegistrator(const BaseTypeDesc& base_type) -> ptr<const PropertyRegistrator>
+static auto GetRefTypeFieldsRegistrar(const BaseTypeDesc& base_type) -> ptr<const PropertyRegistrar>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType != nullptr, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator != nullptr, "Reference type has no fields registrator");
-    return base_type.RefType->FieldsRegistrator;
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar != nullptr, "Reference type has no fields registrar");
+    return base_type.RefType->FieldsRegistrar;
 }
 
 static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, const function<void(ptr<const Property>, const_span<uint8_t>)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fields_registrator = GetRefTypeFieldsRegistrator(base_type);
+    auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
     size_t data_pos = 0;
 
-    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+    for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
+        auto field_prop = fields_registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
         span<const uint8_t> field_raw_data {};
 
         if (data_pos < raw_data.size()) {
@@ -1186,13 +1186,13 @@ static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Proper
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fields_registrator = GetRefTypeFieldsRegistrator(base_type);
-    vector<span<const uint8_t>> field_raw_entries(fields_registrator->GetPropertiesCount());
-    vector<bool> field_is_default(fields_registrator->GetPropertiesCount(), true);
+    auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
+    vector<span<const uint8_t>> field_raw_entries(fields_registrar->GetPropertiesCount());
+    vector<bool> field_is_default(fields_registrar->GetPropertiesCount(), true);
     size_t last_non_default_field = 0;
 
-    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+    for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
+        auto field_prop = fields_registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
         auto field_raw_data = field_props.GetRawData(field_prop);
         bool is_default = IsDefaultPropertyRawData(field_prop, field_raw_data);
 
@@ -1215,7 +1215,7 @@ static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Proper
         data_size += sizeof(uint32_t);
 
         if (!field_is_default[i]) {
-            data_size = align_up(data_size, fields_registrator->GetPropertyByIndexUnsafe(i)->GetDataAlignment());
+            data_size = align_up(data_size, fields_registrar->GetPropertyByIndexUnsafe(i)->GetDataAlignment());
             data_size += field_raw_entries[i].size();
         }
     }
@@ -1229,12 +1229,12 @@ static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Proper
         WriteRawUInt32(data_ptr, data_pos, field_size);
 
         if (field_size != 0) {
-            data_pos = align_up(data_pos, fields_registrator->GetPropertyByIndexUnsafe(i)->GetDataAlignment());
+            data_pos = align_up(data_pos, fields_registrar->GetPropertyByIndexUnsafe(i)->GetDataAlignment());
             WriteRawSpan(data_ptr, data_pos, field_raw_entries[i]);
         }
     }
 
-    FO_VERIFY_AND_THROW(data_pos == data.size(), "Serialized ref-type field buffer size does not match bytes written", fields_registrator->GetTypeName(), data_pos, data.size());
+    FO_VERIFY_AND_THROW(data_pos == data.size(), "Serialized ref-type field buffer size does not match bytes written", fields_registrar->GetTypeName(), data_pos, data.size());
     return data;
 }
 
@@ -1249,7 +1249,7 @@ static auto SaveRefTypeToValue(string_view owner_name, const BaseTypeDesc& base_
             return;
         }
 
-        auto field_value = PropertiesSerializator::SavePropertyToValue(field_prop, field_raw_data, hash_resolver, name_resolver);
+        auto field_value = PropertiesSerializer::SavePropertyToValue(field_prop, field_raw_data, hash_resolver, name_resolver);
         dict.Emplace(string {field_prop->GetNameWithoutComponent()}, std::move(field_value));
     });
 
@@ -1280,7 +1280,7 @@ static auto SaveRefTypeToText(string_view owner_name, const BaseTypeDesc& base_t
         ref_str.append(field_prop->GetNameWithoutComponent());
         ref_str.append(" ");
 
-        string field_text = PropertiesSerializator::SavePropertyToText(field_prop, field_raw_data, hash_resolver, name_resolver);
+        string field_text = PropertiesSerializer::SavePropertyToText(field_prop, field_raw_data, hash_resolver, name_resolver);
         StringEscaping::AppendCodeString(ref_str, field_text);
     });
 
@@ -1295,18 +1295,18 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
         throw PropertySerializationException("Wrong ref type value type", owner_name, value.Type());
     }
 
-    auto fields_registrator = GetRefTypeFieldsRegistrator(base_type);
+    auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
     const auto& dict = value.AsDict();
-    Properties field_props(fields_registrator);
+    Properties field_props(fields_registrar);
 
     for (auto&& [field_name, field_value] : dict) {
-        auto field_prop = fields_registrator->FindPersistedProperty(field_name);
+        auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
 
-        PropertiesSerializator::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
+        PropertiesSerializer::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
     }
 
     return BuildRefTypePropertyData(base_type, field_props);
@@ -1320,7 +1320,7 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
         return {};
     }
 
-    auto fields_registrator = GetRefTypeFieldsRegistrator(base_type);
+    auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
     auto fields_value = AnyData::ParseValue(string {text}, false, true, AnyData::ValueType::String);
     const auto& fields_arr = fields_value.AsArray();
 
@@ -1328,12 +1328,12 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
         throw PropertySerializationException("Wrong ref type text field count", owner_name, text);
     }
 
-    Properties field_props(fields_registrator);
+    Properties field_props(fields_registrar);
     unordered_set<string> seen_fields;
 
     for (size_t i = 0; i < fields_arr.Size(); i += 2) {
         string_view field_name = fields_arr[i].AsString();
-        auto field_prop = fields_registrator->FindPersistedProperty(field_name);
+        auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
@@ -1342,13 +1342,13 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
             throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
         }
 
-        PropertiesSerializator::LoadPropertyFromText(&field_props, field_prop, fields_arr[i + 1].AsString(), hash_resolver, name_resolver);
+        PropertiesSerializer::LoadPropertyFromText(&field_props, field_prop, fields_arr[i + 1].AsString(), hash_resolver, name_resolver);
     }
 
     return BuildRefTypePropertyData(base_type, field_props);
 }
 
-auto PropertiesSerializator::SavePropertyToValue(ptr<const Property> prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1578,7 +1578,7 @@ auto PropertiesSerializator::SavePropertyToValue(ptr<const Property> prop, span<
     FO_UNREACHABLE_PLACE();
 }
 
-void PropertiesSerializator::LoadPropertyFromValue(ptr<Properties> props, ptr<const Property> prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver)
+void PropertiesSerializer::LoadPropertyFromValue(ptr<Properties> props, ptr<const Property> prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1708,7 +1708,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     }
 }
 
-auto PropertiesSerializator::SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+auto PropertiesSerializer::SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1720,7 +1720,7 @@ auto PropertiesSerializator::SavePropertyToText(ptr<const Properties> props, ptr
     return SavePropertyToText(prop, props->GetRawData(prop), hash_resolver, name_resolver);
 }
 
-auto PropertiesSerializator::SavePropertyToText(ptr<const Property> prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2087,7 +2087,7 @@ static void SetDataFromString(const function<void(span<const uint8_t>)>& set_dat
     set_data(make_const_span(str));
 }
 
-void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, const AnyData::Value& value, const function<void(span<const uint8_t>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
+void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const AnyData::Value& value, const function<void(span<const uint8_t>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2454,7 +2454,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
     }
 }
 
-void PropertiesSerializator::LoadPropertyFromText(ptr<Properties> props, ptr<const Property> prop, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const Property> prop, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 

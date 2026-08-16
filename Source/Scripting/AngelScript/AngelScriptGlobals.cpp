@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -190,11 +190,9 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         ptr<void> arg_data = gen->GetArgAddress(first_arg + numeric_cast<AngelScript::asUINT>(index));
         auto arg_type = make_ptr(&func_desc->Args[index].Type);
 
-        // Mutable simple arguments follow the unified slot contract: the slot is the address of the
-        // caller's variable (the value itself or the handle cell), which GetArgAddress already returns
-        // for the '?&' variadic reference. Non-mutable entity/ref-type and collection arguments are
-        // re-packed into a local handle cell so the callee sees a plain handle slot.
-        bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsFixedType || arg_type->BaseType.IsEntityProto || arg_type->BaseType.IsRefType));
+        // Slot contract: a mutable simple argument is already the caller's variable address, so only
+        // the other kinds are re-packed into a local handle cell for the callee to read as a handle
+        bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {
             indirect_args[index] = MemReadUnaligned<void*>(arg_data);
@@ -386,6 +384,29 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
 }
 
+static void Game_TryEnumToString(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
+    auto meta = GetEngineMetadata(as_engine);
+    auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
+    int32_t enum_index = 0;
+    const auto& enum_type = meta->GetBaseType(*enum_name);
+    auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
+    MemCopy(&enum_index, enum_arg, enum_type.Size);
+
+    bool failed = false;
+    string enum_value_name {meta->ResolveEnumValueName(*enum_name, enum_index, &failed)};
+
+    if (!failed) {
+        auto result_arg = GetGenericArgAddressAs<string>(gen, 1);
+        *result_arg = std::move(enum_value_name);
+    }
+
+    new (gen->GetAddressOfReturnLocation()) bool(!failed);
+}
+
 static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
@@ -529,7 +550,7 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
     auto arr = CreateScriptArray(as_engine, SettingScalarTypeNames<T>::ArrayName);
     arr->Reserve(numeric_cast<int32_t>(vec->size()));
 
-    // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
+    // Handle vector<bool> in a special way since it has a non-standard reference proxy type
     for (size_t i = 0; i < vec->size(); i++) {
         T value = (*vec)[i];
         arr->InsertLast(make_nptr(&value).void_cast());
@@ -594,7 +615,7 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
             }
 
             // The textual check above misses numeric overflow: a value finite in float64 can still
-            // become infinity when narrowed to float32, so the parsed result is validated too.
+            // become infinity when narrowed to float32, so the parsed result is validated too
             float32_t float_value = strvex(value).to_float32();
 
             if (!std::isfinite(float_value)) {
@@ -798,17 +819,18 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum_{}(string valueName)", enum_name, enum_name).c_str(), FO_SCRIPT_GENERIC(Game_ParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryParseEnum(string valueName, {}&out result)", enum_name, enum_name).c_str(), FO_SCRIPT_GENERIC(Game_TryParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("string EnumToString({} value, bool fullSpecification = false)", enum_name).c_str(), FO_SCRIPT_GENERIC(Game_EnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryEnumToString({} value, string&out result)", enum_name).c_str(), FO_SCRIPT_GENERIC(Game_TryEnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
     }
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "int ParseGenericEnum(string enumName, string valueName)", FO_SCRIPT_FUNC_THIS(Game_ParseGenericEnum), FO_SCRIPT_FUNC_THIS_CONV));
 
     // Property enum groups
     for (const auto& type_name : meta->GetEntityTypes() | std::views::keys) {
-        auto registrator = meta->GetPropertyRegistrator(type_name);
-        FO_VERIFY_AND_THROW(registrator, "Missing property registrator for entity type");
+        auto registrar = meta->GetPropertyRegistrar(type_name);
+        FO_VERIFY_AND_THROW(registrar, "Missing property registrar for entity type");
 
-        for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
-            auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator->GetTypeName()).c_str());
+        for (auto&& [group_name, properties] : registrar->GetPropertyGroups()) {
+            auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrar->GetTypeName()).c_str());
             enums_arr->Reserve(numeric_cast<int32_t>(properties.size()));
 
             for (const auto& prop : properties) {
@@ -816,12 +838,12 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
                 enums_arr->InsertLast(make_nptr(&e).void_cast());
             }
 
-            FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
-            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, make_nptr(enums_arr.get()).void_cast()));
+            FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrar->GetTypeName()).c_str()));
+            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrar->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, make_nptr(enums_arr.get()).void_cast()));
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
 
             // Hand the array's owned reference to the shutdown cleanup so it outlives this scope but is
-            // released exactly once at teardown (the `get_*()` accessor returns a borrowed auto-handle).
+            // released exactly once at teardown (the `get_*()` accessor returns a borrowed auto-handle)
             backend->AddCleanupCallback([raw = enums_arr.release_ownership()]() FO_DEFERRED { raw->Release(); });
         }
     }

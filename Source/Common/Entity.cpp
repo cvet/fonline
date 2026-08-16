@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
-Entity::Entity(ptr<const PropertyRegistrator> registrator, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept :
-    _props {registrator, base_props}
+Entity::Entity(ptr<const PropertyRegistrar> registrar, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept :
+    _props {registrar, base_props}
 {
     FO_STACK_TRACE_ENTRY();
 

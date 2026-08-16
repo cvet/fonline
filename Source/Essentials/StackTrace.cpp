@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -247,7 +247,7 @@ extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_T
 #if FO_WINDOWS
     ULONG skip_count = 1u + skip;
     constexpr ULONG REQUEST_COUNT = static_cast<ULONG>(STACK_TRACE_MAX_NATIVE_FRAMES) + 1u;
-    void* raw_frames[REQUEST_COUNT] = {};
+    void* raw_frames[REQUEST_COUNT];
     USHORT captured = RtlCaptureStackBackTrace(skip_count, REQUEST_COUNT, raw_frames, nullptr);
     out_truncated = captured > STACK_TRACE_MAX_NATIVE_FRAMES;
     uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(STACK_TRACE_MAX_NATIVE_FRAMES));
@@ -261,11 +261,11 @@ extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_T
 #elif HAS_NATIVE_TRACE
     try {
         backward::StackTrace native;
-        const size_t skip_count = static_cast<size_t>(2) + skip;
+        size_t skip_count = static_cast<size_t>(2) + skip;
         native.load_here(STACK_TRACE_MAX_NATIVE_FRAMES + skip_count + 1);
         native.skip_n_firsts(skip_count);
         out_truncated = native.size() > STACK_TRACE_MAX_NATIVE_FRAMES;
-        const size_t count = std::min(native.size(), STACK_TRACE_MAX_NATIVE_FRAMES);
+        size_t count = std::min(native.size(), STACK_TRACE_MAX_NATIVE_FRAMES);
 
         for (size_t i = 0; i < count; i++) {
             out_frames[i] = std::bit_cast<NativeStackFrameAddress>(native[i].addr);
@@ -444,9 +444,7 @@ static auto ResolveFunctionKey(NativeStackFrameAddress addr) noexcept -> uintptr
     }
 
     try {
-        // backward stores the function entry address in `object_base + relative offset` form
-        // on POSIX, but on Windows we approximate by collapsing all IPs that resolve to the
-        // same symbol name into a single key.
+        // POSIX exposes object-relative function entries; Windows approximates them by symbol name
         return ResolveNativeFrame(addr, 0).FunctionKey;
     }
     catch (...) {
@@ -578,7 +576,7 @@ static void StoreResolvedNativeFrameInCache(NativeStackFrameAddress addr, const 
         state.ResolvedNativeFrameOrder.emplace_back(key);
     }
     catch (...) {
-        // The cache is opportunistic; symbol resolution itself must still succeed if caching cannot allocate.
+        // The cache is opportunistic; symbol resolution itself must still succeed if caching cannot allocate
     }
 }
 
@@ -628,9 +626,8 @@ static auto IsLowNativeAddress(NativeStackFrameAddress addr) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Unit tests synthesize native frames with small integer addresses. These are not
-    // userspace instruction pointers on supported native platforms, and POSIX symbol
-    // resolvers can be extremely slow or return the same "??" symbol for all of them.
+    // Small synthetic test addresses are not valid native instruction pointers.
+    // Skip slow and ambiguous POSIX symbol resolution for them
     return addr < 0x10000U;
 }
 
@@ -670,12 +667,8 @@ static auto GetNativeTraceResolver() noexcept -> backward::TraceResolver&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Intentionally process-lifetime and never destroyed. backward-cpp resolves native frames through
-    // libbfd, which slurps each binary's symbol table and DWARF debug info into caches hung off the open
-    // bfd handle and never fully releases them on bfd_close. Reusing one resolver loads every binary at
-    // most once (instead of once per resolved range/key), and keeping it reachable from this static root
-    // for the whole process keeps those libbfd caches reachable, so LeakSanitizer does not report them.
-    // The resolver is not thread-safe; callers serialize access via StackTraceState::NativeResolverLocker.
+    // Keep one process-lifetime resolver so libbfd caches each binary once and remains reachable to LeakSanitizer.
+    // NativeResolverLocker serializes this non-thread-safe object
     static backward::TraceResolver* resolver = new backward::TraceResolver();
     return *resolver;
 }

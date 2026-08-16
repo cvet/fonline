@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
-ProtoEntity::ProtoEntity(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props) noexcept :
-    Entity(registrator, props, nullptr),
+ProtoEntity::ProtoEntity(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) noexcept :
+    Entity(registrar, props, nullptr),
     _protoId {proto_id}
 {
     FO_STACK_TRACE_ENTRY();
@@ -50,36 +50,36 @@ EntityWithProto::EntityWithProto(ptr<const ProtoEntity> proto) noexcept :
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoItem::ProtoItem(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props) :
-    ProtoEntity(proto_id, registrator, props),
+ProtoItem::ProtoItem(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
     ItemProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoCritter::ProtoCritter(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props) :
-    ProtoEntity(proto_id, registrator, props),
+ProtoCritter::ProtoCritter(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
     CritterProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoMap::ProtoMap(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props) :
-    ProtoEntity(proto_id, registrator, props),
+ProtoMap::ProtoMap(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
     MapProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoLocation::ProtoLocation(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props) :
-    ProtoEntity(proto_id, registrator, props),
+ProtoLocation::ProtoLocation(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
     LocationProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ProtoCustomEntity::ProtoCustomEntity(hstring proto_id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props) :
-    ProtoEntity(proto_id, registrator, props),
+ProtoCustomEntity::ProtoCustomEntity(hstring proto_id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props) :
+    ProtoEntity(proto_id, registrar, props),
     EntityProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();

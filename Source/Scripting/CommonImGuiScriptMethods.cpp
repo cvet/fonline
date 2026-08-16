@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -1327,9 +1327,9 @@ FO_SCRIPT_API void Common_ImGui_SetItemTooltip([[maybe_unused]] ptr<ScriptImGui>
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_BeginTooltip([[maybe_unused]] ptr<ScriptImGui> self)
+FO_SCRIPT_API bool Common_ImGui_BeginTooltip([[maybe_unused]] ptr<ScriptImGui> self)
 {
-    ImGui::BeginTooltip();
+    return ImGui::BeginTooltip();
 }
 
 ///@ ExportMethod
@@ -2151,7 +2151,7 @@ FO_SCRIPT_API string Common_ImGui_SaveIniSettingsToMemory([[maybe_unused]] ptr<S
     return data ? string(data.get(), ini_size) : string {};
 }
 
-// Keep script enum bindings in sync with upstream Dear ImGui constants.
+// Keep script enum bindings in sync with upstream Dear ImGui constants
 static_assert(static_cast<int>(ImGui_WindowFlags::None) == ImGuiWindowFlags_None);
 static_assert(static_cast<int>(ImGui_WindowFlags::NoTitleBar) == ImGuiWindowFlags_NoTitleBar);
 static_assert(static_cast<int>(ImGui_WindowFlags::NoResize) == ImGuiWindowFlags_NoResize);

@@ -263,8 +263,30 @@ gear wider. Only currently-emitting particle systems extend this envelope;
 a dormant effect (for example furnace smoke that is not puffing) reserves no frame
 space and is absorbed by the expansion pass if and when it starts emitting. If that
 exact envelope needs a larger logical frame,
-the client expands the frame and rerenders before copying; a bounded retry loop
-rejects a layout that does not converge. Only the selected region is allocated
+the client expands the frame and rerenders before copying. Successive frame
+placements are merged as root-relative intervals, so adjacent pixel-rounded
+pivots or a live world-space particle cannot make an otherwise stable frame
+alternate forever. The interval anchor is signed: a tight frame may legitimately
+lie completely on one side of the model root, leaving its pivot outside the frame;
+the bounded retry loop still rejects a genuinely unbounded layout.
+
+A settled frame is still only usable if the renderer can allocate it, so
+`ModelInstance::SetupFrame` rejects any frame whose `draw_size * FRAME_SCALE` exceeds
+`AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT` (the device texture limit the atlases
+already use), naming the model file and both sizes. The check belongs there because that
+is the last point where the model that produced the size is known; without it an
+impossible size reaches the graphics API and surfaces as an anonymous invalid-argument
+failure from the texture creation call.
+
+A mesh a link disables contributes to neither. `DisableMesh` is honoured for the model's
+own default link exactly as it is for a layer value or a child attachment, so a model
+that permanently hides one of its meshes declares it once at the top of its `.fo3d`. This
+is not cosmetic: baked model and animation bounds are calculated with the default link's
+disabled meshes excluded, so a runtime that kept such a mesh enabled would sweep geometry
+the baked layout never budgeted for. A mesh rigidly bound to its own node is the worst
+case, because the animations that carry the skeleton's unit normalisation never touch it.
+
+Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
 preserving the automatic frame's root, hit-test coordinates, and map
 positioning. The active layer/child-model tree extends the idle-priority base
@@ -334,11 +356,24 @@ rectangular atlas allocations and do not need this reconstruction.
 
 Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
 stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
-observer in constant time and marks the derived free-rectangle list dirty. The
-next allocation rebuilds that list once from all still-live rectangles, in a
-deterministic order, so batches of unloads are coalesced and no surviving
-sprite, pixel region, or UV ever moves. This runtime-only layout change does
-not add settings or alter sprite-resource serialization.
+observer and pushes the freed rectangle straight back into the free list, both
+in constant time. The released rectangle cannot overlap any current free
+rectangle — allocating it split every rectangle that did — so the list stays
+consistent for placement and splitting; what a release does not do is coalesce
+with neighbouring free space, so the list drifts away from the exact maximal
+set as a session churns. Two bounded operations correct that drift, and neither
+runs on the hot path. `DefragmentFreeRectangles` rebuilds the exact set from the
+live allocations, and runs only when a placement misses, so a fragmented but not
+genuinely full page is never abandoned for a fresh one. A prune drops rectangles
+contained in another, and runs only once the list has grown well past the size
+the *previous* prune produced — pacing it against the live allocation count
+instead lets a page whose maximal free set exceeds that count prune on every
+allocation while removing nothing. The prune indexes its keepers by the coarse
+atlas cells they span and tests a candidate only against the keepers covering
+its top-left corner, which is exact because nothing can contain the candidate
+without covering that corner. No surviving sprite, pixel region, or UV ever
+moves. This runtime-only layout behaviour adds no settings and does not alter
+sprite-resource serialization.
 
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after

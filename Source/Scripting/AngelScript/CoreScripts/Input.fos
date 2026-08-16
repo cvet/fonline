@@ -187,7 +187,7 @@ void KeyUp(KeyCode key) // Engine callback
     Gui::EngineCallback_KeyUp(key);
 }
 
-// Called on mouse/keyboard input lost (alt-tab, minimize, lost focus).
+// Called on mouse/keyboard input lost (alt-tab, minimize, lost focus)
 void InputLost() // Engine callback
 {
     // Reset states

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,13 +38,13 @@
 #include "FileSystem.h"
 #include "Geometry.h"
 #include "Properties.h"
-#include "PropertiesSerializator.h"
+#include "PropertiesSerializer.h"
 
 FO_BEGIN_NAMESPACE
 
-DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept :
-    _registrator {registrator},
-    _props {std::in_place, _registrator}
+DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrar> registrar) noexcept :
+    _registrar {registrar},
+    _props {std::in_place, _registrar}
 {
 }
 
@@ -72,18 +72,18 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
-    auto fields_registrator = base_type.RefType->FieldsRegistrator;
-    FO_VERIFY_AND_THROW(fields_registrator == _registrator, "Dynamic ref-type raw data belongs to a different fields registrator", fields_registrator->GetTypeName(), _registrator->GetTypeName());
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
+    auto fields_registrar = base_type.RefType->FieldsRegistrar;
+    FO_VERIFY_AND_THROW(fields_registrar == _registrar, "Dynamic ref-type raw data belongs to a different fields registrar", fields_registrar->GetTypeName(), _registrar->GetTypeName());
 
     _cachedRawDataDirty = true;
-    _props.emplace(_registrator);
+    _props.emplace(_registrar);
     auto props = GetProps();
 
     size_t data_pos = 0;
 
-    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+    for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
+        auto field_prop = fields_registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
         FO_VERIFY_AND_THROW(field_prop, "Field property is null");
         span<const uint8_t> field_raw_data {};
 
@@ -130,7 +130,7 @@ auto DynamicRefTypeInstance::GetRawData(ptr<const Property> prop) const -> span<
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(prop->GetRegistrator() == _registrator, "Dynamic ref-type property belongs to a different registrator", prop->GetName(), prop->GetRegistrator()->GetTypeName(), _registrator->GetTypeName());
+    FO_VERIFY_AND_THROW(prop->GetRegistrar() == _registrar, "Dynamic ref-type property belongs to a different registrar", prop->GetName(), prop->GetRegistrar()->GetTypeName(), _registrar->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
     return _props->GetRawData(prop);
 }
@@ -139,7 +139,7 @@ void DynamicRefTypeInstance::SetValue(ptr<const Property> prop, PropertyRawData&
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(prop->GetRegistrator() == _registrator, "Dynamic ref-type property belongs to a different registrator", prop->GetName(), prop->GetRegistrator()->GetTypeName(), _registrator->GetTypeName());
+    FO_VERIFY_AND_THROW(prop->GetRegistrar() == _registrar, "Dynamic ref-type property belongs to a different registrar", prop->GetName(), prop->GetRegistrar()->GetTypeName(), _registrar->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
 
     GetProps()->SetValue(prop, prop_data);
@@ -152,18 +152,18 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
-    auto fields_registrator = base_type.RefType->FieldsRegistrator;
-    FO_VERIFY_AND_THROW(fields_registrator == _registrator, "Dynamic ref-type serialization requested a different fields registrator", fields_registrator->GetTypeName(), _registrator->GetTypeName());
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
+    auto fields_registrar = base_type.RefType->FieldsRegistrar;
+    FO_VERIFY_AND_THROW(fields_registrar == _registrar, "Dynamic ref-type serialization requested a different fields registrar", fields_registrar->GetTypeName(), _registrar->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
 
     if (_cachedRawDataDirty) {
-        vector<span<const uint8_t>> field_raw_entries(fields_registrator->GetPropertiesCount());
-        vector<bool> field_is_default(fields_registrator->GetPropertiesCount(), true);
+        vector<span<const uint8_t>> field_raw_entries(fields_registrar->GetPropertiesCount());
+        vector<bool> field_is_default(fields_registrar->GetPropertiesCount(), true);
         size_t last_non_default_field = 0;
 
-        for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-            auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
+            auto field_prop = fields_registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
             auto field_raw_data = GetProps()->GetRawData(field_prop);
 
             bool is_default = field_raw_data.empty();
@@ -198,7 +198,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
                 data_size += sizeof(uint32_t);
 
                 if (!field_is_default[i]) {
-                    auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
+                    auto field_prop = fields_registrar->GetPropertyByIndexUnsafe(i);
                     data_size = align_up(data_size, field_prop->GetDataAlignment());
                     data_size += field_raw_entries[i].size();
                 }
@@ -214,13 +214,13 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
                 span_write_object(raw_buffer, data_pos, field_size);
 
                 if (field_size != 0) {
-                    auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
+                    auto field_prop = fields_registrar->GetPropertyByIndexUnsafe(i);
                     data_pos = align_up(data_pos, field_prop->GetDataAlignment());
                     span_write_bytes(raw_buffer, data_pos, field_raw_entries[i]);
                 }
             }
 
-            FO_VERIFY_AND_THROW(data_pos == data_size, "Dynamic ref-type cached raw buffer size does not match bytes written", _registrator->GetTypeName(), data_pos, data_size);
+            FO_VERIFY_AND_THROW(data_pos == data_size, "Dynamic ref-type cached raw buffer size does not match bytes written", _registrar->GetTypeName(), data_pos, data_size);
         }
 
         _cachedRawDataDirty = false;
@@ -362,6 +362,21 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
 
     auto range = _globalFuncMap.equal_range(func_name);
 
+    auto args_compatible = [](const ComplexTypeDesc& func_arg, const ComplexTypeDesc& caller_arg) noexcept {
+        if (func_arg.Kind != caller_arg.Kind) {
+            return false;
+        }
+        if (func_arg.BaseType != caller_arg.BaseType) {
+            return false;
+        }
+        if (func_arg.KeyType != caller_arg.KeyType) {
+            return false;
+        }
+
+        // Not comparing IsMutable
+        return true;
+    };
+
     for (auto it = range.first; it != range.second; ++it) {
         auto func = it->second;
 
@@ -476,8 +491,8 @@ auto ScriptHelpers::GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto prop_reg = engine->GetPropertyRegistrator(type_name);
-    FO_VERIFY_AND_THROW(prop_reg, "Missing required property registrator");
+    auto prop_reg = engine->GetPropertyRegistrar(type_name);
+    FO_VERIFY_AND_THROW(prop_reg, "Missing required property registrar");
     auto prop = prop_reg->GetPropertyByIndex(prop_index);
 
     if (!prop) {

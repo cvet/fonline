@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -729,7 +729,7 @@ TEST_CASE("PathFinding::FreeMovementEndOffset")
     SECTION("DegenerateTargetKeepsCurrentOffset")
     {
         // Cut 0 onto a centered target produces an undefined stop direction; FindPath must fall
-        // back to the mover's current sub-hex offset so the critter stays in place visually.
+        // back to the mover's current sub-hex offset so the critter stays in place visually
         auto settings = MakeClearSettings(mpos {5, 5}, mpos {9, 5}, 0);
         settings.ToHexOffset = ipos16 {0, 0};
         settings.FromHexOffset = ipos16 {-6, 4};
@@ -770,7 +770,7 @@ TEST_CASE("PathFinding::FreeMovementEndOffset")
     SECTION("ExactCenteredTargetWithCenteredMoverStaysCentered")
     {
         // Cut 0 onto a centered target is the degenerate case; with FromHexOffset == 0 the fallback
-        // also yields 0, preserving the old center-snapped behavior for a mover already at its center.
+        // also yields 0, preserving the old center-snapped behavior for a mover already at its center
         auto settings = MakeClearSettings(mpos {5, 5}, mpos {9, 5}, 0);
         settings.ToHexOffset = ipos16 {0, 0};
         settings.FreeMovement = true;

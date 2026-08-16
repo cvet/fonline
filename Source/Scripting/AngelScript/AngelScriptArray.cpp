@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -728,6 +728,10 @@ auto ScriptArray::Equals(ptr<void> a, ptr<void> b, nptr<AngelScript::asIScriptCo
             return COMPARE(int32_t);
         case AngelScript::asTYPEID_UINT32:
             return COMPARE(uint32_t);
+        case AngelScript::asTYPEID_INT64:
+            return COMPARE(int64_t);
+        case AngelScript::asTYPEID_UINT64:
+            return COMPARE(uint64_t);
         case AngelScript::asTYPEID_FLOAT:
             return COMPARE(float32_t);
         case AngelScript::asTYPEID_DOUBLE:
@@ -825,6 +829,10 @@ auto ScriptArray::Less(ptr<void> a, ptr<void> b, bool asc, nptr<AngelScript::asI
             return COMPARE(int32_t);
         case AngelScript::asTYPEID_UINT32:
             return COMPARE(uint32_t);
+        case AngelScript::asTYPEID_INT64:
+            return COMPARE(int64_t);
+        case AngelScript::asTYPEID_UINT64:
+            return COMPARE(uint64_t);
         case AngelScript::asTYPEID_FLOAT:
             return COMPARE(float32_t);
         case AngelScript::asTYPEID_DOUBLE:

@@ -3,7 +3,7 @@ namespace LineTracer
 
 // Author: Atom
 // utilities for tracing
-// pathfinding/critter-gathering functions etc.
+// pathfinding/critter-gathering functions etc
 
 interface ITraceContext
 {

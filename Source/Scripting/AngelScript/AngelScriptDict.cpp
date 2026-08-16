@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -268,7 +268,8 @@ static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32_t
             }
         }
         else if ((flags & AngelScript::asOBJ_REF) != 0) {
-            engine->WriteMessage("array", 0, 0, AngelScript::asMSGTYPE_ERROR, "Can't store references in dict");
+            engine->WriteMessage("dict", 0, 0, AngelScript::asMSGTYPE_ERROR, "Can't store references in dict");
+            return false;
         }
 
         if ((flags & AngelScript::asOBJ_GC) == 0) {
@@ -443,7 +444,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
     nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
 
     if (sub_type) {
-        // Native fast comparator (stored in the sub-type user data) bypasses the script VM dispatch for known value types.
+        // Native fast comparator (stored in the sub-type user data) bypasses the script VM dispatch for known value types
         sub_type_data->FastCompare = GetScriptTypeFastCompare(sub_type);
 
         for (AngelScript::asUINT i = 0; i < sub_type->GetMethodCount(); i++) {
@@ -709,19 +710,28 @@ auto ScriptDict::GetValue(int32_t index) const -> ptr<void>
     return it->second;
 }
 
+auto ScriptDict::MakeSubTypeArray(int32_t sub_type_id, const char* accessor_name) const -> refcount_ptr<ScriptArray>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
+    nptr<AngelScript::asIScriptFunction> accessor = _typeInfo->GetMethodByName(accessor_name);
+    FO_VERIFY_AND_THROW(accessor, "Dictionary array accessor not found", accessor_name);
+
+    nptr<AngelScript::asITypeInfo> arr_type = engine->GetTypeInfoById(accessor->GetReturnTypeId());
+    FO_VERIFY_AND_THROW(arr_type, "Dictionary array accessor return type not found", accessor_name);
+    FO_VERIFY_AND_THROW(arr_type->GetSubTypeCount() == 1 && arr_type->GetSubTypeId() == sub_type_id, "Dictionary array accessor has unexpected sub-type", accessor_name, sub_type_id);
+    auto arr = ScriptArray::Create(arr_type);
+
+    arr->Reserve(GetSize());
+    return arr;
+}
+
 auto ScriptDict::GetKeys() const -> refcount_ptr<ScriptArray>
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType(0);
-    FO_VERIFY_AND_THROW(sub_type, "Dictionary sub-type info not found");
-    string arr_type_name = strex("{}{}[]", sub_type->GetName(), (_keyTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
-    ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-    auto arr_type = make_nptr(engine->GetTypeInfoByDecl(arr_type_name.c_str()));
-    FO_VERIFY_AND_THROW(arr_type, "Array type not found");
-    auto arr = ScriptArray::Create(arr_type);
-
-    arr->Reserve(GetSize());
+    auto arr = MakeSubTypeArray(_keyTypeId, "getKeys");
 
     for (ptr<void> key : _data | std::views::keys) {
         arr->InsertLast(key);
@@ -734,15 +744,7 @@ auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType(1);
-    FO_VERIFY_AND_THROW(sub_type, "Dictionary sub-type info not found");
-    string arr_type_name = strex("{}{}[]", sub_type->GetName(), (_valueTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
-    ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-    auto arr_type = make_nptr(engine->GetTypeInfoByDecl(arr_type_name.c_str()));
-    FO_VERIFY_AND_THROW(arr_type, "Array type not found");
-    auto arr = ScriptArray::Create(arr_type);
-
-    arr->Reserve(GetSize());
+    auto arr = MakeSubTypeArray(_valueTypeId, "getValues");
 
     for (ptr<void> value : _data | std::views::values) {
         arr->InsertLast(value);
@@ -1079,6 +1081,10 @@ static auto Compare(bool check_less, int32_t type_id, nptr<const ScriptDictTypeD
                 return COMPARE(int32_t);
             case AngelScript::asTYPEID_UINT32:
                 return COMPARE(uint32_t);
+            case AngelScript::asTYPEID_INT64:
+                return COMPARE(int64_t);
+            case AngelScript::asTYPEID_UINT64:
+                return COMPARE(uint64_t);
             case AngelScript::asTYPEID_FLOAT:
                 return COMPARE(float32_t);
             case AngelScript::asTYPEID_DOUBLE:
@@ -1427,7 +1433,7 @@ void RegisterAngelScriptDict(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "void set(const T1&in, const T2&in key)", FO_SCRIPT_FUNC_THIS(ScriptDict_Set), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "void setIfNotExist(const T1&in key, const T2&in defVal)", FO_SCRIPT_FUNC_THIS(ScriptDict_SetIfNotExist), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in key)", FO_SCRIPT_FUNC_THIS(ScriptDict_Remove), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "int32 removeValues(const T1&in value)", FO_SCRIPT_FUNC_THIS(ScriptDict_RemoveValues), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "int32 removeValues(const T2&in value)", FO_SCRIPT_FUNC_THIS(ScriptDict_RemoveValues), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "int length() const", FO_SCRIPT_METHOD(ScriptDict, GetSize), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", FO_SCRIPT_METHOD(ScriptDict, Clear), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in key) const", FO_SCRIPT_FUNC_THIS(ScriptDict_Get), FO_SCRIPT_FUNC_THIS_CONV));

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -123,9 +123,9 @@ auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> Scrip
 
 [[nodiscard]] auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
 [[nodiscard]] auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
-// GetArgAddress returns the argument value, which for a handle/pointer arg may legitimately be null, so it is nullable.
+// GetArgAddress returns the argument value, which for a handle/pointer arg may legitimately be null, so it is nullable
 [[nodiscard]] auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>;
-// GetAddressOfArg returns the address of the argument's storage slot, which always exists, so it is non-null.
+// GetAddressOfArg returns the address of the argument's storage slot, which always exists, so it is non-null
 [[nodiscard]] auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>;
 [[nodiscard]] auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>;
 [[nodiscard]] auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index) noexcept -> ptr<void>;

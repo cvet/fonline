@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -838,9 +838,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
     vector<vector<string>> result_tag_property;
     vector<vector<string>> result_tag_ref_type;
 
-    // Pass 1: detect Component declarations for both entity and RefType properties so the order of
-    // tags inside a script doesn't matter (a `Foo.Bar` field can appear before its `Foo Component`
-    // marker in source code).
+    // Discover entity and RefType components before fields so tag order is irrelevant
     for (const auto& tag_desc : ctx.CodeGenTags["Property"]) {
         if (tag_desc.Tokens.size() < 4) {
             throw MetadataBakerException("Invalid Property codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
@@ -899,7 +897,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         }
     }
 
-    // Pass 2: process RefType field properties.
+    // Pass 2: process RefType field properties
     for (const auto& tag_desc : ctx.CodeGenTags["Property"]) {
         if (tag_desc.Tokens.size() < 4) {
             throw MetadataBakerException("Invalid Property codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
@@ -936,9 +934,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid Property codegen tag: RefType field target must match RefType target", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
         }
 
-        // Fields are collected for every target so off-target metadata also has the layout — its
-        // properties get registered as IsServerOnly/IsClientOnly and disabled at runtime, but they
-        // still need a known layout for serialization.
+        // Collect off-target fields because disabled server/client properties still require serialized layout
 
         ComplexTypeDesc type;
         size_t type_tokens = 0;
@@ -1091,7 +1087,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             tok_index += 2;
         }
 
-        auto registrator = ctx.Meta.GetPropertyRegistratorForEdit(entity_name);
+        auto registrar = ctx.Meta.GetPropertyRegistrarForEdit(entity_name);
         auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
         bool is_component = std::ranges::any_of(flags, [](auto&& f) { return f == "Component"; });
 
@@ -1115,7 +1111,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
                 throw MetadataBakerException("Invalid Property codegen tag: property target is incompatible with component target", tag_desc.SourceFile, tag_desc.LineNumber, name, target, component_it->second);
             }
         }
-        if (registrator->FindProperty(name)) {
+        if (registrar->FindProperty(name)) {
             throw MetadataBakerException("Invalid Property codegen tag: duplicate property", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
@@ -1175,7 +1171,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         tokens.emplace_back(name);
         tokens.insert(tokens.end(), flags.begin(), flags.end());
 
-        auto prop = registrator->RegisterProperty(span(tokens).subspan(1));
+        auto prop = registrar->RegisterProperty(span(tokens).subspan(1));
         string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
         ctx.Meta.RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
 
@@ -1185,11 +1181,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
     ctx.ResultTags["Property"] = std::move(result_tag_property);
 }
 
-// Split any tag token whose last character is '?' into two tokens:
-// the original token without the trailing '?' followed by a literal "?".
-// This lets `///@ Event` / `///@ RemoteCall` declarations carry per-arg
-// nullable markers (`Type? name`) without requiring `?` to be a token
-// separator globally in strvex::tokenize.
+// Split trailing nullable markers for Event and RemoteCall arguments without changing global tokenization
 static auto SplitTrailingQuestionMarks(span<const string_view> tokens) -> vector<string_view>
 {
     vector<string_view> result;

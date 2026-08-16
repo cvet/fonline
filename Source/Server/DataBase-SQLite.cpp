@@ -1,3 +1,36 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 #include "DataBase.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -17,7 +50,7 @@ FO_BEGIN_NAMESPACE
 #if FO_HAVE_SQLITE
 
 // SQLite hands xFree/xRealloc/xSize only the pointer, so the usable size is carried in a header ahead
-// of every block. Eight bytes keeps the payload on the alignment plain malloc would have given.
+// of every block. Eight bytes keeps the payload on the alignment plain malloc would have given
 struct SqliteAllocHeader
 {
     uint64_t Size;
@@ -26,7 +59,7 @@ struct SqliteAllocHeader
 static_assert(sizeof(SqliteAllocHeader) == 8);
 static_assert(alignof(SqliteAllocHeader) <= 8);
 
-// The single place that steps back from the payload SQLite sees to the header in front of it.
+// The single place that steps back from the payload SQLite sees to the header in front of it
 [[nodiscard]] static auto SqliteAllocHeaderOf(void* payload) noexcept -> nptr<SqliteAllocHeader>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -188,7 +221,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        // The commit thread drives this backend, so it must be stopped before the handle closes.
+        // The commit thread drives this backend, so it must be stopped before the handle closes
         StopCommitThread();
 
         scoped_lock locker {_storageLocker};
@@ -308,7 +341,7 @@ protected:
         stmt.BindBlob(1, key);
 
         while (stmt.Step()) {
-            // No rows are produced; drain for symmetry with the other statements.
+            // No rows are produced; drain for symmetry with the other statements
         }
     }
 
@@ -320,7 +353,7 @@ protected:
             scoped_lock locker {_storageLocker};
 
             // BEGIN IMMEDIATE takes the write lock, which proves the file is still writable, and the
-            // rollback leaves nothing behind.
+            // rollback leaves nothing behind
             Execute("BEGIN IMMEDIATE", hstring());
             Execute("ROLLBACK", hstring());
             return true;
@@ -372,7 +405,7 @@ private:
             FO_STACK_TRACE_ENTRY();
 
             // SQLITE_TRANSIENT makes SQLite copy the bytes, so the caller's buffer need not outlive
-            // the bind.
+            // the bind
             int32_t bind = sqlite3_bind_blob(_stmt.get(), index, data.data(), numeric_cast<int32_t>(data.size()), SQLITE_TRANSIENT);
 
             if (bind != SQLITE_OK) {
@@ -411,7 +444,7 @@ private:
         {
             FO_STACK_TRACE_ENTRY();
 
-            // The statement stays mutable for the C API even when read through a const accessor.
+            // The statement stays mutable for the C API even when read through a const accessor
             auto stmt = make_ptr(_stmt.get_no_const());
             auto data = cast_from_void<const uint8_t*>(sqlite3_column_blob(stmt.get(), index));
             int32_t size = sqlite3_column_bytes(stmt.get(), index);
@@ -452,7 +485,7 @@ private:
         int32_t open = sqlite3_open_v2(db_path_ptr.get(), db.get_pp(), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
 
         if (open != SQLITE_OK) {
-            // sqlite3_open_v2 hands back a handle even on failure so the error can be read from it.
+            // sqlite3_open_v2 hands back a handle even on failure so the error can be read from it
             string error = db ? string(sqlite3_errmsg(db.get())) : string("unknown");
 
             if (db) {
@@ -470,11 +503,10 @@ private:
             _db = nullptr;
         });
 
-        // WAL keeps readers from blocking the writer, which matches the commit-thread model.
+        // WAL keeps readers from blocking the writer, which matches the commit-thread model
         Execute("PRAGMA journal_mode = WAL", hstring());
-        // NORMAL is the recommended pairing for WAL: a crash may lose the last transactions but cannot
-        // corrupt the database. FULL only removes that last-commit window, at a real write cost, so it
-        // stays out until an actual deployment asks for it.
+        // NORMAL pairs with WAL: a crash may lose the last transactions but cannot corrupt the database, and
+        // FULL closes only that window at a real write cost
         Execute("PRAGMA synchronous = NORMAL", hstring());
         Execute("PRAGMA foreign_keys = ON", hstring());
     }
@@ -506,7 +538,7 @@ private:
         Statement stmt {*this, sql, context};
 
         while (stmt.Step()) {
-            // Drain any rows a PRAGMA may return.
+            // Drain any rows a PRAGMA may return
         }
     }
 
@@ -531,7 +563,7 @@ private:
         stmt.BindBlob(2, make_const_span(bson_data.get(), numeric_cast<size_t>(bson.len)));
 
         while (stmt.Step()) {
-            // No rows are produced by INSERT/UPDATE.
+            // No rows are produced by INSERT/UPDATE
         }
 
         if (sqlite3_changes(GetHandle().get()) == 0) {
@@ -578,7 +610,7 @@ private:
     }
 
     // Collection names come from engine metadata rather than user input, but they still reach SQL as
-    // identifiers, so they are quoted properly instead of interpolated raw.
+    // identifiers, so they are quoted properly instead of interpolated raw
     [[nodiscard]] static auto QuoteIdentifier(string_view name) -> string
     {
         FO_STACK_TRACE_ENTRY();

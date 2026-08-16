@@ -15,14 +15,14 @@ Scope:
 Source areas checked:
 
 - `Source/Applications/`, `Source/Client/`, `Source/Common/`, `Source/Server/`, `Source/Scripting/`, `Source/Tools/`, `Source/Frontend/`, `Source/Essentials/`, and `Source/Tests/` for the source-tree routing page.
-- `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, and `ProtoManager.*` for entity/property/prototype claims.
+- `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializer.*`, and `ProtoManager.*` for entity/property/prototype claims.
 - `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, and `Source/Tools/MapBaker.*` for map/movement/geometry claims.
 - `Source/Server/DataBase.*`, `Source/Server/DataBase-*.cpp`, and `Source/Tests/Test_DataBase.cpp` for persistence claims.
 
 Results:
 
 - Backticked source/build/doc path checks for this slice: no remaining missing paths after replacing the stale Docs/Testing.md future route in `SourceTree.md` and linking runtime map behavior to the now-present `ServerRuntime.md` / `ClientRuntime.md` pages.
-- Symbol spot checks found the documented owners in current source: `EntityTypeDesc`, `FO_ENTITY_PROPERTY`, `ProtoEntity`, `PropertyRegistrator`, `GeometryHelper`, `FindPathInput`, `MovingContext`, `MapLoader`, `DataBaseImpl`, `RecoveryLogHandle`, and `CommitNextChange`.
+- Symbol spot checks found the documented owners in current source: `EntityTypeDesc`, `FO_ENTITY_PROPERTY`, `ProtoEntity`, `PropertyRegistrar`, `GeometryHelper`, `FindPathInput`, `MovingContext`, `MapLoader`, `DataBaseImpl`, `RecoveryLogHandle`, and `CommitNextChange`.
 - Current test inventory observed in this checkout: 79 `Source/Tests/Test_*.cpp` files.
 - Promoted in `Docs/DocumentationBacklog.md`: `SourceTree.md`, `EntityModel.md`, `MapsMovementGeometry.md`, and `Persistence.md` from `drafted` to `verified`.
 
@@ -187,7 +187,7 @@ Results:
 - Replaced remaining future-script-doc wording in build routing with a real link to the present `Scripting.md` page.
 - Confirmed current built-in baker owners include `ModelMeshBaker` / `ModelInfoBaker` under `Source/Tools/` and current model-baker coverage in `Source/Tests/Test_ModelBaker.cpp`.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `AddStageHook`, `AddExecutableApplication`, `AddSharedApplication`, `BakeResources`, `ForceBakeResources`, `CompileAngelScript`, `CompileManagedScripts`, `BaseBaker`, `SetupBakers`, `MasterBaker`, `MetadataBaker`, `CodeGeneration`, `ForceCodeGeneration`, `FO_SOURCE_META_FILES`, `FO_MANAGED_SOURCE`, `FO_ADDED_COMMON_HEADERS`, `FO_EMBEDDED_DATA_CAPACITY`, `FO_INTERNAL_CONFIG_CAPACITY`, `RegisterDynamicMetadata`, `MetadataRegistration` templates, `GenericCode-Template`, and `PropertyRegistrator`.
+- Symbol spot checks found the documented owners and APIs in current source, including `AddStageHook`, `AddExecutableApplication`, `AddSharedApplication`, `BakeResources`, `ForceBakeResources`, `CompileAngelScript`, `CompileMonoScripts`, `BaseBaker`, `SetupBakers`, `MasterBaker`, `MetadataBaker`, `CodeGeneration`, `ForceCodeGeneration`, `FO_SOURCE_META_FILES`, `FO_MONO_SOURCE`, `FO_ADDED_COMMON_HEADERS`, `FO_EMBEDDED_DATA_CAPACITY`, `FO_INTERNAL_CONFIG_CAPACITY`, `RegisterDynamicMetadata`, `MetadataRegistration` templates, `GenericCode-Template`, and `PropertyRegistrar`.
 - Promoted in `Docs/DocumentationBacklog.md`: `BuildToolsPipeline.md`, `BakingPipeline.md`, and `GeneratedApiAndMetadata.md` from `drafted` to `verified`.
 
 Follow-up:

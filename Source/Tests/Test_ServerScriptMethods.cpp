@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -1434,17 +1435,12 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    // Regression for the roster-switch server crash. That crash was Game.LoadCritter under a held
-    // Sync: the freshly loaded critter (a Critter owns its EntityLock from construction) was mutated
-    // via the LOCKED-validated SetMapId before registration pulled it into the sync context, and the
-    // LOCKED validation rejects an uncovered access (ScriptException). The crash MECHANISM
-    // is reproduced here without the DB (the in-memory test DB cannot reload an unloaded entity):
-    // creating a critter under a NON-EMPTY context runs the very same AddCritterToMap -> SetMapId on a
-    // fresh critter, so if registration ever stopped syncing fresh entities this would fail the call.
+    // Creating under a non-empty context must sync the fresh critter before AddCritterToMap calls SetMapId.
+    // This in-memory path pins the same cover requirement as Game.LoadCritter
     [[Async]]
     int TestCreateCritterUnderSyncContext()
     {
-        // Hold a lock on an unrelated anchor so the sync context is non-empty (the roster-switch condition).
+        // Hold an unrelated anchor so the sync context is non-empty
         Critter anchor = Game.CreateCritter("TestCritter".hstr(), false);
         if (anchor is null) return -1;
 
@@ -1452,15 +1448,38 @@ namespace ScriptMethodsTest
         if (!Game.IsEntityLocked(anchor)) return -2;
 
         // Create a fresh critter under the non-empty context. Registration must sync it before the
-        // strong-validated SetMapId, and it must be covered (own lock held) afterwards.
+        // strong-validated SetMapId, and it must be covered by its own lock afterwards
         Critter created = Game.CreateCritter("TestCritter".hstr(), false);
         if (created is null) return -3;
         if (!Game.IsEntityLocked(created)) return -4;
 
-        // Destroy while both critters are still covered ({anchor} from the explicit Sync, {created}
-        // from registration self-sync): destroying restricts the context, so a released-then-destroy
-        // sequence would leave the second critter uncovered.
+        // Destroy while explicit and registration covers remain active.
+        // Releasing first would leave the second destroy uncovered
         Game.DestroyCritter(created);
+        Game.DestroyCritter(anchor);
+
+        Game.SyncRelease();
+
+        return 0;
+    }
+
+    // A concurrent destroy always fits between a liveness test and the call, so the primitive accepts a destroyed
+    // handle and covers what is still alive, keeping its wrappers' recoverable-false contract honourable
+    [[Async]]
+    int TestSyncAcceptsDestroyedEntity()
+    {
+        Critter anchor = Game.CreateCritter("TestCritter".hstr(), false);
+        if (anchor is null) return -1;
+
+        Critter doomed = Game.CreateCritter("TestCritter".hstr(), false);
+        if (doomed is null) return -2;
+
+        Game.Sync(doomed);
+        Game.DestroyCritter(doomed);
+
+        Game.Sync(anchor, doomed);
+        if (!Game.IsEntityLocked(anchor)) return -3;
+
         Game.DestroyCritter(anchor);
 
         Game.SyncRelease();
@@ -2095,112 +2114,112 @@ namespace ScriptMethodsTest
         return false;
     }
 
-    int TestCreateUnloginedPlayerHelper()
+    int TestCreateNotLoggedInPlayerHelper()
     {
-        Player unlogined = Game.CreateUnloginedPlayer();
-        if (unlogined is null) return -1;
+        Player notLoggedIn = Game.CreateNotLoggedInPlayer();
+        if (notLoggedIn is null) return -1;
 
-        unlogined.HardDisconnect();
+        notLoggedIn.HardDisconnect();
         return 0;
     }
 
-    int TestPlayerConnectionAndCritterMethods(Player unlogined)
+    int TestPlayerConnectionAndCritterMethods(Player notLoggedIn)
     {
-        if (unlogined is null) return -1;
-        if (unlogined.GetHost() != "Dummy") return -2;
-        if (unlogined.GetPort() != 0) return -3;
+        if (notLoggedIn is null) return -1;
+        if (notLoggedIn.GetHost() != "Dummy") return -2;
+        if (notLoggedIn.GetPort() != 0) return -3;
 
-        unlogined.SetName("ScriptPlayerMethods");
+        notLoggedIn.SetName("ScriptPlayerMethods");
 
-        Critter? current = unlogined.GetControlledCritter();
+        Critter? current = notLoggedIn.GetControlledCritter();
         if (current !is null) return -4;
 )"
                     R"(
         Critter cr = Game.CreateCritter("TestCritter".hstr(), true);
         if (cr is null) return -5;
 
-        unlogined.SwitchCritter(cr);
-        Critter? controlled = unlogined.GetControlledCritter();
+        notLoggedIn.SwitchCritter(cr);
+        Critter? controlled = notLoggedIn.GetControlledCritter();
         if (controlled is null || controlled.Id != cr.Id) return -6;
 
         Player? crPlayer = cr.GetPlayer();
-        if (crPlayer is null || crPlayer.Id != unlogined.Id) return -7;
+        if (crPlayer is null || crPlayer.Id != notLoggedIn.Id) return -7;
 
-        unlogined.SwitchCritter(null);
-        if (unlogined.GetControlledCritter() !is null) return -8;
+        notLoggedIn.SwitchCritter(null);
+        if (notLoggedIn.GetControlledCritter() !is null) return -8;
         if (cr.GetPlayer() !is null) return -9;
 
         Game.UnloadCritter(cr);
 
-        unlogined.Disconnect();
+        notLoggedIn.Disconnect();
         return 0;
     }
 
-    int TestPlayerSetNameValidation(Player unlogined)
+    int TestPlayerSetNameValidation(Player notLoggedIn)
     {
-        if (unlogined is null) return -1;
+        if (notLoggedIn is null) return -1;
 
         try {
-            unlogined.SetName("");
+            notLoggedIn.SetName("");
             return -2;
         }
         catch {
         }
 
         try {
-            unlogined.SetName(" LeadingSpace");
+            notLoggedIn.SetName(" LeadingSpace");
             return -3;
         }
         catch {
         }
 
         try {
-            unlogined.SetName("TrailingSpace ");
+            notLoggedIn.SetName("TrailingSpace ");
             return -4;
         }
         catch {
         }
 
-        unlogined.SetName("ScriptPlayerNameOk");
+        notLoggedIn.SetName("ScriptPlayerNameOk");
         return 0;
     }
 
-    int TestPlayerMapViewMethods(Player unlogined)
+    int TestPlayerMapViewMethods(Player notLoggedIn)
     {
-        if (unlogined is null) return -1;
+        if (notLoggedIn is null) return -1;
 
         Critter cr = Game.CreateCritter("TestCritter".hstr(), true);
         if (cr is null) return -2;
 
         try {
-            unlogined.RefreshCritterMoving(cr);
+            notLoggedIn.RefreshCritterMoving(cr);
             Game.UnloadCritter(cr);
             return -3;
         }
         catch {
         }
 
-        unlogined.SwitchCritter(cr);
+        notLoggedIn.SwitchCritter(cr);
 
         array<hstring> mapPids = {"TestMap".hstr()};
         Location loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
         if (loc is null) {
-            unlogined.SwitchCritter(null);
+            notLoggedIn.SwitchCritter(null);
             Game.UnloadCritter(cr);
             return -4;
         }
 
         Map? map = loc.GetMap("TestMap".hstr());
         if (map is null) {
-            unlogined.SwitchCritter(null);
+            notLoggedIn.SwitchCritter(null);
             Game.UnloadCritter(cr);
             Game.DestroyLocation(loc);
             return -5;
         }
 
         try {
-            unlogined.ViewMap(map, mpos(0, 0));
-            unlogined.SwitchCritter(null);
+            notLoggedIn.ViewMap(map, mpos(0, 0));
+            notLoggedIn.SwitchCritter(null);
             Game.UnloadCritter(cr);
             Game.DestroyLocation(loc);
             return -6;
@@ -2209,8 +2228,8 @@ namespace ScriptMethodsTest
         }
 
         try {
-            unlogined.UnloadMap();
-            unlogined.SwitchCritter(null);
+            notLoggedIn.UnloadMap();
+            notLoggedIn.SwitchCritter(null);
             Game.UnloadCritter(cr);
             Game.DestroyLocation(loc);
             return -7;
@@ -2218,7 +2237,7 @@ namespace ScriptMethodsTest
         catch {
         }
 
-        unlogined.SwitchCritter(null);
+        notLoggedIn.SwitchCritter(null);
 
         Critter mapCr = map.AddCritter("TestCritter".hstr(), mpos(11, 10), mdir(0));
         if (mapCr is null) {
@@ -2229,7 +2248,7 @@ namespace ScriptMethodsTest
 )"
                     R"(
         try {
-            unlogined.ViewMap(map, mpos(9999, 9999));
+            notLoggedIn.ViewMap(map, mpos(9999, 9999));
             Game.UnloadCritter(cr);
             Game.DestroyLocation(loc);
             return -9;
@@ -2237,21 +2256,21 @@ namespace ScriptMethodsTest
         catch {
         }
 
-        unlogined.ViewMap(map, mpos(10, 10));
-        unlogined.RefreshCritterMoving(mapCr);
-        unlogined.ResetViewMap();
-        unlogined.UnloadMap();
+        notLoggedIn.ViewMap(map, mpos(10, 10));
+        notLoggedIn.RefreshCritterMoving(mapCr);
+        notLoggedIn.ResetViewMap();
+        notLoggedIn.UnloadMap();
 
         Game.UnloadCritter(cr);
         Game.DestroyLocation(loc);
         return 0;
     }
 
-    int TestLoginPlayerToNewRecordFromPreparedPlayer(Player unlogined)
+    int TestLoginPlayerToNewRecordFromPreparedPlayer(Player notLoggedIn)
     {
-        if (unlogined is null) return -1;
+        if (notLoggedIn is null) return -1;
 
-        Player new_player = Game.LoginPlayerToNewRecord(unlogined);
+        Player new_player = Game.LoginPlayerToNewRecord(notLoggedIn);
         if (new_player.Id == ZERO_IDENT) return -3;
 
         Player? fetched_player = Game.GetPlayer(new_player.Id);
@@ -2267,16 +2286,16 @@ namespace ScriptMethodsTest
     }
 
     [[Async]]
-    int TestLoginPlayerToExistentRecordFromPreparedPlayer(Player unlogined, ident playerId)
+    int TestLoginPlayerToExistentRecordFromPreparedPlayer(Player notLoggedIn, ident playerId)
     {
-        if (unlogined is null) return -1;
+        if (notLoggedIn is null) return -1;
 
         Player? live_player = Game.GetPlayer(playerId);
         if (live_player !is null) {
-            Game.Sync(unlogined, live_player);
+            Game.Sync(notLoggedIn, live_player);
         }
 
-        Player reconnected_player = Game.LoginPlayerToExistentRecord(unlogined, playerId);
+        Player reconnected_player = Game.LoginPlayerToExistentRecord(notLoggedIn, playerId);
         if (reconnected_player.Id != playerId) return -3;
 
 )"
@@ -2285,21 +2304,21 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int TestLoginPlayerToTempSessionFromPreparedPlayer(Player unlogined)
+    int TestLoginPlayerToTempSessionFromPreparedPlayer(Player notLoggedIn)
     {
-        if (unlogined is null) return -1;
+        if (notLoggedIn is null) return -1;
 
-        Player temp_player = Game.LoginPlayerToTempSession(unlogined);
+        Player temp_player = Game.LoginPlayerToTempSession(notLoggedIn);
 
         temp_player.HardDisconnect();
         return 0;
     }
 
-    int TestLoginAlreadyLoginedPlayerThrows(Player unlogined)
+    int TestLoginAlreadyLoggedInPlayerThrows(Player notLoggedIn)
     {
-        if (unlogined is null) return -1;
+        if (notLoggedIn is null) return -1;
 
-        Player player = Game.LoginPlayerToNewRecord(unlogined);
+        Player player = Game.LoginPlayerToNewRecord(notLoggedIn);
 
         ident playerId = player.Id;
         int catches = 0;
@@ -2335,21 +2354,21 @@ namespace ScriptMethodsTest
 
     int TestLoginPlayerToExistentRecordZeroIdThrows()
     {
-        Player unlogined = Game.CreateUnloginedPlayer();
-        if (unlogined is null) return -1;
+        Player notLoggedIn = Game.CreateNotLoggedInPlayer();
+        if (notLoggedIn is null) return -1;
 
-        unlogined.SetName("ScriptLoginZero");
+        notLoggedIn.SetName("ScriptLoginZero");
 
         try {
-            Game.LoginPlayerToExistentRecord(unlogined, ZERO_IDENT);
+            Game.LoginPlayerToExistentRecord(notLoggedIn, ZERO_IDENT);
             return -2;
         }
         catch {
-            unlogined.HardDisconnect();
+            notLoggedIn.HardDisconnect();
             return 0;
         }
 
-        unlogined.HardDisconnect();
+        notLoggedIn.HardDisconnect();
         return -3;
     }
 
@@ -2813,9 +2832,8 @@ namespace ScriptMethodsTest
         Game.Lock();
         Game.SyncRelease();
 
-        // SyncRelease drained both buckets (entity cover and the singleton), so no Unlock is
-        // needed. Re-cover each critter immediately before destroying: each destroy restricts
-        // the context to its own target, so consecutive uncovered destroys would be rejected.
+        // SyncRelease drained both regular and singleton buckets.
+        // Re-cover each critter because every destroy restricts the context to its target
         Game.Sync(cr1);
         Game.DestroyCritter(cr1);
         Game.Sync(cr2);
@@ -2888,7 +2906,7 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -2914,7 +2932,7 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -3365,6 +3383,14 @@ TEST_CASE("ServerEntityLifecycle")
         CHECK(func.GetResult() == 0);
     }
 
+    SECTION("SyncAcceptsDestroyedEntity")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestSyncAcceptsDestroyedEntity"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
     SECTION("BulkDestroyCritters")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyCritters"));
@@ -3638,18 +3664,18 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerConnectionAndCritterMethods")
     {
-        auto create_unlogined_player = [&server](string_view name) -> ptr<Player> {
-            auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        auto create_not_logged_in_player = [&server](string_view name) -> ptr<Player> {
+            auto not_logged_in_player = server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
-            unlogined_player->SetName(name);
+            not_logged_in_player->SetName(name);
 
-            return unlogined_player;
+            return not_logged_in_player;
         };
 
         auto methods_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerConnectionAndCritterMethods"));
         REQUIRE(methods_func);
 
-        ptr<Player> methods_player = create_unlogined_player("ScriptPlayerMethodsStart");
+        ptr<Player> methods_player = create_not_logged_in_player("ScriptPlayerMethodsStart");
 
         auto methods_cleanup = scope_exit([&methods_player]() noexcept {
             safe_call([&methods_player] {
@@ -3673,7 +3699,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto name_validation_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerSetNameValidation"));
         REQUIRE(name_validation_func);
 
-        ptr<Player> name_player = create_unlogined_player("ScriptPlayerNameStart");
+        ptr<Player> name_player = create_not_logged_in_player("ScriptPlayerNameStart");
 
         auto name_cleanup = scope_exit([&name_player]() noexcept {
             safe_call([&name_player] {
@@ -3690,7 +3716,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto map_view_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"));
         REQUIRE(map_view_func);
 
-        ptr<Player> map_view_player = create_unlogined_player("ScriptPlayerMapView");
+        ptr<Player> map_view_player = create_not_logged_in_player("ScriptPlayerMapView");
 
         auto map_view_cleanup = scope_exit([&map_view_player]() noexcept {
             safe_call([&map_view_player] {
@@ -3707,16 +3733,16 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerLoginHelpers")
     {
-        auto create_unlogined_player = [&server](string_view name) -> ptr<Player> {
-            auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        auto create_not_logged_in_player = [&server](string_view name) -> ptr<Player> {
+            auto not_logged_in_player = server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
-            unlogined_player->SetName(name);
-            unlogined_player->SetLastControlledCritterId(ident_t {1});
+            not_logged_in_player->SetName(name);
+            not_logged_in_player->SetLastControlledCritterId(ident_t {1});
 
-            return unlogined_player;
+            return not_logged_in_player;
         };
 
-        auto create_func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateUnloginedPlayerHelper"));
+        auto create_func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateNotLoggedInPlayerHelper"));
         REQUIRE(create_func);
         REQUIRE(create_func.Call());
         REQUIRE(create_func.GetResult() == 0);
@@ -3724,53 +3750,53 @@ TEST_CASE("ServerMiscScriptOperations")
         auto login_new_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToNewRecordFromPreparedPlayer"));
         REQUIRE(login_new_func);
 
-        ptr<Player> new_unlogined = create_unlogined_player("ScriptLoginNew");
+        ptr<Player> new_not_logged_in = create_not_logged_in_player("ScriptLoginNew");
 
-        auto new_player_cleanup = scope_exit([&new_unlogined]() noexcept {
-            safe_call([&new_unlogined] {
-                if (!new_unlogined->IsDestroyed()) {
-                    new_unlogined->GetConnection()->HardDisconnect();
+        auto new_player_cleanup = scope_exit([&new_not_logged_in]() noexcept {
+            safe_call([&new_not_logged_in] {
+                if (!new_not_logged_in->IsDestroyed()) {
+                    new_not_logged_in->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(login_new_func.Call(new_unlogined));
+        REQUIRE(login_new_func.Call(new_not_logged_in));
         REQUIRE(login_new_func.GetResult() == 0);
 
-        ident_t player_id = new_unlogined->GetId();
+        ident_t player_id = new_not_logged_in->GetId();
         REQUIRE(player_id);
 
         auto reconnect_func = server->FindFunc<int32_t, ptr<Player>, ident_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordFromPreparedPlayer"));
         REQUIRE(reconnect_func);
 
-        ptr<Player> reconnect_unlogined = create_unlogined_player("ScriptLoginReconnect");
+        ptr<Player> reconnect_not_logged_in = create_not_logged_in_player("ScriptLoginReconnect");
 
-        REQUIRE(reconnect_func.Call(reconnect_unlogined, player_id));
+        REQUIRE(reconnect_func.Call(reconnect_not_logged_in, player_id));
         CHECK(reconnect_func.GetResult() == 0);
 
         auto temp_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToTempSessionFromPreparedPlayer"));
         REQUIRE(temp_func);
 
-        ptr<Player> temp_unlogined = create_unlogined_player("ScriptLoginTemp");
+        ptr<Player> temp_not_logged_in = create_not_logged_in_player("ScriptLoginTemp");
 
-        REQUIRE(temp_func.Call(temp_unlogined));
+        REQUIRE(temp_func.Call(temp_not_logged_in));
         CHECK(temp_func.GetResult() == 0);
 
-        auto already_logined_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginAlreadyLoginedPlayerThrows"));
-        REQUIRE(already_logined_func);
+        auto already_logged_in_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginAlreadyLoggedInPlayerThrows"));
+        REQUIRE(already_logged_in_func);
 
-        ptr<Player> already_logined_unlogined = create_unlogined_player("ScriptLoginAlready");
+        ptr<Player> already_logged_in_not_logged_in = create_not_logged_in_player("ScriptLoginAlready");
 
-        auto already_logined_cleanup = scope_exit([&already_logined_unlogined]() noexcept {
-            safe_call([&already_logined_unlogined] {
-                if (!already_logined_unlogined->IsDestroyed()) {
-                    already_logined_unlogined->GetConnection()->HardDisconnect();
+        auto already_logged_in_cleanup = scope_exit([&already_logged_in_not_logged_in]() noexcept {
+            safe_call([&already_logged_in_not_logged_in] {
+                if (!already_logged_in_not_logged_in->IsDestroyed()) {
+                    already_logged_in_not_logged_in->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(already_logined_func.Call(already_logined_unlogined));
-        CHECK(already_logined_func.GetResult() == 0);
+        REQUIRE(already_logged_in_func.Call(already_logged_in_not_logged_in));
+        CHECK(already_logged_in_func.GetResult() == 0);
     }
 
     SECTION("RuntimeHelpers")

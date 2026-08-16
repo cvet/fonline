@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: EngineSources ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(EngineSources Pre|Post <macro-name>).
+# Register engine sources and extend through AddStageHook(EngineSources Pre|Post <macro-name>)
 
 # App icon
 SetValue(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
@@ -25,6 +23,8 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/MemorySystem.cpp"
@@ -120,8 +120,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/PathFinding.h"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.h"
-    "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializator.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializator.h"
+    "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializer.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializer.h"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.h"
     "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.cpp"
@@ -434,6 +434,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BaseLogging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BasicCore.cpp"
@@ -483,6 +484,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationPoseProcedural.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationRuntime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBounds.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelMeshData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSpriteLayout.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSkeletonCompatibility.cpp"

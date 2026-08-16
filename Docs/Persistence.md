@@ -168,7 +168,7 @@ Relevant tests include:
 - SQLite backend: `Source/Server/DataBase-SQLite.cpp`.
 - Shared BSON allocator/conversion: `Source/Server/DataBase.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, and `BsonToDocument()`; Mongo-specific operations stay in `Source/Server/DataBase-Mongo.cpp`.
 - Memory backend: `Source/Server/DataBase-Memory.cpp`.
-- Entity/property serialization: [EntityModel.md](EntityModel.md) and `PropertiesSerializator.*`.
+- Entity/property serialization: [EntityModel.md](EntityModel.md) and `PropertiesSerializer.*`.
 - Build feature toggles: [BuildWorkflow.md](BuildWorkflow.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
 
 ## Validation checklist

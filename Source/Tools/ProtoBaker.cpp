@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -198,23 +198,23 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
     unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> all_protos;
 
     auto create_empty_proto = [&](hstring type_name, hstring pid) -> refcount_ptr<ProtoEntity> {
-        auto registrator = meta->GetPropertyRegistrator(type_name);
-        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+        auto registrar = meta->GetPropertyRegistrar(type_name);
+        FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrar, nullptr);
         }
         if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrar, nullptr);
         }
         if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrar, nullptr);
         }
         if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrar, nullptr);
         }
 
-        return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, nullptr);
+        return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrar, nullptr);
     };
 
     for (const auto& [type_name, file_protos] : all_file_protos) {

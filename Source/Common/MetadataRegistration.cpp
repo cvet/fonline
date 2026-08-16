@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -163,10 +163,10 @@ static void RegisterDynamicMetadataEntityHolders(ptr<EngineMetadata> meta, const
             meta->RegsiterEntityHolderEntry(holder_entity, target_entity, entry, sync, has_persistent);
         }
         else {
-            auto prop_registrator = meta->GetPropertyRegistratorForEdit(holder_entity);
+            auto prop_registrar = meta->GetPropertyRegistrarForEdit(holder_entity);
             ptr<const Property> prop = has_persistent ? //
-                prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
-                prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
+                prop_registrar->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
+                prop_registrar->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
             meta->RegisterEnumEntry(strex("{}Property", holder_entity), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
         }
     }
@@ -262,10 +262,10 @@ static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const ve
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 4, "Property metadata record is missing entity name or property declaration tokens", tokens.size());
         auto entity_name = tokens[0];
-        auto prop_registrator = meta->GetPropertyRegistratorForEdit(entity_name);
+        auto prop_registrar = meta->GetPropertyRegistrarForEdit(entity_name);
         auto prop_tokens = span(tokens).subspan(1);
 
-        auto prop = prop_registrator->RegisterProperty(prop_tokens);
+        auto prop = prop_registrar->RegisterProperty(prop_tokens);
         string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
         meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
     }

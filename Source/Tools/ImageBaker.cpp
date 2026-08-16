@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -812,14 +812,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         collection.NewName = strex(fname).lower();
     }
 
-    // Animate pixels
-    // 0x00 - None
-    // 0x01 - Slime, 229 - 232, 4 frames
-    // 0x02 - Monitors, 233 - 237, 5 frames
-    // 0x04 - FireSlow, 238 - 242, 5 frames
-    // 0x08 - FireFast, 243 - 247, 5 frames
-    // 0x10 - Shoreline, 248 - 253, 6 frames
-    // 0x20 - BlinkingRed, 254, 15 frames
+    // Animated palette flags: Slime 0x01, Monitors 0x02, FireSlow 0x04, FireFast 0x08, Shoreline 0x10, BlinkingRed 0x20
     uint32_t anim_pix_type = 0;
     const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
@@ -1074,14 +1067,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         collection.NewName = strex("{}.{}", strvex(fname).erase_file_extension(), "frm");
     }
 
-    // Animate pixels
-    // 0x00 - None
-    // 0x01 - Slime, 229 - 232, 4 frames
-    // 0x02 - Monitors, 233 - 237, 5 frames
-    // 0x04 - FireSlow, 238 - 242, 5 frames
-    // 0x08 - FireFast, 243 - 247, 5 frames
-    // 0x10 - Shoreline, 248 - 253, 6 frames
-    // 0x20 - BlinkingRed, 254, 15 frames
+    // Animated palette flags: Slime 0x01, Monitors 0x02, FireSlow 0x04, FireFast 0x08, Shoreline 0x10, BlinkingRed 0x20
     uint32_t anim_pix_type = 0;
     const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
@@ -1442,11 +1428,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
     struct ArtHeader
     {
         int32_t Flags {};
-        // 0x00000001 = Static - no rotation, contains frames only for south direction.
-        // 0x00000002 = Critter - uses delta attribute, while playing walking animation.
-        // 0x00000004 = Font - X offset is equal to number of pixels to advance horizontally for next
-        // character. 0x00000008 = Facade - requires fackwalk file. 0x00000010 = Unknown - used in eye candy,
-        // for example, DIVINATION.art.
+        // Flags: 0x01 static, 0x02 critter delta, 0x04 font advance, 0x08 facade walk data, 0x10 eye-candy extension
         int32_t FrameRate {};
         int32_t RotationCount {};
         uint32_t PaletteList[4] {};
@@ -1696,11 +1678,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             dir_spr = (dir + 2) % 8;
         }
 
-        // Color offsets
-        // 0 - other
-        // 1 - skin
-        // 2 - hair
-        // 3 - armor
+        // Color offsets: 0 other, 1 skin, 2 hair, 3 armor
         int32_t rgb_offs[4][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
 
         // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr

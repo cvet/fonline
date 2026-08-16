@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -143,7 +143,7 @@ void ModelSprite::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them.
+    // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them
     _model->PrepareFrameLayout();
     _model->PoseSpriteFrame(false);
     _model->PrewarmParticles();
@@ -278,12 +278,12 @@ auto ModelSprite::PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBound
     bool same_envelope = envelope_id && _cropEnvelopeId && envelope_id->BodyAnimationIndices == _cropEnvelopeId->BodyAnimationIndices && envelope_id->MoveAnimationIndices == _cropEnvelopeId->MoveAnimationIndices && envelope_id->CombinedMeshGenerationRevision == _cropEnvelopeId->CombinedMeshGenerationRevision && envelope_id->BodyAnimationCount == _cropEnvelopeId->BodyAnimationCount && envelope_id->MoveAnimationCount == _cropEnvelopeId->MoveAnimationCount && envelope_id->ShadowEnabled == _cropEnvelopeId->ShadowEnabled && envelope_id->FullFrame == _cropEnvelopeId->FullFrame;
 
     if (same_frame && same_envelope && has_bounded_crop && _boundedCropEstablished) {
-        // Keep the slot stable across small pose-to-pose bounds changes.
+        // Keep the slot stable across small pose-to-pose bounds changes
         normalized_crop.expand(_cropRect);
     }
 
     // Anchor the sprite on the model origin's exact pixel inside the frame (its ground point), not a fixed
-    // centre-x / three-quarter-y fraction: X keeps the crop centred on the origin, Y hangs it from the origin row.
+    // centre-x / three-quarter-y fraction: X keeps the crop centred on the origin, Y hangs it from the origin row
     ipos32 pivot = _model->GetFramePivot();
     int32_t offset_x = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.x) + normalized_crop.width / 2 - pivot.x);
     int32_t offset_y = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.y) + normalized_crop.height - pivot.y);
@@ -388,7 +388,7 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
     auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
-        // Model UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset.
+        // Model UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset
         auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {
@@ -420,11 +420,8 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         model_spr->GetModel()->SetupFrame(render_frame_size, model_spr->GetModel()->GetFramePivot());
     }
 
-    // Size the sprite frame from the posed geometry before drawing anything. GetSpriteBounds derives the frame extent
-    // from the skinned skeleton and the baked particle box - there is no shader/GPU read-back - so the required size is
-    // fully known without a render. Pose the model (advancing the animation only on the first pass), measure, and grow
-    // the frame if the pose overflows it; the extent is frame-size-invariant, so it settles in one grow. The re-poses
-    // are cheap CPU work, not renders.
+    // The frame size is known from the posed skeleton without any GPU read-back, so the model is posed and measured
+    // first; placements merge in root-relative coordinates, or rounding could alternate pivots forever
     optional<ModelSpriteBounds> bounds;
 
     for (size_t size_pass = 0; size_pass < 3; size_pass++) {
@@ -432,16 +429,19 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         bounds = model_spr->_model->GetSpriteBounds();
 
         if (bounds) {
-            isize32 settled_frame_size {
-                std::max(render_frame_size.width, bounds->RequiredFrameSize.width),
-                std::max(render_frame_size.height, bounds->RequiredFrameSize.height),
+            ModelSpriteFramePlacement current_placement {
+                .Size = render_frame_size,
+                .Pivot = model_spr->GetModel()->GetFramePivot(),
             };
+            ModelSpriteFramePlacement required_placement {.Size = bounds->RequiredFrameSize, .Pivot = bounds->Pivot};
+            optional<ModelSpriteFramePlacement> settled_placement = MergeModelSpriteFramePlacements(current_placement, required_placement);
+            FO_VERIFY_AND_THROW(settled_placement, "Model sprite frame placements could not be merged", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot);
 
-            // A full-frame particle crop may already have enough pixels but still need its root moved inside that frame.
-            if (settled_frame_size != render_frame_size || bounds->Pivot != model_spr->GetModel()->GetFramePivot()) {
-                FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", render_frame_size, settled_frame_size);
-                model_spr->_model->SetupFrame(settled_frame_size, bounds->Pivot);
-                render_frame_size = settled_frame_size;
+            // A full-frame particle crop may already have enough pixels but still need its root moved inside that frame
+            if (settled_placement->Size != current_placement.Size || settled_placement->Pivot != current_placement.Pivot) {
+                FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot, settled_placement->Size, settled_placement->Pivot);
+                model_spr->_model->SetupFrame(settled_placement->Size, settled_placement->Pivot);
+                render_frame_size = settled_placement->Size;
                 continue;
             }
         }
@@ -449,8 +449,17 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         break;
     }
 
-    // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop.
+    // Recorded before the draw because callers read the pose rect right after their own draw call, and
+    // re-anchored on the frame pivot so it shares an origin with the model's draw and view rects
+    if (bounds) {
+        ipos32 frame_pivot = model_spr->GetModel()->GetFramePivot();
+        model_spr->_poseRect = {bounds->Rect.x - frame_pivot.x, bounds->Rect.y - frame_pivot.y, bounds->Rect.width, bounds->Rect.height};
+    }
+
+    // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop
     isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
+    FO_VERIFY_AND_THROW(frame_size.width <= AppRender::MAX_ATLAS_WIDTH && frame_size.height <= AppRender::MAX_ATLAS_HEIGHT, "Model sprite frame exceeds the device texture limit", frame_size.width, frame_size.height, render_frame_size.width, render_frame_size.height, ModelInstance::FRAME_SCALE, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+
     ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
         for (ptr<RenderTarget> rt : _rtIntermediate) {
             if (rt->GetTexture()->Size == frame_size) {

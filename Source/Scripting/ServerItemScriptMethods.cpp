@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>;
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>;
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, ptr<Item>, bool> initFunc)
 {
@@ -58,7 +58,7 @@ FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, ptr<
     self->SetInitScript(initFunc.GetName().first);
 }
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 {
@@ -69,7 +69,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
     self->SetInitScript(initFunc);
 }
 
-// SyncScope: requires self; creates and attaches a new inner item under the container cover.
+// SyncScope: requires self; creates and attaches a new inner item under the container cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t count, any_t stackId = any_t {})
 {
@@ -84,7 +84,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hs
     return item;
 }
 
-// SyncScope: requires self; creates and attaches a new inner item under the container cover.
+// SyncScope: requires self; creates and attaches a new inner item under the container cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, int32_t count, any_t stackId = any_t {})
 {
@@ -99,7 +99,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, pt
     return item;
 }
 
-// SyncScope: requires self; returns inner item handles covered by self while the cover remains.
+// SyncScope: requires self; returns inner item handles covered by self while the cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
 {
@@ -108,7 +108,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Item_GetItems(ptr<Item>
     return items;
 }
 
-// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads.
+// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
 {
@@ -117,7 +117,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
     return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads.
+// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 {
@@ -126,7 +126,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
     return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover.
+// SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 {
@@ -135,7 +135,7 @@ FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
     return cr ? cr.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self + current map when map-owned; refreshes map visibility/blocking caches.
+// SyncScope: requires self + current map when map-owned; refreshes map visibility/blocking caches
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
 {

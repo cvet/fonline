@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -668,7 +668,7 @@ auto ModelInformation::GetRootBone() const -> ptr<const ModelBone>
     FO_STACK_TRACE_ENTRY();
 
     // A loaded model always has a hierarchy (both load paths reject a missing
-    // one) and its root bone is a non-null ptr, so absence is an invariant break.
+    // one) and its root bone is a non-null ptr, so absence is an invariant break
     FO_VERIFY_AND_THROW(_hierarchy, "Model information has no hierarchy", _fileName);
     return _hierarchy->_rootBone;
 }

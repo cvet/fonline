@@ -4,6 +4,32 @@
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -1469,9 +1495,8 @@ ActionAnimEqual 4 6
 
     SECTION("Rejects ModelAnimationInfo effective duration that rounds below one millisecond")
     {
-        // Default clip duration is 1.0s, so speed 1e6 yields 0.001ms, which rounds to a zero millisecond
-        // count. The runtime model-anim-info load requires a positive duration, so baking must fail here
-        // rather than emit a manifest the client cannot load.
+        // This speed rounds the clip to a zero millisecond count, and the runtime load requires a positive
+        // duration, so baking must fail rather than emit a manifest the client cannot load
         TestRig rounding_rig;
         AddModelInfoMetadata(rounding_rig);
         rounding_rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\nAnimSpeed 0 1 1e6\n", 1);

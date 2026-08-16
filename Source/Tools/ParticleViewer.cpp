@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,29 +41,29 @@
 FO_BEGIN_NAMESPACE
 
 // Preview surface: the same for every effect so silhouettes stay comparable
-// between takes.
+// between takes
 static constexpr isize32 PREVIEW_SIZE = {512, 512};
 
 // Fixed screen point the effect root (its ground anchor) is pinned to. Kept
-// below the middle so an effect that rises from the ground has headroom above.
+// below the middle so an effect that rises from the ground has headroom above
 static constexpr ipos32 ROOT_ANCHOR = {PREVIEW_SIZE.width / 2, PREVIEW_SIZE.height * 2 / 3};
 
 // Faint cyan so the ground crosshair reads as a reference without competing with
-// the effect drawn over it.
+// the effect drawn over it
 static constexpr ucolor ROOT_CROSSHAIR_COLOR = {100, 200, 220, 110};
 
-// Overlay colour, drawn over the effect so it stays legible.
+// Overlay colour, drawn over the effect so it stays legible
 static constexpr ucolor DRAW_RECT_COLOR = {90, 220, 90, 200}; // full sprite draw frame
 
 static constexpr float32_t MIN_ZOOM = 0.25f;
 static constexpr float32_t MAX_ZOOM = 8.0f;
 static constexpr float32_t ZOOM_WHEEL_STEP = 1.15f;
 
-// Degrees of effect facing per pixel of held-LMB horizontal drag over the preview.
+// Degrees of effect facing per pixel of held-LMB horizontal drag over the preview
 static constexpr float32_t DIR_DRAG_SENSITIVITY = 0.5f;
 
 // Ortho depth half-range used while drawing a draw-in-scene effect, wide enough
-// that a magnified effect is not clipped by the near/far planes.
+// that a magnified effect is not clipped by the near/far planes
 static constexpr float32_t SCENE_DEPTH_HALF = 64.0f;
 
 template<size_t Size>
@@ -91,7 +91,7 @@ void ParticleViewer::LoadSettings()
     FO_STACK_TRACE_ENTRY();
 
     // The ImGui context may not exist yet (a headless host constructs the viewer without UI), so the saved
-    // layout is only remembered here and applied lazily on the first Draw, when a context is guaranteed.
+    // layout is only remembered here and applied lazily on the first Draw, when a context is guaranteed
     _pendingImguiLayout = _settings.GetString("ImGuiLayout");
 
     _zoom = numeric_cast<float32_t>(_settings.GetFloat("Zoom", _zoom));
@@ -104,8 +104,8 @@ void ParticleViewer::LoadSettings()
     _showWireframe = _settings.GetBool("ShowWireframe", _showWireframe);
 
     // Re-open the last previewed effect, but only if that resource still exists, so a removed/renamed file never
-    // surfaces as a selection error on startup.
-    auto last_path = _settings.GetString("SelectedPath");
+    // surfaces as a selection error on startup
+    string last_path = _settings.GetString("SelectedPath");
 
     if (!last_path.empty()) {
         RefreshResourceList();
@@ -167,7 +167,7 @@ void ParticleViewer::Draw()
     }
 
     // A viewport-filling window has no close button, so it must not be handed a
-    // visibility flag it could never turn back on.
+    // visibility flag it could never turn back on
     if (!ImGui::Begin("Particle Viewer", _fillViewport ? nullptr : &keep_open, window_flags)) {
         ImGui::End();
         return;
@@ -202,9 +202,8 @@ void ParticleViewer::RefreshResourceList()
 
     _resourcesIndexed = true;
 
-    // The particle sprite factory advertises the baked runtime extensions it can
-    // load (e.g. "spk" for Spark, "efk" for Effekseer); enumerate every matching
-    // resource file so the list reflects the loaded content exactly.
+    // The list is built from the extensions the sprite factory advertises, so it reflects exactly the
+    // runtimes the loaded content can play
     auto factory = _sprMngr->GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
 
     if (!factory) {
@@ -291,7 +290,7 @@ void ParticleViewer::DrawPreview()
         }
 
         // Invisible button over the image so the preview captures the mouse:
-        // held-left drag turns the effect, held-right drag pans, wheel zooms.
+        // held-left drag turns the effect, held-right drag pans, wheel zooms
         ImGui::InvisibleButton("PreviewArea", {numeric_cast<float32_t>(PREVIEW_SIZE.width), numeric_cast<float32_t>(PREVIEW_SIZE.height)}, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
         if (ImGui::IsItemActive()) {
@@ -340,9 +339,8 @@ void ParticleViewer::DrawControls()
     ImGui::SameLine();
     ImGui::Checkbox("Prewarm", &_prewarm);
 
-    // Render path of the selected effect, initialized from its authored `draw in scene` flag: on it draws as real
-    // geometry into the scene, off it rasterizes into its sprite frame through the atlas. Flipping it previews the
-    // other path without touching the resource - the frame clips an atlas effect, so the difference is visible.
+    // Flipping the authored `draw in scene` flag previews the other render path without touching the
+    // resource, and the difference shows because the sprite frame clips an atlas effect
     if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>()) {
         bool draw_in_scene = particle_sprite->IsDirectDraw();
 
@@ -354,7 +352,7 @@ void ParticleViewer::DrawControls()
     }
 
     // Review facing: the look-direction a critter would pass to an attached effect. Held-LMB drag over the preview
-    // turns it too.
+    // turns it too
     ImGui::SetNextItemWidth(200.0f);
 
     if (ImGui::SliderFloat("Direction", &_dirAngle, 0.0f, 360.0f, "%.0f deg")) {
@@ -382,9 +380,8 @@ void ParticleViewer::SelectParticle(string_view path)
     _pan = {};
     _previewSprite = nullptr;
 
-    // The viewer browses every particle resource, including ones the runtime cannot load (e.g. a texture too large
-    // for its atlas). Such a load throws deep in the engine; catch it here so a bad resource shows an error line
-    // instead of unwinding through the ImGui frame and corrupting it.
+    // The viewer browses resources the runtime may fail to load, and that throw must not unwind through
+    // the ImGui frame, which would corrupt it
     shared_ptr<Sprite> sprite;
 
     try {
@@ -407,7 +404,7 @@ void ParticleViewer::SelectParticle(string_view path)
     }
 
     // The effect keeps its authored render path (the `draw in scene` flag) - the preview shows what the game does.
-    // The `Draw in scene` control below reflects it and can flip it to compare the two paths.
+    // The `Draw in scene` control below reflects it and can flip it to compare the two paths
     _previewSprite = std::move(sprite);
     _appliedScale = 0.0f;
     PlayCurrent();
@@ -430,7 +427,7 @@ void ParticleViewer::PlayCurrent()
     particle_sprite->PlayWithSeed(_seed);
 
     // Apply the review facing before prewarming so the warmed-up particles are already emitted in the right
-    // direction (Respawn re-applied the effect's stored setup, which carries the previous angle).
+    // direction (Respawn re-applied the effect's stored setup, which carries the previous angle)
     ApplyDirection();
 
     if (_prewarm) {
@@ -455,7 +452,7 @@ void ParticleViewer::PanBy(fpos32 screen_delta)
     _pan.y += screen_delta.y;
 
     // Pass the inverse of the camera move to the effect as emitter motion, so world-space particles trail as if the
-    // emitter (a moving critter) had travelled through them instead of the whole view sliding rigidly.
+    // emitter (a moving critter) had travelled through them instead of the whole view sliding rigidly
     if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>()) {
         float32_t px_per_world_unit = _engine->Settings->ModelProjFactor * _zoom;
 
@@ -475,30 +472,28 @@ void ParticleViewer::RenderPreview()
     }
 
     // Scope the wireframe overlay to the preview render only: the particle backends draw quad edges while
-    // Render.DrawWireframe is set, and restoring it right after keeps a hosting mapper scene unaffected.
+    // Render.DrawWireframe is set, and restoring it right after keeps a hosting mapper scene unaffected
     bool prev_draw_wireframe = _engine->Settings->DrawWireframe;
     _engine->Settings->DrawWireframe = _showWireframe;
     auto wireframe_guard = scope_exit([&]() noexcept { _engine->Settings->DrawWireframe = prev_draw_wireframe; });
 
     if (!_renderTarget || _renderTargetSize != PREVIEW_SIZE) {
-        // Nearest filtering: ImGui presents the target scaled by the display's
-        // framebuffer (DPI) scale, and a linear target would blur the magnified
-        // effect there. Nearest keeps the honest sprite pixelation crisp.
+        // Nearest filtering, because ImGui presents the target scaled by the display's DPI scale and a
+        // linear target would blur the magnified effect
         _renderTarget = GetApp()->Render.CreateTexture(PREVIEW_SIZE, false, true);
         _renderTargetSize = PREVIEW_SIZE;
     }
 
     // A finite burst would otherwise freeze once emitted; restart it when looping
-    // is on so the window keeps showing the live effect.
+    // is on so the window keeps showing the live effect
     if (_looped && !_previewSprite->IsPlaying()) {
         PlayCurrent();
     }
 
     bool direct = _previewSprite->IsDirectDraw();
 
-    // Scene drawing has no baked frame to magnify, so zoom is applied there as the effect's own scale, which scales
-    // emitter placement and quad sizes together. The atlas path magnifies the baked frame instead, so the effect
-    // itself has to stay at its authored scale or it would overflow the frame it rasterizes into.
+    // Scene drawing has no baked frame to magnify, so zoom becomes the effect's own scale; the atlas path
+    // must stay at the authored scale or the effect overflows the frame it rasterizes into
     float32_t effect_scale = direct ? _zoom : 1.0f;
 
     if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>(); particle_sprite && _appliedScale != effect_scale) {
@@ -507,7 +502,7 @@ void ParticleViewer::RenderPreview()
     }
 
     // Step the particle simulation. In atlas mode this also renders the current frame into the factory's atlas
-    // (drawn below); a draw-in-scene effect is rendered straight into the preview target instead.
+    // (drawn below); a draw-in-scene effect is rendered straight into the preview target instead
     _previewSprite->Update();
 
     float32_t draw_scale = _zoom;
@@ -517,19 +512,17 @@ void ParticleViewer::RenderPreview()
     auto rt_guard = scope_fail([&]() noexcept { GetApp()->Render.SetRenderTarget(prev_rt); });
     GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
 
-    // Camera pan shifts the whole view (effect + crosshair + overlays) together.
+    // Camera pan shifts the whole view (effect + crosshair + overlays) together
     ipos32 anchor = {ROOT_ANCHOR.x + iround<int32_t>(_pan.x), ROOT_ANCHOR.y + iround<int32_t>(_pan.y)};
 
     // Background crosshair through the (panned) root anchor, drawn first so it
-    // reads as a ground reference behind the effect.
+    // reads as a ground reference behind the effect
     if (_drawRoot) {
         DrawRootCrosshair(anchor);
     }
 
-    // Anchor by the effect root - the ground point the game pins the effect to -
-    // rather than centring the bounds, so it stays put while the effect evolves.
-    // The root inside a sprite is bottom-centre adjusted by its offset, exactly
-    // as MapSprite::GetSpriteRootOffset computes it for the map.
+    // Anchored by the effect root — the ground point the game pins it to, as MapSprite::GetSpriteRootOffset
+    // computes it — rather than by the bounds, so the preview holds still while the effect evolves
     isize32 sprite_size = _previewSprite->GetSize();
     ipos32 sprite_offset = _previewSprite->GetOffset();
     ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
@@ -539,9 +532,8 @@ void ParticleViewer::RenderPreview()
     };
 
     if (direct) {
-        // Clear depth again so the crosshair's 2D draw cannot occlude the effect,
-        // and widen the ortho depth range so a scaled effect is not clipped by the
-        // near/far planes. DrawInScene anchors the effect root to `anchor`.
+        // Clear depth again so the crosshair cannot occlude the effect, and widen the ortho range so a
+        // scaled effect is not clipped by the near/far planes
         GetApp()->Render.ClearRenderTarget(std::nullopt, true);
         GetApp()->Render.SetOrthoDepthRange(-SCENE_DEPTH_HALF, SCENE_DEPTH_HALF);
         auto restore_depth = scope_exit([]() noexcept { GetApp()->Render.SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); });
@@ -553,7 +545,7 @@ void ParticleViewer::RenderPreview()
         _sprMngr->Flush();
     }
 
-    // Diagnostic overlays go on top of the effect so they stay readable.
+    // Diagnostic overlays go on top of the effect so they stay readable
     DrawOverlays(pos, sprite_size, draw_scale);
 
     GetApp()->Render.SetRenderTarget(prev_rt);
@@ -564,7 +556,7 @@ void ParticleViewer::DrawRootCrosshair(ipos32 anchor)
     FO_STACK_TRACE_ENTRY();
 
     // Two full-span segments (LineList draws consecutive point pairs), crossing
-    // at the anchor to mark the root.
+    // at the anchor to mark the root
     array<PrimitivePoint, 4> lines = {
         PrimitivePoint {.PointPos = {anchor.x, 0}, .PointColor = ROOT_CROSSHAIR_COLOR},
         PrimitivePoint {.PointPos = {anchor.x, PREVIEW_SIZE.height}, .PointColor = ROOT_CROSSHAIR_COLOR},
@@ -580,7 +572,7 @@ void ParticleViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float3
     FO_STACK_TRACE_ENTRY();
 
     // Map a sprite-local pixel to the preview render target (same transform the
-    // effect draw uses: top-left at sprite_pos, scaled by the draw scale).
+    // effect draw uses: top-left at sprite_pos, scaled by the draw scale)
     auto to_screen = [&](ipos32 sl) -> ipos32 { return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)}; };
 
     vector<PrimitivePoint> lines;
@@ -601,7 +593,7 @@ void ParticleViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float3
     };
 
     // The draw rect is the whole sprite frame the effect rasterizes into - the
-    // maximal area it can cover.
+    // maximal area it can cover
     if (_drawDrawRect) {
         add_rect({0, 0, sprite_size.width, sprite_size.height}, DRAW_RECT_COLOR);
     }
