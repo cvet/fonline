@@ -300,8 +300,18 @@ void SpriteManager::BeginScene()
     _rtMngr.ClearStack();
     _scissorStack.clear();
 
+    // Unbinds only on unwind: EndScene owns the normal pop, but a throw below skips it and leaves the
+    // backend bound to a target the stack no longer tracks, which surfaces a frame later in EndFrame
+    bool main_rt_pushed = false;
+    auto pop_main_rt_on_fail = scope_fail([this, &main_rt_pushed]() noexcept {
+        if (main_rt_pushed) {
+            safe_call([this] { _rtMngr.PopRenderTarget(); });
+        }
+    });
+
     if (_rtMain) {
         _rtMngr.PushRenderTarget(_rtMain);
+        main_rt_pushed = true;
         _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
     }
 
