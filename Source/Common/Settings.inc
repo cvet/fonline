@@ -80,7 +80,8 @@ FIXED_SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebS
 FIXED_SETTING(bool, Network, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compression is disabled
 FIXED_SETTING(bool, Network, DisableInterthreadCommunication, false); // If true, server does not register the in-process interthread listener; clients in the same process fall through to TCP/UDP
-FIXED_SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds
+FIXED_SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds, applied to both directions
+FIXED_SETTING(int32_t, Network, ArtificalLagsJitter, 0); // Extra per-batch random delay in milliseconds on top of the artificial lag, emulating stalls
 FIXED_SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 FIXED_SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
 SETTING_GROUP_END();

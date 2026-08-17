@@ -195,6 +195,11 @@ void ModelSprite::SetSize(isize32 size)
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
+    int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
+    int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
+    FO_VERIFY_AND_THROW(size.width <= max_draw_width, "Requested model sprite width exceeds the renderable frame", size.width, max_draw_width);
+    FO_VERIFY_AND_THROW(size.height <= max_draw_height, "Requested model sprite height exceeds the renderable frame", size.height, max_draw_height);
+
     _requestedFrameSize = size;
     _model->RequestRedraw();
 }

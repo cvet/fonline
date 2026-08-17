@@ -88,6 +88,9 @@ private:
     void ProcessConnection();
     auto ReceiveData() -> bool;
     void SendData();
+    auto IsInboundLagged() -> bool;
+    auto IsOutboundLagged() -> bool;
+    auto IsArtificalLagPending(optional<nanotime>& deadline, bool has_data) -> bool;
     auto TryFallbackToTcp() -> bool;
 
     void Net_SendHandshake();
@@ -110,7 +113,8 @@ private:
     size_t _bytesReceived {};
     size_t _bytesRealReceived {};
     unordered_map<NetMessage, MessageCallback> _handlers {};
-    optional<nanotime> _artificalLagTime {};
+    optional<nanotime> _artificalInboundLagTime {};
+    optional<nanotime> _artificalOutboundLagTime {};
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     nanotime _pingTime {};
     nanotime _pingCallTime {};
