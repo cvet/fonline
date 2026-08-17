@@ -40,7 +40,6 @@
 #include "Test_BakerHelpers.h"
 
 #include <angelscript.h>
-#include <as_scriptengine.h>
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -388,13 +387,10 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
             }
         });
     });
-    nptr<AngelScript::asCScriptEngine> engine = as_engine.dyn_cast<AngelScript::asCScriptEngine>();
-    REQUIRE(engine);
-
     constexpr size_t THREAD_COUNT = 16;
     constexpr size_t TYPE_COUNT = 128;
 
-    vector<AngelScript::asCDataType> probe_types;
+    vector<nptr<AngelScript::asITypeInfo>> probe_types;
     probe_types.reserve(TYPE_COUNT);
 
     for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
@@ -402,9 +398,7 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
         REQUIRE(as_engine->RegisterObjectType(type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT) >= 0);
         nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoByName(type_name.c_str());
         REQUIRE(type_info);
-        nptr<AngelScript::asCTypeInfo> concrete_type_info = type_info.dyn_cast<AngelScript::asCTypeInfo>();
-        REQUIRE(concrete_type_info);
-        probe_types.emplace_back(AngelScript::asCDataType::CreateType(concrete_type_info.get_no_const(), false));
+        probe_types.emplace_back(type_info);
     }
 
     vector<vector<int32_t>> results(THREAD_COUNT, vector<int32_t>(TYPE_COUNT, -1));
@@ -423,7 +417,7 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
                     std::this_thread::yield();
                 }
 
-                results[thread_index][type_index] = engine->GetTypeIdFromDataType(probe_types[type_index]);
+                results[thread_index][type_index] = probe_types[type_index]->GetTypeId();
                 completed_count.fetch_add(1, std::memory_order_release);
             }
         }));

@@ -93,7 +93,8 @@ assigns that id lazily, so FOnline's vendored runtime reads and initializes `asC
 reader/writer lock and refreshes the local value after acquiring the exclusive lock. No caller may observe the
 pre-lock `-1` after another thread has completed assignment. This protects simultaneous first-login paths that
 construct return-type metadata in different server workers. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads`
-starts 16 native workers against 128 fresh object types and requires every worker to receive the same valid id.
+starts 16 native workers against 128 fresh object types through the public `asITypeInfo::GetTypeId()` entry
+point and requires every worker to receive the same valid id.
 
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
 The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
