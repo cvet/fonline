@@ -379,9 +379,19 @@ TEST_CASE("CrashReporterHooks")
         // Only the C-standard six signals exist everywhere, and the POSIX rest are undeclared by the MSVC runtime,
         // so they cannot be listed unconditionally
         constexpr std::array KNOWN_SIGNALS = {
-            SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM,
+            SIGABRT,
+            SIGFPE,
+            SIGILL,
+            SIGINT,
+            SIGSEGV,
+            SIGTERM,
 #if !FO_WINDOWS
-            SIGBUS, SIGQUIT, SIGSYS, SIGTRAP, SIGXCPU, SIGXFSZ,
+            SIGBUS,
+            SIGQUIT,
+            SIGSYS,
+            SIGTRAP,
+            SIGXCPU,
+            SIGXFSZ,
 #endif
         };
 

@@ -132,7 +132,8 @@ namespace
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ClientEngineScripts",
             {
-                {"Scripts/ClientEngineTest.fos", R"(
+                {"Scripts/ClientEngineTest.fos",
+                    R"(
 namespace ClientEngineTest
 {
     int StartCalls = 0;
@@ -538,7 +539,7 @@ namespace ClientEngineTest
         ImGui.TextColored("colored", 1.0f, 0.5f, 0.25f, 1.0f);
         ImGui.TextLink("link");
 )"
-R"(        ImGui.Value("bool", true);
+                    R"(        ImGui.Value("bool", true);
         ImGui.Value("int", 42);
         ImGui.Value("uint", uint(7));
         ImGui.ProgressBar(0.5f);
@@ -1016,7 +1017,7 @@ R"(        ImGui.Value("bool", true);
                 break;
             case 69:
 )"
-R"(                ImGui.ColorEdit4("", colorValue);
+                    R"(                ImGui.ColorEdit4("", colorValue);
                 break;
             case 70:
                 ImGui.ColorPicker3("", colorValue);
@@ -1337,7 +1338,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
         if (readBack[2] != 3) return -9;
 
 )"
-R"(        Game.RemoveCacheEntry("unit_test_entry");
+                    R"(        Game.RemoveCacheEntry("unit_test_entry");
         Game.RemoveCacheEntry("unit_test_bin");
         if (Game.IsCacheEntry("unit_test_entry")) return -10;
 
