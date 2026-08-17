@@ -718,9 +718,8 @@ void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
             continue;
         }
 
-        // Both spellings side by side is a case-sensitive file system holding the pre-rename leftover next to
-        // the directory this run baked into. Renaming onto an existing directory is not a repair here, so the
-        // leftover tree goes away; a case-insensitive file system never lists both and always takes the rename
+        // Both spellings listed means a case-sensitive file system kept the pre-rename leftover beside the
+        // directory this run baked into, so it is dropped rather than renamed onto the live one
         if (expected_name_present) {
             bool remove_stale_ok = fs_remove_dir_tree(strex(parent_dir).combine_path(stale_name));
             FO_VERIFY_AND_THROW(remove_stale_ok, "Unable to delete the stale-cased duplicate baked output dir", parent_dir, stale_name, expected_name);
@@ -777,10 +776,8 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
     });
 
     for (const auto& [stale_path, expected_path] : stale_cased_paths) {
-        // Both spellings present means a case-sensitive file system kept the pre-rename leftover next to the
-        // output this run just wrote under the expected name. Renaming would clobber that fresh content with
-        // the stale one, so the leftover is dropped instead. On a case-insensitive file system the two names
-        // are the same entry, only one spelling is ever listed, and the rename below still does the repair
+        // Both spellings listed means the leftover sits beside output this run just wrote, so renaming would
+        // clobber fresh content with stale; a case-insensitive file system lists one name and takes the rename
         if (present_paths.count(expected_path) != 0) {
             bool remove_stale_ok = fs_remove_file(MakeOutputPath(stale_path));
             FO_VERIFY_AND_THROW(remove_stale_ok, "Unable to delete the stale-cased duplicate baked resource", stale_path, expected_path);
