@@ -768,7 +768,7 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
 
         // Collected rather than renamed in place: renaming an entry while its directory is being iterated is
         // not defined, and the iterator could hand the same file back under its new name
-        const auto it = expected.Paths.find(strex(path).lower().str());
+        auto it = expected.Paths.find(strex(path).lower().str());
 
         if (it != expected.Paths.end() && it->second != path) {
             stale_cased_paths.emplace_back(string(path), it->second);

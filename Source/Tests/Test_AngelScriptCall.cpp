@@ -394,7 +394,7 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
     probe_types.reserve(TYPE_COUNT);
 
     for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
-        const string type_name = strex("ConcurrentTypeIdProbe{}", type_index);
+        string type_name = strex("ConcurrentTypeIdProbe{}", type_index);
         REQUIRE(as_engine->RegisterObjectType(type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT) >= 0);
         nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoByName(type_name.c_str());
         REQUIRE(type_info);
@@ -424,7 +424,7 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
     }
 
     for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
-        const size_t expected_count = (type_index + 1) * THREAD_COUNT;
+        size_t expected_count = (type_index + 1) * THREAD_COUNT;
 
         while (ready_count.load(std::memory_order_acquire) < expected_count) {
             std::this_thread::yield();
@@ -442,7 +442,7 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
     }
 
     for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
-        const int32_t expected_type_id = results[0][type_index];
+        int32_t expected_type_id = results[0][type_index];
         REQUIRE(expected_type_id > AngelScript::asTYPEID_DOUBLE);
         REQUIRE(as_engine->GetTypeInfoById(expected_type_id));
 
