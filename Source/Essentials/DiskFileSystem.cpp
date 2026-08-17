@@ -362,9 +362,7 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
 
     auto full_dir = std::filesystem::path {fs_make_path(strex(base_dir).combine_path(cur_dir))};
 
-    // A missing directory is normal absence, not an error: layered data sources are filtered by subdirectory
-    // (e.g. FileSystem::FilterFiles("dll", "Assemblies/ServerAssemblies")), and a source that simply does not
-    // contain that subtree must yield zero files instead of throwing a raw std::filesystem_error.
+    // A missing directory is normal absence, not an error: layered data sources are filtered by subdirectory (e.g
     std::error_code exists_error;
 
     if (!std::filesystem::exists(full_dir, exists_error) || exists_error) {

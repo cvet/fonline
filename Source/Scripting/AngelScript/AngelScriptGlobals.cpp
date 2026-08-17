@@ -296,10 +296,8 @@ static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
 
     ptr<const ScriptFuncDesc> func_desc = nullable_func_desc.as_ptr();
 
-    // An array out-result arrives as a null handle (?&out does not carry the caller's value), but the callee
-    // fills it through the accessor's ClearArray/AddArrayElement, which need a live array. Allocate an empty one
-    // of the resolved element type so collection-returning funcs behave like a native array return. The created
-    // array's single ref is adopted by the caller's variable (the ?&out slot), so it frees on scope exit.
+    // An array out-result arrives as a null handle (?&out does not carry the caller's value), but the callee fills it
+    // through the accessor's ClearArray/AddArrayElement, which need a live array
     if (result_type.Kind == ComplexTypeKind::Array) {
         ptr<void> result_addr = gen->GetArgAddress(1);
 

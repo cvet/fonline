@@ -88,7 +88,7 @@ namespace CallTest
         return probe;
     }
 
-    // Deep call chain with varying argument-block parity at every level, 8-byte locals at each.
+    // Deep call chain with varying argument-block parity at every level, 8-byte locals at each
     int64 Chain3(int8 a, int16 b, int8 c)
     {
         int64 wide = 1;

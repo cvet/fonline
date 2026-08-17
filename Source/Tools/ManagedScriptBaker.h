@@ -56,10 +56,8 @@ public:
     ~ManagedScriptBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    // Order 3: after Metadata (1) — the only bake output the managed compile reads — and before the validation
-    // bakers (Dialog 5, Proto 6, Map 7) that restore the compiled assembly to reflect over managed script funcs
-    // (ScriptSystem::FindFunc). The Scripts pack's remaining baker is AngelScript (4), so the pack still completes
-    // (and its assembly output is mounted into the shared bake output) at order 4, before those validators run.
+    // Order 3: after Metadata (1), which the managed compile reads, and before the validation bakers that
+    // reflect over the compiled assembly
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 3; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;

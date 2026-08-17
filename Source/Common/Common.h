@@ -550,15 +550,8 @@ struct ComplexTypeDesc
     bool IsMutable {};
 };
 
-// Synchronization-cover markers for script exports. Both expand to nothing: the compiler never sees them,
-// codegen does. They sit on the declaration they describe -- `FO_REQUIRES_COVER ptr<Critter> target`,
-// `FO_PROVIDES_COVER ptr<Critter> Server_Map_GetCritter(...)` -- so a reader meets the contract at the
-// argument or the return value rather than in a list somewhere else.
-//
-// The two are named rather than inferred from position because direction is not a function of position: a
-// return value can only ever PROVIDE cover, but a parameter can do either -- an ordinary export requires its
-// argument to be covered, while the explicit synchronization primitives (Game.Sync, Game.Lock) exist
-// precisely to provide it.
+// Synchronization-cover markers for script exports. Both expand to nothing: the compiler never sees them, codegen
+// does
 #define FO_REQUIRES_COVER
 #define FO_PROVIDES_COVER
 
@@ -569,9 +562,7 @@ struct ArgDesc
     bool Nullable {};
     string DefaultValue {};
 
-    // The caller must already hold synchronization cover for this argument. Declared at the export with the
-    // empty FO_REQUIRES_COVER marker on the parameter itself, so the contract sits on the thing it describes
-    // rather than in a list somewhere else. Codegen carries it onto the generated managed API.
+    // The caller must already hold synchronization cover for this argument
     bool RequiresCover {};
 };
 
@@ -599,12 +590,8 @@ struct MethodDesc
     bool ReturnNullable {};
     bool Async {};
 
-    // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the
-    // receiver's cover already covers them. Declared with FO_PROVIDES_COVER before the return type.
-    // Acquisition takes the requested entities plus their sync-widen partners and nothing else, so this
-    // holds one way only -- a map covers the critters on it, while a critter's map is a parent and is NOT
-    // covered. That asymmetry is why the direction is declared per export instead of inferred from the
-    // return type.
+    // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the receiver's
+    // cover already covers them. Declared with FO_PROVIDES_COVER before the return type
     bool ReturnProvidesCover {};
 };
 

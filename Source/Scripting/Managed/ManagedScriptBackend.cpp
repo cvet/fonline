@@ -76,16 +76,15 @@ constexpr string_view MANAGED_HOST_NAMESPACE = "FOnline.ManagedHost";
 constexpr string_view MANAGED_HOST_CLASS_NAME = "ManagedLoadContextHost";
 
 // The root domain becomes visible before Mono finishes initializing its core classes. Serialize the
-// check-and-initialize sequence so another engine cannot attach to a partially initialized runtime.
+// check-and-initialize sequence so another engine cannot attach to a partially initialized runtime
 static mutex ManagedRuntimeInitLocker;
 
 // Embedded Mono can overlap normal execution across load contexts, but concurrent context loading corrupts its
-// loader state. Serialize only assembly loading; managed engines still run in parallel.
+// loader state. Serialize only assembly loading; managed engines still run in parallel
 static mutex ManagedAssemblyLoadLocker;
 
-// Thread-affine active backend: threads are partitioned by engine ownership, so the thread-local slot never
-// observes a foreign engine. Every native->managed invocation runs under ActiveBackendScope, making this the
-// one and only resolution of "which engine is executing managed code right now".
+// Thread-affine active backend: threads are partitioned by engine ownership, so the thread-local slot never observes
+// a foreign engine
 static thread_local nptr<ManagedScriptBackend> ActiveBackend {};
 
 class ActiveBackendScope final
@@ -126,7 +125,7 @@ struct ManagedNativeValue;
 struct ManagedEventSubscription;
 struct ManagedAssemblyResource;
 
-// Static free-function forward declarations, ordered high-level -> low-level.
+// Static free-function forward declarations, ordered high-level -> low-level
 
 // Backend registry and active-backend lifecycle
 static auto GetActiveBackendOrThrow() -> ptr<ManagedScriptBackend>;
@@ -342,9 +341,7 @@ static auto ToStringAndFree(MonoString* text) -> string;
 static auto ManagedObjectToString(MonoObject* obj) -> string;
 static void ThrowIfManagedException(MonoObject* exception, string_view context);
 
-// ---------------------------------------------------------------------------------------------------
 // Helper struct definitions
-// ---------------------------------------------------------------------------------------------------
 
 struct ManagedScalarValue
 {
@@ -370,10 +367,7 @@ struct ManagedScalarValue
     }
 };
 
-// Roots the bridged managed List/Dictionary object with a GC handle for the lifetime of the bridge.
-// The accessors below re-invoke managed helpers (which can trigger an SGen collection that moves or
-// collects the object), so a raw MonoObject* would dangle between calls; SetObject/GetObject keep a
-// live handle and always hand back the current address.
+// Roots the bridged managed List/Dictionary object with a GC handle for the lifetime of the bridge
 struct ManagedObjectRoot
 {
     ManagedObjectRoot() = default;
@@ -582,9 +576,7 @@ struct ManagedAssemblyResource
     vector<uint8_t> Data {};
 };
 
-// ---------------------------------------------------------------------------------------------------
 // Static free-function definitions (same order as the declarations above)
-// ---------------------------------------------------------------------------------------------------
 
 // === Backend registry and active-backend lifecycle ===
 
@@ -595,9 +587,7 @@ auto ManagedScriptBackend::GetAliveFlagObject() const -> void*
     return _aliveFlagGcHandle != 0 ? mono_gchandle_get_target(_aliveFlagGcHandle) : nullptr;
 }
 
-// The alive flag is a pinned one-element managed bool array. Wrappers that outlive deterministic disposal
-// (e.g. Sprite) capture it at construction, so their GC finalizers can ask "is MY engine still alive"
-// without any process-global side registry — correct with any number of same-side engines in the process.
+// The alive flag is a pinned one-element managed bool array. Wrappers that outlive deterministic disposal (e.g
 void ManagedScriptBackend::CreateAliveFlag()
 {
     FO_STACK_TRACE_ENTRY();
@@ -742,9 +732,7 @@ static auto NativeGetHashStr(uint64_t value) -> MonoString*
     return mono_string_new(GetDomainOrThrow(mono_domain_get()), text.c_str());
 }
 
-// Returns the calling engine's alive flag (a one-element managed bool array). Managed wrappers capture it
-// at construction time (under the active backend scope) and read it from GC finalizers, where no backend is
-// active; the flag object stays valid as long as the wrapper references it, even after backend teardown.
+// Returns the calling engine's alive flag (a one-element managed bool array)
 static auto NativeGetBackendAliveFlag() -> MonoArray*
 {
     FO_STACK_TRACE_ENTRY();
@@ -766,11 +754,8 @@ static auto NativeGetBackend() -> void*
     return GetActiveBackendOrThrow().get();
 }
 
-// Custom-entity proto getters (managed equivalent of AngelScript register_entity_protos / Game_GetProtoCustomEntity
-// in AngelScriptEntity.cpp): the built-in entities (Item/Critter/Location/Map) have metadata-exported
-// `Game.GetProto*` accessors, but custom HasProtos entities (Modifier/Faction/ItemBag/...) register theirs only at
-// AngelScript runtime, so the managed baker emits `Game.GetProto<X>`/`CheckProto<X>` wrappers over these bridges.
-// Returns the proto entity pointer (nullptr when the pid is unknown); the generated wrapper throws on null.
+// Custom-entity proto getters: the built-in entities carry metadata-exported Game.GetProto*, custom ones
+// resolve through this path instead
 static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> void*
 {
     FO_STACK_TRACE_ENTRY();
@@ -816,9 +801,8 @@ static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash
     return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, proto_id) != nullptr ? 1 : 0);
 }
 
-// Plural proto enumeration (managed equivalent of AngelScript Game_GetProtoCustomEntities): count + by-index,
-// backing the generated Game.GetProto<X>s()/Get<X>s() loops. The proto map is built once and not mutated during
-// gameplay, so its iteration order is stable across the count + per-index calls of a single enumeration.
+// Plural proto enumeration (managed equivalent of AngelScript Game_GetProtoCustomEntities): count + by-index, backing
+// the generated Game.GetProto<X>s()/Get<X>s() loops
 static auto NativeGetProtoEntityCount(MonoString* type_name) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -859,11 +843,8 @@ static auto NativeGetProtoEntityAt(MonoString* type_name, int32_t index) -> void
 
 // === Native ABI: entity lifetime and property access ===
 
-// Managed entity wrappers hold a strong reference to the native entity (AddRef in the C# entity ctor, Release in
-// the C# finalizer) so a wrapper retained past the entity's destroy keeps it alive-but-destroyed instead of
-// dangling — mirroring AngelScript's refcounted handles, so the destroyed-entity guard in ResolveEntity stays
-// safe. The refcount is atomic, so AddRef/Release are safe from the Mono finalizer thread; the last Release frees
-// an already-destroyed (map-detached, unregistered) entity, whose destructor is memory-only.
+// Managed wrappers AddRef the native entity and Release in the finalizer, so a wrapper retained past destroy
+// keeps it alive-but-destroyed rather than dangling
 static void NativeAddRefEntity(void* entity_ptr)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -883,7 +864,7 @@ static void NativeReleaseEntity(void* entity_ptr)
 }
 
 // Backs the managed `Entity.IsDestroyed` property (parity with AngelScript). A null wrapper pointer counts as
-// destroyed. The wrapper holds a strong ref (AddRef/Release), so reading a destroyed-but-alive entity is safe.
+// destroyed. The wrapper holds a strong ref (AddRef/Release), so reading a destroyed-but-alive entity is safe
 static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -893,7 +874,7 @@ static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool
 }
 
 // Backs the managed `Entity.IsDestroying` property (parity with AngelScript get_IsDestroying). A null wrapper
-// pointer is already gone rather than mid-destruction, so it reports false.
+// pointer is already gone rather than mid-destruction, so it reports false
 static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -902,7 +883,7 @@ static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool
     return static_cast<mono_bool>(destroying ? 1 : 0);
 }
 
-// Managed Entity.Name -> AngelScript base-entity `get_Name()` (Entity::GetName); a manual base binding.
+// Managed Entity.Name -> AngelScript base-entity `get_Name()` (Entity::GetName); a manual base binding
 static auto NativeGetEntityName(void* entity_ptr) -> MonoString*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -950,9 +931,7 @@ static auto NativeGetEntityProtoId(void* entity_ptr) -> uint64_t
     return {};
 }
 
-// Generic property accessors by index (managed equivalent of AngelScript Entity_GetValueAsInt / Entity_SetValueAsInt /
-// Entity_GetValueAsAny / Entity_SetValueAsAny in register_entity_getset): the generated Entity.GetAs*/SetAs* wrappers
-// pass the property enum value as the property index.
+// Generic property accessors by index: the generated Entity.GetAs*/SetAs* wrappers route through here
 static auto ResolveManagedGenericProperty(void* entity_ptr, int32_t prop_index, bool require_mutable) -> pair<ptr<Entity>, ptr<const Property>>
 {
     FO_STACK_TRACE_ENTRY();
@@ -961,7 +940,7 @@ static auto ResolveManagedGenericProperty(void* entity_ptr, int32_t prop_index, 
     auto entity = ResolveEntity(backend, entity_ptr);
     entity->ValidateAccess();
 
-    auto nullable_prop = entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(prop_index);
+    auto nullable_prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
 
     if (!nullable_prop) {
         throw ScriptException("Property invalid enum", prop_index);
@@ -1077,7 +1056,7 @@ static auto NativeSetEntityValueAsAny(void* entity_ptr, int32_t prop_index, Mono
 // === Native ABI: hex direction helpers ===
 
 // Backs the managed `mdir.hex` property (parity with AngelScript mdir::get_hex). The conversion is
-// geometry-dependent (hex vs square map dirs), so it routes through the engine rather than a managed mirror.
+// geometry-dependent (hex vs square map dirs), so it routes through the engine rather than a managed mirror
 static auto NativeHdirToMdir(int8_t dir) -> int16_t
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1497,7 +1476,7 @@ static auto NativeGetPropertyImpl(MonoString* owner_type, MonoString* property_n
     auto entity = ResolveEntity(backend, entity_ptr);
     entity->ValidateAccess();
     const string property_name_str = ToStringAndFree(property_name);
-    auto nullable_prop = entity->GetProperties()->GetRegistrator()->FindProperty(property_name_str);
+    auto nullable_prop = entity->GetProperties()->GetRegistrar()->FindProperty(property_name_str);
 
     if (!nullable_prop) {
         throw ScriptSystemException("Managed property not found", ToStringAndFree(owner_type), property_name_str);
@@ -1547,7 +1526,7 @@ static void NativeSetPropertyImpl(MonoString* owner_type, MonoString* property_n
     auto entity = ResolveEntity(backend, entity_ptr);
     entity->ValidateAccess();
     const string property_name_str = ToStringAndFree(property_name);
-    auto nullable_prop = entity->GetProperties()->GetRegistrator()->FindProperty(property_name_str);
+    auto nullable_prop = entity->GetProperties()->GetRegistrar()->FindProperty(property_name_str);
 
     if (!nullable_prop) {
         throw ScriptSystemException("Managed property not found", ToStringAndFree(owner_type), property_name_str);
@@ -1740,9 +1719,8 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, false, false);
     const uint32_t setter_handle = mono_gchandle_new(setter, false);
 
-    // Reaction-only post-set callback: the managed delegate receives just the entity and runs after the
-    // value is written. It does not reproduce AngelScript's deferred-until-safe-point batching/dedup, which
-    // suits reaction handlers; true deferral for re-entrancy-sensitive handlers is a follow-up.
+    // Reaction-only post-set callback: the managed delegate receives just the entity and runs after the value is
+    // written
     prop->AddPostSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>) FO_DEFERRED {
         BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
         FO_VERIFY_AND_THROW(engine, "Managed deferred property setter requires an engine context");
@@ -1929,7 +1907,7 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
 
     if (!method->Ret) {
         // The generated C# wrapper discards the result of a void method, so return null instead of
-        // allocating a throwaway managed string on every such call.
+        // allocating a throwaway managed string on every such call
         return nullptr;
     }
 
@@ -1952,10 +1930,7 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
     }
 }
 
-// Invocation status handed back to managed code. Collapsing every outcome into a bool made "the function
-// does not exist", "an argument could not be marshalled" and "the routine threw" indistinguishable, so callers
-// reported a missing bridge for errors that had nothing to do with one. Mirrored by ScriptInvokeStatus in
-// CoreScripts/Native.cs.
+// Invocation status handed back to managed code
 static constexpr int32_t INVOKE_STATUS_FAILED = -1;
 static constexpr int32_t INVOKE_STATUS_NO_CANDIDATE = 0;
 static constexpr int32_t INVOKE_STATUS_COMPLETED = 1;
@@ -2155,13 +2130,7 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
     FO_STACK_TRACE_ENTRY();
 
     // Register a managed global script function into the engine's cross-backend function map under a named marker
-    // attribute, so a consumer that resolves funcs by attribute (via `ScriptSystem::FindFunc`) can invoke it. The
-    // signature's type descriptors are built from the engine base-type names the C# side supplies, so the
-    // FindFunc<Ret, Args...> validation matches; the call bridge reuses DispatchManagedCallback (the same path
-    // that backs managed native callbacks), and AttributeChecker reports the attribute name the func was registered
-    // under so the consumer's marker check passes. (Consumers that resolve funcs by marker live outside the
-    // engine; the engine provides only this generic registry.) Transition modules can retain an exact function
-    // already registered by another backend while still registering their managed-only functions.
+    // attribute, so a consumer that resolves funcs by attribute (via `ScriptSystem::FindFunc`) can invoke it
     auto backend = ActiveBackend;
     FO_VERIFY_AND_THROW(backend, "No active managed script backend");
     auto* meta = backend->GetMetadata();
@@ -2255,11 +2224,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Wire a managed inbound remote-call handler ([ServerRemoteCall]/[ClientRemoteCall]/[AdminRemoteCall]).
-    // Match the name to an inbound RemoteCallDesc for this side, then register engine->SetRemoteCallHandler with
-    // a handler that deserializes the wire args via the shared RemoteCallWire and invokes the managed delegate
-    // through the DispatchManagedCallback path (server side prepends the calling Player). Client-side managed
-    // cutover may keep RPC metadata in an AngelScript facade while the implementation already lives in C#.
+    // Wire a managed inbound remote-call handler ([ServerRemoteCall]/[ClientRemoteCall]/[AdminRemoteCall])
     auto backend = ActiveBackend;
     FO_VERIFY_AND_THROW(backend, "No active managed script backend");
     auto* meta = backend->GetMetadata();
@@ -2296,7 +2261,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
 
     const bool server_side = engine->GetSide() == EngineSideKind::ServerSide;
 
-    // Build the call's argument type list: the server side prepends the calling Player, then the wire args.
+    // Build the call's argument type list: the server side prepends the calling Player, then the wire args
     vector<ComplexTypeDesc> args;
     args.reserve(inbound_call.Args.size() + (server_side ? 1 : 0));
 
@@ -2334,7 +2299,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
         name_hashed,
         [backend = backend.as_ptr(), engine, args, handler_handle, server_side](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
             // Attach to the Managed domain up front: building managed List objects for array args (below) invokes mono,
-            // and this handler may run on the engine's network-receive thread.
+            // and this handler may run on the engine's network-receive thread
             auto* domain = GetDomainOrThrow(backend->GetDomain());
 
             if (mono_thread_attach(domain) == nullptr) {
@@ -2348,9 +2313,8 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
             const RemoteCallWireHooks hooks {
                 .RawToRefType = [&ref_instances](const BaseTypeDesc& type, span<const uint8_t> raw_data) -> ptr<void> {
                     // Deserialize the ref type's fields into a DynamicRefTypeInstance (shared engine type); the
-                    // MANAGED_DATA_ACCESSOR boxes it into a managed object (CreateRefTypeObject) when invoking. Kept
-                    // alive in `ref_instances` for the call duration; the FuncCallData arg is a pointer to its pointer.
-                    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(type.RefType->FieldsRegistrator.get());
+                    // MANAGED_DATA_ACCESSOR boxes it into a managed object (CreateRefTypeObject) when invoking
+                    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(type.RefType->FieldsRegistrar.get());
                     ref_instance->LoadFromRawData(type, raw_data);
                     auto&& stored = ref_instances.emplace_back(std::move(ref_instance));
                     return make_ptr(stored.get_pp()).reinterpret_as<void>();
@@ -2374,7 +2338,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
                 }
                 else {
                     // Array. Wire: int32 count, then each element (shared scalar format). Deserialize into a managed
-                    // List rooted by a bridge so the MANAGED_DATA_ACCESSOR can read it back when boxing the argument.
+                    // List rooted by a bridge so the MANAGED_DATA_ACCESSOR can read it back when boxing the argument
                     const int32_t count = reader.Read<int32_t>();
                     FO_VERIFY_AND_THROW(count >= 0, "Remote call array element count is negative");
 
@@ -2416,9 +2380,7 @@ static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoA
     FO_STACK_TRACE_ENTRY();
 
     // Managed outbound remote call: serialize the boxed args into the shared RemoteCallWire format and hand them to
-    // engine->SendRemoteCall (which forwards to the remote peer). Mirrors AngelScript's OutboundRemoteCallFunc; the
-    // call name must be an outbound "cs" RemoteCallDesc for this side. `caller` is the entity the call is bound to
-    // (the Player for a client->server ServerCall, etc.).
+    // engine->SendRemoteCall (which forwards to the remote peer)
     auto backend = ActiveBackend;
     FO_VERIFY_AND_THROW(backend, "No active managed script backend");
     auto* meta = backend->GetMetadata();
@@ -2442,11 +2404,8 @@ static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoA
 
     const RemoteCallDesc& outbound_call = it->second;
 
-    // A managed caller may send BOTH managed ("cs") and AngelScript-defined ("fos") outbound RPCs: the args are
-    // serialized into the shared RemoteCallWire byte format that the AngelScript inbound handler reads, so an
-    // AngelScript-handled server RPC is invocable from managed code (required for the managed client cutover, where
-    // the managed client replaces the AngelScript one). The baker emits the typed surface for all outbound RPCs in
-    // lockstep with this. (The earlier cs-only guard was conservative, not a wire limitation.)
+    // A managed caller may send both managed and AngelScript-defined outbound RPCs: arguments use the shared
+    // RemoteCallWire byte format that either inbound handler reads
     nptr<Entity> caller_entity = caller != nullptr ? ExtractEntityPtr(caller) : nullptr;
     const auto data = SerializeManagedRemoteCallArgs(backend.as_ptr(), outbound_call.Args, args_array, name);
 
@@ -2458,9 +2417,7 @@ static void NativeLoopbackRemoteCall(MonoObject* caller, MonoString* name_str, M
     FO_STACK_TRACE_ENTRY();
 
     // Diagnostic/test helper: serialize the boxed args into the shared RemoteCallWire format and dispatch them
-    // through the engine's real inbound path (HandleInboundRemoteCall) in-process, with no network peer. Exercises
-    // the managed serialize -> deserialize -> dispatch glue end to end on a single side. The name must be an inbound
-    // "cs" RemoteCallDesc for this side (so a handler is registered).
+    // through the engine's real inbound path (HandleInboundRemoteCall) in-process, with no network peer
     auto backend = ActiveBackend;
     FO_VERIFY_AND_THROW(backend, "No active managed script backend");
     auto* meta = backend->GetMetadata();
@@ -2660,14 +2617,14 @@ static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend,
 
     const string owner_type_name = ToStringAndFree(owner_type);
     const string property_name_str = ToStringAndFree(property_name);
-    auto nullable_registrator = meta->GetPropertyRegistrator(owner_type_name);
+    auto nullable_registrar = meta->GetPropertyRegistrar(owner_type_name);
 
-    if (!nullable_registrator) {
+    if (!nullable_registrar) {
         throw ScriptSystemException("Managed property owner type not found", owner_type_name);
     }
 
-    auto registrator = nullable_registrator.as_ptr();
-    auto nullable_prop = registrator->FindProperty(property_name_str);
+    auto registrar = nullable_registrar.as_ptr();
+    auto nullable_prop = registrar->FindProperty(property_name_str);
 
     if (!nullable_prop) {
         throw ScriptSystemException("Managed property not found", owner_type_name, property_name_str);
@@ -2679,7 +2636,7 @@ static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend,
     }
 
     // Deferred (post-set) callbacks receive only the entity, so they place no constraint on the value
-    // type; getter/setter callbacks that marshal the value require a bridgeable simple type.
+    // type; getter/setter callbacks that marshal the value require a bridgeable simple type
     if (require_marshalable_value) {
         if (prop->IsBaseTypeRefType() && !IsDynamicManagedRefType(prop->GetBaseType())) {
             throw ScriptSystemException("Managed property callback ref type is not supported yet", prop->GetName());
@@ -2721,8 +2678,7 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
     }
 
     // Resolve FOnline.Native via the backend's loaded images, not the handler's class image: a handler may be a
-    // System delegate (e.g. a reflection-built Func<>/Action<> registered as a global script func), whose image is
-    // corelib and does not contain FOnline.Native. (Custom FOnline delegate handlers would resolve either way.)
+    // System delegate (e.g
     auto* native_class = FindFOnlineClass(backend, "Native");
 
     if (native_class == nullptr) {
@@ -2757,9 +2713,7 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
     ptr<const DataAccessor> accessor = call.Accessor;
 
     if (type.Kind == ComplexTypeKind::Array) {
-        // Rebuild the caller's array from the managed List return (the reverse of BoxNativeCallValue's Array read).
-        // Uses the accessor's ClearArray/AddArrayElement write API, so collection-returning [ScriptCallable] bridges
-        // (e.g. Purchases::SelectUningestedWebOrdersManaged -> hstring[]) work the same as an AngelScript array return.
+        // Rebuild the caller's array from the managed List return (the reverse of BoxNativeCallValue's Array read)
         accessor->ClearArray(ret_data);
 
         const size_t array_size = value != nullptr ? GetManagedListCount(backend, value) : 0;
@@ -2922,10 +2876,8 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
 
 // === Event dispatch bridge ===
 
-// Writes a managed event argument that a [Event] handler mutated through a `ref` parameter back into
-// the native inout slot the engine fired the event with. Only simple value/string/hstring/entity
-// arguments roundtrip; ref-type, array, and dictionary inout arguments are rejected loudly rather
-// than silently dropping the write.
+// Writes a managed event argument that a [Event] handler mutated through a `ref` parameter back into the native inout
+// slot the engine fired the event with
 static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, void* dst)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2999,9 +2951,8 @@ static auto DispatchManagedEventInContext(const std::shared_ptr<ManagedEventSubs
         throw ScriptSystemException("Managed Native.InvokeEvent method not found");
     }
 
-    // Root the boxed argument array so it survives the GC that BoxNativeCallValue and the managed
-    // invoke can trigger, and re-fetch it on each use; DynamicInvoke writes mutated `ref` arguments
-    // back into this array, which we then propagate to the native inout slots below.
+    // Root the boxed argument array across the managed invoke and re-fetch it on each use: DynamicInvoke writes
+    // mutated ref arguments back into it
     const uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), subscription->Args.size())), 0);
     auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
     const auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
@@ -3050,9 +3001,8 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
     DataWriter writer(data);
     const RemoteCallWireHooks hooks {
         .RefTypeToRaw = [](const BaseTypeDesc& type, ptr<void> arg) -> vector<uint8_t> {
-            // Two levels of indirection: arg is `&storage.RefTypePtr` — the address of the slot, always valid,
-            // hence ptr. The pointer *stored in* that slot (the DynamicRefTypeInstance for a managed dynamic ref
-            // type) may be null, so it is read as an nptr. If non-null, serialize its fields via the shared method.
+            // Two levels of indirection: arg is `&storage.RefTypePtr` — the address of the slot, always valid, hence
+            // ptr
             nptr<void> ref = *arg.reinterpret_as<nptr<void>>();
 
             if (!ref) {
@@ -3078,7 +3028,7 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
             WriteRemoteCallSimple(writer, native, arg.Type.BaseType, hooks);
         }
         else if (arg.Type.Kind == ComplexTypeKind::Array) {
-            // Wire: int32 count, then each element (shared scalar format) — matches AngelScript's array framing.
+            // Wire: int32 count, then each element (shared scalar format) — matches AngelScript's array framing
             const size_t count = arg_obj != nullptr ? GetManagedListCount(backend, arg_obj) : 0;
             writer.Write<int32_t>(numeric_cast<int32_t>(count));
 
@@ -3225,11 +3175,11 @@ static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, 
 
     InvokeManagedConstructor(klass, obj, 0, nullptr, base_type.Name);
 
-    const auto* fields_registrator = base_type.RefType->FieldsRegistrator.get();
+    const auto* fields_registrar = base_type.RefType->FieldsRegistrar.get();
     size_t data_pos = 0;
 
-    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
+    for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
+        auto field_prop = fields_registrar->GetPropertyByIndexUnsafe(i);
         span<const uint8_t> field_raw_data {};
 
         if (data_pos < raw_data.size()) {
@@ -3300,11 +3250,11 @@ static auto CreateDynamicRefTypeFromManaged(ptr<ManagedScriptBackend> backend, c
         return {};
     }
 
-    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrator.get());
-    const auto* fields_registrator = base_type.RefType->FieldsRegistrator.get();
+    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrar.get());
+    const auto* fields_registrar = base_type.RefType->FieldsRegistrar.get();
 
-    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
+    for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
+        auto field_prop = fields_registrar->GetPropertyByIndexUnsafe(i);
         const string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
         MonoObject* field_value = GetManagedPropertyValue(backend, value, field_name);
         PropertyRawData field_data = ConvertManagedObjectToPropertyData(backend, field_prop.get(), field_value);
@@ -3539,8 +3489,7 @@ static void SetManagedPropertyValue(ptr<const ManagedScriptBackend> backend, Mon
     }
 
     // mono_runtime_invoke wants the unboxed value pointer for a value-type parameter (int/enum/bool/struct) but the
-    // object itself for a reference type (string/object/entity). Passing a boxed value type straight through makes
-    // the setter read the object header as the value (garbage), so unbox value types first.
+    // object itself for a reference type (string/object/entity)
     void* arg = value != nullptr && (mono_class_is_valuetype(mono_object_get_class(value)) != 0) ? mono_object_unbox(value) : value;
     void* args[] = {arg};
     MonoObject* exception = nullptr;
@@ -3811,21 +3760,8 @@ static void CopyManagedByteArrayToNative(ptr<const ManagedScriptBackend> backend
     }
 }
 
-// The managed entity hierarchy is not the native one, and the difference is not expressible in C#: managed
-// `ProtoCritter` derives from `Critter`, while natively `ProtoCritter` derives from `ProtoEntity` and shares
-// no base with `Critter`/`ServerEntity` beyond `Entity`. So an upcast the C# compiler accepts would hand an
-// export expecting a live entity a pointer to a different subobject -- wrong vtable, wrong layout, corrupted
-// state rather than a diagnosable failure.
-//
-// Only ProtoEntity is dangerous here. Static (baked) entities are ordinary server entities natively -- a
-// StaticItem IS an Item -- so their pointers are already the right type.
-//
-// An `Abstract<Type>` parameter is exempt because spanning the live entity and its prototype is its whole
-// purpose: an embedding project declares one where a prototype legitimately stands in for an instance (Last
-// Frontier does this for items, so its weapon-use event receives a ProtoItem for an unarmed attack).
-//
-// The type name cannot separate the rest: a prototype shares its property registrator with the live type, so
-// GetTypeName() answers "Critter" for both. The runtime type is what distinguishes them.
+// The managed entity hierarchy is not the native one: managed ProtoCritter derives from Critter, while
+// natively it derives from ProtoEntity and shares no base with it - see Docs/Scripts.md
 static void ValidateManagedEntityKind(const BaseTypeDesc& base_type, nptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3948,9 +3884,7 @@ static void ReconcileMutableDynamicRefTypeOwner(const ComplexTypeDesc& type, Man
         return;
     }
 
-    // AngelScript receives a mutable ref type as an owning handle slot. Reassigning that slot releases its
-    // previous reference and transfers one reference to the replacement, so mirror that ownership change in
-    // the managed call storage before its refcount owner is destroyed.
+    // AngelScript receives a mutable ref type as an owning handle slot
     (void)storage.DynamicRefType.release_ownership();
 
     if (current) {
@@ -4456,7 +4390,7 @@ static auto IsManagedBridgeSimpleType(const BaseTypeDesc& type) -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     // A fixed type is a proto-reference value (stored as a proto-id hash, resolved to its proto entity on
-    // both sides), so it crosses the bridge like an entity proto even though it is not flagged IsEntity.
+    // both sides), so it crosses the bridge like an entity proto even though it is not flagged IsEntity
     return type.Name == "any" || type.IsPrimitive || type.IsString || type.IsHashedString || type.IsEnum || type.IsStruct || type.IsEntity || type.IsFixedType || type.IsEntityProto || type.IsRefType;
 }
 
@@ -4518,7 +4452,7 @@ static auto IsDynamicManagedRefType(const BaseTypeDesc& base_type) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return base_type.IsRefType && base_type.RefType != nullptr && base_type.RefType->FieldsRegistrator != nullptr;
+    return base_type.IsRefType && base_type.RefType != nullptr && base_type.RefType->FieldsRegistrar != nullptr;
 }
 
 static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string
@@ -4604,7 +4538,7 @@ static auto GetValueClass(ptr<const ManagedScriptBackend> backend, const BaseTyp
     }
     if (type.IsEnum || type.IsStruct || type.IsEntity || type.IsFixedType || type.IsEntityProto) {
         // The managed representation of an enum/struct/entity/entity-proto/fixed type is a class named after
-        // the type (e.g. FOnline.ItemBag), so an array element of such a type resolves to that class.
+        // the type (e.g. FOnline.ItemBag), so an array element of such a type resolves to that class
         return FindFOnlineClass(backend, type.Name);
     }
 
@@ -4669,9 +4603,7 @@ static auto FindMethod(ptr<EngineMetadata> meta, string_view owner_type_name, st
 
     const MethodDesc& method = (*methods)[numeric_cast<size_t>(method_index)];
 
-    // Property getters/setters are invoked through this same path: the generated property bodies route
-    // through Native.CallMethod by the accessor's method index, and a getter/setter is a plain func
-    // (0 args -> value / 1 arg -> void) that the generic invocation below handles like any method.
+    // Property accessors take this path too: generated bodies route through Native.CallMethod by accessor index
     if (method.Name != method_name || method.Args.size() != args_count) {
         return nullptr;
     }
@@ -4689,15 +4621,12 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Build a ComplexTypeDesc from an engine type name (mirrors the simple-type and array branches of
-    // AngelScript's resolve_type). Returns an empty (false) desc when the name is not a valid engine base type,
-    // signalling the caller to skip the function (it could not match any FindFunc<...> signature anyway).
+    // Build a ComplexTypeDesc from an engine type name (mirrors the simple-type and array branches of AngelScript's
+    // resolve_type)
     ComplexTypeDesc type;
 
     // Array element: "T[]" -> Array desc wrapping the element base type. The managed registration emits this for
-    // List<T> / T[] params and returns (see ScriptFuncRegistration.EngineTypeName), so collection-typed bridges
-    // (e.g. Barter::MakeBarterManaged, Purchases::SelectUningestedWebOrdersManaged) match the same FindFunc<...>
-    // signature an AngelScript array arg produces.
+    // List<T> / T[] params and returns (see ScriptFuncRegistration.EngineTypeName), so collection-typed bridges (e.g
     if (type_name.ends_with("[]")) {
         const string_view elem_name = type_name.substr(0, type_name.size() - 2);
 
@@ -5055,20 +4984,16 @@ static void ConfigureManagedRuntime()
     FO_STACK_TRACE_ENTRY();
 
     // The engine host owns process-level crash reporting. Ask embedded Mono to chain the handlers
-    // that were already installed by the host (or by a test runner) instead of replacing them.
+    // that were already installed by the host (or by a test runner) instead of replacing them
     mono_set_signal_chaining(true);
     mono_set_crash_chaining(true);
 
     // The embedded Mono runtime is published without System.Globalization.Native.
-    // Use invariant globalization by default; callers can override the env var.
+    // Use invariant globalization by default; callers can override the env var
     SetEnvironmentVariableDefault("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
 
-    // Force preemptive GC thread suspension. Under the multithreaded game-logic model the process
-    // hosts several in-process engines (e.g. the parallel test runner spawns a ServerEngine plus a
-    // ClientEngine per suite worker), each with native worker/loop threads attached to the shared
-    // Mono domain. The default hybrid/cooperative suspend strategy deadlocks when a GC has to
-    // suspend those native threads while they sit in engine loops that never reach a managed
-    // safepoint; preemptive (OS-level) suspension stops them directly. Callers can override the env var.
+    // Force preemptive GC thread suspension. Under the multithreaded game-logic model the process hosts several
+    // in-process engines (e.g
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
 
     const auto runtime_dir = FindManagedRuntimeDir();
@@ -5187,11 +5112,7 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
     return restored_paths;
 }
 
-// Bake-time only: scan the bake output tree for the managed entry assembly a validation engine needs. The managed
-// baker writes <bake_output_dir>/<managed pack>/Assemblies/<Target>Assemblies/<Pack>.<Target>.dll during its own
-// (earlier) bake order; the validators run in later packs whose resource FileSystem does not yet expose that
-// output, so read it straight from disk. Returns every dll in the first matching <Target>Assemblies directory so
-// helper assemblies load next to the entry.
+// Bake-time only: scan the bake output tree for the managed entry assembly a validation engine needs
 static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_view target_name) -> vector<std::filesystem::path>
 {
     FO_STACK_TRACE_ENTRY();
@@ -5325,9 +5246,7 @@ static void ThrowIfManagedException(MonoObject* exception, string_view context)
     }
 }
 
-// ---------------------------------------------------------------------------------------------------
 // ManagedScriptBackend member functions
-// ---------------------------------------------------------------------------------------------------
 
 auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>
 {
@@ -5480,7 +5399,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
     ReleaseLoadScope();
 
     // Mono VM state is process-wide. Server/client/mapper backends may coexist
-    // in one process, so shutdown is left to process teardown.
+    // in one process, so shutdown is left to process teardown
     _domain = nullptr;
 }
 
@@ -5551,9 +5470,8 @@ void ManagedScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     FO_STACK_TRACE_ENTRY();
 
     _meta = meta;
-    // The embedding engine is both the metadata and the script system (multiple inheritance); grab the script
-    // system so managed global funcs can be registered into the cross-backend func map
-    // (mirrors AngelScriptBackend acquiring its `_scriptSys` from the metadata).
+    // The embedding engine is both metadata and script system, so take the script system here to register managed
+    // global funcs into the cross-backend func map
     _scriptSys = dynamic_cast<ScriptSystem*>(meta.get());
 }
 
@@ -5582,9 +5500,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
                 ConfigureManagedRuntime();
 
 #if FO_WINDOWS
-                // Catch2 owns the top-level SEH filter while a unit-test session is active. Mono keeps its own
-                // filter installed even with crash chaining enabled, so preserve the test host's filter across
-                // the one-time runtime initialization. Production keeps Mono's chained crash filter.
+                // Catch2 owns the top-level SEH filter while a unit-test session is active
                 const bool preserve_test_exception_filter = IsTestingInProgress;
                 LPTOP_LEVEL_EXCEPTION_FILTER test_exception_filter = nullptr;
 
@@ -5654,9 +5570,8 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
         }
     }
 
-    // Bake-time fallback: a validation engine (proto/map/dialog baker) restores managed to reflect over script
-    // funcs, but the assemblies the managed baker just compiled live on disk under the bake output and are not
-    // yet mounted into the resource FileSystem it sees. Scan the bake output tree for the entry assembly.
+    // Bake-time fallback: the assemblies the managed baker just compiled live under the bake output and are not
+    // mounted into the data sources yet
     if (entry_assembly_paths.empty() && !bake_output_dir.empty()) {
         assembly_paths.clear();
         entry_assembly_paths.clear();

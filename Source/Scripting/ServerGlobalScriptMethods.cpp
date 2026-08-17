@@ -1669,7 +1669,7 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
 
 // SyncScope: resolves a live entity by id and replaces current cover with it plus engine auto-widen
 // partners. Returns false without changing cover when the entity is already gone, and rechecks
-// lifecycle after acquisition so callers can safely cross an entity-destruction race.
+// lifecycle after acquisition so callers can safely cross an entity-destruction race
 ///@ ExportMethod Async
 FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t entity_id)
 {
@@ -1680,13 +1680,13 @@ FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t e
     }
 
     auto ctx = server->RequireCurrentSyncContext();
-    const array<nptr<ServerEntity>, 1> entities {entity};
+    const array<ptr<ServerEntity>, 1> entities {entity};
     ctx->SyncEntities(entities);
 
     return !entity->IsDestroyed() && !entity->IsDestroying();
 }
 
-// SyncScope: replaces current cover with entity plus engine auto-widen partners.
+// SyncScope: replaces current cover with entity plus engine auto-widen partners
 ///@ ExportMethod Async
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {

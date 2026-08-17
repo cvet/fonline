@@ -483,7 +483,7 @@ auto ScriptSystem::AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_t
         return false;
     }
 
-    // Not comparing IsMutable.
+    // Not comparing IsMutable
     return true;
 }
 

@@ -1531,16 +1531,12 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
 
         ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
 
-        // A `MigrationRule Property` rewrites an obsolete stored name onto its replacement when loading
-        // stored data. If the old name is also a live registered property, the rule still migrates stored
-        // values correctly, but the live property now shares its name - which is exactly what a rename
-        // with a forgotten old declaration looks like. Deliberate re-typings (park the old values in a
-        // legacy slot, reuse the name for a new type) look identical, so this only warns.
+        // A `MigrationRule Property` rewrites an obsolete stored name onto its replacement when loading stored data
         if (rule_name == "Property") {
-            auto registrator = ctx.Meta.GetPropertyRegistrator(extra_info);
+            auto registrar = ctx.Meta.GetPropertyRegistrar(extra_info);
 
-            if (registrator) {
-                auto live_prop = registrator->FindProperty(target);
+            if (registrar) {
+                auto live_prop = registrar->FindProperty(target);
 
                 if (live_prop) {
                     WriteLog(LogType::Warning, "Property migration rule shares its old name with a live property: {}.{} is registered as {} while stored values migrate to {}", extra_info, target, live_prop->GetViewTypeName(), replacement);

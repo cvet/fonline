@@ -686,11 +686,7 @@ static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_lay
     }
 }
 
-// AngelScript calls this from inside its own catch block to let the host capture the in-flight application
-// exception. It must not throw: a throw here replaces the exception being translated and, on paths that are
-// already unwinding (module exit destroying global properties, for example), reaches std::terminate instead of
-// surfacing the real script error. When there is no context to record into, the exception still propagates
-// through AngelScript's normal mechanism, so silently skipping the capture is the correct behavior.
+// AngelScript calls this from inside its own catch block to let the host capture the in-flight application exception
 static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* raw_ctx, void* param) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -701,7 +697,7 @@ static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* raw_
     FO_VERIFY_AND_CONTINUE(ctx, "Missing script execution context");
 
     // A context without extended data is not ours (AngelScript runs internal contexts of its own, for example
-    // while a module exit destroys global properties), so there is nothing to record into.
+    // while a module exit destroys global properties), so there is nothing to record into
     auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
 
     if (ctx_ext) {

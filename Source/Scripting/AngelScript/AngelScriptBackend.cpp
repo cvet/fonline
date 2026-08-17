@@ -61,10 +61,7 @@ FO_BEGIN_NAMESPACE
 
 static constexpr uint32_t AS_BYTECODE_CONTAINER_MAGIC = 0x464F4153; // 'FOAS'
 
-// Configuration the bytecode was compiled under. The preprocessor defines that gate script code (currently
-// MANAGED) change what the bytecode contains, so bytecode built in one configuration must never be loaded by a
-// runtime built in another: the mismatch is otherwise invisible and surfaces as wrong behaviour far away - a
-// managed-off build of GameState.fos, for example, keeps the subscriptions the managed owner also registers.
+// Configuration the bytecode was compiled under
 static constexpr uint8_t AS_BYTECODE_CONFIG_MANAGED = 0x01;
 
 [[nodiscard]] static constexpr auto GetScriptBytecodeConfigFlags() noexcept -> uint8_t

@@ -183,8 +183,7 @@ public:
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
     // Dispatch an inbound remote call to its registered handler. Normally invoked by the derived engine when a call
-    // arrives over the network; also callable in-process (e.g. a scripting backend dispatching a locally serialized
-    // call). Access only — no change to wire or runtime behavior.
+    // arrives over the network; also callable in-process (e.g
     void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
 
     ptr<GlobalSettings> Settings;

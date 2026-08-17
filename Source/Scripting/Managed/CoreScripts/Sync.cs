@@ -1082,15 +1082,15 @@ namespace FOnline
         // SyncScope: replaces cover with both sessions, the stable controlled-critter initial-info graph,
         // and the spectator view target. A graph race returns false to the caller's retry budget.
         // Lifecycle: strict — a stale dependency or concurrent player graph change returns false to the caller's single retry budget; a stable asymmetric player/cr link is an invariant failure.
-        public static async Task<bool> LockPlayerReconnectGraph(Player unloginedPlayer, Player player)
+        public static async Task<bool> LockPlayerReconnectGraph(Player notLoggedInPlayer, Player player)
         {
-            if (!await Lock(unloginedPlayer, player)) {
+            if (!await Lock(notLoggedInPlayer, player)) {
                 return false;
             }
 
             Critter? controlledCr = player.GetControlledCritter();
             Map? viewMap = player.GetViewMapTarget();
-            List<Entity> roots = new List<Entity> {unloginedPlayer, player};
+            List<Entity> roots = new List<Entity> {notLoggedInPlayer, player};
             if (controlledCr != null) {
                 roots.Add(controlledCr);
             }

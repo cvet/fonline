@@ -868,7 +868,7 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
     for arg in raw_args[1:] if skip_first_arg else raw_args:
         arg = arg.strip()
         # The cover marker is an empty macro on the parameter, so it has to come off before the type is
-        # parsed -- everything below splits the declaration on its last space.
+        # parsed -- everything below splits the declaration on its last space
         requires_cover = arg.startswith(REQUIRES_COVER_MARKER + ' ')
         if requires_cover:
             arg = arg[len(REQUIRES_COVER_MARKER):].lstrip()
@@ -908,7 +908,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     function_name = line_tokens[function_token_index - 1]
     return_tokens = line_tokens[1:function_token_index - 1]
     # The cover marker is an empty macro in front of the return type, so it has to come off before the type
-    # is parsed -- everything below joins the remaining tokens into one type spelling.
+    # is parsed -- everything below joins the remaining tokens into one type spelling
     ret_provides_cover = bool(return_tokens) and return_tokens[0] == PROVIDES_COVER_MARKER
     if ret_provides_cover:
         return_tokens = return_tokens[1:]
@@ -1942,7 +1942,7 @@ def append_settings_getter(global_lines: list[str], target: str) -> None:
 def append_settings_typed_getter(global_lines: list[str], target: str) -> None:
     # Like Get<target>Settings() but with each setting's meta type, so the managed baker can generate typed
     # accessors for the engine ExportSettings (which are not in the metadata blob's "Setting" section -- that
-    # only carries project `///@ Setting` tags). Ordered (vector) for deterministic generation.
+    # only carries project `///@ Setting` tags). Ordered (vector) for deterministic generation
     global_lines.append('[[maybe_unused]] auto Get' + target + 'SettingsTyped() -> vector<pair<string, string>>')
     global_lines.append('{')
     global_lines.append('    vector<pair<string, string>> settings = {')
@@ -1950,7 +1950,7 @@ def append_settings_typed_getter(global_lines: list[str], target: str) -> None:
         if does_setting_tag_match_target(settings_tag, target):
             for setting in settings_tag.settings:
                 # Managed Settings codegen accepts scalar and array complex-type syntax. Dict settings are still
-                # skipped: engine ExportSettings do not expose a stable managed dictionary bridge here.
+                # skipped: engine ExportSettings do not expose a stable managed dictionary bridge here
                 if setting.value_type.startswith('dict.'):
                     continue
                 global_lines.append('        {"' + setting.name + '", "' + meta_type_to_unified_type(setting.value_type) + '"},')

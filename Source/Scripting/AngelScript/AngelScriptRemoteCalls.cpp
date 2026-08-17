@@ -533,8 +533,7 @@ void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
             if (backend->HasGameEngine()) {
                 auto engine = backend->GetGameEngine();
                 // Cross-backend coexistence: the managed backend may already own this inbound handler (e.g. the
-                // client-side C# facade for a fos-declared call, registered with replace). Skip re-registering so
-                // the two backends coordinate order-independently instead of throwing on the duplicate.
+                // client-side C# facade for a fos-declared call, registered with replace)
                 if (engine->HasRemoteCallHandler(inbound_call.Name)) {
                     continue;
                 }

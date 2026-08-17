@@ -52,9 +52,8 @@ void ItemHexView::OnDestroySelf()
 
     ItemView::OnDestroySelf();
 
-    // Release atlas-backed sprites at logical destroy so a wrapper-retained entity (managed scripts hold a strong
-    // ref past destroy) has a memory-only final destructor — its dtor must not free atlas space after the
-    // SpriteManager is gone. Mirrors CritterHexView::OnDestroySelf.
+    // Release atlas-backed sprites at logical destroy: a wrapper-retained entity must reach a memory-only final
+    // destructor, because its dtor can run after the SpriteManager is gone
     _spr = nullptr;
     _anim = nullptr;
 }

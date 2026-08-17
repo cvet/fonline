@@ -654,7 +654,7 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     WriteTextFile(shared_source, "namespace Demo { public static class Shared {} }\n");
 
     ScopedCurrentPath current_path(temp_dir.Path());
-    // The fake msbuild helper is a spawned child process; env is the legitimate channel to parameterize it.
+    // The fake msbuild helper is a spawned child process; env is the legitimate channel to parameterize it
     ScopedEnvVar msbuild_root {"FO_FAKE_MSBUILD_ROOT", fake_msbuild_root.string()};
 
     TestRig rig;

@@ -700,7 +700,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         else if (prop->IsBaseTypeStruct()) {
             FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             auto value_data = span_read_bytes(data_span, data_pos, data_size);
-            CopyPropertyStructToScriptStruct(prop->GetRegistrator()->GetHashResolver(), prop->GetBaseType(), value_data, construct_addr);
+            CopyPropertyStructToScriptStruct(prop->GetRegistrar()->GetHashResolver(), prop->GetBaseType(), value_data, construct_addr);
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -819,7 +819,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                 for (uint32_t i = 0; i < arr_size; i++) {
                     auto value_data = span_read_bytes(data_span, data_pos, prop->GetBaseSize());
-                    CopyPropertyStructToScriptStruct(prop->GetRegistrator()->GetHashResolver(), prop->GetBaseType(), value_data, arr->At(numeric_cast<int32_t>(i)));
+                    CopyPropertyStructToScriptStruct(prop->GetRegistrar()->GetHashResolver(), prop->GetBaseType(), value_data, arr->At(numeric_cast<int32_t>(i)));
                 }
             }
         }

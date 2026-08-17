@@ -82,7 +82,7 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
     FO_STACK_TRACE_ENTRY();
 
     // Copy primitive/enum bytes out of the transient reader buffer into aligned per-call storage; the call site
-    // dereferences the returned pointer as the primitive's type, which requires natural alignment.
+    // dereferences the returned pointer as the primitive's type, which requires natural alignment
     const auto read_plain = [&](size_t size) -> ptr<void> {
         FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
         ptr<uint8_t> buf = storage.StorePlainBytes();

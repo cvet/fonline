@@ -33,12 +33,7 @@
 
 #pragma once
 
-// Shared remote-call wire (de)serializer (Phase A2). Both scripting backends serialize remote-call arguments
-// to the same byte format; this header owns the per-value scalar I/O so the format has one source of truth (no
-// drift between AngelScript and the C# Managed backend). The collection framing (`int32 count` + elements) is a
-// shared convention each backend's loop applies, calling WriteRemoteCallSimple/ReadRemoteCallSimple per element.
-// Ref-type value <-> raw-bytes conversion is backend-specific (AngelScript script object vs managed object), so
-// it is supplied via the RemoteCallWireHooks callbacks; the wire framing (`uint32 size + bytes`) stays here.
+// Shared remote-call wire (de)serializer (Phase A2)
 
 #include "Common.h"
 
@@ -48,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Backend hooks for ref-type values: the wire layout is fixed here, but reading/creating the backend's script
-// object is backend-specific.
+// object is backend-specific
 struct RemoteCallWireHooks
 {
     // Write: produce the raw bytes for the ref-type value at `arg` (the FuncCallData argument pointer).
@@ -58,10 +53,8 @@ struct RemoteCallWireHooks
     function<ptr<void>(const BaseTypeDesc&, span<const uint8_t>)> RawToRefType {};
 };
 
-// Keeps deserialized scalar values (primitive / enum bytes, string, hstring, struct bytes) alive for the duration
-// of one inbound call; ReadRemoteCallSimple returns pointers into this storage, never into the transient reader
-// buffer — primitives and enums are copied into aligned storage so the call site reads them at natural alignment.
-// Ref-type and collection lifetimes are owned by the caller (backend-specific containers).
+// Owns the deserialized scalar storage of one inbound call: ReadRemoteCallSimple returns pointers into this
+// storage, never into the transient reader buffer
 class RemoteCallReadStorage final
 {
 public:
@@ -80,7 +73,7 @@ private:
 };
 
 // Serialize one simple (non-collection) remote-call value to the wire. Mirrors the format the AngelScript
-// backend has always written; keep byte-compatible.
+// backend has always written; keep byte-compatible
 void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks);
 
 // Deserialize one simple (non-collection) remote-call value from the wire; returns the FuncCallData argument

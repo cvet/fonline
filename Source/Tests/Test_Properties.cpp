@@ -2791,36 +2791,36 @@ TEST_CASE("PropertiesNameMigrationAppliesOnlyToStoredNames")
     TestNameResolver resolver;
 
     // The old persisted name "Flag" migrates onto "LegacyFlag", while "Flag" is also re-registered live
-    // with a new type - the shape every re-typed quest flag has.
+    // with a new type - the shape every re-typed quest flag has
     resolver.AddMigrationRule(hashes.ToHashedString("Property"), hashes.ToHashedString("PropMigrationEntity"), hashes.ToHashedString("Flag"), hashes.ToHashedString("LegacyFlag"));
 
-    PropertyRegistrator registrator("PropMigrationEntity", EngineSideKind::ServerSide, &hashes, &resolver);
-    auto legacy_prop = registrator.RegisterProperty({"Common", "int32", "LegacyFlag", "Mutable", "Persistent", "PublicSync"});
-    auto live_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    PropertyRegistrar registrar("PropMigrationEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto legacy_prop = registrar.RegisterProperty({"Common", "int32", "LegacyFlag", "Mutable", "Persistent", "PublicSync"});
+    auto live_prop = registrar.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
 
-    // Live access resolves a name to the property that currently carries it, never through the rule.
-    CHECK(registrator.FindProperty("Flag") == live_prop);
-    CHECK(registrator.FindProperty("LegacyFlag") == legacy_prop);
+    // Live access resolves a name to the property that currently carries it, never through the rule
+    CHECK(registrar.FindProperty("Flag") == live_prop);
+    CHECK(registrar.FindProperty("LegacyFlag") == legacy_prop);
 
-    // Load access still rewrites the obsolete stored name onto its replacement.
-    CHECK(registrator.FindPersistedProperty("Flag") == legacy_prop);
-    CHECK(registrator.FindPersistedProperty("LegacyFlag") == legacy_prop);
+    // Load access still rewrites the obsolete stored name onto its replacement
+    CHECK(registrar.FindPersistedProperty("Flag") == legacy_prop);
+    CHECK(registrar.FindPersistedProperty("LegacyFlag") == legacy_prop);
 
-    // Neither lookup invents a property that was never registered.
-    CHECK_FALSE(static_cast<bool>(registrator.FindProperty("MissingFlag")));
-    CHECK_FALSE(static_cast<bool>(registrator.FindPersistedProperty("MissingFlag")));
+    // Neither lookup invents a property that was never registered
+    CHECK_FALSE(static_cast<bool>(registrar.FindProperty("MissingFlag")));
+    CHECK_FALSE(static_cast<bool>(registrar.FindPersistedProperty("MissingFlag")));
 
-    // End to end: a document carrying the old name lands in the legacy slot and leaves the live property alone.
+    // End to end: a document carrying the old name lands in the legacy slot and leaves the live property alone
     AnyData::Document doc;
     doc.Emplace("Flag", int64_t {7});
 
-    Properties props(&registrator);
+    Properties props(&registrar);
     CHECK(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<int32_t>(legacy_prop) == 7);
     CHECK_FALSE(props.GetValue<bool>(live_prop));
 
-    // ApplyFromText is the other stored-document path and migrates the same way.
-    Properties text_props(&registrator);
+    // ApplyFromText is the other stored-document path and migrates the same way
+    Properties text_props(&registrar);
     CHECK_NOTHROW(text_props.ApplyFromText(map<string, string> {{"Flag", "9"}}));
     CHECK(text_props.GetValue<int32_t>(legacy_prop) == 9);
     CHECK_FALSE(text_props.GetValue<bool>(live_prop));
