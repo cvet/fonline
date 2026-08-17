@@ -307,6 +307,7 @@ protected:
 
     void ProcessInputEvents();
     void ProcessVideo();
+    void ReleaseAbandonedOffscreenSurfaces() noexcept;
 
     void UnloadMap();
     void LmapPrepareMap();

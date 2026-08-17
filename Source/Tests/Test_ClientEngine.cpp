@@ -2131,7 +2131,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     };
 
     auto same_bounds = [](const ModelSpriteBounds& first, const ModelSpriteBounds& second) { //
-        return first.Rect == second.Rect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
+        return first.Rect == second.Rect && first.PoseRect == second.PoseRect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
     };
 
     auto warm_model = make_model();
@@ -3508,10 +3508,8 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 
 TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 {
-    // The ImGui sweep below logs and saves settings under `Workspace/`, a path relative to the process
-    // working directory. `ImGui::LogToFile` raises a recoverable assert when the file cannot be opened, so a
-    // run started from a directory without that folder would abort the frame instead of exercising the
-    // remaining bindings. Create it up front rather than depending on where the test binary was launched.
+    // The ImGui sweep below writes under `Workspace/`, relative to whatever directory the binary was launched
+    // from, and `ImGui::LogToFile` asserts on a file it cannot open — aborting the frame mid-sweep
     (void)fs_create_directories("Workspace");
 
     auto settings = MakeClientTestSettings();

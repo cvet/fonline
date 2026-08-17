@@ -66,9 +66,12 @@ struct ModelSpriteBoundsEnvelopeId
     bool FullFrame {};
 };
 
+// Rect is the drawn envelope the frame must keep; PoseRect is the posed model alone, and is what a fit measures.
+// World-space particles keep their size while the model shrinks, so a fit that included them would never converge
 struct ModelSpriteBounds
 {
     irect32 Rect {};
+    irect32 PoseRect {};
     isize32 RequiredFrameSize {};
     ipos32 Pivot {};
     ModelSpriteBoundsEnvelopeId EnvelopeId {};
