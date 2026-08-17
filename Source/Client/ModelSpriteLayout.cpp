@@ -372,9 +372,8 @@ static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
     static_assert(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION <= std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
     constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION);
 
-    // Bound the supersampled intermediate target to 4096 px per side. Animation-attached particles may otherwise
-    // expand a cached model sprite indefinitely; rejecting their outlying bounds keeps the established frame and
-    // clips only the runaway geometry instead of asking the renderer for an unbounded allocation.
+    // Animation-attached particles would otherwise expand a cached model sprite without limit.
+    // Rejecting their outlying bounds keeps the established frame and clips only the runaway geometry
     if (value > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;
     }
