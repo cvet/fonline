@@ -374,7 +374,7 @@ static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
 
     // Bound the supersampled intermediate target to 4096 px per side. Animation-attached particles may otherwise
     // expand a cached model sprite indefinitely; rejecting their outlying bounds keeps the established frame and
-    // clips only the runaway geometry instead of asking the renderer for an unbounded allocation.
+    // clips only the runaway geometry instead of asking the renderer for an unbounded allocation
     if (value > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;
     }
