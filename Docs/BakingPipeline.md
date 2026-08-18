@@ -767,6 +767,17 @@ The baker does not compensate for it. Flipping normals and winding at bake time
 would leave the broken source in the repository, where the next export and every
 other tool reading that file keep the reflection; the exporter is where a mirrored
 object has to be frozen back to a positive scale.
+
+`ModelInfoBaker` gates the size of a directly attached model — an `Attach` link
+pointing at a bare `.fbx` rather than a `.fo3d` description. Such a model is
+drawn on the parent skeleton, so an export authored in foreign units looks
+correct in the render and only shows up through the model's own bounds, which
+size its client sprite frame: a centimetre export asks for a frame two orders of
+magnitude too large, and `CalculateModelSpriteLayout` cannot build it at all.
+The bake fails when the model's static bounds leave the band
+`Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`, naming
+the file, the measured extent and the limit. A `.fo3d` model is exempt because
+its description can scale the mesh; a bare attachment has no such correction.
 Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
 envelopes below, a future big-endian mesh consumer requires a converted wire
