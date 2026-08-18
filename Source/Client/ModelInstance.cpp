@@ -787,7 +787,9 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         GenerateCombinedMeshes();
     }
 
-    if (!_parent) {
+    // The Init pass runs before the caller assigns _parent, so an attachment would be laid out as a root: its
+    // bounds and shadow start at the joint it hangs from. A real root gets the layout the constructor left dirty
+    if (!_parent && !IsEnumSet(flags, ModelAnimFlags::Init)) {
         RefreshFrameLayout();
     }
 

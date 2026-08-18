@@ -2209,6 +2209,10 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
     auto model = model_mngr->CreateModel(MODEL_PATH);
     REQUIRE(static_cast<bool>(model));
 
+    // Creation leaves the root layout pending: _parent is assigned only after CreateModel returns, and an
+    // attachment laid out as a root measures the joint it hangs from plus its shadow, past any frame it can hold
+    CHECK(model->GetDrawSize() == isize32 {4, 4});
+
     // The sweep only measures generated combined meshes, so without this the frame would stay at the layout size
     // no matter what the default link did
     model->StartMeshGeneration();
