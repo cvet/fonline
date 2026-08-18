@@ -122,7 +122,7 @@ namespace
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            const_span<uint8_t> encoded_data = SendCallback();
+            vector<uint8_t> encoded_data = SendCallback();
 
             if (!encoded_data.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);

@@ -125,7 +125,7 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto send = [this]() FO_DEFERRED -> const_span<uint8_t> { return AsyncSendData(); };
+    auto send = [this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
     auto disconnect = [this]() FO_DEFERRED {
         WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
@@ -330,7 +330,7 @@ void ServerConnection::StartAsyncSend()
     _netConnection->Dispatch();
 }
 
-auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
+auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -341,18 +341,19 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
     }
 
     auto raw_buf = _outBuf.GetData();
+    vector<uint8_t> send_buf;
 
     if (!_settings->DisableZlibCompression) {
-        _compressor.Compress(raw_buf, _sendBuf);
+        _compressor.Compress(raw_buf, send_buf);
     }
     else {
-        _sendBuf.assign(raw_buf.begin(), raw_buf.end());
+        send_buf.assign(raw_buf.begin(), raw_buf.end());
     }
 
     _outBuf.DiscardWriteBuf(raw_buf.size());
 
-    FO_VERIFY_AND_THROW(!_sendBuf.empty(), "Server connection encoded an empty outgoing packet from a non-empty output buffer", raw_buf.size(), _settings->DisableZlibCompression);
-    return _sendBuf;
+    FO_VERIFY_AND_THROW(!send_buf.empty(), "Server connection encoded an empty outgoing packet from a non-empty output buffer", raw_buf.size(), _settings->DisableZlibCompression);
+    return send_buf;
 }
 
 void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)

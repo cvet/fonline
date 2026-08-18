@@ -138,6 +138,17 @@ The client runtime should depend on the abstract connection interface where poss
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
+The send callback returns the outgoing bytes **by value**, and every transport owns the buffer it hands to
+its socket. That is a correctness requirement, not a style choice: the sender behind the callback is a
+`ServerConnection` owned by one `Player`, while the connection object lives in a transport's `shared_ptr`,
+and `Dispatch()` reaches the send path from any pool thread. A buffer borrowed from the sender would be
+refilled by a second dispatch, or freed when its owner disconnects, while a transport was still reading it -
+which is how a partly compressed packet turned into a SIGSEGV inside zlib on the UDP send thread.
+`Disconnect()` clears the send-callback flag before disconnecting, so a transport that ticks afterwards
+stops pulling from a sender that is going away. Each callback is also invoked under the lock that guards
+it, and `Disconnect()` drops the callbacks under those same locks on every call, so a destructor that
+disconnects waits for a call already running on a transport thread instead of racing it.
+
 `NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
 against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
 transport-specific listener/io-context shutdown and thread join. A connection accepted concurrently with

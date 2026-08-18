@@ -157,7 +157,7 @@ private:
     };
 
     void StartAsyncSend();
-    auto AsyncSendData() -> const_span<uint8_t>;
+    auto AsyncSendData() -> vector<uint8_t>;
     void AsyncReceiveData(const_span<uint8_t> buf);
 
     ptr<ServerNetworkSettings> _settings;
@@ -166,7 +166,6 @@ private:
     NetInBuffer _inBuf;
     mutex _outBufLocker {};
     NetOutBuffer _outBuf;
-    vector<uint8_t> _sendBuf {};
     StreamCompressor _compressor {};
     ActivityState _activity {};
     UpdateFileTransferState _updateFileTransfer {};

@@ -38,6 +38,7 @@
 
 #include "NetSockets.h"
 #include "NetworkServer.h"
+#include "ServerConnection.h"
 #include "Test_BakerHelpers.h"
 
 #if FO_HAVE_WEB_SOCKETS
@@ -92,6 +93,97 @@ namespace
 
         return settings;
     }
+
+    // Exposes the protected send path so the disconnect contract can be exercised without a transport
+    class SendProbeConnection final : public NetworkServerConnection
+    {
+    public:
+        explicit SendProbeConnection(ptr<ServerNetworkSettings> settings) :
+            NetworkServerConnection(settings)
+        {
+        }
+
+        using NetworkServerConnection::SendCallback;
+
+        void Receive(const_span<uint8_t> buf) { ReceiveCallback(buf); }
+
+    private:
+        void DispatchImpl() override { }
+        void DisconnectImpl() override { }
+    };
+}
+
+TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
+{
+    auto settings = MakeServerNetworkSettings();
+
+    auto conn = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
+    size_t send_calls = 0;
+    vector<uint8_t> payload {7, 8, 9};
+
+    conn->SetAsyncCallbacks(
+        [&]() -> vector<uint8_t> {
+            send_calls++;
+            return payload;
+        },
+        [](const_span<uint8_t>) {}, []() {});
+
+    vector<uint8_t> output = conn->SendCallback();
+
+    CHECK(send_calls == 1);
+    CHECK(output == payload);
+
+    conn->Disconnect();
+
+    // The transport can outlive its sender, so a disconnected connection must not request more data
+    output = conn->SendCallback();
+
+    CHECK(send_calls == 1);
+    CHECK(output.empty());
+}
+
+TEST_CASE("ServerConnectionDestructionWaitsForRunningNetworkCallback")
+{
+    auto settings = MakeServerNetworkSettings();
+    auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
+    auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+    std::promise<void> callback_entered_promise;
+    std::future<void> callback_entered = callback_entered_promise.get_future();
+    std::promise<void> release_callback_promise;
+    std::shared_future<void> release_callback = release_callback_promise.get_future().share();
+    std::promise<void> destruction_started_promise;
+    std::future<void> destruction_started = destruction_started_promise.get_future();
+    std::future<void> receive_task;
+    std::future<void> destruction_task;
+    bool callback_released = false;
+    auto release_callback_guard = scope_exit([&]() noexcept {
+        if (!callback_released) {
+            safe_call([&] { release_callback_promise.set_value(); });
+        }
+    });
+
+    connection->SetDataArrivedCallback([&] {
+        callback_entered_promise.set_value();
+        release_callback.wait();
+    });
+
+    receive_task = run_async(launch_async_only, "ServerConnectionReceiveCallback", [&] { net_connection->Receive(vector<uint8_t> {1}); });
+    REQUIRE(callback_entered.wait_for(std::chrono::seconds {10}) == std::future_status::ready);
+
+    destruction_task = run_async(launch_async_only, "ServerConnectionDestruction", [connection_ = std::move(connection), &destruction_started_promise]() mutable {
+        unique_ptr<ServerConnection> doomed_connection = std::move(connection_);
+        destruction_started_promise.set_value();
+    });
+
+    CHECK(destruction_started.wait_for(std::chrono::seconds {10}) == std::future_status::ready);
+    CHECK(destruction_task.wait_for(std::chrono::milliseconds {100}) == std::future_status::timeout);
+
+    release_callback_promise.set_value();
+    callback_released = true;
+    receive_task.get();
+    destruction_task.get();
+
+    CHECK_NOTHROW(net_connection->Receive(vector<uint8_t> {2}));
 }
 
 TEST_CASE("NetworkServerDummyConnectionIsDisconnected")
@@ -165,7 +257,7 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 
     client_send(vector<uint8_t> {1, 2, 3});
 
-    accepted_conn->SetAsyncCallbacks([&]() -> const_span<uint8_t> { return response_data; }, [&](const_span<uint8_t> buf) { received_data.assign(buf.begin(), buf.end()); }, [&]() { server_disconnect_count++; });
+    accepted_conn->SetAsyncCallbacks([&]() -> vector<uint8_t> { return response_data; }, [&](const_span<uint8_t> buf) { received_data.assign(buf.begin(), buf.end()); }, [&]() { server_disconnect_count++; });
 
     CHECK(received_data == vector<uint8_t>({1, 2, 3}));
 
@@ -310,7 +402,7 @@ TEST_CASE("NetworkServerAsioShutdownDisconnectsAcceptedConnections")
     REQUIRE(accepted_connection);
 
     std::atomic_int disconnect_count {};
-    accepted_connection->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; }, [](const_span<uint8_t>) {}, [&disconnect_count] { disconnect_count.fetch_add(1); });
+    accepted_connection->SetAsyncCallbacks([]() -> vector<uint8_t> { return {}; }, [](const_span<uint8_t>) {}, [&disconnect_count] { disconnect_count.fetch_add(1); });
     CHECK_FALSE(accepted_connection->IsDisconnected());
 
     server->Shutdown();
@@ -396,7 +488,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 
         try {
             server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
-                conn->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; },
+                conn->SetAsyncCallbacks([]() -> vector<uint8_t> { return {}; },
                     [&](const_span<uint8_t> buf) {
                         scoped_lock lock {state_mutex};
                         received.insert(received.end(), buf.begin(), buf.end());
