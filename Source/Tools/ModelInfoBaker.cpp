@@ -1081,9 +1081,8 @@ static void ValidateModelDescriptionAttachment(const BakingSettings& settings, c
     ValidateModelDescriptionLinkData(source_files, baked_files, mesh_cache, child_info, &main_info, link, fname);
 }
 
-// A directly attached model is drawn on the parent skeleton, so a foreign authoring space stays invisible in the
-// render but still reaches the client through this model's own bounds, which size its sprite frame. A centimetre
-// export therefore asks for a frame two orders of magnitude too large, and the client cannot build it at all
+// An attachment renders on the parent skeleton, so a foreign unit space shows up not in the render but in the sprite
+// frame the client sizes from these bounds. See Engine/Docs/BakingPipeline.md
 static void ValidateDirectAttachmentSize(const BakingSettings& settings, const BakedModelMeshInfo& child_info, string_view child_name, string_view fname)
 {
     FO_STACK_TRACE_ENTRY();
