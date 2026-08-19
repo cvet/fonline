@@ -24,6 +24,14 @@ namespace FOnline
             return InvokeCore(funcName, args ?? Array.Empty<object?>());
         }
 
+        // Awaits the dispatched target when it is asynchronous. `Invoke` only observes the returned Task
+        // for faults, which leaves an async target still running after the call returns; a caller that
+        // needs the work finished before it reads the resulting state must await this instead.
+        public static Task<bool> InvokeAsync(string funcName, params object?[]? args)
+        {
+            return InvokeCoreAsync(funcName, args ?? Array.Empty<object?>());
+        }
+
         public static bool Invoke<TResult>(string funcName, ref TResult result)
         {
             object?[] args = { result };
@@ -178,6 +186,38 @@ namespace FOnline
         public static CritterProperty ParseEnum_CritterProperty(object value)
         {
             return ParseEnumValue<CritterProperty>(value);
+        }
+
+        private static async Task<bool> InvokeCoreAsync(string funcName, object?[] args)
+        {
+            try
+            {
+                MethodInfo? method = FindInvokeMethod(funcName, args);
+                if (method == null)
+                {
+                    return Native.InvokeScriptFunc(funcName, args);
+                }
+
+                CoerceInvokeArgs(method, args);
+                object? result = method.Invoke(null, args);
+
+                if (result is Task task)
+                {
+                    await task;
+                }
+
+                return true;
+            }
+            catch (TargetInvocationException ex)
+            {
+                RecordManagedException(ex.InnerException ?? ex, true);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                RecordManagedException(ex, true);
+                return false;
+            }
         }
 
         private static bool InvokeCore(string funcName, object?[] args)
