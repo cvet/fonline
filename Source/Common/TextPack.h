@@ -116,11 +116,11 @@ public:
     ~TextPack() = default;
 
     [[nodiscard]] auto GetText(TextPackKey key) const -> string_view;
-    [[nodiscard]] auto GetText(TextPackKey key, size_t skip) const -> string_view;
+    [[nodiscard]] auto GetText(TextPackKey key, size_t text_index) const -> string_view;
     [[nodiscard]] auto GetTextCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto IsTextPresent(TextPackKey key) const -> bool;
     [[nodiscard]] auto GetStr(TextPackKey key) const -> string_view;
-    [[nodiscard]] auto GetStr(TextPackKey key, size_t skip) const -> string_view;
+    [[nodiscard]] auto GetStr(TextPackKey key, size_t text_index) const -> string_view;
     [[nodiscard]] auto GetStrCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
     [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
