@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "AdminPanelServer.h"
 #include "Application.h"
 #include "Client.h"
 #include "ImGuiStuff.h"
@@ -126,6 +127,20 @@ int main(int argc, char** argv) // Handled by SDL
             running_server->Shutdown();
             server.reset();
         };
+        const auto restart_server = [&]() {
+            if (server) {
+                stop_server();
+            }
+
+            start_server();
+        };
+        AdminServerHost admin_host("ServerAppAdminHost",
+            AdminServerHostCallbacks {
+                .GetServer = [&server]() -> ServerEngine* { return server.get(); },
+                .StartServer = start_server,
+                .StopServer = stop_server,
+                .RestartServer = restart_server,
+            });
 
         auto start_client = [&] {
             try {
@@ -189,6 +204,8 @@ int main(int argc, char** argv) // Handled by SDL
                 auto_start_triggered = true;
                 start_server();
             }
+
+            admin_host.Tick();
 
             if (server && get_server()->IsStarted() && GetApp()->Settings.AutoStartClientOnServer > 0 && !start_client_triggered) {
                 start_client_triggered = true;
@@ -722,6 +739,7 @@ int main(int argc, char** argv) // Handled by SDL
         FO_VERIFY_AND_THROW(!server, "Server is already set");
         FO_VERIFY_AND_THROW(clients.empty(), "Clients must be empty before this operation");
         FO_VERIFY_AND_THROW(client_settings.empty(), "Client settings must be empty before this operation");
+        SetLogCallback("ServerApp", nullptr);
         ExitApp(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {

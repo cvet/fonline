@@ -83,7 +83,7 @@ if(FO_BUILD_SERVER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_Server
         TESTING_APP 0
-        LINK_LIBS ServerLib ClientLib AppFrontend
+        LINK_LIBS ServerLib ClientLib AppFrontend $<$<BOOL:${FO_BUILD_ADMIN_PANEL_LIB}>:AdminPanelServerLib>
         EXTRA_SOURCES ${FO_RC_FILE}
         WRITE_BUILD_HASH)
 
@@ -94,7 +94,7 @@ if(FO_BUILD_SERVER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_ServerHeadless
         TESTING_APP 0
-        LINK_LIBS ServerLib ClientLib AppHeadless
+        LINK_LIBS ServerLib ClientLib AppHeadless $<$<BOOL:${FO_BUILD_ADMIN_PANEL_LIB}>:AdminPanelServerLib>
         WRITE_BUILD_HASH)
 
     if(FO_WINDOWS)
@@ -105,7 +105,7 @@ if(FO_BUILD_SERVER)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_ServerService
             TESTING_APP 0
-            LINK_LIBS ServerLib ClientLib AppHeadless
+            LINK_LIBS ServerLib ClientLib AppHeadless $<$<BOOL:${FO_BUILD_ADMIN_PANEL_LIB}>:AdminPanelServerLib>
             WRITE_BUILD_HASH)
     else()
         AddExecutableApplication(
@@ -115,9 +115,31 @@ if(FO_BUILD_SERVER)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_ServerDaemon
             TESTING_APP 0
-            LINK_LIBS ServerLib ClientLib AppHeadless
+            LINK_LIBS ServerLib ClientLib AppHeadless $<$<BOOL:${FO_BUILD_ADMIN_PANEL_LIB}>:AdminPanelServerLib>
             WRITE_BUILD_HASH)
     endif()
+endif()
+
+if(FO_BUILD_ADMIN_PANEL AND NOT FO_HEADLESS_ONLY)
+    AddExecutableApplication(${FO_DEV_NAME}_AdminPanel "${FO_ENGINE_ROOT}/Source/Applications/AdminPanelApp.cpp"
+        WIN32
+        OUTPUT_DIR ${FO_ADMIN_PANEL_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_AdminPanel
+        TESTING_APP 0
+        LINK_LIBS AppFrontend AdminPanelLib
+        EXTRA_SOURCES ${FO_RC_FILE}
+        WRITE_BUILD_HASH)
+endif()
+
+if(FO_BUILD_ADMIN_PANEL)
+    AddExecutableApplication(${FO_DEV_NAME}_AdminPanelHeadless "${FO_ENGINE_ROOT}/Source/Applications/AdminPanelHeadlessApp.cpp"
+        OUTPUT_DIR ${FO_ADMIN_PANEL_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_AdminPanelHeadless
+        TESTING_APP 0
+        LINK_LIBS AppHeadless AdminPanelHeadlessLib
+        WRITE_BUILD_HASH)
 endif()
 
 if(FO_BUILD_MAPPER)
@@ -242,7 +264,7 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
             WORKING_DIRECTORY ${FO_TESTS_OUTPUT}
             OUTPUT_NAME ${target}
             TESTING_APP 1
-            LINK_LIBS BakerLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless
+            LINK_LIBS BakerLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless $<$<BOOL:${FO_BUILD_ADMIN_PANEL_LIB}>:AdminPanelServerLib>
             DEPENDS ${FO_GEN_DEPENDENCIES}
             EXTRA_SOURCES ${testBuildSources})
 

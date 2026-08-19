@@ -390,6 +390,12 @@ EnableCoreLibraryIfAny(
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
+EnableCoreLibraryIfAny(
+	FO_BUILD_ADMIN_PANEL_LIB
+	FO_BUILD_ADMIN_PANEL
+	FO_UNIT_TESTS
+	FO_CODE_COVERAGE)
+
 # Per OS configurations
 if(WIN32)
 	SetValue(FO_WINDOWS 1)
@@ -693,6 +699,7 @@ endif()
 
 SetBinaryOutputPath(FO_CLIENT_OUTPUT Client)
 SetBinaryOutputPath(FO_SERVER_OUTPUT Server)
+SetBinaryOutputPath(FO_ADMIN_PANEL_OUTPUT AdminPanel)
 SetBinaryOutputPath(FO_MAPPER_OUTPUT Mapper)
 SetBinaryOutputPath(FO_ANIMATION_VIEWER_OUTPUT AnimationViewer)
 SetBinaryOutputPath(FO_PARTICLE_VIEWER_OUTPUT ParticleViewer)

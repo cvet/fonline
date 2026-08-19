@@ -563,6 +563,15 @@ auto tcp_server::accept() noexcept -> tcp_socket
 {
     FO_STACK_TRACE_ENTRY();
 
+    string remote_host;
+    uint16_t remote_port = 0;
+    return accept(remote_host, remote_port);
+}
+
+auto tcp_server::accept(string& out_host, uint16_t& out_port) noexcept -> tcp_socket
+{
+    FO_STACK_TRACE_ENTRY();
+
     if (!is_valid()) {
         return {};
     }
@@ -580,6 +589,9 @@ auto tcp_server::accept() noexcept -> tcp_socket
     if (client_sock == INVALID_SOCKET_VALUE) {
         return {};
     }
+
+    out_host = inet_ntoa(addr.sin_addr);
+    out_port = ntohs(addr.sin_port);
 
     return tcp_socket {client_sock};
 }

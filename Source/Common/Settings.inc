@@ -84,6 +84,11 @@ FIXED_SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in millise
 FIXED_SETTING(int32_t, Network, ArtificalLagsJitter, 0); // Extra per-batch random delay in milliseconds on top of the artificial lag, emulating stalls
 FIXED_SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 FIXED_SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
+FIXED_SETTING(bool, Network, AdminDiscoveryEnabled, true); // If true, UDP discovery for admin panel is enabled
+FIXED_SETTING(string, Network, AdminDiscoveryBindHost, "0.0.0.0"); // Admin discovery UDP bind host
+FIXED_SETTING(int32_t, Network, AdminDiscoveryPort, 43101); // Admin discovery UDP port
+FIXED_SETTING(int32_t, Network, AdminControlPort, 43102); // Admin panel TCP control port
+FIXED_SETTING(string, Network, AdminPsk, ""); // Pre-shared key for admin channel
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

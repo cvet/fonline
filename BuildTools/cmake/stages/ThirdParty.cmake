@@ -394,6 +394,21 @@ StatusMessage("+ Json")
 SetValue(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
 AddIncludeDirectories("${FO_JSON_DIR}")
 
+# FTXUI (terminal UI for the admin panel)
+if(FO_BUILD_ADMIN_PANEL)
+    StatusMessage("+ FTXUI")
+    SetValue(FO_FTXUI_DIR "${FO_ENGINE_ROOT}/ThirdParty/FTXUI")
+    SetCacheValues(
+        FTXUI_QUIET ON
+        FTXUI_BUILD_EXAMPLES OFF
+        FTXUI_BUILD_DOCS OFF
+        FTXUI_BUILD_TESTS OFF
+        FTXUI_ENABLE_INSTALL OFF)
+    AddSubdirectory("${FO_FTXUI_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories("${FO_FTXUI_DIR}/include")
+    DisableLibWarnings(screen dom component)
+endif()
+
 # LibreSSL
 if(FO_BUILD_SERVER_LIB AND NOT FO_DISABLE_ASIO AND NOT FO_DISABLE_WEB_SOCKETS AND NOT FO_ANDROID)
     SetValue(FO_BUILD_OPENSSL_LIB ON)

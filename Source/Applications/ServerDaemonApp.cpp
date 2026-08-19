@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "AdminPanelServer.h"
 #include "Application.h"
 #include "Server.h"
 #include "Settings.h"
@@ -58,18 +59,49 @@ int main(int argc, char** argv)
 
         {
             auto settings = make_ptr(&GetApp()->Settings);
-            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+            refcount_nptr<ServerEngine> server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+            AdminServerHost admin_host("ServerDaemonAdminHost",
+                AdminServerHostCallbacks {
+                    .GetServer = [&server]() -> ServerEngine* { return server.get(); },
+                    .StartServer =
+                        [&server]() {
+                            if (!server) {
+                                auto settings = make_ptr(&GetApp()->Settings);
+                                server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+                            }
+                        },
+                    .StopServer =
+                        [&server]() {
+                            if (server) {
+                                server->Shutdown();
+                                server.reset();
+                            }
+                        },
+                    .RestartServer =
+                        [&server]() {
+                            if (server) {
+                                server->Shutdown();
+                                server.reset();
+                            }
 
-            while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
+                            auto settings = make_ptr(&GetApp()->Settings);
+                            server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+                        },
+                });
+
+            while (!GetApp()->IsQuitRequested() && (!server || !server->IsStartingError())) {
+                admin_host.Tick();
                 std::this_thread::sleep_for(std::chrono::milliseconds {10});
             }
 
-            if (server->IsStartingError()) {
+            if (server && server->IsStartingError()) {
                 WriteLog(LogType::Error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
 
-            server->Shutdown();
+            if (server) {
+                server->Shutdown();
+            }
         }
 
         ExitApp(GetApp()->GetRequestedQuitSuccess());
