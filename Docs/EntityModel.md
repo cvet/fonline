@@ -64,6 +64,27 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 - `SetName()` writes through `Properties::SetValue()`;
 - `IsNonEmptyName()` checks whether raw property data exists.
 
+**The accessors are `noexcept`, and the access check inside them is a tripwire, not an error path.** By the
+time any property is read or written, the entity's access must *already* have been proven; the
+`FO_VALIDATE_ENTITY_ACCESS_VALUE` call inside the accessor exists to catch code that skipped that step, and
+because it throws from a `noexcept` body it terminates the process deliberately and loudly. Do not turn the
+tripwire into a recoverable error by removing `noexcept` — fix the caller that reached the entity unproven.
+
+The rule that follows: **engine code that reads the properties of an entity other than the one the caller
+proved must validate access to that entity first.** `ServerEntity::GetParent()` validates the *child*, not
+the parent it returns, and covering a child does not cover its parent — the cover check walks *up* an
+entity's ancestors, so a held child lock says nothing about the map above it. Returning an unproven parent
+handle is therefore legitimate and deliberate (`Item.GetMap()` documents that the map it hands back "is not
+covered for later reads"); **reading that parent's own properties is not**.
+
+The item resolvers in `Source/Scripting/ServerItemScriptMethods.cpp` are the worked example. They continue
+the ownership walk by reading the parent — `cr->GetMapId()`, `cr->GetHex()`, the container's `Ownership` on
+the recursive step — so each of those sites proves the parent with `RequireProvenParent` before the read.
+The branches that merely return the parent do not, and must not: validating there would reject the ordinary
+`Item.GetMap()` of a map-owned item. A production crash came from exactly this gap: `Item.GetCritter()` on a
+radio inside a personal-storage container recursed into the container and read its `Ownership` with the whole
+chain unheld, so the first thing to notice was the tripwire, which terminated.
+
 `Source/Common/EntityProperties.h` defines the generated property wrapper classes:
 
 - `GameProperties`

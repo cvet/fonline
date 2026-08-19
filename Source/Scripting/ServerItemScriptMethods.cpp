@@ -140,10 +140,25 @@ FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
 {
     if (self->GetOwnership() == ItemOwnership::MapHex) {
-        auto map = RequireParent<Map>(self, "Missing map instance");
+        auto map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Map ownership without a map instance");
+        ValidateEntityAccess(map);
         map->ChangeViewItem(self);
         map->RecacheHexFlags(self->GetHex());
     }
+}
+
+template<typename TParent, typename TEntity>
+static auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
+{
+    auto parent = entity->template GetParent<TParent>();
+
+    if (!parent) {
+        throw ScriptException(error_message);
+    }
+
+    ValidateEntityAccess(parent);
+    return std::move(parent).take_not_null();
 }
 
 static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
@@ -159,11 +174,11 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
         }
 
         auto map = RequireParent<Map, Critter>(cr, "Critter ownership, map not found");
-        return std::move(map);
+        return map;
     } break;
     case ItemOwnership::MapHex: {
         auto map = RequireParent<Map>(item, "Hex ownership, map not found");
-        return std::move(map);
+        return map;
     } break;
     case ItemOwnership::ItemContainer: {
         if (item->GetId() == item->GetContainerId()) {
@@ -193,12 +208,12 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
 
         auto map = RequireParent<Map, Critter>(cr, "Critter ownership, map not found");
         hex = cr->GetHex();
-        return std::move(map);
+        return map;
     } break;
     case ItemOwnership::MapHex: {
         auto map = RequireParent<Map>(item, "Hex ownership, map not found");
         hex = item->GetHex();
-        return std::move(map);
+        return map;
     } break;
     case ItemOwnership::ItemContainer: {
         if (item->GetId() == item->GetContainerId()) {
