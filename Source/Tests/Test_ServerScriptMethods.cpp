@@ -3576,7 +3576,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto methods_cleanup = scope_exit([&methods_player]() noexcept {
             safe_call([&methods_player] {
                 if (!methods_player->IsDestroyed()) {
-                    methods_player->GetConnection()->HardDisconnect();
+                    methods_player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
         });
@@ -3595,7 +3595,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto name_cleanup = scope_exit([&name_player]() noexcept {
             safe_call([&name_player] {
                 if (!name_player->IsDestroyed()) {
-                    name_player->GetConnection()->HardDisconnect();
+                    name_player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
         });
@@ -3612,7 +3612,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto map_view_cleanup = scope_exit([&map_view_player]() noexcept {
             safe_call([&map_view_player] {
                 if (!map_view_player->IsDestroyed()) {
-                    map_view_player->GetConnection()->HardDisconnect();
+                    map_view_player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
         });
@@ -3646,7 +3646,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto new_player_cleanup = scope_exit([&new_not_logged_in]() noexcept {
             safe_call([&new_not_logged_in] {
                 if (!new_not_logged_in->IsDestroyed()) {
-                    new_not_logged_in->GetConnection()->HardDisconnect();
+                    new_not_logged_in->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
         });
@@ -3681,7 +3681,7 @@ TEST_CASE("ServerMiscScriptOperations")
         auto already_logged_in_cleanup = scope_exit([&already_logged_in_not_logged_in]() noexcept {
             safe_call([&already_logged_in_not_logged_in] {
                 if (!already_logged_in_not_logged_in->IsDestroyed()) {
-                    already_logged_in_not_logged_in->GetConnection()->HardDisconnect();
+                    already_logged_in_not_logged_in->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
         });

@@ -36,6 +36,38 @@
 
 FO_BEGIN_NAMESPACE
 
+auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (reason) {
+    case DisconnectReason::None:
+        return "none";
+    case DisconnectReason::ClientClosed:
+        return "client closed";
+    case DisconnectReason::InactivityTimeout:
+        return "inactivity timeout";
+    case DisconnectReason::PingTimeout:
+        return "ping timeout";
+    case DisconnectReason::LoginTimeout:
+        return "login timeout";
+    case DisconnectReason::ProtocolError:
+        return "protocol error";
+    case DisconnectReason::UpdaterError:
+        return "updater error";
+    case DisconnectReason::ServerShutdown:
+        return "server shutdown";
+    case DisconnectReason::ScriptRequest:
+        return "script request";
+    case DisconnectReason::LoginFailed:
+        return "login failed";
+    case DisconnectReason::ReplacedByReconnect:
+        return "replaced by reconnect";
+    }
+
+    return "unknown";
+}
+
 ServerConnection::OutBufAccessor::OutBufAccessor(ptr<ServerConnection> owner, optional<NetMessage> msg) :
     _owner {owner},
     _outBuf {&_owner->_outBuf},
@@ -128,7 +160,8 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     auto send = [this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
     auto disconnect = [this]() FO_DEFERRED {
-        WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
+        RecordDisconnectReason(DisconnectReason::ClientClosed);
+        WriteLog("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
         AsyncReceiveData({});
     };
 
@@ -180,6 +213,21 @@ auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     return _gracefulDisconnected;
+}
+
+auto ServerConnection::GetDisconnectReason() const noexcept -> DisconnectReason
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _disconnectReason.load(std::memory_order_relaxed);
+}
+
+void ServerConnection::RecordDisconnectReason(DisconnectReason reason) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    DisconnectReason expected = DisconnectReason::None;
+    (void)_disconnectReason.compare_exchange_strong(expected, reason, std::memory_order_relaxed);
 }
 
 auto ServerConnection::GetDiagnostics() const -> Diagnostics
@@ -377,10 +425,11 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
     }
 }
 
-void ServerConnection::HardDisconnect()
+void ServerConnection::HardDisconnect(DisconnectReason reason)
 {
     FO_STACK_TRACE_ENTRY();
 
+    RecordDisconnectReason(reason);
     SetDataArrivedCallback({});
     _netConnection->Disconnect();
 }

@@ -142,6 +142,61 @@ TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
     CHECK(output.empty());
 }
 
+TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
+{
+    static constexpr DisconnectReason ALL_REASONS[] = {DisconnectReason::None, DisconnectReason::ClientClosed, DisconnectReason::InactivityTimeout, DisconnectReason::PingTimeout, DisconnectReason::LoginTimeout, DisconnectReason::ProtocolError, DisconnectReason::UpdaterError, DisconnectReason::ServerShutdown, DisconnectReason::ScriptRequest, DisconnectReason::LoginFailed, DisconnectReason::ReplacedByReconnect};
+
+    SECTION("every reason is named, so a new one cannot silently degrade a log line to \"unknown\"")
+    {
+        set<string_view> names;
+
+        for (DisconnectReason reason : ALL_REASONS) {
+            string_view name = GetDisconnectReasonName(reason);
+
+            INFO(static_cast<int32_t>(reason));
+            CHECK(name != "unknown");
+            CHECK(names.insert(name).second);
+        }
+    }
+
+    SECTION("a live connection has no reason yet")
+    {
+        auto settings = MakeServerNetworkSettings();
+        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+
+        CHECK(connection->GetDisconnectReason() == DisconnectReason::None);
+    }
+
+    SECTION("the peer going away on its own is recorded as a client-side close")
+    {
+        auto settings = MakeServerNetworkSettings();
+        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+
+        net_connection->Disconnect();
+
+        CHECK(connection->GetDisconnectReason() == DisconnectReason::ClientClosed);
+    }
+
+    SECTION("the deciding path wins over the transport teardown that follows it")
+    {
+        auto settings = MakeServerNetworkSettings();
+        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+
+        // The transport close callback records ClientClosed of its own accord; without first-wins that
+        // generic cause would bury the real one and the logout would read as a player who simply left
+        connection->HardDisconnect(DisconnectReason::PingTimeout);
+
+        CHECK(connection->GetDisconnectReason() == DisconnectReason::PingTimeout);
+
+        connection->HardDisconnect(DisconnectReason::ServerShutdown);
+
+        CHECK(connection->GetDisconnectReason() == DisconnectReason::PingTimeout);
+    }
+}
+
 TEST_CASE("ServerConnectionDestructionWaitsForRunningNetworkCallback")
 {
     auto settings = MakeServerNetworkSettings();

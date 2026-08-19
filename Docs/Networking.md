@@ -163,6 +163,38 @@ The server runtime applies two independent limits to connections that have not l
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
 
+A logged-in connection is additionally dropped when it stops answering pings: `ServerNetwork.ClientPingTime`
+sets the interval, and a connection that has not answered the previous ping when the next one is due is hard
+disconnected.
+
+### Disconnect reasons
+
+Every close records **why** it happened, because after the fact a connection that went away tells nothing
+about whether the player quit, the network died, or the server dropped them. `ServerConnection` stores a
+`DisconnectReason` (`ServerConnection.h`), and `HardDisconnect(reason)` takes it as a mandatory argument so
+a new call site cannot forget one:
+
+| Reason | Cause |
+|--------|-------|
+| `None` | still connected; no close has happened |
+| `ClientClosed` | the transport reported the peer went away — a voluntary quit and a lost network are indistinguishable here, because the client closes its socket without announcing either |
+| `InactivityTimeout` | `ServerNetwork.InactivityDisconnectTime` elapsed with no inbound message |
+| `PingTimeout` | the previous ping was never answered |
+| `LoginTimeout` | `ServerNetwork.LoginTimeout` elapsed without pre-login progress |
+| `ProtocolError` | unreadable or unexpected network data, or a failed connection publication |
+| `UpdaterError` | a bad update-file request |
+| `ServerShutdown` | the server is stopping |
+| `ScriptRequest` | `Player.HardDisconnect()` from a script |
+| `LoginFailed` | login rolled back after a server-side failure |
+| `ReplacedByReconnect` | the same account logged in again and took the session over |
+
+The **first** recorded reason wins. The transport close callback records `ClientClosed` of its own accord,
+and it runs after the path that decided to disconnect — without first-wins, that generic cause would bury
+every specific one. The reason is part of the `Closed connection from` log line and is readable from scripts
+through `Player.GetDisconnectReason()` while `OnPlayerLogout` handlers run, which is how the game reports a
+truthful session-end cause instead of assuming every disconnect was a logout. Pinned by
+`ServerConnectionRecordsWhyItWasDisconnected` in `Source/Tests/Test_NetworkServer.cpp`.
+
 `NetworkServer` starts transport-specific servers through factories:
 
 - `StartInterthreadServer()`;

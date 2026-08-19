@@ -198,13 +198,13 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (file_index >= _updateFiles.size()) {
         WriteLog(LogType::Warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
     if (update_file_max_portion_size <= 0) {
         WriteLog(LogType::Warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
@@ -213,7 +213,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (start_offset > file_size) {
         WriteLog(LogType::Warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
@@ -247,7 +247,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
         if (!read_update_file_portion(update_file.DiskPath, start_offset, disk_update_data)) {
             WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
-            connection->HardDisconnect();
+            connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }
     }
