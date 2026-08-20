@@ -480,12 +480,8 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 
     ValidateSparkTexturePaths(file, system);
 
-    // Precompute the effect's extent by simulating a deterministic run of a throwaway copy, and bake it as the system
-    // bounds. The runtime then frames an emitting instance from this static measurement instead of computing an AABB
-    // every frame. Positions and the billboard radius are measured separately: the position box is transformed by the
-    // emitter's world placement at runtime, while the quad radius is an absolute world length that must be added in
-    // the view plane and never scaled or rotated with the model. Rendering is not needed to measure either, so no
-    // renderer setup is performed here.
+    // Simulate a throwaway copy to bake emitter-local positions separately from the absolute billboard radius
+    // Runtime transforms only the positions; see Docs/en/how-to/content/particle-format.md#resource-pipeline
     {
         SPK::Ref<SPK::System> simulation = SPK::SPKObject::copy(system);
 

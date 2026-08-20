@@ -1213,7 +1213,7 @@ def run_evaluation(
                     },
                 }
             )
-        except Exception as exception:  # Preserve partial evidence before returning failure.
+        except Exception as exception:  # Preserve partial evidence before returning failure
             cleanup_error = None
             try:
                 client.unload(model)

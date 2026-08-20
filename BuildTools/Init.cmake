@@ -132,7 +132,7 @@ macro(_RunStage stage)
 endmacro()
 
 # Public stage entry points — strict, no auto-cascade. Calling a stage out of
-# sequence, twice, or skipping any predecessor aborts CMake configure.
+# sequence, twice, or skipping any predecessor aborts CMake configure
 foreach(_stage IN LISTS FO_KNOWN_STAGES)
 	set(_stageEntrypoint "${FO_STAGE_ENTRYPOINT_${_stage}}")
 	cmake_language(EVAL CODE

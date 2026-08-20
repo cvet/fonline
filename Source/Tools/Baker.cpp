@@ -1124,9 +1124,8 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
 
                 input_write_time = _outputFiles.at(string(path));
                 uint64_t output_write_time = fs_last_write_time(output_path);
-                // A baker may use max() as an always-rebuild sentinel when its output is derived from settings rather
-                // than a timestamped input file. A successful on-demand write satisfies that contract even though no
-                // finite filesystem timestamp can compare newer than the sentinel.
+                // max() is the always-rebuild sentinel for outputs derived from settings instead of timestamped inputs
+                // A successful on-demand write satisfies it although no finite filesystem timestamp can be newer
                 FO_VERIFY_AND_THROW(input_write_time == std::numeric_limits<uint64_t>::max() || input_write_time <= output_write_time, "Baked output file is older than the newest source input", path, output_path, input_write_time, output_write_time);
             }
 

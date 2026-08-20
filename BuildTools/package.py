@@ -1448,7 +1448,7 @@ class Packager:
 			log('Resources moved to', assets_res_dir)
 
 		# Overlay Android settings from the authored root plus selected sub-config. Resolve host directives here
-		# so signing values do not need to be materialized in the baked client config.
+		# so signing values do not need to be materialized in the baked client config
 		android_config = self.get_android_package_config_section()
 		package_name = android_config.getStr('Android.PackageName', 'com.fonline.app')
 		version_code = android_config.getStr('Android.VersionCode', '1')

@@ -303,7 +303,7 @@ public:
     //   .y = shader-clamp flag for atlas-safe Clamp addressing
     //   .z = distortion intensity
     //   .w = background-texture vertical-flip flag
-    // Particle runtimes define these values per draw. Ordinary color effects use x/y; distortion effects also use z/w.
+    // Particle runtimes define these values per draw. Ordinary color effects use x/y; distortion effects also use z/w
     struct ParticleSamplingBuffer
     {
         float32_t ParticleSampling[4] {};

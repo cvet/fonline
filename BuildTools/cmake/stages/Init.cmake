@@ -9,7 +9,7 @@ cmake_minimum_required(VERSION 3.22)
 StatusMessage("Start project generation")
 
 # Public project options are declared from the same versioned interface model
-# that generates the CMake reference pages.
+# that generates the CMake reference pages
 DeclareProjectInterfaceOptions(FO_PROJECT_INTERFACE_JSON)
 
 # Quiet all non-error messages instead ourself

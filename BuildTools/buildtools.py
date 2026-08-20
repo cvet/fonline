@@ -263,9 +263,9 @@ FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 # (`foo(name: v)` -> `foo(name : v)`). A `?` immediately before `>` or an empty
 # `[]`, and a `:` whose left side is an argument-position identifier, are all
 # unambiguous markers, so the inserted spacing is collapsed back. String / char
-# literals and comments are masked first so literal text is never rewritten. Kept
-# Embedding-project formatter wrappers that duplicate these repairs must keep
-# them in sync with this Engine-owned implementation.
+# literals and comments are masked first so literal text is never rewritten. Embedding-project formatter wrappers
+# that duplicate these repairs must keep
+# them in sync with this Engine-owned implementation
 _FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
 _FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
 FOS_NULLABLE_ANGLE_CALL_RE = re.compile(

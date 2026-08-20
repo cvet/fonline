@@ -2357,7 +2357,7 @@ def validate_manifest(root: Path, manifest_path: Path) -> tuple[list[str], dict[
     try:
         localization_status = docs_localization.generate_localization_status(root)
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
-        # Generated-artifact validation above reports the owning localization error.
+        # Generated-artifact validation above reports the owning localization error
         pass
     else:
         for record in localization_status["documents"]:
