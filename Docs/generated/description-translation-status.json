@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4946,
-    "current_count": 4946,
+    "entry_count": 4947,
+    "current_count": 4947,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2495,
-      "current_count": 2495,
+      "entry_count": 2496,
+      "current_count": 2496,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15382,6 +15382,12 @@
           "locator": "/symbols/@id=setting.common.Network.ForceCompatibilityVersion/description",
           "source": "Custom compatability version",
           "source_sha256": "5cdfe5dd79d376a531d93530af2d1e9eacee261c127564fa1acdb2268b05ae9d",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Network.ForceMetadataVersion/description",
+          "source": "Custom metadata version, for simulating a client baked apart from the server",
+          "source_sha256": "2d985233e7265d52c22e0ab7c8062eb789f0e5f265d04689973488056b0286a6",
           "status": "current"
         },
         {

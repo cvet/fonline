@@ -40,6 +40,27 @@
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MetadataNotFoundException);
+FO_DECLARE_EXCEPTION(MetadataOutdatedException);
+
+// Fixed header written ahead of the sections: a marker that rejects a foreign or truncated file at the first bytes,
+// the version of this file layout itself, and the metadata version derived from every codegen tag
+constexpr uint32_t METADATA_FILE_MAGIC = 0x46444D46; // "FMDF"
+constexpr uint16_t METADATA_FILE_VERSION = 1;
+
+// Section names of the baked `Metadata.fometa-*` wire format: the baker writes them, the runtime reads them back,
+// and both sides must spell them identically, so they live here rather than as literals on either side
+constexpr string_view METADATA_TARGET_SECTION = "Target";
+constexpr string_view METADATA_ENUM_SECTION = "Enum";
+constexpr string_view METADATA_ENTITY_SECTION = "Entity";
+constexpr string_view METADATA_ENTITY_HOLDER_SECTION = "EntityHolder";
+constexpr string_view METADATA_FIXED_TYPE_SECTION = "FixedType";
+constexpr string_view METADATA_VALUE_TYPE_SECTION = "ValueType";
+constexpr string_view METADATA_REF_TYPE_SECTION = "RefType";
+constexpr string_view METADATA_PROPERTY_SECTION = "Property";
+constexpr string_view METADATA_EVENT_SECTION = "Event";
+constexpr string_view METADATA_REMOTE_CALL_SECTION = "RemoteCall";
+constexpr string_view METADATA_SETTING_SECTION = "Setting";
+constexpr string_view METADATA_MIGRATION_RULE_SECTION = "MigrationRule";
 
 void RegisterServerMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
 void RegisterClientMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
@@ -49,5 +70,7 @@ void RegisterClientStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem>
 void RegisterMapperStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources);
 void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin);
 auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vector<uint8_t>;
+auto ReadMetadataVersion(const_span<uint8_t> metadata_bin) -> string;
+auto MakeMetadataHeader(string_view metadata_version) -> vector<uint8_t>;
 
 FO_END_NAMESPACE

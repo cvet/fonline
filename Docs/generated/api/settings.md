@@ -647,6 +647,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-network-forcecompatibilityversion-18ed45f949"></a>
 - [`symbol-setting-common-network-forcecompatibilityversion-18ed45f949`](../../en/reference/script-api/settings.md#symbol-setting-common-network-forcecompatibilityversion-18ed45f949)
 
+<a id="symbol-setting-common-network-forcemetadataversion-10c9cd92bf"></a>
+- [`symbol-setting-common-network-forcemetadataversion-10c9cd92bf`](../../en/reference/script-api/settings.md#symbol-setting-common-network-forcemetadataversion-10c9cd92bf)
+
 <a id="symbol-setting-common-network-netbuffersize-cc25ecc24e"></a>
 - [`symbol-setting-common-network-netbuffersize-cc25ecc24e`](../../en/reference/script-api/settings.md#symbol-setting-common-network-netbuffersize-cc25ecc24e)
 

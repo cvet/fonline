@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import struct
 import sys
 from pathlib import Path
 
@@ -16,6 +15,7 @@ if not BUILDTOOLS_ROOT.is_dir():
 sys.path.insert(0, str(BUILDTOOLS_ROOT))
 
 import gameplay_test_runner  # noqa: E402
+import docs_metadata  # noqa: E402
 
 
 REQUIRED_REMOTE_CALL_IDS = {
@@ -29,42 +29,7 @@ REQUIRED_REMOTE_CALL_IDS = {
 
 
 def decode_metadata(data: bytes) -> dict[str, list[list[str]]]:
-    view = memoryview(data)
-    offset = 0
-
-    def read(format_string: str, label: str) -> int:
-        nonlocal offset
-        size = struct.calcsize(format_string)
-        if offset + size > len(view):
-            raise ValueError(f"truncated metadata while reading {label}")
-        value = struct.unpack_from(format_string, view, offset)[0]
-        offset += size
-        return int(value)
-
-    def read_text(size: int, label: str) -> str:
-        nonlocal offset
-        if offset + size > len(view):
-            raise ValueError(f"truncated metadata while reading {label}")
-        raw = view[offset : offset + size].tobytes()
-        offset += size
-        return raw.decode("utf-8")
-
-    sections: dict[str, list[list[str]]] = {}
-    for section_index in range(read("<H", "section count")):
-        name = read_text(read("<H", f"section {section_index} name length"), f"section {section_index} name")
-        if not name or name in sections:
-            raise ValueError(f"invalid or duplicate metadata section: {name!r}")
-        entries: list[list[str]] = []
-        for entry_index in range(read("<I", f"section {name} entry count")):
-            parts = []
-            for part_index in range(read("<I", f"section {name} entry {entry_index} part count")):
-                part_size = read("<H", f"section {name} entry {entry_index} part {part_index} length")
-                parts.append(read_text(part_size, f"section {name} entry {entry_index} part {part_index}"))
-            entries.append(parts)
-        sections[name] = entries
-    if offset != len(view):
-        raise ValueError(f"metadata has {len(view) - offset} trailing bytes")
-    return sections
+    return docs_metadata.decode_metadata(data)
 
 
 def verify_metadata(metadata_paths: list[Path]) -> bool:
@@ -86,7 +51,7 @@ def verify_metadata(metadata_paths: list[Path]) -> bool:
                 calls.setdefault(call_id, []).append((metadata_side, contract))
             if any("SuppliesCollected" in entry for entry in sections.get("Property", [])):
                 property_sides.add(metadata_side)
-    except (OSError, UnicodeDecodeError, ValueError, struct.error) as error:
+    except (OSError, UnicodeDecodeError, ValueError) as error:
         print(f"[tutorial-smoke] unable to verify baked metadata: {error}", file=sys.stderr)
         return False
 

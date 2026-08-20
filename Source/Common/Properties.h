@@ -331,6 +331,7 @@ public:
     void RestoreData(const vector<nptr<const uint8_t>>& all_data, const vector<uint32_t>& all_data_sizes);
     void RestoreData(const vector<vector<uint8_t>>& all_data);
     void CopyRawData(ptr<const Property> prop, PropertyRawData& prop_data) const noexcept;
+    void VerifyRestoredPropertyData(ptr<const Property> prop, size_t data_size) const;
     void SetRawData(ptr<const Property> prop, span<const uint8_t> raw_data) noexcept;
     void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(ptr<const Property> prop, int32_t value);

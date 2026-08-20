@@ -17,6 +17,8 @@ SCHEMA_VERSION = 1
 DEFAULT_JSON_OUTPUT = "Docs/generated/project-remote-calls.json"
 DEFAULT_MARKDOWN_OUTPUT = "Docs/generated/project-remote-calls.md"
 SOURCE_PARSER = "Source/Tools/MetadataBaker.cpp"
+METADATA_FILE_MAGIC = 0x46444D46
+METADATA_FILE_VERSION = 1
 VALID_TARGETS = {"Server": "server", "Client": "client"}
 OPPOSITE_SIDE = {"server": "client", "client": "server"}
 
@@ -81,6 +83,21 @@ class _RemoteCallRecord:
 
 def decode_metadata(data: bytes) -> dict[str, list[list[str]]]:
     reader = _MetadataReader(data)
+    magic = reader.read_uint32("metadata file marker")
+    if magic != METADATA_FILE_MAGIC:
+        raise MetadataDecodeError(
+            f"Metadata does not start with the metadata file marker: {magic:#010x} != {METADATA_FILE_MAGIC:#010x}"
+        )
+    file_version = reader.read_uint16("metadata file version")
+    if file_version != METADATA_FILE_VERSION:
+        raise MetadataDecodeError(
+            f"Metadata file version does not match the engine: {file_version} != {METADATA_FILE_VERSION}"
+        )
+    metadata_version_size = reader.read_uint16("metadata version length")
+    metadata_version = reader.read_text(metadata_version_size, "metadata version")
+    if not metadata_version:
+        raise MetadataDecodeError("Metadata carries no version")
+
     sections: dict[str, list[list[str]]] = {}
     section_count = reader.read_uint16("section count")
 

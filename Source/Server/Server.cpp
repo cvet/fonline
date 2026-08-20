@@ -71,6 +71,7 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources)
     WriteLog("Start server");
     WriteLog("Updater version: {}", FO_UPDATER_VERSION);
     WriteLog("Compatibility version: {}", Settings->CompatibilityVersion);
+    WriteLog("Metadata version: {}", GetMetadataVersion());
 
     _starter.SetExceptionHandler([this](const std::exception& ex) FO_DEFERRED {
         ignore_unused(ex);
@@ -560,7 +561,7 @@ auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
         WriteLog("Initialize updater backend with client resources using {} storage", Settings->UpdateFilesInMemory ? "memory" : "disk");
 
         _updaterBackend.emplace();
-        _updaterBackend->LoadFromClientResources(*Settings);
+        _updaterBackend->LoadFromClientResources(*Settings, GetMetadataVersion());
     }
     else {
         WriteLog("Skip updater backend initialization in unpackaged mode");
@@ -1407,6 +1408,7 @@ void ServerEngine::DrawGui()
         if (begin_info_table("##InfoTable")) {
             info_row("Version", strex("{}", Settings->GameVersion).str());
             info_row("Compatibility version", strex("{}", Settings->CompatibilityVersion).str());
+            info_row("Metadata version", strex("{}", GetMetadataVersion()).str());
             info_row("System time", strex("{}", nanotime::now()).str());
             info_row("Synchronized time", strex("{}", GetSynchronizedTime()).str());
             info_row("Server uptime", strex("{}", _stats.Uptime).str());
@@ -1791,6 +1793,7 @@ auto ServerEngine::GetHealthInfo() const -> string
 
     buf += strex("Version: {}\n", Settings->GameVersion);
     buf += strex("Compatibility version: {}\n", Settings->CompatibilityVersion);
+    buf += strex("Metadata version: {}\n", GetMetadataVersion());
     buf += strex("System time: {}\n", nanotime::now());
     buf += strex("Synchronized time: {}\n", GetSynchronizedTime());
     buf += strex("Server uptime: {}\n", _stats.Uptime);
@@ -2595,11 +2598,16 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
 
     // Net protocol
     string comp_version = in_buf->Read<string>();
+    string metadata_version = in_buf->Read<string>();
     auto updater_version = in_buf->Read<uint32_t>();
     string requested_binary_target = in_buf->Read<string>();
 
     bool compatibility_outdated = comp_version != Settings->CompatibilityVersion;
     bool updater_outdated = updater_version != FO_UPDATER_VERSION;
+
+    // The updater connects before it has any resources of its own, so an empty version means "nothing to
+    // compare yet" - it still receives our version in the answer and verifies it once the sync is done
+    bool metadata_outdated = !metadata_version.empty() && metadata_version != GetMetadataVersion();
 
     // Begin data encrypting
     auto in_encrypt_key = in_buf->Read<uint32_t>();
@@ -2620,7 +2628,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
         (numeric_cast<uint32_t>(Random(1, 255)) << 8) | //
         (numeric_cast<uint32_t>(Random(1, 255)) << 0);
 
-    player->Send_HandshakeAnswer(compatibility_outdated, updater_outdated, out_encrypt_key);
+    player->Send_HandshakeAnswer(compatibility_outdated, updater_outdated, metadata_outdated, GetMetadataVersion(), out_encrypt_key);
 
     if (updater_outdated) {
         WriteLog("Connected client {} has outdated updater version {}", connection->GetHost(), updater_version);
@@ -2642,6 +2650,9 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
 
     if (compatibility_outdated) {
         WriteLog("Connected client {} has outdated compatibility version {} for binary target {}", connection->GetHost(), comp_version, requested_binary_target);
+    }
+    else if (metadata_outdated) {
+        WriteLog(LogType::Warning, "Connected client {} runs metadata version {} while the server runs {} - its synced resources do not match this server", connection->GetHost(), metadata_version, GetMetadataVersion());
     }
     else {
         WriteLog("Connected client {} for binary target {}", connection->GetHost(), requested_binary_target);

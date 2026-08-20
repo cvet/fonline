@@ -16,7 +16,17 @@ import docs_metadata  # noqa: E402
 
 
 def _encode_metadata(sections: dict[str, list[list[str]]]) -> bytes:
-    data = bytearray(struct.pack("<H", len(sections)))
+    metadata_version = b"test-metadata-version"
+    data = bytearray(
+        struct.pack(
+            "<IHH",
+            docs_metadata.METADATA_FILE_MAGIC,
+            docs_metadata.METADATA_FILE_VERSION,
+            len(metadata_version),
+        )
+    )
+    data.extend(metadata_version)
+    data.extend(struct.pack("<H", len(sections)))
     for name, entries in sections.items():
         name_bytes = name.encode("utf-8")
         data.extend(struct.pack("<H", len(name_bytes)))
@@ -105,9 +115,19 @@ class DocumentationMetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "trailing bytes"):
             docs_metadata.decode_metadata(valid + b"x")
 
-        invalid_utf8 = struct.pack("<HH", 1, 1) + b"\xff" + struct.pack("<I", 0)
+        header_size = struct.calcsize("<IHH") + len(b"test-metadata-version")
+        invalid_utf8 = valid[:header_size] + struct.pack("<HH", 1, 1) + b"\xff" + struct.pack("<I", 0)
         with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "Invalid UTF-8"):
             docs_metadata.decode_metadata(invalid_utf8)
+
+    def test_decoder_rejects_invalid_metadata_header(self) -> None:
+        valid = _encode_metadata({"Target": [["Server"]]})
+        with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "metadata file marker"):
+            docs_metadata.decode_metadata(struct.pack("<I", 0) + valid[4:])
+        with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "file version does not match"):
+            docs_metadata.decode_metadata(valid[:4] + struct.pack("<H", 2) + valid[6:])
+        with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "carries no version"):
+            docs_metadata.decode_metadata(valid[:6] + struct.pack("<H", 0) + valid[8 + len(b"test-metadata-version") :])
 
     def test_write_and_check_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -142,6 +142,10 @@ Continue with the [canonical English reference](en/reference/metadata/).
 
 Continue with the [canonical English reference](en/reference/metadata/).
 
+### Metadata version
+
+Continue with the [canonical English reference](en/reference/metadata/).
+
 ## Engine hook tags
 
 Continue with the [canonical English reference](en/reference/metadata/).

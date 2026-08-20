@@ -903,6 +903,7 @@ Hand-authored declarations live in `Source/Common/MetadataRegistration.h`:
 - `RegisterMapperStubMetadata()`
 - `RegisterDynamicMetadata()`
 - `ReadMetadataBin()`
+- `ReadMetadataVersion()`
 
 `Source/Common/MetadataRegistration.template.cpp` is the template used to generate side-specific registration files. It contains code-generation markers such as `///@ CodeGen RegisterHelpers` and `///@ CodeGen Register`.
 
@@ -940,6 +941,37 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 - migration rules
 
 This is the runtime side of metadata that can be loaded from generated/baked data rather than compiled static registration alone.
+
+### Metadata version
+
+**A server and every connected client must run metadata produced by one bake.** Entity payloads address properties by the registration order in that metadata, so different bakes can make the same index refer to different properties. Such divergence is rejected as a build or deployment defect, never treated as a supported compatibility mode.
+
+`FO_COMPATIBILITY_VERSION` cannot enforce this invariant by itself. Codegen sees engine and embedding-project C++ metadata sources, while project `///@ Property` declarations are registered from baked script metadata at runtime. The binary compatibility version therefore describes executables; the property layout belongs to resources.
+
+`MetadataBaker` derives a deterministic metadata version from every parsed codegen tag before target filtering. Client, server, and mapper outputs from one bake share the version even though their emitted sections differ. Any tag-level contract change—property ordering, a fixed-type layout, enum values, events, settings, or remote calls—changes that version.
+
+Every `Metadata.fometa-*` file begins with a fixed header before the section table:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| magic | `uint32` | `METADATA_FILE_MAGIC`; rejects foreign or truncated input immediately |
+| file version | `uint16` | `METADATA_FILE_VERSION`; a mismatch requires a rebake |
+| metadata version | `uint16` length + bytes | deterministic version of the parsed tag stream |
+
+`MakeMetadataHeader()` and `ReadMetadataHeader()` own the format in `MetadataRegistration.cpp`. `RegisterDynamicMetadata()` reads the header before any section and passes the value to `EngineMetadata::RegisterMetadataVersion()`. `ReadMetadataVersion()` reads only the header for updater and server-startup checks; runtime code retrieves the registered value through `EngineMetadata::GetMetadataVersion()`. The value is computed, not configured. `Network.ForceMetadataVersion` exists only to simulate mismatches in tests.
+
+Four layers enforce the invariant:
+
+1. One bake produces both `Baking.ServerResources` and `Baking.ClientResources`, and deployments update them together.
+2. `UpdaterBackend::LoadFromClientResources` reads the version from the client packs it will distribute and fails startup with `UpdaterException` when it differs from the server's loaded version.
+3. After synchronization, `Updater::FinishResourcesUpdate` re-reads local packs and returns `UpdaterResult::MetadataMismatch` before constructing `ClientEngine` if they still differ from the server.
+4. The client handshake sends its version; the server returns its own version and a mismatch verdict as the final race check. See [Client Updater](../../explanation/runtime/client-updater.md#handshake).
+
+Deserialization has an independent guard: `Properties::VerifyRestoredPropertyData()` checks that each serialized property is enabled for the target, non-virtual, and has the expected plain-data size. It throws `VerificationException` instead of reaching the strong assertion in `SetRawData`, keeping foreign layouts diagnosable.
+
+When a mismatch appears, do not suppress the check. Server startup logs `Metadata version:` and rejection paths name both versions; updater logs also include the resource directory it read. Identify which server or client resource directory came from another bake and redeploy a matched set.
+
+Focused coverage lives in `Test_MetadataBaker.cpp` (one version across targets and version changes), `Test_Properties.cpp` (`PropertiesRestoreRejectsForeignMetadata`), and `Test_ClientServerIntegration.cpp` (`ServerReportsMetadataMismatchInHandshake`).
 
 Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializer` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
 

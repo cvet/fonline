@@ -40,6 +40,7 @@
 #include "DataSerialization.h"
 #include "DataSource.h"
 #include "FileSystem.h"
+#include "MetadataRegistration.h"
 #include "Settings.h"
 #include "SpriteResource.h"
 
@@ -124,19 +125,15 @@ namespace BakerTests
         return settings;
     }
 
-    inline auto MakeEmptyMetadataBlob() -> vector<uint8_t>
-    {
-        vector<uint8_t> metadata;
-        auto writer = DataWriter(metadata);
-        writer.Write<uint16_t>(uint16_t {0});
-        return metadata;
-    }
+    constexpr string_view TEST_METADATA_VERSION = "testdatalayout00";
 
     // Writes the `Metadata.fometa-*` wire format, so a test can declare dynamic metadata without hand-packing
     // bytes
-    inline auto MakeMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
+    inline auto MakeMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections, string_view metadata_version = TEST_METADATA_VERSION) -> vector<uint8_t>
     {
-        vector<uint8_t> metadata;
+        // Registration reads the fixed header first, so a test blob has to carry one even when the test only
+        // cares about the sections behind it
+        vector<uint8_t> metadata = MakeMetadataHeader(metadata_version);
         auto writer = DataWriter(metadata);
 
         writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
@@ -157,6 +154,11 @@ namespace BakerTests
         }
 
         return metadata;
+    }
+
+    inline auto MakeEmptyMetadataBlob() -> vector<uint8_t>
+    {
+        return MakeMetadataBlob({});
     }
 
     inline void CleanupMemoryDataSourceFileBuffer(ptr<const uint8_t> p) FO_DEFERRED

@@ -6,7 +6,7 @@ document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
 
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"625c43c51ad848e76f6f8ac58d2776ce53c1f13b0158e875149944a48952e44a"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"d15b7f757e1c8ed959b47781ca95e7635234b0f24d147188ae85ff0f4435f334"} -->
 
 # Разделение клиентской среды выполнения и обновление
 
@@ -296,17 +296,41 @@ in-process reload. Игровая `Settings.CompatibilityVersion` независ
 | Направление | Поле | Тип | Назначение |
 |-------------|------|-----|------------|
 | client → server | `CompatibilityVersion` | `string` | игровая совместимость |
+| client → server | `MetadataVersion` | `string` | версия запечённых metadata; empty, пока у updater нет собственных ресурсов |
 | client → server | `updater_version` | `uint32` | `FO_UPDATER_VERSION` |
 | client → server | `binary_target` | `string` | например, `Windows-win64` или `Android-arm64` из `GetCurrentBinaryUpdateTargetName()` |
 | client → server | `in_encrypt_key` | `uint32` | ключи сессии |
 | server → client | `compatibility_outdated` | `bool` | несовпадение игровой версии |
 | server → client | `updater_outdated` | `bool` | несовпадение `FO_UPDATER_VERSION`, протокол непригоден |
+| server → client | `metadata_outdated` | `bool` | client resources запечены из другой ревизии |
+| server → client | `MetadataVersion` | `string` | версия metadata, которую сейчас использует server |
 | server → client | `out_encrypt_key` | `uint32` | ключи сессии |
 
 `updater_outdated == true` фатален для соединения: дальнейшие сообщения нельзя
 интерпретировать по известному контракту. `compatibility_outdated == true`
 блокирует игру, но updater всё ещё может доставить ресурсы и native module,
 возвращающие клиент к текущей совместимости.
+
+`metadata_outdated == true` означает, что binaries совпадают, а baked data — нет.
+Server и client обязаны использовать metadata из одной bake, потому что entity
+payload адресует properties по registration order этих metadata. Несовпадение —
+дефект build или deployment, а не поддерживаемый compatibility mode; см.
+[Версию metadata](../../reference/metadata/#версия-metadata).
+
+Updater не позволяет запустить client engine с несовместимыми данными:
+
+1. Сначала он подключается, сообщает версию текущих packs (empty при fresh install)
+   и синхронизирует все объявленные файлы.
+2. Затем он повторно читает версию локальных packs. Если она не совпадает с
+   server, updater возвращает `UpdaterResult::MetadataMismatch`, а `ClientEngine`
+   не создаётся. Unpackaged dev server без distributed resources нечего проверять,
+   поэтому он пропускает этот шаг.
+3. Только после проверки создаётся client и отправляет собственный handshake.
+
+Если server redeploy произошёл между sync и client handshake, server сообщает
+новое несовпадение, client выбрасывает `ResourcesOutdatedException`, а host снова
+запускает sync. Unpackaged client не имеет updater и сообщает mismatch через
+обычный exception path.
 
 Повреждённый pre-handshake payload, который не декодируется из buffer, считается
 невалидными handshake data. Сервер пишет warning с remote endpoint и выполняет
@@ -364,7 +388,11 @@ Updater connection участвует и в общем протоколе connec
 - `file_index` вне range приводит к `LogType::Warning` и `HardDisconnect`;
 - `start_offset > file_size` приводит к warning и hard disconnect;
 - `update_file_max_portion_size <= 0` считается ошибкой конфигурации и разрывает соединение;
-- ошибка чтения disk-mode payload также завершает соединение.
+- ошибка чтения disk-mode payload также завершает соединение;
+- изменение размера disk-mode файла относительно объявленного descriptor приводит
+  к warning и hard disconnect. При `ServerNetwork.UpdateFilesInMemory = False`
+  descriptor является startup snapshot, а bytes читаются по требованию, поэтому
+  pack нельзя подменить под работающим server и отправить с hash старого файла.
 
 Клиент пишет части в `~<filename>`, после завершения считает streamed
 `fs_hash_file` из
@@ -421,12 +449,18 @@ Descriptor возвращается как borrowed view `const_span<uint8_t>` �
 resource entries объединяются с target-specific, а неизвестный target получает
 только common descriptor.
 
+`VerifyClientResourcesMetadata` монтирует client packs и сравнивает их metadata
+version с версией, загруженной server. Server исполняет `Settings.ServerResources`,
+но распространяет `Settings.ClientResources`, поэтому deployment только одной
+стороны теперь завершает startup с `UpdaterException`, где названы обе версии.
+
 ## Настройки
 
 | Настройка | Область | Назначение |
 |-----------|---------|------------|
 | `Network.UpdateFileMaxPortionSize` | top-level | максимум bytes в одном `UpdateFileData`; влияет на throughput и память message, default 1 000 000 |
 | `ServerNetwork.UpdateFilesInMemory` | top-level и `[SubConfig]` | `True` держит packaged payload в RAM, `False` читает portions с disk; default `False` |
+| `Network.ForceMetadataVersion` | top-level | только для tests: переопределяет metadata version, сообщаемую client, чтобы смоделировать mismatch без второй bake; в shipped configs должна быть empty |
 | `Baking.PlatformBinaries` | top-level | каталог чтения и package staging target-specific runtime, default `PlatformBinaries` |
 | `Client.UserWritablePath` | client | writable root installed-клиента; empty означает portable, `*` выбирает per-OS user data, иначе нужен explicit absolute path |
 
@@ -642,6 +676,9 @@ compatibility на этих платформах updater возвращает `P
 | Gameplay version outdated на self-update platform | resource pass сообщает compatibility outdated, binaries mode stages runtime, показывает restart prompt, возвращает `ReloadRequested`; host продвигает файл и выходит |
 | Gameplay version outdated в Web/iOS/Android | message box `Client outdated, please update via your app store`, затем exit без native self-update |
 | Неверный file index/offset | server warning `Wrong file index ...` или `Wrong update file offset ...`, затем disconnect |
+| Client data не совпадает с server data | server log `Connected client X runs metadata version A while the server runs B`; updater log называет local version, server version и resource directory. Найдите каталог из другой bake |
+| Server распространяет resources, на которых сам не работает | startup server завершается с `Distributed client resources were baked apart from the server resources`, называя оба resource directories и обе версии |
+| Resources старше текущего metadata format | metadata-header startup failure: `does not start with the metadata file marker`, `file version does not match the engine` или `carries no version`; выполните full rebake |
 | Server не имеет target payload | `Server doesn't provide a native client update for binary target <target>` |
 | Остался staging | следующий startup выполняет `ApplyStagedBinaryUpdate` до load runtime |
 | Linux каждый раз пишет `LoadModule failed` | проверить `-Wl,-Bsymbolic` и отсутствие initial-exec TLS; standalone `dlopen` выявит `cannot allocate memory in static TLS block`; silent embedded fallback иначе создаёт update loop |

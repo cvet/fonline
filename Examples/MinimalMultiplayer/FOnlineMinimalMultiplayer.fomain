@@ -35,6 +35,7 @@ Network.DisableInterthreadCommunication = False
 Network.ArtificalLags = 0
 Network.ArtificalLagsJitter = 0
 Network.ForceCompatibilityVersion =
+Network.ForceMetadataVersion =
 
 # ServerNetwork
 ServerNetwork.DisableNetworking = False

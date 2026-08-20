@@ -17,9 +17,9 @@
     "query_count": 65,
     "pass_count": 65,
     "success_rate": 1.0,
-    "top_1_rate": 0.830769,
+    "top_1_rate": 0.815385,
     "top_3_rate": 1.0,
-    "mean_reciprocal_rank": 0.907692,
+    "mean_reciprocal_rank": 0.9,
     "minimum_success_rate": 1.0
   },
   "passed_task_count": 27,
@@ -669,9 +669,9 @@
           "top_document_ids": [
             "server-runtime",
             "script-lifecycle-concurrency",
+            "client-updater",
             "entity-model",
-            "networking",
-            "nullability"
+            "networking"
           ]
         },
         {
@@ -1609,10 +1609,10 @@
           "passed": true,
           "top_document_ids": [
             "engine-upgrade-guide",
+            "generated-api-metadata",
             "generated-content-workflow",
             "baking-pipeline",
-            "native-essentials",
-            "ai-documentation-evaluation"
+            "native-essentials"
           ]
         }
       ],
@@ -1871,13 +1871,13 @@
             "packaging-and-release"
           ],
           "max_rank": 3,
-          "rank": 1,
+          "rank": 2,
           "passed": true,
           "top_document_ids": [
+            "client-updater",
             "packaging-and-release",
             "android-debugging",
             "security-and-secrets",
-            "client-updater",
             "project-local-dependencies"
           ]
         }

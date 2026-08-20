@@ -17561,6 +17561,10 @@
           "source_sha256": "5cdfe5dd79d376a531d93530af2d1e9eacee261c127564fa1acdb2268b05ae9d",
           "translation": "Пользовательская версия совместимости"
         },
+        "/symbols/@id=setting.common.Network.ForceMetadataVersion/description": {
+          "source_sha256": "2d985233e7265d52c22e0ab7c8062eb789f0e5f265d04689973488056b0286a6",
+          "translation": "Пользовательская версия метаданных для имитации клиента, запечённого отдельно от сервера"
+        },
         "/symbols/@id=setting.common.Network.NetBufferSize/description": {
           "source_sha256": "e5fdec5ca91d617dad9724d85abc9bf82b0411d437d17be80d34efbe91f0c3d8",
           "translation": "Размер сетевого буфера"

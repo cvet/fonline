@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/testing/
 
 # Тестирование
 
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"059d7c4044eaf8983696f4ec396af115b741903b38c2a0e40b980e3ef6ef3015"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"76ef07baa74e611a6e3a24d83e0fb2f47c58d2d8da82bee8e2ca4e8887159497"} -->
 
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
@@ -164,7 +164,7 @@ Coverage зависит от platform и environment. Sources, не скомпи
 - **Fonts без assets:** синтезируйте `.fofnt` text или BMFont blocks `BMF\3` в памяти, предоставьте sprite и bind scale из `(0..1]`. `SplitLines` выдаёт pages размером с rect, поэтому для нескольких outputs нужен короткий rectangle.
 - **Logged-in client/server:** login remote calls объявляются в обоих metadata blobs в противоположных направлениях с правильным subsystem/namespace. До login insertion добавьте хотя бы одно project-owned persistent `Player` property, затем создайте и переключите critter и перенесите его в location/map. Empty layouts server/client `.fomap-bin-*` различаются; client blob заканчивается после двух `uint32` counts.
 - **World reload:** используйте file-backed JSON, отметьте ожидаемые entities persistent, остановите один server и запустите второй на том же каталоге. Critter восстанавливается через owning map или global-map membership; off-map runtime critter не reload-ится.
-- **Headless 3D:** запеките недегенеративный triangle, создайте description настоящим `ModelInfoBaker`, предоставьте source и baked mesh, `Metadata.fometa-client` и `ModelAnimationInfo.foinfo`, затем создайте instance через null renderer.
+- **Headless 3D:** запеките недегенеративный triangle, создайте description настоящим `ModelInfoBaker`, предоставьте source и baked mesh, `Metadata.fometa-client` и `ModelAnimationInfo.foinfo`, затем создайте instance через null renderer. Fixture metadata создавайте через `BakerTests::MakeMetadataBlob` или `MakeEmptyMetadataBlob`: registration отклоняет blob без обязательной metadata version.
 - **Static maps и disk writes Mapper:** server map records содержат настоящий payload `Properties::StoreAllData()`; zero length недопустим. Mapper save tests требуют настоящий Maps root через `InputDirs` с reference `.fomap`; предпочитайте `SaveMapToDir`, потому что plain `SaveMap` иначе может записать в working directory процесса.
 
 ## Текущий набор тестов

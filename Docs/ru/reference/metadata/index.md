@@ -6,7 +6,7 @@ document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"373d86c911ecd0bf87970fe00abeafce5d1824e8eb579e327831bf912ea7b93f"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"0ac5324ab16dc716df976b676143623948566937be8cdb77e678b9a9ae57a967"} -->
 
 # Сгенерированный API и метаданные
 
@@ -892,6 +892,7 @@ Hand-authored declarations находятся в `Source/Common/MetadataRegistra
 - `RegisterMapperStubMetadata()`
 - `RegisterDynamicMetadata()`
 - `ReadMetadataBin()`
+- `ReadMetadataVersion()`
 
 `Source/Common/MetadataRegistration.template.cpp` является template side-specific registration files. Он содержит markers code generation, включая `///@ CodeGen RegisterHelpers` и `///@ CodeGen Register`.
 
@@ -929,6 +930,37 @@ Hand-authored declarations находятся в `Source/Common/MetadataRegistra
 - migration rules
 
 Это runtime side metadata, которую можно загрузить из generated/baked data вместо одной только compiled static registration.
+
+### Версия metadata
+
+**Server и каждый подключённый client обязаны использовать metadata из одной bake.** Entity payload адресует properties по registration order этих metadata, поэтому в разных bakes один index может означать разные properties. Такое расхождение отклоняется как дефект build или deployment и не считается поддерживаемым compatibility mode.
+
+Один `FO_COMPATIBILITY_VERSION` не может обеспечить этот invariant. Codegen видит metadata sources движка и C++-код встраивающего проекта, а project declarations `///@ Property` регистрируются runtime из baked script metadata. Поэтому binary compatibility version описывает executables, а layout properties принадлежит ресурсам.
+
+`MetadataBaker` детерминированно выводит metadata version из всех разобранных codegen tags до target filtering. Client, server и mapper outputs одной bake получают общую версию, хотя их итоговые sections различаются. Любое изменение tag-level contract — порядок properties, layout fixed type, enum values, events, settings или remote calls — меняет эту версию.
+
+Каждый файл `Metadata.fometa-*` начинается с fixed header перед section table:
+
+| Поле | Тип | Назначение |
+|------|-----|------------|
+| magic | `uint32` | `METADATA_FILE_MAGIC`; сразу отклоняет foreign или truncated input |
+| file version | `uint16` | `METADATA_FILE_VERSION`; mismatch требует rebake |
+| metadata version | `uint16` length + bytes | детерминированная версия parsed tag stream |
+
+`MakeMetadataHeader()` и `ReadMetadataHeader()` владеют форматом в `MetadataRegistration.cpp`. `RegisterDynamicMetadata()` читает header до любой section и передаёт значение в `EngineMetadata::RegisterMetadataVersion()`. `ReadMetadataVersion()` читает только header для проверок updater и startup server; runtime получает зарегистрированное значение через `EngineMetadata::GetMetadataVersion()`. Значение вычисляется, а не настраивается. `Network.ForceMetadataVersion` существует только для имитации mismatch в tests.
+
+Invariant обеспечивают четыре слоя:
+
+1. Одна bake создаёт `Baking.ServerResources` и `Baking.ClientResources`, а deployment обновляет их вместе.
+2. `UpdaterBackend::LoadFromClientResources` читает version из распространяемых client packs и завершает startup с `UpdaterException`, если она не совпадает с загруженной server version.
+3. После sync `Updater::FinishResourcesUpdate` повторно читает local packs и возвращает `UpdaterResult::MetadataMismatch` до создания `ClientEngine`, если они всё ещё отличаются от server.
+4. Client handshake отправляет свою version, а server возвращает собственную version и mismatch verdict как последнюю race-проверку. См. [Client updater](../../explanation/runtime/client-updater.md#handshake).
+
+Deserialization имеет независимую защиту: `Properties::VerifyRestoredPropertyData()` проверяет, что каждая serialized property включена для target, не является virtual и имеет ожидаемый plain-data size. Она выбрасывает `VerificationException`, не доходя до strong assertion в `SetRawData`, поэтому foreign layouts остаются диагностируемыми.
+
+При mismatch не отключайте проверку. Startup log server содержит `Metadata version:`, rejection paths называют обе версии, а updater log также указывает прочитанный resource directory. Найдите server или client resource directory из другой bake и повторно разверните согласованный комплект.
+
+Focused coverage находится в `Test_MetadataBaker.cpp` (одна version для всех targets и её изменение), `Test_Properties.cpp` (`PropertiesRestoreRejectsForeignMetadata`) и `Test_ClientServerIntegration.cpp` (`ServerReportsMetadataMismatchInHandshake`).
 
 Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializer`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
 

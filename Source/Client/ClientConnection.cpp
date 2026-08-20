@@ -423,6 +423,13 @@ auto ClientConnection::ReceiveData() -> bool
     return false;
 }
 
+void ClientConnection::SetMetadataVersion(string_view version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _metadataVersion = version;
+}
+
 void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
@@ -438,6 +445,7 @@ void ClientConnection::Net_SendHandshake()
 
     _netOut.StartMsg(NetMessage::Handshake);
     _netOut.Write(_settings->CompatibilityVersion);
+    _netOut.Write(_metadataVersion);
     _netOut.Write(updater_version);
     _netOut.Write(binary_update_target_name);
     _netOut.Write(encrypt_key);
@@ -452,6 +460,8 @@ void ClientConnection::Net_OnHandshakeAnswer()
 
     bool compatibility_outdated = _netIn.Read<bool>();
     bool updater_outdated = _netIn.Read<bool>();
+    bool metadata_outdated = _netIn.Read<bool>();
+    _serverMetadataVersion = _netIn.Read<string>();
     auto encrypt_key = _netIn.Read<uint32_t>();
 
     _netIn.SetEncryptKey(encrypt_key);
@@ -463,6 +473,9 @@ void ClientConnection::Net_OnHandshakeAnswer()
     }
     else if (compatibility_outdated) {
         _connectCallback(ConnectResult::CompatibilityOutdated);
+    }
+    else if (metadata_outdated) {
+        _connectCallback(ConnectResult::MetadataOutdated);
     }
     else {
         _connectCallback(ConnectResult::Success);

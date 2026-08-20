@@ -1409,6 +1409,80 @@ TEST_CASE("PropertiesRawDataCopy")
     }
 }
 
+TEST_CASE("PropertiesRestoreRejectsForeignMetadata")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("MetadataEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto value_prop = registrar.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto name_prop = registrar.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    auto client_prop = registrar.RegisterProperty({"Client", "int32", "ClientValue", "Mutable"});
+    auto local_prop = registrar.RegisterProperty({"Server", "int32", "LocalValue", "Mutable"});
+
+    Properties proto(&registrar);
+    proto.SetValue<int32_t>(value_prop, 10);
+    proto.SetValue<string>(name_prop, "base");
+
+    SECTION("PlainPropertyPayloadOfAnotherPropertySize")
+    {
+        Properties props(&registrar, &proto);
+        props.SetValue<int32_t>(value_prop, 42);
+
+        auto owned_chunks = MakeOwnedStoreData(props.StoreData(true));
+
+        // A client baked from another revision resolves the sent index to a property of its own layout, which is
+        // how a complex payload ends up addressed to a plain int32 one
+        REQUIRE(owned_chunks.size() == 3);
+        owned_chunks.back().assign(1292, uint8_t {0x5A});
+
+        // Synced overrides are dropped by contract before the payload is applied, so the survivor is an unsynced
+        // property: keeping its value proves the rejected payload was not partially written
+        Properties restored(&registrar, &proto);
+        restored.SetValue<int32_t>(local_prop, 77);
+
+        CHECK_THROWS_AS(restored.RestoreData(owned_chunks), VerificationException);
+        CHECK(restored.GetValue<int32_t>(local_prop) == 77);
+        CHECK(restored.GetValue<int32_t>(value_prop) == 10);
+    }
+
+    SECTION("PlainPropertyPayloadInFullDataSnapshot")
+    {
+        Properties props(&registrar, &proto);
+        props.SetValue<int32_t>(value_prop, 42);
+
+        vector<uint8_t> all_data;
+        DataWriter writer(all_data);
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(registrar.GetWholeDataSize()));
+        writer.Write<bool>(true);
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1));
+        writer.Write<uint16_t>(value_prop->GetRegIndex());
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1292));
+        vector<uint8_t> foreign_payload(1292, uint8_t {0x5A});
+        writer.WriteBytes(foreign_payload);
+
+        Properties restored(&registrar, &proto);
+        CHECK_THROWS_AS(restored.RestoreAllData(all_data), VerificationException);
+        CHECK(restored.GetValue<int32_t>(value_prop) == 10);
+    }
+
+    SECTION("PayloadForPropertyDisabledOnThisSide")
+    {
+        vector<uint8_t> all_data;
+        DataWriter writer(all_data);
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(registrar.GetWholeDataSize()));
+        writer.Write<bool>(true);
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1));
+        writer.Write<uint16_t>(client_prop->GetRegIndex());
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(sizeof(int32_t)));
+        int32_t payload_value = 7;
+        writer.WriteBytes(make_const_span(&payload_value, sizeof(payload_value)));
+
+        Properties restored(&registrar, &proto);
+        CHECK_THROWS_AS(restored.RestoreAllData(all_data), VerificationException);
+    }
+}
+
 TEST_CASE("PropertiesOverlayFiltersAndCopies")
 {
     HashStorage hashes {};
