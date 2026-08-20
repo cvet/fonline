@@ -50,6 +50,7 @@ public:
     {
         Success,
         CompatibilityOutdated,
+        MetadataOutdated,
         UpdaterOutdated,
         Failed,
     };
@@ -71,7 +72,9 @@ public:
     [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
     [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
     [[nodiscard]] auto GetUnpackedBytesReceived() const noexcept -> size_t { return _bytesRealReceived; }
+    [[nodiscard]] auto GetServerMetadataVersion() const noexcept -> string_view { return _serverMetadataVersion; }
 
+    void SetMetadataVersion(string_view version);
     void SetConnectHandler(ConnectCallback handler);
     void SetDisconnectHandler(DisconnectCallback handler);
     void AddMessageHandler(NetMessage msg, MessageCallback handler);
@@ -103,6 +106,8 @@ private:
     bool _connectingHandled {};
     bool _udpFallbackTried {};
     bool _wasHandshake {};
+    string _metadataVersion {};
+    string _serverMetadataVersion {};
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};
     NetInBuffer _netIn;

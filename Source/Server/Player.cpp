@@ -753,7 +753,7 @@ void Player::Send_Ping(bool answer)
     out_buf->Write(answer);
 }
 
-void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, uint32_t out_encrypt_key)
+void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, bool metadata_outdated, string_view metadata_version, uint32_t out_encrypt_key)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -768,6 +768,8 @@ void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outd
 
         out_buf->Write(compatibility_outdated);
         out_buf->Write(updater_outdated);
+        out_buf->Write(metadata_outdated);
+        out_buf->Write(metadata_version);
         out_buf->Write(out_encrypt_key);
     }
 

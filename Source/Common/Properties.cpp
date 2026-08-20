@@ -945,6 +945,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
             FO_VERIFY_AND_THROW(prop, "Serialized overlay property index does not resolve to a registered property", _registrar->GetTypeName(), prop_index, _registrar->_registeredProperties.size());
             auto data_size = reader.Read<uint32_t>();
             const_span<uint8_t> data = reader.ReadBytes(data_size);
+            VerifyRestoredPropertyData(prop.as_ptr(), data_size);
             SetRawData(prop, data);
         }
     }
@@ -972,6 +973,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
             FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Registered complex property has no complex-data slot while restoring data", _registrar->GetTypeName(), prop->GetName(), prop->GetRegIndex());
             auto data_size = reader.Read<uint32_t>();
             const_span<uint8_t> data = reader.ReadBytes(data_size);
+            VerifyRestoredPropertyData(prop, data_size);
             SetRawData(prop, data);
         }
     }
@@ -1067,6 +1069,17 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
     return {.Data = &cache->Data, .Sizes = &cache->Sizes};
 }
 
+void Properties::VerifyRestoredPropertyData(ptr<const Property> prop, size_t data_size) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Serialized payloads are foreign data - a peer or a resource pack baked from another revision resolves an
+    // index to the wrong property, and reaching the raw data write would take the process down on a strong assert
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Serialized property data targets a property disabled on this side, metadata is out of sync", _registrar->GetTypeName(), prop->GetName(), prop->GetRegIndex());
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Serialized property data targets a virtual property, metadata is out of sync", _registrar->GetTypeName(), prop->GetName(), prop->GetRegIndex());
+    FO_VERIFY_AND_THROW(!prop->IsPlainData() || prop->GetBaseSize() == data_size, "Serialized plain property data size does not match the property, metadata is out of sync", _registrar->GetTypeName(), prop->GetName(), prop->GetRegIndex(), prop->GetBaseSize(), data_size);
+}
+
 void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const vector<uint32_t>& all_data_sizes)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1104,6 +1117,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
             FO_VERIFY_AND_THROW(prop, "Serialized separate property index does not resolve to a registered property", _registrar->GetTypeName(), prop_index, i, property_data_count);
             auto data_size = separate_sizes[1 + i];
             auto data = separate_data[1 + i];
+            VerifyRestoredPropertyData(prop.as_ptr(), data_size);
             SetRawData(prop, read_raw_data_span(data, data_size));
         }
     };
@@ -1124,6 +1138,12 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
         if (full_data.size() > 1) {
             uint32_t complex_data_count = full_sizes[1] / sizeof(uint16_t);
             FO_VERIFY_AND_THROW(complex_data_count > 0, "Serialized full property payload contains a complex index table with no entries", _registrar->GetTypeName(), full_sizes[1]);
+
+            // Validated before the table is sized and copied into: a length that is not a whole number of entries
+            // would copy past the vector, and a short payload list would index past it in the loop below
+            FO_VERIFY_AND_THROW(full_sizes[1] == complex_data_count * sizeof(uint16_t), "Serialized complex property index table size is not aligned to uint16 entries", _registrar->GetTypeName(), full_sizes[1], sizeof(uint16_t));
+            FO_VERIFY_AND_THROW(full_data.size() == 2 + complex_data_count, "Serialized complex property payload count does not match the index table count", _registrar->GetTypeName(), full_data.size(), complex_data_count);
+
             vector<uint16_t> complex_indicies(complex_data_count);
             FO_VERIFY_AND_THROW(full_data[1], "Complex index table payload is null");
             MemCopy(complex_indicies.data(), full_data[1], full_sizes[1]);
@@ -1135,6 +1155,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
                 FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Serialized complex property index resolved to a property without complex-data slot", _registrar->GetTypeName(), prop->GetName(), complex_indicies[i]);
                 auto data_size = full_sizes[2 + i];
                 auto data = full_data[2 + i];
+                VerifyRestoredPropertyData(prop, data_size);
                 target.SetRawData(prop, read_raw_data_span(data, data_size));
             }
         }

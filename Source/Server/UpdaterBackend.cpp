@@ -34,7 +34,9 @@
 #include "UpdaterBackend.h"
 #include "DataSerialization.h"
 #include "DiskFileSystem.h"
+#include "FileSystem.h"
 #include "Logging.h"
+#include "MetadataRegistration.h"
 #include "Player.h"
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
@@ -42,7 +44,7 @@
 
 FO_BEGIN_NAMESPACE
 
-void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
+void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -110,6 +112,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         }
     }
 
+    VerifyClientResourcesMetadata(settings, server_metadata_version);
+
     auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
     string platform_binaries_path = fs_path_to_string(platform_binaries_dir);
 
@@ -176,6 +180,25 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     _binaryTargetUpdateFilesDesc.swap(binary_target_update_files_desc);
 }
 
+void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The server runs on its own resource directory and hands out another one, so a deploy that refreshed only
+    // one of them would hand every synced client a property layout this server cannot talk to
+    FileSystem client_resources;
+    client_resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
+
+    vector<uint8_t> metadata_bin = ReadMetadataBin(&client_resources, "Client");
+    string client_metadata_version = ReadMetadataVersion(metadata_bin);
+
+    if (client_metadata_version != server_metadata_version) {
+        throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.ClientResources, client_metadata_version, settings.ServerResources, server_metadata_version);
+    }
+
+    WriteLog("Client data packs match the server metadata version {}", client_metadata_version);
+}
+
 auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -225,6 +248,16 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     vector<uint8_t> disk_update_data {};
 
     if (update_portion_size != 0 && !update_file.InMemory) {
+        // The descriptor is a start-time snapshot while the bytes are read now, so a pack replaced under a
+        // live server would travel to the client under the hash announced for the previous one
+        auto current_disk_size = fs_file_size(update_file.DiskPath);
+
+        if (!current_disk_size.has_value() || *current_disk_size != update_file.Size) {
+            WriteLog(LogType::Warning, "Update file '{}' changed on disk since startup, announced size {}, current size {}, client host '{}'", update_file.DiskPath, update_file.Size, current_disk_size.value_or(0), connection->GetHost());
+            connection->HardDisconnect(DisconnectReason::UpdaterError);
+            return;
+        }
+
         disk_update_data.resize(update_portion_size);
 
         auto read_update_file_portion = [](string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) {

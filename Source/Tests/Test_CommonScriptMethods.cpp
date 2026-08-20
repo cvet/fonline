@@ -1719,14 +1719,6 @@ namespace CommonMethods
         });
     }
 
-    static void WriteMetadataToken(DataWriter& writer, string_view token)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
-        writer.WriteStringBytes(token);
-    }
-
     static auto MakeCommonMethodsMetadataBlob() -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1741,33 +1733,7 @@ namespace CommonMethods
             {"RouteNote", "Text", "string", "0"},
         };
 
-        vector<uint8_t> metadata;
-        auto writer = DataWriter(metadata);
-
-        writer.Write<uint16_t>(uint16_t {2});
-        WriteMetadataToken(writer, "ValueType");
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(value_types.size()));
-
-        for (const auto& value_type : value_types) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(value_type.size()));
-
-            for (auto token : value_type) {
-                WriteMetadataToken(writer, token);
-            }
-        }
-
-        WriteMetadataToken(writer, "RefType");
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(ref_types.size()));
-
-        for (const auto& ref_type : ref_types) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(ref_type.size()));
-
-            for (auto token : ref_type) {
-                WriteMetadataToken(writer, token);
-            }
-        }
-
-        return metadata;
+        return BakerTests::MakeMetadataBlob({{"ValueType", value_types}, {"RefType", ref_types}});
     }
 
     static auto MakeResources() -> FileSystem

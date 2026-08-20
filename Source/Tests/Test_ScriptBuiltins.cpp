@@ -3232,55 +3232,27 @@ namespace ScriptBuiltins
 
     static auto MakeMetadataWithGenderEnum() -> vector<uint8_t>
     {
-        vector<uint8_t> metadata;
-        auto writer = DataWriter(metadata);
-
-        writer.Write<uint16_t>(uint16_t {3}); // 3 sections
-
-        auto write_token = [&](string_view token) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
-            writer.WriteStringBytes(token);
-        };
-        auto write_section_header = [&](string_view section_name, uint32_t entries_count) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
-            writer.WriteStringBytes(section_name);
-            writer.Write<uint32_t>(entries_count);
-        };
-        auto write_enum = [&](string_view name, string_view underlying_type, string_view first_name, string_view first_value, string_view second_name, string_view second_value) {
-            writer.Write<uint32_t>(uint32_t {6}); // 6 tokens
-            write_token(name);
-            write_token(underlying_type);
-            write_token(first_name);
-            write_token(first_value);
-            write_token(second_name);
-            write_token(second_value);
+        vector<vector<string_view>> enums = {
+            {"GenderType", "uint8", "Male", "0", "Female", "1"},
+            {"WideEnum", "uint16", "Low", "12", "High", "650"},
         };
 
-        write_section_header("Enum", uint32_t {2});
-        write_enum("GenderType", "uint8", "Male", "0", "Female", "1");
-        write_enum("WideEnum", "uint16", "Low", "12", "High", "650");
-
-        write_section_header("Setting", numeric_cast<uint32_t>(GAME_SETTING_TYPES.size()));
+        vector<vector<string_view>> settings;
+        settings.reserve(GAME_SETTING_TYPES.size());
 
         for (const auto& [setting_name, setting_type] : GAME_SETTING_TYPES) {
-            writer.Write<uint32_t>(uint32_t {2}); // 2 tokens
-            write_token(setting_name);
-            write_token(setting_type);
+            settings.emplace_back(vector<string_view> {setting_name, setting_type});
         }
 
-        write_section_header("Property", numeric_cast<uint32_t>(GAME_PROPERTY_TYPES.size()));
+        vector<vector<string_view>> properties;
+        properties.reserve(GAME_PROPERTY_TYPES.size());
 
         for (const auto& [property_type, property_name] : GAME_PROPERTY_TYPES) {
             // Sync tags are only legal on Common properties, so a server-only property carries none
-            writer.Write<uint32_t>(uint32_t {5}); // 5 tokens
-            write_token("Critter");
-            write_token("Server");
-            write_token(property_type);
-            write_token(property_name);
-            write_token("Mutable");
+            properties.emplace_back(vector<string_view> {"Critter", "Server", property_type, property_name, "Mutable"});
         }
 
-        return metadata;
+        return BakerTests::MakeMetadataBlob({{"Enum", enums}, {"Setting", settings}, {"Property", properties}});
     }
 
     static auto MakeResources() -> FileSystem

@@ -53,6 +53,7 @@ enum class UpdaterResult : uint8_t
     ServerMissingNativeUpdate = 3, // Compat outdated but server has no binaries for our target — config bug
     UpdaterOutdated = 4, // FO_UPDATER_VERSION mismatch; protocol is unusable
     Failed = 5, // Any other failure: connection, disk, etc
+    MetadataMismatch = 6, // Resources are in sync with the descriptor, yet the server runs another metadata version
 };
 
 extern auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
@@ -103,6 +104,8 @@ private:
     void AddText(string_view text);
     void Abort(string_view text);
     void GetNextFile();
+    void FinishResourcesUpdate();
+    auto ReadLocalMetadataVersion() const -> string;
     void RequestUpdateFile(const UpdateFile& update_file);
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
@@ -124,6 +127,7 @@ private:
     ClientConnection _conn;
     CacheStorage _cache;
     string _binaryDir;
+    string _serverMetadataVersion {};
     optional<UpdaterResult> _result;
     bool _binariesMode {};
     bool _aborted {};
