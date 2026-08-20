@@ -82,6 +82,16 @@
       "consumers": ["mapper", "baker", "animation-viewer", "particle-viewer", "ascompiler", "tests"],
       "script_targets": [],
       "description": "Resource-baker extensions shared by Baker, Mapper, both focused viewers, and ASCompiler; BAKER is not a script export target."
+    },
+    {
+      "id": "native-extension.role.tests",
+      "name": "TESTS",
+      "source_list": "FO_TESTS_SOURCE",
+      "library_target": "UnitTests/Coverage executable",
+      "primary_header": "catch_amalgamated.hpp",
+      "consumers": ["tests", "coverage"],
+      "script_targets": [],
+      "description": "Project-native Catch2 translation units compiled directly into enabled unit-test and coverage executables; TESTS has no runtime or script-export consumer."
     }
   ],
   "hooks": [

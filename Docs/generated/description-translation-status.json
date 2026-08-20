@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4947,
-    "current_count": 4947,
+    "entry_count": 4948,
+    "current_count": 4948,
     "missing_count": 0,
     "complete": true
   },
@@ -24439,8 +24439,8 @@
     },
     "native-extension": {
       "source_model": "Docs/generated/native-extension.json",
-      "entry_count": 43,
-      "current_count": 43,
+      "entry_count": 44,
+      "current_count": 44,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -24682,6 +24682,12 @@
           "locator": "/roles/@id=native-extension.role.server/description",
           "source": "Authoritative server-only code and script exports.",
           "source_sha256": "4665ba97750ad4e7dc81bf1e4075c08b69a24c8584435616cbfd1b68a9cf1d93",
+          "status": "current"
+        },
+        {
+          "locator": "/roles/@id=native-extension.role.tests/description",
+          "source": "Project-native Catch2 translation units compiled directly into enabled unit-test and coverage executables; TESTS has no runtime or script-export consumer.",
+          "source_sha256": "5a857fc261e7d7443dbfdd6e6f8e36b8aa5e95c75417d6db79a8d88f4bda5443",
           "status": "current"
         },
         {

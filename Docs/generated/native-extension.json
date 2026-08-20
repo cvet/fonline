@@ -127,6 +127,19 @@
       ],
       "script_targets": [],
       "description": "Resource-baker extensions shared by Baker, Mapper, both focused viewers, and ASCompiler; BAKER is not a script export target."
+    },
+    {
+      "id": "native-extension.role.tests",
+      "name": "TESTS",
+      "source_list": "FO_TESTS_SOURCE",
+      "library_target": "UnitTests/Coverage executable",
+      "primary_header": "catch_amalgamated.hpp",
+      "consumers": [
+        "tests",
+        "coverage"
+      ],
+      "script_targets": [],
+      "description": "Project-native Catch2 translation units compiled directly into enabled unit-test and coverage executables; TESTS has no runtime or script-export consumer."
     }
   ],
   "hooks": [
@@ -306,7 +319,7 @@
     }
   ],
   "summary": {
-    "role_count": 5,
+    "role_count": 6,
     "hook_count": 8,
     "binding_rule_count": 6,
     "compatibility_hashed_hook_count": 7,
@@ -317,5 +330,5 @@
       "SERVER": 3
     }
   },
-  "contract_digest": "5ef7c1a932f6f8e9ae41354d6bdbfd090c47c2d50791788c08a0239188ab1757"
+  "contract_digest": "6a8b5d9d6b95a80f67104ddfabe3a7b42051b1b8944eb79ef6954c93d83a635d"
 }

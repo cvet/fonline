@@ -5073,7 +5073,7 @@ names, and QA policy in their owning projects.
 ===== BEGIN DOCUMENT native-extensions-guide =====
 Source: Docs/en/how-to/native-extensions.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/native-extensions.html
-Content SHA-256: d1e4acf55bd6d2e0ae41cdfd2acda3de350e9dd91e8044bb3678dbe3bcefac00
+Content SHA-256: cd486f05a1ecb70a880faad5966c78274a8a661c5ec005b532be6f46b2b26d20
 
 ---
 layout: default
@@ -5142,13 +5142,14 @@ AddEngineSources(
     SERVER SourceExt/ServerExtension.cpp
     CLIENT SourceExt/ClientExtension.cpp
     MAPPER SourceExt/MapperExtension.cpp
-    BAKER SourceExt/BakerExtension.cpp)
+    BAKER SourceExt/BakerExtension.cpp
+    TESTS SourceExt/Test_ProjectExtension.cpp)
 
 RegisterEngineSources()
 SetupCodeGeneration()
 ```
 
-Paths and globs resolve against the embedding project's contribution root. Arguments are role/path pairs; an odd argument count or unknown role is a configure-time error. There are no separate `EDITOR`, `ANIMATION_VIEWER`, or `PARTICLE_VIEWER` source roles. Mapper, both focused viewers, Baker, and ASCompiler link `BakerLib`, so reusable authoring/baking support normally belongs in `BAKER`; code that is truly shared by all applications belongs in `COMMON`.
+Paths and globs resolve against the embedding project's contribution root. Arguments are role/path pairs; an odd argument count or unknown role is a configure-time error. There are no separate `EDITOR`, `ANIMATION_VIEWER`, or `PARTICLE_VIEWER` source roles. Mapper, both focused viewers, Baker, and ASCompiler link `BakerLib`, so reusable authoring/baking support normally belongs in `BAKER`; code that is truly shared by all applications belongs in `COMMON`. Project-native Catch2 translation units belong in `TESTS`, which compiles them directly into enabled unit-test and coverage executables without adding them to runtime libraries.
 
 Every resolved file is appended to both its role source list and `FO_SOURCE_META_FILES`. A header registered as `COMMON` is also added to generated common-header inputs. Register only files intended for codegen inspection: a vendored source tree belongs in a dedicated library target, not in a broad extension glob.
 
@@ -5163,6 +5164,7 @@ Choose the narrowest role that owns the behavior:
 | Rendering/input/client networking/client script methods | `CLIENT` | Compiles into `ClientLib`; mapper also receives client registrations through `ClientLib`. |
 | Mapper-only automation or mapper script methods | `MAPPER` | Compiles into `MapperLib`. |
 | Custom resource bakers and authoring support shared by Mapper/viewers/ASCompiler | `BAKER` | Compiles into `BakerLib`; `BAKER` is not a script export target. |
+| Project-native Catch2 regression translation units | `TESTS` | Compiles directly into enabled unit-test and coverage executables; it has no runtime or script export target. |
 
 Do not use `COMMON` merely to make a missing symbol link. Move the dependency to its owning role or split a small common interface from role-specific implementations.
 
@@ -24663,7 +24665,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-native-extension-index =====
 Source: Docs/en/reference/native-extension/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native-extension/
-Content SHA-256: ad98425206a1f02384783d61fa73672413c83745b23228e7b48395a162980b88
+Content SHA-256: 93cc25675e4fdd3d6f9e2ae8ee18d8371a3d45e6bec70eed110460a8eca682af
 
 ---
 title: Generated Native Extension Interface
@@ -24687,11 +24689,11 @@ This interface describes engine-owned composition and hook contracts for project
 | Stability | <code>experimental</code> |
 | Support policy | Source-compatible use is documented for a pinned engine revision; independently built binary compatibility is not promised. |
 | Source manifest | [BuildTools/NativeExtensionInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/NativeExtensionInterface.json) |
-| Contract digest | <code>5ef7c1a932f6f8e9ae41354d6bdbfd090c47c2d50791788c08a0239188ab1757</code> |
+| Contract digest | <code>6a8b5d9d6b95a80f67104ddfabe3a7b42051b1b8944eb79ef6954c93d83a635d</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
-| [Roles](roles.md) | 5 | CMake source routing, libraries, headers, and consumers. |
+| [Roles](roles.md) | 6 | CMake source routing, libraries, headers, and consumers. |
 | [Hooks](hooks.md) | 8 | Optional declarations, call sites, defaults, and compatibility state. |
 | [Bindings](bindings.md) | 6 | Registration, namespace, pointer, and dependency rules. |
 

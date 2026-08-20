@@ -71,13 +71,13 @@ class DocumentationNativeExtensionTests(unittest.TestCase):
         self.assertEqual(model["generated_by"], "BuildTools/docs_native_extension.py")
         self.assertEqual(model["scope"]["stability"], "experimental")
         self.assertEqual(model["summary"], {
-            "role_count": 5,
+            "role_count": 6,
             "hook_count": 8,
             "binding_rule_count": 6,
             "compatibility_hashed_hook_count": 7,
             "hooks_by_role": {"BAKER": 1, "CLIENT": 1, "COMMON": 3, "SERVER": 3},
         })
-        self.assertEqual([role["name"] for role in model["roles"]], ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER"])
+        self.assertEqual([role["name"] for role in model["roles"]], ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER", "TESTS"])
         roles = {role["name"]: role for role in model["roles"]}
         self.assertEqual(
             roles["COMMON"]["consumers"],

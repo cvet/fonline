@@ -4654,6 +4654,10 @@
           "source_sha256": "4665ba97750ad4e7dc81bf1e4075c08b69a24c8584435616cbfd1b68a9cf1d93",
           "translation": "Авторитетный серверный код и экспорты в серверные скрипты."
         },
+        "/roles/@id=native-extension.role.tests/description": {
+          "source_sha256": "5a857fc261e7d7443dbfdd6e6f8e36b8aa5e95c75417d6db79a8d88f4bda5443",
+          "translation": "Проектные модули трансляции Catch2, компилируемые непосредственно во включённые исполняемые файлы unit-тестов и покрытия; у TESTS нет потребителей среды выполнения и целей экспорта в скрипты."
+        },
         "/scope/excluded": {
           "source_sha256": "f5d1144bcb6036f57862898b51a1a8fb43d386b779f96e4eb770ebeb1324a520",
           "translation": [

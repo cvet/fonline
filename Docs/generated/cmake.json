@@ -659,7 +659,8 @@
         "SERVER",
         "CLIENT",
         "MAPPER",
-        "BAKER"
+        "BAKER",
+        "TESTS"
       ],
       "description": "Add role-scoped embedding-project native sources before RegisterEngineSources.",
       "id": "cmake.helper.AddEngineSources"
@@ -674,7 +675,8 @@
         "SERVER",
         "CLIENT",
         "MAPPER",
-        "BAKER"
+        "BAKER",
+        "TESTS"
       ],
       "description": "Link project-owned targets or explicit platform libraries only to their consuming engine roles before BuildCoreLibraries.",
       "id": "cmake.helper.AddProjectLibraries"

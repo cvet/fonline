@@ -690,8 +690,8 @@
       "english_path": "Docs/en/how-to/native-extensions.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/native-extensions.md",
-      "source_sha256": "d1e4acf55bd6d2e0ae41cdfd2acda3de350e9dd91e8044bb3678dbe3bcefac00",
-      "source_bytes": 16578,
+      "source_sha256": "cd486f05a1ecb70a880faad5966c78274a8a661c5ec005b532be6f46b2b26d20",
+      "source_bytes": 16979,
       "status": "current"
     },
     {
@@ -1132,8 +1132,8 @@
       "english_path": "Docs/en/reference/cmake/helpers.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake/helpers.md",
-      "source_sha256": "d162d21abe7ac08a159ae79e44aa9a8c115052899cd5d670890983f0bf05e38d",
-      "source_bytes": 3847,
+      "source_sha256": "2edff110cddaa1b27d040c845d3ab50d9cfbe93565ab043b29ba871a27b2b275",
+      "source_bytes": 3887,
       "status": "current"
     },
     {
@@ -1782,7 +1782,7 @@
       "english_path": "Docs/en/reference/native-extension/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/native-extension/index.md",
-      "source_sha256": "ad98425206a1f02384783d61fa73672413c83745b23228e7b48395a162980b88",
+      "source_sha256": "93cc25675e4fdd3d6f9e2ae8ee18d8371a3d45e6bec70eed110460a8eca682af",
       "source_bytes": 2191,
       "status": "current"
     },
@@ -1795,8 +1795,8 @@
       "english_path": "Docs/en/reference/native-extension/roles.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/native-extension/roles.md",
-      "source_sha256": "cb6f84b4fcd1f51911f884c26e52f5e64f65e0e426ef17b0110d04b99c4ce195",
-      "source_bytes": 3353,
+      "source_sha256": "1f152dcd86b8fe3d9fa3cf65cfd330679c549cd0227f1a88c69b5f2ceef546b8",
+      "source_bytes": 3794,
       "status": "current"
     },
     {

@@ -531,7 +531,7 @@
       "kind": "macro",
       "signature": "AddEngineSources(<role> <path-or-glob> [<role> <path-or-glob> ...])",
       "source": "BuildTools/cmake/helpers/Build.cmake",
-      "allowed_roles": ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER"],
+      "allowed_roles": ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER", "TESTS"],
       "description": "Add role-scoped embedding-project native sources before RegisterEngineSources."
     },
     {
@@ -539,7 +539,7 @@
       "kind": "macro",
       "signature": "AddProjectLibraries(ROLES <role> [...] LIBRARIES <target-or-library> [...])",
       "source": "BuildTools/cmake/helpers/Build.cmake",
-      "allowed_roles": ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER"],
+      "allowed_roles": ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER", "TESTS"],
       "description": "Link project-owned targets or explicit platform libraries only to their consuming engine roles before BuildCoreLibraries."
     },
     {

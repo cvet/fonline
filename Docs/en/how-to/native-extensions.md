@@ -65,13 +65,14 @@ AddEngineSources(
     SERVER SourceExt/ServerExtension.cpp
     CLIENT SourceExt/ClientExtension.cpp
     MAPPER SourceExt/MapperExtension.cpp
-    BAKER SourceExt/BakerExtension.cpp)
+    BAKER SourceExt/BakerExtension.cpp
+    TESTS SourceExt/Test_ProjectExtension.cpp)
 
 RegisterEngineSources()
 SetupCodeGeneration()
 ```
 
-Paths and globs resolve against the embedding project's contribution root. Arguments are role/path pairs; an odd argument count or unknown role is a configure-time error. There are no separate `EDITOR`, `ANIMATION_VIEWER`, or `PARTICLE_VIEWER` source roles. Mapper, both focused viewers, Baker, and ASCompiler link `BakerLib`, so reusable authoring/baking support normally belongs in `BAKER`; code that is truly shared by all applications belongs in `COMMON`.
+Paths and globs resolve against the embedding project's contribution root. Arguments are role/path pairs; an odd argument count or unknown role is a configure-time error. There are no separate `EDITOR`, `ANIMATION_VIEWER`, or `PARTICLE_VIEWER` source roles. Mapper, both focused viewers, Baker, and ASCompiler link `BakerLib`, so reusable authoring/baking support normally belongs in `BAKER`; code that is truly shared by all applications belongs in `COMMON`. Project-native Catch2 translation units belong in `TESTS`, which compiles them directly into enabled unit-test and coverage executables without adding them to runtime libraries.
 
 Every resolved file is appended to both its role source list and `FO_SOURCE_META_FILES`. A header registered as `COMMON` is also added to generated common-header inputs. Register only files intended for codegen inspection: a vendored source tree belongs in a dedicated library target, not in a broad extension glob.
 
@@ -86,6 +87,7 @@ Choose the narrowest role that owns the behavior:
 | Rendering/input/client networking/client script methods | `CLIENT` | Compiles into `ClientLib`; mapper also receives client registrations through `ClientLib`. |
 | Mapper-only automation or mapper script methods | `MAPPER` | Compiles into `MapperLib`. |
 | Custom resource bakers and authoring support shared by Mapper/viewers/ASCompiler | `BAKER` | Compiles into `BakerLib`; `BAKER` is not a script export target. |
+| Project-native Catch2 regression translation units | `TESTS` | Compiles directly into enabled unit-test and coverage executables; it has no runtime or script export target. |
 
 Do not use `COMMON` merely to make a missing symbol link. Move the dependency to its owning role or split a small common interface from role-specific implementations.
 

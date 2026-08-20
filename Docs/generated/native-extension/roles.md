@@ -21,6 +21,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-native-extension-role-baker-46164f8207"></a>
 - [`entry-native-extension-role-baker-46164f8207`](../../en/reference/native-extension/roles.md#entry-native-extension-role-baker-46164f8207)
 
+<a id="entry-native-extension-role-tests-2a984413c6"></a>
+- [`entry-native-extension-role-tests-2a984413c6`](../../en/reference/native-extension/roles.md#entry-native-extension-role-tests-2a984413c6)
+
 ## Registration shape
 
 Continue with the [canonical reference](../../en/reference/native-extension/roles.md).
