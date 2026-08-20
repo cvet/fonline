@@ -118,6 +118,7 @@ $Name = PlainItem
     SECTION("BakesFomapHeaderWithDefaultProtoName")
     {
         TestRig local_rig;
+        OverrideSetting(local_rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         local_rig.AddSourceFile("Maps/HeaderOnly.fomap", R"([ProtoMap]
 )");
         add_client_mapper_metadata(local_rig);
@@ -132,6 +133,7 @@ $Name = PlainItem
     SECTION("RejectsCollidingAnonymousMapAnchors")
     {
         TestRig local_rig;
+        OverrideSetting(local_rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         local_rig.AddSourceFile("Maps/Collide.fomap", R"([ProtoMap]
 Outside = True
 [ProtoMap]

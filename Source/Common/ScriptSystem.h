@@ -1024,16 +1024,4 @@ template<typename T, typename U, typename TContainer>
     return result;
 }
 
-template<typename TParent, typename TEntity>
-inline auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
-{
-    auto parent = entity->template GetParent<TParent>();
-
-    if (!parent) {
-        throw ScriptException(error_message);
-    }
-
-    return std::move(parent).take_not_null();
-}
-
 FO_END_NAMESPACE

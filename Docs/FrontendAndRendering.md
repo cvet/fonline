@@ -261,7 +261,21 @@ held weapon) are not in the baked animation bounds, so this is what keeps the fr
 **fixed size while the critter turns** instead of resizing each time a facing pushes the
 gear wider. Only currently-emitting particle systems extend this envelope;
 a dormant effect (for example furnace smoke that is not puffing) reserves no frame
-space and is absorbed by the expansion pass if and when it starts emitting. If that
+space and is absorbed by the expansion pass if and when it starts emitting.
+
+The measured envelope is reported as two rectangles, and the difference is what an
+effect makes. `ModelSpriteBounds::Rect` is the drawn extent — mesh, shadow, live
+particles, and the full frame when an effect or a custom shader forces it — and it is
+what the frame and the atlas crop are sized from, because those pixels are rasterized.
+`ModelSpriteBounds::PoseRect` is the posed model alone, captured before the particle
+pass, and it is what a consumer fitting the model into an area measures
+(`ModelSprite::GetPoseRect`, reaching script through `Game.GetDrawCritter3dBounds`). A
+fit converges only while the measured extent is proportional to the model's scale, and
+already-emitted particles live in world space: they keep their size when the model
+shrinks, so a fit measured against them shrinks the model, finds the effect holding an
+even larger share of the extent, and shrinks it again, frame after frame, until the
+scale underflows and `SparkParticleRuntimeSystem::Setup` rejects the degenerate
+placement. Effects belong in the frame; they do not belong in a fit. If that
 exact envelope needs a larger logical frame,
 the client expands the frame and rerenders before copying. Successive frame
 placements are merged as root-relative intervals, so adjacent pixel-rounded
@@ -724,6 +738,8 @@ forced first-tick path used by ordinary scheduled simulation.
 The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
 
 `ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK and Effekseer particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth; Effekseer distortion attachments additionally pull the direct replay's scene-background snapshot on demand. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
+
+Cached model-sprite frames are bounded to `2048x2048` logical pixels (`4096x4096` for the supersampled intermediate render target). Dynamic model-bone particle bounds that exceed this budget are treated as unavailable bounds: the established model frame remains valid and only the runaway outlying geometry is clipped. This prevents long-lived or malformed particle motion from turning a headless/null-renderer update into an unbounded CPU allocation while preserving ordinary model, preview, crop, and hit-test behavior.
 
 **World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit (= `32` = `MAP_HEX_WIDTH`), i.e. **1 world unit = 1 hex = 1 m** — the single metric shared by 3D models and in-scene particles. So a scene-type system that emits within a radius of N units spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale.
 

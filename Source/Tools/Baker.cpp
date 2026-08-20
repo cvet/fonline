@@ -700,6 +700,7 @@ void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
         }
 
         string stale_name;
+        bool expected_name_present = false;
         std::error_code ec;
 
         for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(parent_dir)}, ec}) {
@@ -710,8 +711,8 @@ void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
             string entry_name = fs_path_to_string(entry.path().filename());
 
             if (entry_name == expected_name) {
-                stale_name.clear();
-                break;
+                expected_name_present = true;
+                continue;
             }
 
             if (strvex(entry_name).compare_ignore_case(expected_name)) {
@@ -719,11 +720,22 @@ void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
             }
         }
 
-        if (!stale_name.empty()) {
-            bool rename_ok = fs_rename(strex(parent_dir).combine_path(stale_name), strex(parent_dir).combine_path(expected_name));
-            FO_VERIFY_AND_THROW(rename_ok, "Unable to rename the stale-cased baked output dir", parent_dir, stale_name, expected_name);
-            WriteLog("Rename stale-cased dir {} to {}", strex(parent_dir).combine_path(stale_name), expected_dir);
+        if (stale_name.empty()) {
+            continue;
         }
+
+        // Both spellings listed means a case-sensitive file system kept the pre-rename leftover beside the
+        // directory this run baked into, so it is dropped rather than renamed onto the live one
+        if (expected_name_present) {
+            bool remove_stale_ok = fs_remove_dir_tree(strex(parent_dir).combine_path(stale_name));
+            FO_VERIFY_AND_THROW(remove_stale_ok, "Unable to delete the stale-cased duplicate baked output dir", parent_dir, stale_name, expected_name);
+            WriteLog("Delete stale-cased duplicate dir {}, kept {}", strex(parent_dir).combine_path(stale_name), expected_dir);
+            continue;
+        }
+
+        bool rename_ok = fs_rename(strex(parent_dir).combine_path(stale_name), strex(parent_dir).combine_path(expected_name));
+        FO_VERIFY_AND_THROW(rename_ok, "Unable to rename the stale-cased baked output dir", parent_dir, stale_name, expected_name);
+        WriteLog("Rename stale-cased dir {} to {}", strex(parent_dir).combine_path(stale_name), expected_dir);
     }
 }
 
@@ -735,8 +747,14 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
 
     vector<pair<string, string>> stale_cased_paths;
 
+    // Exact spellings seen on disk. A case-sensitive file system can hold both the stale and the expected
+    // spelling at once, and then the expected one is what this run just baked - see the rename loop below
+    set<string> present_paths;
+
     fs_iterate_dir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
+
+        present_paths.emplace(path);
 
         // Skip cache dir and report files
         if (path.starts_with(BAKER_CACHE_DIR) && (path.size() == BAKER_CACHE_DIR.size() || path[BAKER_CACHE_DIR.size()] == '/')) {
@@ -756,7 +774,7 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
 
         // Collected rather than renamed in place: renaming an entry while its directory is being iterated is
         // not defined, and the iterator could hand the same file back under its new name
-        const auto it = expected.Paths.find(strex(path).lower().str());
+        auto it = expected.Paths.find(strex(path).lower().str());
 
         if (it != expected.Paths.end() && it->second != path) {
             stale_cased_paths.emplace_back(string(path), it->second);
@@ -764,6 +782,16 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
     });
 
     for (const auto& [stale_path, expected_path] : stale_cased_paths) {
+        // Both spellings listed means the leftover sits beside output this run just wrote, so renaming would
+        // clobber fresh content with stale; a case-insensitive file system lists one name and takes the rename
+        if (present_paths.count(expected_path) != 0) {
+            bool remove_stale_ok = fs_remove_file(MakeOutputPath(stale_path));
+            FO_VERIFY_AND_THROW(remove_stale_ok, "Unable to delete the stale-cased duplicate baked resource", stale_path, expected_path);
+            _report->RecordOutdatedFile(stale_path);
+            WriteLog("Delete stale-cased duplicate file {}, kept {}", stale_path, expected_path);
+            continue;
+        }
+
         bool rename_ok = fs_rename(MakeOutputPath(stale_path), MakeOutputPath(expected_path));
         FO_VERIFY_AND_THROW(rename_ok, "Unable to rename the stale-cased baked resource", stale_path, expected_path);
         WriteLog("Rename stale-cased file {} to {}", stale_path, expected_path);

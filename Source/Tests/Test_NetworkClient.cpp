@@ -394,7 +394,7 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
         vector<uint8_t> downstream {1, 1, 2, 3, 5, 8};
         std::atomic_bool downstream_sent {};
         server_conn->SetAsyncCallbacks(
-            [&downstream, &downstream_sent]() -> const_span<uint8_t> {
+            [&downstream, &downstream_sent]() -> vector<uint8_t> {
                 if (downstream_sent.exchange(true)) {
                     return {};
                 }

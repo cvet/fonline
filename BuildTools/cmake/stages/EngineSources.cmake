@@ -408,6 +408,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Server/Map.h"
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
+    "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerGlobalScriptMethods.cpp"

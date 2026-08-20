@@ -689,13 +689,19 @@ FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, string_view l
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t skipCount = 0)
+FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey)
 {
-    if (skipCount < 0) {
-        throw ScriptException("Skip count arg must not be negative", skipCount);
+    return string(client->GetCurLang().GetText(textKey));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t textIndex)
+{
+    if (textIndex < 0) {
+        throw ScriptException("Text index arg must not be negative", textIndex);
     }
 
-    return string(client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount)));
+    return string(client->GetCurLang().GetText(textKey, numeric_cast<size_t>(textIndex)));
 }
 
 ///@ ExportMethod

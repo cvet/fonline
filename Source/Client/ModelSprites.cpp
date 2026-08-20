@@ -195,6 +195,11 @@ void ModelSprite::SetSize(isize32 size)
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
+    int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
+    int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
+    FO_VERIFY_AND_THROW(size.width <= max_draw_width, "Requested model sprite width exceeds the renderable frame", size.width, max_draw_width);
+    FO_VERIFY_AND_THROW(size.height <= max_draw_height, "Requested model sprite height exceeds the renderable frame", size.height, max_draw_height);
+
     _requestedFrameSize = size;
     _model->RequestRedraw();
 }
@@ -453,7 +458,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     // re-anchored on the frame pivot so it shares an origin with the model's draw and view rects
     if (bounds) {
         ipos32 frame_pivot = model_spr->GetModel()->GetFramePivot();
-        model_spr->_poseRect = {bounds->Rect.x - frame_pivot.x, bounds->Rect.y - frame_pivot.y, bounds->Rect.width, bounds->Rect.height};
+        model_spr->_poseRect = {bounds->PoseRect.x - frame_pivot.x, bounds->PoseRect.y - frame_pivot.y, bounds->PoseRect.width, bounds->PoseRect.height};
     }
 
     // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop

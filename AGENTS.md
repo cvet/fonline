@@ -15,6 +15,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 3. Verify before editing: docs may drift, and when a doc and the live source disagree, the source wins — fix the doc in the same change.
 4. If behavior changes, update the owning engine doc in `Docs/` in the same worktree change.
 5. Do not commit or push unless explicitly asked by the repository owner.
+6. Treat published branch history as immutable. Once the branch has a remote tip, do not rebase, reset, amend, or force-push it; merge upstream and the published tip so every publication is a fast-forward. Verify with `git merge-base --is-ancestor <remote-tip> HEAD` before pushing, and stop instead of rewriting history when that check fails.
 
 ## Documentation Map
 

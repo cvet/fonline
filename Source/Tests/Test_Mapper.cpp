@@ -92,7 +92,8 @@ namespace
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "MapperMergeScripts",
             {
-                {"Scripts/MapperMergeTest.fos", R"(
+                {"Scripts/MapperMergeTest.fos",
+                    R"(
 namespace MapperMergeTest
 {
     [[ModuleInit]]
@@ -451,7 +452,7 @@ namespace MapperMergeTest
         cr.RefreshView();
         cr.SetAlpha(cr.GetAlpha());
 )"
-R"(        cr.GetBodyAngle();
+                    R"(        cr.GetBodyAngle();
         cr.ChangeDir(mdir(1));
         cr.StopMove();
 

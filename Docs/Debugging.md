@@ -204,6 +204,28 @@ Use the headless workflow first for script, proto, content, and scene-runtime re
 5. Use the regular launch or scene-launch profiles only when the bug depends on the embedded client, rendering, direct input, AngelScript stepping, or startup scene UX.
 6. For engine-side regressions that may also affect gameplay, run `LF_UnitTests` first, then move to the headless gameplay pass if the failure path crosses scripting, baking, or network replication.
 
+## Network Latency Emulation
+
+`Network.ArtificalLags` (milliseconds, `0` disables) makes a client behave as if it were on a slow link, for reproducing latency-dependent desynchronization without a real remote host. It is implemented entirely in `ClientConnection::ProcessConnection` and applies **symmetrically**, drawing a fresh `ArtificalLags / 2 .. ArtificalLags` sample for each delayed batch:
+
+- **Inbound** — a complete received message waits in the receive buffer until its delivery deadline, the way it would wait on the wire.
+- **Outbound** — queued data waits before it reaches the socket, so the *server* learns about the client's actions late.
+
+Both halves matter and they are not interchangeable. Only the outbound half makes the server's copy of the world trail the player's own copy, which is the direction every "the server saw me somewhere else" symptom depends on: with inbound delay alone the server still receives a movement the instant the client starts it and can never fall behind. An emulation that delays only one direction will silently fail to reproduce that entire class of bug.
+
+Neither half throttles throughput. A slow link still transmits continuously; gating the whole network pump on the interval instead starves the initial state sync and produces a client that looks broken rather than merely slow.
+
+`Network.ArtificalLags` is not a fixed delay: each delayed batch draws its own `ArtificalLags/2 .. ArtificalLags` sample, so consecutive batches already differ by up to half the base value. `Network.ArtificalLagsJitter` (milliseconds, `0` disables) adds a further `0 .. jitter` sample on top, widening that spread.
+
+The spread is what matters for a client/server divergence, not the mean. Two related messages — the client starting a movement, then acting on having arrived — each carry their own delay, and the server's copy trails by the *difference* between them: a delay that were truly identical for both would cancel, since the server would begin the movement late by `D` and judge the action late by `D`, having covered exactly the missing distance in between. Base lag alone therefore bounds the divergence at about half its value; raise `ArtificalLagsJitter` when a wider one is needed, which also matches how a real link behaves when packet loss stalls one message and not the next. A modest base with a large jitter (for example `300` and `1500`) emulates an ordinary link with occasional stalls.
+
+(Adding or renaming a setting needs no manual compatibility-version bump: `codegen.py` feeds every settings entry into the compatibility hash, so the version changes on its own and an older client is told to update at handshake.)
+
+Two related facts when reading a latency-dependent movement bug:
+
+- The server→client direction carries an `offset_time` field, so a client that learns about a movement late fast-forwards into it correctly.
+- The client→server direction carries no timestamp or elapsed-time field. `Process_Move` replays the movement from `GameTime.GetFrameTime()` with a zero offset, so the server's copy of a player-driven critter trails the client's by the one-way latency for the whole walk.
+
 ## Key Files and Integration Points
 
 If you need to trace the current debugging flow through the live repository, start with these files:

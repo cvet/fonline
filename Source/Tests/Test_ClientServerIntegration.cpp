@@ -1171,7 +1171,6 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
 
-
     auto server = MakeServerEngine(server_settings);
     auto client = MakeClientEngine(client_settings);
 

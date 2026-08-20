@@ -332,7 +332,6 @@ struct fixed_string
 // Mechanical process termination only; failure callers own any diagnostics they require
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 
-
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;
 

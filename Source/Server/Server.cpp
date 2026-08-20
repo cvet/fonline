@@ -790,7 +790,7 @@ void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
             scoped_lock locker {_notLoggedInPlayersLocker};
             vec_remove_unique_value(_notLoggedInPlayers, not_logged_in_player.hold_ref());
         });
-        safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(DisconnectReason::ProtocolError); });
         safe_call([&] { not_logged_in_player->MarkAsDestroyed(); });
     }};
 
@@ -819,7 +819,7 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
     }
     catch (const UnknownMessageException&) {
         WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::ProtocolError);
     }
     catch (const NetBufferException& ex) {
         if (!connection->IsHandshakeComplete()) {
@@ -829,7 +829,7 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
             ReportExceptionAndContinue(ex);
         }
 
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::ProtocolError);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -884,7 +884,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
     }
     catch (const NetBufferException& ex) {
         ReportExceptionAndContinue(ex);
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::ProtocolError);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -1168,7 +1168,7 @@ void ServerEngine::Shutdown()
 
     for (size_t i = 0; i < players.size(); i++) {
         auto player = players[i].as_ptr();
-        player->GetConnection()->HardDisconnect();
+        player->GetConnection()->HardDisconnect(DisconnectReason::ServerShutdown);
     }
 
     // NotLoggedIn players
@@ -1179,7 +1179,7 @@ void ServerEngine::Shutdown()
             continue;
         }
 
-        player->GetConnection()->HardDisconnect();
+        player->GetConnection()->HardDisconnect(DisconnectReason::ServerShutdown);
         player->MarkAsDestroyed();
     }
 
@@ -1954,7 +1954,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 
     if (connection->IsLoginTimedOut(GameTime.GetFrameTime())) {
         WriteLog("Connection login timeout from host '{}'", connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::LoginTimeout);
         return;
     }
 
@@ -1987,7 +1987,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
             case NetMessage::GetUpdateFile: {
                 if (!_updaterBackend) {
                     WriteLog(LogType::Warning, "Wrong update file request, updater backend disabled, client host '{}'", connection->GetHost());
-                    connection->HardDisconnect();
+                    connection->HardDisconnect(DisconnectReason::UpdaterError);
                     break;
                 }
 
@@ -2118,13 +2118,14 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
 
     if (connection->IsInactive(frame_time)) {
         WriteLog("Connection activity timeout from host '{}'", connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::InactivityTimeout);
         return;
     }
 
     if (connection->NeedPing(frame_time)) {
         if (connection->HasPendingPing() && !IsRunInDebugger()) {
-            connection->HardDisconnect();
+            WriteLog("Connection ping timeout from host '{}'", connection->GetHost());
+            connection->HardDisconnect(DisconnectReason::PingTimeout);
             return;
         }
 
@@ -2609,7 +2610,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
 
     if (in_encrypt_key == 0) {
         WriteLog("Process_Handshake: zero encrypt key from host '{}'", connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::ProtocolError);
         return;
     }
 
@@ -2850,7 +2851,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
         }
 
         safe_call([&] { player->SetLoggedIn(false); });
-        safe_call([&] { player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { player->GetConnection()->HardDisconnect(DisconnectReason::LoginFailed); });
 
         if (registered_player) {
             safe_call([&] { player->DetachCritter(); });
@@ -2921,7 +2922,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         }
 
         safe_call([&] { not_logged_in_player->SetLoggedIn(false); });
-        safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(DisconnectReason::LoginFailed); });
 
         if (registered_player) {
             safe_call([&] { not_logged_in_player->DetachCritter(); });
@@ -2989,7 +2990,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         // Kick previous
         player->SwapConnection(not_logged_in_player);
         reconnect_swapped = true;
-        not_logged_in_player->GetConnection()->HardDisconnect();
+        not_logged_in_player->GetConnection()->HardDisconnect(DisconnectReason::ReplacedByReconnect);
         player->Send_LoginSuccess();
 
         ValidateEntityAccess(player);
@@ -3046,7 +3047,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) ->
 
     scope_fail disconnect_on_error {[&]() noexcept {
         safe_call([&] { player->SetLoggedIn(false); });
-        safe_call([&] { player->GetConnection()->HardDisconnect(); });
+        safe_call([&] { player->GetConnection()->HardDisconnect(DisconnectReason::LoginFailed); });
 
         if (registered_player) {
             safe_call([&] { player->DetachCritter(); });

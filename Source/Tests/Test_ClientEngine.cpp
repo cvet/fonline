@@ -132,7 +132,8 @@ namespace
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ClientEngineScripts",
             {
-                {"Scripts/ClientEngineTest.fos", R"(
+                {"Scripts/ClientEngineTest.fos",
+                    R"(
 namespace ClientEngineTest
 {
     int StartCalls = 0;
@@ -538,7 +539,7 @@ namespace ClientEngineTest
         ImGui.TextColored("colored", 1.0f, 0.5f, 0.25f, 1.0f);
         ImGui.TextLink("link");
 )"
-R"(        ImGui.Value("bool", true);
+                    R"(        ImGui.Value("bool", true);
         ImGui.Value("int", 42);
         ImGui.Value("uint", uint(7));
         ImGui.ProgressBar(0.5f);
@@ -1016,7 +1017,7 @@ R"(        ImGui.Value("bool", true);
                 break;
             case 69:
 )"
-R"(                ImGui.ColorEdit4("", colorValue);
+                    R"(                ImGui.ColorEdit4("", colorValue);
                 break;
             case 70:
                 ImGui.ColorPicker3("", colorValue);
@@ -1337,7 +1338,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
         if (readBack[2] != 3) return -9;
 
 )"
-R"(        Game.RemoveCacheEntry("unit_test_entry");
+                    R"(        Game.RemoveCacheEntry("unit_test_entry");
         Game.RemoveCacheEntry("unit_test_bin");
         if (Game.IsCacheEntry("unit_test_entry")) return -10;
 
@@ -2131,7 +2132,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     };
 
     auto same_bounds = [](const ModelSpriteBounds& first, const ModelSpriteBounds& second) { //
-        return first.Rect == second.Rect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
+        return first.Rect == second.Rect && first.PoseRect == second.PoseRect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
     };
 
     auto warm_model = make_model();
@@ -2207,6 +2208,10 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 
     auto model = model_mngr->CreateModel(MODEL_PATH);
     REQUIRE(static_cast<bool>(model));
+
+    // Creation leaves the root layout pending: _parent is assigned only after CreateModel returns, and an
+    // attachment laid out as a root measures the joint it hangs from plus its shadow, past any frame it can hold
+    CHECK(model->GetDrawSize() == isize32 {4, 4});
 
     // The sweep only measures generated combined meshes, so without this the frame would stay at the layout size
     // no matter what the default link did
@@ -3508,6 +3513,10 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 
 TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 {
+    // The ImGui sweep below writes under `Workspace/`, relative to whatever directory the binary was launched
+    // from, and `ImGui::LogToFile` asserts on a file it cannot open — aborting the frame mid-sweep
+    (void)fs_create_directories("Workspace");
+
     auto settings = MakeClientTestSettings();
     auto client_resources = MakeUnitTestFontResources();
     client_resources.emplace_back("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));

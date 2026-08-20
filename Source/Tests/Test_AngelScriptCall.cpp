@@ -414,6 +414,82 @@ TEST_CASE("AngelScriptCallShapes")
     }
 }
 
+TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
+{
+    nptr<AngelScript::asIScriptEngine> as_engine = AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION);
+    REQUIRE(as_engine);
+    auto release_engine = scope_exit([&as_engine]() noexcept {
+        safe_call([&as_engine] {
+            if (as_engine) {
+                as_engine->ShutDownAndRelease();
+            }
+        });
+    });
+    constexpr size_t THREAD_COUNT = 16;
+    constexpr size_t TYPE_COUNT = 128;
+
+    vector<nptr<AngelScript::asITypeInfo>> probe_types;
+    probe_types.reserve(TYPE_COUNT);
+
+    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+        string type_name = strex("ConcurrentTypeIdProbe{}", type_index);
+        REQUIRE(as_engine->RegisterObjectType(type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT) >= 0);
+        nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoByName(type_name.c_str());
+        REQUIRE(type_info);
+        probe_types.emplace_back(type_info);
+    }
+
+    vector<vector<int32_t>> results(THREAD_COUNT, vector<int32_t>(TYPE_COUNT, -1));
+    std::atomic<size_t> ready_count = 0;
+    std::atomic<size_t> completed_count = 0;
+    std::atomic<size_t> phase = 0;
+    vector<thread> workers;
+    workers.reserve(THREAD_COUNT);
+
+    for (size_t thread_index = 0; thread_index < THREAD_COUNT; thread_index++) {
+        workers.emplace_back(run_thread("AngelScriptTypeIdProbe", [&, thread_index] {
+            for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+                ready_count.fetch_add(1, std::memory_order_release);
+
+                while (phase.load(std::memory_order_acquire) <= type_index) {
+                    std::this_thread::yield();
+                }
+
+                results[thread_index][type_index] = probe_types[type_index]->GetTypeId();
+                completed_count.fetch_add(1, std::memory_order_release);
+            }
+        }));
+    }
+
+    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+        size_t expected_count = (type_index + 1) * THREAD_COUNT;
+
+        while (ready_count.load(std::memory_order_acquire) < expected_count) {
+            std::this_thread::yield();
+        }
+
+        phase.store(type_index + 1, std::memory_order_release);
+
+        while (completed_count.load(std::memory_order_acquire) < expected_count) {
+            std::this_thread::yield();
+        }
+    }
+
+    for (thread& worker : workers) {
+        worker.join();
+    }
+
+    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+        int32_t expected_type_id = results[0][type_index];
+        REQUIRE(expected_type_id > AngelScript::asTYPEID_DOUBLE);
+        REQUIRE(as_engine->GetTypeInfoById(expected_type_id));
+
+        for (size_t thread_index = 1; thread_index < THREAD_COUNT; thread_index++) {
+            CHECK(results[thread_index][type_index] == expected_type_id);
+        }
+    }
+}
+
 TEST_CASE("ScriptFuncCleansStoredReturnHandle")
 {
     ScriptFunc<nptr<void>> empty_func {unique_del_nptr<ScriptFuncDesc> {}};

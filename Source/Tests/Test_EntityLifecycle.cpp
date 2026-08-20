@@ -122,7 +122,7 @@ namespace
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            const_span<uint8_t> encoded_data = SendCallback();
+            vector<uint8_t> encoded_data = SendCallback();
 
             if (!encoded_data.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
@@ -1990,7 +1990,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerLoginCalls"), login_calls));
         CHECK(login_calls == 1);
 
-        player->GetConnection()->HardDisconnect();
+        player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
 

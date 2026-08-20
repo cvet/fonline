@@ -866,9 +866,12 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     FO_STACK_TRACE_ENTRY();
 
     auto engine = self->GetEngine();
-    auto map = RequireParent<Map>(self, "Critter is not on map");
-
+    auto map = self->GetParent<Map>();
     ValidateEntityAccess(map);
+
+    if (!map) {
+        throw ScriptException("Critter is not on map");
+    }
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid target hex arg", hex, map->GetSize());

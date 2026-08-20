@@ -448,7 +448,10 @@ void ClientEngine::MainLoop()
     {
         // An abandoned frame still holds the scene render target, and Application::EndFrame requires none bound —
         // without this release a recoverable draw failure escalates into a shutdown
-        auto abort_scene_on_fail = scope_fail([this]() noexcept { SprMngr.AbortScene(); });
+        auto abort_scene_on_fail = scope_fail([this]() noexcept {
+            SprMngr.AbortScene();
+            ReleaseAbandonedOffscreenSurfaces();
+        });
         SprMngr.BeginScene();
 
         // Make dirty offscreen surfaces
@@ -461,6 +464,10 @@ void ClientEngine::MainLoop()
         auto restore_draw_scope = scope_exit([this]() noexcept { CanDrawInScripts = false; });
 
         OnRenderIface.Fire();
+
+        // A script that throws between activating and presenting a surface leaves it bound, and BeginScene clears the
+        // render-target stack but not this list — an abandoned surface would fail EndScene on every following frame
+        ReleaseAbandonedOffscreenSurfaces();
 
         ProcessVideo();
 
@@ -2874,6 +2881,24 @@ void ClientEngine::ProcessVideo()
 
         queue.erase(queue.begin());
         _videoQueue = queue;
+    }
+}
+
+void ClientEngine::ReleaseAbandonedOffscreenSurfaces() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Hands a surface the frame could not present back to the pool and unbinds it, so the render-target stack and this
+    // list end the frame agreeing; unbinding is reported rather than raised because this also runs while unwinding
+    while (!ActiveOffscreenSurfaces.empty()) {
+        ptr<RenderTarget> rt = ActiveOffscreenSurfaces.back();
+
+        ActiveOffscreenSurfaces.pop_back();
+        OffscreenSurfaces.emplace_back(rt);
+
+        if (SprMngr.GetRtMngr().GetCurrentRenderTarget() == rt) {
+            safe_call([this] { SprMngr.GetRtMngr().PopRenderTarget(); });
+        }
     }
 }
 

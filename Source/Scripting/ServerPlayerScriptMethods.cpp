@@ -62,7 +62,14 @@ FO_SCRIPT_API void Server_Player_Disconnect(ptr<Player> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_HardDisconnect(ptr<Player> self)
 {
-    self->GetConnection()->HardDisconnect();
+    self->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
+}
+
+// SyncScope: requires self; reads connection state only
+///@ ExportMethod
+FO_SCRIPT_API DisconnectReason Server_Player_GetDisconnectReason(ptr<Player> self)
+{
+    return self->GetConnection()->GetDisconnectReason();
 }
 
 // SyncScope: requires self; mutates player name only
