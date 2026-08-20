@@ -273,7 +273,7 @@ Source areas covered by the documentation set:
 - `Source/Common/EntityProperties.*`
 - `Source/Common/EntityProtos.*`
 - `Source/Common/Properties.*`
-- `Source/Common/PropertiesSerializator.*`
+- `Source/Common/PropertiesSerializer.*`
 - `Source/Common/ProtoManager.*`
 - `Source/Server/*Entity*.h`
 - `Source/Client/*Entity*.h`

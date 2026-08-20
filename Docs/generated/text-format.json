@@ -523,21 +523,42 @@
     {
       "id": "text-format.runtime.get-current-text",
       "name": "Game.GetText current language",
-      "signature": "string Game.GetText(TextPackKey textKey, int32 skipCount = 0)",
+      "signature": "string Game.GetText(TextPackKey textKey)",
       "sides": [
         "client",
         "mapper"
       ],
-      "behavior": "Returns the zero-based variant selected by skipCount from the current client language; the default is the first variant.",
+      "behavior": "Returns the first variant from the current client language.",
+      "missing_behavior": "A missing key returns an empty string.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey)",
+            "client->GetCurLang().GetText(textKey)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.runtime.get-indexed-text",
+      "name": "Game.GetText indexed current language",
+      "signature": "string Game.GetText(TextPackKey textKey, int32 textIndex)",
+      "sides": [
+        "client",
+        "mapper"
+      ],
+      "behavior": "Returns the zero-based variant selected by textIndex from the current client language.",
       "missing_behavior": "A missing key or out-of-range index returns an empty string; a negative index throws.",
       "stability": "experimental",
       "source": [
         {
           "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
           "anchors": [
-            "FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t skipCount = 0)",
-            "Skip count arg must not be negative",
-            "client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount))"
+            "FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t textIndex)",
+            "Text index arg must not be negative",
+            "client->GetCurLang().GetText(textKey, numeric_cast<size_t>(textIndex))"
           ]
         }
       ]
@@ -834,16 +855,16 @@
     }
   ],
   "summary": {
-    "entry_count": 38,
+    "entry_count": 39,
     "syntax_rule_count": 7,
     "language_rule_count": 9,
     "proto_text_rule_count": 8,
-    "runtime_method_count": 7,
+    "runtime_method_count": 8,
     "rendering_rule_count": 2,
     "validation_rule_count": 5,
     "entries_by_stability": {
-      "experimental": 38
+      "experimental": 39
     }
   },
-  "contract_digest": "79169437ee821a74a039524b8bfc29c6f65b7cc5251f55dab0b5d640b714cb2c"
+  "contract_digest": "b0ac74065cbb6993abc6b0660dd51370665ac810b749a1e507a54203cf97ad07"
 }

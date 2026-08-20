@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"59a69c9b2558cb661b2668bfcc3ddc33e5015741ecf1f11117c66de79661b354"} -->
+<!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"32e4c9f0476ec64a6cc3b073624786d2aa2f6523f17c0bd281aeaee7a91d166e"} -->
 
 # Сгенерированный справочник CLI BuildTools
 
@@ -23,24 +23,24 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Версионируемая линия поддержки CLI не объявлена; закрепляйте ревизию движка в автоматизации. |
 | Исходный парсер | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Дайджест контракта | <code>7271ab5eca2fd6485e970932f041c1a6a4bc738d76b19b8ea2f123627b6059bf</code> |
+| Дайджест контракта | <code>c3ce1809eb5d4e0811e95f8e3880d746b7d9e3a0b4418d9567313516a72aa653</code> |
 
 ## Покрытие
 
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
-| [Команды](commands.md) | 12 | Команды с 24 собственными аргументами. |
+| [Команды](commands.md) | 13 | Команды с 25 собственными аргументами. |
 | Глобальные аргументы | 0 | Аргументы, принимаемые перед командой. |
 
 ## Справка верхнего уровня
 
 ```text
-usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
+usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
 
 Shared BuildTools helpers
 
 positional arguments:
-  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace}
+  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace}
     env                 resolve BuildTools environment
     build               configure and build a target
     validate            configure and validate scenarios
@@ -49,6 +49,8 @@ positional arguments:
     toolset             build an existing toolset target
     build-auxiliary     build a separately packaged auxiliary tool
     prepare-workspace   prepare shared workspace parts
+    repair-checkout-case
+                        realign working-tree entry names with the git index
     package-web-debug   package the local web debug client
     package-android-debug
                         package the local android debug client

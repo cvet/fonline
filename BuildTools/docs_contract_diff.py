@@ -110,7 +110,7 @@ SOURCE_IDENTITY_FIELDS = {
         "source_parser",
         "config_parser",
         "property_parser",
-        "property_serializator",
+        "property_serializer",
         "api_model_generator",
     ),
     "map-format": (
@@ -131,6 +131,9 @@ SOURCE_IDENTITY_FIELDS = {
     "video": ("source_manifest",),
     "gui-runtime": ("source_manifest",),
     "ai-control-protocol": ("source_manifest",),
+}
+LEGACY_OPTIONAL_SOURCE_IDENTITY_FIELDS = {
+    "prototype-format": {"property_serializer"},
 }
 COLLECTIONS = {
     "cmake": ("options", "stages", "helpers"),
@@ -461,6 +464,8 @@ def load_model_text(domain: str, text: str, label: str) -> dict[str, Any]:
     if scope.get("stability") not in docs_api_diff.VALID_STABILITIES:
         raise ContractDiffError(f"{label} has invalid scope.stability: {scope.get('stability')}")
     for field in SOURCE_IDENTITY_FIELDS[domain]:
+        if field not in model and field in LEGACY_OPTIONAL_SOURCE_IDENTITY_FIELDS.get(domain, set()):
+            continue
         if not isinstance(model.get(field), str) or not model[field]:
             raise ContractDiffError(f"{label} has no {field}")
     _flatten_entries(domain, model)
@@ -496,7 +501,7 @@ def _entry_contract_view(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def _source_identity(domain: str, model: dict[str, Any]) -> dict[str, Any]:
-    return {field: model[field] for field in SOURCE_IDENTITY_FIELDS[domain]}
+    return {field: model.get(field) for field in SOURCE_IDENTITY_FIELDS[domain]}
 
 
 def _scope_shape(model: dict[str, Any]) -> dict[str, Any]:

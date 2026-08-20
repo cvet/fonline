@@ -5180,16 +5180,22 @@ int asCScriptEngine::GetTypeIdFromDataType(const asCDataType &dtIn) const
 		}
 	}
 
-	int typeId = -1;
 	asCTypeInfo *ot = dtIn.GetTypeInfo();
 	asASSERT(ot != &functionBehaviours);
-	// Object's hold the typeId themselves
+
+	// (FOnline Patch) The type id is lazily assigned and may be requested concurrently by separate
+	// script contexts. Read it under the same lock that protects assignment and the id map; otherwise
+	// the unlocked read is a data race.
+	int typeId = -1;
+	ACQUIRESHARED(engineRWLock);
 	typeId = ot->typeId;
+	RELEASESHARED(engineRWLock);
 
 	if( typeId == -1 )
 	{
 		ACQUIREEXCLUSIVE(engineRWLock);
 		// Make sure another thread didn't determine the typeId while we were waiting for the lock
+		typeId = ot->typeId;
 		if( ot->typeId == -1 )
 		{
 			typeId = typeIdSeqNbr++;

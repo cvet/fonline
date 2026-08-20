@@ -5,6 +5,7 @@ namespace MapperCapture
 
 const string CaptureMap = "TutorialMap";
 const string CaptureEffect = "Documentation.spk";
+const string CaptureSource = "Documentation.spark";
 const string CapturePath = "MapperDocumentationCapture.tga";
 const int CaptureWarmupFrames = 300;
 
@@ -15,7 +16,10 @@ bool CaptureFinished = false;
 [[ModuleInit]]
 void InitMapperCapture()
 {
-    if (Settings.Mapper.StartMap != CaptureMap || Settings.Mapper.ParticlePreviewEffect != CaptureEffect) {
+    bool capturePreview = Settings.Mapper.ParticlePreviewEffect == CaptureEffect;
+    bool captureSparkEditor = Settings.Mapper.SparkEditorSource == CaptureSource;
+
+    if (Settings.Mapper.StartMap != CaptureMap || (!capturePreview && !captureSparkEditor)) {
         return;
     }
 

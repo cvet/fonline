@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -36,6 +37,7 @@
 
 #if FO_ENABLE_3D
 
+#include "ModelAnimationData.h"
 #include "ModelMeshData.h"
 #include "ModelSourceLoader.h"
 #include "Test_BakerHelpers.h"
@@ -80,6 +82,51 @@ TEST_CASE("ModelSourceAssetValidationRejectsInvalidSourceData")
 {
     ModelSourceAsset valid = MakeValidModelSourceAsset("Models/Test.fbx", 17);
     REQUIRE_NOTHROW(ValidateModelSourceAsset(valid));
+
+    SECTION("MismatchedSkeletonSource")
+    {
+        ModelSourceAsset asset = valid;
+        asset.Skeleton.FileName = "Models/Other.fbx";
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("mismatched skeleton source"));
+    }
+
+    SECTION("NoSkeletonJoints")
+    {
+        ModelSourceAsset asset = valid;
+        asset.Skeleton.Joints.clear();
+        asset.Animations.clear();
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("no skeleton joints"));
+    }
+
+    SECTION("TooManySkeletonJoints")
+    {
+        ModelSourceAsset asset = valid;
+        asset.Animations.clear();
+
+        // Every extra joint is a unique child of the root, so only the joint-count limit can reject it
+        for (size_t i = asset.Skeleton.Joints.size(); i <= MODEL_ANIMATION_RIG_MAX_JOINTS; i++) {
+            string name = strex("Bone{}", i).str();
+            asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = name, .Hierarchy = {"Root", name}, .RestLocalTransform = mat44 {1.0f}});
+        }
+
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("too many skeleton joints"));
+    }
+
+    SECTION("AnimationSourceFileMismatch")
+    {
+        ModelSourceAsset asset = valid;
+        asset.Animations.front().FileName = "Models/Other.fbx";
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("mismatched source file"));
+    }
+
+    SECTION("CaseInsensitiveDuplicateAnimationNames")
+    {
+        ModelSourceAsset asset = valid;
+        ModelAnimationSource duplicate = asset.Animations.front();
+        duplicate.Name = "TAKE 001";
+        asset.Animations.emplace_back(std::move(duplicate));
+        CHECK_THROWS_WITH(ValidateModelSourceAsset(asset), Catch::Matchers::ContainsSubstring("duplicate animation names"));
+    }
 
     SECTION("NonFiniteRestTransform")
     {

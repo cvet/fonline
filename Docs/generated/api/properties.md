@@ -451,5 +451,5 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 <a id="symbol-script-property-player-lastcontrolledcritterid-6337cf5774"></a>
 - [`symbol-script-property-player-lastcontrolledcritterid-6337cf5774`](../../en/reference/script-api/properties.md#symbol-script-property-player-lastcontrolledcritterid-6337cf5774)
 
-<a id="symbol-script-property-player-logined-9f2819b1de"></a>
-- [`symbol-script-property-player-logined-9f2819b1de`](../../en/reference/script-api/properties.md#symbol-script-property-player-logined-9f2819b1de)
+<a id="symbol-script-property-player-loggedin-c4e453e0b5"></a>
+- [`symbol-script-property-player-loggedin-c4e453e0b5`](../../en/reference/script-api/properties.md#symbol-script-property-player-loggedin-c4e453e0b5)

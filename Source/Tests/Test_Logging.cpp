@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -106,7 +107,7 @@ TEST_CASE("Logging")
 
         SetLogCallback("sv", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured.emplace_back(message); });
 
-        string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders.
+        string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders
         WriteLog(string_view {raw});
 
         REQUIRE(captured.size() == 1);
@@ -180,7 +181,7 @@ TEST_CASE("Logging")
         CHECK(last_first.find("broadcast 7") != string::npos);
         CHECK(last_second.find("broadcast 7") != string::npos);
 
-        // Removing one key must leave the other intact.
+        // Removing one key must leave the other intact
         SetLogCallback("first", {});
         WriteLog("only second");
 
@@ -199,7 +200,7 @@ TEST_CASE("Logging")
         WriteLog("tagged");
 
         REQUIRE(captured.size() == 1);
-        // Default tagging adds [DD/MM/YY] [HH:MM:SS] before the message body.
+        // Default tagging adds [DD/MM/YY] [HH:MM:SS] before the message body
         CHECK(captured.front().starts_with('['));
         CHECK(captured.front().find("] [") != string::npos);
         CHECK(captured.front().find("tagged") != string::npos);

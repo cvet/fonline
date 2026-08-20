@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #pragma once
 
@@ -40,6 +41,12 @@
 FO_BEGIN_NAMESPACE
 
 constexpr int32_t MODEL_SPRITE_FRAME_SCALE = 2;
+constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION = 2048;
+
+// Frame size keys the intermediate render-target cache, so it is quantized to this grid: an envelope that
+// breathed with the animation missed that cache and created a GPU texture mid-frame
+constexpr int32_t MODEL_SPRITE_FRAME_ALIGNMENT = 16;
+static_assert(MODEL_SPRITE_FRAME_ALIGNMENT % MODEL_SPRITE_FRAME_SCALE == 0, "Frame alignment must keep frames aligned to the frame scale");
 
 struct ModelSpriteLayout
 {
@@ -59,9 +66,12 @@ struct ModelSpriteBoundsEnvelopeId
     bool FullFrame {};
 };
 
+// Rect is the drawn envelope the frame must keep; PoseRect is the posed model alone, and is what a fit measures.
+// World-space particles keep their size while the model shrinks, so a fit that included them would never converge
 struct ModelSpriteBounds
 {
     irect32 Rect {};
+    irect32 PoseRect {};
     isize32 RequiredFrameSize {};
     ipos32 Pivot {};
     ModelSpriteBoundsEnvelopeId EnvelopeId {};

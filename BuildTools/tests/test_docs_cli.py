@@ -63,11 +63,12 @@ class DocumentationCliTests(unittest.TestCase):
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_cli.py")
         self.assertEqual(model["program"], "buildtools.py")
-        self.assertEqual(model["summary"]["command_count"], 12)
-        self.assertEqual(model["summary"]["command_argument_count"], 24)
+        self.assertEqual(model["summary"]["command_count"], 13)
+        self.assertEqual(model["summary"]["command_argument_count"], 25)
         self.assertEqual(model["commands"][0]["id"], "cli.buildtools.command.env")
         self.assertEqual(model["commands"][-1]["name"], "prepare-host-workspace")
         self.assertIn("build-auxiliary", {command["name"] for command in model["commands"]})
+        self.assertIn("repair-checkout-case", {command["name"] for command in model["commands"]})
         self.assertNotIn("\n", model["usage"])
         prepare_workspace = next(
             command for command in model["commands"] if command["name"] == "prepare-host-workspace"

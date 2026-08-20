@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"1c9dc9f4ff3ecb6296fe5f8488b8fc9a218b58b9db37fdc215641fa18d2ffd94"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"222f747b0c5782a01c85bef560bec1c4fb38c8d5b0529194a0864719541e65bd"} -->
 
 # Конвейер запекания ресурсов
 
@@ -108,6 +108,17 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 - `Baker.h/.cpp` владеют общим контекстом, созданием baker-ов, data source, записью результатов и `MasterBaker`;
 - `BakingReport.h/.cpp` владеют DTO отчёта, потокобезопасной агрегацией, JSON-сериализацией и построением пути отчёта.
 
+### Имена output согласуются с именами, к которым обращались baker-ы
+
+`MasterBaker::BakeAllInternal()` согласует дерево output с фактическими именами, которые адресовали baker-ы, двумя шагами вокруг sweep устаревших файлов:
+
+1. `ReconcileStaleCasedOutputDirs()` обходит ожидаемые каталоги от мелких к глубоким и переименовывает различающиеся только регистром, записывая `Rename stale-cased dir <from> to <to>`. Каталоги идут первыми, чтобы последующие переименования файлов уже попадали в родителя с правильным именем.
+2. После sweep та же проверка применяется к файлам с сообщением `Rename stale-cased file <from> to <to>`.
+
+Это необходимо на файловых системах без учёта регистра: запись файла или создание каталога повторно использует старую directory entry, outdated sweep сравнивает пути без учёта регистра, а incremental bake может пропустить якобы актуальный artifact. Runtime lookup остаётся точным, поэтому старое написание превращается в неразрешимый ресурс.
+
+Согласование выполняется один раз за bake по уже созданным output, не добавляет работу к каждой записи, не удаляет и не пересоздаёт содержимое и исправляет даже пропущенные как up-to-date artifacts. На case-sensitive файловой системе старое имя удаляет обычный sweep. Контракт закреплён тестами `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` и `DiskFileSystemNameCase`.
+
 ## Точки входа CMake
 
 `BuildTools/cmake/helpers/Build.cmake` экспортирует `AddBakingTarget` как проверяемый helper project interface. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` использует его для создания стандартных команд запекания после появления application targets.
@@ -178,7 +189,9 @@ last complete-corpus report = Baking/Baking.full.report.json
 
 Предыдущий обычный отчёт удаляется до запуска. После завершения `MasterBaker` ставит `success` или `failed`, сериализует всё накопленное и пишет файл даже при ошибке подготовки ресурсов или baker-а. `failureMessage` содержит текст исключения, а зарегистрированные, но не достигнутые baker entries остаются `not_run`. Ошибка записи отчёта делает неуспешным сам `BakeAll()`, поэтому успешный проход всегда имеет соответствующий отчёт.
 
-Incremental и failed проходы не перезаписывают `Baking.full.report.json`; последний полный corpus snapshot остаётся доступен во время обычной разработки. Оба имени исключены из cleanup устаревших runtime resources. Отчёт записывается прямо в корень `BakeOutput` после cleanup, не монтируется в baked `FileSystem`, не регистрируется как output и не доставляется runtime.
+Incremental и failed проходы не перезаписывают `Baking.full.report.json`; последний полный corpus snapshot остаётся доступен во время обычной разработки.
+
+Cleanup устаревших runtime resources пропускает любой `*.report.json` непосредственно в корне `BakeOutput` (`REPORT_FILE_SUFFIX` в `Baker.h`). Суффикс охватывает два стандартных отчёта и проектные диагностические artifacts рядом с ними. Runtime resources всегда лежат ниже каталога pack, поэтому root-only правило не может сохранить действительно устаревший запечённый ресурс. Отчёт записывается прямо в корень `BakeOutput` после cleanup, не монтируется в baked `FileSystem`, не регистрируется как output и не доставляется runtime.
 
 Поля верхнего уровня:
 
@@ -339,7 +352,13 @@ Effekseer source должен быть on-disk XML проекта Editor 1.80.5,
 
 Dependency snapshot хранится в `<BakeOutput>/.baker-cache/Effekseer/<pack>/<output>.deps` и включает path/size/write time проекта и каждого dependency. Он привязан к выбранному physical source, корректно работает с overlays и dirties только ссылающиеся effects. Missing/stale snapshot повторно анализирует project; stale physical output удаляется только для соответствующего effect. `.efkmodel` является runtime dependency и доставляется обычным raw-copy policy. Authored `.efk` запрещён, изменение compiler требует force bake.
 
-`LFMODMSH` schema `1` с flags `0` содержит mesh-only hierarchy/bind/drawables, но не clips/TRS. Один codec используется baker/client, legacy headerless files, unknown schema/flags, truncation и trailing data отклоняются. Counts preflight-ятся до allocation; indices, palettes, weights, hierarchy depth (1024 joints total, 128 parent chain) и finite values строго проверяются. Schema 1 остаётся native-endian для little-endian targets; big-endian потребует новой схемы.
+`LFMODMSH` schema `1` с flags `0` содержит mesh-only hierarchy/bind/drawables, но не clips/TRS. Один codec используется baker/client, legacy headerless files, unknown schema/flags, truncation и trailing data отклоняются. Counts preflight-ятся до allocation; indices, palettes, weights, hierarchy depth (1024 joints total, 128 parent chain) и finite values строго проверяются.
+
+`ModelMeshBaker` отклоняет mesh node с отрицательным determinant `geometry_to_world`. Такой node экспортирован с отрицательным scale: отражение меняет ориентацию поверхности, поэтому normals и winding треугольников расходятся с lighting и back-face culling. Baker не скрывает дефект source переворотом normals/winding; mirrored object нужно заморозить обратно к положительному scale в authoring tool.
+
+`ModelInfoBaker` также проверяет размер напрямую присоединённой модели: ссылки `Attach` на bare `.fbx`, а не на `.fo3d`. У direct attachment нет description-level коррекции scale, поэтому maximum-axis extent статических bounds должен лежать в диапазоне `Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`. Ошибка называет файл, измеренный extent и limit. Attachments через `.fo3d` освобождены от проверки, потому что их description может задать явный scale.
+
+Schema 1 остаётся native-endian для little-endian targets; big-endian потребует новой схемы.
 
 Перед записью `ModelMeshBaker` проверяет matrices, attributes, colors, weights/offsets и limits; top-four positive influences нормализуются и повторно проверяются. Ошибка всегда называет source/node/field/element/component, invalid values не clamp-ятся. После `ufbx_generate_indices` pinned meshoptimizer v1.2 (`9d9890c73011d75920af614485296d1e03e95448`) выполняет vertex-cache и vertex-fetch reorder во временных buffers. Input/output ranges проверяются до commit; allocator использует `SafeAllocator`. Это lossless reorder без смены schema. Overdraw, quantization, codecs, LOD, meshlets и packed layout требуют отдельной измеренной schema 2.
 

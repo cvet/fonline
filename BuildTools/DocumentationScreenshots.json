@@ -13,8 +13,8 @@
       "caption": "Mapper capture from the minimal multiplayer example. Particle Preview selects the baked Documentation.spk resource, places it at the view center, and exposes deterministic scale, offset, seed, and prewarm controls beside the normal Workspace and Controls windows.",
       "width": 1280,
       "height": 800,
-      "sha256": "f5834f6fbba987d5b9eaa8108437ea5c0ff1a29a2e0aeb73b05871bdec82f404",
-      "captured_on": "2026-07-31",
+      "sha256": "75cb718080bcd3ab657d1885cdb571b39df6680a000e0947e2be8229f0c045e0",
+      "captured_on": "2026-08-20",
       "license": "MIT",
       "capture": {
         "host": "Windows 11 x64",
@@ -31,12 +31,14 @@
       "source_paths": [
         "Source/Frontend/Application.cpp",
         "Source/Frontend/Application.h",
+        "Source/Common/Settings.inc",
         "Source/Scripting/MapperGlobalScriptMethods.cpp",
         "Source/Tools/Mapper.cpp",
         "Source/Tools/Mapper.h",
         "Source/Tools/ParticleEditor.cpp",
         "Examples/MinimalMultiplayer/CMakeLists.txt",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/generate_config.py",
         "Examples/MinimalMultiplayer/Particles/Documentation.spark",
         "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
       ],
@@ -55,25 +57,26 @@
       "caption": "The Mapper opens the authored Documentation.spark source, not the baked .spk output. The editor combines a live preview with adding, removing, and naming modes plus the editable System and Group object hierarchy.",
       "width": 1280,
       "height": 800,
-      "sha256": "168ed7aecf787293778be0e844590925227d76ec52583c07065aeb7c7bf5f9be",
-      "captured_on": "2026-07-31",
+      "sha256": "61292f3d05fd652235a6afad0e14b2c862d6bb879319a2379d2073140d89a006",
+      "captured_on": "2026-08-20",
       "license": "MIT",
       "capture": {
         "host": "Windows 11 x64",
         "renderer": "Direct3D 11, feature level 11.1",
         "project": "Examples/MinimalMultiplayer",
         "viewport": "1280x800",
-        "command": "Binaries/Mapper-Windows-win64/FOMM_Mapper.exe -ApplyConfig ../../FOnlineMinimalMultiplayer.fomain -ApplySubConfig MapperDocumentationCapture",
+        "command": "Binaries/Mapper-Windows-win64/FOMM_Mapper.exe -ApplyConfig ../../FOnlineMinimalMultiplayer.fomain -ApplySubConfig MapperDocumentationSparkEditorCapture",
         "interaction_steps": [
           "Build ForceBakeResources and FOMM_Mapper in Release configuration.",
-          "Open Windows, choose SPARK particle editor, and select Documentation.spark in the source browser.",
-          "Wait for the source editor and preview to render, then let MapperCapture request the full-window TGA.",
+          "Launch the MapperDocumentationSparkEditorCapture subconfig; Mapper.SparkEditorSource opens Documentation.spark directly.",
+          "Wait for the source editor and preview to render, then let MapperCapture request the full-window TGA without interacting with the restored layout.",
           "Convert MapperDocumentationCapture.tga to PNG without resizing, cropping, or color adjustment."
         ]
       },
       "source_paths": [
         "Source/Common/SpriteResource.cpp",
         "Source/Common/SpriteResource.h",
+        "Source/Common/Settings.inc",
         "Source/Frontend/Application.cpp",
         "Source/Scripting/MapperGlobalScriptMethods.cpp",
         "Source/Tools/Mapper.cpp",
@@ -81,6 +84,7 @@
         "Source/Tools/SparkParticleEditor.cpp",
         "Examples/MinimalMultiplayer/CMakeLists.txt",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/generate_config.py",
         "Examples/MinimalMultiplayer/Particles/Documentation.spark",
         "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
       ],

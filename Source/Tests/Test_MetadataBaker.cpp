@@ -4,6 +4,32 @@
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -696,10 +722,10 @@ namespace TestRefTypeProps
         const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
         REQUIRE(route_snapshot_type.IsRefType);
         REQUIRE(route_snapshot_type.RefType != nullptr);
-        REQUIRE(route_snapshot_type.RefType->FieldsRegistrator != nullptr);
-        auto steps_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Steps");
-        auto tags_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Tags");
-        auto note_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Note");
+        REQUIRE(route_snapshot_type.RefType->FieldsRegistrar != nullptr);
+        auto steps_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Steps");
+        auto tags_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Tags");
+        auto note_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Note");
         REQUIRE(static_cast<bool>(steps_prop));
         REQUIRE(static_cast<bool>(tags_prop));
         REQUIRE(static_cast<bool>(note_prop));
@@ -739,11 +765,11 @@ namespace TestRefTypeEntityProps
         meta.RegisterEnumGroup("CritterProperty", "uint16", {{"None", 0}});
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
-        auto critter_registrator = meta.GetPropertyRegistrator("Critter");
-        REQUIRE(static_cast<bool>(critter_registrator));
+        auto critter_registrar = meta.GetPropertyRegistrar("Critter");
+        REQUIRE(static_cast<bool>(critter_registrar));
 
-        auto snapshot_prop = critter_registrator->FindProperty("Snapshot");
-        auto snapshots_prop = critter_registrator->FindProperty("Snapshots");
+        auto snapshot_prop = critter_registrar->FindProperty("Snapshot");
+        auto snapshots_prop = critter_registrar->FindProperty("Snapshots");
 
         REQUIRE(static_cast<bool>(snapshot_prop));
         REQUIRE(static_cast<bool>(snapshots_prop));
@@ -753,8 +779,8 @@ namespace TestRefTypeEntityProps
         CHECK(snapshots_prop->GetViewTypeName() == "RouteSnapshot[]");
         CHECK(snapshots_prop->IsBaseTypeRefType());
         CHECK(snapshots_prop->IsArray());
-        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Steps")));
-        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Note")));
+        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrar->FindProperty("Steps")));
+        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrar->FindProperty("Note")));
     }
 
     SECTION("serializes entity component properties")
@@ -847,14 +873,14 @@ namespace TestNestedRefTypeProps
         REQUIRE(beta_type.IsRefType);
         REQUIRE(alpha_type.RefType != nullptr);
         REQUIRE(beta_type.RefType != nullptr);
-        REQUIRE(alpha_type.RefType->FieldsRegistrator != nullptr);
-        REQUIRE(beta_type.RefType->FieldsRegistrator != nullptr);
+        REQUIRE(alpha_type.RefType->FieldsRegistrar != nullptr);
+        REQUIRE(beta_type.RefType->FieldsRegistrar != nullptr);
 
-        auto dependency_prop = alpha_type.RefType->FieldsRegistrator->FindProperty("Dependency");
+        auto dependency_prop = alpha_type.RefType->FieldsRegistrar->FindProperty("Dependency");
         REQUIRE(static_cast<bool>(dependency_prop));
         CHECK(dependency_prop->GetViewTypeName() == "Beta");
         CHECK(dependency_prop->IsBaseTypeRefType());
-        CHECK(static_cast<bool>(beta_type.RefType->FieldsRegistrator->FindProperty("Value")));
+        CHECK(static_cast<bool>(beta_type.RefType->FieldsRegistrar->FindProperty("Value")));
     }
 
     SECTION("rejects legacy ref type layout syntax")
@@ -978,7 +1004,7 @@ namespace TestRefTypeComponent
         auto ref_type_it = tags.find("RefType");
 
         REQUIRE(ref_type_it != tags.end());
-        // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating.
+        // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating
         CHECK(std::ranges::count(ref_type_it->second, vector<string> {"RouteSnapshot", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"}) == 1);
     }
 

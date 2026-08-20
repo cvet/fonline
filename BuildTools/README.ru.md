@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"50e5f1eb40bd558008f7db282fff3bca1fa587d9ba695cd17d033cc8bbcf1711"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"9c3ca2e8c4d3bbd080832dfbf3332ff542c9c5428d0461cdf9a7c60a0467ed99"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -464,6 +464,30 @@ Wrapper feature `windows-cross` и прямая команда `prepare-workspac
 сохраняет library paths `x86` из xwin и принудительно использует
 `clang-cl --target=i686-pc-windows-msvc`, чтобы compiler probes CMake не
 создавали x64 objects для x86 link.
+
+## Исправление регистра путей checkout
+
+```bash
+python3 Engine/BuildTools/buildtools.py repair-checkout-case
+python3 Engine/BuildTools/buildtools.py repair-checkout-case --check
+```
+
+Команда рекурсивно, включая submodules, переименовывает элементы рабочего
+дерева, чей регистр на диске отличается от имени в git. Case-only rename
+корректно записывается в index, но на файловой системе без учёта регистра git
+переписывает только имена файлов: существующий каталог навсегда сохраняет старое
+написание. Поэтому повторно используемый checkout продолжает отдавать устаревшее
+имя, хотя поиск ресурсов и include остаётся регистрозависимым.
+
+Симптом проявляется далеко от причины: присутствующий на диске файл считается
+отсутствующим при baking. Обычно страдают долгоживущие checkout на собственных
+Windows runners; свежий clone не воспроизводит проблему. Поэтому CI на таких
+runners должен выполнять команду сразу после checkout.
+
+`--check` только сообщает о расхождении и завершается с ненулевым кодом, не
+изменяя рабочее дерево. Если index одновременно содержит один путь в двух
+вариантах регистра, команда называет оба и отказывается что-либо исправлять:
+это неоднозначный tracked collision, требующий решения владельца.
 
 ## Отладочный workflow Web в Windows
 

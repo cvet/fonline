@@ -1315,7 +1315,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "tutorial", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Examples/MinimalMultiplayer/README.md",
-      "sources": ["Examples/MinimalMultiplayer/.gitignore", "Examples/MinimalMultiplayer/CMakeLists.txt", "Examples/MinimalMultiplayer/CMakePresets.json", "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain", "Examples/MinimalMultiplayer/generate_config.py", "Examples/MinimalMultiplayer/package-smoke.json", "Examples/MinimalMultiplayer/verify_tutorial_package.py", "Examples/MinimalMultiplayer/Content/StarterContent.fopro", "Examples/MinimalMultiplayer/Maps/TutorialMap.fomap", "Examples/MinimalMultiplayer/Scripts/Tutorial.fos", "Examples/MinimalMultiplayer/run_tutorial_smoke.py", "Examples/MinimalMultiplayer/validate.py", "Examples/MinimalMultiplayer/assets/provenance.json", "Docs/en/tutorials/first-client.md", "Docs/en/tutorials/first-content.md", "Docs/en/tutorials/first-test.md", "Docs/en/how-to/release/packaging.md"]
+      "sources": ["Examples/MinimalMultiplayer/.gitignore", "Examples/MinimalMultiplayer/CMakeLists.txt", "Examples/MinimalMultiplayer/CMakePresets.json", "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain", "Examples/MinimalMultiplayer/generate_config.py", "Examples/MinimalMultiplayer/package-smoke.json", "Examples/MinimalMultiplayer/verify_tutorial_package.py", "Examples/MinimalMultiplayer/Content/StarterContent.fopro", "Examples/MinimalMultiplayer/Maps/TutorialMap.fomap", "Examples/MinimalMultiplayer/Scripts/Tutorial.fos", "Examples/MinimalMultiplayer/SourceExt/ServerExtension.cpp", "Examples/MinimalMultiplayer/run_tutorial_smoke.py", "Examples/MinimalMultiplayer/validate.py", "Examples/MinimalMultiplayer/assets/provenance.json", "Docs/en/tutorials/first-client.md", "Docs/en/tutorials/first-content.md", "Docs/en/tutorials/first-test.md", "Docs/en/how-to/release/packaging.md"]
     },
     "Examples/ContentShowcase/README.md": {
       "id": "content-showcase-readme",
@@ -2315,7 +2315,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "content-data", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/content/prototype-format.md",
-      "sources": ["BuildTools/PrototypeFormatInterface.json", "BuildTools/docs_prototype_format.py", "Source/Common/Settings.inc", "Source/Common/ConfigFile.cpp", "Source/Common/Properties.h", "Source/Common/Properties.cpp", "Source/Common/PropertiesSerializator.cpp", "Source/Common/EntityProtos.cpp", "Source/Common/ProtoManager.cpp", "Source/Tools/ProtoBaker.cpp", "Source/Tools/ProtoTextBaker.cpp", "Source/Tests/Test_ConfigFile.cpp", "Source/Tests/Test_Properties.cpp", "Source/Tests/Test_EntityProtos.cpp", "Source/Tests/Test_ProtoManager.cpp", "Source/Tests/Test_ProtoBaker.cpp", "Docs/en/reference/prototype-format/index.md"]
+      "sources": ["BuildTools/PrototypeFormatInterface.json", "BuildTools/docs_prototype_format.py", "Source/Common/Settings.inc", "Source/Common/ConfigFile.cpp", "Source/Common/Properties.h", "Source/Common/Properties.cpp", "Source/Common/PropertiesSerializer.cpp", "Source/Common/EntityProtos.cpp", "Source/Common/ProtoManager.cpp", "Source/Tools/ProtoBaker.cpp", "Source/Tools/ProtoTextBaker.cpp", "Source/Tests/Test_ConfigFile.cpp", "Source/Tests/Test_Properties.cpp", "Source/Tests/Test_EntityProtos.cpp", "Source/Tests/Test_ProtoManager.cpp", "Source/Tests/Test_ProtoBaker.cpp", "Docs/en/reference/prototype-format/index.md"]
     },
     "Docs/PrototypeFormat.md": {
       "id": "legacy-prototype-format-guide-route",
@@ -2379,7 +2379,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "content-data", "state": "current", "disposition": "retain", "target": "Docs/en/reference/prototype-format/validation.md",
-      "sources": ["BuildTools/PrototypeFormatInterface.json", "Source/Common/Properties.cpp", "Source/Common/PropertiesSerializator.cpp", "Source/Tools/ProtoBaker.cpp", "Docs/generated/prototype-format.json"]
+      "sources": ["BuildTools/PrototypeFormatInterface.json", "Source/Common/Properties.cpp", "Source/Common/PropertiesSerializer.cpp", "Source/Tools/ProtoBaker.cpp", "Docs/generated/prototype-format.json"]
     },
     "Docs/generated/prototype-format/validation.md": {
       "id": "legacy-generated-prototype-format-validation-route",

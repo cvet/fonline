@@ -72,6 +72,14 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 
 `mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
 
+## Map camera projection
+
+The map camera uses a world frame of `+X` right, `+Y` up, and `+Z` map-south, with one world unit equal to one pixel of hex spacing. Its parallel projection tilts the world around X by `MAP_CAMERA_ANGLE` (`arcsin(sqrt(3)/4)`): ground northing is foreshortened by `sin(angle)` and elevation by `cos(angle)`. Anchoring a ground point at `z = legacy_y / sin(angle)` makes `ProjectWorldToMap` reproduce the legacy `GetHexPos` position at elevation zero.
+
+`ProjectWorldToMap` is the reference form without scroll or zoom. It returns map-space pixels in `.x/.y` and view depth in `.z`; larger depth is nearer the camera. Its `(.y, .z)` result is an orthonormal rotation of world `(Z, Y)`, not a shear.
+
+`MakeMapCameraView` is the GPU form with scroll, zoom, and a `yaw_deg` orbit around the vertical axis. At zero yaw it reproduces `(ProjectWorldToMap(world).xy - scroll) * zoom` with unchanged depth. The backend ortho composes over this matrix, so sprites, 3D models, and particles share one world-to-clip transform. Map sprites also write world depth with `DepthFunc = LessEqual`; CPU painter order still handles blended layers while the shared depth buffer resolves cross-type occlusion. `Test_Geometry.cpp` pins both projection forms against each other and against `GetHexPos`.
+
 ## Geometry helper responsibilities
 
 `GeometryHelper` is a static utility class. It owns coordinate projection and directional math such as:

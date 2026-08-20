@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
 
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"928bd68edd77d2da60a754b9181bfe263540e9513f4e726696706115b8c5ff06"} -->
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"2f4f2f2056d5ac10a748a0b5b5aa17c3bbdaba430465a66130845fb8c14fd587"} -->
 
 # Формат прототипов
 
@@ -41,7 +41,7 @@ permalink: /Docs/ru/how-to/content/prototype-format.html
 - `Source/Common/ConfigFile.cpp`
 - `Source/Common/Properties.h`
 - `Source/Common/Properties.cpp`
-- `Source/Common/PropertiesSerializator.cpp`
+- `Source/Common/PropertiesSerializer.cpp`
 - `Source/Common/EntityProperties.h`
 - `Source/Common/EntityProtos.cpp`
 - `Source/Common/ProtoManager.cpp`
@@ -153,7 +153,7 @@ Baker объединяет:
 
 ## Текстовые значения и ссылки
 
-Авторитетным источником для значений служит `PropertiesSerializator`. Он отклоняет неверные коллекции, переполнение целых чисел, недопустимые значения enum, неконечные числа с плавающей точкой и неразрешённые ссылки. Boolean принимает объявленную текстовую форму или числовые `0`/`1`; нельзя судить о допустимости чисел и enum по более свободному parser конфигурации.
+Авторитетным источником для значений служит `PropertiesSerializer`. Он отклоняет неверные коллекции, переполнение целых чисел, недопустимые значения enum, неконечные числа с плавающей точкой и неразрешённые ссылки. Boolean принимает объявленную текстовую форму или числовые `0`/`1`; нельзя судить о допустимости чисел и enum по более свободному parser конфигурации.
 
 Свойства `FixedType` и ссылок на прототипы разрешаются через метаданные и правила миграции. Ссылка обязана называть существующую цель, кроме nullable-свойства с пустым авторским значением.
 

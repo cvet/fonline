@@ -132,12 +132,11 @@ class MetadataAndEssentialsDocumentationTests(unittest.TestCase):
         umbrella = self._read("Source/Essentials/Essentials.h")
         guide = self._read(ESSENTIALS_PATH)
         include_order = re.findall(r'^#include "([A-Za-z0-9_.]+)"$', umbrella, re.MULTILINE)
-        self.assertEqual(len(include_order), 23)
+        self.assertEqual(len(include_order), 24)
 
         section = guide.split("## Include and dependency model", 1)[1].split("\n## ", 1)[0]
-        documented_order: list[str] = []
-        for match in re.finditer(r"^\d+\. (?P<label>.*?) \u2014 ", section, re.MULTILINE):
-            documented_order.extend(re.findall(r"`([A-Za-z0-9_.]+\.h)`", match.group("label")))
+        order_line = next(line for line in section.splitlines() if " \u2192 " in line)
+        documented_order = [f"{name}.h" for name in re.findall(r"`([A-Za-z0-9_]+)`", order_line)]
         self.assertEqual(documented_order, include_order)
 
     def test_essentials_source_inventory_matches_cmake_and_the_guide(self) -> None:

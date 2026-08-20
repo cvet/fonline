@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -65,7 +66,7 @@ TEST_CASE("Platform")
 #if FO_WINDOWS
         CHECK(pid_str != "0");
 #elif FO_LINUX || FO_MAC
-        const std::string runtime_pid = std::to_string(::getpid());
+        std::string runtime_pid = std::to_string(::getpid());
         CHECK(pid_str == runtime_pid.c_str());
 #else
         CHECK(pid_str == "0");
@@ -102,6 +103,36 @@ TEST_CASE("Platform")
         Platform::InfoLog("platform test log");
         Platform::SetThreadName("platform-test-thread");
         SUCCEED();
+    }
+
+    SECTION("ProcessMemoryUsageIsReported")
+    {
+        size_t working_set = Platform::GetProcessMemoryUsage();
+        size_t private_usage = Platform::GetProcessPrivateMemoryUsage();
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
+        // A live process always occupies memory, so both readings must be non-zero on a real platform
+        CHECK(working_set > 0);
+        CHECK(private_usage > 0);
+#else
+        CHECK(working_set == 0);
+        CHECK(private_usage == 0);
+#endif
+    }
+
+    SECTION("ModuleLifecycleResolvesAndReleases")
+    {
+        // The already-loaded process image is the one module every platform can name without a fixture
+        nptr<void> self_module = Platform::LoadModule({});
+
+        if (self_module) {
+            CHECK(Platform::GetFuncAddr(self_module, "malloc") != nullptr);
+            CHECK(Platform::GetFuncAddr(self_module, "no_such_symbol_for_test") == nullptr);
+            Platform::UnloadModule(self_module);
+        }
+
+        // Unloading nothing is a no-op rather than a failure
+        Platform::UnloadModule(nullptr);
     }
 
     SECTION("CpuUsageSnapshotIsWellFormed")
@@ -144,7 +175,7 @@ TEST_CASE("Platform")
         auto restore_env = [&set_env](const char* name, const optional<string>& saved) { set_env(name, saved.has_value() ? saved->c_str() : ""); };
 
         // The resolver reads the OS user-data env vars directly (no SDL/shell32). Drive each platform's
-        // primary var and its documented fallback, capture the results, then restore the real env.
+        // primary var and its documented fallback, capture the results, then restore the real env
 #if FO_WINDOWS
         auto saved_local = save_env("LOCALAPPDATA");
         auto saved_roaming = save_env("APPDATA");
@@ -175,18 +206,18 @@ TEST_CASE("Platform")
 
         CHECK(from_home == strex(home_dir).combine_path("Library/Application Support").str());
 #else
-        const auto saved_xdg = save_env("XDG_DATA_HOME");
-        const auto saved_home = save_env("HOME");
+        auto saved_xdg = save_env("XDG_DATA_HOME");
+        auto saved_home = save_env("HOME");
 
-        const auto xdg_dir = strex("/tmp").combine_path("xdg_data").str();
-        const auto home_dir = strex("/home").combine_path("test").str();
+        string xdg_dir = strex("/tmp").combine_path("xdg_data").str();
+        string home_dir = strex("/home").combine_path("test").str();
 
         set_env("XDG_DATA_HOME", xdg_dir.c_str());
-        const auto from_xdg = Platform::GetUserDataBase();
+        string from_xdg = Platform::GetUserDataBase();
 
         set_env("XDG_DATA_HOME", "");
         set_env("HOME", home_dir.c_str());
-        const auto from_home = Platform::GetUserDataBase();
+        string from_home = Platform::GetUserDataBase();
 
         restore_env("XDG_DATA_HOME", saved_xdg);
         restore_env("HOME", saved_home);

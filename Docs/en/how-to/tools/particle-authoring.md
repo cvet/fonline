@@ -111,6 +111,17 @@ Select a source to open one editor per asset path. Selecting an already-open
 source brings its editor to the front instead of creating a second mutable
 copy.
 
+For deterministic automation or documentation capture, set the authored
+source explicitly:
+
+```ini
+Mapper.SparkEditorSource = Documentation.spark
+```
+
+Mapper validates the value against raw `.spark` inputs and fails startup with
+a source-specific error when the asset is absent. The setting opens the editor
+directly without also leaving the source browser visible.
+
 If a `.spk` appears but its `.spark` source does not, the project has lost the
 editable authority or configured the wrong input roots. Restore the source;
 do not reverse-engineer the baked blob as the normal workflow.

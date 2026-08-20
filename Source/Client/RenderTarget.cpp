@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -89,6 +89,7 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool
 
     FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
     FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
+    FO_VERIFY_AND_THROW(size.width <= AppRender::MAX_ATLAS_WIDTH && size.height <= AppRender::MAX_ATLAS_HEIGHT, "Render target exceeds the device texture limit", size.width, size.height, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
 
     _flush();
 
@@ -164,7 +165,7 @@ void RenderTargetManager::PopRenderTarget()
         _flush();
 
         // Bind the target that will become the new stack top (the entry under the current top) before
-        // the pop, so a SetRenderTarget throw leaves both _rtStack and the backend unchanged.
+        // the pop, so a SetRenderTarget throw leaves both _rtStack and the backend unchanged
         if (_rtStack.size() >= 2) {
             _render->SetRenderTarget(_rtStack[_rtStack.size() - 2]->_texture);
         }

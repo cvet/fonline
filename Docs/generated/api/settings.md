@@ -220,6 +220,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-mapper-particlepreviewseed-db72c9569f"></a>
 - [`symbol-setting-client-mapper-particlepreviewseed-db72c9569f`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-particlepreviewseed-db72c9569f)
 
+<a id="symbol-setting-client-mapper-sparkeditorsource-66cc25d025"></a>
+- [`symbol-setting-client-mapper-sparkeditorsource-66cc25d025`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-sparkeditorsource-66cc25d025)
+
 <a id="symbol-setting-client-mapper-splittilescollection-78fa7b7987"></a>
 - [`symbol-setting-client-mapper-splittilescollection-78fa7b7987`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-splittilescollection-78fa7b7987)
 
@@ -500,6 +503,12 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-baking-mapperresourceentries-5b8b1a3ad9"></a>
 - [`symbol-setting-common-baking-mapperresourceentries-5b8b1a3ad9`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-mapperresourceentries-5b8b1a3ad9)
 
+<a id="symbol-setting-common-baking-modelattachmentmaxextent-fe9708a7d0"></a>
+- [`symbol-setting-common-baking-modelattachmentmaxextent-fe9708a7d0`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-modelattachmentmaxextent-fe9708a7d0)
+
+<a id="symbol-setting-common-baking-modelattachmentminextent-6c1ec343b4"></a>
+- [`symbol-setting-common-baking-modelattachmentminextent-6c1ec343b4`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-modelattachmentminextent-6c1ec343b4)
+
 <a id="symbol-setting-common-baking-platformbinaries-d9858a4503"></a>
 - [`symbol-setting-common-baking-platformbinaries-d9858a4503`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-platformbinaries-d9858a4503)
 
@@ -619,6 +628,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-network-artificallags-5bac40b9d5"></a>
 - [`symbol-setting-common-network-artificallags-5bac40b9d5`](../../en/reference/script-api/settings.md#symbol-setting-common-network-artificallags-5bac40b9d5)
+
+<a id="symbol-setting-common-network-artificallagsjitter-043dcfec7b"></a>
+- [`symbol-setting-common-network-artificallagsjitter-043dcfec7b`](../../en/reference/script-api/settings.md#symbol-setting-common-network-artificallagsjitter-043dcfec7b)
 
 <a id="symbol-setting-common-network-compatibilityversion-62093d119c"></a>
 - [`symbol-setting-common-network-compatibilityversion-62093d119c`](../../en/reference/script-api/settings.md#symbol-setting-common-network-compatibilityversion-62093d119c)

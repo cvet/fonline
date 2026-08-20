@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,9 +47,8 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
     // Load from file
     ConfigFile map_data(buf);
 
-    // Walk the file in order: a [ProtoMap] anchor declares a map (named by its $Name, or by the
-    // file when it carries none) and owns the nested sections that follow it. A nested prefix is
-    // either the CONTEXT_PREFIX token, meaning the anchor above, or an explicit map name
+    // A [ProtoMap] anchor owns the nested sections that follow it, so a nested prefix is either the
+    // CONTEXT_PREFIX token for that anchor or an explicit map name
     string file_stem = strex(file_name).extract_file_name().erase_file_extension().str();
 
     struct NestedMapSection
@@ -220,9 +219,8 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
     }
 }
 
-// Enumerates the maps a file declares; an empty result means the file is not a map container.
-// This doubles as the map-file detector: map files are recognized by their [ProtoMap] anchors,
-// not by a dedicated extension.
+// Doubles as the map-file detector, since map files are recognized by their [ProtoMap] anchors rather
+// than by an extension: an empty result means the file is not a map container
 auto MapLoader::EnumerateMaps(string_view file_name, const string& buf) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -225,6 +226,41 @@ TEST_CASE("TextPack")
         CHECK(pack.GetStr(key, 1) == "Beta");
         CHECK(pack.GetStr(key, 2).empty());
         CHECK(pack.GetStr(MakeKey("Dialogs", "42"), 0).empty());
+    }
+
+    SECTION("RandomVariantPickIsUniformAcrossTheWholeSet")
+    {
+        // An off-by-one in the pick gives the first line two of the set's shares, which a player hears
+        // as a character repeating one phrase, so the distribution itself is this lookup's contract
+        constexpr size_t VARIANT_COUNT = 4;
+        constexpr size_t SAMPLE_COUNT = 20000;
+        constexpr size_t EXPECTED = SAMPLE_COUNT / VARIANT_COUNT;
+        // Generous enough that a fair generator never trips it, tight enough to catch the doubled first share
+        constexpr size_t TOLERANCE = EXPECTED / 2;
+
+        TextPack pack(&TestHashes);
+        auto key = MakeKey("Dialogs", "Bark");
+        vector<string> variants {"Alpha", "Beta", "Gamma", "Delta"};
+
+        for (const auto& variant : variants) {
+            pack.AddStr(key, string_view {variant});
+        }
+
+        REQUIRE(pack.GetStrCount(key) == VARIANT_COUNT);
+
+        map<string, size_t> hits;
+        for (size_t i = 0; i < SAMPLE_COUNT; i++) {
+            hits[string(pack.GetStr(key))]++;
+        }
+
+        REQUIRE(hits.size() == VARIANT_COUNT);
+
+        for (const auto& variant : variants) {
+            size_t count = hits[variant];
+            INFO("variant " << variant << " picked " << count << " times, expected about " << EXPECTED);
+            CHECK(count > EXPECTED - TOLERANCE);
+            CHECK(count < EXPECTED + TOLERANCE);
+        }
     }
 
     SECTION("MalformedLoadFromStringReportsFailureAfterKeepingValidEntries")

@@ -30,6 +30,10 @@ Continue with the [canonical English reference](en/reference/settings/configurat
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md).
 
+## Low-level disk access
+
+Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#low-level-disk-access).
+
 ## Cache storage
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md).

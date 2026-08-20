@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -66,6 +66,7 @@ public:
     [[nodiscard]] auto IsDirectDraw() const -> bool override;
     [[nodiscard]] auto GetModel() -> ptr<ModelInstance>;
     [[nodiscard]] auto IsPlaying() const -> bool override;
+    [[nodiscard]] auto GetPoseRect() const noexcept -> irect32 { return _poseRect; }
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
@@ -102,6 +103,9 @@ private:
     AtlasType _atlasType {};
     isize32 _frameSize {};
     irect32 _cropRect {};
+    // Extent of the geometry posed for the last drawn frame, on the sprite's draw origin like the draw and view
+    // rects — the only one of the three that answers how much space the critter occupies right now
+    irect32 _poseRect {};
     optional<isize32> _requestedFrameSize {};
     bool _boundedCropEstablished {};
     optional<ModelSpriteBoundsEnvelopeId> _cropEnvelopeId {};

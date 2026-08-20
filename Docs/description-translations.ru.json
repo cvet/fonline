@@ -1966,6 +1966,18 @@
           "source_sha256": "c1f7622e66d90f0d9c8bb4758215ba60d1207080cfb07b42fe73a25f4b65d79d",
           "translation": "После Layer или Value задайте Root, Attach либо AttachParticles до transforms, materials, disables или cuts."
         },
+        "/rules/@id=model-format.rule.source-units-and-mirroring/name": {
+          "source_sha256": "627152e397720f2522f022a66e1c5efbc83e60c99ead757b2782a38720c75adb",
+          "translation": "Положительный scale и world units Engine"
+        },
+        "/rules/@id=model-format.rule.source-units-and-mirroring/rationale": {
+          "source_sha256": "b6ae460e7c16a9e05131ad1768af7c98297681f8b986c89def7e4b34a0c439f8",
+          "translation": "Отрицательные transforms инвертируют winding и normals, а чужой масштаб units создаёт невозможные model-sprite frames. Отказ bake оставляет оба дефекта у authored source."
+        },
+        "/rules/@id=model-format.rule.source-units-and-mirroring/requirement": {
+          "source_sha256": "6697c0072abf56ce23ebaaf133f9356d1f07fd0aa6ff658bf501b4711fe9f5ad",
+          "translation": "До export заморозьте mirrored mesh nodes к положительному transform и держите direct FBX/OBJ attachments в диапазоне Baking.ModelAttachmentMinExtent .. Baking.ModelAttachmentMaxExtent. Если нужен явный description-level scale, используйте child .fo3d."
+        },
         "/rules/@id=model-format.rule.template-files/name": {
           "source_sha256": "e4716378197ee71e5d60016c1510173426caa2fae29a21a60aee521c2bec89b8",
           "translation": "Имена templates"
@@ -2077,8 +2089,8 @@
           "translation": "Создаёт layer-selected child-model link. Path относителен к файлу с directive."
         },
         "/tokens/@id=model-format.token.attach/runtime_effect": {
-          "source_sha256": "e5251877a90242f87b7c212028a3d0ad48d5fd96b83a42fe74ea7458db958483",
-          "translation": "С Link child присоединяется к одной parent bone; без него одноимённые child/parent bones образуют shared-skeleton attachment."
+          "source_sha256": "6e46b905a45732fd657d978c7ba980bc125ccad3724ffe9210070cb74e23267d",
+          "translation": "С Link child присоединяется к одной parent bone; без него одноимённые child/parent bones образуют shared-skeleton attachment. У direct FBX/OBJ child нет description-level коррекции scale, поэтому static extent должен находиться между Baking.ModelAttachmentMinExtent и Baking.ModelAttachmentMaxExtent."
         },
         "/tokens/@id=model-format.token.cut/description": {
           "source_sha256": "b5d6b2a4001f54533fdd5c5474265f26a395f7e2a8313dbca715f2d5d7529fba",
@@ -3268,6 +3280,14 @@
         "/commands/@id=cli.buildtools.command.prepare-workspace/summary": {
           "source_sha256": "89561b2be72741f1dcbf26cb9a2981e19fca2aa37ca25e3c5f7b9c1071669b50",
           "translation": "Подготовить общие части рабочего каталога."
+        },
+        "/commands/@id=cli.buildtools.command.repair-checkout-case/arguments/@id=cli.buildtools.command.repair-checkout-case.argument.check/description": {
+          "source_sha256": "2c480f4fd2e0e0cd776659e3cb60d3d1f5746687e3ef463833af685a2a75dffb",
+          "translation": "Проверить расхождения регистра, не переименовывая элементы."
+        },
+        "/commands/@id=cli.buildtools.command.repair-checkout-case/summary": {
+          "source_sha256": "cc2b5338ab9937d6ea209ef4f5b718bb9314589caa0b9f71680af255f4882114",
+          "translation": "Привести регистр имён элементов рабочего дерева в соответствие с индексом Git."
         },
         "/commands/@id=cli.buildtools.command.setup-mono/arguments/@id=cli.buildtools.command.setup-mono.argument.arch/description": {
           "source_sha256": "4123d84c5a7ec44dfb5a185bf12fd8ed1bb1132ad6bbe8fb86c2a95ffd0dccc0",
@@ -6007,10 +6027,18 @@
           "translation": "Возвращает ноль при отсутствии ключа."
         },
         "/runtime_methods/@id=text-format.runtime.get-current-text/behavior": {
-          "source_sha256": "926d93cdecce64a79552e6fdd05966e72b473c136e0789a23bbc39071a979e17",
-          "translation": "Возвращает вариант текущего языка, выбранный skipCount по индексу с нуля; по умолчанию выбирается первый вариант."
+          "source_sha256": "911e0920196df3deb80c1e055c255d2e6e6bd4b6ea75e115c4e7025d8664c05e",
+          "translation": "Возвращает первый вариант из текущего языка клиента."
         },
         "/runtime_methods/@id=text-format.runtime.get-current-text/missing_behavior": {
+          "source_sha256": "ff62b56c2cd974242c614b4579c9c1ec2e8a306601577182a4b463a62d48f247",
+          "translation": "Отсутствующий ключ возвращает пустую строку."
+        },
+        "/runtime_methods/@id=text-format.runtime.get-indexed-text/behavior": {
+          "source_sha256": "647c6f2a539ff22c2fdf51472b07e0bc4e89fd14740103f58f0837300a1d9f88",
+          "translation": "Возвращает вариант из текущего языка клиента, выбранный textIndex по индексу с нуля."
+        },
+        "/runtime_methods/@id=text-format.runtime.get-indexed-text/missing_behavior": {
           "source_sha256": "54eee424a2977efb7666049f37c687d97f7b4dabc4ed3b0856413ffe7383d01c",
           "translation": "Отсутствующий ключ или выход за диапазон возвращает пустую строку; отрицательный индекс вызывает исключение."
         },
@@ -10433,6 +10461,10 @@
           "source_sha256": "9fd0a9d56fe0a2f5144e2e4adbefeb0356740478b310680f892a0401f5d4ca87",
           "translation": "Переопределение видимости криттера, применяемое независимо от обычных проверок восприятия."
         },
+        "/symbols/@id=script.enum.DisconnectReason/description": {
+          "source_sha256": "dc04880f548e64544acac84c481a1ceb36b8853b7618cc3bceba6ae7da6ed343",
+          "translation": "Причина закрытия соединения. Она записывается в самом соединении, поэтому переживает завершивший его путь исполнения и остаётся доступной скриптам в обработчиках выхода."
+        },
         "/symbols/@id=script.enum.DrawOrderType/description": {
           "source_sha256": "2c017c2564b21c497d0701d2b3b43fdbe6fb24fd1abe19baddef6b75c5bb5672",
           "translation": "Упорядоченные слои отрисовки карты для плоских спрайтов, освещения, обычных объектов, частиц и крыш."
@@ -10462,7 +10494,7 @@
           "translation": "Флаги шрифта"
         },
         "/symbols/@id=script.enum.FontType/description": {
-          "source_sha256": "3eb98ef73b2ffd0bf6dc893806aec1e7d714a05d847d1e9674482f83e152c2c2",
+          "source_sha256": "145d5dc2d296d4060d7ef4305dd20d74508583d71d881da441d85ee2d6d96460",
           "translation": "Индекс слота шрифта. Движок поставляет один именованный слот (Default = 0); скрипты могут добавлять записи через codegen-аннотацию Enum."
         },
         "/symbols/@id=script.enum.GameProperty/description": {
@@ -11001,6 +11033,50 @@
           "source_sha256": "a53251bbe6c67a9f4d5d9ed7c4563d2b792f6657c2ae4fbb98fad4fff62b8676",
           "translation": "Не применяет переопределение полной видимости и использует обычные правила восприятия."
         },
+        "/symbols/@id=script.enum-value.DisconnectReason.ClientClosed/description": {
+          "source_sha256": "f2015eefa3130484ed7b46ec279b7d68b13ac58eee717e3b2d1e1dcaa327c84b",
+          "translation": "Транспорт сообщил об исчезновении удалённой стороны; добровольный выход и потеря сети неразличимы."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.InactivityTimeout/description": {
+          "source_sha256": "d7c256578fdaccd9b16b64295e66cecd43e3312b12da82ba1ce0ed34cef8698c",
+          "translation": "До настроенного срока бездействия не поступило ни одного входящего сообщения."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.LoginFailed/description": {
+          "source_sha256": "59fb391d3cf85e2acf229ff5f60e49eee1555da9b0a76f0847b35f93cfa06dc8",
+          "translation": "Вход был отменён после ошибки на стороне сервера."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.LoginTimeout/description": {
+          "source_sha256": "ce62399de79dd54be7063e6ee261cfbe22e04049e64bd7c0d90deb6d137efe5e",
+          "translation": "Соединение до входа не продвинулось до истечения настроенного срока входа."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.None/description": {
+          "source_sha256": "75bf5bc966b8c36598b9134e772d22fe9a0367442cab176f2984fde5850e7ca1",
+          "translation": "Соединение ещё не записало причину закрытия."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.PingTimeout/description": {
+          "source_sha256": "9aaaf2f4967077f15b5636eca14fc0271800244fac48f6f0a42dcef2f091238c",
+          "translation": "Удалённая сторона не ответила на предыдущий ping сервера."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.ProtocolError/description": {
+          "source_sha256": "cda74c6dc7222dc222f150b646240d764ad3f33269125df3e6bf056c2cf0b933",
+          "translation": "Получены повреждённые или неожиданные данные протокола либо не удалось опубликовать соединение."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.ReplacedByReconnect/description": {
+          "source_sha256": "7c1328caeff31b1e164c444699747c10f949a70f44666e8429100cc9021c4692",
+          "translation": "Новый вход той же учётной записи заменил этот сеанс."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.ScriptRequest/description": {
+          "source_sha256": "2c7f664c2b643fc02c2e08168c1e79ce1e0a5ca85c4881be10657e875f9b2396",
+          "translation": "Серверный скрипт вызвал Player.HardDisconnect()."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.ServerShutdown/description": {
+          "source_sha256": "dc23f008895c60721a7a9525a3873555c146600447c2e2ce0b0ff3fe9c908873",
+          "translation": "Сервер штатно завершает работу."
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.UpdaterError/description": {
+          "source_sha256": "f267822a9cadbc66c4970cf0e91b0e3020aa3068e41e9e845590f08cedfc112b",
+          "translation": "Клиент запросил недопустимый файл обновления или диапазон."
+        },
         "/symbols/@id=script.enum-value.DrawOrderType.AfterLight/description": {
           "source_sha256": "6cf2ce9240e3bc10c687bce3cfdf05f6a917bb7d2860cb03fe99a68240bcd72c",
           "translation": "Слой примитивов, отрисовываемый сразу после накопления освещения карты."
@@ -11538,32 +11614,32 @@
           "translation": "Выполняется при входе другого криттера в текущий набор видимости этого криттера."
         },
         "/symbols/@id=script.event.server.Critter.OnCritterAppearedDist1/description": {
-          "source_sha256": "28092551fdc95c8b4b783af60e883fdc5ba74b5f80f2a2bc555ad1486edd3cc1",
-          "translation": "Предоставляет определяемое проектом событие появления для уровня дистанции; Engine напрямую его не вызывает."
+          "source_sha256": "5ba1def741a6e7751042103f47ddef6c43da22ef6ecf4d6eeeca8cf9c32b907d",
+          "translation": "Срабатывает, когда другой видимый криттер входит в дистанционную группу ShowCritterDist1."
         },
         "/symbols/@id=script.event.server.Critter.OnCritterAppearedDist2/description": {
-          "source_sha256": "28092551fdc95c8b4b783af60e883fdc5ba74b5f80f2a2bc555ad1486edd3cc1",
-          "translation": "Предоставляет определяемое проектом событие появления для уровня дистанции; Engine напрямую его не вызывает."
+          "source_sha256": "19fb022cc3719101b810a28a9fc84edca75ceb05e46b04fd0b0692612735f72f",
+          "translation": "Срабатывает, когда другой видимый криттер входит в дистанционную группу ShowCritterDist2."
         },
         "/symbols/@id=script.event.server.Critter.OnCritterAppearedDist3/description": {
-          "source_sha256": "28092551fdc95c8b4b783af60e883fdc5ba74b5f80f2a2bc555ad1486edd3cc1",
-          "translation": "Предоставляет определяемое проектом событие появления для уровня дистанции; Engine напрямую его не вызывает."
+          "source_sha256": "7634d100fa1bd83820dc56fa759cc465dbb8696f75e9b318998708007fce5afe",
+          "translation": "Срабатывает, когда другой видимый криттер входит в дистанционную группу ShowCritterDist3."
         },
         "/symbols/@id=script.event.server.Critter.OnCritterDisappeared/description": {
           "source_sha256": "245f45127458487cabda652b824212d23f5ba1ca97ed55aa7527776fe580bb99",
           "translation": "Выполняется при выходе другого криттера из текущего набора видимости этого криттера."
         },
         "/symbols/@id=script.event.server.Critter.OnCritterDisappearedDist1/description": {
-          "source_sha256": "15ebdf64a5eae54161352f20683b33c1b173c6fdc7f7013a37acfd1dbed636af",
-          "translation": "Предоставляет определяемое проектом событие исчезновения для уровня дистанции; Engine напрямую его не вызывает."
+          "source_sha256": "4bfbc51af2a1e59d197f30132c92f49fea0ac2c860a028112be81731f81e9a46",
+          "translation": "Срабатывает, когда другой криттер выходит из дистанционной группы ShowCritterDist1 или перестаёт быть видимым."
         },
         "/symbols/@id=script.event.server.Critter.OnCritterDisappearedDist2/description": {
-          "source_sha256": "15ebdf64a5eae54161352f20683b33c1b173c6fdc7f7013a37acfd1dbed636af",
-          "translation": "Предоставляет определяемое проектом событие исчезновения для уровня дистанции; Engine напрямую его не вызывает."
+          "source_sha256": "e8f10f88859fed595c7b4f0da47eaadb013c1b4f9341f62c6c3b18f2627125f3",
+          "translation": "Срабатывает, когда другой криттер выходит из дистанционной группы ShowCritterDist2 или перестаёт быть видимым."
         },
         "/symbols/@id=script.event.server.Critter.OnCritterDisappearedDist3/description": {
-          "source_sha256": "15ebdf64a5eae54161352f20683b33c1b173c6fdc7f7013a37acfd1dbed636af",
-          "translation": "Предоставляет определяемое проектом событие исчезновения для уровня дистанции; Engine напрямую его не вызывает."
+          "source_sha256": "2f3df5ed0f58d4c6b33856af6e9b3babb996778f301738f9b90149532527f75c",
+          "translation": "Срабатывает, когда другой криттер выходит из дистанционной группы ShowCritterDist3 или перестаёт быть видимым."
         },
         "/symbols/@id=script.event.server.Critter.OnCritterVisibilityModeChanged/description": {
           "source_sha256": "b4424dce9d57f7454313010f5a6449dc99dd3af56d28d662b5e383a0aac06dff",
@@ -11694,8 +11770,8 @@
           "translation": "Проверяет запрос игрока на смену направления; обработчики могут заменить `dir`, а `StopChain` отклоняет запрос."
         },
         "/symbols/@id=script.event.server.Game.OnPlayerLogin/description": {
-          "source_sha256": "a528e6382436a5bb55c97ecb1772cf1d27e0cf1878dda53495a1c2c8293c61f2",
-          "translation": "Выполняется после отправки успешного входа и до настройки после входа; `unloginedPlayer` присутствует только при переподключении, а `StopChain` отклоняет вход."
+          "source_sha256": "b97ac3a3a3c3563b7fc1a5b465e46fa79f985cb3f419fcc2fae5b3d1f423d95a",
+          "translation": "Выполняется после отправки успешного входа и до настройки после входа; `notLoggedInPlayer` присутствует только при переподключении, а `StopChain` отклоняет вход."
         },
         "/symbols/@id=script.event.server.Game.OnPlayerLogout/description": {
           "source_sha256": "2d5ed3fe6d299fe359b9128b2b96a1ac4e7dc3f14d8ed8832fafdd782f9cd79e",
@@ -12229,13 +12305,17 @@
           "source_sha256": "4a62e1f0f340998c46253c406058b92befee4b814879da641e2b360e146032d3",
           "translation": "Возвращает текущий размер спрайта по клиентскому локальному дескриптору либо нулевой размер для неизвестного дескриптора."
         },
+        "/symbols/@id=script.method.client.Game.GetText%2318a1958c0507d2fd/description": {
+          "source_sha256": "47f5d58b717e8eccfbf5aa387d24f92bf901eae3f220be518a12854c6f6e8a0e",
+          "translation": "Возвращает вариант текста текущего языка для ключа по индексу с нуля; выход за диапазон даёт пустую строку, а отрицательный индекс вызывает исключение."
+        },
         "/symbols/@id=script.method.client.Game.GetText%23513ec7ba7fb47b7c/description": {
           "source_sha256": "5459b0fc10678732ca8962a242af4463573d838233d48b6a07989079108dbe28",
           "translation": "Возвращает текст ключа из запрошенного языкового пакета, используя текущий пакет для пустого или текущего имени языка и кешируя остальные загруженные пакеты."
         },
-        "/symbols/@id=script.method.client.Game.GetText%236fec00192f9521f3/description": {
-          "source_sha256": "5c787f723067b5dd4ee61b7c43e87307e13d4c1cd06051d88d2cf2ebbdd59210",
-          "translation": "Возвращает вариант текста текущего языка для ключа после пропуска заданного неотрицательного числа вариантов."
+        "/symbols/@id=script.method.client.Game.GetText%236f20bf83e45a6a6d/description": {
+          "source_sha256": "5e2182ce42ebccbb30dc7c4e087eb2185477cff11793fc65e00d5e3c350a9ed3",
+          "translation": "Возвращает первый вариант текста текущего языка для ключа."
         },
         "/symbols/@id=script.method.client.Game.GetTextCount/description": {
           "source_sha256": "2cbfcc90ebdb39d20b9ee9f23478332740984090ac0dc81ab2586e0e8623e2e9",
@@ -12697,6 +12777,10 @@
           "source_sha256": "5d35de239231dd6cd6262479722ad27b84bcf426489606989d8caf5b73290a30",
           "translation": "Возвращает экранную позицию центра допустимого гекса с плавающей точкой с учетом текущей прокрутки и масштаба спрайтов; недопустимый гекс приводит к исключению."
         },
+        "/symbols/@id=script.method.client.Map.GetHiddenRoofNum/description": {
+          "source_sha256": "0027c0d7898f9fc2b00c84f030063f9910bbeb30c9606f3a154b82e214d3a866",
+          "translation": "Возвращает группу крыш, которую сейчас скрывает логика этого представления карты."
+        },
         "/symbols/@id=script.method.client.Map.GetItem/description": {
           "source_sha256": "ab0d45c65a7fd041432ffe99c8d995c72e8bff45a1059db08efd626ad9a565ac",
           "translation": "Возвращает предмет карты с ненулевым идентификатором времени выполнения или null, если карта его не содержит; нулевой идентификатор приводит к исключению."
@@ -12732,6 +12816,10 @@
         "/symbols/@id=script.method.client.Map.GetPathLength%23b62c50c709a20fb8/description": {
           "source_sha256": "513d7454b49ee69dbefc034cbcb76b829d855920e791d05aa5c005060a460b64",
           "translation": "Возвращает число шагов движения от находящегося на карте криттера к допустимому гексу с учетом его multihex и необязательного cut; возвращает ноль, если движение или путь отсутствуют."
+        },
+        "/symbols/@id=script.method.client.Map.GetRoofNum/description": {
+          "source_sha256": "c515ddee643030a1f5099d29441a611704ecc3488b3a812b0a0db6e273cbc793",
+          "translation": "Возвращает номер группы крыш на допустимом гексе карты; координата вне карты приводит к исключению."
         },
         "/symbols/@id=script.method.client.Map.GetScreenSize/description": {
           "source_sha256": "baaa49298dbdca3b07c3f0740873c4e29d896cda342fa9ef9ed8a7bdb48b9f75",
@@ -14302,1275 +14390,1283 @@
           "translation": "Выгружает заданное представление карты из Mapper."
         },
         "/symbols/@id=script.method.server.Critter.Action/description": {
-          "source_sha256": "4b8de23ca71b79c3b2e87fc5744953a3a86ee216910b819d1222672d43786a95",
+          "source_sha256": "df25be4b33912abf15c5ff1c92dd8df6a3f2668125ce30ff215a09a696696e11",
           "translation": "SyncScope: требует self и контекстный предмет, если он не равен null; только отправляет или рассылает действие."
         },
         "/symbols/@id=script.method.server.Critter.AddItem%236ec8ddf0df24ef8b/description": {
-          "source_sha256": "3880d980a301f00c41a6b40d78948be59174340efcc0acf096ff761ad7573052",
+          "source_sha256": "977e780a5bab468f190e646b8b229b3aa2635b7d582b22b4f45c98d010e8174e",
           "translation": "SyncScope: требует self; создает и присоединяет новый предмет инвентаря в покрытии self."
         },
         "/symbols/@id=script.method.server.Critter.AddItem%23ec4fbc5515e08a6f/description": {
-          "source_sha256": "3880d980a301f00c41a6b40d78948be59174340efcc0acf096ff761ad7573052",
+          "source_sha256": "977e780a5bab468f190e646b8b229b3aa2635b7d582b22b4f45c98d010e8174e",
           "translation": "SyncScope: требует self; создает и присоединяет новый предмет инвентаря в покрытии self."
         },
         "/symbols/@id=script.method.server.Critter.AttachToCritter/description": {
-          "source_sha256": "0422c30a4e172bd6f7a80e99bb559e86b58fc1b466aaf4e0b7dc03fe32d53f02",
+          "source_sha256": "13be31b8d09e8c416e7db4dd4c9b8713c7bfd86c80431e965da222f35f4afb10",
           "translation": "SyncScope: требует self и cr; обе сущности должны находиться на одной покрытой карте."
         },
         "/symbols/@id=script.method.server.Critter.ChangeItemSlot/description": {
-          "source_sha256": "544a595f58c806eb61123160352be4314ef141ade88e3c0b923394d68939c631",
+          "source_sha256": "ea67d7ce3e262ed54626ccdb0481ebed476d75e4b787eca6e1f9005e07aaf57d",
           "translation": "SyncScope: требует self и предмет инвентаря; изменяет слот предмета и вызывает события перемещения и экипировки."
         },
         "/symbols/@id=script.method.server.Critter.ChangeMovingSpeed/description": {
-          "source_sha256": "ef5ce8a8396461633e0ee36ba2bd8be22f55342a0872ce2ef33886e6fb6955ad",
+          "source_sha256": "54b5d524cb609a4fe04e3e025a0ec8dcde035eff96ae169adffa19d3e5d01775",
           "translation": "SyncScope: требует self; изменяет текущую скорость движения."
         },
         "/symbols/@id=script.method.server.Critter.CountItem%234ee2c4b446f28b4f/description": {
-          "source_sha256": "88059ed02c9b0475206a191ffd0cf19c41681944bf3090a8e534864a61341396",
+          "source_sha256": "c5366cdb6713fa6a75c7b853f5cefc108afe17e93752be86f1651a6b7c4fb28c",
           "translation": "SyncScope: требует self; считает подходящие предметы инвентаря в покрытии инвентаря self."
         },
         "/symbols/@id=script.method.server.Critter.CountItem%2376cf1cb69552d1b1/description": {
-          "source_sha256": "88059ed02c9b0475206a191ffd0cf19c41681944bf3090a8e534864a61341396",
+          "source_sha256": "c5366cdb6713fa6a75c7b853f5cefc108afe17e93752be86f1651a6b7c4fb28c",
           "translation": "SyncScope: требует self; считает подходящие предметы инвентаря в покрытии инвентаря self."
         },
         "/symbols/@id=script.method.server.Critter.DestroyItem%2326ca271deb00c7af/description": {
-          "source_sha256": "3ef27231bd3eabb90ced138fd6cb85510e20e31cc1a308295fe2dc1a1ff11367",
+          "source_sha256": "c512d5c0508c9deb465f3bcd79cb701ae89920928f9f8a7e7b415af5dbb250ef",
           "translation": "SyncScope: требует self; уничтожает указанное количество подходящих предметов инвентаря в покрытии держателя self."
         },
         "/symbols/@id=script.method.server.Critter.DestroyItem%23978a393a4a080f2f/description": {
-          "source_sha256": "c226ea4f102bc439ce86ff66e86a28de388826d21a1db12b2d6b91843500cd61",
+          "source_sha256": "c82b81cf54eecf139aa81dae1bd61d3aa1fd481f6c3e7ed81b3ffd64f0ee6b15",
           "translation": "SyncScope: требует self; уничтожает подходящие предметы инвентаря в покрытии держателя self."
         },
         "/symbols/@id=script.method.server.Critter.DestroyItem%23bfe9277442704d41/description": {
-          "source_sha256": "3ef27231bd3eabb90ced138fd6cb85510e20e31cc1a308295fe2dc1a1ff11367",
+          "source_sha256": "c512d5c0508c9deb465f3bcd79cb701ae89920928f9f8a7e7b415af5dbb250ef",
           "translation": "SyncScope: требует self; уничтожает указанное количество подходящих предметов инвентаря в покрытии держателя self."
         },
         "/symbols/@id=script.method.server.Critter.DestroyItem%23d9df41ed759d2571/description": {
-          "source_sha256": "c226ea4f102bc439ce86ff66e86a28de388826d21a1db12b2d6b91843500cd61",
+          "source_sha256": "c82b81cf54eecf139aa81dae1bd61d3aa1fd481f6c3e7ed81b3ffd64f0ee6b15",
           "translation": "SyncScope: требует self; уничтожает подходящие предметы инвентаря в покрытии держателя self."
         },
         "/symbols/@id=script.method.server.Critter.DetachAllCritters/description": {
-          "source_sha256": "c21fb20b7f967fd5289087b2d50c189fd6bcf08955b83455aa79d2c9f8016857",
+          "source_sha256": "12152c22ddf49ca8afe278a7fdcd22e32f232f154edf2f245ecbd7921b3d0223",
           "translation": "SyncScope: требует self и присоединенных криттеров; отсоединяет каждого криттера и обновляет видимость."
         },
         "/symbols/@id=script.method.server.Critter.DetachFromCritter/description": {
-          "source_sha256": "7d06de5f4c694523362373b88aa7b77cc45b2c7efb3f77183aa1f2fa65271855",
+          "source_sha256": "8293a2cd5d9865a6ed5a452d1d35ee9a6b1fdb3f45eef252bca2d0973be0a55d",
           "translation": "SyncScope: требует self и текущую карту; отсоединяет self и обновляет видимость."
         },
         "/symbols/@id=script.method.server.Critter.Disconnect/description": {
-          "source_sha256": "0fcb67e0a51021ff9fbd972197bdfa4aea9064729424b1e090107362c5d4f28e",
+          "source_sha256": "b962cd0328645944922506405ac7ebde0e1b3ad3218eb1c6286db5b62b737942",
           "translation": "SyncScope: требует self и его автоматически добавленную в покрытие связь Player; закрывает соединение этого игрока."
         },
         "/symbols/@id=script.method.server.Critter.GetAttachedCritters/description": {
-          "source_sha256": "88d809346105c39112a2155a04a8d4e34782df02fd46225491279702dd63453d",
+          "source_sha256": "0cb627b09ef46e999822d51ca2bb53b04c75f7a32e52ce69368102c2db558b98",
           "translation": "SyncScope: требует self; перед изменением возвращенных присоединенных криттеров необходимо получить их собственное покрытие."
         },
         "/symbols/@id=script.method.server.Critter.GetCritter/description": {
-          "source_sha256": "4ec98592826fff0a9e303ecb2ff1eacd9e888e37c52b0834c380017e0dc21d35",
+          "source_sha256": "c08c37040138faf30b373834e4490dedf4339d920673fbd76ff67b8795b3c150",
           "translation": "SyncScope: требует self; поиск наблюдателей может потребовать покрытия карты self, если self размещен на карте."
         },
         "/symbols/@id=script.method.server.Critter.GetCritters/description": {
-          "source_sha256": "2bd099c19509b9ec65dfeba1b84928d3deb1ac2ea1313b5a881187e8d3e8c696",
+          "source_sha256": "66ba723944b3d05e627702fe66958720c1fc052fb9ac7824ed71283b9b5fcfa3",
           "translation": "SyncScope: требует self и текущую карту при наличии размещения; возвращенные криттеры покрыты только пока сохраняется это покрытие."
         },
         "/symbols/@id=script.method.server.Critter.GetGlobalMapCritterIds/description": {
-          "source_sha256": "a40ab702a3b54312d89870dd07a431bfad6e1bbfdabad44031ac214db8f9dafc",
+          "source_sha256": "e9db444dd02cbe448eac7643992f964fff375bc2685a356664c76c67147d7715",
           "translation": "SyncScope: требует self; возвращает идентификаторы текущей группы глобальной карты self вместе с ревизией ее состава (пустой список и ревизия 0, если self размещен на карте). Участники группы являются независимыми корнями Critter, не входящими в покрытие self. Поэтому код, отправляющий криттеру глобальной карты начальные данные, переносящий или уничтожающий его, разрешает и покрывает возвращенные идентификаторы, а затем повторно читает идентификаторы и ревизию, подтверждая неизменность состава во время получения покрытия."
         },
         "/symbols/@id=script.method.server.Critter.GetItem%2320907df3571a66a9/description": {
-          "source_sha256": "38b81cf21fae18c66b140cf9a3ddffc946de54d8916a63736940b551156a9f16",
+          "source_sha256": "dc24010e57679c4a2143f77b882012c74d0a0a5a0fc81ec843e15309a6e41392",
           "translation": "SyncScope: требует self; возвращенный предмет инвентаря входит в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Critter.GetItem%233e4a8f273e418d3b/description": {
-          "source_sha256": "38b81cf21fae18c66b140cf9a3ddffc946de54d8916a63736940b551156a9f16",
+          "source_sha256": "dc24010e57679c4a2143f77b882012c74d0a0a5a0fc81ec843e15309a6e41392",
           "translation": "SyncScope: требует self; возвращенный предмет инвентаря входит в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Critter.GetItem%235042179ea08a430e/description": {
-          "source_sha256": "38b81cf21fae18c66b140cf9a3ddffc946de54d8916a63736940b551156a9f16",
+          "source_sha256": "dc24010e57679c4a2143f77b882012c74d0a0a5a0fc81ec843e15309a6e41392",
           "translation": "SyncScope: требует self; возвращенный предмет инвентаря входит в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Critter.GetItem%238eedde0030f87e84/description": {
-          "source_sha256": "38b81cf21fae18c66b140cf9a3ddffc946de54d8916a63736940b551156a9f16",
+          "source_sha256": "dc24010e57679c4a2143f77b882012c74d0a0a5a0fc81ec843e15309a6e41392",
           "translation": "SyncScope: требует self; возвращенный предмет инвентаря входит в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Critter.GetItems%2383c145745774df22/description": {
-          "source_sha256": "b776dc597bef278d6aeb640edf3afec6ab9a5d0794a578234fc0f7296c00b687",
+          "source_sha256": "06333c1cb2e48f6df1e28bf7c936c96876cbd5f9ab39fa6b08705271e70a00c8",
           "translation": "SyncScope: требует self; возвращенные предметы инвентаря входят в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Critter.GetItems%23a6ae510092488b1e/description": {
-          "source_sha256": "b776dc597bef278d6aeb640edf3afec6ab9a5d0794a578234fc0f7296c00b687",
+          "source_sha256": "06333c1cb2e48f6df1e28bf7c936c96876cbd5f9ab39fa6b08705271e70a00c8",
           "translation": "SyncScope: требует self; возвращенные предметы инвентаря входят в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Critter.GetItems%23b851260ade7c353c/description": {
-          "source_sha256": "b776dc597bef278d6aeb640edf3afec6ab9a5d0794a578234fc0f7296c00b687",
+          "source_sha256": "06333c1cb2e48f6df1e28bf7c936c96876cbd5f9ab39fa6b08705271e70a00c8",
           "translation": "SyncScope: требует self; возвращенные предметы инвентаря входят в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Critter.GetItems%23ef66ddcc26718dfe/description": {
-          "source_sha256": "b776dc597bef278d6aeb640edf3afec6ab9a5d0794a578234fc0f7296c00b687",
+          "source_sha256": "06333c1cb2e48f6df1e28bf7c936c96876cbd5f9ab39fa6b08705271e70a00c8",
           "translation": "SyncScope: требует self; возвращенные предметы инвентаря входят в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Critter.GetMap/description": {
-          "source_sha256": "37d168fd6c014ff6fc49d62ebc90b19dcc540a48c4911a48a54c6888d5c08546",
+          "source_sha256": "16a61d0098a2b759df7289ae057f665e39f91c8e9f26557f618bbc30f0000ea3",
           "translation": "SyncScope: требует self; возвращает дескриптор текущей родительской карты, но не покрывает ее для последующего чтения."
         },
         "/symbols/@id=script.method.server.Critter.GetMovingContext/description": {
-          "source_sha256": "d0a2c4c00d2c8e412baf8a5efc51ce97d3e20071e0a4cd1349f651b4e21a6c0d",
+          "source_sha256": "81e7ad78e0bd15001aaaba4ca9ca3dcba4c9a6d11a72c38e89656353a5a91bfd",
           "translation": "SyncScope: требует self; возвращенный контекст движения является дескриптором снимка активного перемещения self."
         },
         "/symbols/@id=script.method.server.Critter.GetMovingState/description": {
-          "source_sha256": "49c84f73ca736fbd6aed81c8c5f46aeb32c87a6d3b947ef32fbea04c3d32b25f",
+          "source_sha256": "1e0e1ccf947e93de42c41832bc26370fd2acb5b6ddc21b7484daa098d8d9f4b4",
           "translation": "SyncScope: требует self; читает только текущее состояние движения."
         },
         "/symbols/@id=script.method.server.Critter.GetMovingUid/description": {
-          "source_sha256": "1515dae80a7803f8f2d488c48a84d6bcf85e2bad5217cd11b627c3d897d2da41",
+          "source_sha256": "2eb5acb3659322dda750c7d52af0b31439a635b8f9aba6605429a871dc662e5c",
           "translation": "SyncScope: требует self; читает только текущий идентификатор движения."
         },
         "/symbols/@id=script.method.server.Critter.GetPlayer/description": {
-          "source_sha256": "b8a58f8fcadd5ac2a9f5d5e427a2bc215e83dadbc7a586ded5d7092243f87b84",
+          "source_sha256": "2445760762f011e07a34d3e44b7ad9635d3a7d1ee6de82a935651787b94cacc6",
           "translation": "SyncScope: требует self; возвращает автоматически добавляемого в покрытие партнера Player, если он присоединен."
         },
         "/symbols/@id=script.method.server.Critter.GetPlayerOfflineTime/description": {
-          "source_sha256": "df63fbddfcc09ab8f5fce23d6c319cc3ac97d5ace16c4f68d107272e03562811",
+          "source_sha256": "6f2652490a6f7acad3ad74babe797642c2d91ef14d350b94e80c46d8a21d42f1",
           "translation": "SyncScope: требует self; читает только offline-состояние связи этого криттера с игроком."
         },
         "/symbols/@id=script.method.server.Critter.GetVisibilityMode/description": {
-          "source_sha256": "c9dd2eef0b303cde0961668700210f892667e77680f4a945b3612fa90855f22e",
+          "source_sha256": "22d54cc2364f9c3e7ffdf4d4b0ec1193f9d7dc75d936c45fc0fcd0bcdcc2ecad",
           "translation": "SyncScope: требует self и cr; читает из кеша режима видимости self данные покрытого криттера."
         },
         "/symbols/@id=script.method.server.Critter.IsAlive/description": {
-          "source_sha256": "28753e61f74a4f70dc6f3f348c519ed78d63f23658e54a340eec7f4ca7979e86",
+          "source_sha256": "31f16872432aff91d8e66a0c939b43f8ed0a3cd04d5be2680d695ac90b3dbe37",
           "translation": "SyncScope: требует self; читает только текущее состояние криттера."
         },
         "/symbols/@id=script.method.server.Critter.IsDead/description": {
-          "source_sha256": "28753e61f74a4f70dc6f3f348c519ed78d63f23658e54a340eec7f4ca7979e86",
+          "source_sha256": "31f16872432aff91d8e66a0c939b43f8ed0a3cd04d5be2680d695ac90b3dbe37",
           "translation": "SyncScope: требует self; читает только текущее состояние криттера."
         },
         "/symbols/@id=script.method.server.Critter.IsKnockout/description": {
-          "source_sha256": "28753e61f74a4f70dc6f3f348c519ed78d63f23658e54a340eec7f4ca7979e86",
+          "source_sha256": "31f16872432aff91d8e66a0c939b43f8ed0a3cd04d5be2680d695ac90b3dbe37",
           "translation": "SyncScope: требует self; читает только текущее состояние криттера."
         },
         "/symbols/@id=script.method.server.Critter.IsMoving/description": {
-          "source_sha256": "8615d0fa57b3a6cdeba5317a6906f46ab9e78e59cc5071553137c2ab2283377d",
+          "source_sha256": "bf00b1ccb06fd36b447af91b4fd08889c7d56873c8a71ee6097edf5eacd712fd",
           "translation": "SyncScope: требует self; читает только текущий флаг движения."
         },
         "/symbols/@id=script.method.server.Critter.IsOnline/description": {
-          "source_sha256": "aa39e7f30447b53c9b47b14e0bb40b31801a40b62120dd278bbe80723b96e4ea",
+          "source_sha256": "50660c8e76bfc3a0c023f0e40c0b340accd7712e0f7624dec782a195e8405fc2",
           "translation": "SyncScope: требует self и его автоматически добавленную в покрытие связь Player; только читает состояние подключения."
         },
         "/symbols/@id=script.method.server.Critter.IsSee%2311f3357f2df75c38/description": {
-          "source_sha256": "42094fbe6566082366d0a00ffd3513e2cda9ff38df7ef3ceb41c5cbd4b137229",
+          "source_sha256": "f2ed688aec948c49c111a49aaec89c997bce3f290697a2fd99879b8d8b38c279",
           "translation": "SyncScope: требует self и cr; проверяет в кеше видимости self наличие покрытого криттера."
         },
         "/symbols/@id=script.method.server.Critter.IsSee%23c05ec9ee4a1d9b41/description": {
-          "source_sha256": "b8cf4599d963695705443235e2c06cb199b05293469766b1ce407ab054b635ac",
+          "source_sha256": "07967f9c5510ecd64e45e0a1c7a2c04fccf65d9a3b46caaad643b178c36f042c",
           "translation": "SyncScope: требует self и предмет; проверяет в кеше видимых предметов self наличие покрытого предмета."
         },
         "/symbols/@id=script.method.server.Critter.IsSeenBy/description": {
-          "source_sha256": "ad218e131bd0ddebd7ce138d106e21ebc18e0a56e37a11b946e78eecc1fe833f",
+          "source_sha256": "13174c86890ed953b1fed97330e6650326a331133b56c6ac3f73ca77ea1b368d",
           "translation": "SyncScope: требует self и cr; проверяет в кеше видимости cr наличие этого покрытого криттера."
         },
         "/symbols/@id=script.method.server.Critter.MakeControllable/description": {
-          "source_sha256": "2c47cbd4cdeb77a88fe19c7357e4f224dc372e17c84296016fb452c774667a08",
+          "source_sha256": "ce08c4f56944912262a45c94170e948e887491d02350137346c6c99d4af4e2e1",
           "translation": "SyncScope: требует self и текущую карту; изменяет управляемое состояние или состояние игрока и может self-синхронизировать карту."
         },
         "/symbols/@id=script.method.server.Critter.MoveToHex%2359785332969dbd15/description": {
-          "source_sha256": "1482b89d473b32ef081b43785e90b6ad0429f90fef4372148b90df2dd4c577c9",
+          "source_sha256": "39d2aca067c8c98e2d98b8e5d32f383eba69c257e6a551cff40bd32431fef03f",
           "translation": "SyncScope: требует self и текущую карту; начинает движение и возвращает новый контекст движения."
         },
         "/symbols/@id=script.method.server.Critter.MoveToHex%23877a3be2a55ba41a/description": {
-          "source_sha256": "1482b89d473b32ef081b43785e90b6ad0429f90fef4372148b90df2dd4c577c9",
+          "source_sha256": "39d2aca067c8c98e2d98b8e5d32f383eba69c257e6a551cff40bd32431fef03f",
           "translation": "SyncScope: требует self и текущую карту; начинает движение и возвращает новый контекст движения."
         },
         "/symbols/@id=script.method.server.Critter.RefreshView/description": {
-          "source_sha256": "d0265a28718161147a8769aa3d1e2209ae3d5665e59e0f1eb910b1e7f1a1ab2e",
+          "source_sha256": "2e98ceeb6e5a4a92a93de2943bc31165d55682c9e86ae69f3f74ce73c10632ca",
           "translation": "SyncScope: требует self и текущую карту для размещенной сущности; пересчитывает видимых криттеров и предметы."
         },
         "/symbols/@id=script.method.server.Critter.RefreshVisibility/description": {
-          "source_sha256": "d0265a28718161147a8769aa3d1e2209ae3d5665e59e0f1eb910b1e7f1a1ab2e",
+          "source_sha256": "2e98ceeb6e5a4a92a93de2943bc31165d55682c9e86ae69f3f74ce73c10632ca",
           "translation": "SyncScope: требует self и текущую карту для размещенной сущности; пересчитывает видимых криттеров и предметы."
         },
         "/symbols/@id=script.method.server.Critter.SendGlobalMapGroupInfo/description": {
-          "source_sha256": "0b3e389114c4fde7f5af63c9bf7f07cd814025ce609fbdbfce500aa6f4023fea",
+          "source_sha256": "de85723b179bd20ae55d760089373dbf877f7c72e09fd63042f96840536cb2b9",
           "translation": "SyncScope: требует self и каждого криттера его текущей группы глобальной карты; отправляет остальных участников игроку self без получения дополнительного покрытия. Начальная информация содержит только самого криттера, поэтому код, присоединяющий криттера глобальной карты к игроку, покрывает группу через Sync::WidenCritterWithGlobalMapGroup и затем вызывает этот метод."
         },
         "/symbols/@id=script.method.server.Critter.SendItems/description": {
-          "source_sha256": "df53454759d77a28a2a1eb65dfc002a71377f05c382a24a992ec56f7f81c7e9c",
+          "source_sha256": "2e02e520a884ea163ae598824caedcbc04b10fde7629ce0b97258f6d5e2be03f",
           "translation": "SyncScope: требует self и каждый предмет с ненулевым дескриптором в items; отправляет сетевую нагрузку без изменения покрытия."
         },
         "/symbols/@id=script.method.server.Critter.SetCondition/description": {
-          "source_sha256": "558f06cfe161b6131dd0fc1105445a8f4ab41ff6defb3a1fc65e2e91dea94dc4",
+          "source_sha256": "220a66fef8a0ec182815d7dab58481501bd8fe580ee8e5c630ac910f55c05cee",
           "translation": "SyncScope: требует self, текущую карту для размещенной сущности и контекстный предмет, если он не равен null; изменяет поля состояния и карты."
         },
         "/symbols/@id=script.method.server.Critter.SetDir/description": {
-          "source_sha256": "0f6045a4c534e1fed7ec3faab1ba4a5a0816dbb5c4dfaf8022310e1775fa7c8e",
+          "source_sha256": "9d118c8e70e0ec054a096eaa2053c090aec846db9406b3738d2ff38997985579",
           "translation": "SyncScope: требует self; изменяет направление и рассылает его."
         },
         "/symbols/@id=script.method.server.Critter.SetupScript/description": {
-          "source_sha256": "3a1beb1acc73d7643d5224be8f0e947ab8aed1705f570ae642ddef00ebbd66e2",
+          "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
         },
         "/symbols/@id=script.method.server.Critter.SetupScriptEx/description": {
-          "source_sha256": "3a1beb1acc73d7643d5224be8f0e947ab8aed1705f570ae642ddef00ebbd66e2",
+          "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
         },
         "/symbols/@id=script.method.server.Critter.StopMoving/description": {
-          "source_sha256": "9cb1cb081e4a670e79227883a007eff5c91fafcacd52bbb8fb6162935d7f062b",
+          "source_sha256": "19cd36cc631996e6391799041a85bf6f8f43c115e5512a4ff7fd476f297f0124",
           "translation": "SyncScope: требует self; останавливает текущее движение."
         },
         "/symbols/@id=script.method.server.Critter.TransferToGlobal/description": {
-          "source_sha256": "f6c9a213edd8a1cb0af7e04d1c9883a7d5dd5147ae8ad438b28552090cb41087",
+          "source_sha256": "1a47fb3f8dcea53bdf6528189cda7e70d1440fd15ef26a028ace194d833ec6a2",
           "translation": "SyncScope: требует self и текущую исходную карту, если self размещен на карте; переводит self в состояние глобальной карты."
         },
         "/symbols/@id=script.method.server.Critter.TransferToGlobalGroup/description": {
-          "source_sha256": "6e3edf8196bba9fafd4e8a2b3889e7e002b11bc547eddd45d615b579ad34724c",
+          "source_sha256": "2ef5ef8f2c256c8680a74b99851e0c2b3fcb89ba5db7c97f8111e51e57319b6a",
           "translation": "SyncScope: требует self и globalCr; если self размещен на карте, также требует его текущую исходную карту."
         },
         "/symbols/@id=script.method.server.Critter.TransferToGlobalWithGroup/description": {
-          "source_sha256": "5182841dc4b44f2535732602999a82570a9e39dea937baa285ad6f001a2756a0",
+          "source_sha256": "8b3deaa77458ebfc6d3f79f4a1528da75e76682a95cccdc4111723120c10b0ed",
           "translation": "SyncScope: перед переносом требует self, текущую исходную карту, каждого криттера группы и его текущую исходную карту."
         },
         "/symbols/@id=script.method.server.Critter.TransferToHex%238438d509ef6a8651/description": {
-          "source_sha256": "8c2adebe665ed5e7a2edb6a5c61b8005a7af444530cc5bbe7aa7fbc81d115377",
+          "source_sha256": "5de2ac8b6c54fb6569b61a9b1ed10c098ef3e9b7cd0a94c32a90a4feb4f49eee",
           "translation": "SyncScope: требует self и текущую карту; перенос сохраняет покрытие self и изменяет размещение и направление на текущей карте."
         },
         "/symbols/@id=script.method.server.Critter.TransferToHex%23a9a09ef8641e16c0/description": {
-          "source_sha256": "935cb0fde0e76d8561982958cea1bbb08b11d51da079f4b5124b8e9bc83b8f6a",
+          "source_sha256": "8df15b34e5fcca00149a6113e12533367fa316e9181a2dc8dbe92b10021bf8df",
           "translation": "SyncScope: требует self и текущую карту; перенос сохраняет покрытие self и изменяет размещение на текущей карте."
         },
         "/symbols/@id=script.method.server.Critter.TransferToMap%23c9880f573836f54f/description": {
-          "source_sha256": "a1046046d868db935c33a4db7d4feb017cee88ff1929b4b15a1c866ddbc2a4a6",
+          "source_sha256": "3068db6838f7662e48b8ee4811a59573ee1fc301496fb10682813ddcb1a7dc50",
           "translation": "SyncScope: требует self, исходную карту при наличии размещения, целевую карту и целевую локацию; скриптам следует использовать Sync::LockForTransferToMap(self, map)."
         },
         "/symbols/@id=script.method.server.Critter.TransferToMap%23dc3840f5d203dd4b/description": {
-          "source_sha256": "a1046046d868db935c33a4db7d4feb017cee88ff1929b4b15a1c866ddbc2a4a6",
+          "source_sha256": "3068db6838f7662e48b8ee4811a59573ee1fc301496fb10682813ddcb1a7dc50",
           "translation": "SyncScope: требует self, исходную карту при наличии размещения, целевую карту и целевую локацию; скриптам следует использовать Sync::LockForTransferToMap(self, map)."
         },
         "/symbols/@id=script.method.server.Entity.CountTimeEvent%2308f3341698dc846a/description": {
-          "source_sha256": "187eb588a3c5b641e848f9a07a94908430e64779e66bfdce73a31bc439e272ea",
+          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
           "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.CountTimeEvent%235609075e34e56857/description": {
-          "source_sha256": "187eb588a3c5b641e848f9a07a94908430e64779e66bfdce73a31bc439e272ea",
+          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
           "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.CountTimeEvent%239c7dd3ed70f86a7d/description": {
-          "source_sha256": "187eb588a3c5b641e848f9a07a94908430e64779e66bfdce73a31bc439e272ea",
+          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
           "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.CountTimeEvent%23ad56856359be786a/description": {
-          "source_sha256": "187eb588a3c5b641e848f9a07a94908430e64779e66bfdce73a31bc439e272ea",
+          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
           "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.CountTimeEvent%23e41a67022275199d/description": {
-          "source_sha256": "187eb588a3c5b641e848f9a07a94908430e64779e66bfdce73a31bc439e272ea",
+          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
           "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.IsPersistent/description": {
-          "source_sha256": "15de5916c6d9be435710c74a5c133f2b9bce8f33e00bd0c093f1fad8cd9b8d8d",
+          "source_sha256": "230511b95599fb8b98345d41e76686293a7f2e634052aa36ee6016cb11bfa99e",
           "translation": "SyncScope: требует self; читает только флаг сохраняемости."
         },
         "/symbols/@id=script.method.server.Entity.MakePersistent/description": {
-          "source_sha256": "fd3af5d73c1b41bb4d0e6d41cdb6addf3de04310ff265f62f8289aedae7093cb",
+          "source_sha256": "bf60d6de45563242a543f3cc8157483132600552431547ea7dbf699ed8568cdc",
           "translation": "SyncScope: требует self; каскад сохранения может self-синхронизировать покрытые дочерние сущности."
         },
         "/symbols/@id=script.method.server.Entity.RepeatTimeEvent%2328154675b58100aa/description": {
-          "source_sha256": "32d14f70f7ad0ebdda4d7031ef6bfa538c215ead4baa4b6b19d99e429f5233ef",
+          "source_sha256": "372d0c49974ec68ac83487482de811e90af45979e07e9cada13506a616111fc2",
           "translation": "SyncScope: требует self; обновляет повтор события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.RepeatTimeEvent%2335eb685e9352ee97/description": {
-          "source_sha256": "32d14f70f7ad0ebdda4d7031ef6bfa538c215ead4baa4b6b19d99e429f5233ef",
+          "source_sha256": "372d0c49974ec68ac83487482de811e90af45979e07e9cada13506a616111fc2",
           "translation": "SyncScope: требует self; обновляет повтор события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.RepeatTimeEvent%234c1ec6146e414fed/description": {
-          "source_sha256": "32d14f70f7ad0ebdda4d7031ef6bfa538c215ead4baa4b6b19d99e429f5233ef",
+          "source_sha256": "372d0c49974ec68ac83487482de811e90af45979e07e9cada13506a616111fc2",
           "translation": "SyncScope: требует self; обновляет повтор события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.RepeatTimeEvent%23d107502adf65e851/description": {
-          "source_sha256": "32d14f70f7ad0ebdda4d7031ef6bfa538c215ead4baa4b6b19d99e429f5233ef",
+          "source_sha256": "372d0c49974ec68ac83487482de811e90af45979e07e9cada13506a616111fc2",
           "translation": "SyncScope: требует self; обновляет повтор события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.RepeatTimeEvent%23d3e5bb91010a5ee6/description": {
-          "source_sha256": "32d14f70f7ad0ebdda4d7031ef6bfa538c215ead4baa4b6b19d99e429f5233ef",
+          "source_sha256": "372d0c49974ec68ac83487482de811e90af45979e07e9cada13506a616111fc2",
           "translation": "SyncScope: требует self; обновляет повтор события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.SetTimeEventData%2309c025b7150b6bcd/description": {
-          "source_sha256": "5db00cf924f48a28828d77e078e77d4dbf9f4bd387fedd172e7be36cbe3547e7",
+          "source_sha256": "0cd2715ff05500567a43e49124e52274f86adaf2ef8215e4a03b87bb712839cf",
           "translation": "SyncScope: требует self; обновляет данные события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.SetTimeEventData%2346ce3a8e59df0b76/description": {
-          "source_sha256": "5db00cf924f48a28828d77e078e77d4dbf9f4bd387fedd172e7be36cbe3547e7",
+          "source_sha256": "0cd2715ff05500567a43e49124e52274f86adaf2ef8215e4a03b87bb712839cf",
           "translation": "SyncScope: требует self; обновляет данные события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.SetTimeEventData%23995b7ca79df38c35/description": {
-          "source_sha256": "5db00cf924f48a28828d77e078e77d4dbf9f4bd387fedd172e7be36cbe3547e7",
+          "source_sha256": "0cd2715ff05500567a43e49124e52274f86adaf2ef8215e4a03b87bb712839cf",
           "translation": "SyncScope: требует self; обновляет данные события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.SetTimeEventData%23adb2b4962b8e3874/description": {
-          "source_sha256": "5db00cf924f48a28828d77e078e77d4dbf9f4bd387fedd172e7be36cbe3547e7",
+          "source_sha256": "0cd2715ff05500567a43e49124e52274f86adaf2ef8215e4a03b87bb712839cf",
           "translation": "SyncScope: требует self; обновляет данные события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.SetTimeEventData%23c02fbdd5c31ecb21/description": {
-          "source_sha256": "5db00cf924f48a28828d77e078e77d4dbf9f4bd387fedd172e7be36cbe3547e7",
+          "source_sha256": "0cd2715ff05500567a43e49124e52274f86adaf2ef8215e4a03b87bb712839cf",
           "translation": "SyncScope: требует self; обновляет данные события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.SetTimeEventData%23c41820f30638ac18/description": {
-          "source_sha256": "5db00cf924f48a28828d77e078e77d4dbf9f4bd387fedd172e7be36cbe3547e7",
+          "source_sha256": "0cd2715ff05500567a43e49124e52274f86adaf2ef8215e4a03b87bb712839cf",
           "translation": "SyncScope: требует self; обновляет данные события, привязанного к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23170befe9003e3411/description": {
-          "source_sha256": "b4bcc1f01a5ee6e782a0871ed649c590423d03e342a1a6ba4c685f8430e8b3ec",
+          "source_sha256": "a94735df84ce91ed9b357bd24f613237dd895c9aca48967570f686338134b53c",
           "translation": "SyncScope: требует self для планирования повторяющегося события; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%231e937a7976df63ac/description": {
-          "source_sha256": "092d1147ffaa2ef8b7921f1285427f36ea9c6b6269514737a1db143780d2620e",
+          "source_sha256": "cbd9cb18b60961f50886011d5404078257075cb2d6cd6bd9b98659bf61a7093c",
           "translation": "SyncScope: требует self для планирования; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23492d95e09fb651ed/description": {
-          "source_sha256": "092d1147ffaa2ef8b7921f1285427f36ea9c6b6269514737a1db143780d2620e",
+          "source_sha256": "cbd9cb18b60961f50886011d5404078257075cb2d6cd6bd9b98659bf61a7093c",
           "translation": "SyncScope: требует self для планирования; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23494379a91f97d59e/description": {
-          "source_sha256": "b4bcc1f01a5ee6e782a0871ed649c590423d03e342a1a6ba4c685f8430e8b3ec",
+          "source_sha256": "a94735df84ce91ed9b357bd24f613237dd895c9aca48967570f686338134b53c",
           "translation": "SyncScope: требует self для планирования повторяющегося события; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%2364daaaa7e6125cb3/description": {
-          "source_sha256": "b4bcc1f01a5ee6e782a0871ed649c590423d03e342a1a6ba4c685f8430e8b3ec",
+          "source_sha256": "a94735df84ce91ed9b357bd24f613237dd895c9aca48967570f686338134b53c",
           "translation": "SyncScope: требует self для планирования повторяющегося события; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23805b4b72ba72a604/description": {
-          "source_sha256": "b4bcc1f01a5ee6e782a0871ed649c590423d03e342a1a6ba4c685f8430e8b3ec",
+          "source_sha256": "a94735df84ce91ed9b357bd24f613237dd895c9aca48967570f686338134b53c",
           "translation": "SyncScope: требует self для планирования повторяющегося события; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%239e1b092a1d7fb963/description": {
-          "source_sha256": "b4bcc1f01a5ee6e782a0871ed649c590423d03e342a1a6ba4c685f8430e8b3ec",
+          "source_sha256": "a94735df84ce91ed9b357bd24f613237dd895c9aca48967570f686338134b53c",
           "translation": "SyncScope: требует self для планирования повторяющегося события; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23ae9a39c7d8c1d6fa/description": {
-          "source_sha256": "092d1147ffaa2ef8b7921f1285427f36ea9c6b6269514737a1db143780d2620e",
+          "source_sha256": "cbd9cb18b60961f50886011d5404078257075cb2d6cd6bd9b98659bf61a7093c",
           "translation": "SyncScope: требует self для планирования; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23af2f95f5513a4cfa/description": {
-          "source_sha256": "b4bcc1f01a5ee6e782a0871ed649c590423d03e342a1a6ba4c685f8430e8b3ec",
+          "source_sha256": "a94735df84ce91ed9b357bd24f613237dd895c9aca48967570f686338134b53c",
           "translation": "SyncScope: требует self для планирования повторяющегося события; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23b494dfd4a4fa81ea/description": {
-          "source_sha256": "092d1147ffaa2ef8b7921f1285427f36ea9c6b6269514737a1db143780d2620e",
+          "source_sha256": "cbd9cb18b60961f50886011d5404078257075cb2d6cd6bd9b98659bf61a7093c",
           "translation": "SyncScope: требует self для планирования; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23d9b6635334d5ae05/description": {
-          "source_sha256": "092d1147ffaa2ef8b7921f1285427f36ea9c6b6269514737a1db143780d2620e",
+          "source_sha256": "cbd9cb18b60961f50886011d5404078257075cb2d6cd6bd9b98659bf61a7093c",
           "translation": "SyncScope: требует self для планирования; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StartTimeEvent%23e59548a665ddb838/description": {
-          "source_sha256": "092d1147ffaa2ef8b7921f1285427f36ea9c6b6269514737a1db143780d2620e",
+          "source_sha256": "cbd9cb18b60961f50886011d5404078257075cb2d6cd6bd9b98659bf61a7093c",
           "translation": "SyncScope: требует self для планирования; позднее вызванный обработчик получает от диспетчера покрытие self."
         },
         "/symbols/@id=script.method.server.Entity.StopTimeEvent%231ff4e8b7bdb6f35c/description": {
-          "source_sha256": "c9a778eb2a5fd70c10da9931cb45eb87093dc592d6352c0814e3f8a5304530c5",
+          "source_sha256": "d751a566369515024b803e1af77e911393d374fcf943a03911fa103bca20c954",
           "translation": "SyncScope: требует self; останавливает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.StopTimeEvent%2358fd464d379e5ea5/description": {
-          "source_sha256": "c9a778eb2a5fd70c10da9931cb45eb87093dc592d6352c0814e3f8a5304530c5",
+          "source_sha256": "d751a566369515024b803e1af77e911393d374fcf943a03911fa103bca20c954",
           "translation": "SyncScope: требует self; останавливает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.StopTimeEvent%23be90949683fff93d/description": {
-          "source_sha256": "57f7dd695175b2f957cd8d54b6d53635536d098c0d6f76793093b6d835d58aaf",
+          "source_sha256": "bcaf229fbed937e815523989a3eef625e4556f0d5ee5727a18ce86443c5f39d3",
           "translation": "SyncScope: требует self; останавливает событие, привязанное к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.StopTimeEvent%23d792082ed73a8fc8/description": {
-          "source_sha256": "c9a778eb2a5fd70c10da9931cb45eb87093dc592d6352c0814e3f8a5304530c5",
+          "source_sha256": "d751a566369515024b803e1af77e911393d374fcf943a03911fa103bca20c954",
           "translation": "SyncScope: требует self; останавливает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Entity.StopTimeEvent%23ddfbd34ed1764f92/description": {
-          "source_sha256": "c9a778eb2a5fd70c10da9931cb45eb87093dc592d6352c0814e3f8a5304530c5",
+          "source_sha256": "d751a566369515024b803e1af77e911393d374fcf943a03911fa103bca20c954",
           "translation": "SyncScope: требует self; останавливает события, привязанные к self, не изменяя покрытие."
         },
         "/symbols/@id=script.method.server.Game.CallStaticItemFunction/description": {
-          "source_sha256": "8026975361f3c0685d88ad8631c21c0efa719dca7007fc8cf94f668ade3a0f87",
+          "source_sha256": "0af68eb3f6b415147796e53f17b29b3ecafab5736b9ed5a64f7d2fa8f7554c5e",
           "translation": "SyncScope: требует cr и usedItem, если они не равны null; staticItem является статическими данными карты, а не покрытием активной сущности."
         },
         "/symbols/@id=script.method.server.Game.CreateCritter%23151d7b0fa45c079e/description": {
-          "source_sha256": "f04d543f9f57c73cc30ab3272432f96c63519b1a97cd060418ecc5c2c1217098",
+          "source_sha256": "c356fcb0d0a2caf1b50ad302a23dbb8094a2593d27a4f62d2923b9c86b965aa3",
           "translation": "SyncScope: существующее покрытие сущностей не требуется; создает отсоединенного криттера, которого необходимо покрыть перед использованием совместно с другими сущностями."
         },
         "/symbols/@id=script.method.server.Game.CreateCritter%23e68fa5ea3ffe3cc4/description": {
-          "source_sha256": "f04d543f9f57c73cc30ab3272432f96c63519b1a97cd060418ecc5c2c1217098",
+          "source_sha256": "c356fcb0d0a2caf1b50ad302a23dbb8094a2593d27a4f62d2923b9c86b965aa3",
           "translation": "SyncScope: существующее покрытие сущностей не требуется; создает отсоединенного криттера, которого необходимо покрыть перед использованием совместно с другими сущностями."
         },
         "/symbols/@id=script.method.server.Game.CreateCritter%23e774d859a418b9da/description": {
-          "source_sha256": "f04d543f9f57c73cc30ab3272432f96c63519b1a97cd060418ecc5c2c1217098",
+          "source_sha256": "c356fcb0d0a2caf1b50ad302a23dbb8094a2593d27a4f62d2923b9c86b965aa3",
           "translation": "SyncScope: существующее покрытие сущностей не требуется; создает отсоединенного криттера, которого необходимо покрыть перед использованием совместно с другими сущностями."
         },
         "/symbols/@id=script.method.server.Game.CreateCritter%23e8d3f028fa79075f/description": {
-          "source_sha256": "f04d543f9f57c73cc30ab3272432f96c63519b1a97cd060418ecc5c2c1217098",
+          "source_sha256": "c356fcb0d0a2caf1b50ad302a23dbb8094a2593d27a4f62d2923b9c86b965aa3",
           "translation": "SyncScope: существующее покрытие сущностей не требуется; создает отсоединенного криттера, которого необходимо покрыть перед использованием совместно с другими сущностями."
         },
         "/symbols/@id=script.method.server.Game.CreateLocation%2303c25a496a41709a/description": {
-          "source_sha256": "90b80cb3149da4fa4adf5c100e656dd3ec015a547047577d89ed4d653f349999",
+          "source_sha256": "f77733a66a15dd984571154d7d35db37b47e62a91c427785471a6a2e93b2abbe",
           "translation": "SyncScope: создает новую локацию и карты в текущем контексте; возвращенная локация входит в покрытие, установленное self-синхронизацией при регистрации."
         },
         "/symbols/@id=script.method.server.Game.CreateLocation%2309335f3291c54d05/description": {
-          "source_sha256": "ebc5ca5d6fb3c9738ea153daa19bd5f1916c710e339825dc375c60e10abb9577",
+          "source_sha256": "f03791675cfebf68654ab6b3a69bbba35b2c9745c1d3b20dc65bf86d428cfacb",
           "translation": "SyncScope: создает новую локацию в текущем контексте; возвращенная локация входит в покрытие, установленное self-синхронизацией при регистрации."
         },
         "/symbols/@id=script.method.server.Game.CreateLocation%23392f59fecd72fe17/description": {
-          "source_sha256": "ebc5ca5d6fb3c9738ea153daa19bd5f1916c710e339825dc375c60e10abb9577",
+          "source_sha256": "f03791675cfebf68654ab6b3a69bbba35b2c9745c1d3b20dc65bf86d428cfacb",
           "translation": "SyncScope: создает новую локацию в текущем контексте; возвращенная локация входит в покрытие, установленное self-синхронизацией при регистрации."
         },
         "/symbols/@id=script.method.server.Game.CreateLocation%234f3d2969824dd3bc/description": {
-          "source_sha256": "ebc5ca5d6fb3c9738ea153daa19bd5f1916c710e339825dc375c60e10abb9577",
+          "source_sha256": "f03791675cfebf68654ab6b3a69bbba35b2c9745c1d3b20dc65bf86d428cfacb",
           "translation": "SyncScope: создает новую локацию в текущем контексте; возвращенная локация входит в покрытие, установленное self-синхронизацией при регистрации."
         },
         "/symbols/@id=script.method.server.Game.CreateLocation%235a0f0539462eafe3/description": {
-          "source_sha256": "90b80cb3149da4fa4adf5c100e656dd3ec015a547047577d89ed4d653f349999",
+          "source_sha256": "f77733a66a15dd984571154d7d35db37b47e62a91c427785471a6a2e93b2abbe",
           "translation": "SyncScope: создает новую локацию и карты в текущем контексте; возвращенная локация входит в покрытие, установленное self-синхронизацией при регистрации."
         },
         "/symbols/@id=script.method.server.Game.CreateLocation%23c94de2fea30a1454/description": {
-          "source_sha256": "ebc5ca5d6fb3c9738ea153daa19bd5f1916c710e339825dc375c60e10abb9577",
+          "source_sha256": "f03791675cfebf68654ab6b3a69bbba35b2c9745c1d3b20dc65bf86d428cfacb",
           "translation": "SyncScope: создает новую локацию в текущем контексте; возвращенная локация входит в покрытие, установленное self-синхронизацией при регистрации."
         },
-        "/symbols/@id=script.method.server.Game.CreateUnloginedPlayer/description": {
-          "source_sha256": "91a401321c78383edae941e0be9d352331aa7097aafd5724863b21769be6cca6",
+        "/symbols/@id=script.method.server.Game.CreateNotLoggedInPlayer/description": {
+          "source_sha256": "18380c3fd43ad97bb680d9c3568924a87f3a32226db4f99974c17b08e45a2df4",
           "translation": "SyncScope: существующее покрытие сущностей не требуется; создает отключенный сеанс еще не вошедшего игрока."
         },
         "/symbols/@id=script.method.server.Game.DbGetAllRecordIds/description": {
-          "source_sha256": "4e7a365e2f90527b0f2138a15920c977427cd102868fee5def3cd8be52d42e26",
+          "source_sha256": "98c2317691b4166769b002934e93c68d71ae92bb055a55260adb9b98914be249",
           "translation": "SyncScope: только сканирует коллекцию базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbGetAllRecordKeys/description": {
-          "source_sha256": "4e7a365e2f90527b0f2138a15920c977427cd102868fee5def3cd8be52d42e26",
+          "source_sha256": "98c2317691b4166769b002934e93c68d71ae92bb055a55260adb9b98914be249",
           "translation": "SyncScope: только сканирует коллекцию базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbGetPlayerData/description": {
-          "source_sha256": "dfa8af7f318ad5721e6cf2a215c4859e9a208794af215b8057416d279ba3a454",
+          "source_sha256": "9405a78ea3bcf9ff222c0c653f33520a501ef751cad9215bebec7b576c2c63e8",
           "translation": "SyncScope: только выполняет поиск в базе данных; покрытие активной сущности игрока не затрагивается."
         },
         "/symbols/@id=script.method.server.Game.DbGetRecord%2386e082d9df76b104/description": {
-          "source_sha256": "2341857e7b3d50f599b8e5783dca520b71a4ff7ad4784b71fbf4beaaa5382f19",
+          "source_sha256": "0050ff98dd978744a8539622f06580867511a4319b600affc43c7c9941ed5e73",
           "translation": "SyncScope: только читает запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbGetRecord%23c524f7821136061a/description": {
-          "source_sha256": "2341857e7b3d50f599b8e5783dca520b71a4ff7ad4784b71fbf4beaaa5382f19",
+          "source_sha256": "0050ff98dd978744a8539622f06580867511a4319b600affc43c7c9941ed5e73",
           "translation": "SyncScope: только читает запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbHasEntity/description": {
-          "source_sha256": "894b544243d28a240028df560c12ae4bb79e77c546af574d041bcb935ae1fdcf",
+          "source_sha256": "a9eda13a7082386bada493e344113df8839f3271c0503a8a5d25c26605f6d994",
           "translation": "SyncScope: требует сущность для чтения типа или идентификатора; сам поиск в базе данных не покрывает активную сущность."
         },
         "/symbols/@id=script.method.server.Game.DbHasRecord%2331a3ffa964f519b8/description": {
-          "source_sha256": "7a85757a3a7a321ec2f17e2f0ca4c9cd25a3d364417acc0b947c4ae1b3564dfa",
+          "source_sha256": "82371ea41bb6e16f36280df7e09999b5519c4ba3774bab653b70ff2a30ce8156",
           "translation": "SyncScope: только ищет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbHasRecord%23e13466af940b3833/description": {
-          "source_sha256": "7a85757a3a7a321ec2f17e2f0ca4c9cd25a3d364417acc0b947c4ae1b3564dfa",
+          "source_sha256": "82371ea41bb6e16f36280df7e09999b5519c4ba3774bab653b70ff2a30ce8156",
           "translation": "SyncScope: только ищет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbInsertRecord%2323ac03d711edaa50/description": {
-          "source_sha256": "37924ff74eede2ee71ef710f9a657c51de11a9f23b9b5ac21a80a3510382456c",
+          "source_sha256": "7d37aac97ebe0499b839cde02646dce1c72e08924aa0d68c61f26e95bd2119c8",
           "translation": "SyncScope: только вставляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbInsertRecord%2327a079e12448f9d8/description": {
-          "source_sha256": "37924ff74eede2ee71ef710f9a657c51de11a9f23b9b5ac21a80a3510382456c",
+          "source_sha256": "7d37aac97ebe0499b839cde02646dce1c72e08924aa0d68c61f26e95bd2119c8",
           "translation": "SyncScope: только вставляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbRemoveRecord%232039b29db1a1d593/description": {
-          "source_sha256": "c24e455b9b8a4ee998a712481eb2e4261d49826611153ac9a9dfbc1af6fdd962",
+          "source_sha256": "de0355b3d1281eb579e53b20b7c0075c520dc439cbe223b15b66890774fd2678",
           "translation": "SyncScope: только удаляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbRemoveRecord%232749ed5b0c8482ba/description": {
-          "source_sha256": "c24e455b9b8a4ee998a712481eb2e4261d49826611153ac9a9dfbc1af6fdd962",
+          "source_sha256": "de0355b3d1281eb579e53b20b7c0075c520dc439cbe223b15b66890774fd2678",
           "translation": "SyncScope: только удаляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbUpdateRecordBool%236b7737017a2e23dd/description": {
-          "source_sha256": "5df2cb1e6e667c94553f1772f4a3a5d462fc575e0dd0e00dacfd3c64052fee21",
+          "source_sha256": "b5ad67b7e15d4f2d6a0959ccb36bff78654aa085d4bcbc381481bb79dc0b3194",
           "translation": "SyncScope: только обновляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbUpdateRecordBool%23717491d844575aca/description": {
-          "source_sha256": "5df2cb1e6e667c94553f1772f4a3a5d462fc575e0dd0e00dacfd3c64052fee21",
+          "source_sha256": "b5ad67b7e15d4f2d6a0959ccb36bff78654aa085d4bcbc381481bb79dc0b3194",
           "translation": "SyncScope: только обновляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbUpdateRecordFloat64%230e7e221242df2792/description": {
-          "source_sha256": "5df2cb1e6e667c94553f1772f4a3a5d462fc575e0dd0e00dacfd3c64052fee21",
+          "source_sha256": "b5ad67b7e15d4f2d6a0959ccb36bff78654aa085d4bcbc381481bb79dc0b3194",
           "translation": "SyncScope: только обновляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbUpdateRecordFloat64%23f5d0799b4804bb25/description": {
-          "source_sha256": "5df2cb1e6e667c94553f1772f4a3a5d462fc575e0dd0e00dacfd3c64052fee21",
+          "source_sha256": "b5ad67b7e15d4f2d6a0959ccb36bff78654aa085d4bcbc381481bb79dc0b3194",
           "translation": "SyncScope: только обновляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbUpdateRecordInt64%234b791154e44562fd/description": {
-          "source_sha256": "5df2cb1e6e667c94553f1772f4a3a5d462fc575e0dd0e00dacfd3c64052fee21",
+          "source_sha256": "b5ad67b7e15d4f2d6a0959ccb36bff78654aa085d4bcbc381481bb79dc0b3194",
           "translation": "SyncScope: только обновляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbUpdateRecordInt64%2391d6b71d16aee463/description": {
-          "source_sha256": "5df2cb1e6e667c94553f1772f4a3a5d462fc575e0dd0e00dacfd3c64052fee21",
+          "source_sha256": "b5ad67b7e15d4f2d6a0959ccb36bff78654aa085d4bcbc381481bb79dc0b3194",
           "translation": "SyncScope: только обновляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbUpdateRecordString%2376e92f4eee20fb7b/description": {
-          "source_sha256": "5df2cb1e6e667c94553f1772f4a3a5d462fc575e0dd0e00dacfd3c64052fee21",
+          "source_sha256": "b5ad67b7e15d4f2d6a0959ccb36bff78654aa085d4bcbc381481bb79dc0b3194",
           "translation": "SyncScope: только обновляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DbUpdateRecordString%23cbc3625de444b49c/description": {
-          "source_sha256": "5df2cb1e6e667c94553f1772f4a3a5d462fc575e0dd0e00dacfd3c64052fee21",
+          "source_sha256": "b5ad67b7e15d4f2d6a0959ccb36bff78654aa085d4bcbc381481bb79dc0b3194",
           "translation": "SyncScope: только обновляет запись базы данных; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.DestroyCritter/description": {
-          "source_sha256": "9b57579a04cbb8ef5932b998e787876a39fa29cb5960fa0c11d5e3f1cdde66f9",
+          "source_sha256": "f82a3d7bfbcc245ea0b265bf5e4b1c4dfc030a28b6a81e1924451c8f261566cf",
           "translation": "SyncScope: требует cr и текущую исходную карту, если cr не равен null и не управляется игроком."
         },
         "/symbols/@id=script.method.server.Game.DestroyCritters/description": {
-          "source_sha256": "9b505fe777ec6a36a8708c38d0950d7ac1a473090ae53bc047fe3599b9edc1c2",
+          "source_sha256": "e9fa629ee569771e790f7ff0210f6e8f92ba47579c4db462a7b63e15bf30e8b6",
           "translation": "SyncScope: требует каждый cr с ненулевым дескриптором и его текущую исходную карту, если криттер не управляется игроком."
         },
         "/symbols/@id=script.method.server.Game.DestroyEntities/description": {
-          "source_sha256": "d4d06b35ac95ed62f3910317da58e83004f8b6e599a514e26ec804659e440061",
+          "source_sha256": "c971871eccaf82c67b773d746a85b3911c0950de604c199d61ddc03e49b38685",
           "translation": "SyncScope: требует каждую сущность с ненулевым дескриптором и ее текущего родителя, если он есть; уничтожает каждое поддерево."
         },
         "/symbols/@id=script.method.server.Game.DestroyEntity/description": {
-          "source_sha256": "c7fa2ead0355075d569618f699d129b73aa30e3893a2201b44911d59a0a5aaba",
+          "source_sha256": "d715639c4510d14d109e9f33da1bcdb73172dc1858b4d9a2dff6ea199a95b5c9",
           "translation": "SyncScope: требует сущность и ее текущего родителя, если сущность не равна null; уничтожает поддерево сущности."
         },
         "/symbols/@id=script.method.server.Game.DestroyItem%2381454288b8dbf6b1/description": {
-          "source_sha256": "83f21e8984f8a49af10c19e3fafd62dede6d11ab0ff2fa793d125bc58152f9b6",
+          "source_sha256": "5e945c26cdcd18c012540ce485ca000fd866aacc2feb392820b078888bedf9f0",
           "translation": "SyncScope: требует предмет и его текущего родителя, если предмет не равен null; уничтожает поддерево предмета."
         },
         "/symbols/@id=script.method.server.Game.DestroyItem%239161ec2a1d9e60a9/description": {
-          "source_sha256": "3e42b771b1235ab44c3caf4850c2c57f44bda22b070fa1a9f82dd4f4fe374440",
+          "source_sha256": "61b62b47fa7b44476dca6787f121c8540c7061c93f26cc987ceeacbe1926f6d3",
           "translation": "SyncScope: требует предмет и его текущего родителя, если предмет не равен null; уничтожение полного количества удаляет поддерево предмета."
         },
         "/symbols/@id=script.method.server.Game.DestroyItems/description": {
-          "source_sha256": "73ecd0ffbdcf02026f6e36c1ceaaf1f3140cec614db83902e8623c7f6a876e19",
+          "source_sha256": "5713502e0a83105f119ccfe3532d876739f8b86b2e1e6a4d665cc112ede9fadd",
           "translation": "SyncScope: требует каждый предмет с ненулевым дескриптором и его текущего родителя; уничтожает каждое поддерево предмета."
         },
         "/symbols/@id=script.method.server.Game.DestroyLocation/description": {
-          "source_sha256": "21e8f17e4fa561199302a7bb99ecfb75e29eeff1cd0ea973953a02883c2c85f2",
+          "source_sha256": "79f8b5ff3110bbb78d3d5eb302c63e51670a6734aaf536486c16d3c550d8a2a6",
           "translation": "SyncScope: требует loc, если он не равен null; каскад уничтожения self-синхронизирует покрытые дочерние карты и сущности."
         },
         "/symbols/@id=script.method.server.Game.DestroyMap/description": {
-          "source_sha256": "8ac9e1efa95e2a3a0d05c8089b1ad90206c9192fda6fccb067e92b6a35a779b7",
+          "source_sha256": "e0839477752ba0278705c3f66cefc4d3aae536bb442aba4b9deae39e22484e75",
           "translation": "SyncScope: требует карту и родительскую локацию, если карта не равна null; каскад уничтожения self-синхронизирует покрытые дочерние сущности."
         },
         "/symbols/@id=script.method.server.Game.DestroyUnloadedCritter/description": {
-          "source_sha256": "44b37327255e4e9c2dfc78c414de2e33fcaa44c2ad8f9003add6eac9956be8ce",
+          "source_sha256": "ccbe25b72d0c4a6c11a939d11be38ab087f164dd07059dcb9818fd430769a970",
           "translation": "SyncScope: только выполняет операцию над выгруженной записью; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetAllItems%235f63b29e3fbd4374/description": {
-          "source_sha256": "821a9bbb6dadcbbc9f137f532ed59094c34a1f108712792a7eb1ef5978b96310",
+          "source_sha256": "439927ad3477c904af004b2803290a81eba7ebefe2d46f81db51acd37c0921c5",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы предметов не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetAllItems%23986ac88634199639/description": {
-          "source_sha256": "821a9bbb6dadcbbc9f137f532ed59094c34a1f108712792a7eb1ef5978b96310",
+          "source_sha256": "439927ad3477c904af004b2803290a81eba7ebefe2d46f81db51acd37c0921c5",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы предметов не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetAllNpc%23568d2e4962ad093b/description": {
-          "source_sha256": "1fe8c0519961fdf5a788e149bdf9ee1ab4b7c3cc98478bb9dde541610ab5a2d9",
+          "source_sha256": "be374fe25044df64d86b52aa07a99ea3609032bf7e581c8a797e64a47f419e3f",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы NPC-криттеров не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetAllNpc%23d318af6f5c78cd43/description": {
-          "source_sha256": "1fe8c0519961fdf5a788e149bdf9ee1ab4b7c3cc98478bb9dde541610ab5a2d9",
+          "source_sha256": "be374fe25044df64d86b52aa07a99ea3609032bf7e581c8a797e64a47f419e3f",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы NPC-криттеров не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetAllNpc%23e7c595cfaf4c11a4/description": {
-          "source_sha256": "1fe8c0519961fdf5a788e149bdf9ee1ab4b7c3cc98478bb9dde541610ab5a2d9",
+          "source_sha256": "be374fe25044df64d86b52aa07a99ea3609032bf7e581c8a797e64a47f419e3f",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы NPC-криттеров не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetAllocatorMemoryUsage/description": {
-          "source_sha256": "1de3b67811fac31ab1f8910fad903a21a70acb0981bad9a881483ce6569aad2e",
+          "source_sha256": "3d242bcc4abcdd439c391381617b957c7a1a1bfaf178e8cd647d9d17e2a93753",
           "translation": "SyncScope: только читает метрику аллокатора; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetCritter/description": {
-          "source_sha256": "989ad6846fe6db6adecdfd9406bd44cacfa0aed08d98cd109b48f8d38d1af3e4",
+          "source_sha256": "01d0d63e8ab1d0d1bc651cce74a0523d6620d8874107a9e61d82c0b81ee3c9c9",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор криттера не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetCritterRegistryCount/description": {
-          "source_sha256": "14c5cbfc09a6147c85f38423f23abcfb0c15741c8796f77a0e3ac995e5869f21",
+          "source_sha256": "c5174d6947f5e67b32a72506ab54d807c2a274a8f24dd176dc261a28d268d209",
           "translation": "SyncScope: только считает записи реестра; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetCritters/description": {
-          "source_sha256": "2d4b574c181eed7bfacd0e6d17068e78fcb184c743cf76b643d1d3afc006b689",
+          "source_sha256": "d62883512b2f1620d47bf38c41c51043654ec6f3d294360e0bd8cceb589da81b",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы криттеров не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetDistance%231be05ad1508d9bdf/description": {
-          "source_sha256": "96e3cd3de46b0042e8d6225196055aba609f37c7ddff7755ec479fbc155908ae",
+          "source_sha256": "983f0050c35e4a744ceb75bb541dfaa0672a27e477b8d7ad7f26ac37f577f083",
           "translation": "SyncScope: требует item1 и item2; читает размещение покрытых предметов на одной карте."
         },
         "/symbols/@id=script.method.server.Game.GetDistance%23200d823fdf545d92/description": {
-          "source_sha256": "6b95fc50e6b2165b40d002acb0618a37c2f29fae04bffe2659cdd0e838e4f263",
+          "source_sha256": "2c1991189c9198ffaec3896c9a4b35f4c1920d3b9d4a9f12a36a6e7153b8101c",
           "translation": "SyncScope: требует предмет и cr; читает размещение покрытых сущностей на одной карте."
         },
         "/symbols/@id=script.method.server.Game.GetDistance%2333a4d51ef8eece2a/description": {
-          "source_sha256": "c492ddf9313ee6369c0f0e4679b3b2a0be0d88ab29e58d575f232b8850497aed",
+          "source_sha256": "9b0fb3e11e2fad6e62ad47652e089490c272b2cd47261ee54d07900f3aa00a6a",
           "translation": "SyncScope: требует cr; читает размещение покрытого криттера."
         },
         "/symbols/@id=script.method.server.Game.GetDistance%233dade8869ec8c0ac/description": {
-          "source_sha256": "b24409f16e6fae30002059b5f6278af6a74a281e62d24629c8df0cbf1906ceb1",
+          "source_sha256": "9ea650837821e7cfbc1590d7075e9698e1d93fa6107ef8d0720fe80fdb3e04a4",
           "translation": "SyncScope: требует cr и предмет; читает размещение покрытых сущностей на одной карте."
         },
         "/symbols/@id=script.method.server.Game.GetDistance%238298d537bb9c7c37/description": {
-          "source_sha256": "a2abffc1352ad2df19975da46fc77c6998330730bbec3c26a860a8a12e5768e8",
+          "source_sha256": "fc4f06807c5199cef53bc68926725c0fb2ab59f5f383cffdbfe8c760e7026b9e",
           "translation": "SyncScope: требует предмет; читает размещение покрытого предмета."
         },
         "/symbols/@id=script.method.server.Game.GetDistance%238a80a760debf852d/description": {
-          "source_sha256": "c492ddf9313ee6369c0f0e4679b3b2a0be0d88ab29e58d575f232b8850497aed",
+          "source_sha256": "9b0fb3e11e2fad6e62ad47652e089490c272b2cd47261ee54d07900f3aa00a6a",
           "translation": "SyncScope: требует cr; читает размещение покрытого криттера."
         },
         "/symbols/@id=script.method.server.Game.GetDistance%23b273c01749f73e8c/description": {
-          "source_sha256": "a2abffc1352ad2df19975da46fc77c6998330730bbec3c26a860a8a12e5768e8",
+          "source_sha256": "fc4f06807c5199cef53bc68926725c0fb2ab59f5f383cffdbfe8c760e7026b9e",
           "translation": "SyncScope: требует предмет; читает размещение покрытого предмета."
         },
         "/symbols/@id=script.method.server.Game.GetDistance%23dacea0c00ba4c5f1/description": {
-          "source_sha256": "2406e4a650cf339155f9a837a1cab762ec6a372664272c22fc58f8ecabd5ea9c",
+          "source_sha256": "08910c5e965f2b236cfdffb24f96c5cc12344ad125d0c41a4b711a2e4d27d24f",
           "translation": "SyncScope: требует cr1 и cr2; читает размещение покрытых криттеров на одной карте."
         },
         "/symbols/@id=script.method.server.Game.GetEntity/description": {
-          "source_sha256": "6503b9cda8be8c1287697d996013d2c7ceb7181e863474dbd267d740a1cbbcc3",
+          "source_sha256": "677609b0bd78ae5518a80214598f9a8a90c2b0f1df41f3fbafcc3fb3273c89a1",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор сущности не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetEntityRegistryCount/description": {
-          "source_sha256": "f2270e3f6014b7a965e165878c53a4fa454efa1e7cccafc41eb434ad890a4102",
+          "source_sha256": "a5b095e0162f0c8d4792f4c197e60b0585cefe4ba9326c9e48be0942536a57da",
           "translation": "SyncScope: только считает записи реестра; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetHeldSyncEntities/description": {
-          "source_sha256": "bf5d6b2e27b219ab8a9340fc41987a2c50ffa1fbb2f0ad265aba38447d4cab80",
+          "source_sha256": "506f7513c126da1f73d259e238a15af6b8d1632f40c1c7fa1805337b1a307c2d",
           "translation": "SyncScope: возвращает текущее удерживаемое покрытие, не изменяя его."
         },
         "/symbols/@id=script.method.server.Game.GetItem/description": {
-          "source_sha256": "db385b547797829f7de634dc56b439ce7cbf56dafc0c3b93d66d309acf03e27b",
+          "source_sha256": "28b17002e324f416550a35cad8d168cb0ff6e94c892cf9cd913da8d3af1417d0",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор предмета не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetItemRegistryCount/description": {
-          "source_sha256": "14c5cbfc09a6147c85f38423f23abcfb0c15741c8796f77a0e3ac995e5869f21",
+          "source_sha256": "c5174d6947f5e67b32a72506ab54d807c2a274a8f24dd176dc261a28d268d209",
           "translation": "SyncScope: только считает записи реестра; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetItemRegistryProtoIds/description": {
-          "source_sha256": "d38fd8b63eaa41f2b57588a1a5d5ed98195aade0572f636b382a7a69e8055483",
+          "source_sha256": "1e6933b4e9e0b3aa0676506ac908f6c6aa4c79872b6d1d32c447a4663fefb410",
           "translation": "SyncScope: получает только снимок идентификаторов прототипов из реестра; читает карту реестра, не затрагивая состояние сущностей, поэтому покрытие сущностей не требуется. Предназначено для диагностики утечек в тестовой инфраструктуре."
         },
         "/symbols/@id=script.method.server.Game.GetLocation%2308a98bf7bce0a9bf/description": {
-          "source_sha256": "978342beef3b30aabfbc9d31951470d1a0bc2f4bec6d095d142fd797944ea53c",
+          "source_sha256": "e32cfbfecd4b243069feaca1949e7102677121c1e320c6670a36e49deb507fe0",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор локации не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetLocation%232f5eccddea2f5dd1/description": {
-          "source_sha256": "978342beef3b30aabfbc9d31951470d1a0bc2f4bec6d095d142fd797944ea53c",
+          "source_sha256": "e32cfbfecd4b243069feaca1949e7102677121c1e320c6670a36e49deb507fe0",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор локации не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetLocation%234b1903ede1dd2fa2/description": {
-          "source_sha256": "978342beef3b30aabfbc9d31951470d1a0bc2f4bec6d095d142fd797944ea53c",
+          "source_sha256": "e32cfbfecd4b243069feaca1949e7102677121c1e320c6670a36e49deb507fe0",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор локации не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetLocation%238d03e18599ee2a1e/description": {
-          "source_sha256": "e1038ee2e2e492f47bf65543abc919e7e9622b85c856b2bf8de5e4975c1c6a9a",
+          "source_sha256": "9b5a994390ccd9e2d442924afbe1c58d6e2fa38cc704a46bf4b71cd169196f1d",
           "translation": "SyncScope: только сканирует реестр; возвращенный дескриптор локации не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetLocationRegistryCount/description": {
-          "source_sha256": "14c5cbfc09a6147c85f38423f23abcfb0c15741c8796f77a0e3ac995e5869f21",
+          "source_sha256": "c5174d6947f5e67b32a72506ab54d807c2a274a8f24dd176dc261a28d268d209",
           "translation": "SyncScope: только считает записи реестра; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetLocations%2353d313c4ee2358d8/description": {
-          "source_sha256": "99b8028de08ebf43fd3d64001c57dede89e943a4d2fd97c3f241a3c2bc93eecd",
+          "source_sha256": "192e21a9a1648e365f163213b08134af5d4af71c3a9dd96e54e2c1f2b4f0ed05",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы локаций не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetLocations%237e3ec9d90972cfaf/description": {
-          "source_sha256": "99b8028de08ebf43fd3d64001c57dede89e943a4d2fd97c3f241a3c2bc93eecd",
+          "source_sha256": "192e21a9a1648e365f163213b08134af5d4af71c3a9dd96e54e2c1f2b4f0ed05",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы локаций не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetLocations%238eb7a49e747de27a/description": {
-          "source_sha256": "99b8028de08ebf43fd3d64001c57dede89e943a4d2fd97c3f241a3c2bc93eecd",
+          "source_sha256": "192e21a9a1648e365f163213b08134af5d4af71c3a9dd96e54e2c1f2b4f0ed05",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы локаций не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetLocations%23c590f9bbe1535ddd/description": {
-          "source_sha256": "99b8028de08ebf43fd3d64001c57dede89e943a4d2fd97c3f241a3c2bc93eecd",
+          "source_sha256": "192e21a9a1648e365f163213b08134af5d4af71c3a9dd96e54e2c1f2b4f0ed05",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы локаций не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetMap%2328a9744f2e2f208e/description": {
-          "source_sha256": "34d255071610253d5439e05af25964509f9441a96bdc5f16bbe4bd0d5c0c8aef",
+          "source_sha256": "465639abd28088c2c1c6ae7a233ad5a2d085ec3d8b1f82e4d4abc46909cc5b77",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор карты не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetMap%2338ce2f11f2b9397e/description": {
-          "source_sha256": "34d255071610253d5439e05af25964509f9441a96bdc5f16bbe4bd0d5c0c8aef",
+          "source_sha256": "465639abd28088c2c1c6ae7a233ad5a2d085ec3d8b1f82e4d4abc46909cc5b77",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор карты не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetMap%23b7b3d34523400d1f/description": {
-          "source_sha256": "34d255071610253d5439e05af25964509f9441a96bdc5f16bbe4bd0d5c0c8aef",
+          "source_sha256": "465639abd28088c2c1c6ae7a233ad5a2d085ec3d8b1f82e4d4abc46909cc5b77",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор карты не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetMapRegistryCount/description": {
-          "source_sha256": "14c5cbfc09a6147c85f38423f23abcfb0c15741c8796f77a0e3ac995e5869f21",
+          "source_sha256": "c5174d6947f5e67b32a72506ab54d807c2a274a8f24dd176dc261a28d268d209",
           "translation": "SyncScope: только считает записи реестра; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetMaps%2312174f7cc9f609d1/description": {
-          "source_sha256": "feff39325129005d18cf1004c001110a09a44496a140fd5fc707de0a2f1d8e2b",
+          "source_sha256": "c695813be6f8771d34c4d7f099b90955cd897cae7bf1086c60d9b10194bbc97f",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы карт не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetMaps%233cd2c62b701248d5/description": {
-          "source_sha256": "feff39325129005d18cf1004c001110a09a44496a140fd5fc707de0a2f1d8e2b",
+          "source_sha256": "c695813be6f8771d34c4d7f099b90955cd897cae7bf1086c60d9b10194bbc97f",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы карт не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetMaps%23779d5c9f8b1fd466/description": {
-          "source_sha256": "feff39325129005d18cf1004c001110a09a44496a140fd5fc707de0a2f1d8e2b",
+          "source_sha256": "c695813be6f8771d34c4d7f099b90955cd897cae7bf1086c60d9b10194bbc97f",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы карт не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetOnlinePlayers/description": {
-          "source_sha256": "07a52cdc809c943e9df5f8d4914fe08f69c0c9d375d20c04d6a871cc472a9884",
+          "source_sha256": "666eb296e9829a1261ae16dc76949ec719a10ec8e8448c93c6012d29c6a1aedd",
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы игроков не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetPlayer/description": {
-          "source_sha256": "ef2bcfd0652a7e9eecf275bc18b9cfa14caef5cd9903dbd7162dc98714cc0a05",
+          "source_sha256": "8c453af273626a4da4ff89f92f52d65ce1debdd63202d251fe9720a89a7753fb",
           "translation": "SyncScope: только ищет в реестре; возвращенный дескриптор игрока не покрыт для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetPlayerRegistryCount/description": {
-          "source_sha256": "14c5cbfc09a6147c85f38423f23abcfb0c15741c8796f77a0e3ac995e5869f21",
+          "source_sha256": "c5174d6947f5e67b32a72506ab54d807c2a274a8f24dd176dc261a28d268d209",
           "translation": "SyncScope: только считает записи реестра; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetProcessMemoryUsage/description": {
-          "source_sha256": "15ebbf652d23f32539444fd83a7f16ace7716e49c2cda2449929c7ac41a522c8",
+          "source_sha256": "518f0affc37608f034993f0bc20f112e71fc69e50556e59b90f42941f7f44b9e",
           "translation": "SyncScope: только читает метрику процесса; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetProtoCrittersForProtoMap/description": {
-          "source_sha256": "41f5c555ecc04866a49136246f6e046b17498efcbc72299f91543a57671020a7",
+          "source_sha256": "946ef3974229f0c4b1ad99b63df32b21a991df4bed2595627e544312856ec0ea",
           "translation": "SyncScope: только читает статический прототип карты; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetRegisteredPlayerIds/description": {
-          "source_sha256": "dd1265effd954b41ccd5c2a7c3853beed0048a0442e803529701222492bfb0f7",
+          "source_sha256": "fa0369187f32be2b4de6b97c5705e9dd8b0836eca4865d6c0931525bd746fd3c",
           "translation": "SyncScope: только читает реестр базы данных; покрытие активного игрока не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetStaticItemsForProtoMap/description": {
-          "source_sha256": "41f5c555ecc04866a49136246f6e046b17498efcbc72299f91543a57671020a7",
+          "source_sha256": "946ef3974229f0c4b1ad99b63df32b21a991df4bed2595627e544312856ec0ea",
           "translation": "SyncScope: только читает статический прототип карты; покрытие активной сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetTextCount/description": {
-          "source_sha256": "d47bd5ae88e859bd995b6626720778559c8b82d54b24890b2f0afa0ab07afcc4",
+          "source_sha256": "26f6d7d297b25593b56e43b430ecb0e8c24e54c437df8df2452632abf8c87cae",
           "translation": "SyncScope: только читает языковой пакет; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.IsEntityLocked/description": {
-          "source_sha256": "4c22028c0edbcfee1d1a723f34b983589e6434570bb368d7c4fc8e51e18d0f46",
+          "source_sha256": "72f7bb70799b2fe165de2c36a136f95eed06cd911a7096abcce88dfa049879a1",
           "translation": "SyncScope: выполняет безопасную для синхронизации проверку; возвращает признак покрытия сущности без диагностических сообщений."
         },
         "/symbols/@id=script.method.server.Game.IsTextPresent/description": {
-          "source_sha256": "d47bd5ae88e859bd995b6626720778559c8b82d54b24890b2f0afa0ab07afcc4",
+          "source_sha256": "26f6d7d297b25593b56e43b430ecb0e8c24e54c437df8df2452632abf8c87cae",
           "translation": "SyncScope: только читает языковой пакет; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.LoadCritter/description": {
-          "source_sha256": "466049526d2b3300fa2da1a400bfb1d8e9c4e957be75442f6f5e1fd4fdef8300",
+          "source_sha256": "f315f110ea3ab2bd4052916cb5c79bcd1cd2c8945ffe5cd41c4834639eb32199",
           "translation": "SyncScope: только загружает данные из базы данных или реестра; возвращенного криттера необходимо покрыть перед использованием совместно с другими сущностями."
         },
         "/symbols/@id=script.method.server.Game.Lock/description": {
-          "source_sha256": "6bf834c30eafc09b6f3f8680b6cfb0dd7c0490130724a044944f1438f501aed9",
+          "source_sha256": "64a25b440f2591e93a0e417113f5918ad7f7b8637487f4799bcfbb77c2ec1699",
           "translation": "SyncScope: блокирует singleton-секцию Game; пока эта блокировка удерживается, нельзя вызывать Game.Sync."
         },
         "/symbols/@id=script.method.server.Game.LoginPlayerToExistentRecord/description": {
-          "source_sha256": "3767e85587a553ab4a9ccf3cbcd1c4dd3665b094753a0347ce1f8057766d03a0",
-          "translation": "SyncScope: требует unloginedPlayer и подготовленный граф основного криттера, карты и локации; живое переподключение дополнительно требует существующего игрока. Вход сохраняет покрытие, предоставленное вызывающим кодом."
+          "source_sha256": "bbea292cd667538a3cd638d9378b2268bb731bc9bbec1fbb95ca69696c8d8ee6",
+          "translation": "SyncScope: требует notLoggedInPlayer и подготовленный граф основного криттера, карты и локации; живое переподключение дополнительно требует существующего игрока. Вход сохраняет покрытие, предоставленное вызывающим кодом."
         },
         "/symbols/@id=script.method.server.Game.LoginPlayerToNewRecord/description": {
-          "source_sha256": "16a69ca28e41365b88b0198e646a5a8fbbdef1ffb27f0e2cf1ed62ae5f5276da",
-          "translation": "SyncScope: требует unloginedPlayer; вход изменяет запись этого игрока или сеанса."
+          "source_sha256": "33da6c82da8b7d1b0480639a1dcbf7ddb1aca098349004da2a90de597aaa9e7e",
+          "translation": "SyncScope: требует notLoggedInPlayer; вход изменяет запись этого игрока или сеанса."
         },
         "/symbols/@id=script.method.server.Game.LoginPlayerToTempSession/description": {
-          "source_sha256": "16a69ca28e41365b88b0198e646a5a8fbbdef1ffb27f0e2cf1ed62ae5f5276da",
-          "translation": "SyncScope: требует unloginedPlayer; вход изменяет запись этого игрока или сеанса."
+          "source_sha256": "33da6c82da8b7d1b0480639a1dcbf7ddb1aca098349004da2a90de597aaa9e7e",
+          "translation": "SyncScope: требует notLoggedInPlayer; вход изменяет запись этого игрока или сеанса."
         },
         "/symbols/@id=script.method.server.Game.MoveItem%2301b24a3b95a72d0e/description": {
-          "source_sha256": "04cfe98c95efd97801268696908471e32a12cf9e595b2ff19432b79358bc00eb",
+          "source_sha256": "799c2e3d833a4d6b6937d9ce970259b9af282afbfab7191d5abb967133bc90bb",
           "translation": "SyncScope: требует предмет, его текущего родителя и целевой предмет-контейнер."
         },
         "/symbols/@id=script.method.server.Game.MoveItem%232ed0d82a6f587a26/description": {
-          "source_sha256": "04cfe98c95efd97801268696908471e32a12cf9e595b2ff19432b79358bc00eb",
+          "source_sha256": "799c2e3d833a4d6b6937d9ce970259b9af282afbfab7191d5abb967133bc90bb",
           "translation": "SyncScope: требует предмет, его текущего родителя и целевой предмет-контейнер."
         },
         "/symbols/@id=script.method.server.Game.MoveItem%23883528ad0763e772/description": {
-          "source_sha256": "edfbcc6404f0673d12e810d4c50b7861c0ae9c20c4a6f6bc5bbc8b8969c2a794",
+          "source_sha256": "6073e20f0ef4397b5283f7e7a0a98788c8fc0966a15fd3330e06bcc6705bb4c8",
           "translation": "SyncScope: требует предмет, его текущего родителя и целевую карту."
         },
         "/symbols/@id=script.method.server.Game.MoveItem%239956c3b95ef7bc5f/description": {
-          "source_sha256": "512c58a83bf327c935ccfc672c5224894d2fb3ffe61510692600a9a8deea6ad6",
+          "source_sha256": "bfc0dcefd03b037db7e95c3f496b25c0a984c9f95b19c5351a1b3a5aef5417e4",
           "translation": "SyncScope: требует предмет, его текущего родителя и целевого криттера."
         },
         "/symbols/@id=script.method.server.Game.MoveItem%239eccef0918f1fa83/description": {
-          "source_sha256": "edfbcc6404f0673d12e810d4c50b7861c0ae9c20c4a6f6bc5bbc8b8969c2a794",
+          "source_sha256": "6073e20f0ef4397b5283f7e7a0a98788c8fc0966a15fd3330e06bcc6705bb4c8",
           "translation": "SyncScope: требует предмет, его текущего родителя и целевую карту."
         },
         "/symbols/@id=script.method.server.Game.MoveItem%23c26f82c316789816/description": {
-          "source_sha256": "512c58a83bf327c935ccfc672c5224894d2fb3ffe61510692600a9a8deea6ad6",
+          "source_sha256": "bfc0dcefd03b037db7e95c3f496b25c0a984c9f95b19c5351a1b3a5aef5417e4",
           "translation": "SyncScope: требует предмет, его текущего родителя и целевого криттера."
         },
         "/symbols/@id=script.method.server.Game.MoveItems%235402fba4af9b29a1/description": {
-          "source_sha256": "7e130b978c931945775311a400a201337b59493e5e9c53c0558b4799deb37d08",
+          "source_sha256": "a7c10e8f94c49c53610ca65a9b545e7314f655e99a2ced849c741607de9386a1",
           "translation": "SyncScope: требует целевого криттера, каждый предмет и его текущего родителя."
         },
         "/symbols/@id=script.method.server.Game.MoveItems%238a09125d1c5aeacb/description": {
-          "source_sha256": "ce9dd095c3584a1d63731ef05315d74f371febbc33f3f25a5130867bc4c0101f",
+          "source_sha256": "65255aec5889c5991c59d8024f75f32cac38bb1ea44ca104ebba2a8394caf5f4",
           "translation": "SyncScope: требует целевой предмет-контейнер, каждый предмет и его текущего родителя."
         },
         "/symbols/@id=script.method.server.Game.MoveItems%23efe80393199559d9/description": {
-          "source_sha256": "f39441e6cd87690c929db80576d5cf74ac9d7265eb664bace176e186ff4866e7",
+          "source_sha256": "8df82ec1d0d4193748efea73da46337c80d50fd3fd1bc114124ce35a0fefeff4",
           "translation": "SyncScope: требует целевую карту, каждый предмет и его текущего родителя."
         },
         "/symbols/@id=script.method.server.Game.SetSynchronizedTime/description": {
-          "source_sha256": "1f164b671ea86a1f3b2e9d2006fa9ad1eb5d78655d52061f9fbe7d18d10ef3d7",
+          "source_sha256": "5584d806bff3746b6318cea93df7bfcc244f0f2d0126b69ac5b88fdfe151a6da",
           "translation": "SyncScope: требует singleton-блокировку Game.Lock; изменяет глобальное синхронизированное время, а не активную сущность."
         },
         "/symbols/@id=script.method.server.Game.Sync%233a28adb1be02af8c/description": {
-          "source_sha256": "faa4983c545760c509d3f9584218ed08daf8de2c8eb272d72ba8f15d018d7023",
+          "source_sha256": "4a6262f59d75bc1ce728fa65babf250cce0fc518744b1dbfdbdf2bf18ca7b38f",
           "translation": "SyncScope: заменяет текущее покрытие сущностью и ее автоматически добавляемыми движком партнерами."
         },
         "/symbols/@id=script.method.server.Game.Sync%238a5e8bb38f1776db/description": {
-          "source_sha256": "20f1c18a84fd1bb8cf06d1e62bc7c8611d6f700225e2824f966eacae6c3998f2",
+          "source_sha256": "6318fe0e430e8013e1f5ec3f39912b91fad7221732c66e9afe3fea8e251620cf",
           "translation": "SyncScope: заменяет текущее покрытие всеми сущностями и их автоматически добавляемыми движком партнерами."
         },
         "/symbols/@id=script.method.server.Game.Sync%23a0c5737d3ba111b8/description": {
-          "source_sha256": "3978e95f5a92936ee3ed4be032f00bd19d60aa6e57071526fa03ac204ef9cb60",
+          "source_sha256": "c2c9368c92a2a5a13a74d7455d30efd2fece204a28d568d7f536dddad70681bb",
           "translation": "SyncScope: заменяет текущее покрытие всеми сущностями с ненулевыми дескрипторами и их автоматически добавляемыми движком партнерами."
         },
         "/symbols/@id=script.method.server.Game.Sync%23b42b6f6d6b684d2a/description": {
-          "source_sha256": "2c2f579243c681f40db03deca598dfca543b817fbd26f5ab2e7dc41ada5f98af",
+          "source_sha256": "538bd93a8e8bf59b76b5bb13547af3d8489ecbf5f0a47effd7bd3b35a3b24b00",
           "translation": "SyncScope: заменяет текущее покрытие обеими сущностями и их автоматически добавляемыми движком партнерами."
         },
         "/symbols/@id=script.method.server.Game.SyncRelease/description": {
-          "source_sha256": "38020d364641ed4a1de3a98adb15b7c56134a918d4a29d5843299332321b9d2a",
+          "source_sha256": "e55d330ecbd77caa9052b5f2dcf94dfaf46517affda3d6c761fa42190c4adebe",
           "translation": "SyncScope: освобождает весь удерживаемый набор: покрытие сущностей И все записи singleton-секции Game.Lock (SyncContext::Release очищает обе секции); блокировку Game.Lock, взятую до этого вызова, после него разблокировать не нужно."
         },
         "/symbols/@id=script.method.server.Game.SystemCall%235f9bd54717eb40b8/description": {
-          "source_sha256": "69c93e65a3b3910517d6006966bf3dbaf5d59f1a07f38085282a68c77614e6fb",
+          "source_sha256": "a75ede9a8335aad4b5a1c74111ea7dc850cbcbf93941e13796791111831fdfe3",
           "translation": "SyncScope: только вызывает внешний процесс; покрытие сущностей не требуется, но вызов нельзя выполнять при удержании блокировок несвязанных сущностей."
         },
         "/symbols/@id=script.method.server.Game.SystemCall%23bc91017a887fc615/description": {
-          "source_sha256": "69c93e65a3b3910517d6006966bf3dbaf5d59f1a07f38085282a68c77614e6fb",
+          "source_sha256": "a75ede9a8335aad4b5a1c74111ea7dc850cbcbf93941e13796791111831fdfe3",
           "translation": "SyncScope: только вызывает внешний процесс; покрытие сущностей не требуется, но вызов нельзя выполнять при удержании блокировок несвязанных сущностей."
         },
         "/symbols/@id=script.method.server.Game.UnloadCritter/description": {
-          "source_sha256": "691306fae433139514415c4b6db9030bf8fffd37ab6a261d7321a090d5d0125b",
+          "source_sha256": "2186bb3694c8d0cd67ae5b40232913920d2124cc2625afb7ea3470a6cdce2c71",
           "translation": "SyncScope: требует cr и текущую родительскую карту; выгрузка изменяет состояние симуляции криттера."
         },
         "/symbols/@id=script.method.server.Game.Unlock/description": {
-          "source_sha256": "b11dd5d740f805397105ff7495f0a1c06d0521bf04eaa8725b3e70a19678e65b",
+          "source_sha256": "916d8ee4641c8aae325cdbefb19d75e4e0cc7a9a4fe0533a211f417221f4a1c4",
           "translation": "SyncScope: разблокирует singleton-секцию Game; покрытие сущностей не изменяется."
         },
         "/symbols/@id=script.method.server.Item.AddItem%234fb12d5afc16cf97/description": {
-          "source_sha256": "0d639a7b6fa3ec5e62de248d63351c5a7bdc39f80e4ad29fc804f3da76037f3d",
+          "source_sha256": "71f56a01a88398af7056d2da5a024b2d85f7492ea1649e68d4a98536151fc7ff",
           "translation": "SyncScope: требует self; создает и присоединяет новый внутренний предмет в покрытии контейнера."
         },
         "/symbols/@id=script.method.server.Item.AddItem%237cfa2f0fd27518f9/description": {
-          "source_sha256": "0d639a7b6fa3ec5e62de248d63351c5a7bdc39f80e4ad29fc804f3da76037f3d",
+          "source_sha256": "71f56a01a88398af7056d2da5a024b2d85f7492ea1649e68d4a98536151fc7ff",
           "translation": "SyncScope: требует self; создает и присоединяет новый внутренний предмет в покрытии контейнера."
         },
         "/symbols/@id=script.method.server.Item.GetCritter/description": {
-          "source_sha256": "aff488c0b274dba653ec3592a7909372c7524e7f88abeb71a779ec41e6f8a5cb",
+          "source_sha256": "cc57a254b3164e254ab1d1815aa41e7d3678fd7b38b80b134c9e0d775baf5878",
           "translation": "SyncScope: требует self; возвращает криттера-держателя, когда предмет находится в инвентаре криттера, не создавая нового покрытия."
         },
         "/symbols/@id=script.method.server.Item.GetItems/description": {
-          "source_sha256": "8ba7db8c235860d55fca085ac4ba50d51af5f6622a4e42f4b5e7c3f4fad9ba07",
+          "source_sha256": "e210a7e466d0978d7b4fe0f2ea62b639de71a5a45f79c59db33e144c322f8f37",
           "translation": "SyncScope: требует self; возвращает дескрипторы внутренних предметов, входящие в покрытие self, пока оно сохраняется."
         },
         "/symbols/@id=script.method.server.Item.GetMap/description": {
-          "source_sha256": "b1c8a9d3ac9f80a0b688918d1072b254e04161ab5f60a556add0d298535ccd54",
+          "source_sha256": "c4124a4ab696a2e9795c669ab16f16666785038578193527bf3b7ccece6e9e49",
           "translation": "SyncScope: требует self; может также читать цепочку криттера-держателя или родительской карты, но возвращенная карта не покрыта для последующего чтения."
         },
         "/symbols/@id=script.method.server.Item.GetMapPosition/description": {
-          "source_sha256": "b1c8a9d3ac9f80a0b688918d1072b254e04161ab5f60a556add0d298535ccd54",
+          "source_sha256": "c4124a4ab696a2e9795c669ab16f16666785038578193527bf3b7ccece6e9e49",
           "translation": "SyncScope: требует self; может также читать цепочку криттера-держателя или родительской карты, но возвращенная карта не покрыта для последующего чтения."
         },
         "/symbols/@id=script.method.server.Item.RefreshVisibility/description": {
-          "source_sha256": "c78eff4c4823a7d5edd1f6acc998562e140ba0d369644b95f4b7ddc7573010ea",
+          "source_sha256": "f04e72224e9bf89a6223ef5449d22900a0feeb96ad17387363e5ca1a22738ac3",
           "translation": "SyncScope: требует self и текущую карту для сущности, принадлежащей карте; обновляет кеши видимости и блокировки карты."
         },
         "/symbols/@id=script.method.server.Item.SetupScript/description": {
-          "source_sha256": "3a1beb1acc73d7643d5224be8f0e947ab8aed1705f570ae642ddef00ebbd66e2",
+          "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
         },
         "/symbols/@id=script.method.server.Item.SetupScriptEx/description": {
-          "source_sha256": "3a1beb1acc73d7643d5224be8f0e947ab8aed1705f570ae642ddef00ebbd66e2",
+          "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
         },
         "/symbols/@id=script.method.server.Location.AddMap%2364169b002e08e159/description": {
-          "source_sha256": "f4fabfd7d9e4163958d8b80d5f7c5331b7b74c9630084bca0b41122662f480ea",
+          "source_sha256": "d419395639b24f974e73611836425382ef9b517577b06fb45323188d9cba8934",
           "translation": "SyncScope: требует self; создает и присоединяет дочернюю карту в покрытии локации."
         },
         "/symbols/@id=script.method.server.Location.AddMap%23f4dae4b3925387ad/description": {
-          "source_sha256": "f4fabfd7d9e4163958d8b80d5f7c5331b7b74c9630084bca0b41122662f480ea",
+          "source_sha256": "d419395639b24f974e73611836425382ef9b517577b06fb45323188d9cba8934",
           "translation": "SyncScope: требует self; создает и присоединяет дочернюю карту в покрытии локации."
         },
         "/symbols/@id=script.method.server.Location.GetMap%23102f60993beb7009/description": {
-          "source_sha256": "66cf221c0b35fb3092ea71bbb96de22d06baeb2ebb4b8730cc41895f2f11a64d",
+          "source_sha256": "8fc7f726371bd3b6ef7a656e341dc6b830a913bc680874fec1a5962ecb0a0737",
           "translation": "SyncScope: требует self; возвращенная карта входит в покрытие self, пока сохраняется покрытие локации."
         },
         "/symbols/@id=script.method.server.Location.GetMap%23c71a7456cd1c7874/description": {
-          "source_sha256": "66cf221c0b35fb3092ea71bbb96de22d06baeb2ebb4b8730cc41895f2f11a64d",
+          "source_sha256": "8fc7f726371bd3b6ef7a656e341dc6b830a913bc680874fec1a5962ecb0a0737",
           "translation": "SyncScope: требует self; возвращенная карта входит в покрытие self, пока сохраняется покрытие локации."
         },
         "/symbols/@id=script.method.server.Location.GetMapByIndex/description": {
-          "source_sha256": "66cf221c0b35fb3092ea71bbb96de22d06baeb2ebb4b8730cc41895f2f11a64d",
+          "source_sha256": "8fc7f726371bd3b6ef7a656e341dc6b830a913bc680874fec1a5962ecb0a0737",
           "translation": "SyncScope: требует self; возвращенная карта входит в покрытие self, пока сохраняется покрытие локации."
         },
         "/symbols/@id=script.method.server.Location.GetMapCount/description": {
-          "source_sha256": "c99161208072f9103a796e279ccc791828e7c210480c814e162bb174256d659e",
+          "source_sha256": "692643e494977c88bf0b1d5da7a754a7fa641cf6d9222ff8621d9a1cfbc36ed3",
           "translation": "SyncScope: требует self; считает дочерние карты, входящие в покрытие локации."
         },
         "/symbols/@id=script.method.server.Location.GetMaps/description": {
-          "source_sha256": "8af4f10455db8a3a10eac5bdc2799a69d03aea3928319ce923eb1692656d1640",
+          "source_sha256": "336e028631bd8ffe17e2e9e00849862f6ae10f8c9339bb9695fb3a62eff33629",
           "translation": "SyncScope: требует self; возвращенные карты входят в покрытие self, пока сохраняется покрытие локации."
         },
         "/symbols/@id=script.method.server.Location.Regenerate/description": {
-          "source_sha256": "c92146a1177bc8ddfb798df69c1e9ab608d531d1a7e75634b3e41713f0ac05d8",
+          "source_sha256": "5185e72b2ad1fe3898aa7cec166747021e6327f7bfd0ebcac382d8379d32e4da",
           "translation": "SyncScope: требует self; перегенерирует все дочерние карты, входящие в покрытие локации."
         },
         "/symbols/@id=script.method.server.Location.SetupScript/description": {
-          "source_sha256": "3a1beb1acc73d7643d5224be8f0e947ab8aed1705f570ae642ddef00ebbd66e2",
+          "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
         },
         "/symbols/@id=script.method.server.Location.SetupScriptEx/description": {
-          "source_sha256": "3a1beb1acc73d7643d5224be8f0e947ab8aed1705f570ae642ddef00ebbd66e2",
+          "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
         },
         "/symbols/@id=script.method.server.Map.AddCritter%231e4e76b759d6c5e8/description": {
-          "source_sha256": "7eebc19e15bbf51559b85d58be817a27fc0eab3c3017eb4786ee8df9e74c0fc3",
+          "source_sha256": "2030d85e3c1014ba5be1f5aecc08f80bffff5f5e81839178d27154a7a92f746e",
           "translation": "SyncScope: требует self; создает и присоединяет нового криттера к карте в покрытии self."
         },
         "/symbols/@id=script.method.server.Map.AddCritter%2342310745cd07d9a7/description": {
-          "source_sha256": "7eebc19e15bbf51559b85d58be817a27fc0eab3c3017eb4786ee8df9e74c0fc3",
+          "source_sha256": "2030d85e3c1014ba5be1f5aecc08f80bffff5f5e81839178d27154a7a92f746e",
           "translation": "SyncScope: требует self; создает и присоединяет нового криттера к карте в покрытии self."
         },
         "/symbols/@id=script.method.server.Map.AddCritter%23469abe60680fae4e/description": {
-          "source_sha256": "7eebc19e15bbf51559b85d58be817a27fc0eab3c3017eb4786ee8df9e74c0fc3",
+          "source_sha256": "2030d85e3c1014ba5be1f5aecc08f80bffff5f5e81839178d27154a7a92f746e",
           "translation": "SyncScope: требует self; создает и присоединяет нового криттера к карте в покрытии self."
         },
         "/symbols/@id=script.method.server.Map.AddCritter%234bf2d1bf57efc238/description": {
-          "source_sha256": "7eebc19e15bbf51559b85d58be817a27fc0eab3c3017eb4786ee8df9e74c0fc3",
+          "source_sha256": "2030d85e3c1014ba5be1f5aecc08f80bffff5f5e81839178d27154a7a92f746e",
           "translation": "SyncScope: требует self; создает и присоединяет нового криттера к карте в покрытии self."
         },
         "/symbols/@id=script.method.server.Map.AddCritter%238b44cc2e5aeaa303/description": {
-          "source_sha256": "7eebc19e15bbf51559b85d58be817a27fc0eab3c3017eb4786ee8df9e74c0fc3",
+          "source_sha256": "2030d85e3c1014ba5be1f5aecc08f80bffff5f5e81839178d27154a7a92f746e",
           "translation": "SyncScope: требует self; создает и присоединяет нового криттера к карте в покрытии self."
         },
         "/symbols/@id=script.method.server.Map.AddCritter%23ab45ffd3c807403c/description": {
-          "source_sha256": "7eebc19e15bbf51559b85d58be817a27fc0eab3c3017eb4786ee8df9e74c0fc3",
+          "source_sha256": "2030d85e3c1014ba5be1f5aecc08f80bffff5f5e81839178d27154a7a92f746e",
           "translation": "SyncScope: требует self; создает и присоединяет нового криттера к карте в покрытии self."
         },
         "/symbols/@id=script.method.server.Map.AddItem%232d1b78e701c59093/description": {
-          "source_sha256": "101f66206d49547d74e9bbe111894248107a30a22f9369ce5a070de3747aac9b",
+          "source_sha256": "397d3020a4496056d3c9a2a6e891669897edcdc121e31c89651460d9bed01bcb",
           "translation": "SyncScope: требует self; создает и присоединяет новый предмет карты в покрытии карты."
         },
         "/symbols/@id=script.method.server.Map.AddItem%2366143f02aa67f0a1/description": {
-          "source_sha256": "101f66206d49547d74e9bbe111894248107a30a22f9369ce5a070de3747aac9b",
+          "source_sha256": "397d3020a4496056d3c9a2a6e891669897edcdc121e31c89651460d9bed01bcb",
           "translation": "SyncScope: требует self; создает и присоединяет новый предмет карты в покрытии карты."
         },
         "/symbols/@id=script.method.server.Map.AddItem%23ceb12274c8e146ea/description": {
-          "source_sha256": "101f66206d49547d74e9bbe111894248107a30a22f9369ce5a070de3747aac9b",
+          "source_sha256": "397d3020a4496056d3c9a2a6e891669897edcdc121e31c89651460d9bed01bcb",
           "translation": "SyncScope: требует self; создает и присоединяет новый предмет карты в покрытии карты."
         },
         "/symbols/@id=script.method.server.Map.AddItem%23db03aa08dd7b9ba1/description": {
-          "source_sha256": "101f66206d49547d74e9bbe111894248107a30a22f9369ce5a070de3747aac9b",
+          "source_sha256": "397d3020a4496056d3c9a2a6e891669897edcdc121e31c89651460d9bed01bcb",
           "translation": "SyncScope: требует self; создает и присоединяет новый предмет карты в покрытии карты."
         },
         "/symbols/@id=script.method.server.Map.BlockHex/description": {
-          "source_sha256": "0d6ec151067fbd543695ea74e5c96dc2163300f11953d445f36a72e68e9d762c",
+          "source_sha256": "d6c6d251386b259bb338d46a1d87ada99b03e80bdc8b4998e676d6e9d700b3e6",
           "translation": "SyncScope: требует self; изменяет ручную блокировку одного гекса карты."
         },
         "/symbols/@id=script.method.server.Map.CheckPlaceForItem%237df5c41f5f61890c/description": {
-          "source_sha256": "ad2aad8fabed6adcacbdae3125a0b8407960e7ba5b0f4849d658d187d5ab3d29",
+          "source_sha256": "0e57b27bf47f39e0d3b2bb9f0c286e5022df83f06c7dbe2fd574a30e41ec07ea",
           "translation": "SyncScope: требует self; читает правила размещения на карте и данные прототипа предмета."
         },
         "/symbols/@id=script.method.server.Map.CheckPlaceForItem%23f95a6f1b9e4a1b61/description": {
-          "source_sha256": "ad2aad8fabed6adcacbdae3125a0b8407960e7ba5b0f4849d658d187d5ab3d29",
+          "source_sha256": "0e57b27bf47f39e0d3b2bb9f0c286e5022df83f06c7dbe2fd574a30e41ec07ea",
           "translation": "SyncScope: требует self; читает правила размещения на карте и данные прототипа предмета."
         },
         "/symbols/@id=script.method.server.Map.FindPathToAny%23049a83ae871129e5/description": {
-          "source_sha256": "f349723b7da81debbf528af30ef7be193aa58f302fa4aea4864e53ff90c498c6",
+          "source_sha256": "3d71d4138ace01a752d6e6cb0608d53f407a84a93ec517ce8c774023d6553e62",
           "translation": "SyncScope: требует self и cr; поиск пути читает блокировки карты и состояние cr."
         },
         "/symbols/@id=script.method.server.Map.FindPathToAny%23d989184e940c3179/description": {
-          "source_sha256": "d00c50d539de7222bfbf91fb6a9cc98a764e2822f2fcd8445556d69bf0d43425",
+          "source_sha256": "cb862a100b14a95320ba4e880f398d5875c06b95337b1efb4867000b873229f2",
           "translation": "SyncScope: требует self; поиск пути читает блокировки карты и необязательные предметы callback-фильтра."
         },
         "/symbols/@id=script.method.server.Map.GetCritter%23beaf90ce99481bb9/description": {
-          "source_sha256": "cc7828d5eeca412f6ac39c5204574c4f799e659b0c9ced533a1ee8b8ebf10321",
+          "source_sha256": "530a7eddf2a40ebf64d5bcf8127ef64d8a2a2091bc0728391aa7363c23f0585e",
           "translation": "SyncScope: требует self; возвращенный криттер входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCritter%23cc2efc7ac9caf8b7/description": {
-          "source_sha256": "cc7828d5eeca412f6ac39c5204574c4f799e659b0c9ced533a1ee8b8ebf10321",
+          "source_sha256": "530a7eddf2a40ebf64d5bcf8127ef64d8a2a2091bc0728391aa7363c23f0585e",
           "translation": "SyncScope: требует self; возвращенный криттер входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCritterOnHex/description": {
-          "source_sha256": "cc7828d5eeca412f6ac39c5204574c4f799e659b0c9ced533a1ee8b8ebf10321",
+          "source_sha256": "530a7eddf2a40ebf64d5bcf8127ef64d8a2a2091bc0728391aa7363c23f0585e",
           "translation": "SyncScope: требует self; возвращенный криттер входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCritters%2381d4328569cd9426/description": {
-          "source_sha256": "03a7a607ce1ae3cc3d64723cb4c36a3c3930b5f12eba27a6d1ecc13abee1bcd9",
+          "source_sha256": "df26167f8968613ce787bc8efaaf34e65856627c38f0eae117857617e0062df4",
           "translation": "SyncScope: требует self; возвращенные криттеры входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCritters%23addc705539406d44/description": {
-          "source_sha256": "03a7a607ce1ae3cc3d64723cb4c36a3c3930b5f12eba27a6d1ecc13abee1bcd9",
+          "source_sha256": "df26167f8968613ce787bc8efaaf34e65856627c38f0eae117857617e0062df4",
           "translation": "SyncScope: требует self; возвращенные криттеры входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCritters%23d9bfa22ace1ec9d4/description": {
-          "source_sha256": "03a7a607ce1ae3cc3d64723cb4c36a3c3930b5f12eba27a6d1ecc13abee1bcd9",
+          "source_sha256": "df26167f8968613ce787bc8efaaf34e65856627c38f0eae117857617e0062df4",
           "translation": "SyncScope: требует self; возвращенные криттеры входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCritters%23e79de6b56cb9f3b3/description": {
-          "source_sha256": "03a7a607ce1ae3cc3d64723cb4c36a3c3930b5f12eba27a6d1ecc13abee1bcd9",
+          "source_sha256": "df26167f8968613ce787bc8efaaf34e65856627c38f0eae117857617e0062df4",
           "translation": "SyncScope: требует self; возвращенные криттеры входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCrittersInPath%238b046729d6d79d34/description": {
-          "source_sha256": "051e11ce8e4ab86443f365eddfc118ec9a26b1810f30c353b21e113760316f54",
+          "source_sha256": "b0bdcdfc96f8a655e6885562184e3b4b297bead99333e5340dcabac4fefe1a86",
           "translation": "SyncScope: требует self; возвращенные криттеры пути входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCrittersInPath%23a2a00a1dfe4f3d7e/description": {
-          "source_sha256": "051e11ce8e4ab86443f365eddfc118ec9a26b1810f30c353b21e113760316f54",
+          "source_sha256": "b0bdcdfc96f8a655e6885562184e3b4b297bead99333e5340dcabac4fefe1a86",
           "translation": "SyncScope: требует self; возвращенные криттеры пути входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCrittersInRadius/description": {
-          "source_sha256": "03a7a607ce1ae3cc3d64723cb4c36a3c3930b5f12eba27a6d1ecc13abee1bcd9",
+          "source_sha256": "df26167f8968613ce787bc8efaaf34e65856627c38f0eae117857617e0062df4",
           "translation": "SyncScope: требует self; возвращенные криттеры входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCrittersOnHex/description": {
-          "source_sha256": "03a7a607ce1ae3cc3d64723cb4c36a3c3930b5f12eba27a6d1ecc13abee1bcd9",
+          "source_sha256": "df26167f8968613ce787bc8efaaf34e65856627c38f0eae117857617e0062df4",
           "translation": "SyncScope: требует self; возвращенные криттеры входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCrittersWhoSeeHex%23331d6938741ba331/description": {
-          "source_sha256": "89bd5eae7f3f5cc7571d9dd0ddfbf5e890046d00e0b0605c654812890a46fffd",
+          "source_sha256": "8adaf5a13efd0992f8b0b3485cf26c98ad70f3070149e75cf9980d5ba45cc1a5",
           "translation": "SyncScope: требует self; возвращенные криттеры-наблюдатели входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCrittersWhoSeeHex%236295b4bbbc256992/description": {
-          "source_sha256": "89bd5eae7f3f5cc7571d9dd0ddfbf5e890046d00e0b0605c654812890a46fffd",
+          "source_sha256": "8adaf5a13efd0992f8b0b3485cf26c98ad70f3070149e75cf9980d5ba45cc1a5",
           "translation": "SyncScope: требует self; возвращенные криттеры-наблюдатели входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetCrittersWhoSeePath/description": {
-          "source_sha256": "89bd5eae7f3f5cc7571d9dd0ddfbf5e890046d00e0b0605c654812890a46fffd",
+          "source_sha256": "8adaf5a13efd0992f8b0b3485cf26c98ad70f3070149e75cf9980d5ba45cc1a5",
           "translation": "SyncScope: требует self; возвращенные криттеры-наблюдатели входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetHexInPath/description": {
-          "source_sha256": "f03e6a1282936882147ab57e4c89726c0753d03c0460bf9bb76966a760558c90",
+          "source_sha256": "d1f72f895c1fa7300dfec7aeec0a1db43dfb015880d8bcb4af82812aa9da66ea",
           "translation": "SyncScope: требует self; трассировка пути читает только статические блокировки и блокировки карты."
         },
         "/symbols/@id=script.method.server.Map.GetItem/description": {
-          "source_sha256": "468d4183b5d37a93f32ef974f6766fa69130da90e9eb7a3af654bf67645a9588",
+          "source_sha256": "3963d95f49b6a4fae8c7d9143508774b0c59611695ca4c9325d042568f59be44",
           "translation": "SyncScope: требует self; возвращенный предмет входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemInRadius%232c45a3b349bce706/description": {
-          "source_sha256": "468d4183b5d37a93f32ef974f6766fa69130da90e9eb7a3af654bf67645a9588",
+          "source_sha256": "3963d95f49b6a4fae8c7d9143508774b0c59611695ca4c9325d042568f59be44",
           "translation": "SyncScope: требует self; возвращенный предмет входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemInRadius%2343a0e23b140b9e9a/description": {
-          "source_sha256": "468d4183b5d37a93f32ef974f6766fa69130da90e9eb7a3af654bf67645a9588",
+          "source_sha256": "3963d95f49b6a4fae8c7d9143508774b0c59611695ca4c9325d042568f59be44",
           "translation": "SyncScope: требует self; возвращенный предмет входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemInRadius%23fe27ffaff6bf5b08/description": {
-          "source_sha256": "468d4183b5d37a93f32ef974f6766fa69130da90e9eb7a3af654bf67645a9588",
+          "source_sha256": "3963d95f49b6a4fae8c7d9143508774b0c59611695ca4c9325d042568f59be44",
           "translation": "SyncScope: требует self; возвращенный предмет входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemOnHex%236ece718d14bda9df/description": {
-          "source_sha256": "468d4183b5d37a93f32ef974f6766fa69130da90e9eb7a3af654bf67645a9588",
+          "source_sha256": "3963d95f49b6a4fae8c7d9143508774b0c59611695ca4c9325d042568f59be44",
           "translation": "SyncScope: требует self; возвращенный предмет входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemOnHex%23bde72d72df216ffd/description": {
-          "source_sha256": "468d4183b5d37a93f32ef974f6766fa69130da90e9eb7a3af654bf67645a9588",
+          "source_sha256": "3963d95f49b6a4fae8c7d9143508774b0c59611695ca4c9325d042568f59be44",
           "translation": "SyncScope: требует self; возвращенный предмет входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemOnHex%23fd531ae0c65b5f38/description": {
-          "source_sha256": "468d4183b5d37a93f32ef974f6766fa69130da90e9eb7a3af654bf67645a9588",
+          "source_sha256": "3963d95f49b6a4fae8c7d9143508774b0c59611695ca4c9325d042568f59be44",
           "translation": "SyncScope: требует self; возвращенный предмет входит в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItems%2383c145745774df22/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItems%23986ac88634199639/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItems%23b851260ade7c353c/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItems%23ef66ddcc26718dfe/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemsInRadius%231b2344cf4e6a8ad6/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemsInRadius%232c10a43df574d95a/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemsInRadius%2371e75da3d8138709/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemsInRadius%23e5b26ab1ca51093e/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemsOnHex%232becb51a4793de35/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetItemsOnHex%235db3ed64fff8551d/description": {
-          "source_sha256": "63c14ddcf9bf9f431c99b810c400721dc6f3944d7300cd15b3c04b958f9420bb",
+          "source_sha256": "d17d3b485c61c17ff891edc84abc839f1c868c99227907916743cd0586bfa233",
           "translation": "SyncScope: требует self; возвращенные предметы входят в покрытие self, пока сохраняется покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetLocation/description": {
-          "source_sha256": "c6ea6a100acc62a1562aba0f1f479c653af53675f2596b8548ada9c621bcd933",
+          "source_sha256": "52729e99bc6f89d58eab7e2ee6b590813e80f362cb3acf54b01923255ba60be9",
           "translation": "SyncScope: требует self; возвращает родительскую локацию, но не покрывает ее для последующего чтения."
         },
         "/symbols/@id=script.method.server.Map.GetPathLength%23aaa618b299e12baf/description": {
-          "source_sha256": "f349723b7da81debbf528af30ef7be193aa58f302fa4aea4864e53ff90c498c6",
+          "source_sha256": "3d71d4138ace01a752d6e6cb0608d53f407a84a93ec517ce8c774023d6553e62",
           "translation": "SyncScope: требует self и cr; поиск пути читает блокировки карты и состояние cr."
         },
         "/symbols/@id=script.method.server.Map.GetPathLength%23b14b16361e6bc348/description": {
-          "source_sha256": "d00c50d539de7222bfbf91fb6a9cc98a764e2822f2fcd8445556d69bf0d43425",
+          "source_sha256": "cb862a100b14a95320ba4e880f398d5875c06b95337b1efb4867000b873229f2",
           "translation": "SyncScope: требует self; поиск пути читает блокировки карты и необязательные предметы callback-фильтра."
         },
+        "/symbols/@id=script.method.server.Map.GetPlayerCritterCount/description": {
+          "source_sha256": "f5727d3a73eb5fdb726a9c3b02be32fcbbf1d5ea9dc87cd115a1dd6732462b0f",
+          "translation": "SyncScope: требует self; читает состав криттеров-игроков карты, не материализуя его."
+        },
         "/symbols/@id=script.method.server.Map.GetSpectatorPlayers/description": {
-          "source_sha256": "ddd5f91c0bc4a0342399c6ef5d6f6b17cdac58c258cb15195d10e9b62ddcd355",
+          "source_sha256": "13a95779b5b4a7077bcc55fb064a0924c36b134849934eed81ac22a86a765fae",
           "translation": "SyncScope: требует self; возвращает текущих игроков-наблюдателей карты. Наблюдатель является независимым корнем Player, не входящим ни в покрытие карты, ни в покрытие ее локации. Поэтому код, уничтожающий карту или локацию, сначала покрывает каждого возвращенного Player, а затем повторно читает список, подтверждая неизменность состава."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItem/description": {
-          "source_sha256": "f94c705ae47f869626acef8377021ae0b4f52a0d1c6704874f6fcf4e768e5cf0",
+          "source_sha256": "589e827ab82a681dfb955d065d27085baf300bbba15ba92046569dd16e29222f",
           "translation": "SyncScope: требует self; возвращенный статический предмет является статическими данными карты и входит в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItemOnHex%232ff535bb81b4c46e/description": {
-          "source_sha256": "f94c705ae47f869626acef8377021ae0b4f52a0d1c6704874f6fcf4e768e5cf0",
+          "source_sha256": "589e827ab82a681dfb955d065d27085baf300bbba15ba92046569dd16e29222f",
           "translation": "SyncScope: требует self; возвращенный статический предмет является статическими данными карты и входит в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItemOnHex%238f12443105465e0c/description": {
-          "source_sha256": "f94c705ae47f869626acef8377021ae0b4f52a0d1c6704874f6fcf4e768e5cf0",
+          "source_sha256": "589e827ab82a681dfb955d065d27085baf300bbba15ba92046569dd16e29222f",
           "translation": "SyncScope: требует self; возвращенный статический предмет является статическими данными карты и входит в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItems%2305085759f098a103/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItems%233d6e192e1648eca6/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItems%23ba60a4d88539cc01/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItems%23e35ab59d1c820445/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItemsInRadius%239fcecfdd954f2f40/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItemsInRadius%23b716f83c2f22af43/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItemsInRadius%23f3c9729ff42f4ae8/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItemsOnHex%234a9a56826105ef2b/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetStaticItemsOnHex%235d15ee5943a3edd0/description": {
-          "source_sha256": "d21f1906cb919778dddf718a75cfc75cb9821288e21a727d24c8d154c1313048",
+          "source_sha256": "9cc65d1eeb6ff5bd57ca0626b963c9769bd5b596b87faf02f1042bc2b974fa3c",
           "translation": "SyncScope: требует self; возвращенные статические предметы являются статическими данными карты и входят в покрытие карты."
         },
         "/symbols/@id=script.method.server.Map.GetWallHexInPath/description": {
-          "source_sha256": "0d30619f926b362703449b24c763edd233b47f40aa8b258ad7c6372d646dcfc6",
+          "source_sha256": "ea714299efc882c9f2acb6f0af7a4ab75a94580761dd7ddfe5d4fd54a3274bfc",
           "translation": "SyncScope: требует self; трассировка пути читает только блокировки стен."
         },
         "/symbols/@id=script.method.server.Map.IsHexMovable/description": {
-          "source_sha256": "e5a6e0d76c11cd37669f648392fd4020a4c3ddf7041d7926c73acf0f2b495f40",
+          "source_sha256": "f0b49a72fe76f06b8ca503b3f171ed09681d4deaddf0b3177c26760690d3ad69",
           "translation": "SyncScope: требует self; читает состояние блокировки карты."
         },
         "/symbols/@id=script.method.server.Map.IsHexShootable/description": {
-          "source_sha256": "567030f9669dde66f64b4e3ad2b647b29bcd888dea81c779b6344ce1eafdad13",
+          "source_sha256": "7b6c33cdd1a19f4ea49277d524c39d412254aed54c88ccda247a0bb36cafe2dc",
           "translation": "SyncScope: требует self; читает состояние блокировки стрельбы на карте."
         },
         "/symbols/@id=script.method.server.Map.IsHexValid/description": {
-          "source_sha256": "9b9389daf9826dc23196cef763ea5483fc6a31ec1941287bd7d74062b8ca7331",
+          "source_sha256": "721b11a7bbef9e490eff1c017660d3fc07fda441f87646f15872e41381c345ae",
           "translation": "SyncScope: требует self; читает только размер карты."
         },
         "/symbols/@id=script.method.server.Map.IsHexesMovable/description": {
-          "source_sha256": "e5a6e0d76c11cd37669f648392fd4020a4c3ddf7041d7926c73acf0f2b495f40",
+          "source_sha256": "f0b49a72fe76f06b8ca503b3f171ed09681d4deaddf0b3177c26760690d3ad69",
           "translation": "SyncScope: требует self; читает состояние блокировки карты."
         },
         "/symbols/@id=script.method.server.Map.IsOutsideArea/description": {
-          "source_sha256": "4544334cad17d2ef99b5fa664280749a409d3add585c82b83f613e75c522fcb8",
+          "source_sha256": "e133dc3f7b858708bb852c0eb0f97c4e0da8531ed843b0ff92b6744235f82101",
           "translation": "SyncScope: требует self; читает состояние наружной или внутренней области карты."
         },
         "/symbols/@id=script.method.server.Map.MoveHexByDir%2362392271e1b42030/description": {
-          "source_sha256": "b9008ebdbb223bca16d8b22cf0ba0c848b4084356306fb8a67dfb13b8100fe24",
+          "source_sha256": "01eb530a27238d58d577534ede09ede04af1f1b791ae2aade767c47ace817df4",
           "translation": "SyncScope: требует self; использует размер карты для одного чистого шага по координатам."
         },
         "/symbols/@id=script.method.server.Map.MoveHexByDir%23b39016610645244b/description": {
-          "source_sha256": "23451bf6852de4b7da3547a2317c8bd4e7151a5c2fb9b349102bde2122cbaa66",
+          "source_sha256": "fe0796d0a7d2cd16fe025795710315c771969eaa36845ca0507e17edba0fa5f7",
           "translation": "SyncScope: требует self; использует размер карты для чистых шагов по координатам."
         },
         "/symbols/@id=script.method.server.Map.Regenerate/description": {
-          "source_sha256": "a1da26a778b9d48e05399912a753a642365386f1ee4ac2eed5c4ec7665b52d97",
+          "source_sha256": "385f054228016fd8739d6a9dbbf0ef15c40ff15d20f6f331794395b53892a15b",
           "translation": "SyncScope: требует self; перегенерирует содержимое карты и кеши размещения."
         },
         "/symbols/@id=script.method.server.Map.SetupScript/description": {
-          "source_sha256": "3a1beb1acc73d7643d5224be8f0e947ab8aed1705f570ae642ddef00ebbd66e2",
+          "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
         },
         "/symbols/@id=script.method.server.Map.SetupScriptEx/description": {
-          "source_sha256": "3a1beb1acc73d7643d5224be8f0e947ab8aed1705f570ae642ddef00ebbd66e2",
+          "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
         },
         "/symbols/@id=script.method.server.Map.UnblockHex/description": {
-          "source_sha256": "0d6ec151067fbd543695ea74e5c96dc2163300f11953d445f36a72e68e9d762c",
+          "source_sha256": "d6c6d251386b259bb338d46a1d87ada99b03e80bdc8b4998e676d6e9d700b3e6",
           "translation": "SyncScope: требует self; изменяет ручную блокировку одного гекса карты."
         },
         "/symbols/@id=script.method.server.Map.VerifyTrigger/description": {
-          "source_sha256": "7342f576658623a0f59ede48b4378f90fa878b21a17f0645de47c49639de50b1",
+          "source_sha256": "ca5eeefb067126cd7c2535535f546b5b097f139c33b365cc96fc29a090d348d9",
           "translation": "SyncScope: требует self и cr; проверка триггера может читать или изменять состояние карты со стороны криттера."
         },
         "/symbols/@id=script.method.server.Player.Disconnect/description": {
-          "source_sha256": "e06bcd212866a495954c03eaaaf1e953bc658d2777db4a6f193827708414029a",
+          "source_sha256": "ecd0b689b0f23f048bd713863f9700ebcb25bed34801b1a227661037ee670497",
           "translation": "SyncScope: требует self; закрывает соединение этого игрока."
         },
         "/symbols/@id=script.method.server.Player.GetControlledCritter/description": {
-          "source_sha256": "c923fc8e36d7b9d6184b4a3196db405e09b38e12f490d4d2202703e2ae996c58",
+          "source_sha256": "1cdc01e425e5acaf744fca1e7a5eed7608dcf117fa22b500d72758e40ea3a619",
           "translation": "SyncScope: требует self; возвращает дескриптор управляемого криттера, автоматически добавляемого в покрытие при синхронизации self."
         },
+        "/symbols/@id=script.method.server.Player.GetDisconnectReason/description": {
+          "source_sha256": "5ef864991f8f9527b6442b8b867c15795728a92dd9ef5cdbc242859b25077cf5",
+          "translation": "SyncScope: требует self; читает только состояние соединения."
+        },
         "/symbols/@id=script.method.server.Player.GetHost/description": {
-          "source_sha256": "b7801294bbcd19265dbf7e0700cf8f32864d952e906fa1f7ba0c07ab83b36c78",
+          "source_sha256": "4e1ab4e9cb1154c192d00029a15a2918cbe987f2e4abb4b839936818786782f5",
           "translation": "SyncScope: требует self; читает только конечную точку соединения."
         },
         "/symbols/@id=script.method.server.Player.GetPort/description": {
-          "source_sha256": "b7801294bbcd19265dbf7e0700cf8f32864d952e906fa1f7ba0c07ab83b36c78",
+          "source_sha256": "4e1ab4e9cb1154c192d00029a15a2918cbe987f2e4abb4b839936818786782f5",
           "translation": "SyncScope: требует self; читает только конечную точку соединения."
         },
         "/symbols/@id=script.method.server.Player.GetViewMapTarget/description": {
-          "source_sha256": "62289fa5143ba3b1f018dfde6acfec408fff6f2942a027272ffda5abec779b7d",
+          "source_sha256": "8fcc139634f3f341b5776e24dca1276bf3d9e3d9c0faba313b0f4185541e2390",
           "translation": "SyncScope: требует self; возвращает карту, которую сейчас наблюдает self, но не покрывает ее для последующего чтения. Цель представления является независимым корнем Map, не входящим в покрытие self. Поэтому вызывающий код сначала покрывает возвращенную карту, а после чтения или изменения повторно читает этот дескриптор, подтверждая неизменность цели представления."
         },
         "/symbols/@id=script.method.server.Player.HardDisconnect/description": {
-          "source_sha256": "c9574daf79d99441b78681b32393282f8bdf2a4d6594b549cae62917f6e7f6e6",
+          "source_sha256": "4bb3d5a6522ea8da83c28a55a1bed14b9e89bcefd4955b9d279dd754961a1bab",
           "translation": "SyncScope: требует self; принудительно закрывает соединение этого игрока."
         },
         "/symbols/@id=script.method.server.Player.RefreshCritterMoving/description": {
-          "source_sha256": "bdca66ba2dec899d9e59cb4f04ad344c16182250a8089d2f0714904a8304e402",
+          "source_sha256": "ca9abf72ed21eaa55f003757509ca687373b9e2d98c2f7ae879a21b597f603fd",
           "translation": "SyncScope: требует self и cr; отправляет состояние движения криттера, видимого на текущей карте игрока."
         },
         "/symbols/@id=script.method.server.Player.ResetViewMap/description": {
-          "source_sha256": "526555eb27b41f1ca6f9f2e56ec0c50e3ee7213c81f3e91527c8471b79f4c7de",
+          "source_sha256": "4e46fb9a041249f224ccb9c1453ca709908dc6f00372d840558dffb29c80b102",
           "translation": "SyncScope: требует self; очищает состояние представления карты без смены родителя сущности."
         },
         "/symbols/@id=script.method.server.Player.SetName/description": {
-          "source_sha256": "74e79599d492fb0d025cf3dff5307bff36c1af26109361aa166b49db42893c58",
+          "source_sha256": "1f161df84d7a7cf9ee5592e79bb4a98de06bd52e686c2dc99cbca425ccfdd3d7",
           "translation": "SyncScope: требует self; изменяет только имя игрока."
         },
         "/symbols/@id=script.method.server.Player.SwitchCritter/description": {
-          "source_sha256": "804157d398f2d30f10031e1b8e09a366d28650e29db7d320c8f571c30174ceac",
+          "source_sha256": "be9ab9e37d76e28c95b5314c898efe13c9c7aa9018a0576f414f69d5bfc46eaf",
           "translation": "SyncScope: требует self и cr, если cr не равен null; до связывания вызывающий код должен явно покрыть обе сущности."
         },
         "/symbols/@id=script.method.server.Player.UnloadMap/description": {
-          "source_sha256": "f97ab79586bc298d3b2c792fe03e511bc297bf2223bc279747488df86727b7a3",
+          "source_sha256": "fea79f895515bcbb899aaff66d198aeb59f11dac6dcf6aca5cfa702ed7f12074",
           "translation": "SyncScope: требует self; очищает состояние представления карты и отправляет выгрузку без смены родителя сущности."
         },
         "/symbols/@id=script.method.server.Player.ViewMap/description": {
-          "source_sha256": "acfe3f54a8a00042b8060f3791b980eecdda8295e912ac5d7843a7038f9a38b1",
+          "source_sha256": "d4466057c483cb3399185e161be602be2cac48f5abf86f656c371a62ae00f78e",
           "translation": "SyncScope: требует self, карту и локацию карты; отправляет данные загрузки карты и открывает для self представление карты."
         },
         "/symbols/@id=script.property.Critter.AttachMaster/description": {
@@ -16101,7 +16197,7 @@
           "source_sha256": "2da7a43a19191b178fb7395127e0d16a113c8f615ab14957881b0332eefc65b7",
           "translation": "Сохраняемый идентификатор последнего управляемого криттера, остающийся после отвязки для восстановления управления."
         },
-        "/symbols/@id=script.property.Player.Logined/description": {
+        "/symbols/@id=script.property.Player.LoggedIn/description": {
           "source_sha256": "0d6cfdb1c6a63af7a8f97e28de50d1a1adcb8c08615a1cf22ced63a684e25680",
           "translation": "Показывает, завершило ли это соединение игрока вход на сервер."
         },
@@ -16662,7 +16758,7 @@
           "translation": "Хешированное имя, идентифицирующее язык в локализованных текстовых ресурсах."
         },
         "/symbols/@id=script.value-type.TextFormat/description": {
-          "source_sha256": "eaaa0a8200fa03486e52ee74ad8b8d9f40c5c68eaa0cc0723e6b84e07de6c036",
+          "source_sha256": "84dba9b3cf1288a173c4ea39036c6fbcc13c136549396e59b7a945fe52d0a292",
           "translation": "Набор параметров форматирования текста: слот шрифта, битовая маска FontFlag и счетчик пропуска строк.\n`SkipLines` по умолчанию пропускает строки сверху; при установленном FontFlag::AlignBottom строки пропускаются снизу (с конца)."
         },
         "/symbols/@id=script.value-type.TextPackKey/description": {
@@ -16960,6 +17056,10 @@
         "/symbols/@id=setting.client.Mapper.ParticlePreviewSeed/description": {
           "source_sha256": "522587314a3d65317692f42eec018bcda62441efdc2dbc2d4f6c37d0e82d8adc",
           "translation": "Seed стартового предпросмотра, используемый выбранным runtime при поддержке детерминированного seed"
+        },
+        "/symbols/@id=setting.client.Mapper.SparkEditorSource/description": {
+          "source_sha256": "75541bf24abe60429eab6c2faed8a1d670be667f27dc873bc55971388b049de6",
+          "translation": "Исходник SPARK, который нужно открыть в редакторе частиц при запуске Mapper"
         },
         "/symbols/@id=setting.client.Mapper.SplitTilesCollection/description": {
           "source_sha256": "14dc767c2e31e5f251dd079e2075886cb30c409bfc85b1c062c0b90b5e139363",
@@ -17297,6 +17397,14 @@
           "source_sha256": "e3f18c1a1cdbc1ef54fb186c5d83e810a902368a7e9c43488a167f2fabb827aa",
           "translation": "Записи ресурсов Mapper (только чтение)"
         },
+        "/symbols/@id=setting.common.Baking.ModelAttachmentMaxExtent/description": {
+          "source_sha256": "16363e92cb5692096b36a2a5614ca31bd68c46052c2f34c30332bd3d61813054",
+          "translation": "Наибольший мировой размер напрямую присоединённой модели; при его превышении экспорт использует более крупное пространство единиц, и клиент не может построить кадр спрайта."
+        },
+        "/symbols/@id=setting.common.Baking.ModelAttachmentMinExtent/description": {
+          "source_sha256": "d6cb08b61f6ec170195e8646b85c2ba32bd0eaf76c7004342263e5ebe29d6d0e",
+          "translation": "Наименьший мировой размер напрямую присоединённой модели; ниже него экспорт использует пространство единиц меньшего масштаба, чем движок."
+        },
         "/symbols/@id=setting.common.Baking.PlatformBinaries/description": {
           "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
           "translation": "Каталог runtime-бинарных файлов клиента для каждой платформы, предоставляемых updater-ом"
@@ -17426,8 +17534,12 @@
           "translation": "Максимальная длина pathfinding"
         },
         "/symbols/@id=setting.common.Network.ArtificalLags/description": {
-          "source_sha256": "d13038e0106ea3788b1f9eae76c90f828f48963a76ef4b3d0c4111372f2049c5",
-          "translation": "Искусственная задержка в миллисекундах"
+          "source_sha256": "1522d8102c330ba08db15696ea0139bb5d34660e682b408de05e422f1f492745",
+          "translation": "Искусственная задержка в миллисекундах, применяемая в обоих направлениях"
+        },
+        "/symbols/@id=setting.common.Network.ArtificalLagsJitter/description": {
+          "source_sha256": "b1f42459b227788a35952854859ae4ff43a979ff8947793d2323e4247f91fa06",
+          "translation": "Дополнительная случайная задержка каждой порции данных в миллисекундах поверх искусственной задержки, имитирующая остановки."
         },
         "/symbols/@id=setting.common.Network.CompatibilityVersion/description": {
           "source_sha256": "b5765ed9514fe4e1c45dbc7b698d614ab4a8300e73bb53943a26fa39df852a15",

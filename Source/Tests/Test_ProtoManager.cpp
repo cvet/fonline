@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -47,11 +48,11 @@ static void InitProtoTestMetadata(EngineMetadata& meta)
     meta.RegisterEntityType("Location", true, false, true, true, true);
 }
 
-static auto GetTestRegistrator(EngineMetadata& meta, hstring type_name) -> ptr<const PropertyRegistrator>
+static auto GetTestRegistrar(EngineMetadata& meta, hstring type_name) -> ptr<const PropertyRegistrar>
 {
-    auto registrator = meta.GetPropertyRegistrator(type_name);
-    REQUIRE(static_cast<bool>(registrator));
-    return registrator;
+    auto registrar = meta.GetPropertyRegistrar(type_name);
+    REQUIRE(static_cast<bool>(registrar));
+    return registrar;
 }
 
 template<typename TActual, typename TExpected>
@@ -76,8 +77,8 @@ TEST_CASE("ProtoManager")
         hstring knife_pid = meta.Hashes.ToHashedString("Knife");
         hstring raider_pid = meta.Hashes.ToHashedString("Raider");
 
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrator(meta, item_type));
-        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, GetTestRegistrator(meta, critter_type));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrar(meta, item_type));
+        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, GetTestRegistrar(meta, critter_type));
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(critter_type, critter_proto);
 
@@ -116,9 +117,9 @@ TEST_CASE("ProtoManager")
         hstring rest_stop_day_pid = meta.Hashes.ToHashedString("RestStop_Day");
         hstring rest_stop_day_time_pid = meta.Hashes.ToHashedString("RestStop_DayTime");
 
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrator(meta, item_type));
-        auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, GetTestRegistrator(meta, map_type));
-        auto location_proto = SafeAlloc::MakeRefCounted<ProtoLocation>(rest_stop_day_time_pid, GetTestRegistrator(meta, location_type));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrar(meta, item_type));
+        auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, GetTestRegistrar(meta, map_type));
+        auto location_proto = SafeAlloc::MakeRefCounted<ProtoLocation>(rest_stop_day_time_pid, GetTestRegistrar(meta, location_type));
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(map_type, map_proto);
         meta.RegisterProto(location_type, location_proto);
@@ -148,7 +149,7 @@ TEST_CASE("ProtoManager")
         meta.RegisterMigrationRule("Proto", "Item", "RemovedKnife", "Remove");
 
         // A deleted proto resolves to the "Remove" sentinel; EntityManager keys its clean entity drop
-        // on exactly this. The proto itself is gone, so lookups still return null.
+        // on exactly this. The proto itself is gone, so lookups still return null
         auto resolved = meta.CheckMigrationRule(proto_rule, item_type, removed_pid);
         CHECK(resolved.has_value());
         CHECK(resolved.value() == remove_sentinel);

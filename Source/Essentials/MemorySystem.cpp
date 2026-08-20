@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,9 +51,8 @@ struct MemorySystemData
 };
 FO_GLOBAL_DATA(MemorySystemData, MemorySystem);
 
-// Unpoliced allocation primitives backing the SafeAlloc::*Raw tier. They report failure by returning null
-// and are deliberately not part of the public header: every caller must go through SafeAlloc so that an
-// allocation failure follows the engine out-of-memory contract instead of being silently propagated.
+// Unpoliced primitives that only report failure by returning null, kept out of the public header so
+// every caller goes through SafeAlloc and its out-of-memory contract
 static auto MemMalloc(size_t size) noexcept -> nptr<void>;
 static auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>;
 static auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>;

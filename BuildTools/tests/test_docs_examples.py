@@ -403,6 +403,16 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(marker, tutorial_smoke)
         self.assertIn("gameplay_test_runner.main", tutorial_runner)
+        tutorial_cmake = (ENGINE_ROOT / "Examples/MinimalMultiplayer/CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        tutorial_server_extension = (
+            ENGINE_ROOT / "Examples/MinimalMultiplayer/SourceExt/ServerExtension.cpp"
+        ).read_text(encoding="utf-8")
+        self.assertIn("AddEngineSources(SERVER SourceExt/ServerExtension.cpp)", tutorial_cmake)
+        self.assertIn("///@ EngineHook", tutorial_server_extension)
+        self.assertIn("CheckCritterVisibilityHook", tutorial_server_extension)
+        self.assertIn("GetLookDistance()", tutorial_server_extension)
         tutorial_package = (ENGINE_ROOT / "Examples/MinimalMultiplayer/package-smoke.json").read_text(
             encoding="utf-8"
         )

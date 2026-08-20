@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/persistence/
 
 # Сохранение данных
 
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"32516cf8f57632db16217f5c625475c206cdfa54038a60d5916a5a1d4e243e62"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"f9f0717abc97c87def8b53253b8b7731f6186f2980b20219939b43e9bfd7a924"} -->
 
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, журналы восстановления и реализации backend.
 
@@ -180,7 +180,7 @@ Persistence хранит документы; состояние сущности
 - SQLite backend: `Source/Server/DataBase-SQLite.cpp`.
 - Общий BSON allocator и преобразование: `Source/Server/DataBase.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, `BsonToDocument()`; Mongo-операции остаются в `Source/Server/DataBase-Mongo.cpp`.
 - Memory backend: `Source/Server/DataBase-Memory.cpp`.
-- Сериализация сущностей и свойств: [модель сущностей](../entity-and-property-model/) и `PropertiesSerializator.*`.
+- Сериализация сущностей и свойств: [модель сущностей](../entity-and-property-model/) и `PropertiesSerializer.*`.
 - Переключатели возможностей сборки: [процесс сборки](../../how-to/build/) и [конвейер BuildTools](../../reference/cmake-and-buildtools/pipeline.md).
 - Наборы резервных копий, ограничения oplog, изолированное восстановление и disaster-recovery drills: [Backup and Recovery](../../how-to/release/backup-and-recovery.md). Последовательность остановки и rollback развёртывания: [Release Operations](../../how-to/release/operations.md). Выбор провайдера, расписания, хранение, RPO/RTO, конкретные миграции и производственные полномочия принадлежат проекту.
 

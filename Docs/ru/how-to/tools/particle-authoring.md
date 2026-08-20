@@ -6,7 +6,7 @@ document_id: particle-authoring-tools
 permalink: /Docs/ru/how-to/tools/particle-authoring.html
 ---
 
-<!-- docs-translation: {"document_id":"particle-authoring-tools","locale":"ru","source_path":"Docs/en/how-to/tools/particle-authoring.md","source_sha256":"8f86daa634fcbf59071a77582a4fb1fc5cd8d895c46879841e0b0c9a57450ea7"} -->
+<!-- docs-translation: {"document_id":"particle-authoring-tools","locale":"ru","source_path":"Docs/en/how-to/tools/particle-authoring.md","source_sha256":"513858aebaf925f78503af99f07adf8747f7ebb8a38498d78f78b270ca85c5a1"} -->
 
 # Инструменты авторинга частиц
 
@@ -112,6 +112,17 @@ renderer: также запишите backend, warmup, разрешение и �
 Выберите исходник, чтобы открыть по одному редактору на каждый asset path. Повторный
 выбор уже открытого исходника переводит его редактор на передний план вместо
 создания второй изменяемой копии.
+
+Для детерминированной автоматизации или capture документации задайте авторский
+исходник явно:
+
+```ini
+Mapper.SparkEditorSource = Documentation.spark
+```
+
+Mapper проверяет значение по raw-входам `.spark` и завершает запуск с ошибкой,
+указывающей исходник, если ассет отсутствует. Настройка открывает редактор напрямую,
+не оставляя одновременно видимым браузер исходников.
 
 Если `.spk` есть, а его исходника `.spark` нет, проект потерял редактируемый authority
 или настроил неверные input roots. Восстановите исходник; не занимайтесь reverse engineering

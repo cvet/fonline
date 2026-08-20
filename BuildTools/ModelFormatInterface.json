@@ -362,7 +362,7 @@
       "repeatable": true,
       "stability": "experimental",
       "description": "Creates a layer-selected child-model link. The path is relative to the file containing the directive.",
-      "runtime_effect": "With Link, the child is attached to one parent bone. Without Link, same-named child and parent bones are paired for a shared-skeleton attachment.",
+      "runtime_effect": "With Link, the child is attached to one parent bone. Without Link, same-named child and parent bones are paired for a shared-skeleton attachment. A direct FBX/OBJ child has no description-level scale correction, so its static extent must stay within Baking.ModelAttachmentMinExtent and Baking.ModelAttachmentMaxExtent.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1005,6 +1005,22 @@
         {
           "path": "Source/Client/ModelInstance.cpp",
           "anchors": ["bool layers_changed", "Erase unused stuff", "GenerateCombinedMeshes()"]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.source-units-and-mirroring",
+      "name": "Positive scale and Engine world units",
+      "requirement": "Freeze mirrored mesh nodes to a positive transform before export, and author direct FBX/OBJ attachments within Baking.ModelAttachmentMinExtent and Baking.ModelAttachmentMaxExtent. Use a child .fo3d when an explicit description-level scale is required.",
+      "rationale": "Negative transforms invert winding and normals; foreign unit scales produce impossible model-sprite frames. Failing the bake keeps both defects at their authored source.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelMeshBaker.cpp",
+          "anchors": ["FBX mesh node is mirrored", "ufbx_matrix_determinant"]
+        },
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": ["ModelAttachmentMaxExtent", "ModelAttachmentMinExtent"]
         }
       ]
     },

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "ModelSpriteLayout.h"
 
@@ -37,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr float32_t MODEL_SPRITE_LAYOUT_GUARD = 2.0f;
-// Keep in sync with the default 3D_Skinned shadow pass.
+// Keep in sync with the default 3D_Skinned shadow pass
 static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
 static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
@@ -116,19 +117,26 @@ auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpr
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The model origin is not required to lie inside a tight frame: an animation or attached effect may put the
-    // complete visible envelope on one side of the root. Treat the pivot as a signed root-relative interval anchor;
-    // only the frame dimensions themselves must be positive.
+    // An animation or attached effect may put the whole visible envelope on one side of the root, so the pivot is
+    // a signed root-relative anchor and only the frame dimensions must be positive
     auto is_valid = [](const ModelSpriteFramePlacement& placement) noexcept { return placement.Size.width > 0 && placement.Size.height > 0; };
 
     if (!is_valid(current) || !is_valid(required)) {
         return std::nullopt;
     }
 
-    int64_t left = std::max<int64_t>(current.Pivot.x, required.Pivot.x);
-    int64_t top = std::max<int64_t>(current.Pivot.y, required.Pivot.y);
-    int64_t right = std::max<int64_t>(numeric_cast<int64_t>(current.Size.width) - current.Pivot.x, numeric_cast<int64_t>(required.Size.width) - required.Pivot.x);
-    int64_t bottom = std::max<int64_t>(numeric_cast<int64_t>(current.Size.height) - current.Pivot.y, numeric_cast<int64_t>(required.Size.height) - required.Pivot.y);
+    // Quantize each side, not just the extents, so a pivot that drifts by a pixel keeps the same frame.
+    // Rounding towards +infinity also covers a negative side (the root may sit outside the tight frame).
+    auto align_up = [](int64_t value) noexcept -> int64_t {
+        constexpr int64_t alignment = MODEL_SPRITE_FRAME_ALIGNMENT;
+        int64_t steps = value >= 0 ? (value + alignment - 1) / alignment : -((-value) / alignment);
+        return steps * alignment;
+    };
+
+    int64_t left = align_up(std::max<int64_t>(current.Pivot.x, required.Pivot.x));
+    int64_t top = align_up(std::max<int64_t>(current.Pivot.y, required.Pivot.y));
+    int64_t right = align_up(std::max<int64_t>(numeric_cast<int64_t>(current.Size.width) - current.Pivot.x, numeric_cast<int64_t>(required.Size.width) - required.Pivot.x));
+    int64_t bottom = align_up(std::max<int64_t>(numeric_cast<int64_t>(current.Size.height) - current.Pivot.y, numeric_cast<int64_t>(required.Size.height) - required.Pivot.y));
     int64_t width = left + right;
     int64_t height = top + bottom;
 
@@ -146,13 +154,8 @@ auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<Mode
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The view box anchors names and UI, so it is the model's stable idle silhouette rather than the pose of the moment:
-    // a raised weapon or a swung arm must not push the name up, and a box derived from the live pose would drift.
-    // A pose that puts the critter *lower* is the one case that must be followed - a corpse or a prone body would
-    // otherwise wear its name at standing height, far above itself. Compare the projected tops after the same base
-    // transforms as the eventual view layout: imported models may rotate their source Y away from screen-up, so raw
-    // model-space Max.y is not a height. Both inputs are baked per clip, so the choice is fixed for a given animation
-    // and never accumulates.
+    // Names anchor to the stable idle silhouette so a raised weapon cannot lift them, except for a pose that sits
+    // lower; tops are compared after the base transforms, since an imported model's raw Max.y is not a height
     if (!active_animation_bounds || !IsValidModelBounds(*active_animation_bounds) || !IsValidModelBounds(idle_bounds)) {
         return idle_bounds;
     }
@@ -366,13 +369,16 @@ static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
+    static_assert(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION <= std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
+    constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION);
 
+    // Animation-attached particles would otherwise expand a cached model sprite without limit.
+    // Rejecting their outlying bounds keeps the established frame and clips only the runaway geometry
     if (value > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;
     }
 
-    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_SCALE;
+    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_ALIGNMENT;
     uint64_t rounded = (std::max<uint64_t>(value, 1) + alignment - 1) / alignment * alignment;
 
     if (rounded > numeric_cast<uint64_t>(max_logical_frame_dimension)) {

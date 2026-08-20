@@ -372,6 +372,46 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-crittervisibilitymode-none-354691628c"></a>
 - [`symbol-script-enum-value-crittervisibilitymode-none-354691628c`](../../en/reference/script-api/types.md#symbol-script-enum-value-crittervisibilitymode-none-354691628c)
 
+<a id="symbol-script-enum-disconnectreason-ef0cb7b748"></a>
+- [`symbol-script-enum-disconnectreason-ef0cb7b748`](../../en/reference/script-api/types.md#symbol-script-enum-disconnectreason-ef0cb7b748)
+
+### <code>DisconnectReason</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-enum-value-disconnectreason-clientclosed-324b20e4a1"></a>
+- [`symbol-script-enum-value-disconnectreason-clientclosed-324b20e4a1`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-clientclosed-324b20e4a1)
+
+<a id="symbol-script-enum-value-disconnectreason-inactivitytimeout-2c5f873ced"></a>
+- [`symbol-script-enum-value-disconnectreason-inactivitytimeout-2c5f873ced`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-inactivitytimeout-2c5f873ced)
+
+<a id="symbol-script-enum-value-disconnectreason-loginfailed-28fc70b142"></a>
+- [`symbol-script-enum-value-disconnectreason-loginfailed-28fc70b142`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-loginfailed-28fc70b142)
+
+<a id="symbol-script-enum-value-disconnectreason-logintimeout-275c9538d0"></a>
+- [`symbol-script-enum-value-disconnectreason-logintimeout-275c9538d0`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-logintimeout-275c9538d0)
+
+<a id="symbol-script-enum-value-disconnectreason-none-2f321b0a0f"></a>
+- [`symbol-script-enum-value-disconnectreason-none-2f321b0a0f`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-none-2f321b0a0f)
+
+<a id="symbol-script-enum-value-disconnectreason-pingtimeout-c5e117b1e1"></a>
+- [`symbol-script-enum-value-disconnectreason-pingtimeout-c5e117b1e1`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-pingtimeout-c5e117b1e1)
+
+<a id="symbol-script-enum-value-disconnectreason-protocolerror-ceb9681f69"></a>
+- [`symbol-script-enum-value-disconnectreason-protocolerror-ceb9681f69`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-protocolerror-ceb9681f69)
+
+<a id="symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9"></a>
+- [`symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9)
+
+<a id="symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475"></a>
+- [`symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475)
+
+<a id="symbol-script-enum-value-disconnectreason-servershutdown-961dcb4bf7"></a>
+- [`symbol-script-enum-value-disconnectreason-servershutdown-961dcb4bf7`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-servershutdown-961dcb4bf7)
+
+<a id="symbol-script-enum-value-disconnectreason-updatererror-5b47869039"></a>
+- [`symbol-script-enum-value-disconnectreason-updatererror-5b47869039`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-updatererror-5b47869039)
+
 <a id="symbol-script-enum-drawordertype-be7793e78b"></a>
 - [`symbol-script-enum-drawordertype-be7793e78b`](../../en/reference/script-api/types.md#symbol-script-enum-drawordertype-be7793e78b)
 
@@ -2610,8 +2650,8 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-playerproperty-lastcontrolledcritterid-58dcfaa8b1"></a>
 - [`symbol-script-enum-value-playerproperty-lastcontrolledcritterid-58dcfaa8b1`](../../en/reference/script-api/types.md#symbol-script-enum-value-playerproperty-lastcontrolledcritterid-58dcfaa8b1)
 
-<a id="symbol-script-enum-value-playerproperty-logined-8ed61a6787"></a>
-- [`symbol-script-enum-value-playerproperty-logined-8ed61a6787`](../../en/reference/script-api/types.md#symbol-script-enum-value-playerproperty-logined-8ed61a6787)
+<a id="symbol-script-enum-value-playerproperty-loggedin-9f0071c013"></a>
+- [`symbol-script-enum-value-playerproperty-loggedin-9f0071c013`](../../en/reference/script-api/types.md#symbol-script-enum-value-playerproperty-loggedin-9f0071c013)
 
 <a id="symbol-script-enum-value-playerproperty-none-973f5ea126"></a>
 - [`symbol-script-enum-value-playerproperty-none-973f5ea126`](../../en/reference/script-api/types.md#symbol-script-enum-value-playerproperty-none-973f5ea126)

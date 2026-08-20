@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -137,10 +137,8 @@ public:
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<ptr<Critter>>;
     [[nodiscard]] auto GetNonPlayerCritters() const noexcept -> const_span<ptr<Critter>>;
     [[nodiscard]] auto IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool;
-    // The three getters below reach _spectatorPlayers under the map's entity cover (the cooperative scheme that
-    // also excludes Add/RemoveSpectatorPlayer); GetSpectatorPlayers leaks a span by design, so the _spectatorLock
-    // that guards _spectatorPlayers cannot be expressed here — hence FO_TSA_NO_ANALYSIS (leading return type per
-    // the TSA doc). The lock-free recipient resolution uses GetSpectatorPlayersForSend instead.
+    // Entity cover excludes spectator mutation for these getters, but TSA cannot express the leaked span.
+    // Lock-free recipient snapshots use GetSpectatorPlayersForSend instead
     [[nodiscard]] bool HasSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] span<ptr<Player>> GetSpectatorPlayers() noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] const_span<ptr<Player>> GetSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS;
@@ -217,12 +215,10 @@ private:
     vector<ptr<Item>> _items {};
     unordered_map<ident_t, ptr<Item>> _itemsMap {};
     nptr<Location> _mapLocation {};
-    // Declared before _spectatorPlayers so it outlives the data it guards.
+    // Declared before _spectatorPlayers so it outlives the data it guards
     shared_mutex _spectatorLock {};
-    // FO_TSA_GUARDED_BY(_spectatorLock): the lock-free GetSpectatorPlayersForSend snapshot and the
-    // Add/RemoveSpectatorPlayer mutators reach this without the map's entity cover, so TSA enforces the lock
-    // there. The entity-cover getters (HasSpectatorPlayers/GetSpectatorPlayers) and the ~Map teardown invariant
-    // reach it under the cooperative entity cover and are FO_TSA_NO_ANALYSIS.
+    // _spectatorLock protects lock-free snapshots and mutations outside entity cover.
+    // Entity-covered getters and teardown use FO_TSA_NO_ANALYSIS
     vector<ptr<Player>> _spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock) {};
     EntityLock _ownedLock {};
 };

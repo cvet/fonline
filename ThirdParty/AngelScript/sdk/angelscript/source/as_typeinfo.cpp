@@ -214,18 +214,9 @@ asUINT asCTypeInfo::GetSize() const
 // interface
 int asCTypeInfo::GetTypeId() const
 {
-	if (typeId == -1)
-	{
-		// We need a non const pointer to create the asCDataType object.
-		// We're not breaking anything here because this function is not
-		// modifying the object, so this const cast is safe.
-		asCTypeInfo *ot = const_cast<asCTypeInfo*>(this);
-
-		// The engine will define the typeId for this object type
-		engine->GetTypeIdFromDataType(asCDataType::CreateType(ot, false));
-	}
-
-	return typeId;
+	// (FOnline Patch) Route every read through the engine lock used by lazy assignment
+	asCTypeInfo *ot = const_cast<asCTypeInfo*>(this);
+	return engine->GetTypeIdFromDataType(asCDataType::CreateType(ot, false));
 }
 
 // interface

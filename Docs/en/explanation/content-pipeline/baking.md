@@ -106,6 +106,17 @@ At runtime/source level, baking is owned by:
 - `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
 - `Source/Tools/BakingReport.h` / `Source/Tools/BakingReport.cpp` — report data contracts, thread-safe aggregation, JSON serialization, and report-path construction.
 
+### Output names are reconciled with the names bakers addressed
+
+`MasterBaker::BakeAllInternal()` reconciles the output tree with the names the bakers actually addressed, in two steps around the outdated-output sweep:
+
+1. `ReconcileStaleCasedOutputDirs()` walks the expected output directories shallowest first and renames any that differ from the expected spelling by letter case only, logging `Rename stale-cased dir <from> to <to>`. Directories go first because renaming a file into a differently-cased parent resolves straight back to the existing directory and leaves its name untouched, and shallowest-first means every rename lands inside a parent whose own name is already correct.
+2. After the sweep, the same comparison is applied to files, logging `Rename stale-cased file <from> to <to>`.
+
+This exists because a case-only rename of an input is otherwise invisible on a case-insensitive filesystem. The output stream or directory creation reuses the old directory entry, the outdated sweep compares case-folded paths, and incremental baking may then skip the apparently current artifact. Runtime lookup remains exact, so the stale spelling becomes an unresolvable resource.
+
+Reconciliation runs once per bake over the outputs the bakers already produced. It neither adds per-write work nor deletes and recreates content, and it also repairs outputs skipped as up to date. On a case-sensitive filesystem the ordinary outdated sweep removes the old name and reconciliation has nothing to do. `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename`, and `DiskFileSystemNameCase` pin both the pipeline and filesystem contracts.
+
 ## CMake entry points
 
 `BuildTools/cmake/helpers/Build.cmake` exposes `AddBakingTarget` as a validated project-interface helper. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` uses it to create the standard baking commands after application targets are available.
@@ -214,8 +225,13 @@ bake pass has its matching report.
 
 Incremental and failed passes never overwrite `Baking.full.report.json`. The
 full snapshot therefore remains available for corpus analysis after ordinary
-incremental development bakes. Both report names are excluded from outdated
-runtime-resource cleanup.
+incremental development bakes.
+
+Outdated runtime-resource cleanup skips any `*.report.json` file directly in
+the `BakeOutput` root (`REPORT_FILE_SUFFIX` in `Baker.h`). The suffix covers the
+two standard reports and project-provided diagnostic artifacts written beside
+them. Runtime resources always live below a pack directory, so the root-only
+rule cannot preserve a genuinely stale baked resource.
 
 The report is written directly into the `BakeOutput` root after runtime-resource
 cleanup finishes. It is never mounted in the baked `FileSystem`, registered as
@@ -793,6 +809,22 @@ baker, `ModelInfoBaker`, source loader, and client all enforce the applicable
 limits. Malformed resources therefore fail with contextual
 `DataReadingException` instead of allocation, out-of-bounds palette access, or
 recursive-stack failure.
+
+`ModelMeshBaker` rejects a mesh node whose `geometry_to_world` determinant is
+negative. Such a node was exported with a negative scale: the reflection flips
+surface orientation, leaving normals and triangle winding inconsistent with
+lighting and back-face culling. The baker does not hide the source defect by
+flipping normals and winding; freeze the mirrored object back to a positive
+scale in the authoring tool.
+
+`ModelInfoBaker` also checks the size of a directly attached model: an `Attach`
+link to a bare `.fbx`, rather than to a `.fo3d` description. A direct attachment
+has no description-level scale correction, so its static maximum-axis extent
+must stay within `Baking.ModelAttachmentMinExtent` ..
+`Baking.ModelAttachmentMaxExtent`. A failure names the file, measured extent,
+and limit. `.fo3d` attachments are exempt because their description can apply
+an explicit scale.
+
 Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
 envelopes below, a future big-endian mesh consumer requires a converted wire

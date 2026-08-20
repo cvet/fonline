@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 
 # Сеть и авторитетность
 
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"11a2f603cff78bb238ef82142002b177666e19ce2ab5be85ee2ac48c31733963"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"cb60b35c27cd62f905be7eaa5e030e3a73b08ead3e3d342d40e00da3b25267ca"} -->
 
 Этот документ описывает переиспользуемые сетевые слои движка: буферы сообщений, обработку отладочных hash, клиентские и серверные абстракции соединений и упорядоченный UDP-транспорт.
 
@@ -155,12 +155,36 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
+Send callback возвращает outgoing bytes **по значению**, и каждый transport владеет buffer, переданным socket. Borrowed sender buffer может быть перезаполнен другим dispatch или освобождён при disconnect, пока I/O thread ещё выполняет compression/send. `Disconnect()` очищает callback под тем же lock, который защищает invocation, поэтому teardown ждёт in-flight pull, а последующие transport ticks не достигают исчезающего sender.
+
 `NetworkServer` хранит слабые ссылки на каждое принятое соединение. `Shutdown()` сначала закрывает регистрацию относительно конкурентных accept, делает снимок всех ещё живых соединений и отключает их, затем выполняет зависящую от транспорта остановку listener/io-context и присоединение потока. Соединение, принятое одновременно с остановкой, либо входит в снимок, либо отклоняется и отключается `TrackConnection()`; оно не может потеряться между accept callback и завершением io-thread. Повторный `Shutdown()` ничего не делает.
 
 К неавторизованным соединениям сервер применяет два независимых ограничения:
 
 - `ServerNetwork.InactivityDisconnectTime` ограничивает тишину между любыми входящими сообщениями;
 - `ServerNetwork.LoginTimeout` ограничивает время без значимого прогресса до входа, а `0` отключает лимит. Рукопожатие, authentication remote call и запросы update-файлов обновляют прогресс; транспортные ping не обновляют. Законный updater может продолжать работу, но peer не удерживает неавторизованный slot одними ответами ping.
+
+Авторизованное соединение также отключается, если перестаёт отвечать на ping. `ServerNetwork.ClientPingTime` задаёт interval; если предыдущий ping остаётся без ответа к моменту следующего, сервер записывает `PingTimeout` и выполняет hard disconnect.
+
+### Причины отключения
+
+Каждое закрытие записывает причину в `DisconnectReason`, а `HardDisconnect(reason)` требует от caller выбрать её:
+
+| Причина | Основание |
+|---|---|
+| `None` | соединение ещё активно |
+| `ClientClosed` | transport сообщил об исчезновении peer; добровольный выход и потеря сети здесь неразличимы |
+| `InactivityTimeout` | до `InactivityDisconnectTime` не пришло входящее сообщение |
+| `PingTimeout` | предыдущий ping остался без ответа |
+| `LoginTimeout` | до `LoginTimeout` не было pre-login progress |
+| `ProtocolError` | malformed/unexpected data или failed connection publication |
+| `UpdaterError` | неверный запрос update file |
+| `ServerShutdown` | штатная остановка сервера |
+| `ScriptRequest` | вызов `Player.HardDisconnect()` из script |
+| `LoginFailed` | login откатился после server-side failure |
+| `ReplacedByReconnect` | новый login того же account заменил session |
+
+Побеждает первая записанная причина: поздний generic callback `ClientClosed` от transport не перезаписывает конкретное основание. Причина входит в log закрытого соединения и доступна handlers `OnPlayerLogout` через `Player.GetDisconnectReason()`. Контракт закреплён `ServerConnectionRecordsWhyItWasDisconnected`.
 
 `ServerDisconnectsPreLoginConnectionAfterLoginTimeout` проверяет runtime deadline, а `NetworkServerInterthreadCopiedListenerRejectsAfterShutdown` и тесты остановки транспортов — владение принятыми соединениями и отказ конкурентному accept.
 

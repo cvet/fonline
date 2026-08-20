@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_inventory.py",
   "script_api": {
-    "export_method_declarations": 953,
+    "export_method_declarations": 958,
     "method_file_count": 18,
     "method_files": [
       {
@@ -15,7 +15,7 @@
       },
       {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "export_method_declarations": 118
+        "export_method_declarations": 119
       },
       {
         "path": "Source/Scripting/ClientImGuiScriptMethods.cpp",
@@ -31,7 +31,7 @@
       },
       {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "export_method_declarations": 59
+        "export_method_declarations": 61
       },
       {
         "path": "Source/Scripting/ClientPlayerScriptMethods.cpp",
@@ -71,16 +71,16 @@
       },
       {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "export_method_declarations": 76
+        "export_method_declarations": 77
       },
       {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "export_method_declarations": 12
+        "export_method_declarations": 13
       }
     ]
   },
   "engine_tests": {
-    "test_file_count": 98,
+    "test_file_count": 100,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -88,6 +88,7 @@
       "Source/Tests/Test_AngelScriptBytecode.cpp",
       "Source/Tests/Test_AngelScriptCall.cpp",
       "Source/Tests/Test_AnyData.cpp",
+      "Source/Tests/Test_ApplicationHeadless.cpp",
       "Source/Tests/Test_BakerSetup.cpp",
       "Source/Tests/Test_BaseLogging.cpp",
       "Source/Tests/Test_BasicCore.cpp",
@@ -137,6 +138,7 @@
       "Source/Tests/Test_ModelAnimationPoseProcedural.cpp",
       "Source/Tests/Test_ModelAnimationRuntime.cpp",
       "Source/Tests/Test_ModelBaker.cpp",
+      "Source/Tests/Test_ModelBounds.cpp",
       "Source/Tests/Test_ModelMeshData.cpp",
       "Source/Tests/Test_ModelSkeletonCompatibility.cpp",
       "Source/Tests/Test_ModelSourceLoader.cpp",
@@ -183,7 +185,7 @@
     ]
   },
   "settings": {
-    "declaration_count": 271,
+    "declaration_count": 275,
     "source": "Source/Common/Settings.inc"
   }
 }

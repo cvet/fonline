@@ -24,7 +24,7 @@
     "source_parser": "Source/Tools/ProtoBaker.cpp",
     "config_parser": "Source/Common/ConfigFile.cpp",
     "property_parser": "Source/Common/Properties.cpp",
-    "property_serializator": "Source/Common/PropertiesSerializator.cpp",
+    "property_serializer": "Source/Common/PropertiesSerializer.cpp",
     "settings": "Source/Common/Settings.inc",
     "api_model_generator": "BuildTools/docs_api.py",
     "api_model": "Docs/generated/api.json",
@@ -206,7 +206,7 @@
       "stability": "experimental",
       "description": "The property serializer is the authority for scalar, enum, struct, array, dictionary, RefType, FixedType, and Proto reference text.",
       "source": {
-        "path": "Source/Common/PropertiesSerializator.cpp",
+        "path": "Source/Common/PropertiesSerializer.cpp",
         "anchors": ["ParseStrictIntText", "ParseStrictFloatText", "LoadPropertyFromText"]
       }
     },
@@ -228,7 +228,7 @@
       "stability": "experimental",
       "description": "A removed or renamed referenced id needs an explicit Proto migration rule to a valid target or Remove according to the owning persistence policy.",
       "source": {
-        "path": "Source/Common/PropertiesSerializator.cpp",
+        "path": "Source/Common/PropertiesSerializer.cpp",
         "anchors": ["Proto reference does not exist", "Proto MigrationRule"]
       }
     },

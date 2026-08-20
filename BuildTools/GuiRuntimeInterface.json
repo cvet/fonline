@@ -45,7 +45,7 @@
       "ItemView"
     ],
     "type_count": 12,
-    "api_member_count": 159,
+    "api_member_count": 160,
     "callback_signature_count": 39,
     "screen_api_overload_count": 31,
     "annotation_count": 8,
@@ -546,7 +546,7 @@
       "source": [
         {
           "path": "BuildTools/GuiRuntimeInterface.json",
-          "anchors": ["\"surface\": \"gui-runtime\"", "\"api_member_count\": 159"]
+          "anchors": ["\"surface\": \"gui-runtime\"", "\"api_member_count\": 160"]
         }
       ]
     },

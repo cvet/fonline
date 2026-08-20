@@ -6,7 +6,7 @@ document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
 
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"a8ba798a2d1f7ad43ef35bd90a364ea8c0357a003b1cf4a1cdd8989b6b65bbb0"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3b2d6330d0914695575d867315a2e71d02bc5b51f18edb1978c059b0978db527"} -->
 
 # Базовый слой Essentials
 
@@ -29,7 +29,7 @@ Essentials следует строгому dependency DAG: зависимост�
 должны линковаться в correct dependency point, не обходя слой.
 
 Точный umbrella order: `BasicCore`, `GlobalData`, `StackTrace`, `BaseLogging`,
-`SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`, `Platform`,
+`FatalError`, `SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`, `Platform`,
 `ExceptionHandling`, `Threading`, `SafeArithmetics`, `DataSerialization`,
 `HashedString`, `StrongType`, `TimeRelated`, `ExtendedTypes`, `Compressor`,
 `WorkThread`, `Logging`, `DiskFileSystem`, `CommonHelpers` и `NetSockets`.
@@ -64,6 +64,8 @@ test Essentials не обходит contract-change gate.
 - `Source/Essentials/StackTrace.cpp`
 - `Source/Essentials/BaseLogging.h`
 - `Source/Essentials/BaseLogging.cpp`
+- `Source/Essentials/FatalError.h`
+- `Source/Essentials/FatalError.cpp`
 - `Source/Essentials/SmartPointers.h`
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/MemorySystem.h`
@@ -108,23 +110,16 @@ test Essentials не обходит contract-change gate.
 - `Source/Essentials/WinApiUndef.inc`
 - `BuildTools/natvis/essentials.natvis`
 - `BuildTools/cmake/stages/EngineSources.cmake`
+- `BuildTools/tests/test_essentials_layering.py`
 - связанные тесты в `Source/Tests/`
 
 ## Модель подключений и зависимостей
 
-`Source/Essentials/Essentials.h` является общим umbrella-заголовком. Порядок его подключений одновременно задаёт порядок зависимостей фундаментального слоя:
+`Source/Essentials/Essentials.h` является общим umbrella-заголовком. Его точный include order одновременно задаёт dependency order фундаментального слоя:
 
-1. `BasicCore.h` задаёт ограничения компилятора и ОС, поверхность стандартной библиотеки, макросы namespace, базовые псевдонимы, вспомогательные объявления исключений и compile-time константы.
-2. `GlobalData.h` регистрирует process-wide callbacks создания и удаления глобальных данных движка.
-3. `StackTrace.h`, `BaseLogging.h` дают bootstrap-диагностику, которая должна работать до появления allocator и полного слоя журналирования.
-4. `SmartPointers.h`, `MemorySystem.h` определяют словарь указателей и средства выделения памяти.
-5. `Containers.h`, `StringUtils.h` предоставляют псевдонимы контейнеров с allocator движка и переиспользуемые строковые утилиты.
-6. `Platform.h`, `ExceptionHandling.h` добавляют средства работы с host-процессом, а затем слой исключений и fatal reporting движка.
-7. `Threading.h` определяет макросы Clang Thread Safety Analysis (`FO_TSA_*`), snake_case-примитивы синхронизации (`fo::mutex` / `fo::shared_mutex` / `fo::scoped_lock` / `fo::shared_lock` / `fo::unique_lock`), handle задачи пула `fo::thread` и worker pools `run_thread` / `run_async`. Заголовок расположен после `ExceptionHandling.h`, своей наиболее глубокой зависимости, поэтому последующие value-заголовки, включая `HashedString.h`, могут защищать состояние этими примитивами. См. [Thread Safety Analysis](../../contributing/coding-contracts/thread-safety-analysis.md).
-8. `SafeArithmetics.h`, `DataSerialization.h`, `HashedString.h`, `StrongType.h`, `TimeRelated.h`, `ExtendedTypes.h`, `Compressor.h` дают вспомогательные средства для значений, сериализации, хеширования, времени, сжатия и типов.
-9. `WorkThread.h`, `Logging.h`, `DiskFileSystem.h`, `CommonHelpers.h`, `NetSockets.h` добавляют фоновые задачи, полное журналирование, доступ к диску, общие helpers и raw-сокеты.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
-Этот список намеренно точный, а не тематический. `Essentials.h` задаёт строгий DAG зависимостей: каждый заголовок Essentials и соответствующий `.cpp` может подключать только заголовки Essentials, расположенные в umbrella-блоке выше него. Не меняйте порядок ради обхода цикла; передайте зависимость параметром вверх или разделите ответственность на правильной границе слоёв.
+Этот список намеренно точный, а не тематический. `Essentials.h` задаёт строгий DAG зависимостей: каждый заголовок Essentials и соответствующий `.cpp` может подключать и вызывать только modules, расположенные в umbrella-блоке выше него. Объявление API в раннем header с определением в более позднем `.cpp` всё равно создаёт обратную link dependency. `BuildTools/tests/test_essentials_layering.py` проверяет прямые includes и ownership внешних namespace-level definitions. Не меняйте порядок ради сокрытия цикла; передайте данные параметром или разделите ответственность на правильной границе слоёв.
 
 Новые API Essentials не должны зависеть от `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/` или заголовков встраиваемого проекта.
 
@@ -134,7 +129,7 @@ test Essentials не обходит contract-change gate.
 
 `BasicCore.h` проверяет выбранный макрос ОС (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS` или `FO_WEB`) и требует C++20. Здесь же часто используемые стандартные типы вводятся в namespace движка и объявляются базовые макросы, включая `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL` и helpers для namespace. Средства подавления предупреждений также находятся здесь: `FO_DISABLE_WARNINGS_PUSH/POP` отключает все предупреждения при обёртывании third-party headers, а пары `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP` и `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` подавляют одно именованное предупреждение только в соответствующем компиляторе. Это позволяет изолировать false positive одного toolchain, не заставляя остальные отвергать неизвестный номер `-W` или warning. Сначала исправляйте причину предупреждения; per-compiler helper допустим только для документированного false positive компилятора.
 
-`Platform.h` / `.cpp` владеет небольшим набором host-specific helpers: информационным журналированием, именами потоков, поиском пути executable и пользовательского каталога данных, форматированием process id, fork там, где он доступен, использованием памяти процессом, CPU snapshots и загрузкой динамических модулей. `Platform::GetUserDataBase()` намеренно использует только окружение, без shell и SDL: Windows берёт `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS использует `$HOME/Library/Application Support`, Linux/Android/прочие платформы используют `$XDG_DATA_HOME` с fallback на `$HOME/.local/share`. Вышележащий слой добавляет имя приложения и решает, является ли отсутствие пути фатальным. `Platform::GetCpuUsageSnapshot()` возвращает накопительные системные счётчики по ядрам и CPU time текущего процесса; вызывающий код сравнивает два snapshot для вычисления процентов и хранит sampling/cache state вне Platform. Platform-specific поведение приложения, окна и рендеринга находится в `Source/Frontend/`.
+`Platform.h` / `.cpp` владеет небольшим набором host-specific helpers: информационным журналированием, именами потоков, поиском пути executable и пользовательского каталога данных, форматированием process id, fork там, где он доступен, использованием памяти процессом, CPU snapshots и загрузкой динамических модулей. `Platform::GetUserDataBase()` намеренно использует только окружение, без shell и SDL: Windows берёт `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS использует `$HOME/Library/Application Support`, Linux/Android/прочие платформы используют `$XDG_DATA_HOME` с fallback на `$HOME/.local/share`. Вышележащий слой добавляет имя приложения и решает, является ли отсутствие пути фатальным. `Platform::GetCpuUsageSnapshot()` возвращает накопительные системные счётчики по ядрам и CPU time текущего процесса; вызывающий код сравнивает два snapshot для вычисления процентов и хранит sampling/cache state вне Platform. `Platform` находится выше `ExceptionHandling` и использует более ранний `FO_BASIC_STRONG_ASSERT` для terminating host-API invariants, не импортируя поздние exception macros. Platform-specific поведение приложения, окна и рендеринга находится в `Source/Frontend/`.
 
 Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Единый registry Windows build platforms владеет архитектурой CMake, toolset и канонической packaging-архитектурой обычных вариантов, `-clang` и `-win7`. Пара Win7 фиксирует MSVC 14.44, а `FO_BINARY_OUTPUT_POSTFIX` остаётся независимым от платформы. В package DSL конкретная запись `BINARY` может выбрать собственный postfix, например `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, не затрагивая соседние binaries. Проверки совместимости находятся вне application targets.
 
@@ -142,7 +137,11 @@ Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Еди
 
 `BaseLogging.*` и `Logging.*` образуют фундамент журналирования. `WriteLogMessage()` объединяет последовательные дубликаты с одинаковыми `LogType` и текстом: повторения пропускаются, а перед следующей отличающейся строкой выводится сводка вида `...and 25 more same messages`. `LogToFile()` открывает файл без exclusive lock в рамках поведения платформы: `std::ofstream` MSVC использует deny-none, а POSIX не вводит обязательную блокировку при открытии. Благодаря этому два модуля движка в одном процессе, например runtime host EXE и загруженная им runtime DLL со своей копией engine global data, могут одновременно держать один файл открытым. Перед каждой записью `WriteSync` перемещается в конец файла, поэтому один handle не перезапишет данные, добавленные другим; параметр `append` по-прежнему выбирает truncate по умолчанию либо append при первоначальном открытии.
 
-`WriteLog` / `WriteBaseLog` безопасно деградируют, если global data ещё не созданы: сначала переходят к base log, затем к `std::cout`. Runtime host может открыть журнал заранее, сразу после `CreateGlobalData()`, вызовом `LogToFile(GetExeLogFileName(), false)` во Frontend, чтобы pre-`InitApp` diagnostics попали в файл. При включённом `AsyncLogWrite` обработчик fatal error из `ExceptionHandling` сначала вызывает `SuspendAsyncLogWriting()`: запись переключается на синхронный путь без join worker-потока, поэтому причина crash и stack trace сбрасываются немедленно и не теряются в невычитанной async queue. `StackTrace.*` собирает и форматирует native/script stacks, включая ограниченный глобальный cache разрешённых native frames, а `ExceptionHandling.*` владеет helpers отчётов об исключениях. Debugger-сценарии описаны в разделе [Native- и AngelScript-отладка](../../troubleshooting/debugging.md).
+`WriteLog` / `WriteBaseLog` безопасно деградируют, если global data ещё не созданы: сначала переходят к base log, затем к `std::cout`.
+
+`FatalError.*` является ранним native-only fatal layer. Он следует за `StackTrace` и `BaseLogging`, приостанавливает asynchronous writes, пишет одно синхронное сообщение с native trace и передаёт `BasicCore::ExitApp(false)` только механическое завершение. Ему принадлежат `ReportFatalAndExit`, `ReportStrongAssertAndExit` и `FO_BASIC_STRONG_ASSERT`; слой не создаёт exception objects и не зависит от более позднего `ExceptionHandling`. Сам `ExitApp(false)` остаётся status-only, поскольку его используют и контролируемые command failures, и fatal invariant failures.
+
+`StackTrace.*` собирает и форматирует native/script stacks, а `ExceptionHandling.*` владеет более поздними helpers отчётов об exception objects. Debugger-сценарии описаны в разделе [Native- и AngelScript-отладка](../../troubleshooting/debugging.md).
 
 <a id="memory-pointers-and-lifetime-utilities"></a>
 ### Память, указатели и время жизни

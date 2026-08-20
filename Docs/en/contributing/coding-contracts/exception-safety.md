@@ -43,6 +43,24 @@ The server runs all gameplay work as jobs on a `WorkerPool`. `WorkerPool::Worker
 
 Scripted-event fan-out (`Game.OnX.Fire(...)`, `entity->OnX.Fire(...)`) is **noexcept**: `Entity::FireEvent` swallows per-callback exceptions and converts a throwing/`StopChain` callback into a chain stop. So `OnX.Fire` itself never propagates — but a handler's *side effects* (it may destroy or relocate entities) do persist, and the engine re-validates after firing.
 
+The client has the same recovery shape at frame granularity, plus a rendering obligation. `MainEntry` catches a `std::exception` from `ClientEngine::MainLoop`, reports it, and continues with the next frame only after `Application::EndFrame`, which requires no render target to remain bound. `ClientEngine::MainLoop` therefore guards the draw block with a `scope_fail` that calls `SpriteManager::AbortScene`: partial draws are dropped and the scissor/render-target stacks are unwound. Any new frame-scoped render-target binding owes the same cleanup.
+
+`AbortScene` is `noexcept` because it runs during unwind. Infallible manager state is reset directly, while backend release uses `safe_call` so a lost render context is reported without replacing the original exception. The backend operation itself remains throwing on the normal path. `EndScene` likewise stays an ordinary call rather than a `scope_success`: its invariant checks must throw while the `scope_fail` guard is still armed, not from an implicitly `noexcept` destructor.
+
+### Nothing outside `std::exception` may be thrown
+
+Every exception raised by Engine or embedding-project native code must derive from `std::exception`. Throwing an integer, bare struct, or third-party non-standard exception bypasses the normal reporting frontiers and is forbidden.
+
+Accordingly, a general `catch (...)` beside `catch (const std::exception& ex)` is not a recoverable error path. It marks a broken invariant and must be:
+
+```cpp
+catch (...) {
+    FO_UNKNOWN_EXCEPTION();
+}
+```
+
+Do not log and continue, fabricate an `"Unknown exception"` domain error, or rethrow it as an ordinary failure. The only narrow disposition exemptions are no-throw teardown/unwind boundaries and the logging/reporting machinery itself, where nothing may escape or recursively re-enter the reporter. They do not permit code to throw a non-`std::exception` value in the first place.
+
 ## 3. The entity-lifecycle contract (create / destroy)
 
 Entity lifecycle is deliberately **not** "transactional rollback". The contract, encoded by the tests in `Source/Tests/Test_EntityLifecycle.cpp` and `Source/Tests/Test_ServerMapOperations.cpp`, is:

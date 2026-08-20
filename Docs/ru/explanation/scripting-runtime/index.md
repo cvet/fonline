@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 # Скриптовый runtime
 
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"647ed43b459f8aae88f9bf3ea21cbd79923ec7a82361719a4c44d2bf00c96ce1"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"8eb2f7c04834d6814a24a553eb2b54a78e023947abf56bdbd559d8c0a6c84530"} -->
 
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
@@ -106,6 +106,8 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 Таким образом, AngelScript используется в двух режимах: tooling mode во время компиляции и runtime mode. Одинаковый код метаданных и регистрации типов должен оставаться совместимым с обоими.
 
+AngelScript назначает IDs зарегистрированных object types лениво. Разные script contexts могут одновременно запросить один новый type, поэтому vendored runtime читает и инициализирует `asCTypeInfo::typeId` под reader/writer lock Engine и повторно читает значение после получения exclusive access. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads` запускает 16 native workers для 128 новых типов через публичный `asITypeInfo::GetTypeId()` и требует один одинаковый валидный ID для каждого типа.
+
 Нативные методы, зарегистрированные через сгенерированные descriptors `MethodDesc`, вызываются через `ScriptGenericCall()`. Унифицированный slot `FuncCallData` для изменяемого простого аргумента является **адресом переменной вызывающего**: адресом значения для primitives, enums и value types (`int32&`, `mpos&`, `string&`) и адресом ячейки handle для object handles (`Critter@&`). Все producers со стороны AngelScript соблюдают этот контракт: `ScriptGenericCall()` классифицирует аргумент по регистрационным descriptors `MethodDesc` / `EntityEventDesc`, из которых создана декларация `&` или `@&`; он и семейство `Invoke` разрешают mutable arguments через `asIScriptGeneric::GetArgAddress()`, то есть pointer из стека, тогда как обычные input arguments используют `GetAddressOfArg()`. Consumers работают симметрично: `NativeDataCaller::ConvertArg` / `ReturnArg` читают и записывают через slot, а AngelScript-to-AngelScript ветвь `ScriptFuncCall()` передаёт slot напрямую в `asIScriptContext::SetArgAddress()`. Это относится к событиям с by-ref arguments и к `Invoke`, нацеленному на script function. Regression coverage: `Test_CommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) и `Test_ScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
 
 Когда включён `asEP_ALLOW_UNSAFE_REFERENCES`, AngelScript может откладывать освобождение receiver метода и аргументов до безопасной точки выражения. Компиляция short-circuit boolean обрабатывает отложенные параметры левого операнда после материализации его primitive-результата `bool` и до объединения branch bytecode. Иначе правый операнд может повторно использовать временный object slot и перезаписать сохранённый receiver без освобождения. `ScriptBuiltinsDeferredReceiverTemporaryIsReleased` покрывает сочетание property accessor и method call, которое проявило проблему при завершении GUI.
@@ -117,6 +119,10 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 Globals, delegates, script object handles, массивы, словари и GUI object graphs должны очищаться shutdown модулей, destructors, `ReleaseAllHandles` и AngelScript GC. Проектным скриптам не следует добавлять очистку `Game.OnFinish` / `EngineCallback_Finish` только для подавления shutdown diagnostics; если граф переживает shutdown, исправьте release или GC-enumeration владельца в нативном коде.
 
 Удаление или выгрузка сущности очищает её callbacks событий и time events из `Entity::MarkAsDestroyed()`, поэтому проектным скриптам не нужен центральный реестр unsubscribe / `StopTimeEvent` для обычного lifetime сущности. Mutators сущности и entry points событий и time events assert или verify при вызове после `MarkAsDestroyed()`, чтобы попытка заново наполнить уничтоженную сущность показывала stack trace места ошибки. Во время `ServerEngine::Shutdown` / `ClientEngine::Shutdown` движок также выполняет `UnsubscribeAllEvents()` и `ClearAllTimeEvents()` для глобальной сущности engine и всех живых сущностей до `DestroyAllEntities()`. Проектные скрипты не должны вручную вести unsubscribe, global-clear или `StopTimeEvent` cleanup в `Game.OnFinish` только ради тишины GC; там нужен только функциональный teardown.
+
+Destroyed entities также отклоняются на script-to-native boundary. `NativeDataCaller::ConvertArg` сначала проверяет доступ, затем отвергает destroyed entity для любого обычного `///@ ExportMethod`. На сервере uncovered destroyed handle поэтому сообщает actionable fault отсутствующего cover, а всё ещё covered handle, который caller уничтожил и продолжил использовать, сообщает fault destroyed argument. На клиенте cover validation отсутствует и возможен только второй вариант.
+
+Единственное исключение — `///@ ExportMethod ... AllowDestroyedEntityArgs`, которое codegen превращает в compile-time call-policy flag. Оно существует для явных synchronization primitives вроде `Game.Sync`: concurrent destroy всегда может произойти между script liveness check и вызовом синхронизации, а wrapper обязан вернуть `false`, а не завершиться на conversion аргумента. Не применяйте flag к обычным exports. Контракт закреплён `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` и `SyncAcceptsDestroyedEntity`.
 
 ## Атрибуты, объявления и метаданные
 
@@ -190,7 +196,7 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 - `Gui.fos`
 - `Sprite.fos`
 - `LineTracer.fos`
-- `Serializator.fos`
+- `Serializer.fos`
 - `FixedDropMenu.fos`
 - `Tween.fos`
 

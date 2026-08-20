@@ -381,11 +381,14 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-getspritesize-15077f6fce"></a>
 - [`symbol-script-method-client-game-getspritesize-15077f6fce`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspritesize-15077f6fce)
 
+<a id="symbol-script-method-client-game-gettext-18a1958c0507d2fd-909201d447"></a>
+- [`symbol-script-method-client-game-gettext-18a1958c0507d2fd-909201d447`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-gettext-18a1958c0507d2fd-909201d447)
+
 <a id="symbol-script-method-client-game-gettext-513ec7ba7fb47b7c-565aec7dc0"></a>
 - [`symbol-script-method-client-game-gettext-513ec7ba7fb47b7c-565aec7dc0`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-gettext-513ec7ba7fb47b7c-565aec7dc0)
 
-<a id="symbol-script-method-client-game-gettext-6fec00192f9521f3-c2f8d77858"></a>
-- [`symbol-script-method-client-game-gettext-6fec00192f9521f3-c2f8d77858`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-gettext-6fec00192f9521f3-c2f8d77858)
+<a id="symbol-script-method-client-game-gettext-6f20bf83e45a6a6d-91bf33e1a2"></a>
+- [`symbol-script-method-client-game-gettext-6f20bf83e45a6a6d-91bf33e1a2`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-gettext-6f20bf83e45a6a6d-91bf33e1a2)
 
 <a id="symbol-script-method-client-game-gettextcount-419192b863"></a>
 - [`symbol-script-method-client-game-gettextcount-419192b863`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-gettextcount-419192b863)
@@ -753,6 +756,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-gethexscreenposf-20d63085be"></a>
 - [`symbol-script-method-client-map-gethexscreenposf-20d63085be`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-gethexscreenposf-20d63085be)
 
+<a id="symbol-script-method-client-map-gethiddenroofnum-976e24f2c5"></a>
+- [`symbol-script-method-client-map-gethiddenroofnum-976e24f2c5`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-gethiddenroofnum-976e24f2c5)
+
 <a id="symbol-script-method-client-map-getitem-4fdadb650f"></a>
 - [`symbol-script-method-client-map-getitem-4fdadb650f`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getitem-4fdadb650f)
 
@@ -779,6 +785,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-map-getpathlength-b62c50c709a20fb8-1d6e8b8d55"></a>
 - [`symbol-script-method-client-map-getpathlength-b62c50c709a20fb8-1d6e8b8d55`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getpathlength-b62c50c709a20fb8-1d6e8b8d55)
+
+<a id="symbol-script-method-client-map-getroofnum-c6d6a25e7d"></a>
+- [`symbol-script-method-client-map-getroofnum-c6d6a25e7d`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getroofnum-c6d6a25e7d)
 
 <a id="symbol-script-method-client-map-getscreensize-7a1f857703"></a>
 - [`symbol-script-method-client-map-getscreensize-7a1f857703`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getscreensize-7a1f857703)
@@ -2316,8 +2325,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-createlocation-c94de2fea30a1454-70b848fd79"></a>
 - [`symbol-script-method-server-game-createlocation-c94de2fea30a1454-70b848fd79`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createlocation-c94de2fea30a1454-70b848fd79)
 
-<a id="symbol-script-method-server-game-createunloginedplayer-073fecb35e"></a>
-- [`symbol-script-method-server-game-createunloginedplayer-073fecb35e`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createunloginedplayer-073fecb35e)
+<a id="symbol-script-method-server-game-createnotloggedinplayer-97201edbe3"></a>
+- [`symbol-script-method-server-game-createnotloggedinplayer-97201edbe3`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createnotloggedinplayer-97201edbe3)
 
 <a id="symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19"></a>
 - [`symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19)
@@ -2856,6 +2865,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-getpathlength-b14b16361e6bc348-c00817512a"></a>
 - [`symbol-script-method-server-map-getpathlength-b14b16361e6bc348-c00817512a`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getpathlength-b14b16361e6bc348-c00817512a)
 
+<a id="symbol-script-method-server-map-getplayercrittercount-de463e9b7c"></a>
+- [`symbol-script-method-server-map-getplayercrittercount-de463e9b7c`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getplayercrittercount-de463e9b7c)
+
 <a id="symbol-script-method-server-map-getspectatorplayers-10bf4e41e3"></a>
 - [`symbol-script-method-server-map-getspectatorplayers-10bf4e41e3`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getspectatorplayers-10bf4e41e3)
 
@@ -2946,6 +2958,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-player-getcontrolledcritter-abc7a2f3a6"></a>
 - [`symbol-script-method-server-player-getcontrolledcritter-abc7a2f3a6`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-getcontrolledcritter-abc7a2f3a6)
+
+<a id="symbol-script-method-server-player-getdisconnectreason-e394ff1d2a"></a>
+- [`symbol-script-method-server-player-getdisconnectreason-e394ff1d2a`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-getdisconnectreason-e394ff1d2a)
 
 <a id="symbol-script-method-server-player-gethost-178ea84611"></a>
 - [`symbol-script-method-server-player-gethost-178ea84611`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-gethost-178ea84611)

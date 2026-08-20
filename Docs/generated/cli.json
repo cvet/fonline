@@ -21,8 +21,8 @@
   },
   "program": "buildtools.py",
   "description": "Shared BuildTools helpers",
-  "usage": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...",
-  "help_output": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...\n\nShared BuildTools helpers\n\npositional arguments:\n  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace}\n    env                 resolve BuildTools environment\n    build               configure and build a target\n    validate            configure and validate scenarios\n    setup-mono          prepare mono runtime\n    format-source       format engine source files\n    toolset             build an existing toolset target\n    build-auxiliary     build a separately packaged auxiliary tool\n    prepare-workspace   prepare shared workspace parts\n    package-web-debug   package the local web debug client\n    package-android-debug\n                        package the local android debug client\n    host-check          check host prerequisites\n    prepare-host-workspace\n                        prepare host workspace and prerequisites\n\noptions:\n  -h, --help            show this help message and exit\n",
+  "usage": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...",
+  "help_output": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...\n\nShared BuildTools helpers\n\npositional arguments:\n  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace}\n    env                 resolve BuildTools environment\n    build               configure and build a target\n    validate            configure and validate scenarios\n    setup-mono          prepare mono runtime\n    format-source       format engine source files\n    toolset             build an existing toolset target\n    build-auxiliary     build a separately packaged auxiliary tool\n    prepare-workspace   prepare shared workspace parts\n    repair-checkout-case\n                        realign working-tree entry names with the git index\n    package-web-debug   package the local web debug client\n    package-android-debug\n                        package the local android debug client\n    host-check          check host prerequisites\n    prepare-host-workspace\n                        prepare host workspace and prerequisites\n\noptions:\n  -h, --help            show this help message and exit\n",
   "global_arguments": [],
   "commands": [
     {
@@ -340,6 +340,32 @@
       ]
     },
     {
+      "id": "cli.buildtools.command.repair-checkout-case",
+      "name": "repair-checkout-case",
+      "summary": "realign working-tree entry names with the git index",
+      "description": null,
+      "usage": "usage: buildtools.py repair-checkout-case [-h] [--check]",
+      "help_output": "usage: buildtools.py repair-checkout-case [-h] [--check]\n\noptions:\n  -h, --help  show this help message and exit\n  --check     check for case drift without renaming entries\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.repair-checkout-case.argument.check",
+          "destination": "check",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--check"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "check for case drift without renaming entries"
+        }
+      ]
+    },
+    {
       "id": "cli.buildtools.command.package-web-debug",
       "name": "package-web-debug",
       "summary": "package the local web debug client",
@@ -540,9 +566,9 @@
     }
   ],
   "summary": {
-    "command_count": 12,
+    "command_count": 13,
     "global_argument_count": 0,
-    "command_argument_count": 24
+    "command_argument_count": 25
   },
-  "contract_digest": "7271ab5eca2fd6485e970932f041c1a6a4bc738d76b19b8ea2f123627b6059bf"
+  "contract_digest": "c3ce1809eb5d4e0811e95f8e3880d746b7d9e3a0b4418d9567313516a72aa653"
 }

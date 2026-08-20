@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -268,11 +268,14 @@ void NetworkServer_UdpSockets::ShutdownImpl()
     FO_STACK_TRACE_ENTRY();
 
     _stopped = true;
-    _socket.close();
 
+    // Run() polls _stopped on the send-update tick, so it leaves without its socket being closed under it.
+    // Joining first keeps close() from racing the can_read() the loop still performs on that handle
     if (_runThread.joinable()) {
         _runThread.join();
     }
+
+    _socket.close();
 }
 
 uint32_t NetworkServer_UdpSockets::GenerateSessionId()

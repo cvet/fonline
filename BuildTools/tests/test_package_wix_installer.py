@@ -99,9 +99,9 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False) -> SimpleNamespace:
         captured["cmd"] = cmd
         captured["cwd"] = cwd
-        # The writable-data marker must exist inside the staged payload at MSI build time.
+        # The writable-data marker must exist inside the staged payload at MSI build time
         assert (Path(cwd) / "LF-Client" / "INSTALLED").is_file()
-        # Drive only createmsi's WiX XML generation (no wixl/light needed) to validate the wiring.
+        # Drive only createmsi's WiX XML generation without requiring wixl or light
         previous = os.getcwd()
         os.chdir(cwd)
         try:
@@ -114,12 +114,12 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
 
     packager.make_wix_installer()
 
-    # createmsi requires a bare json filename resolved against work_dir as cwd.
+    # createmsi resolves a bare JSON filename against work_dir
     assert captured["cmd"][-1] == "LastFrontier.wix.json"
     assert "/" not in str(captured["cmd"][-1]) and "\\" not in str(captured["cmd"][-1])
     assert captured["cwd"] == str(output_dir)
 
-    # The marker is added only for the MSI and removed afterwards (portable Raw/Zip stay portable).
+    # Add the marker only for MSI and remove it before portable Raw or Zip packaging
     assert not (staged / "INSTALLED").exists()
 
     config = json.loads((output_dir / "LastFrontier.wix.json").read_text(encoding="utf-8"))

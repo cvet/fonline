@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/testing/
 
 # Тестирование
 
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"a1771a3630a584728c0904690d8f9b1d6c684b5adfc34b185846a7b35f5c0ad4"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"059d7c4044eaf8983696f4ec396af115b741903b38c2a0e40b980e3ef6ef3015"} -->
 
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
@@ -80,6 +80,8 @@ Executable можно вызвать напрямую с аргументами 
 Для Visual Studio/MSBuild `RunUnitTests` пишет process output в
 `<build-dir>/<ProjectDevName>_UnitTests.log` и использует exit code процесса.
 Так ожидаемые строки `error` из negative cases не превращаются в ошибки MSBuild.
+При failure helper также выводит captured output перед остановкой, поэтому CI log
+называет failing test/assertion даже после удаления runner workspace и file log.
 
 BuildTools может запускать выбранные широкие сценарии:
 
@@ -151,6 +153,20 @@ containers освобождаются при shutdown. Новые утечки �
 Локальные примечания находятся в
 [Source/Tests/README.ru.md](../../../../Source/Tests/README.ru.md).
 
+Coverage зависит от platform и environment. Sources, не скомпилированные в текущем build, не имеют mapping и отдельно показываются как untouched. Sources, которые компилируются, но не могут выполниться в headless test process, входят в `ENVIRONMENT_EXCLUDED_SOURCES` с письменной причиной; сейчас это device-backed audio/video, Mongo/updater infrastructure и намеренно завершающий процесс diagnostic self-test. Loopback sockets и debugger endpoint остаются в headline. Report раздельно показывает scoped, all-source и excluded buckets. Exclusion является routing decision: его обязан покрыть owning platform, windowed run или integration lane с реальным endpoint.
+
+### Шаблоны focused harness
+
+- **ImGui panels:** создайте backend-less context, задайте `ImGuiBackendFlags_RendererHasTextures` и используйте `ImGui::LogToBuffer(depth)` для auto-open tree nodes и доказательства nested text. Collapsing headers требуют ручной записи IDs в `StateStorage`. Context уничтожается на scope exit. Для widget branch `ImGuiTestHarness::ActivateItem` требует два frame; controls в child windows адресуются через `ActivateChildItem`, а между presses очищается stale active ID.
+- **Server diagnostics:** sync point сам не покрывает entities. Snapshot ещё не вошедших players берётся под publication lock; lock освобождается до entity locks, после чего один replacement cover охватывает snapshot и registered world. Fixture должен содержать настоящего not-logged-in player.
+- **Inbound remote calls:** entry покрывает calling player и controlled critter. Любая вторая entity требует явного `Game.Sync`; ожидаемый cover violation нельзя проверять под script `try/catch`, потому что session завершится до следующего probe.
+- **Crash reporting:** non-terminating crash stream проверяется через private log file с последующим возвратом на `NUL` или `/dev/null`. Terminating reporters запускаются вне процесса через `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit` и `main_failure_exit` различают ранний fatal report и raw status-only exit.
+- **Fonts без assets:** синтезируйте `.fofnt` text или BMFont blocks `BMF\3` в памяти, предоставьте sprite и bind scale из `(0..1]`. `SplitLines` выдаёт pages размером с rect, поэтому для нескольких outputs нужен короткий rectangle.
+- **Logged-in client/server:** login remote calls объявляются в обоих metadata blobs в противоположных направлениях с правильным subsystem/namespace. До login insertion добавьте хотя бы одно project-owned persistent `Player` property, затем создайте и переключите critter и перенесите его в location/map. Empty layouts server/client `.fomap-bin-*` различаются; client blob заканчивается после двух `uint32` counts.
+- **World reload:** используйте file-backed JSON, отметьте ожидаемые entities persistent, остановите один server и запустите второй на том же каталоге. Critter восстанавливается через owning map или global-map membership; off-map runtime critter не reload-ится.
+- **Headless 3D:** запеките недегенеративный triangle, создайте description настоящим `ModelInfoBaker`, предоставьте source и baked mesh, `Metadata.fometa-client` и `ModelAnimationInfo.foinfo`, затем создайте instance через null renderer.
+- **Static maps и disk writes Mapper:** server map records содержат настоящий payload `Properties::StoreAllData()`; zero length недопустим. Mapper save tests требуют настоящий Maps root через `InputDirs` с reference `.fomap`; предпочитайте `SaveMapToDir`, потому что plain `SaveMap` иначе может записать в working directory процесса.
+
 ## Текущий набор тестов
 
 Полный отсортированный список и authoritative count генерируются из
@@ -168,11 +184,11 @@ python BuildTools/docs_inventory.py --check
 ### Конфигурация и источники данных
 
 Начните с `Test_CacheStorage.cpp`, `Test_ConfigFile.cpp`, `Test_DataSource.cpp`,
-`Test_FileSystem.cpp` и `Test_Settings.cpp`.
+`Test_FileSystem.cpp`, `Test_Settings.cpp` и `Test_SettingsStorage.cpp`.
 
 ### Общая runtime-модель
 
-Сюда относятся metadata, entities/prototypes, properties, geometry, map loading,
+Сюда относятся headless application (`Test_ApplicationHeadless`), metadata, entities/prototypes, properties, geometry, map loading,
 movement/pathfinding, text packs, timers и two-dimensional grids. Основные suites:
 `Test_EngineMetadata`, `Test_EntityLifecycle`, `Test_EntityProtos`,
 `Test_MapLoader`, `Test_Movement`, `Test_PathFinding`, `Test_Properties`,
@@ -212,6 +228,8 @@ state.
 `BakeResources`, который должен остаться incremental-clean на неизмененном tree.
 
 ### Rendering/frontend smoke tests
+
+`Test_ImGui` закрепляет backend-less harness активации widgets и состояния windows для coverage diagnostic panels.
 
 `Test_EffekseerParticleRuntime` проводит cooked legacy/modern effects через
 реальные Sprite/Ring callbacks и проверяет topology, geometry, UV, Z-sort,

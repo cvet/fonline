@@ -331,14 +331,22 @@ held weapon) are not in the baked animation bounds, so this is what keeps the fr
 **fixed size while the critter turns** instead of resizing each time a facing pushes the
 gear wider. Only currently-emitting particle systems extend this envelope;
 a dormant effect (for example furnace smoke that is not puffing) reserves no frame
-space and is absorbed by the expansion pass if and when it starts emitting. If that
+space and is absorbed by the expansion pass if and when it starts emitting.
+
+The measured result contains two rectangles. `ModelSpriteBounds::Rect` is the full drawn extent — mesh, shadow, live particles, and any effect-forced full frame — and sizes the frame and atlas crop. `ModelSpriteBounds::PoseRect` is the posed model alone, captured before particles, and is returned by `ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` for fit-to-area calculations. Already emitted world-space particles do not scale with the model, so including them in a fit creates a feedback loop that can shrink the model toward zero. Effects belong in the frame, not in the fit.
+
+If that
 exact envelope needs a larger logical frame,
 the client expands the frame and rerenders before copying. Successive frame
 placements are merged as root-relative intervals, so adjacent pixel-rounded
 pivots or a live world-space particle cannot make an otherwise stable frame
 alternate forever. The interval anchor is signed: a tight frame may legitimately
 lie completely on one side of the model root, leaving its pivot outside the frame;
-the bounded retry loop still rejects a genuinely unbounded layout. Only the selected region is allocated
+the bounded retry loop still rejects a genuinely unbounded layout.
+
+`ModelInstance::SetupFrame` rejects a logical `draw_size * FRAME_SCALE` above `AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT`, naming the model and both sizes before an anonymous device texture-allocation failure can occur. Meshes disabled by the model's own default `.fo3d` link contribute to neither drawn nor pose bounds; runtime honors that default exactly as it honors layer/attachment `DisableMesh`, keeping runtime geometry inside the baked layout budget.
+
+Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
 preserving the automatic frame's root, hit-test coordinates, and map
 positioning. The active layer/child-model tree extends the idle-priority base
@@ -407,12 +415,14 @@ their UVs. Runtime-generated model and particle sprites already occupy ordinary
 rectangular atlas allocations and do not need this reconstruction.
 
 Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
-stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
-observer in constant time and marks the derived free-rectangle list dirty. The
-next allocation rebuilds that list once from all still-live rectangles, in a
-deterministic order, so batches of unloads are coalesced and no surviving
-sprite, pixel region, or UV ever moves. This runtime-only layout change does
-not add settings or alter sprite-resource serialization.
+stable-address `TextureAtlasLayout::Allocation`. Release clears the mesh observer
+and returns the rectangle directly to the free list in constant time. The list
+does not coalesce eagerly: on a placement miss, `DefragmentFreeRectangles`
+rebuilds the exact maximal set from live allocations before opening a new page.
+A contained-rectangle prune runs only after growth well beyond the previous
+pruned size and indexes keepers by coarse atlas cells, avoiding hot-path full
+scans. No surviving sprite, pixels, or UVs move; this changes no settings or
+resource serialization.
 
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after
@@ -819,6 +829,8 @@ forced first-tick path used by ordinary scheduled simulation.
 The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
 
 `ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK and Effekseer particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth; Effekseer distortion attachments additionally pull the direct replay's scene-background snapshot on demand. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
+
+Cached model-sprite frames are capped at `2048x2048` logical pixels (`4096x4096` for the supersampled intermediate target). Dynamic model-bone particle bounds above this budget are treated as unavailable: the established model frame remains valid and only runaway outlying geometry is clipped. This prevents malformed or long-lived particle motion from requesting unbounded CPU/GPU allocations in headless and rendered paths.
 
 **World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit and is shared by 3D models and in-scene particles. The Engine default is `40.0`; an embedding project may override it consistently for both systems. **1 world unit = 1 hex = 1 m** remains the authoring metric, but the pixel projection factor does not have to equal `MAP_HEX_WIDTH`. A scene-type system that emits within a radius of N units therefore spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale. See [Particle Format And Runtime](../../how-to/content/particle-format.md#runtime-contract) for the complete backend-neutral particle route.
 

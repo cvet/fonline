@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -173,6 +173,7 @@ struct BakedModelMeshInfo
     vector<string> DiffuseTextures {};
     vector<string> SkinBoneRefs {};
     ModelSkeletonSource Skeleton {};
+    optional<ModelBounds3D> StaticBounds {};
 };
 
 struct ValidatedModelAnimations
@@ -192,10 +193,11 @@ static auto GetModelDescriptionMaxWriteTime(const FileCollection& files, const N
 static void CollectModelDescriptionLinkDependencies(const BakerModelDescriptionLink& link, unordered_set<string>& required_dependencies, unordered_set<string>& optional_dependencies);
 static void UpdateModelDescriptionDependencyWriteTime(const FileCollection& files, string_view dependency, string_view owner, bool required, uint64_t& max_write_time);
 
-static auto ValidateModelDescription(const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ValidatedModelDescription;
+static auto ValidateModelDescription(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ValidatedModelDescription;
 static auto ValidateModelDescriptionAnimations(const FileCollection& source_files, const NameResolver& name_resolver, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakerModelDescription& description, string_view fname) -> ValidatedModelAnimations;
 static void ValidateModelDescriptionAnimationData(ModelSkeletonCompatibilityReport& compatibility_report, const vector<ModelAnimationSource>& animation_sources, string_view fname);
-static void ValidateModelDescriptionAttachment(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname);
+static void ValidateModelDescriptionAttachment(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname);
+static void ValidateDirectAttachmentSize(const BakingSettings& settings, const BakedModelMeshInfo& child_info, string_view child_name, string_view fname);
 static void ValidateModelDescriptionLinkData(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateModelDescriptionCut(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakerModelDescriptionCut& cut, string_view fname);
 static void ValidateModelDescriptionTexture(const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname);
@@ -321,7 +323,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             auto [description, max_write_time] = parser.Parse(file.GetPath());
             ignore_unused(max_write_time);
 
-            ValidatedModelDescription validated = ValidateModelDescription(files, *_context->BakedFiles, client_engine, model_sources, description, file.GetPath());
+            ValidatedModelDescription validated = ValidateModelDescription(*_context->Settings, files, *_context->BakedFiles, client_engine, model_sources, description, file.GetPath());
 
             vector<uint8_t> data;
             DataWriter writer(data);
@@ -823,7 +825,7 @@ void ModelDescriptionParser::ApplyFloatValue(BakerModelDescriptionLink& link, st
     }
 }
 
-static auto ValidateModelDescription(const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ValidatedModelDescription
+static auto ValidateModelDescription(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ValidatedModelDescription
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -852,7 +854,7 @@ static auto ValidateModelDescription(const FileCollection& source_files, const F
     ValidateModelDescriptionLinkData(source_files, baked_files, mesh_cache, main_info, nullptr, description.DefaultLink, fname);
 
     for (const BakerModelDescriptionLink& link : description.Links) {
-        ValidateModelDescriptionAttachment(source_files, baked_files, model_sources, mesh_cache, main_info, link, fname);
+        ValidateModelDescriptionAttachment(settings, source_files, baked_files, model_sources, mesh_cache, main_info, link, fname);
     }
 
     ValidatedModelAnimations animations = ValidateModelDescriptionAnimations(source_files, name_resolver, baked_files, model_sources, mesh_cache, description, fname);
@@ -1040,7 +1042,7 @@ static void ValidateModelDescriptionAnimationData(ModelSkeletonCompatibilityRepo
     compatibility_report.AnimationDataIssues.clear();
 }
 
-static void ValidateModelDescriptionAttachment(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname)
+static void ValidateModelDescriptionAttachment(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1074,7 +1076,30 @@ static void ValidateModelDescriptionAttachment(const FileCollection& source_file
         throw ModelInfoBakerException("Direct attached model contains embedded animation clips; animated child models require a .fo3d description", link.ChildName, fname, child_source->Animations.size());
     }
 
+    ValidateDirectAttachmentSize(settings, child_info, link.ChildName, fname);
+
     ValidateModelDescriptionLinkData(source_files, baked_files, mesh_cache, child_info, &main_info, link, fname);
+}
+
+// An attachment renders on the parent skeleton, so a foreign unit space shows up not in the render but in the sprite
+// frame the client sizes from these bounds. See Engine/Docs/BakingPipeline.md
+static void ValidateDirectAttachmentSize(const BakingSettings& settings, const BakedModelMeshInfo& child_info, string_view child_name, string_view fname)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!child_info.StaticBounds) {
+        return;
+    }
+
+    const ModelBounds3D& bounds = *child_info.StaticBounds;
+    float32_t extent = std::max({std::abs(bounds.Min.x), std::abs(bounds.Min.y), std::abs(bounds.Min.z), std::abs(bounds.Max.x), std::abs(bounds.Max.y), std::abs(bounds.Max.z)});
+
+    if (extent > settings.ModelAttachmentMaxExtent) {
+        throw ModelInfoBakerException("Direct attached model reaches beyond the authored world extent; export it in the same units as the other models", child_name, fname, extent, settings.ModelAttachmentMaxExtent);
+    }
+    if (extent < settings.ModelAttachmentMinExtent) {
+        throw ModelInfoBakerException("Direct attached model stays below the authored world extent; export it in the same units as the other models", child_name, fname, extent, settings.ModelAttachmentMinExtent);
+    }
 }
 
 static void ValidateModelDescriptionLinkData(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname)
@@ -1308,6 +1333,7 @@ static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view pa
         ModelMeshData mesh_data = ReadModelMeshData(reader, path);
         FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", path);
         CollectBakedModelMeshInfo(*mesh_data.RootBone, info, {});
+        info.StaticBounds = CalculateModelStaticBounds(mesh_data);
     }
     catch (const std::exception& ex) {
         throw ModelInfoBakerException("Invalid baked model mesh", path, ex.what());
@@ -1407,7 +1433,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         return;
     }
 
-    // Collect all (non-template) model descriptions and the newest write time across them and their includes.
+    // Collect all (non-template) model descriptions and the newest write time across them and their includes
     vector<File> fo3d_files;
     uint64_t max_write_time = 0;
     BakerClientEngine client_engine(*ctx.BakedFiles);
@@ -1431,7 +1457,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         return;
     }
 
-    // Deterministic section order.
+    // Deterministic section order
     std::sort(fo3d_files.begin(), fo3d_files.end(), [](const File& a, const File& b) { return a.GetPath() < b.GetPath(); });
 
     unordered_map<string, optional<ModelBounds3D>> animation_bounds_cache;
@@ -1511,7 +1537,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
             }
 
             // Authored playback speed scales the cycle (faster speed -> shorter real cycle). The runtime
-            // moving-speed factor is applied separately at play time and must not be baked in here.
+            // moving-speed factor is applied separately at play time and must not be baked in here
             float32_t speed = 1.0f;
 
             for (const auto& [anim_pair, anim_speed] : description.AnimSpeed) {
@@ -1534,7 +1560,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
             int32_t duration_ms = iround<int32_t>(duration_milliseconds);
 
             // The runtime model-anim-info load rejects a non-positive duration, so a sub-millisecond effective
-            // cycle that rounds down to zero must fail here rather than bake a manifest the client cannot load.
+            // cycle that rounds down to zero must fail here rather than bake a manifest the client cannot load
             if (duration_ms <= 0) {
                 throw ModelInfoBakerException("Animation duration rounds to a non-positive millisecond value", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), clip_duration, speed);
             }
@@ -1598,10 +1624,8 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
             stats.AnimationBoundsMaxExtent[bucket]++;
         }
 
-        // Match ModelInformation::GetAnimationIndexEx: both alias maps are applied once before the
-        // animation lookup, and an alias has priority over an exact entry with the same source key.
-        // Materialize every input pair that resolves to a baked entry so common runtimes do not need
-        // the client-only model description to answer the typed duration query.
+        // Mirrors ModelInformation::GetAnimationIndexEx, where an alias outranks an exact entry, and
+        // materializes every resolvable pair so common runtimes answer without the client-only description
         set<pair<int32_t, int32_t>> output_pairs;
 
         for (const auto& [state_anim, action_anim, duration_ms] : raw_durations) {
@@ -1781,7 +1805,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
     writer.Write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
-    // Reserved legacy sprite-size fields. Runtime dimensions are calculated from baked model bounds.
+    // Reserved legacy sprite-size fields. Runtime dimensions are calculated from baked model bounds
     writer.Write<int32_t>(0);
     writer.Write<int32_t>(0);
     writer.Write<int32_t>(0);

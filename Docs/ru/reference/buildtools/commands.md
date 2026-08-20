@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cli-commands","locale":"ru","source_path":"Docs/en/reference/buildtools/commands.md","source_sha256":"d2e7b9373f596dfa6144fb6a13dcb892724daba81d5b59aa6880d87dab8dfadc"} -->
+<!-- docs-translation: {"document_id":"generated-cli-commands","locale":"ru","source_path":"Docs/en/reference/buildtools/commands.md","source_sha256":"38fadb13e70e9181b82ccaca112b83083ee7fbb7cf014e921e451593971ec953"} -->
 
 # Команды BuildTools
 
@@ -240,6 +240,31 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   --check               check availability without installing or building
+```
+
+<a id="entry-cli-buildtools-command-repair-checkout-case-675fd250f4"></a>
+## `repair-checkout-case`
+
+Привести регистр имён элементов рабочего дерева в соответствие с индексом Git.
+
+Стабильный ID: `cli.buildtools.command.repair-checkout-case`
+
+```text
+usage: buildtools.py repair-checkout-case [-h] [--check]
+```
+
+| Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-cli-buildtools-command-repair-checkout-case-argument-check-659400bbbd"></a><code>cli.buildtools.command.repair-checkout-case.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Проверить расхождения регистра, не переименовывая элементы. |
+
+### Точный вывод `--help`
+
+```text
+usage: buildtools.py repair-checkout-case [-h] [--check]
+
+options:
+  -h, --help  show this help message and exit
+  --check     check for case drift without renaming entries
 ```
 
 <a id="entry-cli-buildtools-command-package-web-debug-0138fed878"></a>

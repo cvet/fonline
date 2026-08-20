@@ -6,7 +6,7 @@ document_id: mapper-tools
 permalink: /Docs/ru/how-to/tools/mapper.html
 ---
 
-<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"859000c5fa776b1258527bbf055d9be96aea34192a390745a5fd743ee43d4691"} -->
+<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"89b9687950a134ae6983ac0f7993037fcfe76258ee2e953acd614c44e35eadd6"} -->
 
 # Инструменты Mapper
 
@@ -182,6 +182,12 @@ SPARK или Effekseer. Исходники SPARK `.spark` и Effekseer `.efkproj
 Сохранение записывает через файловую систему сырых ресурсов, переиндексирует
 запечённые ресурсы и инвалидирует кэш спрайта `.spk` сохранённого ассета.
 При закрытии изменённого окна предлагаются Save, Discard и Cancel.
+
+Задайте `Mapper.SparkEditorSource` равным raw asset path, например
+`Documentation.spark`, когда профиль запуска должен детерминированно открыть
+один редактор. При запуске путь проверяется по проиндексированным raw-исходникам
+`.spark`; при ошибке Mapper явно сообщает об отсутствующем исходнике, а не
+показывает пустой редактор.
 
 Авторинг Effekseer остаётся внешним. Соберите его редактор командой
 `BuildTools/buildtools.py build-auxiliary effekseer-editor <Config>`,

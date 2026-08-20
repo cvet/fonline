@@ -360,7 +360,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 831852c5d85798bc99085873357c049b4e5cba98b7b8ff802a5656e084079f44
+Content SHA-256: 6bb8fc411c79ba2c851b5b64b46a77550f542860fd332b5345db64f822307cae
 
 ---
 title: FOnline Public Contract Index
@@ -408,10 +408,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2472**
-- Symbols with source-backed descriptions: **2472**
+- Discovered symbols: **2493**
+- Symbols with source-backed descriptions: **2493**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2472**
+- Explicitly classified symbols: **2493**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -3103,7 +3103,7 @@ Do not call the update complete while required evidence is missing. Record an un
 ===== BEGIN DOCUMENT scripting-runtime =====
 Source: Docs/en/explanation/scripting-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/scripting-runtime/
-Content SHA-256: 647ed43b459f8aae88f9bf3ea21cbd79923ec7a82361719a4c44d2bf00c96ce1
+Content SHA-256: 8eb2f7c04834d6814a24a553eb2b54a78e023947abf56bdbd559d8c0a6c84530
 
 ---
 layout: default
@@ -3211,6 +3211,8 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+AngelScript assigns registered object type IDs lazily. Separate script contexts may request the same fresh type concurrently, so the vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine reader/writer lock and refreshes the value after acquiring exclusive access. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads` drives 16 native workers over 128 new types through public `asITypeInfo::GetTypeId()` and requires one identical valid ID per type.
+
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
 The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
 value itself for primitives/enums/value types (`int32&`, `mpos&`, `string&`), the handle cell for object handles
@@ -3239,6 +3241,10 @@ the property-accessor plus method-call form that exposed this during GUI shutdow
 Global variables, delegates, script object handles, arrays, dictionaries, and GUI object graphs must be cleaned by module shutdown, destructors, `ReleaseAllHandles`, and the AngelScript GC. Embedding-project scripts should not add `Game.OnFinish` / `EngineCallback_Finish` cleanup just to silence shutdown diagnostics; if a graph survives shutdown, fix the owning native release/GC enumeration bug.
 
 Entity deletion/unload clears the entity's own event callbacks and time events from `Entity::MarkAsDestroyed()`, so embedding-project scripts should not keep central per-entity unsubscribe / `StopTimeEvent` registries for ordinary entity lifetime. Entity mutators and event/time-event entry points assert or verify when called after `MarkAsDestroyed()`, making accidental attempts to repopulate a destroyed entity show their stack trace at the offending call. During `ServerEngine::Shutdown` / `ClientEngine::Shutdown`, the engine also runs `UnsubscribeAllEvents()` + `ClearAllTimeEvents()` on the global engine entity and all live entities before `DestroyAllEntities()`. Embedding-project scripts should not hand-maintain unsubscribe / global-clear / `StopTimeEvent` cleanup in their `Game.OnFinish` handler purely to keep the GC quiet — only genuinely functional teardown belongs there.
+
+Destroyed entities are rejected at the script-to-native boundary too. `NativeDataCaller::ConvertArg` validates access first and then rejects a destroyed entity for every ordinary `///@ ExportMethod`. On the server, an uncovered destroyed handle therefore reports the actionable missing-cover fault; a still-covered handle that the caller destroyed and reused reports the destroyed-argument fault. The client has no cover validation and sees only the latter.
+
+The sole opt-out is `///@ ExportMethod ... AllowDestroyedEntityArgs`, emitted as a compile-time call-policy flag. It exists for explicit synchronization primitives such as `Game.Sync`: a concurrent destroy can always happen between a script liveness check and the synchronization call, and these wrappers must return `false` rather than fail at argument conversion. Do not apply the flag to ordinary exports. `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` and `SyncAcceptsDestroyedEntity` pin the two contracts.
 
 ## Attributes, declarations, and metadata
 
@@ -3315,7 +3321,7 @@ The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript
 - `Gui.fos`
 - `Sprite.fos`
 - `LineTracer.fos`
-- `Serializator.fos`
+- `Serializer.fos`
 - `FixedDropMenu.fos`
 - `Tween.fos`
 
@@ -4121,7 +4127,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: a1771a3630a584728c0904690d8f9b1d6c684b5adfc34b185846a7b35f5c0ad4
+Content SHA-256: 059d7c4044eaf8983696f4ec396af115b741903b38c2a0e40b980e3ef6ef3015
 
 ---
 layout: default
@@ -4180,7 +4186,7 @@ of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. Test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` or `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
 
-With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors.
+With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
@@ -4260,8 +4266,8 @@ masked. Notable cases:
   and those libbfd caches remain reachable — LSan does not report them.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
   cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
-- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrator` is a
-  `unique_ptr` so every `PropertyRegistrator` (and the `Property` objects it holds) is freed when
+- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a
+  `unique_ptr` so every `PropertyRegistrar` (and the `Property` objects it holds) is freed when
   `EngineMetadata`'s type maps are destroyed.
 
 ## Code coverage
@@ -4286,6 +4292,20 @@ Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 [Source/Tests/README.md](../../../../Source/Tests/README.md) for current local task
 notes.
 
+Coverage is platform- and environment-specific. Sources not compiled in the current build have no mapping and are reported separately as untouched. Sources that compile but cannot execute in a headless test process belong in `ENVIRONMENT_EXCLUDED_SOURCES` with a written reason; currently this covers device-backed audio/video, Mongo/updater infrastructure, and the deliberately process-killing diagnostic self-test. Loopback sockets and the debugger endpoint remain in the headline. The report shows scoped, all-source, and excluded buckets independently. An exclusion is a routing decision: the owning platform, windowed run, or real-endpoint integration lane must cover it.
+
+### Focused harness patterns
+
+- **ImGui panels:** create a backend-less context, set `ImGuiBackendFlags_RendererHasTextures`, and use `ImGui::LogToBuffer(depth)` to auto-open tree nodes and prove nested text rendered. Collapsing headers opt out and need their IDs seeded in `StateStorage`. Destroy the context at scope exit. To cover widget branches, `ImGuiTestHarness::ActivateItem` needs two frames; address controls under child windows with `ActivateChildItem`, draw only the owning panel so another window's focus request cannot erase activation, and clear stale active IDs between presses.
+- **Server diagnostics:** a sync point does not itself cover entities. Snapshot not-logged-in players under the publication lock, release it before entity locks, and then acquire one replacement cover for the snapshot and registered world. Keep a real not-logged-in fixture in the test.
+- **Inbound remote calls:** entry covers the calling player and its controlled critter. Any second entity needs explicit `Game.Sync`; do not probe an operation expected to violate cover behind script `try/catch`, because the session is torn down before the next probe arrives.
+- **Crash reporting:** test non-terminating crash-stream formatting through a private log file, then restore logging to `NUL` or `/dev/null`. Test terminating reporters out of process with `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit` distinguish early fatal reporting from raw status-only exit.
+- **Fonts without assets:** synthesize `.fofnt` text or BMFont `BMF\3` blocks in memory, provide a matching sprite, and bind with scale in `(0..1]`. `SplitLines` emits rect-sized pages, so use a short rectangle when a test needs multiple outputs.
+- **Logged-in client/server:** declare login remote calls in both metadata blobs with opposite directions and the correct subsystem/namespace, add at least one project-owned persistent `Player` property before login insertion, then create/switch a critter and transfer it into a location/map to reach world-entry replication. Server and client `.fomap-bin-*` empty layouts differ; the client blob ends after two `uint32` counts.
+- **World reload:** use file-backed JSON, mark expected entities persistent, shut down one server, and start another on the same directory. Reload reaches critters through their owning map or global-map membership; an off-map runtime critter is not restored.
+- **Headless 3D:** bake a non-degenerate triangle, build the description with `ModelInfoBaker`, provide both source and baked mesh entries plus `Metadata.fometa-client` and `ModelAnimationInfo.foinfo`, then instantiate through the null renderer.
+- **Static maps and mapper disk writes:** serialize real `Properties::StoreAllData()` payloads for server map records; zero length is invalid. Mapper save tests need an actual `InputDirs` Maps root containing a reference `.fomap`; prefer `SaveMapToDir`, because plain `SaveMap` may otherwise write into the process working directory.
+
 ## Current test inventory
 
 The authoritative test-file count and complete sorted filename list are generated from `Source/Tests/Test_*.cpp` into [source-inventory.json](../../../generated/source-inventory.json). Do not copy the total or full list into prose.
@@ -4306,8 +4326,11 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_FileSystem.cpp`
 - `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 
 ### Common runtime model
+
+- `Source/Tests/Test_ApplicationHeadless.cpp`
 
 - `Source/Tests/Test_AnyData.cpp`
 - `Source/Tests/Test_Common.cpp`
@@ -4368,12 +4391,13 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp`
+- `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
 - `Source/Tests/Test_ModelAnimationConverter.cpp`
 - `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
 - `Source/Tests/Test_ModelAnimationRuntime.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
 - `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
 - `Source/Tests/Test_ModelSourceLoader.cpp`
 - `Source/Tests/Test_OzzAnimation.cpp`
@@ -4418,6 +4442,8 @@ sources and extract their animations successfully. Run ordinary
 unchanged tree incremental-clean.
 
 ### Rendering/frontend smoke tests
+
+- `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget-activation and window-state harness used for diagnostic-panel coverage.
 
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
@@ -5717,7 +5743,7 @@ public link path without making an external SDK part of the fixture.
 ===== BEGIN DOCUMENT prototype-format-guide =====
 Source: Docs/en/how-to/content/prototype-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/prototype-format.html
-Content SHA-256: 928bd68edd77d2da60a754b9181bfe263540e9513f4e726696706115b8c5ff06
+Content SHA-256: 2f4f2f2056d5ac10a748a0b5b5aa17c3bbdaba430465a66130845fb8c14fd587
 
 ---
 layout: default
@@ -5760,7 +5786,7 @@ The generated property catalog says whether the engine parser can load a key. It
 - `Source/Common/ConfigFile.cpp`
 - `Source/Common/Properties.h`
 - `Source/Common/Properties.cpp`
-- `Source/Common/PropertiesSerializator.cpp`
+- `Source/Common/PropertiesSerializer.cpp`
 - `Source/Common/EntityProperties.h`
 - `Source/Common/EntityProtos.cpp`
 - `Source/Common/ProtoManager.cpp`
@@ -5872,7 +5898,7 @@ Parser applicability is only the first gate. A project should separately classif
 
 ## Text values and references
 
-`PropertiesSerializator` is the value authority. It rejects malformed collections, integer overflow, invalid enum values, non-finite floating-point values, and unresolved references. Booleans accept their declared text form or numeric `0`/`1`; numeric and enum acceptance must not be inferred from loose configuration parsing.
+`PropertiesSerializer` is the value authority. It rejects malformed collections, integer overflow, invalid enum values, non-finite floating-point values, and unresolved references. Booleans accept their declared text form or numeric `0`/`1`; numeric and enum acceptance must not be inferred from loose configuration parsing.
 
 `FixedType` and prototype-reference properties resolve through metadata and migration rules. A reference must name an existing target unless the property is nullable and the authored value is empty.
 
@@ -6240,7 +6266,7 @@ When these files change, regenerate the [canonical model](../../../generated/map
 ===== BEGIN DOCUMENT model-format-guide =====
 Source: Docs/en/how-to/content/model-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/model-format.html
-Content SHA-256: a013884c3965997fe1b36397fbafb41fdd330690416d8d5d6e6066fb3bb4b020
+Content SHA-256: fc37e6b93377f46c1df7590958158ea743cb12155ebdd79a25ed6d7ea6eeb16f
 
 ---
 layout: default
@@ -6525,6 +6551,8 @@ Use `Attach child.fo3d` when the child needs its own:
 
 Use direct `.fbx` / `.obj` attachment for a simple baked hierarchy. A child `.fo3d` is baked and validated independently; the parent validates that the descriptor exists and that the parent `Link` bone is valid.
 
+A direct attachment has no description-level scale correction. Its static maximum-axis extent must remain within `Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`; otherwise baking fails with the measured extent and limit. Use a child `.fo3d` when an explicit scale is part of the composition. Mesh nodes with a negative transform determinant are rejected earlier by `ModelMeshBaker`: reset/freeze mirrored geometry to a positive transform before export instead of relying on the baker to flip normals and winding.
+
 ## Particle attachments
 
 `AttachParticles` is layer-selected:
@@ -6770,6 +6798,7 @@ Do not mutate or parse the baked binary `.fo3d`, `.fbx`, or `.obj` payloads from
 - non-positive `AnimSpeed`;
 - unknown animation enums, missing clips, incompatible source skeletons, or invalid runtime-rig conversion;
 - direct attached FBX files with clips, external animation files with unexpected drawable geometry, and duplicate/non-selected/stale `AllowAnimationGeometry` exceptions;
+- mirrored mesh nodes and direct FBX/OBJ attachments outside the configured Engine world-unit extent;
 - invalid cut layer/shape/unskin combinations;
 - unknown tokens.
 
@@ -6874,7 +6903,7 @@ When changing:
 ===== BEGIN DOCUMENT text-and-localization-guide =====
 Source: Docs/en/how-to/content/text-and-localization.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/text-and-localization.html
-Content SHA-256: 57be65d3e9a98b1492296984844523d96f9249b6671f4291dee91ae7d3d1fd68
+Content SHA-256: 277c0e2436801c8c10d3fe920a8cb8e4934dfae7b3c96588d627c7512d233cc7
 
 ---
 layout: default
@@ -6974,8 +7003,8 @@ Duplicate complete keys remain separate variants:
 {Ambient}{Dust}{A sheet of dust hides the horizon.}
 ```
 
-The script API does not choose randomly by default. The default
-`skipCount = 0` selects the first variant. For deliberate random selection,
+The script API does not choose randomly by default. `Game.GetText(key)` selects
+the first variant. For deliberate random selection,
 query `Game.GetTextCount(key)`, select an index in project code, and pass that
 index to `Game.GetText(key, index)`.
 
@@ -7063,7 +7092,8 @@ signatures. The important behavioral contract is:
 | API | Sides | Behavior |
 |---|---|---|
 | `Game.GetLanguage()` | server, client, mapper | Return the current `Language` setting as `LanguageName`. |
-| `Game.GetText(key, skipCount = 0)` | client, mapper | Return the indexed variant from the current language. Missing or out-of-range returns an empty string; negative index throws. |
+| `Game.GetText(key)` | client, mapper | Return the first variant from the current language. A missing key returns an empty string. |
+| `Game.GetText(key, index)` | client, mapper | Return the zero-based indexed variant from the current language. Missing or out-of-range returns an empty string; negative index throws. |
 | `Game.GetText(langName, key)` | client, mapper | Use the current pack when `langName` is empty or current; otherwise load/cache that language and return its first variant. No runtime fallback is applied for an absent non-empty language. |
 | `Game.GetTextCount(key)` | server, client, mapper | Return variant count, or zero when absent. |
 | `Game.IsTextPresent(key)` | server, client, mapper | Return whether at least one variant exists. |
@@ -8573,7 +8603,7 @@ production frame budget.
 ===== BEGIN DOCUMENT particle-authoring-tools =====
 Source: Docs/en/how-to/tools/particle-authoring.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/particle-authoring.html
-Content SHA-256: 8f86daa634fcbf59071a77582a4fb1fc5cd8d895c46879841e0b0c9a57450ea7
+Content SHA-256: 513858aebaf925f78503af99f07adf8747f7ebb8a38498d78f78b270ca85c5a1
 
 ---
 layout: default
@@ -8687,6 +8717,17 @@ tree changes.
 Select a source to open one editor per asset path. Selecting an already-open
 source brings its editor to the front instead of creating a second mutable
 copy.
+
+For deterministic automation or documentation capture, set the authored
+source explicitly:
+
+```ini
+Mapper.SparkEditorSource = Documentation.spark
+```
+
+Mapper validates the value against raw `.spark` inputs and fails startup with
+a source-specific error when the asset is absent. The setting opens the editor
+directly without also leaving the source browser visible.
 
 If a `.spk` appears but its `.spark` source does not, the project has lost the
 editable authority or configured the wrong input roots. Restore the source;
@@ -10334,7 +10375,7 @@ not a substitute for a compatibility policy or production media tests.
 ===== BEGIN DOCUMENT gui-runtime-guide =====
 Source: Docs/en/how-to/runtime/gui.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/runtime/gui.html
-Content SHA-256: 1d53ea553567d260971073bc74504b0b679325dbed7dd267a5a04972c5b3f88a
+Content SHA-256: 3f9384fbc9cad4dec19735aac4a96dda66a8aa956ab5c7e28e93e10680998183
 
 ---
 layout: default
@@ -10358,7 +10399,7 @@ item views, text input, message boxes, and consoles.
 
 The checked machine-readable companion is the
 [generated GUI runtime reference](../../reference/gui-runtime/index.md). It includes
-all 12 runtime types, their 159 documented API members, 39 callback signatures,
+all 12 runtime types, their 160 documented API members, 39 callback signatures,
 31 top-level screen API overloads, built-in metadata annotations, and the
 integration rules on this page.
 
@@ -10813,7 +10854,7 @@ python BuildTools\docs_validate.py
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: ccbab47a3ec6790ecfc4f8a1ceaa5284c2f48acfe5c0c4ccace6f033037b16c8
+Content SHA-256: aa847497cc9d06b072881d2fdba888cf08f12856952c498467e92e153251ddea
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -10833,6 +10874,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 4. If behavior changes, update the owning engine doc in `Docs/` in the same worktree change.
 5. Do not commit or push unless explicitly asked by the repository owner.
 6. When pulling, rebasing, or changing the engine revision, follow [documentation revision reconciliation](Docs/en/contributing/documentation/index.md#revision-update-reconciliation): record old/new SHAs, audit every incoming source/test change, regenerate affected models, and document the reconciliation before dropping any safety stash.
+7. Treat published branch history as immutable. Once the branch has a remote tip, do not rebase, reset, amend, or force-push it; merge upstream and the published tip so every publication is a fast-forward. Verify with `git merge-base --is-ancestor <remote-tip> HEAD` before pushing, and stop instead of rewriting history when that check fails.
 
 ## Documentation Map
 
@@ -10985,6 +11027,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 
 - Prefer existing engine idioms over new local abstractions.
 - Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface. Do not mark such structs `final` — a plain data aggregate needs no inheritance guard, the keyword only complicates it.
+- **The code is the documentation; a comment carries only what the code cannot.** Names, types, and structure already state *what* happens, so a comment that re-tells them is deleted, not shortened — and the default state of a line of engine code is *no* comment. Write one only for what the reader cannot see: why the code sits here rather than elsewhere, why this approach instead of the obvious alternative, the gist of a genuinely dense block, or a contract that is not derivable from the code (sentinel meanings and units, threshold calibration, concurrency/ownership/lifetime requirements, edge-case exemptions, why a plausible alternative is unsafe). **One line is the default and two is the ceiling** — no multi-line essays. When the explanation genuinely needs more room, it belongs in the owning `Docs/` page with a short link from the code; never link a temporary plan. Do not narrate the next statement, restate a signature or parameter list, enumerate steps the code already spells out, or record history, fixed-bug stories, or benchmark numbers (those belong in commit messages and docs). **A comment points at code, never at bookkeeping**: no task, ticket, issue, or PR numbers, no dates or "as of" wording, no version or release markers, no author names — that metadata lives in the commit and the tracker, and in code it only rots. Refer to a symbol, a function, a file, or the test that pins the behavior; the sole non-code target is the owning `Docs/` page named above. Short structural headings are allowed when they materially improve navigation in long flat code. Only the concluding sentence of a comment drops its period (the single line of a one-line comment, the final line of a two-line block, or a trailing comment); every preceding sentence keeps its period. Capitalize prose, not symbols (a leading lowercase code identifier stays as written). Fixed-text banners such as the license header, and commented-out code, are exempt.
 - Reuse the existing MIT source-file header and `#pragma once`; match the surrounding module-level layout.
 - Module layout: put class definitions and static-function forward declarations near the top of the translation unit, then implementations ordered from high-level entry points down to low-level helpers, so a reader meets the public/orchestrating code first.
 - Every standalone native module must be created as a complete `.h` + `.cpp` pair and both files must be registered in the owning build source list. A named subsystem/module must never be introduced as a lone header; keep the translation unit as the module anchor even when all current declarations are passive data and no out-of-line implementation is needed yet. Pure template/constexpr/umbrella headers are not standalone modules.
@@ -10995,6 +11038,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - Keep a comment attached to the code block it describes below: put a blank line before the comment, but no blank line between the comment and that block. For control-flow spacing, the comment is part of the following block.
 - Prefer `FO_VERIFY_AND_THROW` over silently masking unexpected states.
 - **Throw engine exceptions with a fixed message plus context arguments, never a pre-formatted string.** `FO_DECLARE_EXCEPTION` exception types and `FO_VERIFY_AND_THROW` take a constant `string_view` message followed by variadic context values; the base exception preserves the bare message and appends each value as its own `- value` line. Write `throw SomeException("Fixed human-readable message", id, path, value);` and `FO_VERIFY_AND_THROW(cond, "Fixed message", ctx...);`, not `throw SomeException(strex("... {} ...", value));`. A constant message keeps every occurrence of the same failure identical, so failures group and sort by message uniqueness while the variable parts travel in the arguments — the same rule the script-side `verify` macro follows. Do not build the message with `strex` / `std::format` / `+` from runtime values.
+- **Never throw anything that is not derived from `std::exception`, and treat `catch (...)` as a defect handler, not an error handler.** Every exception the engine raises comes from the `FO_DECLARE_EXCEPTION` hierarchy or the standard library, so a non-`std::exception` type walks past every `catch (const std::exception&)` recovery path and arrives with nothing to report. Wherever a `catch (...)` sits beside a `catch (const std::exception& ex)`, its entire body is `FO_UNKNOWN_EXCEPTION();` — which raises `StrongAssertationException`, reports it, and terminates the process. Do not log it and continue, fabricate an `"Unknown exception"` message, count it as an ordinary failure, or rethrow it as a domain exception. The only places that may swallow instead are no-throw teardown/unwind paths (`noexcept` bodies, `scope_exit`/`scope_fail` bodies, `safe_call` targets, destructors, C-ABI callbacks) and the reporting/logging machinery itself, which must not re-enter while reporting. Full rule: [Docs/en/contributing/coding-contracts/exception-safety.md](Docs/en/contributing/coding-contracts/exception-safety.md) §2.1.
 - **Write for exception safety.** A throw must never escape a function leaving a broken invariant. As you write or change engine code, derive the exception-safety level the body provides (`NoThrow` / `Strong` / `Basic` / `None`) per [Docs/en/contributing/coding-contracts/exception-safety.md](Docs/en/contributing/coding-contracts/exception-safety.md) (§5 disposition ladder, §8 levels): do fallible/validating work (throwing `numeric_cast`, duplicate/collision guards) before the first observable mutation, insert into the authoritative store before any derived cache, and undo an early flag/counter/lock/handle mutation on unwind with `scope_fail` (noexcept body) or RAII on raw OS/third-party resources. Never aim for `None` — it is a defect tier to fix, not to record. Allocation *terminates* on OOM (§1) so do not write allocation-only rollbacks, and entity create/destroy is *throw-as-signal* (`Basic` by design). If an embedding project maintains a per-function audit baseline, update that project-owned baseline in the same integration change; it is not normative engine evidence.
 - Use `numeric_cast` for numeric conversions; do not use `static_cast` for numeric narrowing/widening unless the surrounding code has a specific established reason.
 - Use fixed-width types (`int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `int64_t`, `uint64_t`, `float32_t`, `float64_t`, `size_t`) instead of bare `int` / `float` in new engine code.
@@ -11011,7 +11055,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - Gate conditional compilation on our own (`FO_*` / project) macros with `#if FOO` / `#if !FOO`, never `#ifdef` / `#ifndef`: every such macro is mandatorily `#define`d to `0` or `1`, so its definedness must never carry meaning — only its value does.
 - **Keep engine-owned source inventories unconditional.** Add every engine-owned `.h` / `.cpp` pair to its normal CMake source list even when the feature is optional; the files themselves own the `#if FO_*` guard. Do not mirror a feature toggle around `AppendList(...)`, and do not create a second feature-only `AppendList` for the guarded module. Likewise, do not wrap `#include` directives for self-guarded engine headers in a standalone feature conditional: include them normally and keep the feature guard around declarations/definitions that need it. Conditional third-party targets, link dependencies, and third-party headers whose include paths only exist with the feature may remain gated.
 - Include layering: non-Essentials engine code must consume Essentials modules through `Common.h`, not by including individual `Source/Essentials/*.h` headers directly. STL headers are centralized through `BasicCore.h`; add or adjust standard-library includes there instead of including `<...>` headers from higher layers.
-- **Essentials layering is strict.** The `Source/Essentials/Essentials.h` aggregate lists Essentials headers in include order — each Essentials header (and its `.cpp`) may only depend on headers listed *above* it in that block. If a low-layer module needs information that physically lives in a higher layer, expose only what the lower layer can produce on its own or take the higher-layer value as a parameter — do not back-channel the include and do not reorder the block to work around it.
+- **Essentials layering is strict.** The `Source/Essentials/Essentials.h` aggregate lists Essentials headers in include order — each Essentials header (and its `.cpp`) may only depend on headers listed *above* it in that block. This is a compile- and link-time rule: declaring a function in an early header but defining it in a later module is still a forbidden reverse dependency, even when no downward `#include` appears. Public declarations are implemented in their owning module (or an earlier one), and `BuildTools/tests/test_essentials_layering.py` enforces both direct-include direction and definition ownership for namespace-level `extern` APIs. If a low-layer module needs information that physically lives in a higher layer, expose only what the lower layer can produce on its own or take the higher-layer value as a parameter — do not back-channel the include and do not reorder the block to work around it.
 - **Iterating server-side entities while events may fire:** any script-visible event (e.g. `OnItemOnMapAppeared.Fire(...)`, `OnCritterDisappeared.Fire(...)`) can re-enter scripts and mutate world state — including destroying the very entity being iterated. The convention is: (1) snapshot the iteration set with `copy_hold_ref(...)` so each element is held by ref-count for the duration of the loop; (2) re-validate inside the loop with `if (cr->IsDestroyed()) continue;` (and after each event for any other entity you keep working with); (3) fire scripted events at the **end** of the unit of work, after non-revocable state changes are committed.
 - Keep edited source files ending with exactly one trailing blank line.
 - Keep docs reusable: describe engine behavior first; mention Last Frontier only as an embedding-project example, never as an engine-doc dependency or validation owner.
@@ -11022,7 +11066,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 ===== BEGIN DOCUMENT exception-safety =====
 Source: Docs/en/contributing/coding-contracts/exception-safety.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/exception-safety.html
-Content SHA-256: 9cda146d714053c2a8fd38ba52e2bd87cc47a3b97292c0591b72fec88c3163f5
+Content SHA-256: 0cc37bd85ec70a8d44c5b742ff316d7d57096899d8b265820cdc6426fa6d6ee7
 
 ---
 layout: default
@@ -11068,6 +11112,24 @@ After §1, the exceptions that can propagate through a running server are:
 The server runs all gameplay work as jobs on a `WorkerPool`. `WorkerPool::WorkerEntry` (`Source/Server/WorkerPool.cpp`) wraps each job body in `try { job() } catch (const std::exception&) { ReportExceptionAndContinue (log only) } catch (...) { FO_UNKNOWN_EXCEPTION -> terminate }`. So a `std::exception` from a job **does not crash the server** — it is logged, the job's `SyncContext` is released (locks dropped), and the worker proceeds. Whatever half-state existed at the throw point stays live in the world. This is exactly why the rules below matter.
 
 Scripted-event fan-out (`Game.OnX.Fire(...)`, `entity->OnX.Fire(...)`) is **noexcept**: `Entity::FireEvent` swallows per-callback exceptions and converts a throwing/`StopChain` callback into a chain stop. So `OnX.Fire` itself never propagates — but a handler's *side effects* (it may destroy or relocate entities) do persist, and the engine re-validates after firing.
+
+The client has the same recovery shape at frame granularity, plus a rendering obligation. `MainEntry` catches a `std::exception` from `ClientEngine::MainLoop`, reports it, and continues with the next frame only after `Application::EndFrame`, which requires no render target to remain bound. `ClientEngine::MainLoop` therefore guards the draw block with a `scope_fail` that calls `SpriteManager::AbortScene`: partial draws are dropped and the scissor/render-target stacks are unwound. Any new frame-scoped render-target binding owes the same cleanup.
+
+`AbortScene` is `noexcept` because it runs during unwind. Infallible manager state is reset directly, while backend release uses `safe_call` so a lost render context is reported without replacing the original exception. The backend operation itself remains throwing on the normal path. `EndScene` likewise stays an ordinary call rather than a `scope_success`: its invariant checks must throw while the `scope_fail` guard is still armed, not from an implicitly `noexcept` destructor.
+
+### Nothing outside `std::exception` may be thrown
+
+Every exception raised by Engine or embedding-project native code must derive from `std::exception`. Throwing an integer, bare struct, or third-party non-standard exception bypasses the normal reporting frontiers and is forbidden.
+
+Accordingly, a general `catch (...)` beside `catch (const std::exception& ex)` is not a recoverable error path. It marks a broken invariant and must be:
+
+```cpp
+catch (...) {
+    FO_UNKNOWN_EXCEPTION();
+}
+```
+
+Do not log and continue, fabricate an `"Unknown exception"` domain error, or rethrow it as an ordinary failure. The only narrow disposition exemptions are no-throw teardown/unwind boundaries and the logging/reporting machinery itself, where nothing may escape or recursively re-enter the reporter. They do not permit code to throw a non-`std::exception` value in the first place.
 
 ## 3. The entity-lifecycle contract (create / destroy)
 
@@ -11240,7 +11302,7 @@ For the cases where `noexcept` *is* warranted, three engine-specific hazards sti
 ===== BEGIN DOCUMENT local-variables =====
 Source: Docs/en/contributing/coding-contracts/local-variables.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/local-variables.html
-Content SHA-256: 6c798039ced9306e31388ca5f287d2e64d9cf0ddbc5fc539acdb9382a10aa7cb
+Content SHA-256: 9f1a122dc5f4c825be8e7fa3e4619403edb0de33977834e9925209add1cdd88b
 
 ---
 layout: default
@@ -11375,6 +11437,8 @@ gate, and the compile database must support a real parse. Generated headers
 reachable from the engine's common include chain must exist before analysis;
 otherwise translation units fail on missing includes before any rule is
 evaluated.
+
+Prune the compilation database to one command per translation unit before passing it to Clang tooling. CMake emits one entry for every target that compiles a file; an Engine source may therefore appear dozens of times. Clang runs its action once per entry, and `clang-query` retains every built AST, so duplicates multiply both wall time and memory. One Engine AST is roughly half a gigabyte; substantially larger usage usually indicates an unpruned database rather than an inherent analyzer cost.
 
 ===== END DOCUMENT local-variables =====
 
@@ -11839,7 +11903,7 @@ Project-side rewriters must not own contract inference: they should preserve aut
 ===== BEGIN DOCUMENT smart-pointers =====
 Source: Docs/en/contributing/coding-contracts/smart-pointers.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/smart-pointers.html
-Content SHA-256: d184cd78affcc8a010c7da3fb541e46a403181ac7633ca67237706e83c347f64
+Content SHA-256: 4fd60f2e817a1c1b0da43bab015e10323067cac06e084689feb06c34b12894d5
 
 ---
 layout: default
@@ -11996,9 +12060,9 @@ To build a typed **element span** from a borrowed pointer and a length, use `mak
 
 ### Always-on non-null enforcement
 
-The non-null invariant is enforced by an **always-on** runtime check, in every build configuration — not a debug-only `assert` that release strips. Constructing a `ptr<T>` from a null raw pointer (the `ptr(T*)` ctor), every nullable/owner→`ptr<T>` borrow (`nptr<T>`, `refcount_nptr<T>`, `unique_nptr<T>`, `unique_del_nptr<T>`, `shared_ptr<T>`, …), and every ownership narrow (`unique_nptr<T>::take_not_null()`, `refcount_nptr<T>::take_not_null()`, custom-deleter `take_not_null(...)`, …) assert the invariant and, on violation, produce the same `StrongAssertationException` report and process exit as `FO_STRONG_ASSERT`.
+The non-null invariant is enforced by an **always-on** runtime check, in every build configuration — not a debug-only `assert` that release strips. Constructing a `ptr<T>` from a null raw pointer (the `ptr(T*)` ctor), every nullable/owner→`ptr<T>` borrow (`nptr<T>`, `refcount_nptr<T>`, `unique_nptr<T>`, `unique_del_nptr<T>`, `shared_ptr<T>`, …), and every ownership narrow (`unique_nptr<T>::take_not_null()`, `refcount_nptr<T>::take_not_null()`, custom-deleter `take_not_null(...)`, …) assert the invariant and, on violation, synchronously report the expression, source location, and native stack before terminating.
 
-The check is spelled `FO_BASIC_STRONG_ASSERT(expr)`, declared in `Essentials/BasicCore.h` (next to `ExitApp`) and implemented in `Essentials/ExceptionHandling.cpp`. It exists because `SmartPointers.h` sits **above** `ExceptionHandling.h` in the `Essentials.h` include order and therefore cannot use `FO_STRONG_ASSERT` directly; the primitive is a forward-declared `[[noreturn]] ReportStrongAssertAndExit(message, file, line)` (dependency inversion — declared low, implemented high, no include-layer violation). It is a `noexcept` function, so it is safe to call from the `noexcept` smart-pointer members (the throw/catch that builds the report is fully contained inside it). Any Essentials module above `ExceptionHandling` that needs an always-on assertion uses `FO_BASIC_STRONG_ASSERT`.
+The check is spelled `FO_BASIC_STRONG_ASSERT(expr)` and is owned entirely by `Essentials/FatalError.h` / `.cpp`, which sits after `StackTrace` / `BaseLogging` and before `SmartPointers` in the strict Essentials cascade. `SmartPointers` therefore depends only upward; it does not reach the later `ExceptionHandling` module. The `noexcept` reporter uses the early native fatal path rather than constructing `StrongAssertationException`, so it is safe from `noexcept` members. Any Essentials module after `FatalError` may use the same primitive; code at or below `BasicCore`, `GlobalData`, `StackTrace`, or `BaseLogging` must use a failure mechanism available in its own layer.
 
 Consequence: a null wrapped in `ptr<T>` fails fast at the construction site even in release. The two common sources are (1) an empty container's `.data()` — `std::vector` (MSVC) / `std::string_view` / `std::span` return null when empty (`std::string` / `std::array` never do), and (2) a raw API that returns null on "not found" (`GetProcAddress`, `dlsym`, `GetModuleHandle(nullptr)` for the main module, …). Keep genuinely-nullable values in `nptr<T>`, or — for a transient buffer pointer used once — pass `X.data()` straight into a consumer that takes `nptr`/raw instead of building an intermediate `ptr<T>`.
 
@@ -15003,7 +15067,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 11a2f603cff78bb238ef82142002b177666e19ce2ab5be85ee2ac48c31733963
+Content SHA-256: cb60b35c27cd62f905be7eaa5e030e3a73b08ead3e3d342d40e00da3b25267ca
 
 ---
 layout: default
@@ -15160,6 +15224,8 @@ The client runtime should depend on the abstract connection interface where poss
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
+The send callback returns outgoing bytes **by value**, and each transport owns the buffer handed to its socket. A borrowed sender buffer can be refilled by another dispatch or freed during disconnect while an I/O thread is still compressing or sending it. `Disconnect()` clears the callback under the same lock used for invocation, so teardown waits for any in-flight pull and later transport ticks cannot reach a disappearing sender.
+
 `NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
 against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
 transport-specific listener/io-context shutdown and thread join. A connection accepted concurrently with
@@ -15173,6 +15239,28 @@ The server runtime applies two independent limits to connections that have not l
   authentication remote calls, and update-file requests refresh progress; transport pings do not. This lets a
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
+
+A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection.
+
+### Disconnect reasons
+
+Every close records its cause in `DisconnectReason`, and `HardDisconnect(reason)` requires callers to choose one:
+
+| Reason | Cause |
+|---|---|
+| `None` | still connected |
+| `ClientClosed` | the transport reported that the peer disappeared; voluntary quit and lost network are indistinguishable here |
+| `InactivityTimeout` | no inbound message before `InactivityDisconnectTime` |
+| `PingTimeout` | the previous ping was not answered |
+| `LoginTimeout` | no pre-login progress before `LoginTimeout` |
+| `ProtocolError` | malformed/unexpected data or failed connection publication |
+| `UpdaterError` | invalid update-file request |
+| `ServerShutdown` | orderly server stop |
+| `ScriptRequest` | `Player.HardDisconnect()` from script |
+| `LoginFailed` | login rolled back after a server-side failure |
+| `ReplacedByReconnect` | a new login for the same account replaced this session |
+
+The first recorded reason wins, preventing the transport's later generic `ClientClosed` callback from overwriting the specific cause. The reason appears in the closed-connection log and is available to `OnPlayerLogout` handlers through `Player.GetDisconnectReason()`. `ServerConnectionRecordsWhyItWasDisconnected` pins this contract.
 
 `ServerDisconnectsPreLoginConnectionAfterLoginTimeout` covers the runtime deadline, while
 `NetworkServerInterthreadCopiedListenerRejectsAfterShutdown` and the transport shutdown tests cover accepted
@@ -15341,7 +15429,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 1c9dc9f4ff3ecb6296fe5f8488b8fc9a218b58b9db37fdc215641fa18d2ffd94
+Content SHA-256: 222f747b0c5782a01c85bef560bec1c4fb38c8d5b0529194a0864719541e65bd
 
 ---
 layout: default
@@ -15451,6 +15539,17 @@ At runtime/source level, baking is owned by:
 - `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
 - `Source/Tools/BakingReport.h` / `Source/Tools/BakingReport.cpp` — report data contracts, thread-safe aggregation, JSON serialization, and report-path construction.
 
+### Output names are reconciled with the names bakers addressed
+
+`MasterBaker::BakeAllInternal()` reconciles the output tree with the names the bakers actually addressed, in two steps around the outdated-output sweep:
+
+1. `ReconcileStaleCasedOutputDirs()` walks the expected output directories shallowest first and renames any that differ from the expected spelling by letter case only, logging `Rename stale-cased dir <from> to <to>`. Directories go first because renaming a file into a differently-cased parent resolves straight back to the existing directory and leaves its name untouched, and shallowest-first means every rename lands inside a parent whose own name is already correct.
+2. After the sweep, the same comparison is applied to files, logging `Rename stale-cased file <from> to <to>`.
+
+This exists because a case-only rename of an input is otherwise invisible on a case-insensitive filesystem. The output stream or directory creation reuses the old directory entry, the outdated sweep compares case-folded paths, and incremental baking may then skip the apparently current artifact. Runtime lookup remains exact, so the stale spelling becomes an unresolvable resource.
+
+Reconciliation runs once per bake over the outputs the bakers already produced. It neither adds per-write work nor deletes and recreates content, and it also repairs outputs skipped as up to date. On a case-sensitive filesystem the ordinary outdated sweep removes the old name and reconciliation has nothing to do. `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename`, and `DiskFileSystemNameCase` pin both the pipeline and filesystem contracts.
+
 ## CMake entry points
 
 `BuildTools/cmake/helpers/Build.cmake` exposes `AddBakingTarget` as a validated project-interface helper. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` uses it to create the standard baking commands after application targets are available.
@@ -15559,8 +15658,13 @@ bake pass has its matching report.
 
 Incremental and failed passes never overwrite `Baking.full.report.json`. The
 full snapshot therefore remains available for corpus analysis after ordinary
-incremental development bakes. Both report names are excluded from outdated
-runtime-resource cleanup.
+incremental development bakes.
+
+Outdated runtime-resource cleanup skips any `*.report.json` file directly in
+the `BakeOutput` root (`REPORT_FILE_SUFFIX` in `Baker.h`). The suffix covers the
+two standard reports and project-provided diagnostic artifacts written beside
+them. Runtime resources always live below a pack directory, so the root-only
+rule cannot preserve a genuinely stale baked resource.
 
 The report is written directly into the `BakeOutput` root after runtime-resource
 cleanup finishes. It is never mounted in the baked `FileSystem`, registered as
@@ -16138,6 +16242,22 @@ baker, `ModelInfoBaker`, source loader, and client all enforce the applicable
 limits. Malformed resources therefore fail with contextual
 `DataReadingException` instead of allocation, out-of-bounds palette access, or
 recursive-stack failure.
+
+`ModelMeshBaker` rejects a mesh node whose `geometry_to_world` determinant is
+negative. Such a node was exported with a negative scale: the reflection flips
+surface orientation, leaving normals and triangle winding inconsistent with
+lighting and back-face culling. The baker does not hide the source defect by
+flipping normals and winding; freeze the mirrored object back to a positive
+scale in the authoring tool.
+
+`ModelInfoBaker` also checks the size of a directly attached model: an `Attach`
+link to a bare `.fbx`, rather than to a `.fo3d` description. A direct attachment
+has no description-level scale correction, so its static maximum-axis extent
+must stay within `Baking.ModelAttachmentMinExtent` ..
+`Baking.ModelAttachmentMaxExtent`. A failure names the file, measured extent,
+and limit. `.fo3d` attachments are exempt because their description can apply
+an explicit scale.
+
 Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
 envelopes below, a future big-endian mesh consumer requires a converted wire
@@ -16407,7 +16527,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 ===== BEGIN DOCUMENT entity-model =====
 Source: Docs/en/explanation/entity-and-property-model/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/entity-and-property-model/
-Content SHA-256: 7ac756946fa758ba11a0fa75e7284cba07efe995e55de1f5abfe63a98aceffeb
+Content SHA-256: 867d028be74e636ddcc4cc229047c3f380c67617faa451abee41793f23e43fac
 
 ---
 layout: default
@@ -16421,7 +16541,7 @@ permalink: /Docs/en/explanation/entity-and-property-model/
 
 This document explains the reusable runtime entity model: entity type descriptors, generated property accessors, prototype entities, inner-entity ownership, entity events, and the property storage model that other runtime systems build on.
 
-Use it when changing `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, `ProtoManager.*`, metadata annotations, or code that persists/synchronizes entity state.
+Use it when changing `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializer.*`, `ProtoManager.*`, metadata annotations, or code that persists/synchronizes entity state.
 
 For how entity create/destroy/register stays consistent when an exception is thrown mid-operation — the terminate-on-OOM allocation model, the lifecycle throw-as-signal contract, and the post-mutation `FO_STRONG_ASSERT` policy — see [ExceptionSafety.md](../../../ExceptionSafety.md).
 
@@ -16446,7 +16566,7 @@ Keep this document focused on reusable engine behavior. Put project-specific ite
 
 - whether the type is exported or global;
 - whether it has prototypes, statics, abstract entities, or holder entries;
-- the `PropertyRegistrator` used by that type;
+- the `PropertyRegistrar` used by that type;
 - exported methods and events;
 - holder-entry sync/persistence policy.
 
@@ -16483,6 +16603,12 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 - `SetName()` writes through `Properties::SetValue()`;
 - `IsNonEmptyName()` checks whether raw property data exists.
 
+These generated accessors are `noexcept`; their internal access validation is a fatal tripwire, not a recoverable synchronization boundary. Access to the owning entity must already have been proven before a property is read or written. If the check fires, fix the caller that skipped synchronization rather than weakening the accessor.
+
+Proving access to one entity does not automatically prove access to another entity returned from it. In particular, `ServerEntity::GetParent()` validates the child but returns a parent that may be intentionally uncovered, and holding a child's lock does not cover its ancestor. Code may return that handle, but it must validate the parent before reading the parent's properties.
+
+The item ownership resolvers are the reference pattern: paths that continue the ownership walk prove each critter/container parent before reading `GetMapId()`, `GetHex()`, or `Ownership`; paths that merely return `Item.GetMap()` do not add a validation that would reject ordinary map-owned items. Treat an accessor tripwire as evidence of the missing proof at the caller.
+
 `Source/Common/EntityProperties.h` defines the generated property wrapper classes:
 
 - `GameProperties`
@@ -16498,7 +16624,7 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 - `CustomHolderEntry`
 - `ExplicitlyPersistent`
 
-The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrator`.
+The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrar`.
 
 Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
 
@@ -16513,7 +16639,7 @@ Property raw data storage is naturally aligned: the storage blob and `PropertyRa
 - `PropertyRawData` — temporary typed/raw buffer used by getters/setters and raw restore paths.
 - `Property` — metadata for one property: name/component, base type, collection shape, sync flags, mutability, persistence, nullability, callbacks, and registration index.
 - `Properties` — per-entity value storage, base/overlay relation, raw snapshot/restore, text import/export, typed get/set helpers, and hash resolution.
-- `PropertyRegistrator` — per-entity-type registry that creates properties from metadata tokens and tracks lookup, groups, components, data layout, and public/protected/private data spaces.
+- `PropertyRegistrar` — per-entity-type registry that creates properties from metadata tokens and tracks lookup, groups, components, data layout, and public/protected/private data spaces.
 
 Property flags are load-bearing:
 
@@ -16540,7 +16666,7 @@ Proto-derived overlays keep the dense property index lazy: small overlays use a 
 
 Overlay data offsets are naturally aligned. Each property gets an interior data alignment at registration (`Property::GetDataAlignment()`): plain values and POD arrays use the largest power of two dividing the base size (capped at `MAX_SERIALIZED_ALIGNMENT`), string arrays align to their u32 prefixes, ref-type payloads to `MAX_SERIALIZED_ALIGNMENT`, dicts to the strictest of their key/value/prefix alignments, and single strings stay byte-aligned. `AllocOverlayData` first best-fit searches freed holes and alignment paddings between existing entries and only extends the overlay tail (aligned) when no hole fits; `_overlayGarbageSize` tracks exactly the bytes inside the used range not owned by any entry, which lets the allocator skip the hole search when no hole can possibly fit. Capacity growth is re-evaluated after repacking because moving variable-size entries can shift the final aligned tail across the initially selected capacity boundary. Repack and rebuild-from-full lay entry data out in stable alignment-descending order, which minimizes padding (plain entries pack back-to-back; variable-size complex payloads may leave small aligned gaps accounted as garbage). The registrator's main POD block is aligned by construction (offsets are multiples of the property base size, section bases are multiples of 8), so `GetRawData()` always returns data aligned for its interior layout regardless of which storage backs it.
 
-Complex property raw data also keeps its interior aligned. The layout contract lives in `Properties.h` and uses `alignment_for_size()`: inside a blob, every fixed-size item is placed at its natural alignment — u32 length/count prefixes at 4, POD keys/values/element runs at the largest power of two dividing their size (capped at `MAX_SERIALIZED_ALIGNMENT`), nested ref-type payloads at `MAX_SERIALIZED_ALIGNMENT`, ref-blob field payloads at the field's own data alignment; string bytes are unaligned, padding bytes are zero, and no padding follows the last item, so dict parsers still terminate on exact buffer exhaustion. All blob codecs mirror the same `align_up` steps: `PropertiesSerializator` (value/text), the AngelScript marshaling in `AngelScriptHelpers.cpp`, `DynamicRefTypeInstance` in `ScriptSystem.cpp`, the string-array codec in `Properties.h`, and the inbound validator in `ClientDataValidation.cpp` (which additionally rejects non-zero padding in untrusted client payloads). Since the blob start is aligned by storage and interiors follow the contract, fixed-size items can be read and written with direct typed access. Changing this layout is a client/server compatibility break: bump the compatibility version marker in `Common.h` and rebake resources.
+Complex property raw data also keeps its interior aligned. The layout contract lives in `Properties.h` and uses `alignment_for_size()`: inside a blob, every fixed-size item is placed at its natural alignment — u32 length/count prefixes at 4, POD keys/values/element runs at the largest power of two dividing their size (capped at `MAX_SERIALIZED_ALIGNMENT`), nested ref-type payloads at `MAX_SERIALIZED_ALIGNMENT`, ref-blob field payloads at the field's own data alignment; string bytes are unaligned, padding bytes are zero, and no padding follows the last item, so dict parsers still terminate on exact buffer exhaustion. All blob codecs mirror the same `align_up` steps: `PropertiesSerializer` (value/text), the AngelScript marshaling in `AngelScriptHelpers.cpp`, `DynamicRefTypeInstance` in `ScriptSystem.cpp`, the string-array codec in `Properties.h`, and the inbound validator in `ClientDataValidation.cpp` (which additionally rejects non-zero padding in untrusted client payloads). Since the blob start is aligned by storage and interiors follow the contract, fixed-size items can be read and written with direct typed access. Changing this layout is a client/server compatibility break: bump the compatibility version marker in `Common.h` and rebake resources.
 
 `MAX_SERIALIZED_ALIGNMENT` (defined in `BasicCore.h`, currently 8) is the cap for this whole contract, chosen as a single compile-time constant rather than the platform-dependent `alignof(std::max_align_t)` (16 on x64 via `long double`, 8 on wasm) precisely so the serialized byte layout is identical on every target regardless of the platform's `max_align_t` or default `new` alignment. The contract stays sound only while every serialized scalar leaf fits within `MAX_SERIALIZED_ALIGNMENT`; because the layout later reads fixed-size items with direct typed access (`reinterpret_as<T>()`), an over-aligned leaf would produce a misaligned load (UB / sanitizer trap / hard fault on strict-alignment targets). This is pinned at compile time: the fundamental integer/float leaves are asserted in `BasicCore.h`, the hashed-string hash leaf in `Properties.h`, and every typed property accessor (`GetValue`/`GetValueFast`/`SetValue`) statically asserts `alignof(T) <= MAX_SERIALIZED_ALIGNMENT` at instantiation, so adding an over-aligned type (SIMD, `__int128`, `long double`, `alignas(16)`) anywhere on the serialized path fails the build instead of silently under-aligning. The current type grammar cannot express such a leaf — primitives are ≤ 8 bytes, `hstring` serializes as a 64-bit hash, and structs are compositions of those, so `alignof(struct)` never exceeds 8.
 
@@ -16606,7 +16732,7 @@ Entity state is serialized through property data, not by hand-copying entity fie
 
 - raw binary property snapshots: `Entity::StoreData()` / `RestoreData()` and `Properties::StoreData()` / `RestoreData()`;
 - full property data: `Properties::StoreAllData()` / `RestoreAllData()`;
-- text/document conversion: `Properties::SaveToText()`, `ApplyFromText()`, and `PropertiesSerializator.*`.
+- text/document conversion: `Properties::SaveToText()`, `ApplyFromText()`, and `PropertiesSerializer.*`.
 
 When text/document loading converts numeric property values, the serializer rejects values that do not fit the target primitive width instead of wrapping or producing infinity.
 
@@ -16631,7 +16757,7 @@ Relevant tests include:
 - Prototype entity classes: `Source/Common/EntityProtos.*`.
 - Prototype lookup/loading: `Source/Common/ProtoManager.*`.
 - Property storage and flags: `Source/Common/Properties.*`.
-- Property document/text conversion: `Source/Common/PropertiesSerializator.*`.
+- Property document/text conversion: `Source/Common/PropertiesSerializer.*`.
 - Generated metadata and registration: [GeneratedApiAndMetadata.md](../../reference/metadata/index.md).
 - Persistence: [Persistence](../persistence/).
 - Network replication and command buffers: [Networking](../authority-and-networking/).
@@ -16650,7 +16776,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: dbd7de542fc414252f007148d2d856aa4ea727943ad63511f10875487ccd20ca
+Content SHA-256: 59c07b6a2d970391f17b7ae945c9eae17e90e2c618444ae92740a3e64c35d0bd
 
 ---
 layout: default
@@ -16725,6 +16851,14 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 `GameSettings::MAP_DIR_COUNT` participates in direction normalization. When changing geometry, inspect compile-time geometry settings, generated value types, path-finding tests, and any rendering code that projects map positions.
 
 `mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+
+## Map camera projection
+
+The map camera uses a world frame of `+X` right, `+Y` up, and `+Z` map-south, with one world unit equal to one pixel of hex spacing. Its parallel projection tilts the world around X by `MAP_CAMERA_ANGLE` (`arcsin(sqrt(3)/4)`): ground northing is foreshortened by `sin(angle)` and elevation by `cos(angle)`. Anchoring a ground point at `z = legacy_y / sin(angle)` makes `ProjectWorldToMap` reproduce the legacy `GetHexPos` position at elevation zero.
+
+`ProjectWorldToMap` is the reference form without scroll or zoom. It returns map-space pixels in `.x/.y` and view depth in `.z`; larger depth is nearer the camera. Its `(.y, .z)` result is an orthonormal rotation of world `(Z, Y)`, not a shear.
+
+`MakeMapCameraView` is the GPU form with scroll, zoom, and a `yaw_deg` orbit around the vertical axis. At zero yaw it reproduces `(ProjectWorldToMap(world).xy - scroll) * zoom` with unchanged depth. The backend ortho composes over this matrix, so sprites, 3D models, and particles share one world-to-clip transform. Map sprites also write world depth with `DepthFunc = LessEqual`; CPU painter order still handles blended layers while the shared depth buffer resolves cross-type occlusion. `Test_Geometry.cpp` pins both projection forms against each other and against `GetHexPos`.
 
 ## Geometry helper responsibilities
 
@@ -16933,7 +17067,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT persistence =====
 Source: Docs/en/explanation/persistence/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/persistence/
-Content SHA-256: 32516cf8f57632db16217f5c625475c206cdfa54038a60d5916a5a1d4e243e62
+Content SHA-256: f9f0717abc97c87def8b53253b8b7731f6186f2980b20219939b43e9bfd7a924
 
 ---
 layout: default
@@ -17115,7 +17249,7 @@ Relevant tests include:
 - SQLite backend: `Source/Server/DataBase-SQLite.cpp`.
 - Shared BSON allocator/conversion: `Source/Server/DataBase.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, and `BsonToDocument()`; Mongo-specific operations stay in `Source/Server/DataBase-Mongo.cpp`.
 - Memory backend: `Source/Server/DataBase-Memory.cpp`.
-- Entity/property serialization: [Entity Model](../entity-and-property-model/) and `PropertiesSerializator.*`.
+- Entity/property serialization: [Entity Model](../entity-and-property-model/) and `PropertiesSerializer.*`.
 - Build feature toggles: [Build Workflow](../../how-to/build/) and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md).
 - Backup sets, oplog limits, isolated restore, and disaster-recovery drills: [Backup and Recovery](../../how-to/release/backup-and-recovery.md). Deployment stop/rollback sequencing: [Release Operations](../../how-to/release/operations.md). Provider choice, schedules, retention, RPO/RTO, concrete migrations, and production authority remain project-owned.
 
@@ -17135,7 +17269,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 543786b3bc896e09c143e9478e787251d460ffc052afb15a596684b09d8214a1
+Content SHA-256: 40c017ed228736fc663964dc8685a36e137e1ce09d82f7cc584f4557f85a67fe
 
 ---
 layout: default
@@ -17470,14 +17604,22 @@ held weapon) are not in the baked animation bounds, so this is what keeps the fr
 **fixed size while the critter turns** instead of resizing each time a facing pushes the
 gear wider. Only currently-emitting particle systems extend this envelope;
 a dormant effect (for example furnace smoke that is not puffing) reserves no frame
-space and is absorbed by the expansion pass if and when it starts emitting. If that
+space and is absorbed by the expansion pass if and when it starts emitting.
+
+The measured result contains two rectangles. `ModelSpriteBounds::Rect` is the full drawn extent — mesh, shadow, live particles, and any effect-forced full frame — and sizes the frame and atlas crop. `ModelSpriteBounds::PoseRect` is the posed model alone, captured before particles, and is returned by `ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` for fit-to-area calculations. Already emitted world-space particles do not scale with the model, so including them in a fit creates a feedback loop that can shrink the model toward zero. Effects belong in the frame, not in the fit.
+
+If that
 exact envelope needs a larger logical frame,
 the client expands the frame and rerenders before copying. Successive frame
 placements are merged as root-relative intervals, so adjacent pixel-rounded
 pivots or a live world-space particle cannot make an otherwise stable frame
 alternate forever. The interval anchor is signed: a tight frame may legitimately
 lie completely on one side of the model root, leaving its pivot outside the frame;
-the bounded retry loop still rejects a genuinely unbounded layout. Only the selected region is allocated
+the bounded retry loop still rejects a genuinely unbounded layout.
+
+`ModelInstance::SetupFrame` rejects a logical `draw_size * FRAME_SCALE` above `AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT`, naming the model and both sizes before an anonymous device texture-allocation failure can occur. Meshes disabled by the model's own default `.fo3d` link contribute to neither drawn nor pose bounds; runtime honors that default exactly as it honors layer/attachment `DisableMesh`, keeping runtime geometry inside the baked layout budget.
+
+Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
 preserving the automatic frame's root, hit-test coordinates, and map
 positioning. The active layer/child-model tree extends the idle-priority base
@@ -17546,12 +17688,14 @@ their UVs. Runtime-generated model and particle sprites already occupy ordinary
 rectangular atlas allocations and do not need this reconstruction.
 
 Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
-stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
-observer in constant time and marks the derived free-rectangle list dirty. The
-next allocation rebuilds that list once from all still-live rectangles, in a
-deterministic order, so batches of unloads are coalesced and no surviving
-sprite, pixel region, or UV ever moves. This runtime-only layout change does
-not add settings or alter sprite-resource serialization.
+stable-address `TextureAtlasLayout::Allocation`. Release clears the mesh observer
+and returns the rectangle directly to the free list in constant time. The list
+does not coalesce eagerly: on a placement miss, `DefragmentFreeRectangles`
+rebuilds the exact maximal set from live allocations before opening a new page.
+A contained-rectangle prune runs only after growth well beyond the previous
+pruned size and indexes keepers by coarse atlas cells, avoiding hot-path full
+scans. No surviving sprite, pixels, or UVs move; this changes no settings or
+resource serialization.
 
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after
@@ -17958,6 +18102,8 @@ forced first-tick path used by ordinary scheduled simulation.
 The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
 
 `ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK and Effekseer particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth; Effekseer distortion attachments additionally pull the direct replay's scene-background snapshot on demand. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
+
+Cached model-sprite frames are capped at `2048x2048` logical pixels (`4096x4096` for the supersampled intermediate target). Dynamic model-bone particle bounds above this budget are treated as unavailable: the established model frame remains valid and only runaway outlying geometry is clipped. This prevents malformed or long-lived particle motion from requesting unbounded CPU/GPU allocations in headless and rendered paths.
 
 **World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit and is shared by 3D models and in-scene particles. The Engine default is `40.0`; an embedding project may override it consistently for both systems. **1 world unit = 1 hex = 1 m** remains the authoring metric, but the pixel projection factor does not have to equal `MAP_HEX_WIDTH`. A scene-type system that emits within a radius of N units therefore spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale. See [Particle Format And Runtime](../../how-to/content/particle-format.md#runtime-contract) for the complete backend-neutral particle route.
 
@@ -19175,7 +19321,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: 3a629aec09ac3557ccc6d873faeed879b23c4811200ac3614798eb2d30e8aa23
+Content SHA-256: 43d06a42bea3fd30160dee18e144081c77cd5af6c04156513689f7e2235a1961
 
 ---
 layout: default
@@ -19261,7 +19407,7 @@ Major responsibilities:
 - create, load, unload, destroy, and switch critters;
 - move critters by paths and movement contexts;
 - dispatch entity lifecycle and gameplay events to scripts;
-- persist entity/property changes through `DataBase` and `PropertiesSerializator`;
+- persist entity/property changes through `DataBase` and `PropertiesSerializer`;
 - host `UpdaterBackend` for client resource/runtime updates;
 - publish health information and optional health-file output.
 
@@ -19284,7 +19430,7 @@ Major responsibilities:
 - `SyncPointJob()`
 - `FrameTimeJob()`
 - `ScriptSystemJob()`
-- `UnloginedPlayersJob()`
+- `NotLoggedInPlayersJob()`
 - `PlayersJob()`
 - `CrittersJob()`
 - `TimeEventsJob()`
@@ -19318,7 +19464,16 @@ This is why `Critter::_player`, `Player::_controlledCr`, and `Player::_sendIgnor
 
 **Covered-by-design exceptions (intentionally NOT sync-free).** Sends that read the **recipient's own** state stay validated, because that state needs the recipient's cover by construction — they are single-recipient sends issued under that cover, not broadcast distribution: `Send_LoginSuccess` (serializes the recipient itself), `Send_ViewMap` (reads the recipient's own `_viewMap`), `Send_AddCritter` (reads the recipient's controlled-critter visibility mode; sent from the visibility grant / map-load / transfer, which hold the recipient's cover — convertible only by threading the grant-computed vis-mode through its call sites). Every other `Player::Send_*` is **recipient-lock-free** (`this`-marker `FO_NO_VALIDATE_ENTITY_ACCESS()` — the recipient is never validated): every one that is handed an entity validates that **subject** via `FO_VALIDATE_ENTITY_ACCESS_VALUE`, including the ones that read only the subject's id (`Send_RemoveCritter`/`Send_CritterVisibilityMode`/`Send_RemoveItemFromMap`/`Send_ChosenRemoveItem`/`Send_Teleport`) alongside the ones that serialize it (`Send_Property`/`Send_Moving`/`Send_MovingSpeed`/`Send_Dir`/`Send_Action`/`Send_MoveItem`/`Send_Attachments`/`Send_LoadMap`/`Send_AddItemOnMap`/`Send_ChosenAddItem`/`Send_AddCustomEntity` and the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers). Only the sends handed **no entity** are pure `FO_NO_VALIDATE` with no value check: `Send_RemoveCustomEntity` (a bare `ident_t`), `Send_InfoMessage`, `Send_PlaceToGameComplete`, `Send_TimeSync`, and `Send_SomeItems` (a span — each item is validated in `SendItem`). `Map::SendProperty`'s **MapItem** case and the `Map::AddItem`/`RemoveItem` item-appearance loops are also covered-by-design: not pure fan-outs but per-critter notify-and-react loops (`AddVisibleItem`/`RemoveVisibleItem` + a re-entrant `OnItemOnMap*` event with an early-return on item-context change), which require each critter covered; their spectator legs are lock-free. The critter destructor's teardown-invariant diagnostics likewise read only raw members (no validating accessor) so a refcount-driven `~Critter` on a worker thread outside the critter's cover cannot fault.
 
-Manual server-side entity methods that read or mutate their own entity state declare the LOCKED precondition with `FO_VALIDATE_ENTITY(LOCKED, ...)` at method entry. It expands to the regular throwing validator (`ValidateEntityAccess(this)`), which **throws a recoverable `ScriptException`** on an uncovered access — at the job/script frontier the violation is reported and the job continues, so a sync-scope bug no longer takes the whole server down. An exception escaping a `noexcept`-declared method still terminates the process, so violations inside noexcept accessors remain fatal; the frontier-reachable throwing surface recovers. Generated C++ property accessors (`GetX()`, `SetX()`, `IsNonEmptyX()`) validate the owning entity through `FO_VALIDATE_ENTITY_ACCESS_VALUE(entity)` (the same throwing form), which currently resolves the entity from `Properties::GetEntity()` before touching property storage; low-level raw `Properties` access remains reserved for serialization, loading, tooling, and other paths that already establish their own storage-access contract. These validation macros live in `Common.h` so the temporary stabilization checks can be removed or compiled out from one location later. The check is intentionally always-on while the multithreaded logic system is being stabilized. Methods used by the validator, persistence callbacks, and lock machinery itself are marked with `FO_NO_VALIDATE_ENTITY_ACCESS()` as explicit unchecked escape hatches: constructors/destructors, `GetId()`, `GetName()`, `IsPersistent()`, `GetEntityLock()`, raw parent access, `GetSyncWidenEntity()`, and low-level parent/lock lifecycle setters must not recursively validate while the access checker is trying to produce diagnostics, handle persistence hooks, or prove the current lock cover.
+`FO_VALIDATE_ENTITY(...)` declares a method's preconditions:
+
+| Flag | Required state | Violation |
+|---|---|---|
+| `LOCKED` | current sync context covers `this` | recoverable `ScriptException`; a `noexcept` escape still terminates |
+| `NOT_DESTROYED` | entity is not destroyed | `FO_STRONG_ASSERT`, because script dispatch already rejects a destroyed receiver |
+| `NOT_DESTROYING` | entity is not mid-destruction | `FO_VERIFY_AND_THROW`; a `noexcept` method that must tolerate teardown uses an explicit verify-and-return path |
+| `NONE` | no entity-state precondition | no check |
+
+Manual server-side entity methods that read or mutate their own entity state declare the `LOCKED` precondition at method entry. Generated C++ property accessors validate the owning entity through `FO_VALIDATE_ENTITY_ACCESS_VALUE(entity)` before touching storage. Low-level raw `Properties` access remains reserved for serialization, loading, tooling, and paths with their own storage-access contract. Validator, persistence, and lock-mechanism internals use explicit `FO_NO_VALIDATE_ENTITY_ACCESS()` escape hatches so validation cannot recurse while proving cover or reporting a fault.
 
 Two ordering contracts follow from this model. **(1) Script-export functions validate an entity argument before its first property read.** Property accessors are `noexcept`, so the throwing validator inside one cannot be recovered — an uncovered read there terminates the process. Every `FO_SCRIPT_API` function that reads a property of an entity argument therefore calls `ValidateEntityAccess(arg)` first, converting a caller's sync-scope violation into the recoverable frontier `ScriptException`; the `Server_Game_DestroyCritter(s)` family is the reference pattern. **(2) Ordinary manager entry points consume caller-owned cover; they do not acquire a missing container/holder.** The script caller covers every existing destination, source holder, map/location, or destroy dependency before crossing the native boundary. Manager code may use `EnsureEntitySynced()` only to retain the own lock of an entity already in that package across a detach or reparent. A genuinely fresh unpublished entity is different: `EntityManager::CaptureFreshEntity()` uses the private `EnsureFreshEntitySynced()` boundary before publication, without granting access to any pre-existing dependency. An omitted existing container or holder is therefore a caller error that fails validation; native create/destroy code must not repair it by replacing or widening the cover.
 
@@ -19326,7 +19481,7 @@ Script-facing typed destruction is handle-only. `Game.DestroyEntity`, `DestroyIt
 
 TODO: remove the entire entity-access validation system after multithreaded logic stabilization; it is a high-overhead diagnostic layer, not a permanent runtime safety mechanism. If any `FO_VALIDATE_ENTITY_ACCESS*` check fires, fix the owning top-level path (job dispatch, script entry, sync widening, entity creation/registration, or holder transfer) so the entity cover is acquired before the code can reach the checked access at all. Do not treat the checked method or property accessor as the synchronization boundary unless that method is itself the top-level entry point.
 
-Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()` submits an `UnloginedPlayerJob()` for the temporary player object, and `OnPlayerLogined()` cancels the unlogged job key and submits the logged-in `PlayerJob()`. `Player.HardDisconnect()` and other hard-disconnect paths only mark the underlying connection as disconnected; logged-in player teardown (`OnPlayerLogout`, critter detach, view reset, destroyed mark, and unregister) belongs to the next `PlayerJob()` pass through `ProcessPlayer()`. Code that continues after a script-visible player event should validate possible connection/control changes, but it should not treat hard disconnect as an inline player-destruction path.
+Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()` submits a `NotLoggedInPlayerJob()` for the temporary player object, and `OnPlayerLoggedIn()` cancels the not-logged-in job key and submits the logged-in `PlayerJob()`. `Player.HardDisconnect()` and other hard-disconnect paths only mark the underlying connection as disconnected; logged-in player teardown (`OnPlayerLogout`, critter detach, view reset, destroyed mark, and unregister) belongs to the next `PlayerJob()` pass through `ProcessPlayer()`. Code that continues after a script-visible player event should validate possible connection/control changes, but it should not treat hard disconnect as an inline player-destruction path.
 
 `SwitchPlayerCritter()` sends the new critter's initial info before `OnPlayerCritterSwitched`. `OnCritterSendInitialInfo` can re-enter scripts and detach or switch the player again, so the switch notification is emitted only if the player still controls the same critter after initial-info scripts return. Switching to no critter sends `RemoveCritter`, detaches the previous chosen server-side, and sends `AddCritter` for the same entity as an ordinary non-chosen view. An active client therefore clears `HasChosen` immediately without making the still-loaded critter disappear. Initial info for a critter on the global map covers only that critter — the script attaching it delivers the rest of its travelling group with `Critter.SendGlobalMapGroupInfo()` (see the independent-roots section above).
 
@@ -19363,6 +19518,22 @@ Script event handlers may re-enter item movement while an item is already in its
 
 Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex.
 
+## Entity synchronization and locking
+
+`Source/Server/EntitySync.{h,cpp}` implements the cover model. Every `ServerEntity` owns an `EntityLock`; a thread proves read access by holding that lock or an appropriate ancestor/widen-chain cover. Parentage mutations require the entity's own lock directly.
+
+| Mode | Purpose | Compatibility |
+|---|---|---|
+| `Exclusive` | ordinary writer, re-entrant for one thread | excludes every other mode |
+| `Shared` | concurrent reads of the Game singleton | compatible with other readers, excluded by `Exclusive` |
+| `DescendantHold` | records that this thread holds a separately locked descendant | compatible among sibling holders, but conflicts with a foreign `Exclusive` in both directions |
+
+`DescendantHold` is bookkeeping, not access. It prevents an ancestor writer from cutting underneath active descendant work and prevents taking a descendant below an ancestor owned exclusively by another thread. A pending exclusive writer has priority over new descendant registrations, so sibling traffic cannot starve it.
+
+Waiters are FIFO. A per-waiter atomic state distinguishes waiting, granted, and aborted during shutdown; shared waiters batch until the first exclusive waiter. Multi-lock `Ensure` is all-or-nothing and escalates in global order, restoring any released ancestor recursion and descendant-hold counts exactly. Shutdown aborts parked waiters and rejects new acquisitions.
+
+Holder counts use an inline linear vector because millions of entity locks usually have only a few concurrent holders and must allocate nothing while idle. Per-sync cover and held-lock lists use `small_vector` sized to measured common paths; owner collections remain `vector` where incomplete `ServerEntity` types prevent inline storage.
+
 ## Entity ownership and persistence
 
 `EntityManager` (`Source/Server/EntityManager.h`) is the central registry and persistence boundary for server entities.
@@ -19378,17 +19549,17 @@ It owns:
 
 Custom entities held directly by the global game object share its singleton `EntityLock`. When an engine operation calls `EnsureEntitySynced()` for one of those entities inside `Game.Lock()`, the current synchronization context reuses the singleton acquisition instead of tracking the same physical lock in both its ordinary and singleton buckets. A balanced `Game.Unlock()` therefore releases the lock completely after the operation.
 
-Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializator`. The database facade and backends are documented in [Persistence](../persistence/).
+Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializer`. The database facade and backends are documented in [Persistence](../persistence/).
 
 A persisted entity whose proto resolves through a `Proto <Type> <Name> Remove` migration rule is **dropped** on load: `LoadEntityDoc()` detects that the proto migration rule maps the saved proto to the `Remove` sentinel and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. `OnCritterPreLoad` destruction is the script-controlled equivalent for a fully restored critter and also returns null without a load error after `DestroyCritter()` removes its persistent graph. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A dropped critter requested directly through `ServerEngine::LoadCritter()` is not silently returned — the wrapper raises so a player login cannot continue without its character.
 
 ## Player and connection flow
 
-A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes an unlogged `Player` through `CreateUnloginedPlayer()`.
+A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes a not-logged-in `Player` through `CreateNotLoggedInPlayer()`.
 
 The server then processes the player in two broad states:
 
-1. **Unlogged player** — `ProcessUnloginedPlayer()` reads initial protocol messages and runs handshake/login logic.
+1. **Not-logged-in player** — `ProcessNotLoggedInPlayer()` reads initial protocol messages and runs handshake/login logic.
 2. **Logged player** — `ProcessPlayer()` handles normal game messages for an attached player/critter session.
 
 `Player` in `Source/Server/Player.h` owns the server-side per-client send surface:
@@ -21947,7 +22118,7 @@ owning model tests.
 ===== BEGIN DOCUMENT mapper-tools =====
 Source: Docs/en/how-to/tools/mapper.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper.html
-Content SHA-256: 859000c5fa776b1258527bbf055d9be96aea34192a390745a5fd743ee43d4691
+Content SHA-256: 89b9687950a134ae6983ac0f7993037fcfe76258ee2e953acd614c44e35eadd6
 
 ---
 layout: default
@@ -22074,6 +22245,11 @@ The optional `Mapper.ParticlePreviewEffect`, `Mapper.ParticlePreviewSeed`, `Mapp
 ### SPARK source editor
 
 Open **Windows -> SPARK particle editor** to browse raw `.spark` sources and open one graph/preview window per asset. Saving writes through the raw-resource filesystem, reindexes baked resources, and invalidates the saved asset's `.spk` sprite cache. Closing a modified window offers Save, Discard, and Cancel.
+
+Set `Mapper.SparkEditorSource` to a raw asset path such as
+`Documentation.spark` when a launch profile must open one editor
+deterministically. Startup validates the path against indexed raw `.spark`
+sources and fails clearly instead of silently showing an empty editor.
 
 Effekseer authoring remains external. Build its editor through `BuildTools/buildtools.py build-auxiliary effekseer-editor <Config>`, edit the tracked `.efkproj`, then inspect the baked `.efk` through **Particle preview**.
 
@@ -22537,7 +22713,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-cli-index =====
 Source: Docs/en/reference/buildtools/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/buildtools/
-Content SHA-256: 59a69c9b2558cb661b2668bfcc3ddc33e5015741ecf1f11117c66de79661b354
+Content SHA-256: 32e4c9f0476ec64a6cc3b073624786d2aa2f6523f17c0bd281aeaee7a91d166e
 
 ---
 title: Generated BuildTools CLI Reference
@@ -22562,24 +22738,24 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 | Since | Not declared |
 | Support policy | No versioned CLI support line is declared; pin an engine revision in automation. |
 | Source parser | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Contract digest | <code>7271ab5eca2fd6485e970932f041c1a6a4bc738d76b19b8ea2f123627b6059bf</code> |
+| Contract digest | <code>c3ce1809eb5d4e0811e95f8e3880d746b7d9e3a0b4418d9567313516a72aa653</code> |
 
 ## Coverage
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
-| [Commands](commands.md) | 12 | Commands with 24 command-specific arguments. |
+| [Commands](commands.md) | 13 | Commands with 25 command-specific arguments. |
 | Global arguments | 0 | Arguments accepted before a command. |
 
 ## Top-level help
 
 ```text
-usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
+usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
 
 Shared BuildTools helpers
 
 positional arguments:
-  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,package-web-debug,package-android-debug,host-check,prepare-host-workspace}
+  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace}
     env                 resolve BuildTools environment
     build               configure and build a target
     validate            configure and validate scenarios
@@ -22588,6 +22764,8 @@ positional arguments:
     toolset             build an existing toolset target
     build-auxiliary     build a separately packaged auxiliary tool
     prepare-workspace   prepare shared workspace parts
+    repair-checkout-case
+                        realign working-tree entry names with the git index
     package-web-debug   package the local web debug client
     package-android-debug
                         package the local android debug client
@@ -23072,7 +23250,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-gui-runtime-index =====
 Source: Docs/en/reference/gui-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/gui-runtime/
-Content SHA-256: 7b7141352c24b7e4e2ef01400c6cee8ee285c2dc91b5d545a3570f0e4ba726b8
+Content SHA-256: 8dceb921acae8a5841ea33b7b2560f066c0fd54bf5dfbae899ea0c6599a8e253
 
 ---
 title: Generated GUI Runtime Reference
@@ -23096,10 +23274,10 @@ This reference describes the Engine-owned AngelScript GUI runtime. It is not a d
 | Stability | <code>experimental</code> |
 | Support policy | The CoreScripts GUI runtime is production-used but remains experimental until it has a standalone client example, focused runtime fixtures, and an explicit compatibility policy. |
 | Source manifest | [BuildTools/GuiRuntimeInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/GuiRuntimeInterface.json) |
-| Contract digest | <code>ecdc56e4e0f650c6af06801b6d63159b9d39ff0d67759ba17751a9884323561a</code> |
+| Contract digest | <code>437603ed47bec7614b368acf6b424a9c27d3d7e9fce56c5211c0fa4a30d1fdbd</code> |
 | Runtime side | <code>client</code> |
 | Runtime types | 12 |
-| Documented type members | 159 |
+| Documented type members | 160 |
 | Callback signatures | 39 |
 | Top-level API overloads | 31 |
 | Engine declarative GUI formats | 0 |
@@ -23258,7 +23436,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: 788625fa22a89b040aa4a2e2a47d1a5e348c154ff220040258df43f6738009f3
+Content SHA-256: 576e52570c2cd33258aea39b13a87118c4f1bd1687db94200e1acf3bc7268ecf
 
 ---
 title: Generated Map Format Reference
@@ -23282,7 +23460,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>614fbc700bb68f036dac4fa0645b7ab5550992e43504e1ef4e9dc8a854001921</code> |
+| Contract digest | <code>fe29b8823c11b9f7f41743e0ac7a11b98e9a3bd4ce89a3c9dd773a20b5a15560</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
@@ -23314,7 +23492,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: c54a09771a71f16011ba3fc25b15b5d967e28367042cdb37afdd986467b542d5
+Content SHA-256: 373d86c911ecd0bf87970fe00abeafce5d1824e8eb579e327831bf912ea7b93f
 
 ---
 layout: default
@@ -23603,7 +23781,7 @@ Reader-facing descriptions stay with the export metadata that defines each symbo
 
 ```cpp
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2472 InventorySha256=75fca70d7e56ae0647d004411014c7b7bd1a2a8422075941895fea957345602b
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2492 InventorySha256=8f70fbf7882f6b81ca6141efc8e3e0240eb97b0e8a9b36fe6be530345846f4ab
 ///@ ApiContract script.method.common.Game.LoadData experimental Since=0.4.0 Example=Docs/Examples/LoadData.md
 ///@ ApiContract script.method.common.Game.OldCall deprecated DeprecatedSince=0.5.0 Replacement=script.method.common.Game.NewCall Removal=1.0.0
 ```
@@ -24259,7 +24437,7 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 
 This is the runtime side of metadata that can be loaded from generated/baked data rather than compiled static registration alone.
 
-Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializator` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
+Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializer` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
 
 ## Properties and generated contracts
 
@@ -24267,7 +24445,7 @@ Migration rules are generic `(kind, extra-info, target → replacement)` remaps 
 
 - `PropertyRawData`
 - `Property`
-- `PropertyRegistrator`
+- `PropertyRegistrar`
 - `Properties`
 - property getter/setter/post-set callbacks
 - base type, struct layout, and serialization-related descriptors
@@ -24378,7 +24556,7 @@ If a generated script API change is involved, inspect AngelScript-related tests 
 ===== BEGIN DOCUMENT generated-model-format-index =====
 Source: Docs/en/reference/model-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/model-format/
-Content SHA-256: 72ac82860ab0f31d7946211ec8be482ca3c0af7c1c836a40804481d395a28de2
+Content SHA-256: 02c16d1e18e3c8c7e563b7dcf0a4670e0a738b5691f146588ecdee8412557832
 
 ---
 title: Generated Model Format Reference
@@ -24402,7 +24580,7 @@ This reference describes the reusable Engine-owned `.fo3d` language and the mode
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own model catalogs, layer meanings, animation enums, visual policy, and concrete assets. |
 | Source manifest | [BuildTools/ModelFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ModelFormatInterface.json) |
-| Contract digest | <code>1a1f6cf520f128c6b673332880d7400ea1981baeafe903bfa249df184a7d0037</code> |
+| Contract digest | <code>f185b1e41f9b14fae37b009f28aabe9a1230483dc706f3960d24a4622fc8f23a</code> |
 | Source extension | <code>.fo3d</code> |
 | Mesh inputs | <code>.fbx</code>, <code>.obj</code> |
 | Runtime side | <code>client</code> |
@@ -24411,7 +24589,7 @@ This reference describes the reusable Engine-owned `.fo3d` language and the mode
 | --- | --- | --- |
 | [Tokens](tokens.md) | 32 groups / 59 spellings | Every accepted current parser token. |
 | [Assets](assets.md) | 6 | Mesh, description, texture, effect, and particle inputs. |
-| [Validation](validation.md) | 13 | Authoring, baking, runtime, and legacy rules. |
+| [Validation](validation.md) | 14 | Authoring, baking, runtime, and legacy rules. |
 
 ## Boundary
 
@@ -24487,7 +24665,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: a8ba798a2d1f7ad43ef35bd90a364ea8c0357a003b1cf4a1cdd8989b6b65bbb0
+Content SHA-256: 3b2d6330d0914695575d867315a2e71d02bc5b51f18edb1978c059b0978db527
 
 ---
 layout: default
@@ -24518,7 +24696,7 @@ parameters or a higher owning layer. Register new implementation files in
 link at the correct dependency point rather than bypassing the layer.
 
 The exact umbrella order is `BasicCore`, `GlobalData`, `StackTrace`,
-`BaseLogging`, `SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`,
+`BaseLogging`, `FatalError`, `SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`,
 `Platform`, `ExceptionHandling`, `Threading`, `SafeArithmetics`,
 `DataSerialization`, `HashedString`, `StrongType`, `TimeRelated`,
 `ExtendedTypes`, `Compressor`, `WorkThread`, `Logging`, `DiskFileSystem`,
@@ -24553,6 +24731,8 @@ not bypass the contract-change gate.
 - `Source/Essentials/StackTrace.cpp`
 - `Source/Essentials/BaseLogging.h`
 - `Source/Essentials/BaseLogging.cpp`
+- `Source/Essentials/FatalError.h`
+- `Source/Essentials/FatalError.cpp`
 - `Source/Essentials/SmartPointers.h`
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/MemorySystem.h`
@@ -24597,23 +24777,16 @@ not bypass the contract-change gate.
 - `Source/Essentials/WinApiUndef.inc`
 - `BuildTools/natvis/essentials.natvis`
 - `BuildTools/cmake/stages/EngineSources.cmake`
+- `BuildTools/tests/test_essentials_layering.py`
 - related tests under `Source/Tests/`
 
 ## Include and dependency model
 
-`Source/Essentials/Essentials.h` is the umbrella include. Its include order is the dependency order for the foundation layer:
+`Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-1. `BasicCore.h` — compiler/OS gates, standard library surface, namespace macros, base aliases, exception declaration helpers, and compile-time constants.
-2. `GlobalData.h` — process-wide create/delete callback registration for engine global data.
-3. `StackTrace.h`, `BaseLogging.h` — bootstrap diagnostics that remain usable before the allocator and full logging layer exist.
-4. `SmartPointers.h`, `MemorySystem.h` — pointer vocabulary and allocation helpers.
-5. `Containers.h`, `StringUtils.h` — allocator-aware container aliases and reusable string utilities.
-6. `Platform.h`, `ExceptionHandling.h` — host-process helpers followed by the engine exception and fatal-reporting layer.
-7. `Threading.h` — Clang Thread Safety Analysis macros (`FO_TSA_*`), the snake_case synchronization primitives (`fo::mutex` / `fo::shared_mutex` / `fo::scoped_lock` / `fo::shared_lock` / `fo::unique_lock`), the `fo::thread` pool-task handle, and the `run_thread` / `run_async` worker pools. It sits after `ExceptionHandling.h`, its deepest dependency, so later value headers such as `HashedString.h` can guard their state with these primitives. See [ThreadSafetyAnalysis.md](../../contributing/coding-contracts/thread-safety-analysis.md).
-8. `SafeArithmetics.h`, `DataSerialization.h`, `HashedString.h`, `StrongType.h`, `TimeRelated.h`, `ExtendedTypes.h`, `Compressor.h` — value, serialization, hashing, time, compression, and type helpers.
-9. `WorkThread.h`, `Logging.h`, `DiskFileSystem.h`, `CommonHelpers.h`, `NetSockets.h` — background jobs, full logging, disk access, general helpers, and raw sockets.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
-This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include only Essentials headers that appear earlier in the umbrella block. Do not reorder it to work around a dependency cycle; move the dependency upward through parameters or split the responsibility at the correct layer.
+This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include and call only modules that appear earlier in the umbrella block. Declaring an API early but defining it in a later `.cpp` is still a reverse link dependency. `BuildTools/tests/test_essentials_layering.py` checks direct includes and namespace-level external-definition ownership. Do not reorder the list to hide a cycle; move data through parameters or split the responsibility at the correct layer.
 
 Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
@@ -24623,13 +24796,17 @@ Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Clien
 
 `BasicCore.h` enforces the selected OS macro (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS`, or `FO_WEB`) and requires C++20. It also binds frequently used standard types into the engine namespace and declares core macros such as `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL`, and namespace helpers. Warning-suppression helpers also live here: `FO_DISABLE_WARNINGS_PUSH/POP` silence all warnings (for wrapping third-party header includes), while the per-compiler `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP`, and `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` silence one named diagnostic and are active only on their matching compiler (so a single-toolchain false positive can be suppressed at one site without other toolchains rejecting an unknown `-W` name or warning number). Prefer fixing warnings at their root; reach for the per-compiler helpers only for documented compiler false positives.
 
-`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` is intentionally environment-only and shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
+`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` is intentionally environment-only and shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
 
 Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows build-platform registry owns the CMake architecture, toolset, and canonical packaging architecture for the regular, `-clang`, and `-win7` variants. The Win7 pair pins MSVC 14.44, while `FO_BINARY_OUTPUT_POSTFIX` remains independent of the platform. In the package DSL the corresponding `BINARY` entry can select its own postfix, for example `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting sibling binaries in the package. Compatibility checks are kept outside application targets.
 
 ### Diagnostics and failure handling
 
-`BaseLogging.*` and `Logging.*` provide the logging foundation. `WriteLogMessage()` collapses immediate duplicates by `LogType` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `LogToFile()` opens the log file without an exclusive lock (the platform default: MSVC `std::ofstream` opens deny-none, POSIX has no mandatory open lock) so two engine modules in one process — e.g. a runtime host EXE and the runtime DLL it loads, each with its own copy of the engine global data — can both hold the same file open at once, and every write seeks to end of file first (`WriteSync`) so neither handle overwrites content the other appended; the `append` parameter still selects truncate (default) vs append for the initial open. `WriteLog`/`WriteBaseLog` degrade safely when their global data is not yet created (falling back to the base log, then to `std::cout`), and a runtime host can open the log early — after `CreateGlobalData()`, `LogToFile(GetExeLogFileName(), false)` (Frontend) — so its pre-`InitApp` diagnostics reach the file. When `AsyncLogWrite` is enabled, the fatal-error handler (`ExceptionHandling`) calls `SuspendAsyncLogWriting()` first, which flips writes back to the synchronous path without joining the worker, so the crash reason and stack trace are flushed inline before the process exits instead of being lost in an undrained async queue. `StackTrace.*` captures and formats native/script stack information, including a capped global cache for resolved native frames, while `ExceptionHandling.*` owns exception-reporting helpers. For debugger-facing workflows, use [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
+`BaseLogging.*` and `Logging.*` provide the logging foundation. `WriteLogMessage()` collapses immediate duplicates by `LogType` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `LogToFile()` opens the file without an exclusive lock, and every `WriteSync` seeks to the end, so separately linked Engine modules in one process can append safely. `WriteLog`/`WriteBaseLog` degrade to the base log and then `std::cout` before full global data exists.
+
+`FatalError.*` is the early native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and delegates only mechanical termination to `BasicCore::ExitApp(false)`. It owns `ReportFatalAndExit`, `ReportStrongAssertAndExit`, and `FO_BASIC_STRONG_ASSERT` without constructing exception objects or depending on the later `ExceptionHandling` module. `ExitApp(false)` itself remains status-only because controlled command failures and fatal invariant failures both use it.
+
+`StackTrace.*` captures and formats native/script stacks, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
 
 ### Memory, pointers, and lifetime utilities
 
@@ -24907,7 +25084,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-prototype-format-index =====
 Source: Docs/en/reference/prototype-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/prototype-format/
-Content SHA-256: 220549c3ecc1dfb7e8ddfe659d142c9fe546027f30db67be535baa1d1c29c72c
+Content SHA-256: 46f51d6123e430fef16cf141d6923860833ebe7ac24942626c42135f18103308
 
 ---
 title: Generated Prototype Format Reference
@@ -24931,7 +25108,7 @@ This reference describes the engine-owned prototype grammar and the built-in met
 | Stability | <code>experimental</code> |
 | Support policy | The grammar is documented for a pinned engine revision. Concrete project entity types, properties, file extensions, ids, and gameplay semantics remain project-owned. |
 | Source manifest | [BuildTools/PrototypeFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PrototypeFormatInterface.json) |
-| Contract digest | <code>ae2a5ac0e5472fff22a70752fbacd37600b636ba46d326ec96965a856cbf7dfe</code> |
+| Contract digest | <code>38b76342c3494988f8fa27a2715cbe09b9e02937d9d71e9309f2e90eae23c4f5</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
@@ -25144,7 +25321,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 9a7bb6674e0f00c419feb9c9139b00f9da97a8548d55d618dbf82bff87595dc5
+Content SHA-256: 5ed26160992dd5cc4820de331f7aa287e8b06da13632c68ba75ecfaf18b80d05
 
 ---
 title: Generated API Reference
@@ -25161,36 +25338,36 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 953 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 958 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 133 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
-| [Script types](types.md) | 966 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 271 | Fixed and runtime-variable engine settings. |
+| [Script types](types.md) | 978 | Entities, enums, value types, reference types, fields, and methods. |
+| [Engine settings](settings.md) | 275 | Fixed and runtime-variable engine settings. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2472 |
-| Symbols with descriptions | 2472 |
+| Addressable symbols | 2493 |
+| Symbols with descriptions | 2493 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
-| Metadata source files | 44 |
+| Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2472 |
+| Explicitly classified symbols | 2493 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2471 |
+| <code>experimental</code> | 2492 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2472 stable IDs with SHA-256 <code>75fca70d7e56ae0647d004411014c7b7bd1a2a8422075941895fea957345602b</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2493 stable IDs with SHA-256 <code>641e1495d252821d82d6a8f2e8213c05f5855b7d47f69a2aa3752ae2d97912d3</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 
@@ -25463,7 +25640,7 @@ The engine-owned [minimal project](../../../../Examples/MinimalProject/README.md
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: 59d041bc71f72c4ad8bb41e4742f159b3f288a10fe822585582837edaeff3abf
+Content SHA-256: 135df07ca1fa4ab224310d84998b9838fbf16e70185d924ca6c3723b255e261d
 
 ---
 layout: default
@@ -25623,6 +25800,10 @@ Mount order matters for lookup behavior. When changing it, verify the runtime/to
 
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top in client/updater paths. The updater writes resource patches into that overlay, so current files win lookup/hash checks without modifying the install directory. Native runtime binary update paths are owned by [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 
+## Low-level disk access
+
+`Source/Essentials/DiskFileSystem.*` performs direct disk operations below mounted engine resources. `fs_write_file()` writes content at the requested path but, on a case-insensitive filesystem, an existing entry that differs only by letter case is reused with its old spelling. Callers that rewrite an exact-name tree they own must reconcile such entries explicitly. The baker does this once per pass; see [Output names are reconciled with the names bakers addressed](../../explanation/content-pipeline/baking.md#output-names-are-reconciled-with-the-names-bakers-addressed).
+
 ## Cache storage
 
 `Source/Common/CacheStorage.*` stores named binary/string cache entries behind `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()`, and `RemoveEntry()`. It is separate from resource packs: cache entries are mutable runtime/tool artifacts, while baked resources are generated from configured inputs. Client-side cache consumers resolve relative cache paths through `fs_make_writable_path(UserWritablePath, CacheResources)`, so portable clients keep cache next to the executable and installed clients write under the per-user root.
@@ -25684,7 +25865,7 @@ Related consumers are covered by resource, client, server, script, and baker tes
 ===== BEGIN DOCUMENT generated-text-format-index =====
 Source: Docs/en/reference/text-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/text-format/
-Content SHA-256: b4748d338ed7fe8c4586b7275fabf66cd26c6c50367080309b37b92c59952386
+Content SHA-256: 24747bf5bfa44bb86a0167929229e48dc78c73b86e7af8ed1c30be815cfdd77d
 
 ---
 title: Generated Text And Localization Reference
@@ -25708,7 +25889,7 @@ This reference describes the reusable Engine-owned text-pack, language, prototyp
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own language policy, pack catalogs, translation workflow, semantic key conventions, and any game-specific lexem or argument formatter. |
 | Source manifest | [BuildTools/TextFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/TextFormatInterface.json) |
-| Contract digest | <code>79169437ee821a74a039524b8bfc29c6f65b7cc5251f55dab0b5d640b714cb2c</code> |
+| Contract digest | <code>b0ac74065cbb6993abc6b0660dd51370665ac810b749a1e507a54203cf97ad07</code> |
 | Source filename | <code>&lt;TextPack&gt;.&lt;Language&gt;.fotxt</code> |
 | Baked filename | <code>&lt;ResourcePack&gt;.&lt;TextPack&gt;.&lt;Language&gt;.fotxt-bin</code> |
 | Raw entry | <code>&#123;Key1&#125;&#123;Key2&#125;&#123;Text&#125;</code> |
@@ -25718,7 +25899,7 @@ This reference describes the reusable Engine-owned text-pack, language, prototyp
 | [Syntax](syntax.md) | 7 | Raw brace fields, key identity, multiline text, and variants. |
 | [Languages](languages.md) | 9 | Filename selection, defaults, rebakes, and normalization. |
 | [Prototype text](proto-text.md) | 8 | $Text grammar, inheritance, pack routing, and decoding. |
-| [Runtime](runtime.md) | 7 methods / 2 rendering rules | Script lookup, language switching, server boundary, and color tags. |
+| [Runtime](runtime.md) | 8 methods / 2 rendering rules | Script lookup, language switching, server boundary, and color tags. |
 
 ## Boundary
 
@@ -25805,7 +25986,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: 504dceeac763f3d13f5c6e236914b9013a7e9d9fadca1a1e6a02ea78c9c62851
+Content SHA-256: ab5e1f73cc0d819ccc02735973f03ec126f8a3a3e2632c97aa742003a7474c10
 
 ---
 layout: default
@@ -25876,7 +26057,7 @@ The current contract was re-derived from:
 - `BuildTools/cmake/helpers/Build.cmake` and `BuildTools/cmake/helpers/State.cmake`;
 - `BuildTools/natvis/essentials.natvis`, `unordered_dense.natvis`, and `fonline.natjmc`;
 - the GLM, ImGui, small-vector, and ufbx visualizers under `ThirdParty/`;
-- `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `ExceptionHandling.*`, `BaseLogging.*`, and `Logging.cpp`;
+- `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `ExceptionHandling.*`, and `Logging.cpp`;
 - `Source/Common/DiagnosticSelfTest.cpp` and `Source/Frontend/ApplicationInit.cpp`;
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, and `AngelScriptDebugger.*`;
 - `Source/Common/Settings.inc`;
@@ -26081,11 +26262,13 @@ Normal exception callbacks use the structured logging path. Immediate repeated e
 
 `Common.AsyncLogWrite` controls normal asynchronous log delivery. Fatal crash output suspends it and flushes synchronously so a headless process does not depend on `stderr` or an unfinished writer thread.
 
+Explicit low-level fatal exits use `ReportFatalAndExit` or `ReportStrongAssertAndExit` from `FatalError.cpp`. This early layer follows `StackTrace` and `BaseLogging`, writes one synchronous native report, and delegates only process termination to `ExitApp(false)`, avoiding a reverse dependency on `ExceptionHandling`. Raw `ExitApp(false)` remains status-only: controlled compiler/input failures can return a non-zero status without being mislabeled as crashes, while true fatal callers report before exiting.
+
 ### Crash-to-log guarantee and self-test
 
 Outside a native debugger, backward-cpp handles supported Windows SEH failures and POSIX fatal signals/termination on Windows, Linux, and macOS. The Engine adds a crash reason, captures a stack, switches to synchronous log writes, and exits through the crash path. Long-lived Engine worker threads install a POSIX alternate signal stack so stack-overflow diagnostics have space to run. Third-party-created threads need the same setup before executing deeply recursive Engine work.
 
-`FO_SELFTEST_CRASH` is an environment-only destructive diagnostic hook run during application initialization after logging and exception callbacks are ready. Supported base modes are `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, and `main_strong_assert`; replace `main_` with `thread_` to run the corresponding worker-style thread route.
+`FO_SELFTEST_CRASH` is an environment-only destructive diagnostic hook run during application initialization after logging and exception callbacks are ready. Supported base modes are `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit`; replace `main_` with `thread_` to run the corresponding worker-style thread route.
 
 Run it only against an isolated disposable process and workspace. It intentionally crashes or terminates the process. An unknown mode logs a warning and continues. The Engine repository does not itself provide a subprocess acceptance runner; checked Last Frontier evidence exercises the Linux headless route, but that project test is not normative Engine proof.
 
@@ -26093,7 +26276,17 @@ Run it only against an isolated disposable process and workspace. It intentional
 
 `Source/Tests/Test_StackTrace.cpp` covers provider registration, script-layer order, nested native/script interleaving, truncation, formatting, cache reuse/eviction behavior, individual entry lookup, safe writing, and throwing-provider containment. `Test_ExceptionHandling.cpp` covers Engine exception payloads, origin/catch behavior, callback replacement, and fatal/non-fatal reporter inputs.
 
+A recoverable ImGui assertion carries only the stringified expression. `ImGuiExt::Init` therefore installs an error callback that logs `ImGui error in window '<name>': <message>` immediately before the assertion fires. For an unbalanced `Begin`/`End` in a headless client or mapper test, use that line to identify the owning window; ImGui's own debug log is unavailable because `IMGUI_DISABLE_DEBUG_TOOLS` is enabled.
+
 The current Engine suite does not open the AngelScript TCP/UDP endpoint, attach the VS Code adapter, validate Natvis in Visual Studio, or execute every crash mode as a subprocess. Those are explicit integration gaps, not implied by the native unit-test result.
+
+## Network latency emulation
+
+`Network.ArtificalLags` (milliseconds, `0` disables) delays both inbound and outbound client batches in `ClientConnection::ProcessConnection`. Each batch independently samples `ArtificalLags / 2 .. ArtificalLags`; `Network.ArtificalLagsJitter` adds another `0 .. jitter` milliseconds. The emulation delays delivery but does not throttle the network pump.
+
+Both directions are required to reproduce authority divergence. Inbound delay makes the client learn server state late; outbound delay makes the server learn client actions late. Because related messages receive independent samples, their delay difference produces divergence even though a truly fixed equal delay would cancel. Use a modest base and larger jitter to model occasional stalls.
+
+Server-to-client movement includes an `offset_time`, allowing the client to fast-forward a late movement. Client-to-server movement has no elapsed-time field; `Process_Move` starts it from the server's current frame time, so the authoritative critter trails the client by roughly one-way delay while walking. Settings participate in the generated compatibility hash; adding or renaming one does not require a manual compatibility-marker edit.
 
 ## AngelScript debugger
 
@@ -26693,7 +26886,7 @@ is intentional.
 ===== BEGIN DOCUMENT minimal-multiplayer-readme =====
 Source: Examples/MinimalMultiplayer/README.md
 Canonical URL: https://fonline.ru/Examples/MinimalMultiplayer/README.html
-Content SHA-256: 351b18d5f1eb5b39920dad6f56d11b1f23d8de7ec743bc03d9d467fd54397816
+Content SHA-256: 0020f520f46c8ba91d8217287b2f3241eb00dd2b50059cb3e08b527fee97f406
 
 ---
 permalink: /Examples/MinimalMultiplayer/README.html
@@ -26715,6 +26908,7 @@ The final state demonstrates:
 - a client-to-server item interaction;
 - one `PublicSync Persistent` critter property;
 - paired client/server remote calls and lifecycle events;
+- distance-based critter visibility through one small public server Engine hook;
 - English and Russian prototype text;
 - a server-side content test and a complete client-visible smoke test;
 - native client/server archives with inventory, hashes, and packaged runtime evidence;
@@ -26818,6 +27012,7 @@ synchronized counter in the top panel increments.
 | `Maps/TutorialMap.fomap` | the one-map world |
 | `Scripts/Tutorial.fos` | lifecycle, login, interaction, rendering, metadata, and content test |
 | `Scripts/MapperCapture.fos` | delayed full-window Mapper documentation capture |
+| `SourceExt/ServerExtension.cpp` | distance-based `CheckCritterVisibilityHook` used by the tutorial server |
 | `Particles/Documentation.spark` | minimal looping SPARK authoring fixture |
 | `assets/provenance.json` | machine-readable license and exact source hash for the Engine-owned particle texture |
 | `package-smoke.json` | packaged server/client runtime scenario and semantic evidence |
@@ -26852,17 +27047,23 @@ Build the source fixture, baked resources, Mapper, and the focused viewer:
 cmake --build Build\windows --config Release --target ForceBakeResources FOMM_Mapper FOMM_ParticleViewer
 ```
 
-Launch the deterministic documentation profile:
+Launch either deterministic documentation profile:
 
 ```powershell
 Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
   -ApplyConfig FOnlineMinimalMultiplayer.fomain `
   -ApplySubConfig MapperDocumentationCapture
+
+Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
+  -ApplyConfig FOnlineMinimalMultiplayer.fomain `
+  -ApplySubConfig MapperDocumentationSparkEditorCapture
 ```
 
-The profile opens `TutorialMap`, selects `Documentation.spk`, fixes seed,
-scale, prewarm, and a `1280x800` viewport, waits for the UI and particle to
-settle, requests the full Mapper frame, and exits after the deferred capture.
+Both profiles open `TutorialMap`, fix a `1280x800` viewport, wait for the UI to
+settle, request the full Mapper frame, and exit after the deferred capture.
+The first selects `Documentation.spk` with fixed seed, scale, and prewarm; the
+second opens the authored `Documentation.spark` source directly through
+`Mapper.SparkEditorSource` without covering it with Particle Preview.
 The TGA output is `MapperDocumentationCapture.tga` beside the launched
 process. The checked-in documentation PNGs, exact interaction steps, source
 hashes, and recapture triggers live in
@@ -27092,7 +27293,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: cd3f0ed4cac9aa7c4c70505865bfa814cb93f04fc5c2f7e84193430cc5935be5
+Content SHA-256: d422323e6854355c954b25abb0c2c2418f5d5e72ffa9ede1e6386214e0551825
 
 ---
 layout: default
@@ -27135,6 +27336,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_FileSystem.cpp`
 - `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 
 ### Core platform, containers, and utilities
 
@@ -27166,6 +27368,7 @@ python BuildTools/docs_inventory.py --check
 ### Common runtime model
 
 - `Source/Tests/Test_AnyData.cpp`
+- `Source/Tests/Test_ApplicationHeadless.cpp`
 - `Source/Tests/Test_Common.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
@@ -27225,13 +27428,14 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp`
+- `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
 - `Source/Tests/Test_ModelAnimationConverter.cpp`
 - `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
 - `Source/Tests/Test_ModelAnimationRuntime.cpp`
 - `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
 - `Source/Tests/Test_ModelSourceLoader.cpp`
 - `Source/Tests/Test_OzzAnimation.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
@@ -27252,6 +27456,8 @@ boundary.
 
 ### Rendering and frontend tests
 
+- `Source/Tests/Test_ImGui.cpp` - pins the backend-less widget activation and
+  window-state harness used by diagnostic-panel coverage.
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` - runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
   multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget
@@ -27292,6 +27498,18 @@ Coverage builds use the `FO_CODE_COVERAGE` path documented in [Testing](../../Do
 
 Coverage reports are emitted under `CodeCoverage/<Toolchain>/<Platform-Config>/`
 and exclude `Source/Tests/` from the reported source denominator.
+
+## Shared test helpers
+
+Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOURCE`:
+
+- `Source/Tests/Test_BakerHelpers.h` - baked-resource fixtures (sprites, protos, metadata) and a
+  `TestRig` that runs the real bakers over in-memory sources.
+- `Source/Tests/Test_ParticleFixtures.h` - particle asset fixtures.
+- `Source/Tests/Test_ImGuiHarness.h` - presses ImGui widgets by label so the branch behind a button,
+  checkbox, selectable or folded section runs in a headless frame. Pinned by
+  `ImGuiTestHarnessPressesWidgetsByLabel` in `Test_ImGui.cpp`; usage rules are in
+  [../../Docs/Testing.md](../../Docs/Testing.md).
 
 ## Notes
 

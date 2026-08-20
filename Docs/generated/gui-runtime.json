@@ -49,7 +49,7 @@
       "ItemView"
     ],
     "type_count": 12,
-    "api_member_count": 159,
+    "api_member_count": 160,
     "callback_signature_count": 39,
     "screen_api_overload_count": 31,
     "annotation_count": 8,
@@ -254,6 +254,7 @@
         "void SetFrameImage(hstring imageName)",
         "void SetCapInsets(int left, int top, int right, int bottom)",
         "void SetCropContent(bool enabled)",
+        "bool CropContent",
         "void SetAutoScroll(bool ver, bool hor)",
         "int VerticalScrollValue",
         "int HorizontalScrollValue",
@@ -1830,7 +1831,7 @@
           "path": "BuildTools/GuiRuntimeInterface.json",
           "anchors": [
             "\"surface\": \"gui-runtime\"",
-            "\"api_member_count\": 159"
+            "\"api_member_count\": 160"
           ]
         }
       ]
@@ -1917,5 +1918,5 @@
       "experimental": 82
     }
   },
-  "contract_digest": "ecdc56e4e0f650c6af06801b6d63159b9d39ff0d67759ba17751a9884323561a"
+  "contract_digest": "437603ed47bec7614b368acf6b424a9c27d3d7e9fce56c5211c0fa4a30d1fdbd"
 }

@@ -77,9 +77,13 @@ class TextFormatDocumentationTests(unittest.TestCase):
         }
 
         current = methods["text-format.runtime.get-current-text"]
-        self.assertIn("default is the first variant", current["behavior"])
-        self.assertIn("negative index throws", current["missing_behavior"])
+        self.assertIn("first variant", current["behavior"])
+        self.assertIn("missing key returns an empty string", current["missing_behavior"].lower())
         self.assertEqual(current["sides"], ["client", "mapper"])
+        indexed = methods["text-format.runtime.get-indexed-text"]
+        self.assertIn("zero-based variant", indexed["behavior"])
+        self.assertIn("negative index throws", indexed["missing_behavior"])
+        self.assertEqual(indexed["sides"], ["client", "mapper"])
         self.assertIn(
             "no automatic fallback",
             methods["text-format.runtime.get-language-text"]["missing_behavior"],
@@ -120,7 +124,7 @@ class TextFormatDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(heading, guide)
         self.assertIn("fallback is completed during baking", guide)
-        self.assertIn("`skipCount = 0` selects the first variant", guide)
+        self.assertIn("`Game.GetText(key)` selects", guide)
         self.assertIn("does not define `@pname@`", guide)
 
     def test_source_derived_proto_pack_drift_is_rejected(self) -> None:

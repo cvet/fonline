@@ -4,7 +4,7 @@ locale: ru
 document_id: minimal-multiplayer-readme
 ---
 
-<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"351b18d5f1eb5b39920dad6f56d11b1f23d8de7ec743bc03d9d467fd54397816"} -->
+<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"0020f520f46c8ba91d8217287b2f3241eb00dd2b50059cb3e08b527fee97f406"} -->
 
 # Минимальный многопользовательский проект FOnline
 
@@ -20,6 +20,7 @@ document_id: minimal-multiplayer-readme
 - клиент-серверное взаимодействие с предметом;
 - одно свойство криттера `PublicSync Persistent`;
 - парные клиентские и серверные remote call и события жизненного цикла;
+- видимость криттеров по расстоянию через один небольшой публичный серверный Engine hook;
 - английский и русский текст прототипов;
 - серверный тест контента и полный видимый клиенту smoke-тест;
 - нативные архивы клиента и сервера с inventory, хэшами и свидетельствами
@@ -125,6 +126,7 @@ Set-Location Build\windows
 | `Maps/TutorialMap.fomap` | мир из одной карты |
 | `Scripts/Tutorial.fos` | жизненный цикл, вход, взаимодействие, отрисовка, метаданные и тест контента |
 | `Scripts/MapperCapture.fos` | отложенный полнооконный capture документации Mapper |
+| `SourceExt/ServerExtension.cpp` | `CheckCritterVisibilityHook` для видимости по расстоянию на сервере туториала |
 | `Particles/Documentation.spark` | минимальный зацикленный fixture авторинга SPARK |
 | `assets/provenance.json` | машиночитаемая лицензия и точный хэш исходника принадлежащей движку текстуры частицы |
 | `package-smoke.json` | сценарий запуска готовых сервера и клиента и семантические свидетельства |
@@ -158,17 +160,24 @@ Package verifier использует тот же runner после провер
 cmake --build Build\windows --config Release --target ForceBakeResources FOMM_Mapper FOMM_ParticleViewer
 ```
 
-Запустите детерминированный профиль документации:
+Запустите один из детерминированных профилей документации:
 
 ```powershell
 Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
   -ApplyConfig FOnlineMinimalMultiplayer.fomain `
   -ApplySubConfig MapperDocumentationCapture
+
+Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
+  -ApplyConfig FOnlineMinimalMultiplayer.fomain `
+  -ApplySubConfig MapperDocumentationSparkEditorCapture
 ```
 
-Профиль открывает `TutorialMap`, выбирает `Documentation.spk`, фиксирует seed,
-scale, prewarm и viewport `1280x800`, ждёт стабилизации UI и частицы, запрашивает
-полный кадр Mapper и завершается после отложенного capture. Результат TGA
+Оба профиля открывают `TutorialMap`, фиксируют viewport `1280x800`, ждут
+стабилизации UI, запрашивают полный кадр Mapper и завершаются после отложенного
+capture. Первый выбирает `Documentation.spk` с фиксированными seed, scale и
+prewarm; второй напрямую открывает авторский исходник `Documentation.spark`
+через `Mapper.SparkEditorSource`, не перекрывая его окном Particle Preview.
+Результат TGA
 `MapperDocumentationCapture.tga` находится рядом с запущенным процессом.
 Добавленные в репозиторий PNG документации, точные шаги взаимодействия, хэши
 исходников и триггеры повторного capture находятся в

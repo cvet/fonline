@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -440,7 +440,7 @@ static constexpr uint64_t MODEL_ANIMATION_HASH_OFFSET = 14695981039346656037ULL;
 static constexpr uint64_t MODEL_ANIMATION_HASH_PRIME = 1099511628211ULL;
 static constexpr float32_t MODEL_ANIMATION_AFFINE_TOLERANCE = 1.0e-5f;
 static constexpr float32_t MODEL_ANIMATION_ORTHOGONAL_TOLERANCE = 1.0e-4f;
-static constexpr float32_t MODEL_ANIMATION_ROTATION_REFINEMENT_ERROR_RADIANS = 0.000872664626f; // 0.05 degree; leaves room for runtime quantization under the 0.1-degree parity budget.
+static constexpr float32_t MODEL_ANIMATION_ROTATION_REFINEMENT_ERROR_RADIANS = 0.000872664626f; // 0.05 degree; leaves room for runtime quantization under the 0.1-degree parity budget
 static constexpr size_t MODEL_ANIMATION_ROTATION_SUBDIVISION_MAX_DEPTH = 16;
 
 static_assert(MODEL_ANIMATION_RIG_MAX_JOINTS == static_cast<uint32_t>(ozz::animation::Skeleton::kMaxJoints));
@@ -708,7 +708,7 @@ static auto BuildModelAnimationCanonicalRig(const ModelSkeletonSource& base_skel
         }
         else {
             // Legacy materializes animation-only hierarchy nodes as ModelBone{},
-            // whose GLM-initialized local matrix is identity.
+            // whose GLM-initialized local matrix is identity
             result.RestTransforms[i] = ozz::math::Transform::identity();
         }
     }
@@ -1636,7 +1636,7 @@ static auto HashModelAnimationConverterPolicy(bool nearest_sampling) -> uint64_t
     FO_NO_STACK_TRACE_ENTRY();
 
     uint64_t hash = MODEL_ANIMATION_HASH_OFFSET;
-    // Stable schema-1 hash domain; its legacy spelling is part of baked cache identity.
+    // Stable schema-1 hash domain; its legacy spelling is part of baked cache identity
     HashModelAnimationString(hash, "LF ModelOzzConverter v1; retention=base-plus-selected-output-ancestors; contributed-rest=identity; crop=legacy-boundaries; rotation-refinement-error-radians=0.000872664626; runtime-rotation-budget-radians=0.001745329252; nearest=shared-timeline-with-boundary-keys; optimizer=off; endian=little");
     HashModelAnimationString(hash, MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION);
     HashModelAnimationByte(hash, nearest_sampling ? uint8_t {1} : uint8_t {0});

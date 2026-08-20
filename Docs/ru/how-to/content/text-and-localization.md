@@ -6,7 +6,7 @@ document_id: text-and-localization-guide
 permalink: /Docs/ru/how-to/content/text-and-localization.html
 ---
 
-<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"57be65d3e9a98b1492296984844523d96f9249b6671f4291dee91ae7d3d1fd68"} -->
+<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"277c0e2436801c8c10d3fe920a8cb8e4934dfae7b3c96588d627c7512d233cc7"} -->
 
 # Текст и локализация
 
@@ -103,8 +103,8 @@ Second line}
 {Ambient}{Dust}{A sheet of dust hides the horizon.}
 ```
 
-По умолчанию script API не выбирает случайный вариант. Значение
-`skipCount = 0` выбирает первый вариант. Для намеренного случайного выбора
+По умолчанию script API не выбирает случайный вариант. `Game.GetText(key)`
+выбирает первый вариант. Для намеренного случайного выбора
 получите количество через `Game.GetTextCount(key)`, выберите индекс в коде
 проекта и передайте его в `Game.GetText(key, index)`.
 
@@ -197,7 +197,8 @@ $Text [Language] [Key2] [Key3] = Value
 | API | Стороны | Поведение |
 |---|---|---|
 | `Game.GetLanguage()` | server, client, mapper | Возвращает текущую настройку `Language` как `LanguageName`. |
-| `Game.GetText(key, skipCount = 0)` | client, mapper | Возвращает вариант текущего языка по индексу. Отсутствующее значение или выход за диапазон возвращает пустую строку; отрицательный индекс вызывает исключение. |
+| `Game.GetText(key)` | client, mapper | Возвращает первый вариант текущего языка. Отсутствующий ключ даёт пустую строку. |
+| `Game.GetText(key, index)` | client, mapper | Возвращает вариант текущего языка по индексу с нуля. Отсутствующее значение или выход за диапазон возвращает пустую строку; отрицательный индекс вызывает исключение. |
 | `Game.GetText(langName, key)` | client, mapper | Использует текущий пакет при пустом или текущем `langName`; иначе загружает и кеширует указанный язык и возвращает его первый вариант. Для отсутствующего непустого языка runtime fallback не применяется. |
 | `Game.GetTextCount(key)` | server, client, mapper | Возвращает количество вариантов или ноль при отсутствии. |
 | `Game.IsTextPresent(key)` | server, client, mapper | Сообщает, существует ли хотя бы один вариант. |

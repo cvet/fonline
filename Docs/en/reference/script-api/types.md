@@ -13,7 +13,7 @@ A dash in the description column means that the owning source metadata has no do
 
 [Reference index](index.md) | [Canonical JSON model](../../../generated/api.json) | [Generation contract](../metadata/)
 
-This page contains **966** type and member symbols.
+This page contains **978** type and member symbols.
 
 ## Entities
 
@@ -32,147 +32,147 @@ This page contains **966** type and member symbols.
 <a id="symbol-script-enum-cornertype-f3531f8416"></a>
 ### <code>CornerType</code>
 
-<code>enum CornerType : uint8</code>  
-Symbol ID: <code>script.enum.CornerType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:1102](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1102)
+<code>enum CornerType : uint8</code><br>
+Symbol ID: <code>script.enum.CornerType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:1085](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1085)
 
 Wall-corner orientation used by map geometry and corner-aware rendering.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>East</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-cornertype-east-885d0fb054"></a><code>script.enum-value.CornerType.East</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1114](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1114) | Selects the east-facing wall-corner orientation. |
-| <code>EastWest</code> | <code>5</code> | 5 | <a id="symbol-script-enum-value-cornertype-eastwest-4ad68b6877"></a><code>script.enum-value.CornerType.EastWest</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1117](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1117) | Selects the combined east-west wall-corner orientation. |
-| <code>North</code> | <code>4</code> | 4 | <a id="symbol-script-enum-value-cornertype-north-091b2bd934"></a><code>script.enum-value.CornerType.North</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1116](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1116) | Selects the north-facing wall-corner orientation. |
-| <code>NorthSouth</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-cornertype-northsouth-d33aa02173"></a><code>script.enum-value.CornerType.NorthSouth</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1112](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1112) | Selects the combined north-south wall-corner orientation. |
-| <code>South</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-cornertype-south-4c4d0f1040"></a><code>script.enum-value.CornerType.South</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1115](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1115) | Selects the south-facing wall-corner orientation. |
-| <code>West</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-cornertype-west-671337b680"></a><code>script.enum-value.CornerType.West</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1113](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1113) | Selects the west-facing wall-corner orientation. |
+| <code>East</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-cornertype-east-885d0fb054"></a><code>script.enum-value.CornerType.East</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1097](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1097) | Selects the east-facing wall-corner orientation. |
+| <code>EastWest</code> | <code>5</code> | 5 | <a id="symbol-script-enum-value-cornertype-eastwest-4ad68b6877"></a><code>script.enum-value.CornerType.EastWest</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1100](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1100) | Selects the combined east-west wall-corner orientation. |
+| <code>North</code> | <code>4</code> | 4 | <a id="symbol-script-enum-value-cornertype-north-091b2bd934"></a><code>script.enum-value.CornerType.North</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1099](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1099) | Selects the north-facing wall-corner orientation. |
+| <code>NorthSouth</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-cornertype-northsouth-d33aa02173"></a><code>script.enum-value.CornerType.NorthSouth</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1095](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1095) | Selects the combined north-south wall-corner orientation. |
+| <code>South</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-cornertype-south-4c4d0f1040"></a><code>script.enum-value.CornerType.South</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1098](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1098) | Selects the south-facing wall-corner orientation. |
+| <code>West</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-cornertype-west-671337b680"></a><code>script.enum-value.CornerType.West</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1096](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1096) | Selects the west-facing wall-corner orientation. |
 
 <a id="symbol-script-enum-critteraction-3750345c21"></a>
 ### <code>CritterAction</code>
 
-<code>enum CritterAction : uint16</code>  
-Symbol ID: <code>script.enum.CritterAction</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:970](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L970)
+<code>enum CritterAction : uint16</code><br>
+Symbol ID: <code>script.enum.CritterAction</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:953](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L953)
 
 Engine-originated critter action notifications such as item movement, knockout, death, connection, and respawn.<br>Some actions have hardcoded local or server dispatch rules; project code should consume the symbolic action.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Connect</code> | <code>20</code> | 20 | <a id="symbol-script-enum-value-critteraction-connect-91d9599a8f"></a><code>script.enum-value.CritterAction.Connect</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:992](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L992) | Notifies observers that the player-controlled critter connected. |
-| <code>Dead</code> | <code>19</code> | 19 | <a id="symbol-script-enum-value-critteraction-dead-909a9304bb"></a><code>script.enum-value.CritterAction.Dead</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:991](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L991) | Notifies observers that the critter entered the dead condition. |
-| <code>Disconnect</code> | <code>21</code> | 21 | <a id="symbol-script-enum-value-critteraction-disconnect-b1cff448ec"></a><code>script.enum-value.CritterAction.Disconnect</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:993](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L993) | Notifies observers that the player-controlled critter disconnected. |
-| <code>DropItem</code> | <code>5</code> | 5 | <a id="symbol-script-enum-value-critteraction-dropitem-0b5aabf11c"></a><code>script.enum-value.CritterAction.DropItem</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:988](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L988) | Notifies observers that the critter dropped an item from a slot. |
-| <code>Knockout</code> | <code>16</code> | 16 | <a id="symbol-script-enum-value-critteraction-knockout-e94bb8c977"></a><code>script.enum-value.CritterAction.Knockout</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:989](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L989) | Notifies observers that the critter entered the knockout condition. |
-| <code>MoveItem</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-critteraction-moveitem-961b3ff13d"></a><code>script.enum-value.CritterAction.MoveItem</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:986](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L986) | Notifies observers that an item moved between critter slots. |
-| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critteraction-none-dbe33f7e48"></a><code>script.enum-value.CritterAction.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:985](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L985) | No critter action notification is selected. |
-| <code>Refresh</code> | <code>23</code> | 23 | <a id="symbol-script-enum-value-critteraction-refresh-a920e75eba"></a><code>script.enum-value.CritterAction.Refresh</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:995](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L995) | Requests observers to refresh the critter&#x27;s visual action state. |
-| <code>Respawn</code> | <code>22</code> | 22 | <a id="symbol-script-enum-value-critteraction-respawn-f3d97e6b1b"></a><code>script.enum-value.CritterAction.Respawn</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:994](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L994) | Notifies observers that the critter returned to the alive condition outside knockout recovery. |
-| <code>StandUp</code> | <code>17</code> | 17 | <a id="symbol-script-enum-value-critteraction-standup-de42a8038f"></a><code>script.enum-value.CritterAction.StandUp</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:990](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L990) | Notifies observers that the critter recovered from knockout and stood up. |
-| <code>SwapItems</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-critteraction-swapitems-9097b30148"></a><code>script.enum-value.CritterAction.SwapItems</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:987](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L987) | Notifies observers about the second item participating in a slot swap. |
+| <code>Connect</code> | <code>20</code> | 20 | <a id="symbol-script-enum-value-critteraction-connect-91d9599a8f"></a><code>script.enum-value.CritterAction.Connect</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:975](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L975) | Notifies observers that the player-controlled critter connected. |
+| <code>Dead</code> | <code>19</code> | 19 | <a id="symbol-script-enum-value-critteraction-dead-909a9304bb"></a><code>script.enum-value.CritterAction.Dead</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:974](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L974) | Notifies observers that the critter entered the dead condition. |
+| <code>Disconnect</code> | <code>21</code> | 21 | <a id="symbol-script-enum-value-critteraction-disconnect-b1cff448ec"></a><code>script.enum-value.CritterAction.Disconnect</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:976](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L976) | Notifies observers that the player-controlled critter disconnected. |
+| <code>DropItem</code> | <code>5</code> | 5 | <a id="symbol-script-enum-value-critteraction-dropitem-0b5aabf11c"></a><code>script.enum-value.CritterAction.DropItem</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:971](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L971) | Notifies observers that the critter dropped an item from a slot. |
+| <code>Knockout</code> | <code>16</code> | 16 | <a id="symbol-script-enum-value-critteraction-knockout-e94bb8c977"></a><code>script.enum-value.CritterAction.Knockout</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:972](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L972) | Notifies observers that the critter entered the knockout condition. |
+| <code>MoveItem</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-critteraction-moveitem-961b3ff13d"></a><code>script.enum-value.CritterAction.MoveItem</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:969](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L969) | Notifies observers that an item moved between critter slots. |
+| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critteraction-none-dbe33f7e48"></a><code>script.enum-value.CritterAction.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:968](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L968) | No critter action notification is selected. |
+| <code>Refresh</code> | <code>23</code> | 23 | <a id="symbol-script-enum-value-critteraction-refresh-a920e75eba"></a><code>script.enum-value.CritterAction.Refresh</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:978](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L978) | Requests observers to refresh the critter&#x27;s visual action state. |
+| <code>Respawn</code> | <code>22</code> | 22 | <a id="symbol-script-enum-value-critteraction-respawn-f3d97e6b1b"></a><code>script.enum-value.CritterAction.Respawn</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:977](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L977) | Notifies observers that the critter returned to the alive condition outside knockout recovery. |
+| <code>StandUp</code> | <code>17</code> | 17 | <a id="symbol-script-enum-value-critteraction-standup-de42a8038f"></a><code>script.enum-value.CritterAction.StandUp</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:973](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L973) | Notifies observers that the critter recovered from knockout and stood up. |
+| <code>SwapItems</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-critteraction-swapitems-9097b30148"></a><code>script.enum-value.CritterAction.SwapItems</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:970](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L970) | Notifies observers about the second item participating in a slot swap. |
 
 <a id="symbol-script-enum-critteractionanim-d1b9326b0f"></a>
 ### <code>CritterActionAnim</code>
 
-<code>enum CritterActionAnim : uint16</code>  
-Symbol ID: <code>script.enum.CritterActionAnim</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:1008](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1008)
+<code>enum CritterActionAnim : uint16</code><br>
+Symbol ID: <code>script.enum.CritterActionAnim</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:991](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L991)
 
 Requested critter movement or pose animation passed to model animation resolution.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>DeadFront</code> | <code>102</code> | 102 | <a id="symbol-script-enum-value-critteractionanim-deadfront-3ddeb54952"></a><code>script.enum-value.CritterActionAnim.DeadFront</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1039](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1039) | Requests the front-facing death animation. |
-| <code>Idle</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-critteractionanim-idle-e3b819837c"></a><code>script.enum-value.CritterActionAnim.Idle</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1027](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1027) | Requests the standing idle animation. |
-| <code>IdleProneFront</code> | <code>86</code> | 86 | <a id="symbol-script-enum-value-critteractionanim-idlepronefront-3856fdc6a8"></a><code>script.enum-value.CritterActionAnim.IdleProneFront</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1038](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1038) | Requests the front-facing prone idle animation. |
-| <code>Limp</code> | <code>4</code> | 4 | <a id="symbol-script-enum-value-critteractionanim-limp-8bc32f32d6"></a><code>script.enum-value.CritterActionAnim.Limp</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1030](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1030) | Requests the limping movement animation. |
-| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critteractionanim-none-2f257cb433"></a><code>script.enum-value.CritterActionAnim.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1026](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1026) | No action animation is requested. |
-| <code>PanicRun</code> | <code>6</code> | 6 | <a id="symbol-script-enum-value-critteractionanim-panicrun-b987d91a35"></a><code>script.enum-value.CritterActionAnim.PanicRun</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1035](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1035) | Requests the panic-running animation. |
-| <code>Run</code> | <code>5</code> | 5 | <a id="symbol-script-enum-value-critteractionanim-run-2c98d7d8ec"></a><code>script.enum-value.CritterActionAnim.Run</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1031](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1031) | Requests forward running. |
-| <code>RunBack</code> | <code>16</code> | 16 | <a id="symbol-script-enum-value-critteractionanim-runback-d524253ff7"></a><code>script.enum-value.CritterActionAnim.RunBack</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1032](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1032) | Requests backward running. |
-| <code>SneakRun</code> | <code>8</code> | 8 | <a id="symbol-script-enum-value-critteractionanim-sneakrun-9e0694f7bd"></a><code>script.enum-value.CritterActionAnim.SneakRun</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1037](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1037) | Requests running in the sneaking posture. |
-| <code>SneakWalk</code> | <code>7</code> | 7 | <a id="symbol-script-enum-value-critteractionanim-sneakwalk-0bd6c2732a"></a><code>script.enum-value.CritterActionAnim.SneakWalk</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1036](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1036) | Requests walking in the sneaking posture. |
-| <code>TurnLeft</code> | <code>18</code> | 18 | <a id="symbol-script-enum-value-critteractionanim-turnleft-015180e701"></a><code>script.enum-value.CritterActionAnim.TurnLeft</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1034](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1034) | Requests an in-place left turn. |
-| <code>TurnRight</code> | <code>17</code> | 17 | <a id="symbol-script-enum-value-critteractionanim-turnright-2c7d42713e"></a><code>script.enum-value.CritterActionAnim.TurnRight</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1033](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1033) | Requests an in-place right turn. |
-| <code>Walk</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-critteractionanim-walk-a17b0fad6a"></a><code>script.enum-value.CritterActionAnim.Walk</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1028](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1028) | Requests forward walking. |
-| <code>WalkBack</code> | <code>15</code> | 15 | <a id="symbol-script-enum-value-critteractionanim-walkback-ed52893994"></a><code>script.enum-value.CritterActionAnim.WalkBack</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1029](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1029) | Requests backward walking. |
+| <code>DeadFront</code> | <code>102</code> | 102 | <a id="symbol-script-enum-value-critteractionanim-deadfront-3ddeb54952"></a><code>script.enum-value.CritterActionAnim.DeadFront</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1022](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1022) | Requests the front-facing death animation. |
+| <code>Idle</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-critteractionanim-idle-e3b819837c"></a><code>script.enum-value.CritterActionAnim.Idle</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1010](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1010) | Requests the standing idle animation. |
+| <code>IdleProneFront</code> | <code>86</code> | 86 | <a id="symbol-script-enum-value-critteractionanim-idlepronefront-3856fdc6a8"></a><code>script.enum-value.CritterActionAnim.IdleProneFront</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1021](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1021) | Requests the front-facing prone idle animation. |
+| <code>Limp</code> | <code>4</code> | 4 | <a id="symbol-script-enum-value-critteractionanim-limp-8bc32f32d6"></a><code>script.enum-value.CritterActionAnim.Limp</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1013](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1013) | Requests the limping movement animation. |
+| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critteractionanim-none-2f257cb433"></a><code>script.enum-value.CritterActionAnim.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1009](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1009) | No action animation is requested. |
+| <code>PanicRun</code> | <code>6</code> | 6 | <a id="symbol-script-enum-value-critteractionanim-panicrun-b987d91a35"></a><code>script.enum-value.CritterActionAnim.PanicRun</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1018](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1018) | Requests the panic-running animation. |
+| <code>Run</code> | <code>5</code> | 5 | <a id="symbol-script-enum-value-critteractionanim-run-2c98d7d8ec"></a><code>script.enum-value.CritterActionAnim.Run</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1014](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1014) | Requests forward running. |
+| <code>RunBack</code> | <code>16</code> | 16 | <a id="symbol-script-enum-value-critteractionanim-runback-d524253ff7"></a><code>script.enum-value.CritterActionAnim.RunBack</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1015](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1015) | Requests backward running. |
+| <code>SneakRun</code> | <code>8</code> | 8 | <a id="symbol-script-enum-value-critteractionanim-sneakrun-9e0694f7bd"></a><code>script.enum-value.CritterActionAnim.SneakRun</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1020](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1020) | Requests running in the sneaking posture. |
+| <code>SneakWalk</code> | <code>7</code> | 7 | <a id="symbol-script-enum-value-critteractionanim-sneakwalk-0bd6c2732a"></a><code>script.enum-value.CritterActionAnim.SneakWalk</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1019](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1019) | Requests walking in the sneaking posture. |
+| <code>TurnLeft</code> | <code>18</code> | 18 | <a id="symbol-script-enum-value-critteractionanim-turnleft-015180e701"></a><code>script.enum-value.CritterActionAnim.TurnLeft</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1017](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1017) | Requests an in-place left turn. |
+| <code>TurnRight</code> | <code>17</code> | 17 | <a id="symbol-script-enum-value-critteractionanim-turnright-2c7d42713e"></a><code>script.enum-value.CritterActionAnim.TurnRight</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1016](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1016) | Requests an in-place right turn. |
+| <code>Walk</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-critteractionanim-walk-a17b0fad6a"></a><code>script.enum-value.CritterActionAnim.Walk</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1011](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1011) | Requests forward walking. |
+| <code>WalkBack</code> | <code>15</code> | 15 | <a id="symbol-script-enum-value-critteractionanim-walkback-ed52893994"></a><code>script.enum-value.CritterActionAnim.WalkBack</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1012](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1012) | Requests backward walking. |
 
 <a id="symbol-script-enum-crittercondition-f3dff81aea"></a>
 ### <code>CritterCondition</code>
 
-<code>enum CritterCondition : uint8</code>  
-Symbol ID: <code>script.enum.CritterCondition</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:957](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L957)
+<code>enum CritterCondition : uint8</code><br>
+Symbol ID: <code>script.enum.CritterCondition</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:940](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L940)
 
 High-level life condition of a critter.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Alive</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-crittercondition-alive-57871d8f60"></a><code>script.enum-value.CritterCondition.Alive</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:964](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L964) | Critter is alive and may perform normal gameplay actions. |
-| <code>Dead</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-crittercondition-dead-9dc3cf59e8"></a><code>script.enum-value.CritterCondition.Dead</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:966](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L966) | Critter is dead and uses death-state handling and animation. |
-| <code>Knockout</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-crittercondition-knockout-7e736780bf"></a><code>script.enum-value.CritterCondition.Knockout</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:965](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L965) | Critter is alive but incapacitated until it stands up or changes condition. |
+| <code>Alive</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-crittercondition-alive-57871d8f60"></a><code>script.enum-value.CritterCondition.Alive</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:947](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L947) | Critter is alive and may perform normal gameplay actions. |
+| <code>Dead</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-crittercondition-dead-9dc3cf59e8"></a><code>script.enum-value.CritterCondition.Dead</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:949](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L949) | Critter is dead and uses death-state handling and animation. |
+| <code>Knockout</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-crittercondition-knockout-7e736780bf"></a><code>script.enum-value.CritterCondition.Knockout</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:948](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L948) | Critter is alive but incapacitated until it stands up or changes condition. |
 
 <a id="symbol-script-enum-critterfindtype-f173bdcbf4"></a>
 ### <code>CritterFindType</code>
 
-<code>enum CritterFindType : uint8</code>  
-Symbol ID: <code>script.enum.CritterFindType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:1064](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1064)
+<code>enum CritterFindType : uint8</code><br>
+Symbol ID: <code>script.enum.CritterFindType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:1047](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1047)
 
 Composable filters for selecting critters by life state and player-or-NPC ownership.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Any</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critterfindtype-any-758b9aeb5e"></a><code>script.enum-value.CritterFindType.Any</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1077](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1077) | Selects critters without filtering life state or player ownership. |
-| <code>Dead</code> | <code>0x02</code> | 2 | <a id="symbol-script-enum-value-critterfindtype-dead-806a096c2c"></a><code>script.enum-value.CritterFindType.Dead</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1079](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1079) | Selects dead critters regardless of player ownership. |
-| <code>DeadNpc</code> | <code>0x22</code> | 34 | <a id="symbol-script-enum-value-critterfindtype-deadnpc-6c59ca1d9f"></a><code>script.enum-value.CritterFindType.DeadNpc</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1085](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1085) | Selects dead non-player critters. |
-| <code>DeadPlayers</code> | <code>0x12</code> | 18 | <a id="symbol-script-enum-value-critterfindtype-deadplayers-3a99704def"></a><code>script.enum-value.CritterFindType.DeadPlayers</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1083](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1083) | Selects dead player-controlled critters. |
-| <code>NonDead</code> | <code>0x01</code> | 1 | <a id="symbol-script-enum-value-critterfindtype-nondead-ddf4ff5f8a"></a><code>script.enum-value.CritterFindType.NonDead</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1078](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1078) | Selects alive and knocked-out critters while excluding dead critters. |
-| <code>NonDeadNpc</code> | <code>0x21</code> | 33 | <a id="symbol-script-enum-value-critterfindtype-nondeadnpc-ee3d30eb67"></a><code>script.enum-value.CritterFindType.NonDeadNpc</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1084](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1084) | Selects non-player critters that are not dead. |
-| <code>NonDeadPlayers</code> | <code>0x11</code> | 17 | <a id="symbol-script-enum-value-critterfindtype-nondeadplayers-11b2d40ccc"></a><code>script.enum-value.CritterFindType.NonDeadPlayers</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1082](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1082) | Selects player-controlled critters that are not dead. |
-| <code>Npc</code> | <code>0x20</code> | 32 | <a id="symbol-script-enum-value-critterfindtype-npc-42e615cf6b"></a><code>script.enum-value.CritterFindType.Npc</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1081](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1081) | Selects non-player critters regardless of life state. |
-| <code>Players</code> | <code>0x10</code> | 16 | <a id="symbol-script-enum-value-critterfindtype-players-44460b3235"></a><code>script.enum-value.CritterFindType.Players</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1080](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1080) | Selects player-controlled critters regardless of life state. |
+| <code>Any</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critterfindtype-any-758b9aeb5e"></a><code>script.enum-value.CritterFindType.Any</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1060](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1060) | Selects critters without filtering life state or player ownership. |
+| <code>Dead</code> | <code>0x02</code> | 2 | <a id="symbol-script-enum-value-critterfindtype-dead-806a096c2c"></a><code>script.enum-value.CritterFindType.Dead</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1062](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1062) | Selects dead critters regardless of player ownership. |
+| <code>DeadNpc</code> | <code>0x22</code> | 34 | <a id="symbol-script-enum-value-critterfindtype-deadnpc-6c59ca1d9f"></a><code>script.enum-value.CritterFindType.DeadNpc</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1068](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1068) | Selects dead non-player critters. |
+| <code>DeadPlayers</code> | <code>0x12</code> | 18 | <a id="symbol-script-enum-value-critterfindtype-deadplayers-3a99704def"></a><code>script.enum-value.CritterFindType.DeadPlayers</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1066](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1066) | Selects dead player-controlled critters. |
+| <code>NonDead</code> | <code>0x01</code> | 1 | <a id="symbol-script-enum-value-critterfindtype-nondead-ddf4ff5f8a"></a><code>script.enum-value.CritterFindType.NonDead</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1061](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1061) | Selects alive and knocked-out critters while excluding dead critters. |
+| <code>NonDeadNpc</code> | <code>0x21</code> | 33 | <a id="symbol-script-enum-value-critterfindtype-nondeadnpc-ee3d30eb67"></a><code>script.enum-value.CritterFindType.NonDeadNpc</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1067](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1067) | Selects non-player critters that are not dead. |
+| <code>NonDeadPlayers</code> | <code>0x11</code> | 17 | <a id="symbol-script-enum-value-critterfindtype-nondeadplayers-11b2d40ccc"></a><code>script.enum-value.CritterFindType.NonDeadPlayers</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1065](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1065) | Selects player-controlled critters that are not dead. |
+| <code>Npc</code> | <code>0x20</code> | 32 | <a id="symbol-script-enum-value-critterfindtype-npc-42e615cf6b"></a><code>script.enum-value.CritterFindType.Npc</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1064](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1064) | Selects non-player critters regardless of life state. |
+| <code>Players</code> | <code>0x10</code> | 16 | <a id="symbol-script-enum-value-critterfindtype-players-44460b3235"></a><code>script.enum-value.CritterFindType.Players</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1063](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1063) | Selects player-controlled critters regardless of life state. |
 
 <a id="symbol-script-enum-critteritemslot-048a7d85c7"></a>
 ### <code>CritterItemSlot</code>
 
-<code>enum CritterItemSlot : uint8</code>  
-Symbol ID: <code>script.enum.CritterItemSlot</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:945](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L945)
+<code>enum CritterItemSlot : uint8</code><br>
+Symbol ID: <code>script.enum.CritterItemSlot</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:928](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L928)
 
 Logical critter item destinations used for inventory, equipped-main-slot, and outside-item transfers.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Inventory</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critteritemslot-inventory-4408d91752"></a><code>script.enum-value.CritterItemSlot.Inventory</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:952](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L952) | Places the item in the critter&#x27;s unequipped inventory. |
-| <code>Main</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-critteritemslot-main-03f296c567"></a><code>script.enum-value.CritterItemSlot.Main</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:953](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L953) | Places the item in the critter&#x27;s main equipped slot. |
-| <code>Outside</code> | <code>255</code> | 255 | <a id="symbol-script-enum-value-critteritemslot-outside-298d4a4413"></a><code>script.enum-value.CritterItemSlot.Outside</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:954](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L954) | Marks the item as outside the critter&#x27;s owned inventory slots. |
+| <code>Inventory</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critteritemslot-inventory-4408d91752"></a><code>script.enum-value.CritterItemSlot.Inventory</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:935](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L935) | Places the item in the critter&#x27;s unequipped inventory. |
+| <code>Main</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-critteritemslot-main-03f296c567"></a><code>script.enum-value.CritterItemSlot.Main</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:936](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L936) | Places the item in the critter&#x27;s main equipped slot. |
+| <code>Outside</code> | <code>255</code> | 255 | <a id="symbol-script-enum-value-critteritemslot-outside-298d4a4413"></a><code>script.enum-value.CritterItemSlot.Outside</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:937](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L937) | Marks the item as outside the critter&#x27;s owned inventory slots. |
 
 <a id="symbol-script-enum-critterproperty-e40cb3adb6"></a>
 ### <code>CritterProperty</code>
 
-<code>enum CritterProperty : uint16</code>  
-Symbol ID: <code>script.enum.CritterProperty</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum CritterProperty : uint16</code><br>
+Symbol ID: <code>script.enum.CritterProperty</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: -
 
 Generated identifiers for properties exported by the Critter script entity. Values are assigned in export order and are intended for property metadata and change notifications.
@@ -219,63 +219,89 @@ Generated identifiers for properties exported by the Critter script entity. Valu
 <a id="symbol-script-enum-critterseetype-f8dc891511"></a>
 ### <code>CritterSeeType</code>
 
-<code>enum CritterSeeType : uint8</code>  
-Symbol ID: <code>script.enum.CritterSeeType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:1042](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1042)
+<code>enum CritterSeeType : uint8</code><br>
+Symbol ID: <code>script.enum.CritterSeeType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:1025](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1025)
 
 Perspective used by critter visibility queries: either direction or their union.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Any</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critterseetype-any-fc4646a4c5"></a><code>script.enum-value.CritterSeeType.Any</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1049](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1049) | Returns the union of incoming and outgoing critter visibility relations. |
-| <code>WhoISee</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-critterseetype-whoisee-14d3d5b178"></a><code>script.enum-value.CritterSeeType.WhoISee</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1051](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1051) | Selects critters currently visible to this critter. |
-| <code>WhoSeeMe</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-critterseetype-whoseeme-143f0263bb"></a><code>script.enum-value.CritterSeeType.WhoSeeMe</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1050](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1050) | Selects critters whose visibility relation currently includes this critter. |
+| <code>Any</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critterseetype-any-fc4646a4c5"></a><code>script.enum-value.CritterSeeType.Any</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1032](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1032) | Returns the union of incoming and outgoing critter visibility relations. |
+| <code>WhoISee</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-critterseetype-whoisee-14d3d5b178"></a><code>script.enum-value.CritterSeeType.WhoISee</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1034](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1034) | Selects critters currently visible to this critter. |
+| <code>WhoSeeMe</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-critterseetype-whoseeme-143f0263bb"></a><code>script.enum-value.CritterSeeType.WhoSeeMe</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1033](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1033) | Selects critters whose visibility relation currently includes this critter. |
 
 <a id="symbol-script-enum-critterstateanim-36ce6b6f9c"></a>
 ### <code>CritterStateAnim</code>
 
-<code>enum CritterStateAnim : uint16</code>  
-Symbol ID: <code>script.enum.CritterStateAnim</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:998](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L998)
+<code>enum CritterStateAnim : uint16</code><br>
+Symbol ID: <code>script.enum.CritterStateAnim</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:981](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L981)
 
 Persistent critter animation posture passed to model animation resolution.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critterstateanim-none-19de5ffb41"></a><code>script.enum-value.CritterStateAnim.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1004](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1004) | No persistent critter animation posture is selected. |
-| <code>Unarmed</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-critterstateanim-unarmed-3edc820536"></a><code>script.enum-value.CritterStateAnim.Unarmed</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1005](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1005) | Selects the unarmed persistent animation posture. |
+| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-critterstateanim-none-19de5ffb41"></a><code>script.enum-value.CritterStateAnim.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:987](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L987) | No persistent critter animation posture is selected. |
+| <code>Unarmed</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-critterstateanim-unarmed-3edc820536"></a><code>script.enum-value.CritterStateAnim.Unarmed</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:988](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L988) | Selects the unarmed persistent animation posture. |
 
 <a id="symbol-script-enum-crittervisibilitymode-9fd00f2322"></a>
 ### <code>CritterVisibilityMode</code>
 
-<code>enum CritterVisibilityMode : uint8</code>  
-Symbol ID: <code>script.enum.CritterVisibilityMode</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:1054](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1054)
+<code>enum CritterVisibilityMode : uint8</code><br>
+Symbol ID: <code>script.enum.CritterVisibilityMode</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:1037](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1037)
 
 Visibility override applied to a critter independently of normal perception checks.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Full</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-crittervisibilitymode-full-659bf2f786"></a><code>script.enum-value.CritterVisibilityMode.Full</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1061](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1061) | Forces the target into full visibility for the selected relation. |
-| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-crittervisibilitymode-none-354691628c"></a><code>script.enum-value.CritterVisibilityMode.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1060](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1060) | Applies no full-visibility override and uses normal perception rules. |
+| <code>Full</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-crittervisibilitymode-full-659bf2f786"></a><code>script.enum-value.CritterVisibilityMode.Full</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1044](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1044) | Forces the target into full visibility for the selected relation. |
+| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-crittervisibilitymode-none-354691628c"></a><code>script.enum-value.CritterVisibilityMode.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1043](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1043) | Applies no full-visibility override and uses normal perception rules. |
+
+<a id="symbol-script-enum-disconnectreason-ef0cb7b748"></a>
+### <code>DisconnectReason</code>
+
+<code>enum DisconnectReason : uint8</code><br>
+Symbol ID: <code>script.enum.DisconnectReason</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Server/ServerConnection.h:45](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L45)
+
+Why a connection was closed. Recorded on the connection itself so the reason outlives the code path<br>that ended it and is still readable while scripts run their logout handlers
+
+| Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| <code>ClientClosed</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-disconnectreason-clientclosed-324b20e4a1"></a><code>script.enum-value.DisconnectReason.ClientClosed</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:61](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L61) | Indicates that the transport reported the peer disappearing; voluntary quit and network loss are indistinguishable. |
+| <code>InactivityTimeout</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-disconnectreason-inactivitytimeout-2c5f873ced"></a><code>script.enum-value.DisconnectReason.InactivityTimeout</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:62](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L62) | Indicates that no inbound message arrived before the configured inactivity deadline. |
+| <code>LoginFailed</code> | <code>9</code> | 9 | <a id="symbol-script-enum-value-disconnectreason-loginfailed-28fc70b142"></a><code>script.enum-value.DisconnectReason.LoginFailed</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:69](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L69) | Indicates that login was rolled back after a server-side failure. |
+| <code>LoginTimeout</code> | <code>4</code> | 4 | <a id="symbol-script-enum-value-disconnectreason-logintimeout-275c9538d0"></a><code>script.enum-value.DisconnectReason.LoginTimeout</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:64](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L64) | Indicates that a pre-login connection made no progress before the configured login deadline. |
+| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-disconnectreason-none-2f321b0a0f"></a><code>script.enum-value.DisconnectReason.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:60](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L60) | Indicates that the connection has not recorded a close cause. |
+| <code>PingTimeout</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-disconnectreason-pingtimeout-c5e117b1e1"></a><code>script.enum-value.DisconnectReason.PingTimeout</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:63](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L63) | Indicates that the peer did not answer the previous server ping. |
+| <code>ProtocolError</code> | <code>5</code> | 5 | <a id="symbol-script-enum-value-disconnectreason-protocolerror-ceb9681f69"></a><code>script.enum-value.DisconnectReason.ProtocolError</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:65](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L65) | Indicates malformed or unexpected protocol data or failed connection publication. |
+| <code>ReplacedByReconnect</code> | <code>10</code> | 10 | <a id="symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9"></a><code>script.enum-value.DisconnectReason.ReplacedByReconnect</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:70](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L70) | Indicates that a new login for the same account replaced this session. |
+| <code>ScriptRequest</code> | <code>8</code> | 8 | <a id="symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475"></a><code>script.enum-value.DisconnectReason.ScriptRequest</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:68](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L68) | Indicates that server script called Player.HardDisconnect(). |
+| <code>ServerShutdown</code> | <code>7</code> | 7 | <a id="symbol-script-enum-value-disconnectreason-servershutdown-961dcb4bf7"></a><code>script.enum-value.DisconnectReason.ServerShutdown</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:67](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L67) | Indicates an orderly server shutdown. |
+| <code>UpdaterError</code> | <code>6</code> | 6 | <a id="symbol-script-enum-value-disconnectreason-updatererror-5b47869039"></a><code>script.enum-value.DisconnectReason.UpdaterError</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Server/ServerConnection.h:66](https://github.com/cvet/fonline/blob/master/Source/Server/ServerConnection.h#L66) | Indicates that the client requested an invalid updater file or range. |
 
 <a id="symbol-script-enum-drawordertype-be7793e78b"></a>
 ### <code>DrawOrderType</code>
 
-<code>enum DrawOrderType : uint8</code>  
-Symbol ID: <code>script.enum.DrawOrderType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum DrawOrderType : uint8</code><br>
+Symbol ID: <code>script.enum.DrawOrderType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Client/MapSprite.h:49](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L49)
 
 Ordered map-render layers spanning flat sprites, lighting, normal objects, particles, and roofs.
@@ -311,11 +337,11 @@ Ordered map-render layers spanning flat sprites, lighting, normal objects, parti
 <a id="symbol-script-enum-effecttype-1fd00760a6"></a>
 ### <code>EffectType</code>
 
-<code>enum EffectType : uint32</code>  
-Symbol ID: <code>script.enum.EffectType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum EffectType : uint32</code><br>
+Symbol ID: <code>script.enum.EffectType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Client/EffectManager.h:50](https://github.com/cvet/fonline/blob/master/Source/Client/EffectManager.h#L50)
 
 Bit mask selecting the render pipeline or flush stage served by an effect.
@@ -344,11 +370,11 @@ Bit mask selecting the render pipeline or flush stage served by an effect.
 <a id="symbol-script-enum-eggappearencetype-ebf1416838"></a>
 ### <code>EggAppearenceType</code>
 
-<code>enum EggAppearenceType : uint8</code>  
-Symbol ID: <code>script.enum.EggAppearenceType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum EggAppearenceType : uint8</code><br>
+Symbol ID: <code>script.enum.EggAppearenceType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Client/MapSprite.h:111](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L111)
 
 Conditions under which a map sprite participates in the transparency-egg cutout around the player.
@@ -365,66 +391,66 @@ Conditions under which a map sprite participates in the transparency-egg cutout 
 <a id="symbol-script-enum-engineinfomessage-eb0aa0fd80"></a>
 ### <code>EngineInfoMessage</code>
 
-<code>enum EngineInfoMessage : uint16</code>  
-Symbol ID: <code>script.enum.EngineInfoMessage</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:394](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L394)
+<code>enum EngineInfoMessage : uint16</code><br>
+Symbol ID: <code>script.enum.EngineInfoMessage</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:377](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L377)
 
 Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>KickedFromGame</code> | <code>5000</code> | 5000 | <a id="symbol-script-enum-value-engineinfomessage-kickedfromgame-097acf4b41"></a><code>script.enum-value.EngineInfoMessage.KickedFromGame</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:478](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L478) | Identifies forced removal of the player from the active game session. |
-| <code>NetBan</code> | <code>1046</code> | 1046 | <a id="symbol-script-enum-value-engineinfomessage-netban-d4540fc4b1"></a><code>script.enum-value.EngineInfoMessage.NetBan</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:474](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L474) | Identifies the primary notification that the player or account has been banned. |
-| <code>NetBanReason</code> | <code>1047</code> | 1047 | <a id="symbol-script-enum-value-engineinfomessage-netbanreason-bb6fe5b413"></a><code>script.enum-value.EngineInfoMessage.NetBanReason</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:475](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L475) | Identifies detailed ban metadata such as issuer, duration, and reason supplied by the project. |
-| <code>NetBanned</code> | <code>1034</code> | 1034 | <a id="symbol-script-enum-value-engineinfomessage-netbanned-32ed789f19"></a><code>script.enum-value.EngineInfoMessage.NetBanned</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:465](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L465) | Identifies an account that is blocked from logging in. |
-| <code>NetBannedIp</code> | <code>1043</code> | 1043 | <a id="symbol-script-enum-value-engineinfomessage-netbannedip-7af6c55008"></a><code>script.enum-value.EngineInfoMessage.NetBannedIp</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:472](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L472) | Identifies a connection rejected because its source IP address is blocked. |
-| <code>NetBdError</code> | <code>1023</code> | 1023 | <a id="symbol-script-enum-value-engineinfomessage-netbderror-5064befe7d"></a><code>script.enum-value.EngineInfoMessage.NetBdError</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:454](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L454) | Identifies a backend database failure while processing the requested account or game operation. |
-| <code>NetBeginEndSpaces</code> | <code>1032</code> | 1032 | <a id="symbol-script-enum-value-engineinfomessage-netbeginendspaces-e2f5ccf473"></a><code>script.enum-value.EngineInfoMessage.NetBeginEndSpaces</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:463](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L463) | Identifies a name rejected because it begins or ends with whitespace. |
-| <code>NetConnError</code> | <code>1008</code> | 1008 | <a id="symbol-script-enum-value-engineinfomessage-netconnerror-2356e96db0"></a><code>script.enum-value.EngineInfoMessage.NetConnError</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:446](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L446) | Identifies a generic connection error after a connection attempt or active session failure. |
-| <code>NetConnFail</code> | <code>1018</code> | 1018 | <a id="symbol-script-enum-value-engineinfomessage-netconnfail-0d95e499a0"></a><code>script.enum-value.EngineInfoMessage.NetConnFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:450](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L450) | Identifies failure to establish a connection to the game server. |
-| <code>NetConnSuccess</code> | <code>1010</code> | 1010 | <a id="symbol-script-enum-value-engineinfomessage-netconnsuccess-aa67573ca6"></a><code>script.enum-value.EngineInfoMessage.NetConnSuccess</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:447](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L447) | Identifies successful transport connection before or during authentication. |
-| <code>NetConnection</code> | <code>1007</code> | 1007 | <a id="symbol-script-enum-value-engineinfomessage-netconnection-e2ad51dc5d"></a><code>script.enum-value.EngineInfoMessage.NetConnection</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:445](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L445) | Identifies the client status while it is initiating a server connection. |
-| <code>NetDataTransErr</code> | <code>1025</code> | 1025 | <a id="symbol-script-enum-value-engineinfomessage-netdatatranserr-cdd6fd26d1"></a><code>script.enum-value.EngineInfoMessage.NetDataTransErr</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:456](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L456) | Identifies an error while transferring or decoding connection data. |
-| <code>NetDifferentLang</code> | <code>1030</code> | 1030 | <a id="symbol-script-enum-value-engineinfomessage-netdifferentlang-52d7db7f45"></a><code>script.enum-value.EngineInfoMessage.NetDifferentLang</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:461](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L461) | Identifies a name rejected for mixing characters from different language alphabets. |
-| <code>NetDisconnByDemand</code> | <code>1013</code> | 1013 | <a id="symbol-script-enum-value-engineinfomessage-netdisconnbydemand-8790c6f93a"></a><code>script.enum-value.EngineInfoMessage.NetDisconnByDemand</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:449](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L449) | Identifies a disconnect requested explicitly by the player or client. |
-| <code>NetFailRunStartScript</code> | <code>1038</code> | 1038 | <a id="symbol-script-enum-value-engineinfomessage-netfailrunstartscript-6a18533bba"></a><code>script.enum-value.EngineInfoMessage.NetFailRunStartScript</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:469](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L469) | Identifies client startup failure while executing the project&#x27;s start script. |
-| <code>NetFailToLoadIface</code> | <code>1037</code> | 1037 | <a id="symbol-script-enum-value-engineinfomessage-netfailtoloadiface-3c6d0e49f2"></a><code>script.enum-value.EngineInfoMessage.NetFailToLoadIface</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:468](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L468) | Identifies client startup failure while loading the user interface. |
-| <code>NetHexesBusy</code> | <code>1012</code> | 1012 | <a id="symbol-script-enum-value-engineinfomessage-nethexesbusy-58c9ad500c"></a><code>script.enum-value.EngineInfoMessage.NetHexesBusy</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:448](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L448) | Identifies entry or spawning rejected because the required destination hexes are occupied. |
-| <code>NetKnockKnock</code> | <code>1041</code> | 1041 | <a id="symbol-script-enum-value-engineinfomessage-netknockknock-39d7b473fb"></a><code>script.enum-value.EngineInfoMessage.NetKnockKnock</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:471](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L471) | Reserves the legacy knock-knock informational slot; embedding scripts define its concrete liveness or status use. |
-| <code>NetLanguageNotSupported</code> | <code>1039</code> | 1039 | <a id="symbol-script-enum-value-engineinfomessage-netlanguagenotsupported-a15ebfd2ba"></a><code>script.enum-value.EngineInfoMessage.NetLanguageNotSupported</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:470](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L470) | Identifies an unsupported selected language and the need to use a project-defined fallback. |
-| <code>NetLoginOk</code> | <code>1028</code> | 1028 | <a id="symbol-script-enum-value-engineinfomessage-netloginok-8f66788736"></a><code>script.enum-value.EngineInfoMessage.NetLoginOk</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:459](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L459) | Identifies successful authentication and transition to game-state or map loading. |
-| <code>NetLoginScriptFail</code> | <code>1048</code> | 1048 | <a id="symbol-script-enum-value-engineinfomessage-netloginscriptfail-b4f3577626"></a><code>script.enum-value.EngineInfoMessage.NetLoginScriptFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:476](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L476) | Identifies authentication rejected because a project login script failed. |
-| <code>NetManySymbols</code> | <code>1031</code> | 1031 | <a id="symbol-script-enum-value-engineinfomessage-netmanysymbols-f0896dd106"></a><code>script.enum-value.EngineInfoMessage.NetManySymbols</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:462](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L462) | Identifies a name rejected because too much of it consists of non-letter symbols. |
-| <code>NetNameWrongChars</code> | <code>1035</code> | 1035 | <a id="symbol-script-enum-value-engineinfomessage-netnamewrongchars-aecf8e19c4"></a><code>script.enum-value.EngineInfoMessage.NetNameWrongChars</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:466](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L466) | Identifies a name containing characters forbidden by the project&#x27;s account policy. |
-| <code>NetNetMsgErr</code> | <code>1026</code> | 1026 | <a id="symbol-script-enum-value-engineinfomessage-netnetmsgerr-744fd68628"></a><code>script.enum-value.EngineInfoMessage.NetNetMsgErr</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:457](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L457) | Identifies a malformed, invalid, or otherwise unacceptable network message. |
-| <code>NetPassWrongChars</code> | <code>1036</code> | 1036 | <a id="symbol-script-enum-value-engineinfomessage-netpasswrongchars-6f8a83a8f3"></a><code>script.enum-value.EngineInfoMessage.NetPassWrongChars</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:467](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L467) | Identifies a password containing characters forbidden by the project&#x27;s account policy. |
-| <code>NetPermanentDeath</code> | <code>1049</code> | 1049 | <a id="symbol-script-enum-value-engineinfomessage-netpermanentdeath-7e783217fd"></a><code>script.enum-value.EngineInfoMessage.NetPermanentDeath</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:477](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L477) | Identifies a project-defined permanent-death state that prevents continuing with the affected character or account. |
-| <code>NetPlayerAlready</code> | <code>1003</code> | 1003 | <a id="symbol-script-enum-value-engineinfomessage-netplayeralready-cece50913b"></a><code>script.enum-value.EngineInfoMessage.NetPlayerAlready</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:443](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L443) | Identifies account creation rejected because the requested login already exists. |
-| <code>NetPlayerInGame</code> | <code>1004</code> | 1004 | <a id="symbol-script-enum-value-engineinfomessage-netplayeringame-aaaf630586"></a><code>script.enum-value.EngineInfoMessage.NetPlayerInGame</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:444](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L444) | Identifies login rejected because the account already has an active game session. |
-| <code>NetSetProtoErr</code> | <code>1027</code> | 1027 | <a id="symbol-script-enum-value-engineinfomessage-netsetprotoerr-2d97805d8a"></a><code>script.enum-value.EngineInfoMessage.NetSetProtoErr</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:458](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L458) | Identifies an internal server failure while assigning or initializing required prototype state. |
-| <code>NetStartCoordFail</code> | <code>1022</code> | 1022 | <a id="symbol-script-enum-value-engineinfomessage-netstartcoordfail-baa9ad86f2"></a><code>script.enum-value.EngineInfoMessage.NetStartCoordFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:453](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L453) | Identifies failure to resolve starting map coordinates during player entry or creation. |
-| <code>NetStartLocFail</code> | <code>1020</code> | 1020 | <a id="symbol-script-enum-value-engineinfomessage-netstartlocfail-8c02af9fb8"></a><code>script.enum-value.EngineInfoMessage.NetStartLocFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:451](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L451) | Identifies failure to resolve the starting location during player entry or creation. |
-| <code>NetStartMapFail</code> | <code>1021</code> | 1021 | <a id="symbol-script-enum-value-engineinfomessage-netstartmapfail-6cfc227443"></a><code>script.enum-value.EngineInfoMessage.NetStartMapFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:452](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L452) | Identifies failure to resolve the starting map during player entry or creation. |
-| <code>NetTimeLeft</code> | <code>1045</code> | 1045 | <a id="symbol-script-enum-value-engineinfomessage-nettimeleft-7885fbf05a"></a><code>script.enum-value.EngineInfoMessage.NetTimeLeft</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:473](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L473) | Identifies a temporary restriction or session timer whose remaining duration is supplied by project text or extra data. |
-| <code>NetTwoSpace</code> | <code>1033</code> | 1033 | <a id="symbol-script-enum-value-engineinfomessage-nettwospace-d447304a66"></a><code>script.enum-value.EngineInfoMessage.NetTwoSpace</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:464](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L464) | Identifies a name rejected because it contains consecutive spaces. |
-| <code>NetWrongLogin</code> | <code>1001</code> | 1001 | <a id="symbol-script-enum-value-engineinfomessage-netwronglogin-2e412e22b9"></a><code>script.enum-value.EngineInfoMessage.NetWrongLogin</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:441](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L441) | Identifies a login rejection caused by an invalid account or login identifier. |
-| <code>NetWrongNetProto</code> | <code>1024</code> | 1024 | <a id="symbol-script-enum-value-engineinfomessage-netwrongnetproto-1278e9d4b3"></a><code>script.enum-value.EngineInfoMessage.NetWrongNetProto</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:455](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L455) | Identifies a client/server network-protocol version mismatch. |
-| <code>NetWrongPass</code> | <code>1002</code> | 1002 | <a id="symbol-script-enum-value-engineinfomessage-netwrongpass-71a3a7cba8"></a><code>script.enum-value.EngineInfoMessage.NetWrongPass</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:442](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L442) | Identifies a login rejection caused by an invalid password or equivalent authentication secret. |
-| <code>NetWrongTagSkill</code> | <code>1029</code> | 1029 | <a id="symbol-script-enum-value-engineinfomessage-netwrongtagskill-fe6472051b"></a><code>script.enum-value.EngineInfoMessage.NetWrongTagSkill</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:460](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L460) | Identifies character creation rejected because the required tagged-skill selection is invalid. |
-| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-engineinfomessage-none-e3a03105e2"></a><code>script.enum-value.EngineInfoMessage.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:440](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L440) | Selects no conventional engine information-message slot. |
-| <code>ServerLog</code> | <code>5001</code> | 5001 | <a id="symbol-script-enum-value-engineinfomessage-serverlog-bb9788eff7"></a><code>script.enum-value.EngineInfoMessage.ServerLog</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:479](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L479) | Identifies a server-log message whose reader-facing payload is carried in extraText. |
+| <code>KickedFromGame</code> | <code>5000</code> | 5000 | <a id="symbol-script-enum-value-engineinfomessage-kickedfromgame-097acf4b41"></a><code>script.enum-value.EngineInfoMessage.KickedFromGame</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:461](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L461) | Identifies forced removal of the player from the active game session. |
+| <code>NetBan</code> | <code>1046</code> | 1046 | <a id="symbol-script-enum-value-engineinfomessage-netban-d4540fc4b1"></a><code>script.enum-value.EngineInfoMessage.NetBan</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:457](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L457) | Identifies the primary notification that the player or account has been banned. |
+| <code>NetBanReason</code> | <code>1047</code> | 1047 | <a id="symbol-script-enum-value-engineinfomessage-netbanreason-bb6fe5b413"></a><code>script.enum-value.EngineInfoMessage.NetBanReason</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:458](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L458) | Identifies detailed ban metadata such as issuer, duration, and reason supplied by the project. |
+| <code>NetBanned</code> | <code>1034</code> | 1034 | <a id="symbol-script-enum-value-engineinfomessage-netbanned-32ed789f19"></a><code>script.enum-value.EngineInfoMessage.NetBanned</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:448](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L448) | Identifies an account that is blocked from logging in. |
+| <code>NetBannedIp</code> | <code>1043</code> | 1043 | <a id="symbol-script-enum-value-engineinfomessage-netbannedip-7af6c55008"></a><code>script.enum-value.EngineInfoMessage.NetBannedIp</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:455](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L455) | Identifies a connection rejected because its source IP address is blocked. |
+| <code>NetBdError</code> | <code>1023</code> | 1023 | <a id="symbol-script-enum-value-engineinfomessage-netbderror-5064befe7d"></a><code>script.enum-value.EngineInfoMessage.NetBdError</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:437](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L437) | Identifies a backend database failure while processing the requested account or game operation. |
+| <code>NetBeginEndSpaces</code> | <code>1032</code> | 1032 | <a id="symbol-script-enum-value-engineinfomessage-netbeginendspaces-e2f5ccf473"></a><code>script.enum-value.EngineInfoMessage.NetBeginEndSpaces</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:446](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L446) | Identifies a name rejected because it begins or ends with whitespace. |
+| <code>NetConnError</code> | <code>1008</code> | 1008 | <a id="symbol-script-enum-value-engineinfomessage-netconnerror-2356e96db0"></a><code>script.enum-value.EngineInfoMessage.NetConnError</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:429](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L429) | Identifies a generic connection error after a connection attempt or active session failure. |
+| <code>NetConnFail</code> | <code>1018</code> | 1018 | <a id="symbol-script-enum-value-engineinfomessage-netconnfail-0d95e499a0"></a><code>script.enum-value.EngineInfoMessage.NetConnFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:433](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L433) | Identifies failure to establish a connection to the game server. |
+| <code>NetConnSuccess</code> | <code>1010</code> | 1010 | <a id="symbol-script-enum-value-engineinfomessage-netconnsuccess-aa67573ca6"></a><code>script.enum-value.EngineInfoMessage.NetConnSuccess</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:430](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L430) | Identifies successful transport connection before or during authentication. |
+| <code>NetConnection</code> | <code>1007</code> | 1007 | <a id="symbol-script-enum-value-engineinfomessage-netconnection-e2ad51dc5d"></a><code>script.enum-value.EngineInfoMessage.NetConnection</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:428](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L428) | Identifies the client status while it is initiating a server connection. |
+| <code>NetDataTransErr</code> | <code>1025</code> | 1025 | <a id="symbol-script-enum-value-engineinfomessage-netdatatranserr-cdd6fd26d1"></a><code>script.enum-value.EngineInfoMessage.NetDataTransErr</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:439](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L439) | Identifies an error while transferring or decoding connection data. |
+| <code>NetDifferentLang</code> | <code>1030</code> | 1030 | <a id="symbol-script-enum-value-engineinfomessage-netdifferentlang-52d7db7f45"></a><code>script.enum-value.EngineInfoMessage.NetDifferentLang</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:444](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L444) | Identifies a name rejected for mixing characters from different language alphabets. |
+| <code>NetDisconnByDemand</code> | <code>1013</code> | 1013 | <a id="symbol-script-enum-value-engineinfomessage-netdisconnbydemand-8790c6f93a"></a><code>script.enum-value.EngineInfoMessage.NetDisconnByDemand</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:432](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L432) | Identifies a disconnect requested explicitly by the player or client. |
+| <code>NetFailRunStartScript</code> | <code>1038</code> | 1038 | <a id="symbol-script-enum-value-engineinfomessage-netfailrunstartscript-6a18533bba"></a><code>script.enum-value.EngineInfoMessage.NetFailRunStartScript</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:452](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L452) | Identifies client startup failure while executing the project&#x27;s start script. |
+| <code>NetFailToLoadIface</code> | <code>1037</code> | 1037 | <a id="symbol-script-enum-value-engineinfomessage-netfailtoloadiface-3c6d0e49f2"></a><code>script.enum-value.EngineInfoMessage.NetFailToLoadIface</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:451](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L451) | Identifies client startup failure while loading the user interface. |
+| <code>NetHexesBusy</code> | <code>1012</code> | 1012 | <a id="symbol-script-enum-value-engineinfomessage-nethexesbusy-58c9ad500c"></a><code>script.enum-value.EngineInfoMessage.NetHexesBusy</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:431](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L431) | Identifies entry or spawning rejected because the required destination hexes are occupied. |
+| <code>NetKnockKnock</code> | <code>1041</code> | 1041 | <a id="symbol-script-enum-value-engineinfomessage-netknockknock-39d7b473fb"></a><code>script.enum-value.EngineInfoMessage.NetKnockKnock</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:454](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L454) | Reserves the legacy knock-knock informational slot; embedding scripts define its concrete liveness or status use. |
+| <code>NetLanguageNotSupported</code> | <code>1039</code> | 1039 | <a id="symbol-script-enum-value-engineinfomessage-netlanguagenotsupported-a15ebfd2ba"></a><code>script.enum-value.EngineInfoMessage.NetLanguageNotSupported</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:453](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L453) | Identifies an unsupported selected language and the need to use a project-defined fallback. |
+| <code>NetLoginOk</code> | <code>1028</code> | 1028 | <a id="symbol-script-enum-value-engineinfomessage-netloginok-8f66788736"></a><code>script.enum-value.EngineInfoMessage.NetLoginOk</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:442](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L442) | Identifies successful authentication and transition to game-state or map loading. |
+| <code>NetLoginScriptFail</code> | <code>1048</code> | 1048 | <a id="symbol-script-enum-value-engineinfomessage-netloginscriptfail-b4f3577626"></a><code>script.enum-value.EngineInfoMessage.NetLoginScriptFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:459](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L459) | Identifies authentication rejected because a project login script failed. |
+| <code>NetManySymbols</code> | <code>1031</code> | 1031 | <a id="symbol-script-enum-value-engineinfomessage-netmanysymbols-f0896dd106"></a><code>script.enum-value.EngineInfoMessage.NetManySymbols</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:445](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L445) | Identifies a name rejected because too much of it consists of non-letter symbols. |
+| <code>NetNameWrongChars</code> | <code>1035</code> | 1035 | <a id="symbol-script-enum-value-engineinfomessage-netnamewrongchars-aecf8e19c4"></a><code>script.enum-value.EngineInfoMessage.NetNameWrongChars</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:449](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L449) | Identifies a name containing characters forbidden by the project&#x27;s account policy. |
+| <code>NetNetMsgErr</code> | <code>1026</code> | 1026 | <a id="symbol-script-enum-value-engineinfomessage-netnetmsgerr-744fd68628"></a><code>script.enum-value.EngineInfoMessage.NetNetMsgErr</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:440](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L440) | Identifies a malformed, invalid, or otherwise unacceptable network message. |
+| <code>NetPassWrongChars</code> | <code>1036</code> | 1036 | <a id="symbol-script-enum-value-engineinfomessage-netpasswrongchars-6f8a83a8f3"></a><code>script.enum-value.EngineInfoMessage.NetPassWrongChars</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:450](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L450) | Identifies a password containing characters forbidden by the project&#x27;s account policy. |
+| <code>NetPermanentDeath</code> | <code>1049</code> | 1049 | <a id="symbol-script-enum-value-engineinfomessage-netpermanentdeath-7e783217fd"></a><code>script.enum-value.EngineInfoMessage.NetPermanentDeath</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:460](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L460) | Identifies a project-defined permanent-death state that prevents continuing with the affected character or account. |
+| <code>NetPlayerAlready</code> | <code>1003</code> | 1003 | <a id="symbol-script-enum-value-engineinfomessage-netplayeralready-cece50913b"></a><code>script.enum-value.EngineInfoMessage.NetPlayerAlready</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:426](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L426) | Identifies account creation rejected because the requested login already exists. |
+| <code>NetPlayerInGame</code> | <code>1004</code> | 1004 | <a id="symbol-script-enum-value-engineinfomessage-netplayeringame-aaaf630586"></a><code>script.enum-value.EngineInfoMessage.NetPlayerInGame</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:427](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L427) | Identifies login rejected because the account already has an active game session. |
+| <code>NetSetProtoErr</code> | <code>1027</code> | 1027 | <a id="symbol-script-enum-value-engineinfomessage-netsetprotoerr-2d97805d8a"></a><code>script.enum-value.EngineInfoMessage.NetSetProtoErr</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:441](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L441) | Identifies an internal server failure while assigning or initializing required prototype state. |
+| <code>NetStartCoordFail</code> | <code>1022</code> | 1022 | <a id="symbol-script-enum-value-engineinfomessage-netstartcoordfail-baa9ad86f2"></a><code>script.enum-value.EngineInfoMessage.NetStartCoordFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:436](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L436) | Identifies failure to resolve starting map coordinates during player entry or creation. |
+| <code>NetStartLocFail</code> | <code>1020</code> | 1020 | <a id="symbol-script-enum-value-engineinfomessage-netstartlocfail-8c02af9fb8"></a><code>script.enum-value.EngineInfoMessage.NetStartLocFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:434](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L434) | Identifies failure to resolve the starting location during player entry or creation. |
+| <code>NetStartMapFail</code> | <code>1021</code> | 1021 | <a id="symbol-script-enum-value-engineinfomessage-netstartmapfail-6cfc227443"></a><code>script.enum-value.EngineInfoMessage.NetStartMapFail</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:435](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L435) | Identifies failure to resolve the starting map during player entry or creation. |
+| <code>NetTimeLeft</code> | <code>1045</code> | 1045 | <a id="symbol-script-enum-value-engineinfomessage-nettimeleft-7885fbf05a"></a><code>script.enum-value.EngineInfoMessage.NetTimeLeft</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:456](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L456) | Identifies a temporary restriction or session timer whose remaining duration is supplied by project text or extra data. |
+| <code>NetTwoSpace</code> | <code>1033</code> | 1033 | <a id="symbol-script-enum-value-engineinfomessage-nettwospace-d447304a66"></a><code>script.enum-value.EngineInfoMessage.NetTwoSpace</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:447](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L447) | Identifies a name rejected because it contains consecutive spaces. |
+| <code>NetWrongLogin</code> | <code>1001</code> | 1001 | <a id="symbol-script-enum-value-engineinfomessage-netwronglogin-2e412e22b9"></a><code>script.enum-value.EngineInfoMessage.NetWrongLogin</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:424](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L424) | Identifies a login rejection caused by an invalid account or login identifier. |
+| <code>NetWrongNetProto</code> | <code>1024</code> | 1024 | <a id="symbol-script-enum-value-engineinfomessage-netwrongnetproto-1278e9d4b3"></a><code>script.enum-value.EngineInfoMessage.NetWrongNetProto</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:438](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L438) | Identifies a client/server network-protocol version mismatch. |
+| <code>NetWrongPass</code> | <code>1002</code> | 1002 | <a id="symbol-script-enum-value-engineinfomessage-netwrongpass-71a3a7cba8"></a><code>script.enum-value.EngineInfoMessage.NetWrongPass</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:425](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L425) | Identifies a login rejection caused by an invalid password or equivalent authentication secret. |
+| <code>NetWrongTagSkill</code> | <code>1029</code> | 1029 | <a id="symbol-script-enum-value-engineinfomessage-netwrongtagskill-fe6472051b"></a><code>script.enum-value.EngineInfoMessage.NetWrongTagSkill</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:443](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L443) | Identifies character creation rejected because the required tagged-skill selection is invalid. |
+| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-engineinfomessage-none-e3a03105e2"></a><code>script.enum-value.EngineInfoMessage.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:423](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L423) | Selects no conventional engine information-message slot. |
+| <code>ServerLog</code> | <code>5001</code> | 5001 | <a id="symbol-script-enum-value-engineinfomessage-serverlog-bb9788eff7"></a><code>script.enum-value.EngineInfoMessage.ServerLog</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:462](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L462) | Identifies a server-log message whose reader-facing payload is carried in extraText. |
 
 <a id="symbol-script-enum-eventpriority-bf3411f780"></a>
 ### <code>EventPriority</code>
 
-<code>enum EventPriority : int32</code>  
-Symbol ID: <code>script.enum.EventPriority</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum EventPriority : int32</code><br>
+Symbol ID: <code>script.enum.EventPriority</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/Entity.h:157](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L157)
 
 Relative ordering assigned to callbacks subscribed to the same entity event.
@@ -440,11 +466,11 @@ Relative ordering assigned to callbacks subscribed to the same entity event.
 <a id="symbol-script-enum-eventresult-399e7f00ad"></a>
 ### <code>EventResult</code>
 
-<code>enum EventResult : int32</code>  
-Symbol ID: <code>script.enum.EventResult</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum EventResult : int32</code><br>
+Symbol ID: <code>script.enum.EventResult</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/Entity.h:145](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L145)
 
 Controls whether an entity event callback allows lower-priority callbacks to run.
@@ -457,11 +483,11 @@ Controls whether an entity event callback allows lower-priority callbacks to run
 <a id="symbol-script-enum-fontflag-a5a7fdebc9"></a>
 ### <code>FontFlag</code>
 
-<code>enum FontFlag : uint32</code>  
-Symbol ID: <code>script.enum.FontFlag</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum FontFlag : uint32</code><br>
+Symbol ID: <code>script.enum.FontFlag</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Client/FontManager.h:65](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L65)
 
 Font flags
@@ -483,14 +509,14 @@ Font flags
 <a id="symbol-script-enum-fonttype-7d77843f47"></a>
 ### <code>FontType</code>
 
-<code>enum FontType : int32</code>  
-Symbol ID: <code>script.enum.FontType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum FontType : int32</code><br>
+Symbol ID: <code>script.enum.FontType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Client/FontManager.h:57](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L57)
 
-Font slot index. Engine ships a single named slot (Default = 0); scripts may add more entries via the codegen Enum annotation.
+Font slot index. Engine ships a single named slot (Default = 0); scripts may add more entries via the codegen Enum annotation
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -499,11 +525,11 @@ Font slot index. Engine ships a single named slot (Default = 0); scripts may add
 <a id="symbol-script-enum-gameproperty-353beafc54"></a>
 ### <code>GameProperty</code>
 
-<code>enum GameProperty : uint16</code>  
-Symbol ID: <code>script.enum.GameProperty</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum GameProperty : uint16</code><br>
+Symbol ID: <code>script.enum.GameProperty</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: -
 
 Generated identifiers for properties exported by the Game script entity. Values are assigned in export order and are intended for property metadata and change notifications.
@@ -526,11 +552,11 @@ Generated identifiers for properties exported by the Game script entity. Values 
 <a id="symbol-script-enum-imguiproperty-63cdcb5d96"></a>
 ### <code>ImGuiProperty</code>
 
-<code>enum ImGuiProperty : uint16</code>  
-Symbol ID: <code>script.enum.ImGuiProperty</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGuiProperty : uint16</code><br>
+Symbol ID: <code>script.enum.ImGuiProperty</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: -
 
 Generated identifiers for properties exported by the ImGui script entity. Values are assigned in export order and are intended for property metadata and change notifications.
@@ -545,11 +571,11 @@ Generated identifiers for properties exported by the ImGui script entity. Values
 <a id="symbol-script-enum-imgui-buttonflags-c6abda3943"></a>
 ### <code>ImGui_ButtonFlags</code>
 
-<code>enum ImGui_ButtonFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_ButtonFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_ButtonFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_ButtonFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:403](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L403)
 
 Mouse-button, overlap, and activation behavior for low-level Dear ImGui buttons.
@@ -565,11 +591,11 @@ Mouse-button, overlap, and activation behavior for low-level Dear ImGui buttons.
 <a id="symbol-script-enum-imgui-childflags-68e5f17e89"></a>
 ### <code>ImGui_ChildFlags</code>
 
-<code>enum ImGui_ChildFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_ChildFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_ChildFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_ChildFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:103](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L103)
 
 Child-window sizing, framing, padding, and navigation flags forwarded to Dear ImGui.
@@ -590,11 +616,11 @@ Child-window sizing, framing, padding, and navigation flags forwarded to Dear Im
 <a id="symbol-script-enum-imgui-col-25a0242522"></a>
 ### <code>ImGui_Col</code>
 
-<code>enum ImGui_Col : int32</code>  
-Symbol ID: <code>script.enum.ImGui_Col</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_Col : int32</code><br>
+Symbol ID: <code>script.enum.ImGui_Col</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:446](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L446)
 
 Indexed Dear ImGui style-color slots used by scripted theme customization.
@@ -642,11 +668,11 @@ Indexed Dear ImGui style-color slots used by scripted theme customization.
 <a id="symbol-script-enum-imgui-coloreditflags-497a70d0a5"></a>
 ### <code>ImGui_ColorEditFlags</code>
 
-<code>enum ImGui_ColorEditFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_ColorEditFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_ColorEditFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_ColorEditFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:414](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L414)
 
 Picker mode, channel visibility, data format, preview, and input behavior for Dear ImGui color editors.
@@ -683,11 +709,11 @@ Picker mode, channel visibility, data format, preview, and input behavior for De
 <a id="symbol-script-enum-imgui-comboflags-b867b29182"></a>
 ### <code>ImGui_ComboFlags</code>
 
-<code>enum ImGui_ComboFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_ComboFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_ComboFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_ComboFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:320](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L320)
 
 Popup height, alignment, and preview behavior for Dear ImGui combo boxes.
@@ -707,11 +733,11 @@ Popup height, alignment, and preview behavior for Dear ImGui combo boxes.
 <a id="symbol-script-enum-imgui-cond-d82c79fb28"></a>
 ### <code>ImGui_Cond</code>
 
-<code>enum ImGui_Cond : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_Cond</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_Cond : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_Cond</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:119](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L119)
 
 Conditions controlling when a queued Dear ImGui state assignment takes effect.
@@ -727,11 +753,11 @@ Conditions controlling when a queued Dear ImGui state assignment takes effect.
 <a id="symbol-script-enum-imgui-dir-2582aa4248"></a>
 ### <code>ImGui_Dir</code>
 
-<code>enum ImGui_Dir : int32</code>  
-Symbol ID: <code>script.enum.ImGui_Dir</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_Dir : int32</code><br>
+Symbol ID: <code>script.enum.ImGui_Dir</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:377](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L377)
 
 Cardinal directions and the no-direction sentinel used by Dear ImGui navigation and layout APIs.
@@ -747,11 +773,11 @@ Cardinal directions and the no-direction sentinel used by Dear ImGui navigation 
 <a id="symbol-script-enum-imgui-focusedflags-0753748cba"></a>
 ### <code>ImGui_FocusedFlags</code>
 
-<code>enum ImGui_FocusedFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_FocusedFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_FocusedFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_FocusedFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:165](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L165)
 
 Scope and hierarchy filters used by Dear ImGui focus queries.
@@ -768,11 +794,11 @@ Scope and hierarchy filters used by Dear ImGui focus queries.
 <a id="symbol-script-enum-imgui-hoveredflags-e0d3770939"></a>
 ### <code>ImGui_HoveredFlags</code>
 
-<code>enum ImGui_HoveredFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_HoveredFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_HoveredFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_HoveredFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:177](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L177)
 
 Blocking, overlap, timing, and hierarchy filters used by Dear ImGui hover queries.
@@ -797,11 +823,11 @@ Blocking, overlap, timing, and hierarchy filters used by Dear ImGui hover querie
 <a id="symbol-script-enum-imgui-inputtextflags-1cccacf73f"></a>
 ### <code>ImGui_InputTextFlags</code>
 
-<code>enum ImGui_InputTextFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_InputTextFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_InputTextFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_InputTextFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:335](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L335)
 
 Editing, filtering, submission, callback, and read-only behavior for Dear ImGui text input.
@@ -823,11 +849,11 @@ Editing, filtering, submission, callback, and read-only behavior for Dear ImGui 
 <a id="symbol-script-enum-imgui-mousebutton-e208e24134"></a>
 ### <code>ImGui_MouseButton</code>
 
-<code>enum ImGui_MouseButton : int32</code>  
-Symbol ID: <code>script.enum.ImGui_MouseButton</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_MouseButton : int32</code><br>
+Symbol ID: <code>script.enum.ImGui_MouseButton</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:368](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L368)
 
 Mouse-button identifiers accepted by the Dear ImGui script bindings.
@@ -841,11 +867,11 @@ Mouse-button identifiers accepted by the Dear ImGui script bindings.
 <a id="symbol-script-enum-imgui-popupflags-e906c25c5a"></a>
 ### <code>ImGui_PopupFlags</code>
 
-<code>enum ImGui_PopupFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_PopupFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_PopupFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_PopupFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:352](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L352)
 
 Mouse-button selection and popup-stack policies for opening or closing Dear ImGui popups.
@@ -866,11 +892,11 @@ Mouse-button selection and popup-stack policies for opening or closing Dear ImGu
 <a id="symbol-script-enum-imgui-selectableflags-1ecd4f14ce"></a>
 ### <code>ImGui_SelectableFlags</code>
 
-<code>enum ImGui_SelectableFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_SelectableFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_SelectableFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_SelectableFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:130](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L130)
 
 Selection, spanning, overlap, and activation behavior for Dear ImGui selectable items.
@@ -887,11 +913,11 @@ Selection, spanning, overlap, and activation behavior for Dear ImGui selectable 
 <a id="symbol-script-enum-imgui-sliderflags-9660cee445"></a>
 ### <code>ImGui_SliderFlags</code>
 
-<code>enum ImGui_SliderFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_SliderFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_SliderFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_SliderFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:388](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L388)
 
 Clamping and input behavior for Dear ImGui sliders and drag controls.
@@ -911,11 +937,11 @@ Clamping and input behavior for Dear ImGui sliders and drag controls.
 <a id="symbol-script-enum-imgui-stylevar-40b127918a"></a>
 ### <code>ImGui_StyleVar</code>
 
-<code>enum ImGui_StyleVar : int32</code>  
-Symbol ID: <code>script.enum.ImGui_StyleVar</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_StyleVar : int32</code><br>
+Symbol ID: <code>script.enum.ImGui_StyleVar</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:489](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L489)
 
 Indexed scalar and vector Dear ImGui style variables accepted by style-stack operations.
@@ -945,11 +971,11 @@ Indexed scalar and vector Dear ImGui style variables accepted by style-stack ope
 <a id="symbol-script-enum-imgui-tabbarflags-9cb3a82fbf"></a>
 ### <code>ImGui_TabBarFlags</code>
 
-<code>enum ImGui_TabBarFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_TabBarFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_TabBarFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_TabBarFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:287](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L287)
 
 Reordering, fitting, selection, and tooltip behavior for Dear ImGui tab bars.
@@ -971,11 +997,11 @@ Reordering, fitting, selection, and tooltip behavior for Dear ImGui tab bars.
 <a id="symbol-script-enum-imgui-tabitemflags-fa4577c84b"></a>
 ### <code>ImGui_TabItemFlags</code>
 
-<code>enum ImGui_TabItemFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_TabItemFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_TabItemFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_TabItemFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:304](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L304)
 
 Visibility, closure, ordering, and tooltip behavior for individual Dear ImGui tabs.
@@ -996,11 +1022,11 @@ Visibility, closure, ordering, and tooltip behavior for individual Dear ImGui ta
 <a id="symbol-script-enum-imgui-tablebgtarget-2010434d87"></a>
 ### <code>ImGui_TableBgTarget</code>
 
-<code>enum ImGui_TableBgTarget : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_TableBgTarget</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_TableBgTarget : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_TableBgTarget</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:277](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L277)
 
 Table background channel targeted by a Dear ImGui cell or row color assignment.
@@ -1015,11 +1041,11 @@ Table background channel targeted by a Dear ImGui cell or row color assignment.
 <a id="symbol-script-enum-imgui-tablecolumnflags-cb4b5db509"></a>
 ### <code>ImGui_TableColumnFlags</code>
 
-<code>enum ImGui_TableColumnFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_TableColumnFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_TableColumnFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_TableColumnFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:239](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L239)
 
 Per-column visibility, sizing, ordering, sorting, and status flags for Dear ImGui tables.
@@ -1054,11 +1080,11 @@ Per-column visibility, sizing, ordering, sorting, and status flags for Dear ImGu
 <a id="symbol-script-enum-imgui-tableflags-eb05e79e59"></a>
 ### <code>ImGui_TableFlags</code>
 
-<code>enum ImGui_TableFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_TableFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_TableFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_TableFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:197](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L197)
 
 Layout, borders, sizing, scrolling, sorting, and clipping behavior for Dear ImGui tables.
@@ -1105,11 +1131,11 @@ Layout, borders, sizing, scrolling, sorting, and clipping behavior for Dear ImGu
 <a id="symbol-script-enum-imgui-tablerowflags-2ed82034a7"></a>
 ### <code>ImGui_TableRowFlags</code>
 
-<code>enum ImGui_TableRowFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_TableRowFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_TableRowFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_TableRowFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:269](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L269)
 
 Per-row header and background behavior for Dear ImGui tables.
@@ -1122,11 +1148,11 @@ Per-row header and background behavior for Dear ImGui tables.
 <a id="symbol-script-enum-imgui-treenodeflags-be8eefa38b"></a>
 ### <code>ImGui_TreeNodeFlags</code>
 
-<code>enum ImGui_TreeNodeFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_TreeNodeFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_TreeNodeFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_TreeNodeFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:142](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L142)
 
 Expansion, framing, selection, spanning, and navigation flags for Dear ImGui tree nodes.
@@ -1154,11 +1180,11 @@ Expansion, framing, selection, spanning, and navigation flags for Dear ImGui tre
 <a id="symbol-script-enum-imgui-windowflags-2ba78bf735"></a>
 ### <code>ImGui_WindowFlags</code>
 
-<code>enum ImGui_WindowFlags : uint32</code>  
-Symbol ID: <code>script.enum.ImGui_WindowFlags</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ImGui_WindowFlags : uint32</code><br>
+Symbol ID: <code>script.enum.ImGui_WindowFlags</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/ImGuiExt/ImGuiStuff.h:74](https://github.com/cvet/fonline/blob/master/Source/Common/ImGuiExt/ImGuiStuff.h#L74)
 
 Window creation and interaction flags forwarded to the embedded Dear ImGui runtime.
@@ -1192,30 +1218,30 @@ Window creation and interaction flags forwarded to the embedded Dear ImGui runti
 <a id="symbol-script-enum-itemownership-aa2d799c7d"></a>
 ### <code>ItemOwnership</code>
 
-<code>enum ItemOwnership : uint8</code>  
-Symbol ID: <code>script.enum.ItemOwnership</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:1088](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1088)
+<code>enum ItemOwnership : uint8</code><br>
+Symbol ID: <code>script.enum.ItemOwnership</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:1071](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1071)
 
 Current ownership location of an item: map hex, critter inventory, item container, or no owner.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>CritterInventory</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-itemownership-critterinventory-dc45fb90e3"></a><code>script.enum-value.ItemOwnership.CritterInventory</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1097](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1097) | Item is owned by a critter inventory or equipped slot. |
-| <code>ItemContainer</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-itemownership-itemcontainer-86d46b33fb"></a><code>script.enum-value.ItemOwnership.ItemContainer</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1098](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1098) | Item is nested inside another item used as a container. |
-| <code>MapHex</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-itemownership-maphex-1515f04bc3"></a><code>script.enum-value.ItemOwnership.MapHex</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1096](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1096) | Item is placed directly on a map hex. |
-| <code>Nowhere</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-itemownership-nowhere-209b7aa41e"></a><code>script.enum-value.ItemOwnership.Nowhere</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1099](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1099) | Item has no map, critter, or item-container owner. |
+| <code>CritterInventory</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-itemownership-critterinventory-dc45fb90e3"></a><code>script.enum-value.ItemOwnership.CritterInventory</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1080](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1080) | Item is owned by a critter inventory or equipped slot. |
+| <code>ItemContainer</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-itemownership-itemcontainer-86d46b33fb"></a><code>script.enum-value.ItemOwnership.ItemContainer</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1081](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1081) | Item is nested inside another item used as a container. |
+| <code>MapHex</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-itemownership-maphex-1515f04bc3"></a><code>script.enum-value.ItemOwnership.MapHex</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1079](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1079) | Item is placed directly on a map hex. |
+| <code>Nowhere</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-itemownership-nowhere-209b7aa41e"></a><code>script.enum-value.ItemOwnership.Nowhere</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1082](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1082) | Item has no map, critter, or item-container owner. |
 
 <a id="symbol-script-enum-itemproperty-387cd84346"></a>
 ### <code>ItemProperty</code>
 
-<code>enum ItemProperty : uint16</code>  
-Symbol ID: <code>script.enum.ItemProperty</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum ItemProperty : uint16</code><br>
+Symbol ID: <code>script.enum.ItemProperty</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: -
 
 Generated identifiers for properties exported by the Item script entity. Values are assigned in export order and are intended for property metadata and change notifications.
@@ -1279,11 +1305,11 @@ Generated identifiers for properties exported by the Item script entity. Values 
 <a id="symbol-script-enum-keycode-5908ee7ee0"></a>
 ### <code>KeyCode</code>
 
-<code>enum KeyCode : uint8</code>  
-Symbol ID: <code>script.enum.KeyCode</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum KeyCode : uint8</code><br>
+Symbol ID: <code>script.enum.KeyCode</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Frontend/Application.h:50](https://github.com/cvet/fonline/blob/master/Source/Frontend/Application.h#L50)
 
 Physical SDL-scancode key identifiers used by input events and key-state queries, plus a synthetic Text event for UTF-8 text, paste, and drop payloads.
@@ -1399,11 +1425,11 @@ Physical SDL-scancode key identifiers used by input events and key-state queries
 <a id="symbol-script-enum-locationproperty-5a3cf941d0"></a>
 ### <code>LocationProperty</code>
 
-<code>enum LocationProperty : uint16</code>  
-Symbol ID: <code>script.enum.LocationProperty</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum LocationProperty : uint16</code><br>
+Symbol ID: <code>script.enum.LocationProperty</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: -
 
 Generated identifiers for properties exported by the Location script entity. Values are assigned in export order and are intended for property metadata and change notifications.
@@ -1420,11 +1446,11 @@ Generated identifiers for properties exported by the Location script entity. Val
 <a id="symbol-script-enum-mapproperty-cbf22f8d2d"></a>
 ### <code>MapProperty</code>
 
-<code>enum MapProperty : uint16</code>  
-Symbol ID: <code>script.enum.MapProperty</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum MapProperty : uint16</code><br>
+Symbol ID: <code>script.enum.MapProperty</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: -
 
 Generated identifiers for properties exported by the Map script entity. Values are assigned in export order and are intended for property metadata and change notifications.
@@ -1457,11 +1483,11 @@ Generated identifiers for properties exported by the Map script entity. Values a
 <a id="symbol-script-enum-mousebutton-bacc57ac02"></a>
 ### <code>MouseButton</code>
 
-<code>enum MouseButton : uint8</code>  
-Symbol ID: <code>script.enum.MouseButton</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum MouseButton : uint8</code><br>
+Symbol ID: <code>script.enum.MouseButton</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Frontend/Application.h:163](https://github.com/cvet/fonline/blob/master/Source/Frontend/Application.h#L163)
 
 Mouse buttons and wheel directions exposed through application input events.
@@ -1482,11 +1508,11 @@ Mouse buttons and wheel directions exposed through application input events.
 <a id="symbol-script-enum-movingstate-eb721ca711"></a>
 ### <code>MovingState</code>
 
-<code>enum MovingState : uint8</code>  
-Symbol ID: <code>script.enum.MovingState</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum MovingState : uint8</code><br>
+Symbol ID: <code>script.enum.MovingState</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Common/Movement.h:43](https://github.com/cvet/fonline/blob/master/Source/Common/Movement.h#L43)
 
 Terminal or in-progress result reported by pathfinding and critter movement operations.
@@ -1511,29 +1537,29 @@ Terminal or in-progress result reported by pathfinding and critter movement oper
 <a id="symbol-script-enum-multihexgenerationtype-6a63829cf3"></a>
 ### <code>MultihexGenerationType</code>
 
-<code>enum MultihexGenerationType : uint8</code>  
-Symbol ID: <code>script.enum.MultihexGenerationType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
-Source: [Source/Common/Common.h:1120](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1120)
+<code>enum MultihexGenerationType : uint8</code><br>
+Symbol ID: <code>script.enum.MultihexGenerationType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
+Source: [Source/Common/Common.h:1103](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1103)
 
 Policy for generating occupied hexes around a multihex prototype.
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>AnyUnique</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-multihexgenerationtype-anyunique-ac7b3447c3"></a><code>script.enum-value.MultihexGenerationType.AnyUnique</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1129](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1129) | Coalesces compatible same-prototype items into distinct full-map groups without requiring adjacency. |
-| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-multihexgenerationtype-none-e010cd8cd3"></a><code>script.enum-value.MultihexGenerationType.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1127](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1127) | Disables Mapper coalescing of item placements into a multihex mesh. |
-| <code>SameSibling</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-multihexgenerationtype-samesibling-9bf9686f19"></a><code>script.enum-value.MultihexGenerationType.SameSibling</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1128](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1128) | Coalesces spatially adjacent compatible sibling items into one incrementally grown multihex mesh. |
+| <code>AnyUnique</code> | <code>2</code> | 2 | <a id="symbol-script-enum-value-multihexgenerationtype-anyunique-ac7b3447c3"></a><code>script.enum-value.MultihexGenerationType.AnyUnique</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1112](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1112) | Coalesces compatible same-prototype items into distinct full-map groups without requiring adjacency. |
+| <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-multihexgenerationtype-none-e010cd8cd3"></a><code>script.enum-value.MultihexGenerationType.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1110](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1110) | Disables Mapper coalescing of item placements into a multihex mesh. |
+| <code>SameSibling</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-multihexgenerationtype-samesibling-9bf9686f19"></a><code>script.enum-value.MultihexGenerationType.SameSibling</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:1111](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1111) | Coalesces spatially adjacent compatible sibling items into one incrementally grown multihex mesh. |
 
 <a id="symbol-script-enum-playerproperty-96d5a536b2"></a>
 ### <code>PlayerProperty</code>
 
-<code>enum PlayerProperty : uint16</code>  
-Symbol ID: <code>script.enum.PlayerProperty</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum PlayerProperty : uint16</code><br>
+Symbol ID: <code>script.enum.PlayerProperty</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: -
 
 Generated identifiers for properties exported by the Player script entity. Values are assigned in export order and are intended for property metadata and change notifications.
@@ -1545,17 +1571,17 @@ Generated identifiers for properties exported by the Player script entity. Value
 | <code>CustomHolderId</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-playerproperty-customholderid-4904069b38"></a><code>script.enum-value.PlayerProperty.CustomHolderId</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Entity.h:86](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L86) | For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier. |
 | <code>ExplicitlyPersistent</code> | <code>3</code> | 3 | <a id="symbol-script-enum-value-playerproperty-explicitlypersistent-adaa853ee2"></a><code>script.enum-value.PlayerProperty.ExplicitlyPersistent</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Entity.h:92](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L92) | Marks an entity as independently persistent rather than persistent only through containment by another entity. |
 | <code>LastControlledCritterId</code> | <code>6</code> | 6 | <a id="symbol-script-enum-value-playerproperty-lastcontrolledcritterid-58dcfaa8b1"></a><code>script.enum-value.PlayerProperty.LastControlledCritterId</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/EntityProperties.h:96](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L96) | Persistent identifier of the most recently controlled critter, retained after detachment for restoration. |
-| <code>Logined</code> | <code>4</code> | 4 | <a id="symbol-script-enum-value-playerproperty-logined-8ed61a6787"></a><code>script.enum-value.PlayerProperty.Logined</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/EntityProperties.h:90](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L90) | Reports whether this player connection has completed server login. |
+| <code>LoggedIn</code> | <code>4</code> | 4 | <a id="symbol-script-enum-value-playerproperty-loggedin-9f0071c013"></a><code>script.enum-value.PlayerProperty.LoggedIn</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/EntityProperties.h:90](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L90) | Reports whether this player connection has completed server login. |
 | <code>None</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-playerproperty-none-973f5ea126"></a><code>script.enum-value.PlayerProperty.None</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | - | Sentinel indicating that no Player property identifier is selected. |
 
 <a id="symbol-script-enum-renderprimitivetype-4ccb2772ca"></a>
 ### <code>RenderPrimitiveType</code>
 
-<code>enum RenderPrimitiveType : uint8</code>  
-Symbol ID: <code>script.enum.RenderPrimitiveType</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum RenderPrimitiveType : uint8</code><br>
+Symbol ID: <code>script.enum.RenderPrimitiveType</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Frontend/Rendering.h:98](https://github.com/cvet/fonline/blob/master/Source/Frontend/Rendering.h#L98)
 
 Vertex assembly topology used when submitting primitive draw buffers.
@@ -1571,11 +1597,11 @@ Vertex assembly topology used when submitting primitive draw buffers.
 <a id="symbol-script-enum-transparenteggslot-7c45432993"></a>
 ### <code>TransparentEggSlot</code>
 
-<code>enum TransparentEggSlot : uint8</code>  
-Symbol ID: <code>script.enum.TransparentEggSlot</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: -  
+<code>enum TransparentEggSlot : uint8</code><br>
+Symbol ID: <code>script.enum.TransparentEggSlot</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: -<br>
 Source: [Source/Client/SpriteManager.h:62](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L62)
 
 Selects one of the two simultaneous transparency-egg masks supported by sprite rendering.
@@ -1590,11 +1616,11 @@ Selects one of the two simultaneous transparency-egg masks supported by sprite r
 <a id="symbol-script-value-type-gamepadstate-912c2e3e03"></a>
 ### <code>GamepadState</code>
 
-<code>value type GamepadState</code>  
-Symbol ID: <code>script.value-type.GamepadState</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>float32</code>, <code>-</code>, <code>LeftStickX</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>LeftStickY</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>RightStickX</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>RightStickY</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>LeftTrigger</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>RightTrigger</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>Available</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>South</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>East</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>West</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>North</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>Back</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>Start</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>LeftStickButton</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>RightStickButton</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>LeftShoulder</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>RightShoulder</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>DpadUp</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>DpadDown</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>DpadLeft</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>DpadRight</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>Reserved</code>  
+<code>value type GamepadState</code><br>
+Symbol ID: <code>script.value-type.GamepadState</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>float32</code>, <code>-</code>, <code>LeftStickX</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>LeftStickY</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>RightStickX</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>RightStickY</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>LeftTrigger</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>RightTrigger</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>Available</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>South</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>East</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>West</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>North</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>Back</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>Start</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>LeftStickButton</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>RightStickButton</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>LeftShoulder</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>RightShoulder</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>DpadUp</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>DpadDown</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>DpadLeft</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>DpadRight</code>, <code>+</code>, <code>bool</code>, <code>-</code>, <code>Reserved</code><br>
 Source: [Source/Frontend/Application.h:189](https://github.com/cvet/fonline/blob/master/Source/Frontend/Application.h#L189)
 
 Per-frame gamepad snapshot containing availability, stick and trigger values, face buttons, shoulders, sticks, and D-pad state.
@@ -1627,11 +1653,11 @@ Per-frame gamepad snapshot containing availability, stick and trigger values, fa
 <a id="symbol-script-value-type-languagename-65ead35f2b"></a>
 ### <code>LanguageName</code>
 
-<code>value type LanguageName</code>  
-Symbol ID: <code>script.value-type.LanguageName</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>hstring</code>, <code>-</code>, <code>Name</code>  
+<code>value type LanguageName</code><br>
+Symbol ID: <code>script.value-type.LanguageName</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>hstring</code>, <code>-</code>, <code>Name</code><br>
 Source: [Source/Common/TextPack.h:50](https://github.com/cvet/fonline/blob/master/Source/Common/TextPack.h#L50)
 
 Hashed name that identifies a language in localized text resources.
@@ -1643,14 +1669,14 @@ Hashed name that identifies a language in localized text resources.
 <a id="symbol-script-value-type-textformat-fdc38b051d"></a>
 ### <code>TextFormat</code>
 
-<code>value type TextFormat</code>  
-Symbol ID: <code>script.value-type.TextFormat</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>FontType</code>, <code>-</code>, <code>Font</code>, <code>+</code>, <code>FontFlag</code>, <code>-</code>, <code>Flags</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>SkipLines</code>  
+<code>value type TextFormat</code><br>
+Symbol ID: <code>script.value-type.TextFormat</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>FontType</code>, <code>-</code>, <code>Font</code>, <code>+</code>, <code>FontFlag</code>, <code>-</code>, <code>Flags</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>SkipLines</code><br>
 Source: [Source/Client/FontManager.h:94](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L94)
 
-Bundled text formatting parameters: font slot, FontFlag bitmask, and skip-lines counter.<br>`SkipLines` is &quot;skip from top&quot; by default; with FontFlag::AlignBottom set it becomes &quot;skip from bottom&quot; (trailing lines).
+Bundled text formatting parameters: font slot, FontFlag bitmask, and skip-lines counter.<br>`SkipLines` is &quot;skip from top&quot; by default; with FontFlag::AlignBottom set it becomes &quot;skip from bottom&quot; (trailing lines)
 
 | Field | Symbol ID | Value contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -1661,11 +1687,11 @@ Bundled text formatting parameters: font slot, FontFlag bitmask, and skip-lines 
 <a id="symbol-script-value-type-textpackkey-fc2a0c075a"></a>
 ### <code>TextPackKey</code>
 
-<code>value type TextPackKey</code>  
-Symbol ID: <code>script.value-type.TextPackKey</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>TextPackName</code>, <code>-</code>, <code>Collection</code>, <code>+</code>, <code>hstring</code>, <code>-</code>, <code>Key1</code>, <code>+</code>, <code>hstring</code>, <code>-</code>, <code>Key2</code>, <code>+</code>, <code>hstring</code>, <code>-</code>, <code>Key3</code>  
+<code>value type TextPackKey</code><br>
+Symbol ID: <code>script.value-type.TextPackKey</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>TextPackName</code>, <code>-</code>, <code>Collection</code>, <code>+</code>, <code>hstring</code>, <code>-</code>, <code>Key1</code>, <code>+</code>, <code>hstring</code>, <code>-</code>, <code>Key2</code>, <code>+</code>, <code>hstring</code>, <code>-</code>, <code>Key3</code><br>
 Source: [Source/Common/TextPack.h:55](https://github.com/cvet/fonline/blob/master/Source/Common/TextPack.h#L55)
 
 Text lookup key composed of a collection name and up to three hashed key components.
@@ -1680,11 +1706,11 @@ Text lookup key composed of a collection name and up to three hashed key compone
 <a id="symbol-script-value-type-textpackname-1ef38e6f7d"></a>
 ### <code>TextPackName</code>
 
-<code>value type TextPackName</code>  
-Symbol ID: <code>script.value-type.TextPackName</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>hstring</code>, <code>-</code>, <code>Name</code>  
+<code>value type TextPackName</code><br>
+Symbol ID: <code>script.value-type.TextPackName</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>hstring</code>, <code>-</code>, <code>Name</code><br>
 Source: [Source/Common/TextPack.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/TextPack.h#L45)
 
 Hashed name that identifies a text-pack collection.
@@ -1696,11 +1722,11 @@ Hashed name that identifies a text-pack collection.
 <a id="symbol-script-value-type-fpos-2cfdca1ade"></a>
 ### <code>fpos</code>
 
-<code>value type fpos</code>  
-Symbol ID: <code>script.value-type.fpos</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>float32</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>y</code>  
+<code>value type fpos</code><br>
+Symbol ID: <code>script.value-type.fpos</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>float32</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>y</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:661](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L661)
 
 Two-dimensional 32-bit floating-point position exposed to scripts as mutable x and y components.
@@ -1713,11 +1739,11 @@ Two-dimensional 32-bit floating-point position exposed to scripts as mutable x a
 <a id="symbol-script-value-type-frect-ca1327a5a5"></a>
 ### <code>frect</code>
 
-<code>value type frect</code>  
-Symbol ID: <code>script.value-type.frect</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>float32</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>y</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>height</code>  
+<code>value type frect</code><br>
+Symbol ID: <code>script.value-type.frect</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>float32</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>y</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>height</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:679](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L679)
 
 32-bit floating-point rectangle exposed to scripts as mutable origin and size components.
@@ -1732,11 +1758,11 @@ Source: [Source/Essentials/ExtendedTypes.h:679](https://github.com/cvet/fonline/
 <a id="symbol-script-value-type-fsize-2a9bf5108c"></a>
 ### <code>fsize</code>
 
-<code>value type fsize</code>  
-Symbol ID: <code>script.value-type.fsize</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>float32</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>height</code>  
+<code>value type fsize</code><br>
+Symbol ID: <code>script.value-type.fsize</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>float32</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>float32</code>, <code>-</code>, <code>height</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:670](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L670)
 
 Two-dimensional 32-bit floating-point size exposed to scripts as mutable width and height components.
@@ -1749,11 +1775,11 @@ Two-dimensional 32-bit floating-point size exposed to scripts as mutable width a
 <a id="symbol-script-value-type-hdir-f937e5a509"></a>
 ### <code>hdir</code>
 
-<code>value type hdir</code>  
-Symbol ID: <code>script.value-type.hdir</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int8</code>, <code>-</code>, <code>value</code>  
+<code>value type hdir</code><br>
+Symbol ID: <code>script.value-type.hdir</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int8</code>, <code>-</code>, <code>value</code><br>
 Source: [Source/Common/Geometry.h:112](https://github.com/cvet/fonline/blob/master/Source/Common/Geometry.h#L112)
 
 Discrete map direction normalized modulo the configured six-direction hex or eight-direction square geometry.
@@ -1765,27 +1791,27 @@ Discrete map direction normalized modulo the configured six-direction hex or eig
 <a id="symbol-script-value-type-ident-a6c4623341"></a>
 ### <code>ident</code>
 
-<code>value type ident</code>  
-Symbol ID: <code>script.value-type.ident</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code>  
-Source: [Source/Common/Common.h:102](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L102)
+<code>value type ident</code><br>
+Symbol ID: <code>script.value-type.ident</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
+Source: [Source/Common/Common.h:85](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L85)
 
 Strong signed 64-bit identity token whose zero value is false and whose ordering compares the stored value.
 
 | Field | Symbol ID | Value contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- |
-| <code>int64 ident.value</code> | <a id="symbol-script-value-field-ident-value-d818ed0ec5"></a><code>script.value-field.ident.value</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:103](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L103) | Signed 64-bit identity payload; zero represents an empty identity. |
+| <code>int64 ident.value</code> | <a id="symbol-script-value-field-ident-value-d818ed0ec5"></a><code>script.value-field.ident.value</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Common/Common.h:86](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L86) | Signed 64-bit identity payload; zero represents an empty identity. |
 
 <a id="symbol-script-value-type-ipos-ebbc2642f2"></a>
 ### <code>ipos</code>
 
-<code>value type ipos</code>  
-Symbol ID: <code>script.value-type.ipos</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>y</code>  
+<code>value type ipos</code><br>
+Symbol ID: <code>script.value-type.ipos</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>y</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:629](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L629)
 
 Standard two-dimensional signed 32-bit integer position exposed to scripts as mutable x and y components.
@@ -1798,11 +1824,11 @@ Standard two-dimensional signed 32-bit integer position exposed to scripts as mu
 <a id="symbol-script-value-type-ipos16-b12a2e0aa1"></a>
 ### <code>ipos16</code>
 
-<code>value type ipos16</code>  
-Symbol ID: <code>script.value-type.ipos16</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int16</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int16</code>, <code>-</code>, <code>y</code>  
+<code>value type ipos16</code><br>
+Symbol ID: <code>script.value-type.ipos16</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int16</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int16</code>, <code>-</code>, <code>y</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:620](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L620)
 
 Two-dimensional signed 16-bit integer position exposed to scripts as mutable x and y components.
@@ -1815,11 +1841,11 @@ Two-dimensional signed 16-bit integer position exposed to scripts as mutable x a
 <a id="symbol-script-value-type-ipos8-14d2dd6ff2"></a>
 ### <code>ipos8</code>
 
-<code>value type ipos8</code>  
-Symbol ID: <code>script.value-type.ipos8</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int8</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int8</code>, <code>-</code>, <code>y</code>  
+<code>value type ipos8</code><br>
+Symbol ID: <code>script.value-type.ipos8</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int8</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int8</code>, <code>-</code>, <code>y</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:611](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L611)
 
 Two-dimensional signed 8-bit integer position exposed to scripts as mutable x and y components.
@@ -1832,11 +1858,11 @@ Two-dimensional signed 8-bit integer position exposed to scripts as mutable x an
 <a id="symbol-script-value-type-irect-8a196ec2be"></a>
 ### <code>irect</code>
 
-<code>value type irect</code>  
-Symbol ID: <code>script.value-type.irect</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>y</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>height</code>  
+<code>value type irect</code><br>
+Symbol ID: <code>script.value-type.irect</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>y</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>height</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:649](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L649)
 
 Signed 32-bit integer rectangle exposed to scripts as mutable origin and size components.
@@ -1851,11 +1877,11 @@ Signed 32-bit integer rectangle exposed to scripts as mutable origin and size co
 <a id="symbol-script-value-type-isize-49ec1327be"></a>
 ### <code>isize</code>
 
-<code>value type isize</code>  
-Symbol ID: <code>script.value-type.isize</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>height</code>  
+<code>value type isize</code><br>
+Symbol ID: <code>script.value-type.isize</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>height</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:639](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L639)
 
 Two-dimensional signed 32-bit integer size exposed to scripts as mutable width and height components.
@@ -1868,11 +1894,11 @@ Two-dimensional signed 32-bit integer size exposed to scripts as mutable width a
 <a id="symbol-script-value-type-mdir-a1ff0aef65"></a>
 ### <code>mdir</code>
 
-<code>value type mdir</code>  
-Symbol ID: <code>script.value-type.mdir</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int16</code>, <code>-</code>, <code>angle</code>  
+<code>value type mdir</code><br>
+Symbol ID: <code>script.value-type.mdir</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int16</code>, <code>-</code>, <code>angle</code><br>
 Source: [Source/Common/Geometry.h:165](https://github.com/cvet/fonline/blob/master/Source/Common/Geometry.h#L165)
 
 Map direction angle stored as a signed 16-bit value with conversion and rotation operations for discrete map directions.
@@ -1884,11 +1910,11 @@ Map direction angle stored as a signed 16-bit value with conversion and rotation
 <a id="symbol-script-value-type-mpos-77e467844b"></a>
 ### <code>mpos</code>
 
-<code>value type mpos</code>  
-Symbol ID: <code>script.value-type.mpos</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int16</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int16</code>, <code>-</code>, <code>y</code>  
+<code>value type mpos</code><br>
+Symbol ID: <code>script.value-type.mpos</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int16</code>, <code>-</code>, <code>x</code>, <code>+</code>, <code>int16</code>, <code>-</code>, <code>y</code><br>
 Source: [Source/Common/Geometry.h:41](https://github.com/cvet/fonline/blob/master/Source/Common/Geometry.h#L41)
 
 Signed 16-bit map-coordinate position exposed to scripts as mutable x and y components.
@@ -1901,11 +1927,11 @@ Signed 16-bit map-coordinate position exposed to scripts as mutable x and y comp
 <a id="symbol-script-value-type-msize-51ed53f341"></a>
 ### <code>msize</code>
 
-<code>value type msize</code>  
-Symbol ID: <code>script.value-type.msize</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int16</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>int16</code>, <code>-</code>, <code>height</code>  
+<code>value type msize</code><br>
+Symbol ID: <code>script.value-type.msize</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int16</code>, <code>-</code>, <code>width</code>, <code>+</code>, <code>int16</code>, <code>-</code>, <code>height</code><br>
 Source: [Source/Common/Geometry.h:58](https://github.com/cvet/fonline/blob/master/Source/Common/Geometry.h#L58)
 
 Signed 16-bit map size exposed to scripts as mutable width and height components.
@@ -1918,11 +1944,11 @@ Signed 16-bit map size exposed to scripts as mutable width and height components
 <a id="symbol-script-value-type-nanotime-b905d77db5"></a>
 ### <code>nanotime</code>
 
-<code>value type nanotime</code>  
-Symbol ID: <code>script.value-type.nanotime</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code>  
+<code>value type nanotime</code><br>
+Symbol ID: <code>script.value-type.nanotime</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
 Source: [Source/Essentials/TimeRelated.h:138](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L138)
 
 Monotonic steady-clock time point stored as a signed 64-bit nanosecond count; it is not civil wall-clock time.
@@ -1934,11 +1960,11 @@ Monotonic steady-clock time point stored as a signed 64-bit nanosecond count; it
 <a id="symbol-script-value-type-synctime-1c27bdefae"></a>
 ### <code>synctime</code>
 
-<code>value type synctime</code>  
-Symbol ID: <code>script.value-type.synctime</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code>  
+<code>value type synctime</code><br>
+Symbol ID: <code>script.value-type.synctime</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
 Source: [Source/Essentials/TimeRelated.h:210](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L210)
 
 Engine-synchronized time point stored as a signed 64-bit millisecond count for shared game-time state.
@@ -1950,11 +1976,11 @@ Engine-synchronized time point stored as a signed 64-bit millisecond count for s
 <a id="symbol-script-value-type-timespan-08db5edc8b"></a>
 ### <code>timespan</code>
 
-<code>value type timespan</code>  
-Symbol ID: <code>script.value-type.timespan</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code>  
+<code>value type timespan</code><br>
+Symbol ID: <code>script.value-type.timespan</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
 Source: [Source/Essentials/TimeRelated.h:48](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L48)
 
 Signed nanosecond-resolution duration stored as a 64-bit count.
@@ -1966,11 +1992,11 @@ Signed nanosecond-resolution duration stored as a 64-bit count.
 <a id="symbol-script-value-type-ucolor-92d4b0314f"></a>
 ### <code>ucolor</code>
 
-<code>value type ucolor</code>  
-Symbol ID: <code>script.value-type.ucolor</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>Layout</code>, <code>=</code>, <code>uint32</code>, <code>-</code>, <code>value</code>  
+<code>value type ucolor</code><br>
+Symbol ID: <code>script.value-type.ucolor</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>uint32</code>, <code>-</code>, <code>value</code><br>
 Source: [Source/Essentials/ExtendedTypes.h:67](https://github.com/cvet/fonline/blob/master/Source/Essentials/ExtendedTypes.h#L67)
 
 Color type
@@ -1984,11 +2010,11 @@ Color type
 <a id="symbol-script-ref-type-client-foglayer-ca9e4bd2e0"></a>
 ### <code>FogLayer</code>
 
-<code>ref type FogLayer</code>  
-Symbol ID: <code>script.ref-type.client.FogLayer</code>  
-Runtime: client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Enabled</code>, <code>,</code>, <code>Distance</code>, <code>,</code>, <code>Radius</code>, <code>,</code>, <code>ExtraLength</code>, <code>,</code>, <code>TransitionDuration</code>, <code>,</code>, <code>OvalRoundness</code>, <code>,</code>, <code>EdgeNoise</code>, <code>,</code>, <code>Depth</code>, <code>,</code>, <code>ClearRadius</code>, <code>,</code>, <code>TintColor</code>, <code>,</code>, <code>OverlayColor</code>, <code>,</code>, <code>CenterColor</code>, <code>,</code>, <code>Traced</code>, <code>,</code>, <code>CheckShootBlocks</code>, <code>,</code>, <code>OriginHex</code>, <code>,</code>, <code>Disposed</code>, <code>,</code>, <code>Dispose</code>  
+<code>ref type FogLayer</code><br>
+Symbol ID: <code>script.ref-type.client.FogLayer</code><br>
+Runtime: client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Enabled</code>, <code>,</code>, <code>Distance</code>, <code>,</code>, <code>Radius</code>, <code>,</code>, <code>ExtraLength</code>, <code>,</code>, <code>TransitionDuration</code>, <code>,</code>, <code>OvalRoundness</code>, <code>,</code>, <code>EdgeNoise</code>, <code>,</code>, <code>Depth</code>, <code>,</code>, <code>ClearRadius</code>, <code>,</code>, <code>TintColor</code>, <code>,</code>, <code>OverlayColor</code>, <code>,</code>, <code>CenterColor</code>, <code>,</code>, <code>Traced</code>, <code>,</code>, <code>CheckShootBlocks</code>, <code>,</code>, <code>OriginHex</code>, <code>,</code>, <code>Disposed</code>, <code>,</code>, <code>Dispose</code><br>
 Source: [Source/Client/MapView.h:99](https://github.com/cvet/fonline/blob/master/Source/Client/MapView.h#L99)
 
 Map-owned fog or traced-zone layer whose shape and compositing parameters are rebuilt from mutable script fields each frame.
@@ -2016,45 +2042,45 @@ Map-owned fog or traced-zone layer whose shape and compositing parameters are re
 <a id="symbol-script-ref-type-client-mapspriteholder-413b842993"></a>
 ### <code>MapSpriteHolder</code>
 
-<code>ref type MapSpriteHolder</code>  
-Symbol ID: <code>script.ref-type.client.MapSpriteHolder</code>  
-Runtime: client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>RefCounted</code>, <code>HasFactory</code>, <code>Export</code>, <code>=</code>, <code>Valid</code>, <code>,</code>, <code>SprId</code>, <code>,</code>, <code>Hex</code>, <code>,</code>, <code>ProtoId</code>, <code>,</code>, <code>Offset</code>, <code>,</code>, <code>IsFlat</code>, <code>,</code>, <code>NoLight</code>, <code>,</code>, <code>DrawOrder</code>, <code>,</code>, <code>DrawOrderHyOffset</code>, <code>,</code>, <code>Corner</code>, <code>,</code>, <code>DisableEgg</code>, <code>,</code>, <code>Color</code>, <code>,</code>, <code>IsTweakOffs</code>, <code>,</code>, <code>TweakOffset</code>, <code>,</code>, <code>IsTweakAlpha</code>, <code>,</code>, <code>TweakAlpha</code>, <code>,</code>, <code>Angle</code>, <code>,</code>, <code>MapProjected</code>, <code>,</code>, <code>StopDraw</code>  
-Source: [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250)
+<code>ref type MapSpriteHolder</code><br>
+Symbol ID: <code>script.ref-type.client.MapSpriteHolder</code><br>
+Runtime: client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>RefCounted</code>, <code>HasFactory</code>, <code>Export</code>, <code>=</code>, <code>Valid</code>, <code>,</code>, <code>SprId</code>, <code>,</code>, <code>Hex</code>, <code>,</code>, <code>ProtoId</code>, <code>,</code>, <code>Offset</code>, <code>,</code>, <code>IsFlat</code>, <code>,</code>, <code>NoLight</code>, <code>,</code>, <code>DrawOrder</code>, <code>,</code>, <code>DrawOrderHyOffset</code>, <code>,</code>, <code>Corner</code>, <code>,</code>, <code>DisableEgg</code>, <code>,</code>, <code>Color</code>, <code>,</code>, <code>IsTweakOffs</code>, <code>,</code>, <code>TweakOffset</code>, <code>,</code>, <code>IsTweakAlpha</code>, <code>,</code>, <code>TweakAlpha</code>, <code>,</code>, <code>Angle</code>, <code>,</code>, <code>MapProjected</code>, <code>,</code>, <code>StopDraw</code><br>
+Source: [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249)
 
 Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped.
 
 | Kind | Member | Symbol ID | Member contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| ref-field | <code>int16 MapSpriteHolder.Angle</code> | <a id="symbol-script-ref-field-client-mapspriteholder-angle-80d7024854"></a><code>script.ref-field.client.MapSpriteHolder.Angle</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Initial sprite angle in degrees applied when nonzero. |
-| ref-field | <code>ucolor MapSpriteHolder.Color</code> | <a id="symbol-script-ref-field-client-mapspriteholder-color-66dfe0c9ee"></a><code>script.ref-field.client.MapSpriteHolder.Color</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Optional packed color and fixed alpha applied at attachment; clear leaves the sprite color unchanged. |
-| ref-field | <code>CornerType MapSpriteHolder.Corner</code> | <a id="symbol-script-ref-field-client-mapspriteholder-corner-0c782b7813"></a><code>script.ref-field.client.MapSpriteHolder.Corner</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Manual corner classification used for lighting and egg appearance when ProtoId is empty. |
-| ref-field | <code>bool MapSpriteHolder.DisableEgg</code> | <a id="symbol-script-ref-field-client-mapspriteholder-disableegg-ecff4521f9"></a><code>script.ref-field.client.MapSpriteHolder.DisableEgg</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Manual switch that suppresses egg appearance when ProtoId is empty. |
-| ref-field | <code>DrawOrderType MapSpriteHolder.DrawOrder</code> | <a id="symbol-script-ref-field-client-mapspriteholder-draworder-199f5cc044"></a><code>script.ref-field.client.MapSpriteHolder.DrawOrder</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Manual draw-order slot used when ProtoId is empty. |
-| ref-field | <code>int32 MapSpriteHolder.DrawOrderHyOffset</code> | <a id="symbol-script-ref-field-client-mapspriteholder-draworderhyoffset-e1bf12c154"></a><code>script.ref-field.client.MapSpriteHolder.DrawOrderHyOffset</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Vertical hex offset applied to draw-order sorting when ProtoId is empty. |
-| ref-field | <code>mpos MapSpriteHolder.Hex</code> | <a id="symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43"></a><code>script.ref-field.client.MapSpriteHolder.Hex</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Map hex used as the sprite anchor and visibility test. |
-| ref-field | <code>bool MapSpriteHolder.IsFlat</code> | <a id="symbol-script-ref-field-client-mapspriteholder-isflat-9e5b2d1ea2"></a><code>script.ref-field.client.MapSpriteHolder.IsFlat</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Manual flat-sprite selection used when ProtoId is empty. |
-| ref-field | <code>bool MapSpriteHolder.IsTweakAlpha</code> | <a id="symbol-script-ref-field-client-mapspriteholder-istweakalpha-929ddf69a0"></a><code>script.ref-field.client.MapSpriteHolder.IsTweakAlpha</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Enables live alpha tracking through TweakAlpha after attachment. |
-| ref-field | <code>bool MapSpriteHolder.IsTweakOffs</code> | <a id="symbol-script-ref-field-client-mapspriteholder-istweakoffs-c8dd54d25a"></a><code>script.ref-field.client.MapSpriteHolder.IsTweakOffs</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Enables live offset tracking through TweakOffset after attachment. |
-| ref-field | <code>bool MapSpriteHolder.MapProjected</code> | <a id="symbol-script-ref-field-client-mapspriteholder-mapprojected-a9e4b2aa27"></a><code>script.ref-field.client.MapSpriteHolder.MapProjected</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Requests map-projected rendering when the sprite is attached. |
-| ref-field | <code>bool MapSpriteHolder.NoLight</code> | <a id="symbol-script-ref-field-client-mapspriteholder-nolight-779a8d9ff0"></a><code>script.ref-field.client.MapSpriteHolder.NoLight</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Manual lighting bypass used when ProtoId is empty. |
-| ref-field | <code>ipos MapSpriteHolder.Offset</code> | <a id="symbol-script-ref-field-client-mapspriteholder-offset-8737961cee"></a><code>script.ref-field.client.MapSpriteHolder.Offset</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Base map-pixel offset applied when the sprite is attached. |
-| ref-field | <code>hstring MapSpriteHolder.ProtoId</code> | <a id="symbol-script-ref-field-client-mapspriteholder-protoid-af6c03f2b5"></a><code>script.ref-field.client.MapSpriteHolder.ProtoId</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Optional item prototype whose color, flattening, lighting, draw order, corner, and egg settings override the corresponding holder fields. |
-| ref-field | <code>uint32 MapSpriteHolder.SprId</code> | <a id="symbol-script-ref-field-client-mapspriteholder-sprid-e82be29c42"></a><code>script.ref-field.client.MapSpriteHolder.SprId</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Sprite resource handle resolved when Map.DrawMapSprite attaches the holder. |
-| ref-method | <code>void MapSpriteHolder.StopDraw()</code> | <a id="symbol-script-ref-method-client-mapspriteholder-stopdraw-96babdfb93"></a><code>script.ref-method.client.MapSpriteHolder.StopDraw</code> | callable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Invalidates the attached map sprite, sets Valid to false through its callback, and detaches this holder; repeated calls are harmless. |
-| ref-field | <code>uint8 MapSpriteHolder.TweakAlpha</code> | <a id="symbol-script-ref-field-client-mapspriteholder-tweakalpha-2b1224cd98"></a><code>script.ref-field.client.MapSpriteHolder.TweakAlpha</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Mutable alpha read by the attached sprite while IsTweakAlpha was enabled at attachment. |
-| ref-field | <code>ipos MapSpriteHolder.TweakOffset</code> | <a id="symbol-script-ref-field-client-mapspriteholder-tweakoffset-1bad3c756a"></a><code>script.ref-field.client.MapSpriteHolder.TweakOffset</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Mutable map-pixel offset read by the attached sprite while IsTweakOffs was enabled at attachment. |
-| ref-field | <code>bool MapSpriteHolder.Valid</code> | <a id="symbol-script-ref-field-client-mapspriteholder-valid-5bf8f82dde"></a><code>script.ref-field.client.MapSpriteHolder.Valid</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:250](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L250) | Reports whether the attached map sprite remains valid; the sprite writes false when invalidated. |
+| ref-field | <code>int16 MapSpriteHolder.Angle</code> | <a id="symbol-script-ref-field-client-mapspriteholder-angle-80d7024854"></a><code>script.ref-field.client.MapSpriteHolder.Angle</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Initial sprite angle in degrees applied when nonzero. |
+| ref-field | <code>ucolor MapSpriteHolder.Color</code> | <a id="symbol-script-ref-field-client-mapspriteholder-color-66dfe0c9ee"></a><code>script.ref-field.client.MapSpriteHolder.Color</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Optional packed color and fixed alpha applied at attachment; clear leaves the sprite color unchanged. |
+| ref-field | <code>CornerType MapSpriteHolder.Corner</code> | <a id="symbol-script-ref-field-client-mapspriteholder-corner-0c782b7813"></a><code>script.ref-field.client.MapSpriteHolder.Corner</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Manual corner classification used for lighting and egg appearance when ProtoId is empty. |
+| ref-field | <code>bool MapSpriteHolder.DisableEgg</code> | <a id="symbol-script-ref-field-client-mapspriteholder-disableegg-ecff4521f9"></a><code>script.ref-field.client.MapSpriteHolder.DisableEgg</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Manual switch that suppresses egg appearance when ProtoId is empty. |
+| ref-field | <code>DrawOrderType MapSpriteHolder.DrawOrder</code> | <a id="symbol-script-ref-field-client-mapspriteholder-draworder-199f5cc044"></a><code>script.ref-field.client.MapSpriteHolder.DrawOrder</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Manual draw-order slot used when ProtoId is empty. |
+| ref-field | <code>int32 MapSpriteHolder.DrawOrderHyOffset</code> | <a id="symbol-script-ref-field-client-mapspriteholder-draworderhyoffset-e1bf12c154"></a><code>script.ref-field.client.MapSpriteHolder.DrawOrderHyOffset</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Vertical hex offset applied to draw-order sorting when ProtoId is empty. |
+| ref-field | <code>mpos MapSpriteHolder.Hex</code> | <a id="symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43"></a><code>script.ref-field.client.MapSpriteHolder.Hex</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Map hex used as the sprite anchor and visibility test. |
+| ref-field | <code>bool MapSpriteHolder.IsFlat</code> | <a id="symbol-script-ref-field-client-mapspriteholder-isflat-9e5b2d1ea2"></a><code>script.ref-field.client.MapSpriteHolder.IsFlat</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Manual flat-sprite selection used when ProtoId is empty. |
+| ref-field | <code>bool MapSpriteHolder.IsTweakAlpha</code> | <a id="symbol-script-ref-field-client-mapspriteholder-istweakalpha-929ddf69a0"></a><code>script.ref-field.client.MapSpriteHolder.IsTweakAlpha</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Enables live alpha tracking through TweakAlpha after attachment. |
+| ref-field | <code>bool MapSpriteHolder.IsTweakOffs</code> | <a id="symbol-script-ref-field-client-mapspriteholder-istweakoffs-c8dd54d25a"></a><code>script.ref-field.client.MapSpriteHolder.IsTweakOffs</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Enables live offset tracking through TweakOffset after attachment. |
+| ref-field | <code>bool MapSpriteHolder.MapProjected</code> | <a id="symbol-script-ref-field-client-mapspriteholder-mapprojected-a9e4b2aa27"></a><code>script.ref-field.client.MapSpriteHolder.MapProjected</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Requests map-projected rendering when the sprite is attached. |
+| ref-field | <code>bool MapSpriteHolder.NoLight</code> | <a id="symbol-script-ref-field-client-mapspriteholder-nolight-779a8d9ff0"></a><code>script.ref-field.client.MapSpriteHolder.NoLight</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Manual lighting bypass used when ProtoId is empty. |
+| ref-field | <code>ipos MapSpriteHolder.Offset</code> | <a id="symbol-script-ref-field-client-mapspriteholder-offset-8737961cee"></a><code>script.ref-field.client.MapSpriteHolder.Offset</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Base map-pixel offset applied when the sprite is attached. |
+| ref-field | <code>hstring MapSpriteHolder.ProtoId</code> | <a id="symbol-script-ref-field-client-mapspriteholder-protoid-af6c03f2b5"></a><code>script.ref-field.client.MapSpriteHolder.ProtoId</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Optional item prototype whose color, flattening, lighting, draw order, corner, and egg settings override the corresponding holder fields. |
+| ref-field | <code>uint32 MapSpriteHolder.SprId</code> | <a id="symbol-script-ref-field-client-mapspriteholder-sprid-e82be29c42"></a><code>script.ref-field.client.MapSpriteHolder.SprId</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Sprite resource handle resolved when Map.DrawMapSprite attaches the holder. |
+| ref-method | <code>void MapSpriteHolder.StopDraw()</code> | <a id="symbol-script-ref-method-client-mapspriteholder-stopdraw-96babdfb93"></a><code>script.ref-method.client.MapSpriteHolder.StopDraw</code> | callable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Invalidates the attached map sprite, sets Valid to false through its callback, and detaches this holder; repeated calls are harmless. |
+| ref-field | <code>uint8 MapSpriteHolder.TweakAlpha</code> | <a id="symbol-script-ref-field-client-mapspriteholder-tweakalpha-2b1224cd98"></a><code>script.ref-field.client.MapSpriteHolder.TweakAlpha</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Mutable alpha read by the attached sprite while IsTweakAlpha was enabled at attachment. |
+| ref-field | <code>ipos MapSpriteHolder.TweakOffset</code> | <a id="symbol-script-ref-field-client-mapspriteholder-tweakoffset-1bad3c756a"></a><code>script.ref-field.client.MapSpriteHolder.TweakOffset</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Mutable map-pixel offset read by the attached sprite while IsTweakOffs was enabled at attachment. |
+| ref-field | <code>bool MapSpriteHolder.Valid</code> | <a id="symbol-script-ref-field-client-mapspriteholder-valid-5bf8f82dde"></a><code>script.ref-field.client.MapSpriteHolder.Valid</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | [Source/Client/MapSprite.h:249](https://github.com/cvet/fonline/blob/master/Source/Client/MapSprite.h#L249) | Reports whether the attached map sprite remains valid; the sprite writes false when invalidated. |
 
 <a id="symbol-script-ref-type-common-movingcontext-263cd8f02b"></a>
 ### <code>MovingContext</code>
 
-<code>ref type MovingContext</code>  
-Symbol ID: <code>script.ref-type.common.MovingContext</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>GetSpeed</code>, <code>,</code>, <code>GetStartHex</code>, <code>,</code>, <code>GetEndHex</code>, <code>,</code>, <code>GetStartHexOffset</code>, <code>,</code>, <code>GetEndHexOffset</code>, <code>,</code>, <code>GetPreBlockHex</code>, <code>,</code>, <code>GetBlockHex</code>, <code>,</code>, <code>GetWholeTime</code>, <code>,</code>, <code>GetWholeDist</code>, <code>,</code>, <code>GetElapsedTime</code>, <code>,</code>, <code>IsCompleted</code>, <code>,</code>, <code>GetCompleteReason</code>, <code>,</code>, <code>EvaluateProjectedHex</code>, <code>,</code>, <code>EvaluateNearestPathHex</code>, <code>,</code>, <code>EvaluatePathHexes</code>  
+<code>ref type MovingContext</code><br>
+Symbol ID: <code>script.ref-type.common.MovingContext</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>GetSpeed</code>, <code>,</code>, <code>GetStartHex</code>, <code>,</code>, <code>GetEndHex</code>, <code>,</code>, <code>GetStartHexOffset</code>, <code>,</code>, <code>GetEndHexOffset</code>, <code>,</code>, <code>GetPreBlockHex</code>, <code>,</code>, <code>GetBlockHex</code>, <code>,</code>, <code>GetWholeTime</code>, <code>,</code>, <code>GetWholeDist</code>, <code>,</code>, <code>GetElapsedTime</code>, <code>,</code>, <code>IsCompleted</code>, <code>,</code>, <code>GetCompleteReason</code>, <code>,</code>, <code>EvaluateProjectedHex</code>, <code>,</code>, <code>EvaluateNearestPathHex</code>, <code>,</code>, <code>EvaluatePathHexes</code><br>
 Source: [Source/Common/Movement.h:102](https://github.com/cvet/fonline/blob/master/Source/Common/Movement.h#L102)
 
 Shared movement-path state containing route geometry, timing, offsets, blocking information, and current completion progress.
@@ -2080,11 +2106,11 @@ Shared movement-path state containing route geometry, timing, offsets, blocking 
 <a id="symbol-script-ref-type-client-spritepattern-338f66b808"></a>
 ### <code>SpritePattern</code>
 
-<code>ref type SpritePattern</code>  
-Symbol ID: <code>script.ref-type.client.SpritePattern</code>  
-Runtime: client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Finished</code>, <code>,</code>, <code>EveryHex</code>, <code>,</code>, <code>InteractWithRoof</code>, <code>,</code>, <code>CheckTileProperty</code>, <code>,</code>, <code>TileProperty</code>, <code>,</code>, <code>ExpectedTilePropertyValue</code>, <code>,</code>, <code>Finish</code>  
+<code>ref type SpritePattern</code><br>
+Symbol ID: <code>script.ref-type.client.SpritePattern</code><br>
+Runtime: client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Finished</code>, <code>,</code>, <code>EveryHex</code>, <code>,</code>, <code>InteractWithRoof</code>, <code>,</code>, <code>CheckTileProperty</code>, <code>,</code>, <code>TileProperty</code>, <code>,</code>, <code>ExpectedTilePropertyValue</code>, <code>,</code>, <code>Finish</code><br>
 Source: [Source/Client/MapView.h:76](https://github.com/cvet/fonline/blob/master/Source/Client/MapView.h#L76)
 
 Map-owned controller that places copies of a named sprite on matching visible hexes until finished or the map is destroyed.
@@ -2102,11 +2128,11 @@ Map-owned controller that places copies of a named sprite on matching visible he
 <a id="symbol-script-ref-type-common-timeeventcontext-96e913190c"></a>
 ### <code>TimeEventContext</code>
 
-<code>ref type TimeEventContext</code>  
-Symbol ID: <code>script.ref-type.common.TimeEventContext</code>  
-Runtime: server, client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>GetId</code>, <code>,</code>, <code>GetData</code>, <code>,</code>, <code>GetDataArray</code>, <code>,</code>, <code>HasData</code>, <code>,</code>, <code>IsStopped</code>, <code>,</code>, <code>GetRepeat</code>, <code>,</code>, <code>Stop</code>, <code>,</code>, <code>Repeat</code>, <code>,</code>, <code>SetData</code>, <code>,</code>, <code>SetDataArray</code>  
+<code>ref type TimeEventContext</code><br>
+Symbol ID: <code>script.ref-type.common.TimeEventContext</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>GetId</code>, <code>,</code>, <code>GetData</code>, <code>,</code>, <code>GetDataArray</code>, <code>,</code>, <code>HasData</code>, <code>,</code>, <code>IsStopped</code>, <code>,</code>, <code>GetRepeat</code>, <code>,</code>, <code>Stop</code>, <code>,</code>, <code>Repeat</code>, <code>,</code>, <code>SetData</code>, <code>,</code>, <code>SetDataArray</code><br>
 Source: [Source/Common/TimeEvents.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/TimeEvents.h#L47)
 
 Transient callback context for inspecting and changing the time event that is currently firing; requested changes are applied after the callback returns.
@@ -2127,11 +2153,11 @@ Transient callback context for inspecting and changing the time event that is cu
 <a id="symbol-script-ref-type-client-videoplayback-7102c807e3"></a>
 ### <code>VideoPlayback</code>
 
-<code>ref type VideoPlayback</code>  
-Symbol ID: <code>script.ref-type.client.VideoPlayback</code>  
-Runtime: client, mapper  
-Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)  
-Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Stopped</code>  
+<code>ref type VideoPlayback</code><br>
+Symbol ID: <code>script.ref-type.client.VideoPlayback</code><br>
+Runtime: client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48)<br>
+Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Stopped</code><br>
 Source: [Source/Client/Client.h:77](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L77)
 
 Script-owned controller for a video clip and render texture created by Game.CreateVideoPlayback and advanced by Game.DrawVideoPlayback.

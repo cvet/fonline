@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -63,7 +64,7 @@ namespace
             _stringKeyEscaping {string_key_escaping}
         {
             // _hashes (member) must outlive _collectionKeyTypes/_collectionNames in the base class,
-            // because the hstrings registered below hold pointers into _hashes._hashStorage.
+            // because the hstrings registered below hold pointers into _hashes._hashStorage
             InitializeCollections({
                 {_hashes.ToHashedString("test_collection"), DataBaseKeyType::IntId},
                 {_hashes.ToHashedString("test_string_collection"), DataBaseKeyType::String},
@@ -494,14 +495,13 @@ namespace
 
 #if FO_HAVE_SQLITE
     // Writes straight into the storage file, bypassing the backend, so the key-validation paths can be
-    // exercised against data the backend would never have produced itself.
+    // exercised against data the backend would never have produced itself
     void StoreRawSQLiteRecord(const std::filesystem::path& storage_dir, string_view collection_name, const vector<uint8_t>& key_data, string_view value)
     {
         FO_STACK_TRACE_ENTRY();
 
-        // Goes through the engine initializer rather than sqlite3_initialize directly: sqlite3_config
-        // only applies before initialization, so initializing here would silently lose the engine
-        // allocator for the backend created later in the test.
+        // sqlite3_config only applies before initialization, so initializing directly here would silently lose the
+        // engine allocator for the backend created later
         InitializeSQLiteRuntime();
 
         REQUIRE(fs_create_directories(fs_path_to_string(storage_dir)));

@@ -33,7 +33,7 @@ class GuiRuntimeDocumentationTests(unittest.TestCase):
         )
         outputs = self.model["outputs"]
         self.assertEqual(outputs["type_count"], 12)
-        self.assertEqual(outputs["api_member_count"], 159)
+        self.assertEqual(outputs["api_member_count"], 160)
         self.assertEqual(outputs["callback_signature_count"], 39)
         self.assertEqual(outputs["screen_api_overload_count"], 31)
         self.assertEqual(outputs["annotation_count"], 8)

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -284,7 +284,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required enum underlying type");
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
         // Supported enum underlying types are uint8/uint16/uint32/int32 — none of them are narrow signed,
-        // so MemCopy into a zero-initialized int32 gives the correct numeric value for any size.
+        // so MemCopy into a zero-initialized int32 gives the correct numeric value for any size
         FO_VERIFY_AND_THROW(type.Size <= sizeof(int32_t), "Enum payload is wider than the validation scratch integer", type.Name, type.Size, sizeof(int32_t));
 
         int32_t value = ReadPaddedInt32(reader.ReadBytes(type.Size));
@@ -346,14 +346,14 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
 
     FO_VERIFY_AND_THROW(ref_type.IsRefType, "Type is not a reference type");
     FO_VERIFY_AND_THROW(ref_type.RefType, "Missing required reference type descriptor");
-    FO_VERIFY_AND_THROW(ref_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
+    FO_VERIFY_AND_THROW(ref_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
 
-    auto fields_registrator = ref_type.RefType->FieldsRegistrator;
-    FO_VERIFY_AND_THROW(fields_registrator, "Reference type fields registrator is null");
+    auto fields_registrar = ref_type.RefType->FieldsRegistrar;
+    FO_VERIFY_AND_THROW(fields_registrar, "Reference type fields registrar is null");
     size_t offset = 0;
 
-    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
+    for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
+        auto field_prop = fields_registrar->GetPropertyByIndexUnsafe(i);
 
         if (offset >= raw_data.size()) {
             // Remaining fields take their default values

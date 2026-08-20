@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_TESTING_APP
-    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
 
     try {

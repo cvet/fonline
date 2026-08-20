@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -188,6 +188,7 @@ private:
     ~ScriptDict();
 
     auto PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeInfo> ti) const -> nptr<ScriptDictTypeData>;
+    auto MakeSubTypeArray(int32_t sub_type_id, const char* accessor_name) const -> refcount_ptr<ScriptArray>;
 
     refcount_ptr<AngelScript::asITypeInfo> _typeInfo;
     int32_t _keyTypeId;

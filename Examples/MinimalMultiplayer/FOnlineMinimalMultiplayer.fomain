@@ -33,6 +33,7 @@ Network.DisableTcpNagle = True
 Network.DisableZlibCompression = False
 Network.DisableInterthreadCommunication = False
 Network.ArtificalLags = 0
+Network.ArtificalLagsJitter = 0
 Network.ForceCompatibilityVersion =
 
 # ServerNetwork
@@ -188,6 +189,8 @@ Timer.DeltaTimeCap = 100
 Baking.ForceBaking = False
 Baking.SingleThreadBaking = False
 Baking.IgnoreMissingBakerWarning = False
+Baking.ModelAttachmentMinExtent = 0.01f
+Baking.ModelAttachmentMaxExtent = 50.0f
 Baking.RawCopyFileExtensions = fofnt bmfc fnt acm ogg wav ogv json ini
 Baking.ProtoFileExtensions = fopro fomap
 Baking.BakeLanguages = engl russ
@@ -247,6 +250,7 @@ Mapper.ParticlePreviewEffect =
 Mapper.ParticlePreviewSeed = 0
 Mapper.ParticlePreviewScale = 1.0f
 Mapper.ParticlePreviewPrewarm = False
+Mapper.SparkEditorSource =
 
 # Client
 Client.UpdaterInfoDelay = 1000
@@ -308,6 +312,13 @@ Mapper.ParticlePreviewEffect = Documentation.spk
 Mapper.ParticlePreviewScale = 1.0
 Mapper.ParticlePreviewSeed = 20260731
 Mapper.ParticlePreviewPrewarm = True
+View.ScreenWidth = 1280
+View.ScreenHeight = 800
+
+[SubConfig]
+Name = MapperDocumentationSparkEditorCapture
+Mapper.StartMap = TutorialMap
+Mapper.SparkEditorSource = Documentation.spark
 View.ScreenWidth = 1280
 View.ScreenHeight = 800
 

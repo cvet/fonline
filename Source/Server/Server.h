@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -117,10 +117,10 @@ public:
     void Unlock();
     void DrawGui();
 
-    auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
-    auto LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<Player>;
-    auto LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> ptr<Player>;
-    auto LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr<Player>;
+    auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
+    auto LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>;
+    auto LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player, ident_t player_id) -> ptr<Player>;
+    auto LoginPlayerToTempSession(ptr<Player> not_logged_in_player) -> ptr<Player>;
 
     auto CreateCritter(hstring pid, bool for_player, nptr<const Properties> props = nullptr) -> ptr<Critter>;
     auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
@@ -146,9 +146,9 @@ public:
     // Runs during server shutdown before script modules are finalized.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
-    // Runs after login success is sent and before post-login setup; `unloginedPlayer` is present only during reconnect, and `StopChain` rejects the login.
+    // Runs after login success is sent and before post-login setup; `notLoggedInPlayer` is present only during reconnect, and `StopChain` rejects the login.
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerLogin, ptr<Player> /*player*/, nptr<Player> /*unloginedPlayer*/);
+    FO_ENTITY_EVENT(OnPlayerLogin, ptr<Player> /*player*/, nptr<Player> /*notLoggedInPlayer*/);
     // Runs after a hard disconnect is observed and before the player is detached and unregistered.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, ptr<Player> /*player*/);
@@ -286,10 +286,10 @@ private:
     };
 
     void SyncPoint();
-    void SyncWholeWorld(SyncContext& ctx);
+    void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-    void ProcessUnloginedPlayer(ptr<Player> unlogined_player);
+    void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player);
     void ProcessPlayer(ptr<Player> player);
     void ProcessConnection(ptr<Player> player);
     void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
@@ -356,9 +356,9 @@ private:
     void OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay);
     auto TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>;
     void OnTimeEventCancel(uint32_t event_id);
-    void OnPlayerConnected(ptr<Player> unlogined_player);
-    auto UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::optional<timespan>;
-    void OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_player);
+    void OnPlayerConnected(ptr<Player> not_logged_in_player);
+    auto NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>;
+    void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player);
     auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
     auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
     auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;
@@ -389,8 +389,8 @@ private:
     optional<UpdaterBackend> _updaterBackend {};
     TextPack _defaultLang {make_ptr(&Hashes)};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
-    mutable mutex _unloginedPlayersLocker {};
-    vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};
+    mutable mutex _notLoggedInPlayersLocker {};
+    vector<refcount_ptr<Player>> _notLoggedInPlayers FO_TSA_GUARDED_BY(_notLoggedInPlayersLocker) {};
     mutable mutex _connRateLocker {};
     unordered_map<string, ConnRateState> _connRates FO_TSA_GUARDED_BY(_connRateLocker) {};
 

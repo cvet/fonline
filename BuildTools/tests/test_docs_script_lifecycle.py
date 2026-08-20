@@ -62,7 +62,7 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         self.assertIn('CallbackAttributeRule {.AttributeName = "TimeEvent"', attributes)
         self.assertIn("caller must carry the same marker", attributes)
         self.assertIn('SetFunctionAttributes(as_engine->GetFunctionById(yield_id), {"Async"});', globals_source)
-        self.assertIn("Execute only callbacks that were due when this pass began.", client)
+        self.assertIn("Execute only callbacks that were due when this pass began", client)
 
     def test_server_cover_and_entity_teardown_claims_match_runtime_markers(self) -> None:
         server = self._read("Source/Server/Server.cpp")

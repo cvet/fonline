@@ -76,7 +76,7 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
 
         self.assertIn("dir_anim->_sprOffset[j] = frame.NextOffset;", sprites)
         self.assertIn("dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];", sprites)
-        self.assertIn("HexOffset is intentionally NOT clamped here", movement)
+        self.assertIn("Do not clamp HexOffset: prediction can leave current_hex a full step behind", movement)
         self.assertIn("progress.HexOffset = ipos16", movement)
         self.assertIn("anim_merge->_sprOffset[anim_->GetFramesCount()].x -= ox;", resources)
         self.assertIn("anim_merge->_sprOffset[anim_->GetFramesCount()].y -= oy;", resources)

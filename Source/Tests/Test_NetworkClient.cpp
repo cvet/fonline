@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,10 +29,13 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
 #include "ClientConnection.h"
+#include "NetworkClient.h"
+#include "NetworkServer.h"
 #include "Test_BakerHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -293,6 +296,213 @@ TEST_CASE("NetworkClientWrapperDisconnectsAndRethrowsOnImplExceptions")
         CHECK(conn.GetDisconnectCount() == 1);
         CHECK(conn.GetBytesReceived() == 0);
     }
+}
+
+TEST_CASE("NetworkClientSocketsTalksToARealServer")
+{
+    // The socket transports were previously assumed untestable, but a server on a loopback port is enough:
+    // the client dials 127.0.0.1 and the whole connect / send / receive / disconnect path runs for real
+    REQUIRE(net_sockets::startup());
+
+    auto server_settings = MakeClientNetworkSettings();
+    auto client_settings = MakeClientNetworkSettings();
+
+    std::mutex accepted_locker;
+    vector<shared_ptr<NetworkServerConnection>> accepted;
+
+    uint16_t port = 0;
+    string startup_error;
+    auto start_server = [&]() -> unique_ptr<NetworkServer> {
+        for (int32_t attempt = 0; attempt != 64; ++attempt) {
+            port = TestClientPort.fetch_add(1);
+            BakerTests::OverrideSetting(server_settings.ServerPort, port);
+
+            try {
+                return NetworkServer::StartAsioServer(&server_settings, [&](shared_ptr<NetworkServerConnection> conn) {
+                    std::scoped_lock locker {accepted_locker};
+                    accepted.emplace_back(std::move(conn));
+                });
+            }
+            catch (const std::exception& ex) {
+                startup_error = ex.what();
+            }
+        }
+
+        throw std::runtime_error(startup_error.empty() ? "NetworkServer ASIO start failed" : startup_error.c_str());
+    };
+
+    unique_ptr<NetworkServer> server = start_server();
+
+    // Declaration order would destroy these after the io_context their asio objects reference, so they are
+    // released here while it is still alive
+    auto shutdown_server = scope_exit([&]() noexcept {
+        safe_call([&] {
+            std::scoped_lock locker {accepted_locker};
+            accepted.clear();
+        });
+
+        safe_call([&server] { server->Shutdown(); });
+    });
+
+    BakerTests::OverrideSetting(client_settings.ServerHost, string {"127.0.0.1"});
+    BakerTests::OverrideSetting(client_settings.ServerPort, port);
+    BakerTests::OverrideSetting(client_settings.ProxyType, 0);
+
+    auto conn = NetworkClientConnection::CreateSocketsConnection(&client_settings);
+
+    // The connect is asynchronous and completes on writability, so the write-side status is what settles it
+    bool connected = false;
+
+    for (int32_t i = 0; i < 500 && !connected; i++) {
+        (void)conn->CheckStatus(true);
+        connected = conn->IsConnected();
+
+        if (!connected) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        }
+    }
+
+    CHECK(connected);
+
+    if (connected) {
+        shared_ptr<NetworkServerConnection> server_conn;
+
+        for (int32_t i = 0; i < 500 && !server_conn; i++) {
+            {
+                std::scoped_lock locker {accepted_locker};
+
+                if (!accepted.empty()) {
+                    server_conn = accepted.front();
+                }
+            }
+
+            if (!server_conn) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {10});
+            }
+        }
+
+        REQUIRE(static_cast<bool>(server_conn));
+        CHECK_FALSE(server_conn->GetHost().empty());
+
+        vector<uint8_t> outgoing {9, 8, 7, 6};
+        CHECK(conn->SendData(outgoing) == outgoing.size());
+        CHECK(conn->GetBytesSend() >= outgoing.size());
+
+        // The accepted connection reports the payload through its async receive callback, and the same
+        // callback set carries the downstream payload back; the callbacks can only be installed once
+        std::atomic_size_t server_received {};
+        vector<uint8_t> downstream {1, 1, 2, 3, 5, 8};
+        std::atomic_bool downstream_sent {};
+        server_conn->SetAsyncCallbacks(
+            [&downstream, &downstream_sent]() -> vector<uint8_t> {
+                if (downstream_sent.exchange(true)) {
+                    return {};
+                }
+
+                return downstream;
+            },
+            [&server_received](const_span<uint8_t> buf) { server_received.fetch_add(buf.size()); }, []() {});
+
+        for (int32_t i = 0; i < 500 && server_received.load() == 0; i++) {
+            server_conn->Dispatch();
+            std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        }
+
+        CHECK(server_received.load() > 0);
+
+        // The downstream payload travels back on the same socket, so the client receive path runs for real
+        size_t client_received = 0;
+
+        for (int32_t i = 0; i < 500 && client_received == 0; i++) {
+            server_conn->Dispatch();
+
+            if (conn->CheckStatus(false)) {
+                client_received = conn->ReceiveData().size();
+            }
+
+            if (client_received == 0) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {10});
+            }
+        }
+
+        CHECK(client_received > 0);
+        CHECK(conn->GetBytesReceived() > 0);
+
+        server_conn->Disconnect();
+    }
+
+    conn->Disconnect();
+    CHECK_FALSE(conn->IsConnected());
+}
+
+TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto server_settings = MakeClientNetworkSettings();
+    auto client_settings = MakeClientNetworkSettings();
+
+    std::mutex accepted_locker;
+    vector<shared_ptr<NetworkServerConnection>> accepted;
+
+    uint16_t port = 0;
+    string startup_error;
+    auto start_server = [&]() -> unique_ptr<NetworkServer> {
+        for (int32_t attempt = 0; attempt != 64; ++attempt) {
+            port = TestClientPort.fetch_add(1);
+            BakerTests::OverrideSetting(server_settings.ServerPort, port);
+
+            try {
+                return NetworkServer::StartUdpSocketsServer(&server_settings, [&](shared_ptr<NetworkServerConnection> conn) {
+                    std::scoped_lock locker {accepted_locker};
+                    accepted.emplace_back(std::move(conn));
+                });
+            }
+            catch (const std::exception& ex) {
+                startup_error = ex.what();
+            }
+        }
+
+        throw std::runtime_error(startup_error.empty() ? "NetworkServer UDP start failed" : startup_error.c_str());
+    };
+
+    unique_ptr<NetworkServer> server = start_server();
+
+    // Declaration order would destroy these after the io_context their asio objects reference, so they are
+    // released here while it is still alive
+    auto shutdown_server = scope_exit([&]() noexcept {
+        safe_call([&] {
+            std::scoped_lock locker {accepted_locker};
+            accepted.clear();
+        });
+
+        safe_call([&server] { server->Shutdown(); });
+    });
+
+    BakerTests::OverrideSetting(client_settings.ServerHost, string {"127.0.0.1"});
+    BakerTests::OverrideSetting(client_settings.ServerPort, port);
+
+    auto conn = NetworkClientConnection::CreateUdpSocketsConnection(&client_settings);
+
+    // The UDP transport performs its own handshake, so it needs pumping on both sides before it settles
+    bool connected = false;
+
+    for (int32_t i = 0; i < 800 && !connected; i++) {
+        (void)conn->CheckStatus(false);
+        connected = conn->IsConnected();
+
+        if (!connected) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        }
+    }
+
+    REQUIRE(connected);
+
+    vector<uint8_t> outgoing {1, 2, 3, 4, 5};
+    CHECK(conn->SendData(outgoing) == outgoing.size());
+
+    conn->Disconnect();
+    CHECK_FALSE(conn->IsConnected());
 }
 
 FO_END_NAMESPACE

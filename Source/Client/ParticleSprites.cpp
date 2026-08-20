@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -244,7 +244,7 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
     auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
-        // Particle UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset.
+        // Particle UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset
         auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {

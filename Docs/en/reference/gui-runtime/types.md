@@ -14,7 +14,7 @@ generated: true
 | Stable ID | Type | Base | Members | Callbacks | Role |
 | --- | --- | --- | --- | --- | --- |
 | <a id="entry-gui-runtime-type-object-f26b45999e"></a><code>gui-runtime.type.object</code> | <code>Object</code> | - | 56 | 36 | Base tree node for activity, geometry, hierarchy, hit testing, focus, dragging, callbacks, lookup, and recursive drawing. |
-| <a id="entry-gui-runtime-type-panel-ba52e2409f"></a><code>gui-runtime.type.panel</code> | <code>Panel</code> | <code>Object</code> | 16 | 0 | Object with a sprite background, optional 9-slice frame, crop/scissor, and animated vertical or horizontal scrolling. |
+| <a id="entry-gui-runtime-type-panel-ba52e2409f"></a><code>gui-runtime.type.panel</code> | <code>Panel</code> | <code>Object</code> | 17 | 0 | Object with a sprite background, optional 9-slice frame, crop/scissor, and animated vertical or horizontal scrolling. |
 | <a id="entry-gui-runtime-type-text-b7ebcc2a6b"></a><code>gui-runtime.type.text</code> | <code>Text</code> | <code>Object</code> | 12 | 0 | Drawable text node using a bound FontType, FontFlag set, colors, skip-lines state, and optional height measurement. |
 | <a id="entry-gui-runtime-type-text-input-e905911387"></a><code>gui-runtime.type.text-input</code> | <code>TextInput</code> | <code>Text</code> | 6 | 0 | Focused editable text node with length, password, carriage, clipboard, and on-screen-keyboard behavior. |
 | <a id="entry-gui-runtime-type-button-a91e38fc0a"></a><code>gui-runtime.type.button</code> | <code>Button</code> | <code>Panel</code> | 14 | 0 | Panel with pressed, hover, disabled, switched, and condition state. |
@@ -148,6 +148,7 @@ Object with a sprite background, optional 9-slice frame, crop/scissor, and anima
 - <code>void SetFrameImage(hstring imageName)</code>
 - <code>void SetCapInsets(int left, int top, int right, int bottom)</code>
 - <code>void SetCropContent(bool enabled)</code>
+- <code>bool CropContent</code>
 - <code>void SetAutoScroll(bool ver, bool hor)</code>
 - <code>int VerticalScrollValue</code>
 - <code>int HorizontalScrollValue</code>

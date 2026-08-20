@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -80,7 +80,8 @@ FIXED_SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebS
 FIXED_SETTING(bool, Network, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compression is disabled
 FIXED_SETTING(bool, Network, DisableInterthreadCommunication, false); // If true, server does not register the in-process interthread listener; clients in the same process fall through to TCP/UDP
-FIXED_SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds
+FIXED_SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds, applied to both directions
+FIXED_SETTING(int32_t, Network, ArtificalLagsJitter, 0); // Extra per-batch random delay in milliseconds on top of the artificial lag, emulating stalls
 FIXED_SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 FIXED_SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
 SETTING_GROUP_END();
@@ -268,6 +269,8 @@ SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual SpriteMeshSettings
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
+FIXED_SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest world extent a directly attached model may reach; below it the export sits in a smaller unit space than the engine
+FIXED_SETTING(float32_t, Baking, ModelAttachmentMaxExtent, 50.0f); // Largest world extent a directly attached model may reach; above it the export sits in a larger unit space and the client cannot build its sprite frame
 FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
 FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions
 FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
@@ -362,6 +365,7 @@ VARIABLE_SETTING(string, Mapper, ParticlePreviewEffect, ""); // Particle resourc
 VARIABLE_SETTING(int32_t, Mapper, ParticlePreviewSeed, 0); // Seed used when the selected runtime supports seeded startup preview
 VARIABLE_SETTING(float32_t, Mapper, ParticlePreviewScale, 1.0f); // Scale for the startup particle preview
 VARIABLE_SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewarm the startup particle preview
+VARIABLE_SETTING(string, Mapper, SparkEditorSource, ""); // SPARK source to open in the particle editor during Mapper startup
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

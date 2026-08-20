@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -45,19 +46,8 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
-// Regression coverage for every script CALL shape that establishes a frame, with 8-byte locals and
-// argument blocks of varying DWORD parity at each level — so any frame-base or argument-slot
-// alignment regression trips a hard `alignment` runtime error under the UBSan leg, and any
-// value/aliasing regression fails the exact checksums on every build:
-//   - free function calls and a deep chain with different argument parity per level;
-//   - class methods (`this` + small argument = odd combined block) and constructors with arguments;
-//   - virtual override through a base handle, interface method, funcdef call and a method delegate;
-//   - by-value parameters of every width (8-byte value types included), const in-references read
-//     from the caller's 8-byte locals, and out-references written back across frames;
-//   - a script call into a registered engine method returning `vector<ptr<T>>`, pinning the
-//     generated native-call cast's return-type spelling under `-fsanitize=function`.
-// Storage-layout coverage (class member offsets, globals, arrays) lives in
-// Test_AngelScriptAlignment.cpp.
+// Exercise every call-frame shape with 8-byte locals and both argument-slot parities.
+// Exact checksums pin values and aliasing while UBSan pins alignment
 namespace
 {
     struct CallTestRig
@@ -86,7 +76,7 @@ namespace CallTest
 {
     funcdef int64 UnaryOp(int8);
 
-    // Deep call chain with varying argument-block parity at every level, 8-byte locals at each.
+    // Vary argument-block parity across a deep call chain with 8-byte locals
     int64 Chain3(int8 a, int16 b, int8 c)
     {
         int64 wide = 1;
@@ -112,7 +102,7 @@ namespace CallTest
     }
 
     // Class method with `this` + one small argument (odd combined block) and 8-byte locals inside;
-    // the constructor itself takes a small argument and initializes 8-byte members.
+    // the constructor itself takes a small argument and initializes 8-byte members
     class OpHost
     {
         int8 Bias;
@@ -200,7 +190,7 @@ namespace CallTest
     }
 
     // Reference parameters: out-references written by the callee, const in-references read from
-    // 8-byte locals of the caller.
+    // 8-byte locals of the caller
     void WriteRefs(int64 &out wide, timespan &out ts, double &out real)
     {
         wide = 70;
@@ -235,7 +225,7 @@ namespace CallTest
     }
 
     // By-value parameters of every width, 8-byte value types included: the caller constructs them
-    // into argument slots, the callee reads them from its frame.
+    // into argument slots, the callee reads them from its frame
     int64 SumMixedParams(int8 a, int64 b, int16 c, double d, bool e, ident id, timespan ts)
     {
         return a + b + c + int64(d) + (e ? 1 : 0) + ts.seconds;
@@ -247,7 +237,7 @@ namespace CallTest
     }
 
     // Script call into a registered engine method returning vector<ptr<T>>: pins the generated
-    // native-call cast's return-type spelling under -fsanitize=function.
+    // native-call cast's return-type spelling under -fsanitize=function
     int64 CallVectorReturningApi()
     {
         Entity[] held = Game.GetHeldSyncEntities();
@@ -377,12 +367,88 @@ TEST_CASE("AngelScriptCallShapes")
     }
 
     // The vector<ptr<T>>-returning call is about the generated cast, not the value: with the
-    // test-side server lock held the sync context may legitimately hold entities.
+    // test-side server lock held the sync context may legitimately hold entities
     {
         auto func = server->FindFunc<int64_t>(fn("CallTest::CallVectorReturningApi"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() >= 0);
+    }
+}
+
+TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
+{
+    nptr<AngelScript::asIScriptEngine> as_engine = AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION);
+    REQUIRE(as_engine);
+    auto release_engine = scope_exit([&as_engine]() noexcept {
+        safe_call([&as_engine] {
+            if (as_engine) {
+                as_engine->ShutDownAndRelease();
+            }
+        });
+    });
+    constexpr size_t THREAD_COUNT = 16;
+    constexpr size_t TYPE_COUNT = 128;
+
+    vector<nptr<AngelScript::asITypeInfo>> probe_types;
+    probe_types.reserve(TYPE_COUNT);
+
+    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+        string type_name = strex("ConcurrentTypeIdProbe{}", type_index);
+        REQUIRE(as_engine->RegisterObjectType(type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT) >= 0);
+        nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoByName(type_name.c_str());
+        REQUIRE(type_info);
+        probe_types.emplace_back(type_info);
+    }
+
+    vector<vector<int32_t>> results(THREAD_COUNT, vector<int32_t>(TYPE_COUNT, -1));
+    std::atomic<size_t> ready_count = 0;
+    std::atomic<size_t> completed_count = 0;
+    std::atomic<size_t> phase = 0;
+    vector<thread> workers;
+    workers.reserve(THREAD_COUNT);
+
+    for (size_t thread_index = 0; thread_index < THREAD_COUNT; thread_index++) {
+        workers.emplace_back(run_thread("AngelScriptTypeIdProbe", [&, thread_index] {
+            for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+                ready_count.fetch_add(1, std::memory_order_release);
+
+                while (phase.load(std::memory_order_acquire) <= type_index) {
+                    std::this_thread::yield();
+                }
+
+                results[thread_index][type_index] = probe_types[type_index]->GetTypeId();
+                completed_count.fetch_add(1, std::memory_order_release);
+            }
+        }));
+    }
+
+    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+        size_t expected_count = (type_index + 1) * THREAD_COUNT;
+
+        while (ready_count.load(std::memory_order_acquire) < expected_count) {
+            std::this_thread::yield();
+        }
+
+        phase.store(type_index + 1, std::memory_order_release);
+
+        while (completed_count.load(std::memory_order_acquire) < expected_count) {
+            std::this_thread::yield();
+        }
+    }
+
+    for (thread& worker : workers) {
+        worker.join();
+    }
+
+    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+        int32_t expected_type_id = results[0][type_index];
+        REQUIRE(expected_type_id > AngelScript::asTYPEID_DOUBLE);
+        REQUIRE(as_engine->GetTypeInfoById(expected_type_id));
+
+        for (size_t thread_index = 1; thread_index < THREAD_COUNT; thread_index++) {
+            CHECK(results[thread_index][type_index] == expected_type_id);
+        }
     }
 }
 

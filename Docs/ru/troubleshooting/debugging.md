@@ -6,7 +6,7 @@ document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"504dceeac763f3d13f5c6e236914b9013a7e9d9fadca1a1e6a02ea78c9c62851"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"ab5e1f73cc0d819ccc02735973f03ec126f8a3a3e2632c97aa742003a7474c10"} -->
 
 # Нативная отладка и отладка AngelScript
 
@@ -69,7 +69,7 @@ Engine отвечает за:
 - `BuildTools/cmake/helpers/Build.cmake` и `BuildTools/cmake/helpers/State.cmake`;
 - `BuildTools/natvis/essentials.natvis`, `unordered_dense.natvis` и `fonline.natjmc`;
 - визуализаторов GLM, ImGui, small-vector и ufbx в `ThirdParty/`;
-- `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `ExceptionHandling.*`, `BaseLogging.*` и `Logging.cpp`;
+- `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `ExceptionHandling.*` и `Logging.cpp`;
 - `Source/Common/DiagnosticSelfTest.cpp` и `Source/Frontend/ApplicationInit.cpp`;
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp` и `AngelScriptDebugger.*`;
 - `Source/Common/Settings.inc`;
@@ -274,11 +274,13 @@ Exception callback получает message, уже захваченный `Catc
 
 `Common.AsyncLogWrite` управляет обычной асинхронной доставкой log. Fatal crash output приостанавливает её и выполняет синхронный flush, чтобы headless process не зависел от `stderr` или незавершённого writer thread.
 
+Явные низкоуровневые fatal exits используют `ReportFatalAndExit` или `ReportStrongAssertAndExit` из `FatalError.cpp`. Этот ранний слой следует за `StackTrace` и `BaseLogging`, пишет один синхронный native report и передаёт `ExitApp(false)` только механическое завершение процесса, не создавая обратной зависимости от `ExceptionHandling`. Сам `ExitApp(false)` остаётся status-only: контролируемый отказ compiler/input может вернуть ненулевой status без ложной маркировки crash, а настоящий fatal caller обязан сначала записать report.
+
 ### Гарантия crash-to-log и self-test
 
 Вне нативного отладчика backward-cpp обрабатывает поддерживаемые Windows SEH failures и POSIX fatal signals/termination на Windows, Linux и macOS. Engine добавляет причину crash, захватывает stack, переключается на synchronous log writes и завершает процесс по crash path. Долгоживущие Engine worker threads устанавливают POSIX alternate signal stack, чтобы диагностике stack overflow хватило места. Threads, созданным сторонними библиотеками, требуется такая же настройка до выполнения глубоко рекурсивной работы Engine.
 
-`FO_SELFTEST_CRASH` является destructive diagnostic hook, задаваемым только через environment и запускаемым при инициализации приложения после готовности logging и exception callbacks. Поддержаны базовые режимы `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw` и `main_strong_assert`; замените `main_` на `thread_` для соответствующего worker-style thread route.
+`FO_SELFTEST_CRASH` является destructive diagnostic hook, задаваемым только через environment и запускаемым при инициализации приложения после готовности logging и exception callbacks. Поддержаны базовые режимы `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit` и `main_failure_exit`; замените `main_` на `thread_` для соответствующего worker-style thread route.
 
 Запускайте его только для изолированного одноразового процесса и workspace. Он намеренно приводит процесс к crash или termination. Неизвестный режим записывает warning и продолжает работу. Сам репозиторий Engine не предоставляет subprocess acceptance runner; проверенное evidence Last Frontier исполняет Linux headless route, но этот проектный тест не является нормативным доказательством Engine.
 
@@ -286,7 +288,17 @@ Exception callback получает message, уже захваченный `Catc
 
 `Source/Tests/Test_StackTrace.cpp` покрывает регистрацию provider, порядок script layers, вложенное native/script interleaving, truncation, formatting, reuse/eviction cache, поиск отдельного entry, safe writing и containment бросающего provider. `Test_ExceptionHandling.cpp` покрывает payload Engine exceptions, поведение origin/catch, замену callback и inputs fatal/non-fatal reporter.
 
+Recoverable assertion ImGui несёт только строковое выражение. Поэтому `ImGuiExt::Init` устанавливает error callback, который непосредственно перед assertion пишет `ImGui error in window '<name>': <message>`. При несбалансированных `Begin`/`End` в headless client или mapper test эта строка указывает owning window; собственный debug log ImGui недоступен, поскольку включён `IMGUI_DISABLE_DEBUG_TOOLS`.
+
 Текущий набор Engine не открывает TCP/UDP endpoint AngelScript, не подключает адаптер VS Code, не проверяет Natvis в Visual Studio и не запускает каждый crash mode как subprocess. Это явные integration gaps, а не неявное следствие успешных native unit tests.
+
+## Эмуляция сетевой задержки
+
+`Network.ArtificalLags` в миллисекундах (`0` отключает) задерживает как входящие, так и исходящие client batches в `ClientConnection::ProcessConnection`. Каждый batch независимо выбирает `ArtificalLags / 2 .. ArtificalLags`; `Network.ArtificalLagsJitter` добавляет ещё `0 .. jitter` миллисекунд. Эмуляция откладывает delivery, но не ограничивает работу network pump.
+
+Оба направления нужны для воспроизведения расхождения authority. Inbound delay заставляет клиента поздно узнавать server state, outbound delay — сервер поздно узнавать client actions. Связанные сообщения получают независимые samples, поэтому расхождение создаёт разность задержек, тогда как полностью одинаковая фиксированная задержка сократилась бы. Умеренный base и больший jitter моделируют редкие stalls.
+
+Server-to-client movement содержит `offset_time`, поэтому клиент может fast-forward поздно полученное движение. Client-to-server movement не имеет elapsed-time field: `Process_Move` начинает его с текущего frame time сервера, и authoritative critter во время ходьбы отстаёт от клиента примерно на one-way delay. Settings входят в generated compatibility hash; добавление или переименование setting не требует ручного изменения compatibility marker.
 
 ## Отладчик AngelScript
 

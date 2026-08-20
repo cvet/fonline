@@ -1307,7 +1307,7 @@
           "description": "Preserve the exact umbrella order and solve lower-layer dependency pressure without introducing a cycle.",
           "document_id": "native-essentials",
           "anchor": "include-and-dependency-model",
-          "required_terms": ["strict dependency DAG", "BasicCore", "GlobalData", "StackTrace", "BaseLogging", "SmartPointers", "MemorySystem", "Containers", "StringUtils", "Platform", "ExceptionHandling", "Threading", "SafeArithmetics", "DataSerialization", "HashedString", "StrongType", "TimeRelated", "ExtendedTypes", "Compressor", "WorkThread", "Logging", "DiskFileSystem", "CommonHelpers", "NetSockets", "move the dependency upward through parameters"]
+          "required_terms": ["strict dependency DAG", "BasicCore", "GlobalData", "StackTrace", "BaseLogging", "FatalError", "SmartPointers", "MemorySystem", "Containers", "StringUtils", "Platform", "ExceptionHandling", "Threading", "SafeArithmetics", "DataSerialization", "HashedString", "StrongType", "TimeRelated", "ExtendedTypes", "Compressor", "WorkThread", "Logging", "DiskFileSystem", "CommonHelpers", "NetSockets", "move data through parameters or split the responsibility at the correct layer"]
         },
         {
           "id": "essentials-build-inventory",

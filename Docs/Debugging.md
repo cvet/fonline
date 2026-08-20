@@ -174,6 +174,10 @@ Continue with the [canonical English guide](en/troubleshooting/debugging.md#proj
 
 Continue with the [canonical English guide](en/troubleshooting/debugging.md#troubleshooting-by-layer).
 
+## Network latency emulation
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#network-latency-emulation).
+
 ## Maintenance triggers
 
 Continue with the [canonical English guide](en/troubleshooting/debugging.md#maintenance-triggers).

@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"543786b3bc896e09c143e9478e787251d460ffc052afb15a596684b09d8214a1"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"40c017ed228736fc663964dc8685a36e137e1ce09d82f7cc584f4557f85a67fe"} -->
 
 # Frontend и рендеринг
 
@@ -365,13 +365,21 @@ shadow. Mesh envelope вычисляется **по всем facings**: projecte
 получить continuous harmonic range. Runtime layers/equipment отсутствуют в
 baked bounds; такой envelope удерживает fixed frame size во время turns даже
 для backpack/weapon. Его расширяют только emitting particle systems: dormant
-effect ничего не резервирует. Если exact envelope больше, frame расширяется и
+effect ничего не резервирует.
+
+Измерение содержит два rectangle. `ModelSpriteBounds::Rect` — полный drawn extent: mesh, shadow, live particles и full frame, принудительно выбранный effect; он задаёт frame и atlas crop. `ModelSpriteBounds::PoseRect` — только posed model, захваченная до particles и возвращаемая `ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` для fit-to-area. Уже emitted world-space particles не масштабируются вместе с model, поэтому их включение в fit создаёт feedback loop, способный уменьшить model почти до нуля. Effects входят во frame, но не в fit.
+
+Если exact envelope больше, frame расширяется и
 перерисовывается. Последовательные frame placements объединяются как
 root-relative intervals, поэтому соседние округлённые pivots или живая
 world-space particle не заставляют стабильный frame бесконечно чередоваться.
 Interval anchor знаковый: tight frame может целиком находиться по одну сторону
 от model root, оставляя pivot за пределами frame; bounded retry loop всё равно
-отклоняет действительно unbounded layout. В atlas
+отклоняет действительно unbounded layout.
+
+`ModelInstance::SetupFrame` отклоняет logical `draw_size * FRAME_SCALE` выше `AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT`, называя model и оба размера до анонимного device texture-allocation failure. Meshes, отключённые собственным default link модели в `.fo3d`, не входят ни в drawn, ни в pose bounds; runtime учитывает default `DisableMesh` так же, как layer/attachment, удерживая geometry внутри baked layout budget.
+
+В atlas
 выделяется и копируется только selected region, а crop origin отражается в
 sprite offset, сохраняя root, hit test и map position.
 
@@ -429,12 +437,14 @@ particle sprites уже занимают rectangular allocations и восста
 требуют.
 
 Каждый live sprite владеет engine `unique_del_*` handle на encapsulated,
-stable-address `TextureAtlasLayout::Allocation`. Release за constant time
-очищает mesh observer и помечает derived free-rectangle list dirty. Следующая
-allocation один раз детерминированно перестраивает список из всех live
-rectangles, объединяя batch unloads; surviving sprite, pixels и UV не двигаются.
-Это runtime-only изменение layout не добавляет settings и не меняет sprite
-serialization.
+stable-address `TextureAtlasLayout::Allocation`. Release очищает mesh observer
+и за constant time возвращает rectangle прямо в free list. Список не coalesce-ится
+сразу: после placement miss `DefragmentFreeRectangles` перестраивает точный
+maximal set из live allocations до создания новой page. Prune содержащихся
+rectangles запускается только после роста значительно выше результата прошлого
+prune и индексирует keepers по coarse atlas cells, не выполняя full scan на hot
+path. Surviving sprites, pixels и UV не двигаются; settings и serialization не
+меняются.
 
 `Render.DrawWireframe` включает backend-independent geometry overlay.
 `SpriteManager` копирует реально отправленные triangle edges после position,
@@ -936,6 +946,8 @@ camera tilt пропускается, а `DrawToAtlas` остаётся для p
 весь automatic logical frame. Attached SPARK/Effekseer используют active direct
 proj; distortion получает snapshot on demand. Старый shadow pass выключен,
 поскольку его math atlas-space.
+
+Cached model-sprite frames ограничены `2048x2048` logical pixels (`4096x4096` для supersampled intermediate target). Dynamic model-bone particle bounds выше этого budget считаются недоступными: существующий model frame остаётся валидным, а runaway outlying geometry обрезается. Это не позволяет malformed или long-lived particle motion запросить unbounded CPU/GPU allocation в headless и rendered paths.
 
 **World scale.** `Render.ModelProjFactor` задаёт screen pixels per 3D world unit
 одновременно для models и in-scene particles. Engine default `40.0`; проект

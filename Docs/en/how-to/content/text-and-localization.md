@@ -96,8 +96,8 @@ Duplicate complete keys remain separate variants:
 {Ambient}{Dust}{A sheet of dust hides the horizon.}
 ```
 
-The script API does not choose randomly by default. The default
-`skipCount = 0` selects the first variant. For deliberate random selection,
+The script API does not choose randomly by default. `Game.GetText(key)` selects
+the first variant. For deliberate random selection,
 query `Game.GetTextCount(key)`, select an index in project code, and pass that
 index to `Game.GetText(key, index)`.
 
@@ -185,7 +185,8 @@ signatures. The important behavioral contract is:
 | API | Sides | Behavior |
 |---|---|---|
 | `Game.GetLanguage()` | server, client, mapper | Return the current `Language` setting as `LanguageName`. |
-| `Game.GetText(key, skipCount = 0)` | client, mapper | Return the indexed variant from the current language. Missing or out-of-range returns an empty string; negative index throws. |
+| `Game.GetText(key)` | client, mapper | Return the first variant from the current language. A missing key returns an empty string. |
+| `Game.GetText(key, index)` | client, mapper | Return the zero-based indexed variant from the current language. Missing or out-of-range returns an empty string; negative index throws. |
 | `Game.GetText(langName, key)` | client, mapper | Use the current pack when `langName` is empty or current; otherwise load/cache that language and return its first variant. No runtime fallback is applied for an absent non-empty language. |
 | `Game.GetTextCount(key)` | server, client, mapper | Return variant count, or zero when absent. |
 | `Game.IsTextPresent(key)` | server, client, mapper | Return whether at least one variant exists. |

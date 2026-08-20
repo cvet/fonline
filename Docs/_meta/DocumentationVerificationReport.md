@@ -2,6 +2,90 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain.
 
+## 2026-08-20 - documentation branch and master reconciliation through `0a38e0e5d`
+
+Scope:
+
+- Engine documentation head `917e6f752e30000bcf4f149d0c49269de74a33cd`
+  reconciled with published `origin/master`
+  `0a38e0e5dcbbdf78b70bacda3438d0407fcf17e3` by an uncommitted merge.
+- Complete incoming range
+  `439fb9231522bc51acfe100772cc954c9d3f0c2c..0a38e0e5dcbbdf78b70bacda3438d0407fcf17e3`
+  (64 commits), including 33 preflight conflict paths.
+- Reusable API, build, configuration, content-format, GUI, Mapper, scripting,
+  testing, release, localization, site, and AI-delivery documentation plus
+  source-owned generators and focused regressions.
+
+Results:
+
+- Resolved the merge source-first with no unmerged paths. The safety ref
+  `backup/docs-pre-update-20260820` preserves the pre-merge documentation head.
+- Regenerated 21 API reference pages from 2,493 explicitly classified symbols;
+  all 4,946 generated descriptions have current Russian translations.
+- Regenerated the bilingual site and route artifacts: 112 navigation entries,
+  197 English and 197 Russian searchable documents, 386 public routes, and 188
+  planned redirects.
+- Regenerated snippets and AI delivery: 310 normative snippets, 159 evidence
+  blocks, 183 external-parser checks, 27 retrieval tasks, 65 checks at 100
+  percent within threshold and 0.908 MRR, and 386 delivered documents.
+- Replaced the Mapper particle documentation captures with reproducible D3D11
+  1280x800 screenshots. Their SHA-256 values are
+  `75cb718080bcd3ab657d1885cdb571b39df6680a000e0947e2be8229f0c045e0`
+  and `61292f3d05fd652235a6afad0e14b2c862d6bb879319a2379d2073140d89a006`.
+- Compared the reconciled models with the safety branch: the API report records
+  362 changes and 18 required dispositions; the aggregate report records 371
+  changes across 18 domains and 23 required dispositions. Both strict checks
+  pass with zero missing dispositions. Bootstrap comparison with the published
+  master, which predates these generated models, also passes with zero changes.
+- Added backward-compatible comparison for the legacy prototype-format model
+  that predates the explicit property-serializer source field, with regression
+  coverage.
+- Fixed the on-demand baker's maximum-`uint64` rebuild sentinel and covered it
+  with three focused Baker test cases (66 assertions).
+- Made the Minimal Multiplayer fixture's distance-based visibility contract
+  explicit through a public `CheckCritterVisibilityHook`, and made generic
+  client/mapper API coverage tolerate the documented disabled-3D exception in
+  the fixture's `FO_ENABLE_3D=OFF` profile. The corrected event descriptions
+  now state that Engine fires the three appearance and disappearance tiers.
+- Regenerated the Packaging Matrix full config after the incoming settings
+  additions exposed its stale checked-in output.
+
+Validation:
+
+- Complete documentation discovery passed 546 tests in 481.287 seconds.
+- Standalone documentation validation passed all 397 maintained Markdown
+  entries; generated API, descriptions, references, CLI, snippets, site,
+  localization, AI evaluation, AI delivery, and screenshots pass current-state
+  checks.
+- `git diff --check` and `git diff --cached --check` pass; CRLF conversion
+  notices are informational and no whitespace errors were reported.
+- `FOMM_UnitTests` built in `RelWithDebInfo`; the focused Baker regression passed
+  three cases and 66 assertions. The five initially exposed profile-portability
+  cases then passed 816 assertions, and the complete native suite passed all
+  424,436 assertions in 421 test cases. `ForceBakeResources` and `FOMM_Mapper`
+  also built successfully, and the Mapper captures were inspected from the real
+  client render path.
+- `win64-tutorial-package` passed both unpackaged scenarios, the packaged
+  server/client scenario, archive checks, and manifest generation.
+  `win64-package-smoke` passed baking, raw/ZIP/headless/service payload checks,
+  packaged client/server execution, and its packaging manifest after the stale
+  generated config was refreshed.
+
+Limitations and handoff:
+
+- The local Ruby environment has no `bundle` executable, so the production
+  Jekyll render and browser artifact gate were not rerun. Structural site tests
+  and generated-site checks pass; CI remains authoritative for the pinned Ruby
+  render.
+- A post-validation fetch advanced published `origin/master` by one commit,
+  `0a38e0e5dcbbdf78b70bacda3438d0407fcf17e3..b4bf39a420ed1d8d785c8ca8bb51f69ba97eb66d`.
+  That commit adds the metadata-version guard across updater, metadata,
+  settings, documentation, and tests. It is not part of this still-open merge:
+  completing the current merge is required before that follow-up can be merged
+  with correct ancestry and revalidated.
+- The merge remains intentionally uncommitted and unpushed. Publication and the
+  dependent Last Frontier merge require explicit owner authorization.
+
 ## 2026-08-08 - model-frame placement and early time-event dispatch
 
 Scope:
@@ -57,7 +141,7 @@ Scope:
 Source areas checked:
 
 - `Source/Applications/`, `Source/Client/`, `Source/Common/`, `Source/Server/`, `Source/Scripting/`, `Source/Tools/`, `Source/Frontend/`, `Source/Essentials/`, and `Source/Tests/` for the source-tree routing page.
-- `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, and `ProtoManager.*` for entity/property/prototype claims.
+- `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializer.*`, and `ProtoManager.*` for entity/property/prototype claims.
 - `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, and `Source/Tools/MapBaker.*` for map/movement/geometry claims.
 - `Source/Server/DataBase.*`, `Source/Server/DataBase-*.cpp`, and `Source/Tests/Test_DataBase.cpp` for persistence claims.
 

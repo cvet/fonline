@@ -220,7 +220,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1096
+        "line": 1079
       }
     },
     {
@@ -240,7 +240,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1097
+        "line": 1080
       }
     },
     {
@@ -260,7 +260,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1098
+        "line": 1081
       }
     },
     {
@@ -279,7 +279,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1099
+        "line": 1082
       }
     }
   ],
@@ -484,7 +484,7 @@
         "path": "Source/Tools/Mapper.cpp",
         "anchors": [
           "SpliceMapIntoFomapContent",
-          "Sections of other maps are preserved byte-exact",
+          "Other maps in the file are preserved byte-exact",
           "SetHeaderExtraFields"
         ]
       }
@@ -3574,5 +3574,5 @@
       "Map": 14
     }
   },
-  "contract_digest": "614fbc700bb68f036dac4fa0645b7ab5550992e43504e1ef4e9dc8a854001921"
+  "contract_digest": "fe29b8823c11b9f7f41743e0ac7a11b98e9a3bd4ce89a3c9dd773a20b5a15560"
 }

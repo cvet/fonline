@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-text-format-index","locale":"ru","source_path":"Docs/en/reference/text-format/index.md","source_sha256":"b4748d338ed7fe8c4586b7275fabf66cd26c6c50367080309b37b92c59952386"} -->
+<!-- docs-translation: {"document_id":"generated-text-format-index","locale":"ru","source_path":"Docs/en/reference/text-format/index.md","source_sha256":"24747bf5bfa44bb86a0167929229e48dc78c73b86e7af8ed1c30be815cfdd77d"} -->
 
 # Справочник текста и локализации
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт генерируется для закреплённой ревизии движка. Проекты владеют языковой политикой, каталогами пакетов, процессом перевода, семантическими соглашениями о ключах и любым игровым formatter-ом lexem или аргументов. |
 | Исходный manifest | [BuildTools/TextFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/TextFormatInterface.json) |
-| Дайджест контракта | <code>79169437ee821a74a039524b8bfc29c6f65b7cc5251f55dab0b5d640b714cb2c</code> |
+| Дайджест контракта | <code>b0ac74065cbb6993abc6b0660dd51370665ac810b749a1e507a54203cf97ad07</code> |
 | Имя исходного файла | <code>&lt;TextPack&gt;.&lt;Language&gt;.fotxt</code> |
 | Имя запечённого файла | <code>&lt;ResourcePack&gt;.&lt;TextPack&gt;.&lt;Language&gt;.fotxt-bin</code> |
 | Исходная запись | <code>&#123;Key1&#125;&#123;Key2&#125;&#123;Text&#125;</code> |
@@ -32,7 +32,7 @@ generated: true
 | [Синтаксис](syntax.md) | 7 | Исходные поля в фигурных скобках, идентичность ключей, многострочный текст и варианты. |
 | [Языки](languages.md) | 9 | Выбор имени файла, значения по умолчанию, повторное запекание и нормализация. |
 | [Текст прототипов](proto-text.md) | 8 | Грамматика `$Text`, наследование, маршрутизация пакетов и декодирование. |
-| [Runtime](runtime.md) | 7 методов / 2 правил рендеринга | Script lookup, переключение языка, граница сервера и цветовые теги. |
+| [Runtime](runtime.md) | 8 методов / 2 правил рендеринга | Script lookup, переключение языка, граница сервера и цветовые теги. |
 
 ## Граница
 

@@ -83,6 +83,13 @@ Mapper.ParticlePreviewPrewarm = True
 View.ScreenWidth = 1280
 View.ScreenHeight = 800
 
+[SubConfig]
+Name = MapperDocumentationSparkEditorCapture
+Mapper.StartMap = TutorialMap
+Mapper.SparkEditorSource = Documentation.spark
+View.ScreenWidth = 1280
+View.ScreenHeight = 800
+
 [ResourcePack]
 Name = Metadata
 InputDirs = Scripts

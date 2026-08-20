@@ -20,7 +20,7 @@ item views, text input, message boxes, and consoles.
 
 The checked machine-readable companion is the
 [generated GUI runtime reference](../../reference/gui-runtime/index.md). It includes
-all 12 runtime types, their 159 documented API members, 39 callback signatures,
+all 12 runtime types, their 160 documented API members, 39 callback signatures,
 31 top-level screen API overloads, built-in metadata annotations, and the
 integration rules on this page.
 

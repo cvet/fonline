@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/coding-contracts/smart-pointers.html
 
 # Умные указатели
 
-<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"d184cd78affcc8a010c7da3fb541e46a403181ac7633ca67237706e83c347f64"} -->
+<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"4fd60f2e817a1c1b0da43bab015e10323067cac06e084689feb06c34b12894d5"} -->
 
 > Документация движка. Эта страница определяет словарь native C++-указателей
 > из `Source/Essentials/SmartPointers.h`: владение, nullability, правила
@@ -296,15 +296,18 @@ Typed **element span** из borrow pointer и length создавайте чер
 Non-null invariant проверяется **всегда**, во всех build configuration, а не
 debug-only `assert`. Construction `ptr<T>` из null raw pointer, каждый borrow
 nullable/owner в `ptr<T>` и каждый ownership narrowing проверяют invariant; при
-нарушении создаётся тот же отчёт `StrongAssertationException` и process exit,
-что у `FO_STRONG_ASSERT`.
+нарушении синхронно записываются expression, source location и native stack,
+после чего процесс завершается.
 
-Проверка называется `FO_BASIC_STRONG_ASSERT(expr)`, объявлена в
-`Essentials/BasicCore.h` рядом с `ExitApp` и реализована в
-`Essentials/ExceptionHandling.cpp`. `SmartPointers.h` находится выше
-`ExceptionHandling.h` в include order, поэтому использует low-level
-`[[noreturn]] ReportStrongAssertAndExit(...)` без нарушения слоёв. Реализация
-`noexcept`, так что её можно вызывать из `noexcept` members wrapper.
+Проверка называется `FO_BASIC_STRONG_ASSERT(expr)` и полностью принадлежит
+`Essentials/FatalError.h/.cpp`, расположенному после `StackTrace` /
+`BaseLogging` и до `SmartPointers` в строгом cascade Essentials. Поэтому
+`SmartPointers` зависит только вверх и не обращается к более позднему
+`ExceptionHandling`. `noexcept` reporter использует ранний native fatal path,
+а не создаёт `StrongAssertationException`, поэтому безопасен из `noexcept`
+members. Любой module Essentials после `FatalError` может использовать тот же
+primitive; код на уровне `BasicCore`, `GlobalData`, `StackTrace` или
+`BaseLogging` обязан применять механизм своего слоя.
 
 Следствие: null внутри `ptr<T>` завершает процесс в точке construction даже в
 release. Частые источники: `.data()` пустого контейнера, способный вернуть null,

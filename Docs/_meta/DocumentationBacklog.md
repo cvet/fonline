@@ -52,7 +52,7 @@ This backlog tracks the planned engine documentation set. It exists so documenta
 ## Runtime model
 
 - `verified` — [Entity Model](../en/explanation/entity-and-property-model/)
-  - Verified against `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, `ProtoManager.*`, and entity/property tests on 2026-08-01.
+  - Verified against `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializer.*`, `ProtoManager.*`, and entity/property tests on 2026-08-01.
 - `verified` — [Maps, Movement, and Geometry](../en/explanation/maps-and-movement.md)
   - Verified against `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, `Source/Tools/MapBaker.*`, and the current geometry/path/movement/map-loader/map-baker/server-map tests on 2026-08-01. The audit corrected the `MapLoader::Load` signature, documented `EnumerateMaps`, and replaced an indeterminate test note with exact files.
 - `verified` — [Networking](../en/explanation/authority-and-networking/)

@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -230,6 +231,9 @@ XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
 XWIN_ARCH_LIB_PARENT_DIRS = (Path('crt/lib'), Path('sdk/lib/um'), Path('sdk/lib/ucrt'))
 XWIN_HTTP_RETRY_COUNT = '5'
 
+DOWNLOAD_RETRY_COUNT = 5
+DOWNLOAD_RETRY_DELAY_SEC = 3
+
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
 # nullable type suffix (parsed natively by the engine since the
@@ -240,7 +244,7 @@ XWIN_HTTP_RETRY_COUNT = '5'
 # and optional `[]` (covers `Critter`, `Critter[]`, `TutorialSystem::Point`,
 # etc.) or a lowercase primitive followed by `[]` (covers `hstring[]`,
 # `int[]`, `string[]` â€" array-of-primitive is itself a handle and can carry
-# `?`, but the bare primitive cannot, so the `[]` is mandatory here).
+# `?`, but the bare primitive cannot, so the `[]` is mandatory here)
 _FOS_NULLABLE_TYPE = r'(?:[A-Z][\w:]*(?:\[\])?|[a-z][\w]*\[\])'
 FOS_NULLABLE_SUFFIX_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*(?:[(,)=;]|\[\]))'
@@ -248,7 +252,7 @@ FOS_NULLABLE_SUFFIX_RE = re.compile(
 # Inside function bodies we also need to repair uninitialized declarations
 # `Critter ? targetCr;` â€" the trailing `;` (no `=`) form. A ternary always
 # carries `:` between its branches and never `;` directly after the candidate
-# identifier, so adding `;` here doesn't collide with ternary parsing.
+# identifier, so adding `;` here doesn't collide with ternary parsing
 FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*[=;])'
 )
@@ -323,7 +327,7 @@ LINUX_PACKAGE_GROUPS = {
 		'1',
 		# wixl builds the Windows MSI installer (Wix pack) on the Linux package runner. On
 		# Debian/Ubuntu it ships in its own "wixl" package — the "msitools" package only carries
-		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl.
+		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl
 		['wixl'],
 	),
 }
@@ -467,7 +471,7 @@ def make_cmake_build_cmd(
 		command.extend(['--target', target_name])
 	# CMake `--parallel` without a value translates to `make -j` (unbounded) for the Unix Makefiles
 	# generator and ignores CMAKE_BUILD_PARALLEL_LEVEL. Always pick an explicit number so callers
-	# that need a memory-safe cap (e.g. GCC Debug on small CI runners) can set it via env.
+	# that need a memory-safe cap (e.g. GCC Debug on small CI runners) can set it via env
 	env_for_lookup = env if env is not None else os.environ
 	parallel_jobs = env_for_lookup.get('CMAKE_BUILD_PARALLEL_LEVEL')
 	if not parallel_jobs:
@@ -794,7 +798,21 @@ def copy_directory(
 
 def download_file(url: str, target_path: Path, label: str) -> None:
 	log(f'Download {label}:', url)
-	urllib.request.urlretrieve(url, target_path)
+
+	# Release CDNs drop connections when several jobs start at once and every caller here fetches an archive the
+	# rest of the job depends on; xwin retries its own downloads, this covers fetching xwin and the Android archives
+	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
+		try:
+			urllib.request.urlretrieve(url, target_path)
+			return
+		except OSError as ex:
+			if attempt == DOWNLOAD_RETRY_COUNT:
+				raise
+
+			delay = DOWNLOAD_RETRY_DELAY_SEC * attempt
+			log(f'Download {label} failed ({type(ex).__name__}: {ex}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
+			remove_path_if_exists(target_path)
+			time.sleep(delay)
 
 
 def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None) -> None:
@@ -1095,7 +1113,7 @@ def upload_codecov(build_dir: Path, token: str) -> None:
 def ensure_llvm_apt_source(workspace: Path, check_only: bool) -> None:
 	# Pin the LLVM apt.llvm.org repository to the same major as the project's
 	# minimum-required Clang (currently 20). Idempotent — llvm.sh detects an
-	# existing sources.list entry and reuses it.
+	# existing sources.list entry and reuses it
 	marker_version = '20-1'
 	if is_workspace_part_ready(workspace, 'llvm-apt-source', marker_version):
 		return
@@ -1146,7 +1164,7 @@ _LLVM_VERSIONED_RE = re.compile(r'-(\d+)$')
 
 def _pkg_needs_llvm_apt_source(package_name: str) -> bool:
 	# Any package ending in -<digits> coming from LLVM-versioned apt set
-	# (clang-20, llvm-20, lld-20, clang-tools-20, ...) needs apt.llvm.org.
+	# (clang-20, llvm-20, lld-20, clang-tools-20, ...) needs apt.llvm.org
 	match = _LLVM_VERSIONED_RE.search(package_name)
 	if not match:
 		return False
@@ -1180,7 +1198,7 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 	if os.name == 'nt':
 		# No explicit -G: let CMake pick the newest installed Visual Studio (same as
-		# make_windows_configure_cmd), so the toolset workspace follows the box's VS version.
+		# make_windows_configure_cmd), so the toolset workspace follows the box's VS version
 		run([
 			'cmake',
 			'-A',
@@ -1563,6 +1581,89 @@ def prepare_host_workspace(host_name: str, features: Sequence[str], check_only: 
 	host_preparer(selected, workspace, check_only, env)
 
 
+def repair_checkout_case(check_only: bool, env: Mapping[str, str]) -> None:
+	"""Realign working-tree entry names with the names git tracks.
+
+	A case-only rename is recorded correctly in the index, but on a case-insensitive filesystem git
+	only rewrites file names - an already existing directory keeps its old spelling forever. Every
+	reused checkout therefore serves the stale name, while resource and include lookups are
+	case-sensitive, so the drift surfaces much later as a file that sits on disk yet is reported as
+	missing. Long-lived checkouts on self-hosted Windows runners are the usual victim; a fresh clone
+	never reproduces it.
+	"""
+	project_root = Path(env['FO_PROJECT_ROOT'])
+	expected_names, conflicts = collect_tracked_entry_names(list_git_tracked_paths(project_root))
+
+	if conflicts:
+		for conflict in conflicts:
+			log('Tracked path is checked in under more than one spelling:', conflict)
+
+		raise SystemExit('Case-conflicting tracked paths have to be fixed in the repository')
+
+	drifted = realign_entry_names(project_root, expected_names, check_only)
+
+	if drifted == 0:
+		log('Checkout entry names match the git index')
+		return
+
+	if check_only:
+		raise SystemExit(f'Checkout case drifted from the git index in {drifted} entries')
+
+	log(f'Realigned {drifted} checkout entries with the git index')
+
+
+def list_git_tracked_paths(repo_root: Path) -> list[str]:
+	output = run_capture_text(['git', 'ls-files', '-z', '--recurse-submodules'], cwd=repo_root, log_command=False)
+	return [tracked_path for tracked_path in output.split('\0') if tracked_path]
+
+
+def collect_tracked_entry_names(tracked_paths: Sequence[str]) -> tuple[dict[str, dict[str, str]], list[str]]:
+	expected_names: dict[str, dict[str, str]] = {}
+	conflicts: list[str] = []
+
+	for tracked_path in tracked_paths:
+		parts = tracked_path.split('/')
+
+		for index, part in enumerate(parts):
+			parent = '/'.join(parts[:index])
+			siblings = expected_names.setdefault(parent, {})
+			tracked_name = siblings.setdefault(part.lower(), part)
+
+			if tracked_name != part:
+				conflict = f'{parent}/{tracked_name} and {parent}/{part}' if parent else f'{tracked_name} and {part}'
+
+				if conflict not in conflicts:
+					conflicts.append(conflict)
+
+	return expected_names, conflicts
+
+
+def realign_entry_names(repo_root: Path, expected_names: Mapping[str, Mapping[str, str]], check_only: bool) -> int:
+	drifted = 0
+
+	for parent in sorted(expected_names, key=lambda path: (path.count('/'), path)):
+		parent_dir = repo_root / parent if parent else repo_root
+
+		if not parent_dir.is_dir():
+			continue
+
+		siblings = expected_names[parent]
+
+		for entry_name in sorted(os.listdir(parent_dir)):
+			tracked_name = siblings.get(entry_name.lower())
+
+			if tracked_name is None or tracked_name == entry_name:
+				continue
+
+			log('Checkout case drift:', f'{parent}/{entry_name}' if parent else entry_name, '->', tracked_name)
+			drifted += 1
+
+			if not check_only:
+				os.rename(parent_dir / entry_name, parent_dir / tracked_name)
+
+	return drifted
+
+
 def resolve_build_hash(env: Mapping[str, str]) -> str:
 	project_root = Path(env['FO_PROJECT_ROOT'])
 	build_hash = run_capture_text(['git', 'rev-parse', 'HEAD'], cwd=project_root)
@@ -1706,7 +1807,7 @@ def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	# multi-GB link step; on the GitHub-hosted Linux runner (4 vCPU, 16 GB RAM) the full-parallel
 	# value trips the cgroup OOM killer for the heavier targets (all linux-gcc-*
 	# heavy variants, code-coverage). Cap concurrency on GitHub Actions only — local boxes have
-	# plenty of headroom and benefit from full parallelism.
+	# plenty of headroom and benefit from full parallelism
 	if build_env.get('GITHUB_ACTIONS') == 'true':
 		build_env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
 	return build_env
@@ -1741,7 +1842,7 @@ def make_platform_build_flag_args(platform_name: str, target_name: str, config: 
 		return build_flag_args(target_name, config=config)
 	if platform_name.startswith('win') and os.name != 'nt':
 		# Cross-compile path uses the Ninja single-config generator; CMAKE_BUILD_TYPE
-		# must be set at configure time.
+		# must be set at configure time
 		return build_flag_args(target_name, config=config)
 	return build_flag_args(target_name)
 
@@ -1866,7 +1967,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 	# Wipe stale CMake state when the cached compiler no longer matches what
 	# make_platform_configure_env wants to inject; otherwise CMake silently keeps
 	# the old compiler (e.g. a previously-cached clang-18 after the project bumps
-	# to clang-20) and the version gate trips at configure time.
+	# to clang-20) and the version gate trips at configure time
 	build_env = make_platform_configure_env(platform_name, 'clang')
 	if _cached_compiler_mismatch(build_dir, build_env):
 		log(f'Reset stale build dir {build_dir} (cached compiler differs from current toolchain)')
@@ -1877,7 +1978,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 	# San_Memory needs the MSan-instrumented libc++ prefix at configure time (the build embeds an
 	# rpath to it, so the resulting binary needs no runtime LD_LIBRARY_PATH). The workspace part is
 	# prepared separately (prepare-workspace msan-libcxx); mirror what run_validation() passes so
-	# `build <platform> <target> San_Memory*` works the same as the validate path.
+	# `build <platform> <target> San_Memory*` works the same as the validate path
 	if config.startswith('San_Memory'):
 		extra_cmake_args.append(f'-DFO_MSAN_LIBCXX_ROOT={to_cmake_path(resolve_msan_libcxx_root(env))}')
 
@@ -2077,7 +2178,7 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
 	# dotnet/runtime build expects ARMv7 32-bit as 'arm', but our project-wide arch
 	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
-	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent.
+	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent
 	dotnet_runtime_arch = 'arm' if arch == 'arm32' else arch
 	triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
 	workspace = Path(env['FO_WORKSPACE'])
@@ -2123,7 +2224,7 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 def discover_clang_format() -> str:
 	# An embedding project can point BuildTools at a specific clang-format binary
 	# (e.g. a bundled one) through FO_CLANG_FORMAT; it still has to satisfy the
-	# version-20 gate below. When unset, fall back to the system PATH lookup.
+	# version-20 gate below. When unset, fall back to the system PATH lookup
 	override = os.environ.get('FO_CLANG_FORMAT', '').strip()
 	candidates = [override] if override else []
 	candidates.extend(shutil.which(executable) for executable in ('clang-format-20', 'clang-format'))
@@ -2275,7 +2376,7 @@ def _split_outside_function_bodies(text: str) -> list[tuple[int, int, bool]]:
 
 def fix_fos_nullable_suffix(text: str) -> str:
 	# Mask string/char literals and comments so none of the repairs below touch
-	# literal text (e.g. a UI string that happens to contain `(name : value)`).
+	# literal text (e.g. a UI string that happens to contain `(name : value)`)
 	stash: list[str] = []
 
 	def _stash(match: 're.Match[str]') -> str:
@@ -2295,14 +2396,14 @@ def fix_fos_nullable_suffix(text: str) -> str:
 		out.append(chunk)
 	result = ''.join(out)
 	# Repair nullable markers inside template / cast angle brackets (call form first
-	# so the space before a call's `(` is removed, then the bare declaration form).
+	# so the space before a call's `(` is removed, then the bare declaration form)
 	result = FOS_NULLABLE_ANGLE_CALL_RE.sub(lambda m: _fos_collapse_nullable_angle(m, '('), result)
 	result = FOS_NULLABLE_ANGLE_RE.sub(lambda m: _fos_collapse_nullable_angle(m, ''), result)
-	# Reattach the bracket nullable-element array marker (`Item ? []` -> `Item?[]`).
+	# Reattach the bracket nullable-element array marker (`Item ? []` -> `Item?[]`)
 	result = FOS_NULLABLE_BRACKET_RE.sub(r'\1?[]', result)
-	# Drop the space clang-format inserts before a named call argument's `:`.
+	# Drop the space clang-format inserts before a named call argument's `:`
 	result = FOS_NAMED_ARG_RE.sub(r'\1:', result)
-	# Restore the masked literals/comments.
+	# Restore the masked literals/comments
 	result = FOS_STASH_RE.sub(lambda m: stash[int(m.group(1))], result)
 	return result
 
@@ -2387,7 +2488,7 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 			'-BuildRoot',
 			# Kept deliberately short: Effekseer nests its own ExternalProject trees (ThirdParty/Build/<lib>/src/
 			# ExternalProject_<lib>-build/CMakeFiles/CMakeScratch/TryCompile-*/...) under this root, and with a
-			# descriptive name the deepest MSBuild tracker log exceeded the 260-character Windows path limit.
+			# descriptive name the deepest MSBuild tracker log exceeded the 260-character Windows path limit
 			workspace / 'aux-builds' / 'efk',
 			'-OutputPath',
 			output / 'Binaries' / 'EffekseerEditor-Windows-win64',
@@ -2438,6 +2539,9 @@ def create_parser() -> argparse.ArgumentParser:
 		help='workspace components to prepare',
 	)
 	prepare_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
+
+	repair_case_parser = subparsers.add_parser('repair-checkout-case', help='realign working-tree entry names with the git index')
+	repair_case_parser.add_argument('--check', action='store_true', help='check for case drift without renaming entries')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
 	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
@@ -2520,6 +2624,9 @@ def main() -> None:
 		return
 	if args.command == 'prepare-workspace':
 		prepare_workspace(args.parts, args.check, env)
+		return
+	if args.command == 'repair-checkout-case':
+		repair_checkout_case(args.check, env)
 		return
 	if args.command == 'package-web-debug':
 		package_web_debug(env, args.devname, args.configs)

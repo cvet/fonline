@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -291,7 +291,7 @@ void FontManager::BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isiz
         int32_t dst_h = std::max(scale_value(src_h), 1);
 
         // Area-average resample with alpha-weighted color, so antialiased glyph edges keep their tone.
-        // Sampling stays inside the letter rect, so tightly packed neighbor glyphs never bleed in.
+        // Sampling stays inside the letter rect, so tightly packed neighbor glyphs never bleed in
         vector<ucolor> scaled_pixels(numeric_cast<size_t>(dst_w) * numeric_cast<size_t>(dst_h));
         float32_t x_ratio = numeric_cast<float32_t>(src_w) / numeric_cast<float32_t>(dst_w);
         float32_t y_ratio = numeric_cast<float32_t>(src_h) / numeric_cast<float32_t>(dst_h);
@@ -670,7 +670,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     int32_t cury = 0;
     int32_t& color_offset = fi.ColorOffset;
 
-    // Colorize: strip `@color:...@` markers and write parsed colors into TextColor.
+    // Colorize: strip `@color:...@` markers and write parsed colors into TextColor
     nptr<ucolor> dots;
     string buf;
     buf.reserve(str.size());

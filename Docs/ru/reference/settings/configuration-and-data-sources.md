@@ -6,7 +6,7 @@ document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
 
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"59d041bc71f72c4ad8bb41e4742f159b3f288a10fe822585582837edaeff3abf"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"135df07ca1fa4ab224310d84998b9838fbf16e70185d924ca6c3723b255e261d"} -->
 
 # Конфигурация и источники данных
 
@@ -138,6 +138,10 @@ Cached directory mounts создают snapshot файлового индекс�
 Порядок mount влияет на lookup behavior. При его изменении проверяйте runtime/tool path, владеющий resource pack, а не только parser.
 
 Installed clients сохраняют read-only base resources, смонтированные из `ClientResources`, и поверх них добавляют writable resource overlay из `fs_make_writable_path(UserWritablePath, ClientResources)` в client/updater paths. Updater записывает resource patches в этот overlay, поэтому актуальные файлы выигрывают lookup/hash checks без изменения install directory. Пути обновления native runtime binaries принадлежат разделу [Разделение client runtime и updater](../../explanation/runtime/client-updater.md).
+
+## Низкоуровневый доступ к диску
+
+`Source/Essentials/DiskFileSystem.*` выполняет прямые операции с диском ниже смонтированных ресурсов Engine. `fs_write_file()` записывает содержимое по запрошенному пути, но на файловой системе без учёта регистра существующая entry, отличающаяся только регистром букв, переиспользуется со старым написанием. Callers, перезаписывающие принадлежащее им дерево с точными именами, должны явно согласовать такие entries. Baker делает это один раз за проход; см. [согласование имён output](../../explanation/content-pipeline/baking.md#имена-output-согласуются-с-именами-к-которым-обращались-baker-ы).
 
 ## Хранилище кэша
 

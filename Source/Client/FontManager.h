@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ namespace Color
     static constexpr auto TextDefault = ucolor {60, 248, 0};
 }
 
-// Font slot index. Engine ships a single named slot (Default = 0); scripts may add more entries via the codegen Enum annotation.
+// Font slot index. Engine ships a single named slot (Default = 0); scripts may add more entries via the codegen Enum annotation
 ///@ ExportEnum
 enum class FontType : int32_t
 {
@@ -90,7 +90,7 @@ enum class FontFlag : uint32_t
 ///@ EnumValueDoc FontFlag Bordered // Uses the bordered or outlined font-texture variant for glyph rendering.
 
 // Bundled text formatting parameters: font slot, FontFlag bitmask, and skip-lines counter.
-// `SkipLines` is "skip from top" by default; with FontFlag::AlignBottom set it becomes "skip from bottom" (trailing lines).
+// `SkipLines` is "skip from top" by default; with FontFlag::AlignBottom set it becomes "skip from bottom" (trailing lines)
 ///@ ExportValueType Layout = FontType-Font+FontFlag-Flags+int32-SkipLines
 ///@ ValueFieldDoc TextFormat Font // Font slot selected for text measurement and rendering.
 ///@ ValueFieldDoc TextFormat Flags // FontFlag bitmask controlling alignment, wrapping, clipping, color tags, and glyph presentation.

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -699,7 +699,7 @@ Application::~Application()
     _ctx->NullWindowStubs.clear();
     _ctx->RenderTargetTex = nullptr;
 
-    // Renderer backends may need the SDL window while releasing their native resources.
+    // Renderer backends may need the SDL window while releasing their native resources
     _ctx->ActiveRenderer.reset();
 
     if (MainWindow._windowHandle) {
@@ -993,7 +993,7 @@ void Application::EndWindowRender()
     _currentRenderingWindow = nullptr;
 
     if (was_virtual) {
-        // Restore the host's screen size so engine chrome (tab bar, server panel) renders at OS pixels.
+        // Restore the host's screen size so engine chrome (tab bar, server panel) renders at OS pixels
         if (_hostScreenSizeSaved) {
             Settings.ScreenWidth = _hostScreenWidthSaved;
             Settings.ScreenHeight = _hostScreenHeightSaved;
@@ -1653,7 +1653,7 @@ void Application::BeginFrame()
             switch_active_to_hovered_child(screen_pos);
 
             // Mouse events are pushed to the active client; remap host (ImGui display) coords into
-            // the active virtual window's local screen coords so the client sees positions inside its own viewport.
+            // the active virtual window's local screen coords so the client sees positions inside its own viewport
             ipos32 local_pos = TranslateHostPosToActiveWindow(screen_pos);
             ipos32 local_delta = ScaleHostDeltaToActiveWindow(host_delta);
 
@@ -2448,7 +2448,7 @@ void Application::WaitForRequestedQuit()
 
     while (!_quit) {
         // Timed wait: the signal handler only latches the quit-signal flag (async-signal-safe), so this
-        // waiting thread is the one that converts it into a regular RequestQuit with logging/notification.
+        // waiting thread is the one that converts it into a regular RequestQuit with logging/notification
         _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
 
         if (IsQuitSignalReceived()) {
@@ -2732,7 +2732,7 @@ void AppWindow::SetTitle(string_view title)
 
     _title = string {title};
 
-    // Virtual windows show the title in the engine's tab bar; only OS windows need to push it down to SDL.
+    // Virtual windows show the title in the engine's tab bar; only OS windows need to push it down to SDL
     if (!_isVirtual && _windowHandle && _app->_ctx->ActiveRendererType != RenderType::Null) {
         auto title_ptr = make_ptr(_title.c_str());
         auto sdl_window = _windowHandle.reinterpret_as<SDL_Window>();
@@ -2805,7 +2805,7 @@ void AppRender::SetRenderTarget(nptr<RenderTexture> tex)
     FO_STACK_TRACE_ENTRY();
 
     // While a virtual window is active, redirect the implicit "back buffer" target (nullptr)
-    // to the window's offscreen texture so the existing render-target stack walks back into it.
+    // to the window's offscreen texture so the existing render-target stack walks back into it
     if (!tex) {
         if (auto virt = _app->_currentRenderingWindow; virt) {
             if (virt->IsVirtual()) {
@@ -2963,7 +2963,7 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
         auto restore_mouse_motion = scope_exit([]() noexcept { SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true); });
 
         // When the active window is virtual, `pos` is in that window's local screen coords —
-        // remap it back into host (ImGui display) coords before handing it to SDL.
+        // remap it back into host (ImGui display) coords before handing it to SDL
         ipos32 host_pos = _app->TranslateActiveWindowPosToHost(pos);
 
         if (relative_to) {

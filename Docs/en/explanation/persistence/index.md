@@ -178,7 +178,7 @@ Relevant tests include:
 - SQLite backend: `Source/Server/DataBase-SQLite.cpp`.
 - Shared BSON allocator/conversion: `Source/Server/DataBase.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, and `BsonToDocument()`; Mongo-specific operations stay in `Source/Server/DataBase-Mongo.cpp`.
 - Memory backend: `Source/Server/DataBase-Memory.cpp`.
-- Entity/property serialization: [Entity Model](../entity-and-property-model/) and `PropertiesSerializator.*`.
+- Entity/property serialization: [Entity Model](../entity-and-property-model/) and `PropertiesSerializer.*`.
 - Build feature toggles: [Build Workflow](../../how-to/build/) and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md).
 - Backup sets, oplog limits, isolated restore, and disaster-recovery drills: [Backup and Recovery](../../how-to/release/backup-and-recovery.md). Deployment stop/rollback sequencing: [Release Operations](../../how-to/release/operations.md). Provider choice, schedules, retention, RPO/RTO, concrete migrations, and production authority remain project-owned.
 

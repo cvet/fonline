@@ -27,7 +27,7 @@ parameters or a higher owning layer. Register new implementation files in
 link at the correct dependency point rather than bypassing the layer.
 
 The exact umbrella order is `BasicCore`, `GlobalData`, `StackTrace`,
-`BaseLogging`, `SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`,
+`BaseLogging`, `FatalError`, `SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`,
 `Platform`, `ExceptionHandling`, `Threading`, `SafeArithmetics`,
 `DataSerialization`, `HashedString`, `StrongType`, `TimeRelated`,
 `ExtendedTypes`, `Compressor`, `WorkThread`, `Logging`, `DiskFileSystem`,
@@ -62,6 +62,8 @@ not bypass the contract-change gate.
 - `Source/Essentials/StackTrace.cpp`
 - `Source/Essentials/BaseLogging.h`
 - `Source/Essentials/BaseLogging.cpp`
+- `Source/Essentials/FatalError.h`
+- `Source/Essentials/FatalError.cpp`
 - `Source/Essentials/SmartPointers.h`
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/MemorySystem.h`
@@ -106,23 +108,16 @@ not bypass the contract-change gate.
 - `Source/Essentials/WinApiUndef.inc`
 - `BuildTools/natvis/essentials.natvis`
 - `BuildTools/cmake/stages/EngineSources.cmake`
+- `BuildTools/tests/test_essentials_layering.py`
 - related tests under `Source/Tests/`
 
 ## Include and dependency model
 
-`Source/Essentials/Essentials.h` is the umbrella include. Its include order is the dependency order for the foundation layer:
+`Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-1. `BasicCore.h` — compiler/OS gates, standard library surface, namespace macros, base aliases, exception declaration helpers, and compile-time constants.
-2. `GlobalData.h` — process-wide create/delete callback registration for engine global data.
-3. `StackTrace.h`, `BaseLogging.h` — bootstrap diagnostics that remain usable before the allocator and full logging layer exist.
-4. `SmartPointers.h`, `MemorySystem.h` — pointer vocabulary and allocation helpers.
-5. `Containers.h`, `StringUtils.h` — allocator-aware container aliases and reusable string utilities.
-6. `Platform.h`, `ExceptionHandling.h` — host-process helpers followed by the engine exception and fatal-reporting layer.
-7. `Threading.h` — Clang Thread Safety Analysis macros (`FO_TSA_*`), the snake_case synchronization primitives (`fo::mutex` / `fo::shared_mutex` / `fo::scoped_lock` / `fo::shared_lock` / `fo::unique_lock`), the `fo::thread` pool-task handle, and the `run_thread` / `run_async` worker pools. It sits after `ExceptionHandling.h`, its deepest dependency, so later value headers such as `HashedString.h` can guard their state with these primitives. See [ThreadSafetyAnalysis.md](../../contributing/coding-contracts/thread-safety-analysis.md).
-8. `SafeArithmetics.h`, `DataSerialization.h`, `HashedString.h`, `StrongType.h`, `TimeRelated.h`, `ExtendedTypes.h`, `Compressor.h` — value, serialization, hashing, time, compression, and type helpers.
-9. `WorkThread.h`, `Logging.h`, `DiskFileSystem.h`, `CommonHelpers.h`, `NetSockets.h` — background jobs, full logging, disk access, general helpers, and raw sockets.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
-This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include only Essentials headers that appear earlier in the umbrella block. Do not reorder it to work around a dependency cycle; move the dependency upward through parameters or split the responsibility at the correct layer.
+This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include and call only modules that appear earlier in the umbrella block. Declaring an API early but defining it in a later `.cpp` is still a reverse link dependency. `BuildTools/tests/test_essentials_layering.py` checks direct includes and namespace-level external-definition ownership. Do not reorder the list to hide a cycle; move data through parameters or split the responsibility at the correct layer.
 
 Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
@@ -132,13 +127,17 @@ Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Clien
 
 `BasicCore.h` enforces the selected OS macro (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS`, or `FO_WEB`) and requires C++20. It also binds frequently used standard types into the engine namespace and declares core macros such as `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL`, and namespace helpers. Warning-suppression helpers also live here: `FO_DISABLE_WARNINGS_PUSH/POP` silence all warnings (for wrapping third-party header includes), while the per-compiler `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP`, and `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` silence one named diagnostic and are active only on their matching compiler (so a single-toolchain false positive can be suppressed at one site without other toolchains rejecting an unknown `-W` name or warning number). Prefer fixing warnings at their root; reach for the per-compiler helpers only for documented compiler false positives.
 
-`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` is intentionally environment-only and shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
+`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` is intentionally environment-only and shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
 
 Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows build-platform registry owns the CMake architecture, toolset, and canonical packaging architecture for the regular, `-clang`, and `-win7` variants. The Win7 pair pins MSVC 14.44, while `FO_BINARY_OUTPUT_POSTFIX` remains independent of the platform. In the package DSL the corresponding `BINARY` entry can select its own postfix, for example `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting sibling binaries in the package. Compatibility checks are kept outside application targets.
 
 ### Diagnostics and failure handling
 
-`BaseLogging.*` and `Logging.*` provide the logging foundation. `WriteLogMessage()` collapses immediate duplicates by `LogType` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `LogToFile()` opens the log file without an exclusive lock (the platform default: MSVC `std::ofstream` opens deny-none, POSIX has no mandatory open lock) so two engine modules in one process — e.g. a runtime host EXE and the runtime DLL it loads, each with its own copy of the engine global data — can both hold the same file open at once, and every write seeks to end of file first (`WriteSync`) so neither handle overwrites content the other appended; the `append` parameter still selects truncate (default) vs append for the initial open. `WriteLog`/`WriteBaseLog` degrade safely when their global data is not yet created (falling back to the base log, then to `std::cout`), and a runtime host can open the log early — after `CreateGlobalData()`, `LogToFile(GetExeLogFileName(), false)` (Frontend) — so its pre-`InitApp` diagnostics reach the file. When `AsyncLogWrite` is enabled, the fatal-error handler (`ExceptionHandling`) calls `SuspendAsyncLogWriting()` first, which flips writes back to the synchronous path without joining the worker, so the crash reason and stack trace are flushed inline before the process exits instead of being lost in an undrained async queue. `StackTrace.*` captures and formats native/script stack information, including a capped global cache for resolved native frames, while `ExceptionHandling.*` owns exception-reporting helpers. For debugger-facing workflows, use [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
+`BaseLogging.*` and `Logging.*` provide the logging foundation. `WriteLogMessage()` collapses immediate duplicates by `LogType` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `LogToFile()` opens the file without an exclusive lock, and every `WriteSync` seeks to the end, so separately linked Engine modules in one process can append safely. `WriteLog`/`WriteBaseLog` degrade to the base log and then `std::cout` before full global data exists.
+
+`FatalError.*` is the early native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and delegates only mechanical termination to `BasicCore::ExitApp(false)`. It owns `ReportFatalAndExit`, `ReportStrongAssertAndExit`, and `FO_BASIC_STRONG_ASSERT` without constructing exception objects or depending on the later `ExceptionHandling` module. `ExitApp(false)` itself remains status-only because controlled command failures and fatal invariant failures both use it.
+
+`StackTrace.*` captures and formats native/script stacks, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
 
 ### Memory, pointers, and lifetime utilities
 

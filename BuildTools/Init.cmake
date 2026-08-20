@@ -35,32 +35,8 @@ macro(IncludeBuildTool)
 	endforeach()
 endmacro()
 
-# ---------------------------------------------------------------------------
-# find_package interception
-#
-# On Windows we route every find_package() call through an explicit registry
-# of handler macros so that no third-party CMakeLists.txt accidentally pulls
-# a system library install. Each looked-up package either gets remapped onto
-# a bundled in-tree dependency or is explicitly allowed to fall through to
-# CMake's stock search via PassThroughFindPackage.
-#
-# Use:
-#   RegisterFindPackageHandler(<Name> <macro-name>) — register a handler
-#                                                     for find_package(<Name>)
-#   PassThroughFindPackage                          — built-in handler that
-#                                                     forwards to the original
-#                                                     find_package() (use for
-#                                                     build tools / system
-#                                                     packages we accept)
-#
-# The handler macro receives the original find_package() arguments, with the
-# package name as the first positional argument. Variables set inside the
-# handler land in the find_package() caller's scope, mirroring CMake's
-# normal find_package semantics.
-#
-# The interceptor itself is installed at the top of the ThirdParty stage,
-# before any AddSubdirectory() reaches a third-party tree.
-# ---------------------------------------------------------------------------
+# Route find_package through registered remaps or explicit PassThroughFindPackage handlers.
+# ThirdParty installs interception before any vendored AddSubdirectory call
 
 macro(RegisterFindPackageHandler packageName handlerMacroName)
 	set(_FO_FIND_PKG_HANDLER_${packageName} "${handlerMacroName}")
@@ -70,10 +46,7 @@ macro(PassThroughFindPackage)
 	_find_package(${ARGV})
 endmacro()
 
-# Built-in handler: report the package as missing without reaching the host
-# system. If the consumer marked it REQUIRED, abort configure with a clear
-# diagnostic. Use for optional probes that we deliberately don't ship
-# (e.g. SDL's LibUSB, glslang's SPIRV-Tools-opt, ...).
+# Report a package missing without probing the host; abort clearly when REQUIRED
 macro(NotFoundFindPackage _fo_nf_pkg)
 	list(FIND ARGN "REQUIRED" _fo_nf_required_idx)
 	if(NOT _fo_nf_required_idx EQUAL -1)
@@ -122,18 +95,18 @@ macro(InvokeStageHooks stage when)
 endmacro()
 
 macro(_RunStage stage)
-	# Validate stage name.
+	# Validate stage name
 	list(FIND FO_KNOWN_STAGES "${stage}" _stage_index)
 	if(_stage_index EQUAL -1)
 		AbortMessage("Pipeline: unknown stage '${stage}'. Known: ${FO_KNOWN_STAGES}")
 	endif()
 
-	# Each stage runs exactly once.
+	# Each stage runs exactly once
 	if("${stage}" IN_LIST FO_STAGES_EXECUTED)
 		AbortMessage("Pipeline: stage '${stage}' has already been executed; each stage must run exactly once")
 	endif()
 
-	# All preceding stages must have run.
+	# All preceding stages must have run
 	if(_stage_index GREATER 0)
 		math(EXPR _last_required "${_stage_index} - 1")
 		foreach(_idx RANGE 0 ${_last_required})

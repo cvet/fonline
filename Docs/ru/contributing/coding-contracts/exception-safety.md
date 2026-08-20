@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 
 # Безопасность исключений и устойчивость инвариантов движка
 
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"9cda146d714053c2a8fd38ba52e2bd87cc47a3b97292c0591b72fec88c3163f5"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"0cc37bd85ec70a8d44c5b742ff316d7d57096899d8b265820cdc6426fa6d6ee7"} -->
 
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
@@ -103,6 +103,24 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 отдельного callback-а превращается в остановку цепочки. Побочные эффекты
 обработчика, включая уничтожение и перемещение сущностей, сохраняются, поэтому
 движок повторно проверяет состояние после события.
+
+У клиента та же форма восстановления на уровне кадра, но есть дополнительное обязательство renderer-а. `MainEntry` ловит `std::exception` из `ClientEngine::MainLoop`, сообщает о нём и продолжает следующим кадром только после `Application::EndFrame`, который требует отсутствия привязанного render target. Поэтому draw-блок в `ClientEngine::MainLoop` защищён `scope_fail`, вызывающим `SpriteManager::AbortScene`: частичный draw отбрасывается, а stacks scissor и render target полностью снимаются. Любая новая frame-scoped привязка render target обязана обеспечить такую же очистку.
+
+`AbortScene` является `noexcept`, поскольку выполняется во время unwind. Неотказное состояние manager сбрасывается напрямую, а освобождение backend идёт через `safe_call`, чтобы потерянный render context был зарегистрирован, но не заменил исходное исключение. Сам backend operation остаётся throwing на обычном пути. `EndScene` также остаётся обычным вызовом, а не переносится в `scope_success`: его проверки инвариантов должны бросать, пока `scope_fail` ещё активен, а не из неявно `noexcept` destructor-а.
+
+### Нельзя бросать значения вне `std::exception`
+
+Любое исключение native-кода Engine или встраивающего проекта должно наследоваться от `std::exception`. Integer, bare struct или стороннее нестандартное исключение проходит мимо обычных границ отчётности и запрещено.
+
+Поэтому общий `catch (...)` рядом с `catch (const std::exception& ex)` не является recoverable error path. Он означает нарушенный инвариант и должен иметь вид:
+
+```cpp
+catch (...) {
+    FO_UNKNOWN_EXCEPTION();
+}
+```
+
+Нельзя журналировать такую ошибку и продолжать, создавать обычный domain error `"Unknown exception"` или преобразовывать её в ожидаемый отказ. Узкие исключения из disposition существуют только для no-throw teardown/unwind boundaries и самой logging/reporting machinery, где ничего не должно выйти наружу или повторно войти в reporter. Они не разрешают исходному коду бросать значение, не наследующее `std::exception`.
 
 ## 3. Контракт жизненного цикла сущности (создание / уничтожение)
 

@@ -131,3 +131,5 @@ gate, and the compile database must support a real parse. Generated headers
 reachable from the engine's common include chain must exist before analysis;
 otherwise translation units fail on missing includes before any rule is
 evaluated.
+
+Prune the compilation database to one command per translation unit before passing it to Clang tooling. CMake emits one entry for every target that compiles a file; an Engine source may therefore appear dozens of times. Clang runs its action once per entry, and `clang-query` retains every built AST, so duplicates multiply both wall time and memory. One Engine AST is roughly half a gigabyte; substantially larger usage usually indicates an unpruned database rather than an inherent analyzer cost.

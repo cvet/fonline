@@ -509,18 +509,36 @@
     {
       "id": "text-format.runtime.get-current-text",
       "name": "Game.GetText current language",
-      "signature": "string Game.GetText(TextPackKey textKey, int32 skipCount = 0)",
+      "signature": "string Game.GetText(TextPackKey textKey)",
       "sides": ["client", "mapper"],
-      "behavior": "Returns the zero-based variant selected by skipCount from the current client language; the default is the first variant.",
+      "behavior": "Returns the first variant from the current client language.",
+      "missing_behavior": "A missing key returns an empty string.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey)",
+            "client->GetCurLang().GetText(textKey)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.runtime.get-indexed-text",
+      "name": "Game.GetText indexed current language",
+      "signature": "string Game.GetText(TextPackKey textKey, int32 textIndex)",
+      "sides": ["client", "mapper"],
+      "behavior": "Returns the zero-based variant selected by textIndex from the current client language.",
       "missing_behavior": "A missing key or out-of-range index returns an empty string; a negative index throws.",
       "stability": "experimental",
       "source": [
         {
           "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
           "anchors": [
-            "FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t skipCount = 0)",
-            "Skip count arg must not be negative",
-            "client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount))"
+            "FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey, int32_t textIndex)",
+            "Text index arg must not be negative",
+            "client->GetCurLang().GetText(textKey, numeric_cast<size_t>(textIndex))"
           ]
         }
       ]

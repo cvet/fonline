@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 
 # Карты, движение и геометрия
 
-<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"dbd7de542fc414252f007148d2d856aa4ea727943ad63511f10875487ccd20ca"} -->
+<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"59c07b6a2d970391f17b7ae945c9eae17e90e2c618444ae92740a3e64c35d0bd"} -->
 
 Этот документ описывает переиспользуемые примитивы координат карты, движения, поиска пути, трассировки линий и загрузки карт, которыми пользуются клиентская и серверная среды выполнения и инструменты.
 
@@ -59,6 +59,14 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 `GameSettings::MAP_DIR_COUNT` участвует в нормализации направлений. При изменении геометрии проверяйте compile-time настройки, сгенерированные value-типы, тесты поиска пути и код рендеринга, проецирующий позиции карты.
 
 `mdir` хранит нормализованные углы, а `hdir` — дискретные направления карты. При движении или развороте используйте общие помощники преобразования: в квадратной геометрии север имеет угол `0`, поэтому самописное разбиение угла обязано корректно обрабатывать переход `360`/`0`.
+
+## Проекция камеры карты
+
+Камера карты использует world frame `+X` вправо, `+Y` вверх и `+Z` на юг карты; одна world unit равна одному pixel hex spacing. Parallel projection наклоняет мир вокруг X на `MAP_CAMERA_ANGLE` (`arcsin(sqrt(3)/4)`): northing земли сокращается в `sin(angle)` раз, а elevation — в `cos(angle)`. Ground point с `z = legacy_y / sin(angle)` заставляет `ProjectWorldToMap` точно воспроизводить legacy-позицию `GetHexPos` при нулевой высоте.
+
+`ProjectWorldToMap` является эталонной формой без scroll и zoom. Он возвращает map-space pixels в `.x/.y` и view depth в `.z`; больший depth ближе к камере. Пара `(.y, .z)` — ортонормальное вращение world `(Z, Y)`, а не shear.
+
+`MakeMapCameraView` — GPU-форма со scroll, zoom и вращением `yaw_deg` вокруг вертикальной оси. При нулевом yaw она воспроизводит `(ProjectWorldToMap(world).xy - scroll) * zoom` с неизменным depth. Backend ortho компонуется поверх этой matrix, поэтому sprites, 3D models и particles используют одно world-to-clip преобразование. Map sprites также записывают world depth с `DepthFunc = LessEqual`: CPU painter order продолжает обслуживать blended layers, а общий depth buffer разрешает occlusion между разными типами. `Test_Geometry.cpp` закрепляет обе формы проекции друг относительно друга и относительно `GetHexPos`.
 
 ## Обязанности `GeometryHelper`
 

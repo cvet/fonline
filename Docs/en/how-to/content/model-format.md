@@ -281,6 +281,8 @@ Use `Attach child.fo3d` when the child needs its own:
 
 Use direct `.fbx` / `.obj` attachment for a simple baked hierarchy. A child `.fo3d` is baked and validated independently; the parent validates that the descriptor exists and that the parent `Link` bone is valid.
 
+A direct attachment has no description-level scale correction. Its static maximum-axis extent must remain within `Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`; otherwise baking fails with the measured extent and limit. Use a child `.fo3d` when an explicit scale is part of the composition. Mesh nodes with a negative transform determinant are rejected earlier by `ModelMeshBaker`: reset/freeze mirrored geometry to a positive transform before export instead of relying on the baker to flip normals and winding.
+
 ## Particle attachments
 
 `AttachParticles` is layer-selected:
@@ -526,6 +528,7 @@ Do not mutate or parse the baked binary `.fo3d`, `.fbx`, or `.obj` payloads from
 - non-positive `AnimSpeed`;
 - unknown animation enums, missing clips, incompatible source skeletons, or invalid runtime-rig conversion;
 - direct attached FBX files with clips, external animation files with unexpected drawable geometry, and duplicate/non-selected/stale `AllowAnimationGeometry` exceptions;
+- mirrored mesh nodes and direct FBX/OBJ attachments outside the configured Engine world-unit extent;
 - invalid cut layer/shape/unskin combinations;
 - unknown tokens.
 

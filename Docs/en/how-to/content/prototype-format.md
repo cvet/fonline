@@ -39,7 +39,7 @@ The generated property catalog says whether the engine parser can load a key. It
 - `Source/Common/ConfigFile.cpp`
 - `Source/Common/Properties.h`
 - `Source/Common/Properties.cpp`
-- `Source/Common/PropertiesSerializator.cpp`
+- `Source/Common/PropertiesSerializer.cpp`
 - `Source/Common/EntityProperties.h`
 - `Source/Common/EntityProtos.cpp`
 - `Source/Common/ProtoManager.cpp`
@@ -151,7 +151,7 @@ Parser applicability is only the first gate. A project should separately classif
 
 ## Text values and references
 
-`PropertiesSerializator` is the value authority. It rejects malformed collections, integer overflow, invalid enum values, non-finite floating-point values, and unresolved references. Booleans accept their declared text form or numeric `0`/`1`; numeric and enum acceptance must not be inferred from loose configuration parsing.
+`PropertiesSerializer` is the value authority. It rejects malformed collections, integer overflow, invalid enum values, non-finite floating-point values, and unresolved references. Booleans accept their declared text form or numeric `0`/`1`; numeric and enum acceptance must not be inferred from loose configuration parsing.
 
 `FixedType` and prototype-reference properties resolve through metadata and migration rules. A reference must name an existing target unless the property is nullable and the authored value is empty.
 

@@ -1005,7 +1005,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                 "source_parser": "Source/example.txt",
                 "config_parser": "Source/example.txt",
                 "property_parser": "Source/example.txt",
-                "property_serializator": "Source/example.txt",
+                "property_serializer": "Source/example.txt",
                 "settings": "Source/Common/Settings.inc",
                 "api_model_generator": "Source/example.txt",
                 "api_model": docs_api.DEFAULT_OUTPUT,

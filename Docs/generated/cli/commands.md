@@ -139,6 +139,20 @@ Continue with the [canonical reference](../../en/reference/buildtools/commands.m
 
 Continue with the [canonical reference](../../en/reference/buildtools/commands.md).
 
+<a id="entry-cli-buildtools-command-repair-checkout-case-675fd250f4"></a>
+- [`entry-cli-buildtools-command-repair-checkout-case-675fd250f4`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-repair-checkout-case-675fd250f4)
+
+## `repair-checkout-case`
+
+Continue with the [canonical reference](../../en/reference/buildtools/commands.md).
+
+<a id="entry-cli-buildtools-command-repair-checkout-case-argument-check-659400bbbd"></a>
+- [`entry-cli-buildtools-command-repair-checkout-case-argument-check-659400bbbd`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-repair-checkout-case-argument-check-659400bbbd)
+
+### Exact `--help` output
+
+Continue with the [canonical reference](../../en/reference/buildtools/commands.md).
+
 <a id="entry-cli-buildtools-command-package-web-debug-0138fed878"></a>
 - [`entry-cli-buildtools-command-package-web-debug-0138fed878`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-package-web-debug-0138fed878)
 

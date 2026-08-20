@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -193,12 +193,12 @@ void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_t
     FO_STACK_TRACE_ENTRY();
 
     // One morph duration for every change: the oval grows from its center on appearance, glides between
-    // shapes as the player moves, and shrinks back to center on disappearance. No separate slow reveal.
+    // shapes as the player moves, and shrinks back to center on disappearance. No separate slow reveal
     _transitionDuration = std::max(duration, 0);
 
     if (points.empty()) {
         // Disappear: shrink the current fan to its center, then clear when the morph finishes. Nothing to
-        // do if it is already gone or already collapsing.
+        // do if it is already gone or already collapsing
         if (_collapsingToOff || _points.empty()) {
             return;
         }
@@ -272,7 +272,7 @@ void FogShape::FinishTransition()
     _points = _targetPoints;
     _transitionActive = false;
 
-    // A collapse-to-off morph ends with the fog fully cleared.
+    // A collapse-to-off morph ends with the fog fully cleared
     if (_collapsingToOff) {
         _points.clear();
         _startPoints.clear();
@@ -308,7 +308,7 @@ auto FogShape::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vect
     auto collapsed = points;
 
     // Collapse only the position to the origin; keep each point's own color so a growing/shrinking
-    // fan keeps its soft faded edges throughout the transition instead of flashing the center color.
+    // fan keeps its soft faded edges throughout the transition instead of flashing the center color
     for (auto& p : collapsed) {
         p.PointPos = center.PointPos;
         p.PointOffset = _drawOffset;

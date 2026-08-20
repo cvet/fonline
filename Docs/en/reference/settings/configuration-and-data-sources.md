@@ -156,6 +156,10 @@ Mount order matters for lookup behavior. When changing it, verify the runtime/to
 
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top in client/updater paths. The updater writes resource patches into that overlay, so current files win lookup/hash checks without modifying the install directory. Native runtime binary update paths are owned by [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 
+## Low-level disk access
+
+`Source/Essentials/DiskFileSystem.*` performs direct disk operations below mounted engine resources. `fs_write_file()` writes content at the requested path but, on a case-insensitive filesystem, an existing entry that differs only by letter case is reused with its old spelling. Callers that rewrite an exact-name tree they own must reconcile such entries explicitly. The baker does this once per pass; see [Output names are reconciled with the names bakers addressed](../../explanation/content-pipeline/baking.md#output-names-are-reconciled-with-the-names-bakers-addressed).
+
 ## Cache storage
 
 `Source/Common/CacheStorage.*` stores named binary/string cache entries behind `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()`, and `RemoveEntry()`. It is separate from resource packs: cache entries are mutable runtime/tool artifacts, while baked resources are generated from configured inputs. Client-side cache consumers resolve relative cache paths through `fs_make_writable_path(UserWritablePath, CacheResources)`, so portable clients keep cache next to the executable and installed clients write under the per-user root.

@@ -124,6 +124,11 @@ The optional `Mapper.ParticlePreviewEffect`, `Mapper.ParticlePreviewSeed`, `Mapp
 
 Open **Windows -> SPARK particle editor** to browse raw `.spark` sources and open one graph/preview window per asset. Saving writes through the raw-resource filesystem, reindexes baked resources, and invalidates the saved asset's `.spk` sprite cache. Closing a modified window offers Save, Discard, and Cancel.
 
+Set `Mapper.SparkEditorSource` to a raw asset path such as
+`Documentation.spark` when a launch profile must open one editor
+deterministically. Startup validates the path against indexed raw `.spark`
+sources and fails clearly instead of silently showing an empty editor.
+
 Effekseer authoring remains external. Build its editor through `BuildTools/buildtools.py build-auxiliary effekseer-editor <Config>`, edit the tracked `.efkproj`, then inspect the baked `.efk` through **Particle preview**.
 
 ## Focused viewers

@@ -55,7 +55,7 @@ of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. Test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` or `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
 
-With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors.
+With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
@@ -135,8 +135,8 @@ masked. Notable cases:
   and those libbfd caches remain reachable — LSan does not report them.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
   cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
-- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrator` is a
-  `unique_ptr` so every `PropertyRegistrator` (and the `Property` objects it holds) is freed when
+- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a
+  `unique_ptr` so every `PropertyRegistrar` (and the `Property` objects it holds) is freed when
   `EngineMetadata`'s type maps are destroyed.
 
 ## Code coverage
@@ -161,6 +161,20 @@ Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 [Source/Tests/README.md](../../../../Source/Tests/README.md) for current local task
 notes.
 
+Coverage is platform- and environment-specific. Sources not compiled in the current build have no mapping and are reported separately as untouched. Sources that compile but cannot execute in a headless test process belong in `ENVIRONMENT_EXCLUDED_SOURCES` with a written reason; currently this covers device-backed audio/video, Mongo/updater infrastructure, and the deliberately process-killing diagnostic self-test. Loopback sockets and the debugger endpoint remain in the headline. The report shows scoped, all-source, and excluded buckets independently. An exclusion is a routing decision: the owning platform, windowed run, or real-endpoint integration lane must cover it.
+
+### Focused harness patterns
+
+- **ImGui panels:** create a backend-less context, set `ImGuiBackendFlags_RendererHasTextures`, and use `ImGui::LogToBuffer(depth)` to auto-open tree nodes and prove nested text rendered. Collapsing headers opt out and need their IDs seeded in `StateStorage`. Destroy the context at scope exit. To cover widget branches, `ImGuiTestHarness::ActivateItem` needs two frames; address controls under child windows with `ActivateChildItem`, draw only the owning panel so another window's focus request cannot erase activation, and clear stale active IDs between presses.
+- **Server diagnostics:** a sync point does not itself cover entities. Snapshot not-logged-in players under the publication lock, release it before entity locks, and then acquire one replacement cover for the snapshot and registered world. Keep a real not-logged-in fixture in the test.
+- **Inbound remote calls:** entry covers the calling player and its controlled critter. Any second entity needs explicit `Game.Sync`; do not probe an operation expected to violate cover behind script `try/catch`, because the session is torn down before the next probe arrives.
+- **Crash reporting:** test non-terminating crash-stream formatting through a private log file, then restore logging to `NUL` or `/dev/null`. Test terminating reporters out of process with `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit` distinguish early fatal reporting from raw status-only exit.
+- **Fonts without assets:** synthesize `.fofnt` text or BMFont `BMF\3` blocks in memory, provide a matching sprite, and bind with scale in `(0..1]`. `SplitLines` emits rect-sized pages, so use a short rectangle when a test needs multiple outputs.
+- **Logged-in client/server:** declare login remote calls in both metadata blobs with opposite directions and the correct subsystem/namespace, add at least one project-owned persistent `Player` property before login insertion, then create/switch a critter and transfer it into a location/map to reach world-entry replication. Server and client `.fomap-bin-*` empty layouts differ; the client blob ends after two `uint32` counts.
+- **World reload:** use file-backed JSON, mark expected entities persistent, shut down one server, and start another on the same directory. Reload reaches critters through their owning map or global-map membership; an off-map runtime critter is not restored.
+- **Headless 3D:** bake a non-degenerate triangle, build the description with `ModelInfoBaker`, provide both source and baked mesh entries plus `Metadata.fometa-client` and `ModelAnimationInfo.foinfo`, then instantiate through the null renderer.
+- **Static maps and mapper disk writes:** serialize real `Properties::StoreAllData()` payloads for server map records; zero length is invalid. Mapper save tests need an actual `InputDirs` Maps root containing a reference `.fomap`; prefer `SaveMapToDir`, because plain `SaveMap` may otherwise write into the process working directory.
+
 ## Current test inventory
 
 The authoritative test-file count and complete sorted filename list are generated from `Source/Tests/Test_*.cpp` into [source-inventory.json](../../../generated/source-inventory.json). Do not copy the total or full list into prose.
@@ -181,8 +195,11 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_FileSystem.cpp`
 - `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 
 ### Common runtime model
+
+- `Source/Tests/Test_ApplicationHeadless.cpp`
 
 - `Source/Tests/Test_AnyData.cpp`
 - `Source/Tests/Test_Common.cpp`
@@ -243,12 +260,13 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp`
+- `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
 - `Source/Tests/Test_ModelAnimationConverter.cpp`
 - `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
 - `Source/Tests/Test_ModelAnimationRuntime.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
 - `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
 - `Source/Tests/Test_ModelSourceLoader.cpp`
 - `Source/Tests/Test_OzzAnimation.cpp`
@@ -293,6 +311,8 @@ sources and extract their animations successfully. Run ordinary
 unchanged tree incremental-clean.
 
 ### Rendering/frontend smoke tests
+
+- `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget-activation and window-state harness used for diagnostic-panel coverage.
 
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic

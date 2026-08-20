@@ -4,6 +4,32 @@
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -49,6 +75,45 @@ static auto MakeBakerSetupFullReportPath(string_view output_dir) -> string
 
     string normalized_output = strex(output_dir).normalize_path_slashes().rtrim("/").str();
     return strex(normalized_output).combine_path("Baking.full.report.json").str();
+}
+
+template<typename T>
+static auto FormatBakerSetupSettingValue(const T& value) -> string
+{
+    return strex("{}", value);
+}
+
+template<typename T>
+static auto FormatBakerSetupSettingValue(const vector<T>& value) -> string
+{
+    string result;
+
+    for (const auto& entry : value) {
+        if (!result.empty()) {
+            result += " ";
+        }
+
+        result += FormatBakerSetupSettingValue(entry);
+    }
+
+    return result;
+}
+
+static auto MakeCompleteBakerSetupConfig() -> string
+{
+    string config;
+
+#define FIXED_SETTING(type, group, name, ...) config += strex("{}.{} = {}\n", #group, #name, FormatBakerSetupSettingValue(type {__VA_ARGS__}))
+#define VARIABLE_SETTING(type, group, name, ...) config += strex("{}.{} = {}\n", #group, #name, FormatBakerSetupSettingValue(type {__VA_ARGS__}))
+#define SETTING_GROUP(name, ...)
+#define SETTING_GROUP_END()
+#include "Settings.inc"
+#undef FIXED_SETTING
+#undef VARIABLE_SETTING
+#undef SETTING_GROUP
+#undef SETTING_GROUP_END
+
+    return config;
 }
 
 static auto ReadBakerSetupReport(string_view output_dir) -> nlohmann::json
@@ -421,6 +486,61 @@ Bakers = {}
     CHECK(fs_remove_dir_tree(temp_dir));
 }
 
+TEST_CASE("BakerDataSourceAcceptsAlwaysRebuildOutputs")
+{
+    using namespace BakerTests;
+
+    string temp_dir = MakeTempBakerSetupDir("baker_data_source_always_rebuild");
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
+    string metadata_output_dir = strex(output_dir).combine_path("Metadata").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
+
+    auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
+    SetBakerSetupFileWriteTime(metadata_input_path, source_time);
+
+    for (string_view target : array<string_view, 3> {"server", "client", "mapper"}) {
+        string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
+        REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
+        SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
+    }
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    string config_path = strex(temp_dir).combine_path("Test.fomain").str();
+    string config_content = MakeCompleteBakerSetupConfig();
+    config_content += strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Metadata
+InputDirs = metadata_input
+IncludePatterns = **/*.fos
+Bakers = {}
+[ResourcePack]
+Name = Configs
+Bakers = {}
+)",
+        output_dir, MetadataBaker::NAME, ConfigBaker::NAME).str();
+
+    REQUIRE(fs_write_file(config_path, config_content));
+    settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+
+    BakerDataSource data_source {&settings};
+    size_t size = 0;
+    uint64_t write_time = 0;
+
+    REQUIRE_NOTHROW(data_source.GetFileInfo("(Root).fomain-server", size, write_time));
+    CHECK(size != 0);
+    CHECK(write_time == std::numeric_limits<uint64_t>::max());
+    CHECK(fs_exists(strex(output_dir).combine_path("Configs/(Root).fomain-server").str()));
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
 #if FO_ANGELSCRIPT_SCRIPTING && FO_ENABLE_3D
 TEST_CASE("BakerDataSourceRegistersPackOutputsInDependencyOrder")
 {
@@ -472,13 +592,8 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
 {
     using namespace BakerTests;
 
-    // Regression: a baker may read another baker's output while the data source is still discovering outputs.
-    // ModelInfoBaker builds a BakerClientEngine during the discovery pass, which reads the baked metadata back
-    // through the data source (re-entrancy). Reindex must publish the input resources before the discovery loop
-    // and each discovered output to the live index as it goes, so this mid-loop on-demand read resolves; before
-    // the fix it found neither and threw MetadataNotFoundException, crashing every standalone tool that boots a
-    // BakerDataSource. A .fo3d input is required to make ModelInfoBaker build the engine at all - the plain
-    // dependency-order case above uses a non-model placeholder, so ModelInfoBaker returns before that point.
+    // A baker reading another's output mid-discovery only resolves if inputs are published before the loop and
+    // outputs as they appear; the .fo3d input is what makes ModelInfoBaker build its engine at all
     string temp_dir = MakeTempBakerSetupDir("baker_data_source_reentrant_metadata");
     string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
     string model_desc_path = strex(temp_dir).combine_path("model_input/Test.fo3d").str();
@@ -497,10 +612,10 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     SetBakerSetupFileWriteTime(model_mesh_path, source_time);
 
     // RegisterClientStubMetadata reads the server, client and mapper metadata; write all three newer than the
-    // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery.
+    // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery
     array<string_view, 3> metadata_targets = {"server", "client", "mapper"};
 
-    for (const string_view target : metadata_targets) {
+    for (string_view target : metadata_targets) {
         string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
         REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
         SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
@@ -527,7 +642,7 @@ Bakers = {}
 
     settings.ApplyConfigFile(config, temp_dir);
 
-    // Construction runs Reindex, whose output-discovery pass triggers the re-entrant metadata read.
+    // Construction runs Reindex, whose output-discovery pass triggers the re-entrant metadata read
     CHECK_NOTHROW(BakerDataSource {&settings});
 
     BakerDataSource data_source {&settings};
@@ -719,6 +834,146 @@ Bakers = {}
     REQUIRE(fs_read_file(internal_cache_path).has_value());
     CHECK(*fs_read_file(internal_cache_path) == "cache-state");
     CHECK_FALSE(fs_exists(stale_effekseer_cache_path));
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
+TEST_CASE("BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename")
+{
+    string temp_dir = MakeTempBakerSetupDir("master_baker_case_rename");
+    string input_dir = strex(temp_dir).combine_path("input").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string lower_source_path = strex(input_dir).combine_path("Data/keep.json").str();
+    string upper_source_path = strex(input_dir).combine_path("Data/Keep.json").str();
+    string output_data_dir = strex(output_dir).combine_path("Core/Data").str();
+    string upper_output_path = strex(output_data_dir).combine_path("Keep.json").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(lower_source_path, string_view {"before-rename"}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Core
+InputDirs = input
+IncludePatterns = **/*.json
+Bakers = {}
+)",
+        output_dir, RawCopyBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    {
+        MasterBaker first_baker {&settings};
+        REQUIRE(first_baker.BakeAll());
+    }
+
+    // A case-only rename, the kind a content-naming pass makes: the baked entry keeps its pre-rename name unless
+    // the baker reconciles it, and incremental baking never revisits a file it considers up to date
+    REQUIRE(fs_remove_file(lower_source_path));
+    REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
+
+    {
+        MasterBaker second_baker {&settings};
+        REQUIRE(second_baker.BakeAll());
+    }
+
+    bool exact_upper_name_found = false;
+    bool exact_lower_name_found = false;
+
+    std::error_code ec;
+
+    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(output_data_dir)}, ec}) {
+        string entry_name = fs_path_to_string(entry.path().filename());
+
+        if (entry_name == "Keep.json") {
+            exact_upper_name_found = true;
+        }
+        if (entry_name == "keep.json") {
+            exact_lower_name_found = true;
+        }
+    }
+
+    CHECK_FALSE(ec);
+    CHECK(exact_upper_name_found);
+    CHECK_FALSE(exact_lower_name_found);
+    REQUIRE(fs_read_file(upper_output_path).has_value());
+    CHECK(*fs_read_file(upper_output_path) == "after-rename");
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
+TEST_CASE("BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename")
+{
+    string temp_dir = MakeTempBakerSetupDir("master_baker_case_dir_rename");
+    string input_dir = strex(temp_dir).combine_path("input").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string lower_source_path = strex(input_dir).combine_path("data/keep.json").str();
+    string upper_source_path = strex(input_dir).combine_path("Data/keep.json").str();
+    string output_pack_dir = strex(output_dir).combine_path("Core").str();
+    string upper_output_path = strex(output_pack_dir).combine_path("Data/keep.json").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(lower_source_path, string_view {"before-rename"}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Core
+InputDirs = input
+IncludePatterns = **/*.json
+Bakers = {}
+)",
+        output_dir, RawCopyBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    {
+        MasterBaker first_baker {&settings};
+        REQUIRE(first_baker.BakeAll());
+    }
+
+    // Rename the authored *directory* by letter case only. Creating the new output directory reuses the existing
+    // one and keeps its name, so every path underneath would silently keep the pre-rename spelling
+    REQUIRE(fs_remove_dir_tree(strex(input_dir).combine_path("data").str()));
+    REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
+
+    {
+        MasterBaker second_baker {&settings};
+        REQUIRE(second_baker.BakeAll());
+    }
+
+    bool exact_upper_dir_found = false;
+    bool exact_lower_dir_found = false;
+
+    std::error_code ec;
+
+    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(output_pack_dir)}, ec}) {
+        string entry_name = fs_path_to_string(entry.path().filename());
+
+        if (entry_name == "Data") {
+            exact_upper_dir_found = true;
+        }
+        if (entry_name == "data") {
+            exact_lower_dir_found = true;
+        }
+    }
+
+    CHECK_FALSE(ec);
+    CHECK(exact_upper_dir_found);
+    CHECK_FALSE(exact_lower_dir_found);
+    REQUIRE(fs_read_file(upper_output_path).has_value());
+    CHECK(*fs_read_file(upper_output_path) == "after-rename");
 
     CHECK(fs_remove_dir_tree(temp_dir));
 }

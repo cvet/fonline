@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -119,7 +119,7 @@ extern void SetCrashStackTrace() noexcept // Called in backward.hpp
         FO_NAMESPACE ExceptionHandling->CrashStackTrace = FO_NAMESPACE GetStackTrace();
     }
     catch (...) {
-        // Best effort: keep the original fatal error alive even if stack capture fails.
+        // Best effort: keep the original fatal error alive even if stack capture fails
     }
 }
 
@@ -186,18 +186,6 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
     ExitApp(false);
 }
 
-extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    try {
-        throw StrongAssertationException(message, file, line);
-    }
-    catch (const StrongAssertationException& caught_ex) {
-        ReportExceptionAndExit(caught_ex);
-    }
-}
-
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -237,6 +225,25 @@ extern auto GetExceptionCallback() noexcept -> ExceptionCallback
     return ExceptionHandling->Callback;
 }
 
+#if HAS_NATIVE_TRACE && !FO_WINDOWS
+
+// Retires the sigaltstack registration before its pages are released: freeing first leaves the kernel aiming the
+// signal stack at reclaimed memory, and an instrumented allocator then unmaps the same region twice
+class AltSignalStackReleaser final
+{
+public:
+    void operator()(uint8_t* buffer) const noexcept
+    {
+        stack_t ss {};
+        ss.ss_flags = SS_DISABLE;
+        (void)sigaltstack(&ss, nullptr);
+
+        delete[] buffer;
+    }
+};
+
+#endif
+
 extern void InstallCrashHandlerStackForThisThread() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -247,20 +254,18 @@ extern void InstallCrashHandlerStackForThisThread() noexcept
     }
 
     // 2 MiB is well above what the crash handler (unwinding + symbol resolution) needs; the pages are
-    // touched only during a crash, so the reservation stays lazily committed for a thread that never faults.
+    // touched only during a crash, so the reservation stays lazily committed for a thread that never faults
     constexpr size_t stack_size = size_t {2} * 1024 * 1024;
 
-    // Per-thread backing buffer kept alive for the thread's lifetime; sigaltstack retains a pointer to it
-    // and the registration is torn down automatically when the thread exits. std::unique_ptr (not the
-    // engine alias) is used because it supports array storage; new[] leaves the bytes uninitialized so
-    // the reservation stays lazily committed.
-    static thread_local std::unique_ptr<uint8_t[]> alt_stack_buffer;
+    // The kernel drops the sigaltstack registration only when the thread ends — later than this destructor — so
+    // the releaser retires it before the pages go back; std::unique_ptr, not the engine alias, supports array storage
+    static thread_local std::unique_ptr<uint8_t[], AltSignalStackReleaser> alt_stack_buffer;
 
     if (alt_stack_buffer) {
         return; // already installed on this thread
     }
 
-    alt_stack_buffer = std::unique_ptr<uint8_t[]> {new (std::nothrow) uint8_t[stack_size]};
+    alt_stack_buffer = std::unique_ptr<uint8_t[], AltSignalStackReleaser> {new (std::nothrow) uint8_t[stack_size]};
 
     if (!alt_stack_buffer) {
         return;
@@ -347,7 +352,7 @@ static void SetCrashInfo(string info) noexcept
         ExceptionHandling->CrashInfo = std::move(info);
     }
     catch (...) {
-        // Best effort: crash handlers must not throw while recording context.
+        // Best effort: crash handlers must not throw while recording context
     }
 }
 

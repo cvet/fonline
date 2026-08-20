@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-gui-runtime-index","locale":"ru","source_path":"Docs/en/reference/gui-runtime/index.md","source_sha256":"7b7141352c24b7e4e2ef01400c6cee8ee285c2dc91b5d545a3570f0e4ba726b8"} -->
+<!-- docs-translation: {"document_id":"generated-gui-runtime-index","locale":"ru","source_path":"Docs/en/reference/gui-runtime/index.md","source_sha256":"8dceb921acae8a5841ea33b7b2560f066c0fd54bf5dfbae899ea0c6599a8e253"} -->
 
 # Сгенерированный справочник GUI Runtime
 
@@ -22,10 +22,10 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Переиспользуемый GUI runtime поддерживает клиентские интеграции, но остаётся экспериментальным; подключаемые проекты владеют каталогами экранов, генераторами, визуальным оформлением и привязкой hooks. |
 | Исходный манифест | [BuildTools/GuiRuntimeInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/GuiRuntimeInterface.json) |
-| Дайджест контракта | <code>ecdc56e4e0f650c6af06801b6d63159b9d39ff0d67759ba17751a9884323561a</code> |
+| Дайджест контракта | <code>437603ed47bec7614b368acf6b424a9c27d3d7e9fce56c5211c0fa4a30d1fdbd</code> |
 | Сторона runtime | <code>client</code> |
 | Типы runtime | 12 |
-| Документированные члены типов | 159 |
+| Документированные члены типов | 160 |
 | Сигнатуры callback-функций | 39 |
 | Перегрузки верхнеуровневого API | 31 |
 | Декларативные GUI-форматы Engine | 0 |

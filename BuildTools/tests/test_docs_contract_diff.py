@@ -246,6 +246,27 @@ class DocumentationContractDiffTests(unittest.TestCase):
         stale_report = docs_contract_diff.generate_contract_diff(baseline, current, stale)
         self.assertEqual(stale_report["status"], "blocked")
 
+    def test_legacy_prototype_model_without_serializer_source_remains_comparable(self) -> None:
+        models = _load_current_models()
+        baseline = copy.deepcopy(models)
+        baseline["prototype-format"].pop("property_serializer")
+
+        loaded_baseline = docs_contract_diff.load_model_text(
+            "prototype-format",
+            json.dumps(baseline["prototype-format"]),
+            "legacy prototype-format baseline",
+        )
+        baseline["prototype-format"] = loaded_baseline
+        report = docs_contract_diff.generate_contract_diff(
+            baseline,
+            models,
+            _empty_dispositions(),
+        )
+
+        self.assertEqual(report["status"], "blocked")
+        self.assertEqual(report["domains"]["prototype-format"]["changes"][0]["change_type"], "source-contract")
+        self.assertEqual(report["summary"]["missing_disposition_count"], 1)
+
     def test_invalid_model_and_cross_domain_ledger_entry_are_rejected(self) -> None:
         models = _load_current_models()
         duplicate_cli = copy.deepcopy(models["cli"])

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,35 +37,42 @@
 
 FO_BEGIN_NAMESPACE
 
-// SyncScope: requires self; reads connection endpoint only.
+// SyncScope: requires self; reads connection endpoint only
 ///@ ExportMethod
 FO_SCRIPT_API string Server_Player_GetHost(ptr<Player> self)
 {
     return string(self->GetConnection()->GetHost());
 }
 
-// SyncScope: requires self; reads connection endpoint only.
+// SyncScope: requires self; reads connection endpoint only
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Player_GetPort(ptr<Player> self)
 {
     return numeric_cast<int32_t>(self->GetConnection()->GetPort());
 }
 
-// SyncScope: requires self; closes this player's connection.
+// SyncScope: requires self; closes this player's connection
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_Disconnect(ptr<Player> self)
 {
     self->GetConnection()->GracefulDisconnect();
 }
 
-// SyncScope: requires self; forcibly closes this player's connection.
+// SyncScope: requires self; forcibly closes this player's connection
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_HardDisconnect(ptr<Player> self)
 {
-    self->GetConnection()->HardDisconnect();
+    self->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
 }
 
-// SyncScope: requires self; mutates player name only.
+// SyncScope: requires self; reads connection state only
+///@ ExportMethod
+FO_SCRIPT_API DisconnectReason Server_Player_GetDisconnectReason(ptr<Player> self)
+{
+    return self->GetConnection()->GetDisconnectReason();
+}
+
+// SyncScope: requires self; mutates player name only
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
 {
@@ -82,7 +89,7 @@ FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
     self->SetName(name);
 }
 
-// SyncScope: requires self + cr when cr is non-null; before linkage callers must explicitly cover both.
+// SyncScope: requires self + cr when cr is non-null; before linkage callers must explicitly cover both
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> cr)
 {
@@ -91,7 +98,7 @@ FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> c
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
-// SyncScope: requires self; returns the controlled critter handle, auto-widened when self is Sync'd.
+// SyncScope: requires self; returns the controlled critter handle, auto-widened when self is Sync'd
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 {
@@ -99,7 +106,7 @@ FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
     return controlled_cr;
 }
 
-// SyncScope: requires self + cr; sends movement state for a critter visible on player's current map.
+// SyncScope: requires self + cr; sends movement state for a critter visible on player's current map
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Critter> cr)
 {
@@ -127,14 +134,14 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Crit
 
 // SyncScope: requires self; returns the map self currently spectates, but does not cover it for later reads.
 // The view target is an independent Map root that self's cover does not include, so a caller that reads or
-// mutates it covers the returned map first and re-reads this handle to prove the view did not change.
+// mutates it covers the returned map first and re-reads this handle to prove the view did not change
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Map> Server_Player_GetViewMapTarget(ptr<Player> self)
 {
     return self->GetViewMapTarget();
 }
 
-// SyncScope: requires self + map + map location; sends load-map data and opens a map view for self.
+// SyncScope: requires self + map + map location; sends load-map data and opens a map view for self
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos hex)
 {
@@ -162,14 +169,14 @@ FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos he
     self->Send_PlaceToGameComplete();
 }
 
-// SyncScope: requires self; clears view-map state, no entity reparent.
+// SyncScope: requires self; clears view-map state, no entity reparent
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ResetViewMap(ptr<Player> self)
 {
     self->ResetViewMap();
 }
 
-// SyncScope: requires self; clears view-map state and sends unload, no entity reparent.
+// SyncScope: requires self; clears view-map state and sends unload, no entity reparent
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_UnloadMap(ptr<Player> self)
 {

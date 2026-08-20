@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: ScriptsAndBaking ===
-# Custom targets for AngelScript / Mono script compilation and resource baking.
-# Add or override behaviour via AddStageHook(ScriptsAndBaking Pre|Post <macro-name>).
+# Configure script and baking targets and extend through AddStageHook(ScriptsAndBaking Pre|Post <macro-name>)
 
 # Scripts compilation
 SetValue(foMainConfigArgs -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")

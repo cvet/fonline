@@ -67,7 +67,7 @@ The current contract was re-derived from:
 - `BuildTools/cmake/helpers/Build.cmake` and `BuildTools/cmake/helpers/State.cmake`;
 - `BuildTools/natvis/essentials.natvis`, `unordered_dense.natvis`, and `fonline.natjmc`;
 - the GLM, ImGui, small-vector, and ufbx visualizers under `ThirdParty/`;
-- `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `ExceptionHandling.*`, `BaseLogging.*`, and `Logging.cpp`;
+- `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `ExceptionHandling.*`, and `Logging.cpp`;
 - `Source/Common/DiagnosticSelfTest.cpp` and `Source/Frontend/ApplicationInit.cpp`;
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, and `AngelScriptDebugger.*`;
 - `Source/Common/Settings.inc`;
@@ -272,11 +272,13 @@ Normal exception callbacks use the structured logging path. Immediate repeated e
 
 `Common.AsyncLogWrite` controls normal asynchronous log delivery. Fatal crash output suspends it and flushes synchronously so a headless process does not depend on `stderr` or an unfinished writer thread.
 
+Explicit low-level fatal exits use `ReportFatalAndExit` or `ReportStrongAssertAndExit` from `FatalError.cpp`. This early layer follows `StackTrace` and `BaseLogging`, writes one synchronous native report, and delegates only process termination to `ExitApp(false)`, avoiding a reverse dependency on `ExceptionHandling`. Raw `ExitApp(false)` remains status-only: controlled compiler/input failures can return a non-zero status without being mislabeled as crashes, while true fatal callers report before exiting.
+
 ### Crash-to-log guarantee and self-test
 
 Outside a native debugger, backward-cpp handles supported Windows SEH failures and POSIX fatal signals/termination on Windows, Linux, and macOS. The Engine adds a crash reason, captures a stack, switches to synchronous log writes, and exits through the crash path. Long-lived Engine worker threads install a POSIX alternate signal stack so stack-overflow diagnostics have space to run. Third-party-created threads need the same setup before executing deeply recursive Engine work.
 
-`FO_SELFTEST_CRASH` is an environment-only destructive diagnostic hook run during application initialization after logging and exception callbacks are ready. Supported base modes are `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, and `main_strong_assert`; replace `main_` with `thread_` to run the corresponding worker-style thread route.
+`FO_SELFTEST_CRASH` is an environment-only destructive diagnostic hook run during application initialization after logging and exception callbacks are ready. Supported base modes are `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit`; replace `main_` with `thread_` to run the corresponding worker-style thread route.
 
 Run it only against an isolated disposable process and workspace. It intentionally crashes or terminates the process. An unknown mode logs a warning and continues. The Engine repository does not itself provide a subprocess acceptance runner; checked Last Frontier evidence exercises the Linux headless route, but that project test is not normative Engine proof.
 
@@ -284,7 +286,17 @@ Run it only against an isolated disposable process and workspace. It intentional
 
 `Source/Tests/Test_StackTrace.cpp` covers provider registration, script-layer order, nested native/script interleaving, truncation, formatting, cache reuse/eviction behavior, individual entry lookup, safe writing, and throwing-provider containment. `Test_ExceptionHandling.cpp` covers Engine exception payloads, origin/catch behavior, callback replacement, and fatal/non-fatal reporter inputs.
 
+A recoverable ImGui assertion carries only the stringified expression. `ImGuiExt::Init` therefore installs an error callback that logs `ImGui error in window '<name>': <message>` immediately before the assertion fires. For an unbalanced `Begin`/`End` in a headless client or mapper test, use that line to identify the owning window; ImGui's own debug log is unavailable because `IMGUI_DISABLE_DEBUG_TOOLS` is enabled.
+
 The current Engine suite does not open the AngelScript TCP/UDP endpoint, attach the VS Code adapter, validate Natvis in Visual Studio, or execute every crash mode as a subprocess. Those are explicit integration gaps, not implied by the native unit-test result.
+
+## Network latency emulation
+
+`Network.ArtificalLags` (milliseconds, `0` disables) delays both inbound and outbound client batches in `ClientConnection::ProcessConnection`. Each batch independently samples `ArtificalLags / 2 .. ArtificalLags`; `Network.ArtificalLagsJitter` adds another `0 .. jitter` milliseconds. The emulation delays delivery but does not throttle the network pump.
+
+Both directions are required to reproduce authority divergence. Inbound delay makes the client learn server state late; outbound delay makes the server learn client actions late. Because related messages receive independent samples, their delay difference produces divergence even though a truly fixed equal delay would cancel. Use a modest base and larger jitter to model occasional stalls.
+
+Server-to-client movement includes an `offset_time`, allowing the client to fast-forward a late movement. Client-to-server movement has no elapsed-time field; `Process_Move` starts it from the server's current frame time, so the authoritative critter trails the client by roughly one-way delay while walking. Settings participate in the generated compatibility hash; adding or renaming one does not require a manual compatibility-marker edit.
 
 ## AngelScript debugger
 

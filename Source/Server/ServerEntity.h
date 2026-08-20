@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -81,11 +81,11 @@ public:
         return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<const T>().try_hold_ref();
     }
 
-    // Unchecked parent accessor — for the lock machinery only.
+    // Unchecked parent accessor — for the lock machinery only
     [[nodiscard]] auto GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>;
 
     // Return the entity that should be auto-widened into the SyncContext alongside this one,
-    // outside of the parent-chain.
+    // outside of the parent-chain
     [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity>;
     [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>;
 
@@ -94,7 +94,7 @@ public:
     void SetParent(nptr<ServerEntity> parent) noexcept;
 
 protected:
-    ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) noexcept;
+    ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props) noexcept;
 
     auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
 
@@ -115,8 +115,8 @@ private:
 class CustomEntity : public ServerEntity, public EntityProperties
 {
 public:
-    CustomEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props = nullptr) noexcept :
-        ServerEntity(engine, id, registrator, props, base_props),
+    CustomEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props = nullptr) noexcept :
+        ServerEntity(engine, id, registrar, props, base_props),
         EntityProperties(*GetInitRef())
     {
         FO_VALIDATE_ENTITY(NONE);
@@ -128,8 +128,8 @@ public:
 class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
-    CustomEntityWithProto(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, ptr<const ProtoEntity> proto) noexcept :
-        CustomEntity(engine, id, registrator, proto->GetProperties(), proto->GetProperties()),
+    CustomEntityWithProto(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, ptr<const ProtoEntity> proto) noexcept :
+        CustomEntity(engine, id, registrar, proto->GetProperties(), proto->GetProperties()),
         EntityWithProto(proto)
     {
         FO_VALIDATE_ENTITY(NONE);

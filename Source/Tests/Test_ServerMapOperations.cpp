@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -769,7 +770,7 @@ namespace MapOpsTest
         Critter? deadExact = map.GetCritterOnHex(cr.Hex);
         if (deadExact is null) return -5;
 
-        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
+        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area
         array<Critter> nearby = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (nearby.length() < 1) return -6;
 
@@ -862,7 +863,7 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
-        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
+        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area
         array<Critter> onHex = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (onHex.length() < 1) return -4;
 
@@ -914,12 +915,8 @@ namespace MapOpsTest
         return 0;
     }
 
-    // Map::GetCrittersInRadius walks the hex field only while GeometryHelper::HexesInRadius(radius) stays below the map
-    // critter count, and otherwise scans every critter and filters by distance arithmetic. The two arms answer through
-    // completely different machinery: the walk relies on the multihex field registration done by Map::SetMultihexCritter,
-    // the scan subtracts Multihex from the centre distance. HexesInRadius(2) is 19 on hexagonal geometry and 25 on square
-    // geometry, so this many fillers keep both a radius 1 and a radius 2 probe on the walk arm in either build. Fillers
-    // spawn far from every probe hex, so they never enter a result set.
+    // The radius query picks between a hex walk and a full scan by critter count, and the two arms answer through
+    // different machinery, so the filler count keeps both probes on the walk arm in either geometry
     const int HexWalkFillerCritterCount = 32;
 
     // Largest HexesInRadius(2) across the supported geometries (square: 1 + 8 * 3; hexagonal: 1 + 6 * 3)
@@ -932,9 +929,8 @@ namespace MapOpsTest
             if (filler is null) return false;
         }
 
-        // Pin the arm selector itself rather than trusting the filler count: GetCritters reports the very
-        // vector the predicate measures, so a live count above the hex threshold proves the radius 1 and
-        // radius 2 probes below cannot silently fall back to the full scan
+        // The selector is pinned rather than trusted: this is the very count the predicate measures, so both probes
+        // below provably stay on the walk arm
         return map.GetCritters(CritterFindType::Any).length() > uint(MaxHexesInRadius2);
     }
 
@@ -4609,10 +4605,8 @@ namespace MapOpsTest
         return 0;
     }
 
-    // ========== Script-boundary argument validation (2026-06-16 hardening) ==========
-    // Each function passes an out-of-range argument that must be rejected with an early, clearly
-    // messaged ScriptException at the script-export boundary, instead of reaching a deep numeric_cast
-    // / FO_VERIFY_* / std::string::resize. Driven by RUN_FUNC_THROWS, which asserts the message.
+    // Reject out-of-range arguments with a clear ScriptException at the export boundary.
+    // RUN_FUNC_THROWS pins each message
 
     bool ArgValidationDummyGag(Critter cr, Item item)
     {
@@ -4731,10 +4725,10 @@ namespace MapOpsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4762,10 +4756,10 @@ namespace MapOpsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4812,6 +4806,7 @@ namespace MapOpsTest
     static auto MakeStaticMapBlob(const vector<uint8_t>& metadata_blob, const vector<uint8_t>& critter_blob, const vector<uint8_t>& server_item_blob, const vector<uint8_t>& client_item_blob, const vector<uint8_t>& server_map_blob, const vector<uint8_t>& client_map_blob) -> vector<uint8_t>
     {
         BakerTests::TestRig rig;
+        BakerTests::OverrideSetting(rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         rig.AddBakedFile("StaticMapCritter.fopro-bin-server", critter_blob);
@@ -4876,9 +4871,9 @@ namespace MapOpsTest
         hstring client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
         hstring client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
 
-        auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
-        REQUIRE(static_cast<bool>(critter_registrator));
-        auto multihex_property = critter_registrator->FindProperty("Multihex");
+        auto critter_registrar = proto_engine.GetPropertyRegistrar(critter_type);
+        REQUIRE(static_cast<bool>(critter_registrar));
+        auto multihex_property = critter_registrar->FindProperty("Multihex");
         REQUIRE(static_cast<bool>(multihex_property));
         vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
             {"TestCritter", {}},

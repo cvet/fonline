@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/runtime/gui.html
 
 # Среда выполнения GUI
 
-<!-- docs-translation: {"document_id":"gui-runtime-guide","locale":"ru","source_path":"Docs/en/how-to/runtime/gui.md","source_sha256":"1d53ea553567d260971073bc74504b0b679325dbed7dd267a5a04972c5b3f88a"} -->
+<!-- docs-translation: {"document_id":"gui-runtime-guide","locale":"ru","source_path":"Docs/en/how-to/runtime/gui.md","source_sha256":"3f9384fbc9cad4dec19735aac4a96dda66a8aa956ab5c7e28e93e10680998183"} -->
 
 > Документация, принадлежащая движку. Эта страница описывает переиспользуемую
 > клиентскую среду выполнения GUI на AngelScript в
@@ -24,7 +24,7 @@ FOnline предоставляет скриптовое дерево объек�
 
 Проверяемое машиночитаемое дополнение находится в
 [сгенерированном справочнике среды выполнения GUI](../../reference/gui-runtime/index.md).
-Он включает все 12 типов среды выполнения, их 159 документированных членов API,
+Он включает все 12 типов среды выполнения, их 160 документированных членов API,
 39 сигнатур callback-функций, 31 перегрузку верхнеуровневого API экранов,
 встроенные аннотации метаданных и правила интеграции с этой страницы.
 

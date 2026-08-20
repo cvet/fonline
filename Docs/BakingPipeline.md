@@ -46,6 +46,10 @@ Continue with the [canonical English explanation](en/explanation/content-pipelin
 
 Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#bakerdatasource).
 
+### Output names are reconciled with the names bakers addressed
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#output-names-are-reconciled-with-the-names-bakers-addressed).
+
 ## Master bake report
 
 Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#master-bake-report).

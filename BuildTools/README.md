@@ -336,6 +336,26 @@ The `windows-cross-packages` feature installs/checks Linux prerequisites. The `w
 
 For `win32`, `buildtools.py` passes `CMAKE_SYSTEM_PROCESSOR=x86`; the toolchain keeps the xwin `x86` library paths and forces `clang-cl --target=i686-pc-windows-msvc` so CMake compiler probes do not emit x64 objects for an x86 link.
 
+## Checkout case repair
+
+```bash
+python3 Engine/BuildTools/buildtools.py repair-checkout-case
+python3 Engine/BuildTools/buildtools.py repair-checkout-case --check
+```
+
+Renames working-tree entries whose on-disk spelling differs from the name git tracks, recursing into
+submodules. A case-only rename is recorded correctly in the index, but on a case-insensitive
+filesystem git only rewrites file names — an existing directory keeps its old spelling forever — so a
+reused checkout keeps serving the stale name while resource and include lookups stay case-sensitive.
+The symptom appears far from the cause: a file that plainly sits on disk is reported as missing while
+baking. Long-lived checkouts on self-hosted Windows runners are the usual victim; a fresh clone never
+reproduces it, which is why CI jobs on such runners should run this right after checkout.
+
+`--check` reports the drift and exits non-zero without touching the working tree. If the index holds
+the same path under two spellings at once, the command names both and refuses to repair anything —
+that is a repository defect (the two paths are distinct on Linux and one entry on Windows) and only a
+commit can decide which spelling is correct.
+
 ## Windows web debug workflow
 
 The local Windows web debug flow uses these shared commands:

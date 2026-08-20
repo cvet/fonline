@@ -18,6 +18,7 @@ The final state demonstrates:
 - a client-to-server item interaction;
 - one `PublicSync Persistent` critter property;
 - paired client/server remote calls and lifecycle events;
+- distance-based critter visibility through one small public server Engine hook;
 - English and Russian prototype text;
 - a server-side content test and a complete client-visible smoke test;
 - native client/server archives with inventory, hashes, and packaged runtime evidence;
@@ -121,6 +122,7 @@ synchronized counter in the top panel increments.
 | `Maps/TutorialMap.fomap` | the one-map world |
 | `Scripts/Tutorial.fos` | lifecycle, login, interaction, rendering, metadata, and content test |
 | `Scripts/MapperCapture.fos` | delayed full-window Mapper documentation capture |
+| `SourceExt/ServerExtension.cpp` | distance-based `CheckCritterVisibilityHook` used by the tutorial server |
 | `Particles/Documentation.spark` | minimal looping SPARK authoring fixture |
 | `assets/provenance.json` | machine-readable license and exact source hash for the Engine-owned particle texture |
 | `package-smoke.json` | packaged server/client runtime scenario and semantic evidence |
@@ -155,17 +157,23 @@ Build the source fixture, baked resources, Mapper, and the focused viewer:
 cmake --build Build\windows --config Release --target ForceBakeResources FOMM_Mapper FOMM_ParticleViewer
 ```
 
-Launch the deterministic documentation profile:
+Launch either deterministic documentation profile:
 
 ```powershell
 Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
   -ApplyConfig FOnlineMinimalMultiplayer.fomain `
   -ApplySubConfig MapperDocumentationCapture
+
+Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
+  -ApplyConfig FOnlineMinimalMultiplayer.fomain `
+  -ApplySubConfig MapperDocumentationSparkEditorCapture
 ```
 
-The profile opens `TutorialMap`, selects `Documentation.spk`, fixes seed,
-scale, prewarm, and a `1280x800` viewport, waits for the UI and particle to
-settle, requests the full Mapper frame, and exits after the deferred capture.
+Both profiles open `TutorialMap`, fix a `1280x800` viewport, wait for the UI to
+settle, request the full Mapper frame, and exit after the deferred capture.
+The first selects `Documentation.spk` with fixed seed, scale, and prewarm; the
+second opens the authored `Documentation.spark` source directly through
+`Mapper.SparkEditorSource` without covering it with Particle Preview.
 The TGA output is `MapperDocumentationCapture.tga` beside the launched
 process. The checked-in documentation PNGs, exact interaction steps, source
 hashes, and recapture triggers live in

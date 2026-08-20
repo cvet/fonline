@@ -39,6 +39,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_FileSystem.cpp`
 - `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 
 ### Core platform, containers, and utilities
 
@@ -70,6 +71,7 @@ python BuildTools/docs_inventory.py --check
 ### Common runtime model
 
 - `Source/Tests/Test_AnyData.cpp`
+- `Source/Tests/Test_ApplicationHeadless.cpp`
 - `Source/Tests/Test_Common.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
@@ -129,13 +131,14 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp`
+- `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
 - `Source/Tests/Test_ModelAnimationData.cpp`
 - `Source/Tests/Test_ModelAnimationConverter.cpp`
 - `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
 - `Source/Tests/Test_ModelAnimationRuntime.cpp`
 - `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
 - `Source/Tests/Test_ModelSourceLoader.cpp`
 - `Source/Tests/Test_OzzAnimation.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
@@ -156,6 +159,8 @@ boundary.
 
 ### Rendering and frontend tests
 
+- `Source/Tests/Test_ImGui.cpp` - pins the backend-less widget activation and
+  window-state harness used by diagnostic-panel coverage.
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` - runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
   multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget
@@ -196,6 +201,18 @@ Coverage builds use the `FO_CODE_COVERAGE` path documented in [Testing](../../Do
 
 Coverage reports are emitted under `CodeCoverage/<Toolchain>/<Platform-Config>/`
 and exclude `Source/Tests/` from the reported source denominator.
+
+## Shared test helpers
+
+Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOURCE`:
+
+- `Source/Tests/Test_BakerHelpers.h` - baked-resource fixtures (sprites, protos, metadata) and a
+  `TestRig` that runs the real bakers over in-memory sources.
+- `Source/Tests/Test_ParticleFixtures.h` - particle asset fixtures.
+- `Source/Tests/Test_ImGuiHarness.h` - presses ImGui widgets by label so the branch behind a button,
+  checkbox, selectable or folded section runs in a headless frame. Pinned by
+  `ImGuiTestHarnessPressesWidgetsByLabel` in `Test_ImGui.cpp`; usage rules are in
+  [../../Docs/Testing.md](../../Docs/Testing.md).
 
 ## Notes
 

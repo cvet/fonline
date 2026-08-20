@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -62,7 +62,7 @@ protected:
 private:
     tcp_socket _sock;
 
-    // Game server endpoint that needs to travel inside the SOCKS / HTTP CONNECT payload (proxy mode only).
+    // Game server endpoint that needs to travel inside the SOCKS / HTTP CONNECT payload (proxy mode only)
     uint32_t _gameAddrIp {};
     uint16_t _gameAddrPort {};
 };
@@ -121,7 +121,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     // Proxy connect path
 #if !FO_IOS && !FO_ANDROID && !FO_WEB
     // SOCKS4/5 payloads embed the destination as raw IPv4 + port, HTTP CONNECT embeds them as text.
-    // Resolve the game host once and stash the parts; tcp_socket does its own DNS for connect targets.
+    // Resolve the game host once and stash the parts; tcp_socket does its own DNS for connect targets
     auto resolved = net_sockets::resolve_ipv4(host);
 
     if (!resolved.has_value()) {
@@ -139,7 +139,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
     }
 
-    // After proxy connect succeeds, the network layer expects the same notion of "connected".
+    // After proxy connect succeeds, the network layer expects the same notion of "connected"
     _isConnecting = false;
     _isConnected = true;
 
@@ -320,7 +320,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     }
 
     if (_isConnecting) {
-        // While connect is in flight, peek_socket_error reports any pending error even before select wakes.
+        // While connect is in flight, peek_socket_error reports any pending error even before select wakes
         int32_t sock_error = _sock.peek_socket_error();
 
         if (sock_error == 0) {
@@ -364,7 +364,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> s
 
     auto whole_len = numeric_cast<size_t>(len);
 
-    // Drain whatever else is currently buffered in the kernel before yielding to the upper layer.
+    // Drain whatever else is currently buffered in the kernel before yielding to the upper layer
     while (whole_len == buf.size()) {
         buf.resize(buf.size() * 2);
 

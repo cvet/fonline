@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_ai_eval.py",
   "source_path": "Docs/ai-evaluation.json",
-  "source_sha256": "dd3e5f83d17b2b5aafcf787f374446929f8d412db68ed6a193aaed0479d2e310",
+  "source_sha256": "0bf7eda90b6b1d61871739a23cf813f797be827c9cf57a0e49e0fb10f6ba6b29",
   "source_ref": "master",
   "task_count": 27,
   "category_counts": {
@@ -137,9 +137,9 @@
           "top_document_ids": [
             "engine-architecture",
             "unit-tests-readme",
+            "testing",
             "web-debugging",
-            "buildtools-readme",
-            "mapper-tools"
+            "buildtools-readme"
           ]
         },
         {
@@ -481,7 +481,7 @@
             "scripting-runtime",
             "nullability",
             "baking-pipeline",
-            "testing"
+            "exception-safety"
           ]
         }
       ],
@@ -669,9 +669,9 @@
           "top_document_ids": [
             "server-runtime",
             "script-lifecycle-concurrency",
+            "entity-model",
             "networking",
-            "nullability",
-            "scripting-runtime"
+            "nullability"
           ]
         },
         {
@@ -686,8 +686,8 @@
             "script-lifecycle-concurrency",
             "scripting-runtime",
             "server-runtime",
-            "angelscript-style",
-            "nullability"
+            "entity-model",
+            "angelscript-style"
           ]
         }
       ],
@@ -924,8 +924,8 @@
           "top_document_ids": [
             "viewer-tools",
             "model-format-guide",
-            "client-runtime",
             "baking-pipeline",
+            "client-runtime",
             "mapper-tools"
           ]
         },
@@ -1060,6 +1060,7 @@
           "top_document_ids": [
             "particle-authoring-tools",
             "frontend-rendering",
+            "testing",
             "configuration-data-sources"
           ]
         }
@@ -1254,8 +1255,8 @@
           "top_document_ids": [
             "gameplay-testing",
             "debugging",
-            "web-debugging",
             "testing",
+            "web-debugging",
             "mapper-tools"
           ]
         },
@@ -1343,9 +1344,9 @@
           "top_document_ids": [
             "debugging",
             "getting-started",
+            "testing",
             "scripting-runtime",
-            "native-essentials",
-            "generated-api-metadata"
+            "native-essentials"
           ]
         },
         {
@@ -1417,8 +1418,7 @@
           "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "profiling",
-            "server-runtime"
+            "profiling"
           ]
         },
         {
@@ -1521,9 +1521,9 @@
           "top_document_ids": [
             "web-debugging",
             "client-updater",
+            "debugging",
             "packaging-and-release",
-            "server-runtime",
-            "engine-architecture"
+            "server-runtime"
           ]
         },
         {
@@ -2382,8 +2382,8 @@
             "generated-helper-cli-index",
             "generated-api-metadata",
             "buildtools-pipeline",
-            "frontend-rendering",
-            "baking-pipeline"
+            "baking-pipeline",
+            "frontend-rendering"
           ]
         }
       ],
@@ -2618,6 +2618,7 @@
             "GlobalData",
             "StackTrace",
             "BaseLogging",
+            "FatalError",
             "SmartPointers",
             "MemorySystem",
             "Containers",
@@ -2637,7 +2638,7 @@
             "DiskFileSystem",
             "CommonHelpers",
             "NetSockets",
-            "move the dependency upward through parameters"
+            "move data through parameters or split the responsibility at the correct layer"
           ],
           "evidence_current": true
         },

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -166,9 +166,9 @@ private:
     nptr<ModelHierarchy> _hierarchy {};
     optional<ModelAnimationController> _animController {};
     unique_nptr<ModelAnimationRuntimeRig> _animationRuntimeRig {};
-    vector<nptr<const ModelBone>> _poseBones {}; // Physical base bones; null for animation-contributed canonical joints.
-    vector<hstring> _poseJointCanonicalNames {}; // Immutable canonical source identity.
-    vector<hstring> _poseJointRuntimeNames {}; // Exact legacy lookup identity; the base root uses its file alias.
+    vector<nptr<const ModelBone>> _poseBones {}; // Physical base bones; null for animation-contributed canonical joints
+    vector<hstring> _poseJointCanonicalNames {}; // Immutable canonical source identity
+    vector<hstring> _poseJointRuntimeNames {}; // Exact legacy lookup identity; the base root uses its file alias
     unordered_map<hstring, uint32_t> _poseJointIndexes {};
     unordered_map<ptr<const ModelBone>, uint32_t> _poseBoneJointIndexes {};
     vector<ModelPoseJoint> _restPoseJoints {};

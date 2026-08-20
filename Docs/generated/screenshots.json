@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_screenshots.py",
   "source_manifest": "BuildTools/DocumentationScreenshots.json",
-  "source_manifest_sha256": "fa4b3305407e221e873962c7f17839a1b033b9f6bafcd236728a2a184e0080d9",
+  "source_manifest_sha256": "1c844f9e7f7abdc1bac04639798ca57476e0244b7333ff27694d23f08bb3f228",
   "engine_base_revision": "fac978a67d1e601eb77389e8dc562d7e511705a0",
   "revision_policy": "The base revision plus the generated SHA-256 digest of every listed source path identifies captures made from a documentation worktree before its final commit.",
   "screenshot_count": 2,
@@ -16,8 +16,8 @@
       "caption": "Mapper capture from the minimal multiplayer example. Particle Preview selects the baked Documentation.spk resource, places it at the view center, and exposes deterministic scale, offset, seed, and prewarm controls beside the normal Workspace and Controls windows.",
       "width": 1280,
       "height": 800,
-      "sha256": "f5834f6fbba987d5b9eaa8108437ea5c0ff1a29a2e0aeb73b05871bdec82f404",
-      "captured_on": "2026-07-31",
+      "sha256": "75cb718080bcd3ab657d1885cdb571b39df6680a000e0947e2be8229f0c045e0",
+      "captured_on": "2026-08-20",
       "license": "MIT",
       "capture": {
         "host": "Windows 11 x64",
@@ -34,12 +34,14 @@
       "source_paths": [
         "Source/Frontend/Application.cpp",
         "Source/Frontend/Application.h",
+        "Source/Common/Settings.inc",
         "Source/Scripting/MapperGlobalScriptMethods.cpp",
         "Source/Tools/Mapper.cpp",
         "Source/Tools/Mapper.h",
         "Source/Tools/ParticleEditor.cpp",
         "Examples/MinimalMultiplayer/CMakeLists.txt",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/generate_config.py",
         "Examples/MinimalMultiplayer/Particles/Documentation.spark",
         "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
       ],
@@ -49,16 +51,18 @@
         "The minimal example map, particle fixture, startup profile, renderer, viewport, or capture script changes."
       ],
       "source_sha256": {
-        "Source/Frontend/Application.cpp": "941615d4b15e176f8bdbe89e81a1765389ca7913cc716c0612c4d9d6aa0b514f",
-        "Source/Frontend/Application.h": "321379ce74b7724dd82bc1d0f0a19e47363780dd89e96afc58980c51435a0e34",
-        "Source/Scripting/MapperGlobalScriptMethods.cpp": "cfefefb806daf345ad436515b610d4c6cd7263684d95e48f74fefc640175b43e",
-        "Source/Tools/Mapper.cpp": "e4448446ea1680b30e23085c2b4036313ead3388f689de9318d84943067ae1a2",
-        "Source/Tools/Mapper.h": "8d9024cd2241c99ff232a76f31870de72064b534a2f0c7cd1f9c1b9993dd4ae5",
-        "Source/Tools/ParticleEditor.cpp": "3745383a6c1ddd2b10607d30a0db760e54c717b71175bd0dc711be1f4903b303",
-        "Examples/MinimalMultiplayer/CMakeLists.txt": "d67c41525a952d46279cbc0d204e5f84207f0837fd9c8a502d85fed26f123089",
-        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "e7cad963d74b65b3218d2c38af680e9dbc94794d4181009013315245a6f32ccb",
+        "Source/Frontend/Application.cpp": "b90901ba1cfbece0f58c8c0096bd84b25eb17d49ac15e848424b458da4d0b294",
+        "Source/Frontend/Application.h": "4a37fd478f42800931e553f9f81d6bb94e65be13c4c0a2ebeb477b936a26aa99",
+        "Source/Common/Settings.inc": "5c1ea32ffa7083f687c8a50b87c82a13c698c0f2997d6ee10fd22406ed435868",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp": "cb75718f26ecbd0869dd3ea5ae3cf8893541b0525b3c0999fa29ea3379b319d9",
+        "Source/Tools/Mapper.cpp": "67842a70551a17e8e7b5b0fcaefd5017cc0b9fafa1b268456ed550991a41041b",
+        "Source/Tools/Mapper.h": "6de38392bf934aefe08809a18a348bf7aa98c45848eef0d216244b9d3fca7bc8",
+        "Source/Tools/ParticleEditor.cpp": "bc9314d96aecd9f5ca28eeda21360d1fba8375b624a0c1de3687a809626c98d7",
+        "Examples/MinimalMultiplayer/CMakeLists.txt": "7ef014dd34a92e0f50a53e26880608fbec757679ead89afe9b88faf4691fc70e",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "7a68ab496f7547e47a9527be5c0a85c6afaad676adaee8f026d77c9e3adfb981",
+        "Examples/MinimalMultiplayer/generate_config.py": "9289eacc58fc520895bcce62c1c80caf2a22c24ea11e6b5f2eef445ed5e39d2e",
         "Examples/MinimalMultiplayer/Particles/Documentation.spark": "bbbe2e18997abe4ffe878926a9f56449fc6591cae633c5b08a916153b366b805",
-        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos": "897d46b057de14c7353a74499ba1a83deca0b748fa96ef75e8873e74aabaf0b0"
+        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos": "bdac153c8da61522465c1b3c9eac8d4a750cdc44a6e2ffe2c4a15cb231df11ee"
       }
     },
     {
@@ -70,25 +74,26 @@
       "caption": "The Mapper opens the authored Documentation.spark source, not the baked .spk output. The editor combines a live preview with adding, removing, and naming modes plus the editable System and Group object hierarchy.",
       "width": 1280,
       "height": 800,
-      "sha256": "168ed7aecf787293778be0e844590925227d76ec52583c07065aeb7c7bf5f9be",
-      "captured_on": "2026-07-31",
+      "sha256": "61292f3d05fd652235a6afad0e14b2c862d6bb879319a2379d2073140d89a006",
+      "captured_on": "2026-08-20",
       "license": "MIT",
       "capture": {
         "host": "Windows 11 x64",
         "renderer": "Direct3D 11, feature level 11.1",
         "project": "Examples/MinimalMultiplayer",
         "viewport": "1280x800",
-        "command": "Binaries/Mapper-Windows-win64/FOMM_Mapper.exe -ApplyConfig ../../FOnlineMinimalMultiplayer.fomain -ApplySubConfig MapperDocumentationCapture",
+        "command": "Binaries/Mapper-Windows-win64/FOMM_Mapper.exe -ApplyConfig ../../FOnlineMinimalMultiplayer.fomain -ApplySubConfig MapperDocumentationSparkEditorCapture",
         "interaction_steps": [
           "Build ForceBakeResources and FOMM_Mapper in Release configuration.",
-          "Open Windows, choose SPARK particle editor, and select Documentation.spark in the source browser.",
-          "Wait for the source editor and preview to render, then let MapperCapture request the full-window TGA.",
+          "Launch the MapperDocumentationSparkEditorCapture subconfig; Mapper.SparkEditorSource opens Documentation.spark directly.",
+          "Wait for the source editor and preview to render, then let MapperCapture request the full-window TGA without interacting with the restored layout.",
           "Convert MapperDocumentationCapture.tga to PNG without resizing, cropping, or color adjustment."
         ]
       },
       "source_paths": [
         "Source/Common/SpriteResource.cpp",
         "Source/Common/SpriteResource.h",
+        "Source/Common/Settings.inc",
         "Source/Frontend/Application.cpp",
         "Source/Scripting/MapperGlobalScriptMethods.cpp",
         "Source/Tools/Mapper.cpp",
@@ -96,6 +101,7 @@
         "Source/Tools/SparkParticleEditor.cpp",
         "Examples/MinimalMultiplayer/CMakeLists.txt",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/generate_config.py",
         "Examples/MinimalMultiplayer/Particles/Documentation.spark",
         "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
       ],
@@ -105,17 +111,19 @@
         "The minimal example particle fixture, renderer, viewport, or capture script changes."
       ],
       "source_sha256": {
-        "Source/Common/SpriteResource.cpp": "8cffbe76863e8f611b09dc501cf38447745b749dfe27b36f4074015014763965",
-        "Source/Common/SpriteResource.h": "c1a16c6d6b86034a83d6eef0ff49e531218218e6bec6ea85098a9d4be1599c00",
-        "Source/Frontend/Application.cpp": "941615d4b15e176f8bdbe89e81a1765389ca7913cc716c0612c4d9d6aa0b514f",
-        "Source/Scripting/MapperGlobalScriptMethods.cpp": "cfefefb806daf345ad436515b610d4c6cd7263684d95e48f74fefc640175b43e",
-        "Source/Tools/Mapper.cpp": "e4448446ea1680b30e23085c2b4036313ead3388f689de9318d84943067ae1a2",
-        "Source/Tools/ParticleEditor.cpp": "3745383a6c1ddd2b10607d30a0db760e54c717b71175bd0dc711be1f4903b303",
-        "Source/Tools/SparkParticleEditor.cpp": "388f27a0544acd6590f6d4c90c89738a80795952dcd92432602a93b05f05aeb7",
-        "Examples/MinimalMultiplayer/CMakeLists.txt": "d67c41525a952d46279cbc0d204e5f84207f0837fd9c8a502d85fed26f123089",
-        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "e7cad963d74b65b3218d2c38af680e9dbc94794d4181009013315245a6f32ccb",
+        "Source/Common/SpriteResource.cpp": "40541abc41580a2cd9368dd9bec0a7595d019923802fc3ea4e7e8ac68cb92b79",
+        "Source/Common/SpriteResource.h": "1bc6aac200eb6ce7917e7603a0f10fce85f11d9cb1173dc93ee190a8ffadb745",
+        "Source/Common/Settings.inc": "5c1ea32ffa7083f687c8a50b87c82a13c698c0f2997d6ee10fd22406ed435868",
+        "Source/Frontend/Application.cpp": "b90901ba1cfbece0f58c8c0096bd84b25eb17d49ac15e848424b458da4d0b294",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp": "cb75718f26ecbd0869dd3ea5ae3cf8893541b0525b3c0999fa29ea3379b319d9",
+        "Source/Tools/Mapper.cpp": "67842a70551a17e8e7b5b0fcaefd5017cc0b9fafa1b268456ed550991a41041b",
+        "Source/Tools/ParticleEditor.cpp": "bc9314d96aecd9f5ca28eeda21360d1fba8375b624a0c1de3687a809626c98d7",
+        "Source/Tools/SparkParticleEditor.cpp": "72c544713085cea49f9cf8ded3641a62f6911d43a3c8e6792c4c0b75ecb565a3",
+        "Examples/MinimalMultiplayer/CMakeLists.txt": "7ef014dd34a92e0f50a53e26880608fbec757679ead89afe9b88faf4691fc70e",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "7a68ab496f7547e47a9527be5c0a85c6afaad676adaee8f026d77c9e3adfb981",
+        "Examples/MinimalMultiplayer/generate_config.py": "9289eacc58fc520895bcce62c1c80caf2a22c24ea11e6b5f2eef445ed5e39d2e",
         "Examples/MinimalMultiplayer/Particles/Documentation.spark": "bbbe2e18997abe4ffe878926a9f56449fc6591cae633c5b08a916153b366b805",
-        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos": "897d46b057de14c7353a74499ba1a83deca0b748fa96ef75e8873e74aabaf0b0"
+        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos": "bdac153c8da61522465c1b3c9eac8d4a750cdc44a6e2ffe2c4a15cb231df11ee"
       }
     }
   ]

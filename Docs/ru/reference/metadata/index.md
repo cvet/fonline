@@ -6,7 +6,7 @@ document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"c54a09771a71f16011ba3fc25b15b5d967e28367042cdb37afdd986467b542d5"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"373d86c911ecd0bf87970fe00abeafce5d1824e8eb579e327831bf912ea7b93f"} -->
 
 # Сгенерированный API и метаданные
 
@@ -287,7 +287,7 @@ Generated `summary` сообщает число symbols по kind и stability, 
 
 ```cpp
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2472 InventorySha256=75fca70d7e56ae0647d004411014c7b7bd1a2a8422075941895fea957345602b
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2492 InventorySha256=8f70fbf7882f6b81ca6141efc8e3e0240eb97b0e8a9b36fe6be530345846f4ab
 ///@ ApiContract script.method.common.Game.LoadData experimental Since=0.4.0 Example=Docs/Examples/LoadData.md
 ///@ ApiContract script.method.common.Game.OldCall deprecated DeprecatedSince=0.5.0 Replacement=script.method.common.Game.NewCall Removal=1.0.0
 ```
@@ -930,7 +930,7 @@ Hand-authored declarations находятся в `Source/Common/MetadataRegistra
 
 Это runtime side metadata, которую можно загрузить из generated/baked data вместо одной только compiled static registration.
 
-Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializator`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
+Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializer`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
 
 ## Properties и generated contracts
 
@@ -938,7 +938,7 @@ Migration rules являются generic remaps `(kind, extra-info, target → r
 
 - `PropertyRawData`
 - `Property`
-- `PropertyRegistrator`
+- `PropertyRegistrar`
 - `Properties`
 - callbacks getter/setter/post-set properties
 - base type, struct layout и descriptors сериализации

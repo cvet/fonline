@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
 
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"a013884c3965997fe1b36397fbafb41fdd330690416d8d5d6e6066fb3bb4b020"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"fc37e6b93377f46c1df7590958158ea743cb12155ebdd79a25ed6d7ea6eeb16f"} -->
 
 # Формат моделей и 3D-композиция
 
@@ -244,6 +244,8 @@ Attach ArmorTorso.fbx
 
 Используйте `Attach child.fo3d`, когда child нужны собственные base mesh, layers/attachments, default material/effect policy, cuts, animations или rendering flags. Для простой запечённой иерархии достаточно прямого `.fbx` / `.obj`. Дочерний `.fo3d` запекается самостоятельно; parent проверяет существование descriptor и bone из `Link`.
 
+У direct attachment нет description-level коррекции scale. Maximum-axis extent его static bounds должен оставаться в диапазоне `Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`; иначе bake завершается ошибкой с измеренным extent и limit. Используйте child `.fo3d`, если composition требует явного scale. Mesh nodes с отрицательным transform determinant раньше отклоняет `ModelMeshBaker`: reset/freeze mirrored geometry к положительному transform до export, не рассчитывая на переворот normals и winding в baker-е.
+
 ## Присоединение частиц
 
 `AttachParticles` выбирается слоем:
@@ -412,7 +414,7 @@ Combined mesh generation объединяет совместимые видим�
 
 ## Поведение при ошибках
 
-`ModelInfoBaker` отклоняет или сообщает: отсутствующий `Model`; недоступные, устаревшие или malformed baked meshes и sources; primary mesh без drawable geometry; отсутствующие textures/effects/particles/children/cuts; неверные layer/texture indices; нулевые layer values для `Root`/`Attach`; отсутствующие bones или meshes; malformed includes; invalid/non-finite numbers; отрицательный `Speed`; неположительный `AnimSpeed`; неизвестные enums, clips или несовместимые skeleton; attached FBX с clips; внешнюю animation geometry без точного временного исключения; неверные cut combinations; неизвестные tokens.
+`ModelInfoBaker` отклоняет или сообщает: отсутствующий `Model`; недоступные, устаревшие или malformed baked meshes и sources; primary mesh без drawable geometry; отсутствующие textures/effects/particles/children/cuts; неверные layer/texture indices; нулевые layer values для `Root`/`Attach`; отсутствующие bones или meshes; malformed includes; invalid/non-finite numbers; отрицательный `Speed`; неположительный `AnimSpeed`; неизвестные enums, clips или несовместимые skeleton; attached FBX с clips; внешнюю animation geometry без точного временного исключения; mirrored mesh nodes; direct FBX/OBJ attachments вне настроенного диапазона Engine world units; неверные cut combinations; неизвестные tokens.
 
 Runtime повторяет критические binary и range checks. Runtime exception означает повреждённые или устаревшие baked data либо пробел в validation; не ловите её для тихой подстановки несвязанной модели.
 

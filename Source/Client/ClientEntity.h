@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ public:
     void DestroySelf();
 
 protected:
-    ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props);
+    ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props);
 
     virtual void OnDestroySelf() = 0;
 
@@ -76,8 +76,8 @@ private:
 class CustomEntityView : public ClientEntity, public EntityProperties
 {
 public:
-    CustomEntityView(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) :
-        ClientEntity(engine, id, registrator, props, base_props),
+    CustomEntityView(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props) :
+        ClientEntity(engine, id, registrar, props, base_props),
         EntityProperties(*GetInitRef())
     {
     }
@@ -88,8 +88,8 @@ public:
 class CustomEntityWithProtoView : public CustomEntityView, public EntityWithProto
 {
 public:
-    CustomEntityWithProtoView(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, ptr<const ProtoEntity> proto) :
-        CustomEntityView(engine, id, registrator, proto->GetProperties(), proto->GetProperties()),
+    CustomEntityWithProtoView(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, ptr<const ProtoEntity> proto) :
+        CustomEntityView(engine, id, registrar, proto->GetProperties(), proto->GetProperties()),
         EntityWithProto(proto)
     {
     }

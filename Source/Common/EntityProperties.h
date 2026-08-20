@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -88,7 +88,7 @@ public:
 
     // Reports whether this player connection has completed server login.
     ///@ ExportProperty Server
-    FO_ENTITY_PROPERTY(bool, Logined);
+    FO_ENTITY_PROPERTY(bool, LoggedIn);
     // Identifier of the critter currently controlled by this player; zero when none is attached.
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(ident_t, ControlledCritterId);

@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/coding-contracts/local-variables.html
 
 # Локальные переменные
 
-<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"6c798039ced9306e31388ca5f287d2e64d9cf0ddbc5fc539acdb9382a10aa7cb"} -->
+<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"9f1a122dc5f4c825be8e7fa3e4619403edb0de33977834e9925209add1cdd88b"} -->
 
 Этот документ определяет узкие правила собственного C++-кода для явного
 написания локальных типов, избыточного верхнеуровневого `const` и диагностики
@@ -137,3 +137,5 @@ extensions, но пути проекта, имена задач и workflow jobs
 Сгенерированные заголовки из общей цепочки include движка должны существовать
 до анализа, иначе translation units завершатся на отсутствующих include ещё до
 проверки правил.
+
+До передачи базе Clang tooling сократите compilation database до одной команды на translation unit. CMake создаёт entry для каждого target, компилирующего файл, поэтому один Engine source может встретиться десятки раз. Clang выполняет action для каждой entry, а `clang-query` удерживает каждый построенный AST, и duplicates умножают wall time и память. Один Engine AST занимает примерно половину гигабайта; существенно больший расход обычно означает непрореженную database, а не неизбежную стоимость analyzer.

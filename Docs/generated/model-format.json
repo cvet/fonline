@@ -486,7 +486,7 @@
       "repeatable": true,
       "stability": "experimental",
       "description": "Creates a layer-selected child-model link. The path is relative to the file containing the directive.",
-      "runtime_effect": "With Link, the child is attached to one parent bone. Without Link, same-named child and parent bones are paired for a shared-skeleton attachment.",
+      "runtime_effect": "With Link, the child is attached to one parent bone. Without Link, same-named child and parent bones are paired for a shared-skeleton attachment. A direct FBX/OBJ child has no description-level scale correction, so its static extent must stay within Baking.ModelAttachmentMinExtent and Baking.ModelAttachmentMaxExtent.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1445,6 +1445,28 @@
       ]
     },
     {
+      "id": "model-format.rule.source-units-and-mirroring",
+      "name": "Positive scale and Engine world units",
+      "requirement": "Freeze mirrored mesh nodes to a positive transform before export, and author direct FBX/OBJ attachments within Baking.ModelAttachmentMinExtent and Baking.ModelAttachmentMaxExtent. Use a child .fo3d when an explicit description-level scale is required.",
+      "rationale": "Negative transforms invert winding and normals; foreign unit scales produce impossible model-sprite frames. Failing the bake keeps both defects at their authored source.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelMeshBaker.cpp",
+          "anchors": [
+            "FBX mesh node is mirrored",
+            "ufbx_matrix_determinant"
+          ]
+        },
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "ModelAttachmentMaxExtent",
+            "ModelAttachmentMinExtent"
+          ]
+        }
+      ]
+    },
+    {
       "id": "model-format.rule.validation-boundary",
       "name": "Bake plus visible validation",
       "requirement": "Require a clean resource bake for syntax and asset closure, then exercise the model in a visible client scene for scale, pose, layer composition, attachments, materials, cuts, and interaction bounds.",
@@ -1497,7 +1519,7 @@
     "parser_token_count": 59,
     "asset_count": 6,
     "limit_count": 4,
-    "rule_count": 13,
+    "rule_count": 14,
     "removed_legacy_count": 6,
     "tokens_by_category": {
       "animation": 10,
@@ -1514,5 +1536,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "1a1f6cf520f128c6b673332880d7400ea1981baeafe903bfa249df184a7d0037"
+  "contract_digest": "f185b1e41f9b14fae37b009f28aabe9a1230483dc706f3960d24a4622fc8f23a"
 }

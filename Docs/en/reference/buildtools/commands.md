@@ -240,6 +240,31 @@ options:
   --check               check availability without installing or building
 ```
 
+<a id="entry-cli-buildtools-command-repair-checkout-case-675fd250f4"></a>
+## `repair-checkout-case`
+
+realign working-tree entry names with the git index
+
+Stable ID: `cli.buildtools.command.repair-checkout-case`
+
+```text
+usage: buildtools.py repair-checkout-case [-h] [--check]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-cli-buildtools-command-repair-checkout-case-argument-check-659400bbbd"></a><code>cli.buildtools.command.repair-checkout-case.argument.check</code> | <code>--check</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | check for case drift without renaming entries |
+
+### Exact `--help` output
+
+```text
+usage: buildtools.py repair-checkout-case [-h] [--check]
+
+options:
+  -h, --help  show this help message and exit
+  --check     check for case drift without renaming entries
+```
+
 <a id="entry-cli-buildtools-command-package-web-debug-0138fed878"></a>
 ## `package-web-debug`
 

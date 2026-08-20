@@ -104,6 +104,8 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+AngelScript assigns registered object type IDs lazily. Separate script contexts may request the same fresh type concurrently, so the vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine reader/writer lock and refreshes the value after acquiring exclusive access. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads` drives 16 native workers over 128 new types through public `asITypeInfo::GetTypeId()` and requires one identical valid ID per type.
+
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
 The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
 value itself for primitives/enums/value types (`int32&`, `mpos&`, `string&`), the handle cell for object handles
@@ -132,6 +134,10 @@ the property-accessor plus method-call form that exposed this during GUI shutdow
 Global variables, delegates, script object handles, arrays, dictionaries, and GUI object graphs must be cleaned by module shutdown, destructors, `ReleaseAllHandles`, and the AngelScript GC. Embedding-project scripts should not add `Game.OnFinish` / `EngineCallback_Finish` cleanup just to silence shutdown diagnostics; if a graph survives shutdown, fix the owning native release/GC enumeration bug.
 
 Entity deletion/unload clears the entity's own event callbacks and time events from `Entity::MarkAsDestroyed()`, so embedding-project scripts should not keep central per-entity unsubscribe / `StopTimeEvent` registries for ordinary entity lifetime. Entity mutators and event/time-event entry points assert or verify when called after `MarkAsDestroyed()`, making accidental attempts to repopulate a destroyed entity show their stack trace at the offending call. During `ServerEngine::Shutdown` / `ClientEngine::Shutdown`, the engine also runs `UnsubscribeAllEvents()` + `ClearAllTimeEvents()` on the global engine entity and all live entities before `DestroyAllEntities()`. Embedding-project scripts should not hand-maintain unsubscribe / global-clear / `StopTimeEvent` cleanup in their `Game.OnFinish` handler purely to keep the GC quiet — only genuinely functional teardown belongs there.
+
+Destroyed entities are rejected at the script-to-native boundary too. `NativeDataCaller::ConvertArg` validates access first and then rejects a destroyed entity for every ordinary `///@ ExportMethod`. On the server, an uncovered destroyed handle therefore reports the actionable missing-cover fault; a still-covered handle that the caller destroyed and reused reports the destroyed-argument fault. The client has no cover validation and sees only the latter.
+
+The sole opt-out is `///@ ExportMethod ... AllowDestroyedEntityArgs`, emitted as a compile-time call-policy flag. It exists for explicit synchronization primitives such as `Game.Sync`: a concurrent destroy can always happen between a script liveness check and the synchronization call, and these wrappers must return `false` rather than fail at argument conversion. Do not apply the flag to ordinary exports. `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` and `SyncAcceptsDestroyedEntity` pin the two contracts.
 
 ## Attributes, declarations, and metadata
 
@@ -208,7 +214,7 @@ The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript
 - `Gui.fos`
 - `Sprite.fos`
 - `LineTracer.fos`
-- `Serializator.fos`
+- `Serializer.fos`
 - `FixedDropMenu.fos`
 - `Tween.fos`
 

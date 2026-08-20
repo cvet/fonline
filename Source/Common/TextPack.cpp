@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -112,14 +112,14 @@ auto TextPack::GetText(TextPackKey key) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetText(key, 0);
+    return GetStr(key);
 }
 
-auto TextPack::GetText(TextPackKey key, size_t skip) const -> string_view
+auto TextPack::GetText(TextPackKey key, size_t text_index) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetStr(key, skip);
+    return GetStr(key, text_index);
 }
 
 auto TextPack::GetTextCount(TextPackKey key) const -> size_t
@@ -151,9 +151,9 @@ auto TextPack::GetStr(TextPackKey key) const -> string_view
         break;
 
     default:
-        int32_t random_skip = std::uniform_int_distribution<int32_t> {0, numeric_cast<int32_t>(str_count)}(_randomGenerator)-1;
+        size_t random_index = numeric_cast<size_t>(std::uniform_int_distribution<size_t> {0, str_count - 1}(_randomGenerator));
 
-        for (int32_t i = 0; i < random_skip; i++) {
+        for (size_t i = 0; i < random_index; i++) {
             ++it;
         }
 
@@ -163,18 +163,18 @@ auto TextPack::GetStr(TextPackKey key) const -> string_view
     return it->second;
 }
 
-auto TextPack::GetStr(TextPackKey key, size_t skip) const -> string_view
+auto TextPack::GetStr(TextPackKey key, size_t text_index) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
     size_t str_count = _strData.count(key);
     auto it = _strData.find(key);
 
-    if (skip >= str_count) {
+    if (text_index >= str_count) {
         return _emptyStr;
     }
 
-    for (size_t i = 0; i < skip; i++) {
+    for (size_t i = 0; i < text_index; i++) {
         ++it;
     }
 

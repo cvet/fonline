@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,9 +48,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
 
     WriteLog("Load client data packs for synchronization");
 
-    // Build the update state into function-locals first, then swap it into the members in a no-throw
-    // commit tail. This keeps the load strongly exception-safe: any throw mid-load unwinds the locals
-    // and leaves all five members untouched instead of half-cleared/half-rebuilt.
+    // Built into locals and swapped in by a no-throw tail, so a throw mid-load leaves every member untouched
+    // instead of half-rebuilt
     vector<UpdateFileData> update_files;
     vector<UpdateFileInfo> common_update_files;
     vector<uint8_t> common_update_files_desc;
@@ -168,9 +167,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         build_update_desc(desc, &files);
     }
 
-    // No-throw commit tail: swap the fully-built locals into the members. Container swap is
-    // unconditionally noexcept for the engine containers with their stateless allocator, so this
-    // tail cannot throw and cannot itself leave the members in a half-updated state.
+    // Container swap is unconditionally noexcept for the engine containers and their stateless allocator, so
+    // this tail cannot leave the members half-updated
     _updateFiles.swap(update_files);
     _commonUpdateFiles.swap(common_update_files);
     _commonUpdateFilesDesc.swap(common_update_files_desc);
@@ -200,13 +198,13 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (file_index >= _updateFiles.size()) {
         WriteLog(LogType::Warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
     if (update_file_max_portion_size <= 0) {
         WriteLog(LogType::Warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
@@ -215,7 +213,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (start_offset > file_size) {
         WriteLog(LogType::Warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
@@ -249,7 +247,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
         if (!read_update_file_portion(update_file.DiskPath, start_offset, disk_update_data)) {
             WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
-            connection->HardDisconnect();
+            connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }
     }

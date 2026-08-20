@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,12 +41,8 @@
 
 #include <future>
 
-// Clang Thread Safety Analysis annotations (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
-// Under Clang/ClangCL the FO_TSA_* macros expand to capability attributes; Clang parses them on every build and
-// diagnoses misuse when -Wthread-safety is enabled (the project enables it as -Werror on every Clang toolchain).
-// On MSVC, GCC and any other compiler they are no-ops. Use them through the annotated fo::mutex / fo::shared_mutex
-// primitives and the fo::scoped_lock / fo::shared_lock / fo::unique_lock guards defined below — raw std::mutex is not
-// a capability under the platform STL (libc++ disabled), so FO_TSA_GUARDED_BY(std::mutex) would not be checked.
+// FO_TSA_* maps to Clang capability attributes and is a no-op on other compilers.
+// Use the annotated fo synchronization types because the platform STL types are not capabilities
 #if defined(__clang__)
 #define FO_TSA_ATTR(...) __attribute__((__VA_ARGS__))
 #else
@@ -121,7 +117,7 @@ private:
     std::shared_mutex _impl;
 };
 
-// Exclusive RAII guard for mutex or shared_mutex (drop-in for std::scoped_lock / std::lock_guard).
+// Exclusive RAII guard for mutex or shared_mutex (drop-in for std::scoped_lock / std::lock_guard)
 template<typename T>
 class FO_TSA_SCOPED_CAPABILITY scoped_lock
 {
@@ -141,7 +137,7 @@ private:
     ptr<T> _mutex;
 };
 
-// Shared (reader) RAII guard for shared_mutex (drop-in for std::shared_lock).
+// Shared (reader) RAII guard for shared_mutex (drop-in for std::shared_lock)
 template<typename T>
 class FO_TSA_SCOPED_CAPABILITY shared_lock
 {
@@ -162,7 +158,7 @@ private:
 };
 
 // Movable-semantics exclusive lock with manual lock/unlock (drop-in for std::unique_lock). Works with
-// std::condition_variable_any, whose wait() drives lock()/unlock() on the held lock.
+// std::condition_variable_any, whose wait() drives lock()/unlock() on the held lock
 template<typename T>
 class FO_TSA_SCOPED_CAPABILITY unique_lock
 {
@@ -199,36 +195,15 @@ private:
     bool _owns {true};
 };
 
-// Reusable worker threads for asynchronous work.
-//
-// Two separate pools:
-//
-//   - `run_thread` pool — unbounded, grows on demand, workers never exit during process lifetime. For long-lived
-//     loops and tasks that previously used an owned `std::thread` plus a `.join()` at destruction. The pool is
-//     created lazily on first `run_thread` call.
-//
-//   - `run_async` pool — capped at `std::thread::hardware_concurrency()` workers, grows on demand up to that cap.
-//     For potentially-many short asynchronous tasks where unbounded growth could swamp the host. Created lazily on
-//     first `run_async` call.
-//
-// Workers in either pool only exit at process teardown — so the rpmalloc per-thread heap a task allocated on stays
-// alive and adoptable, and cross-thread frees of those allocations get processed normally on the next allocation
-// instead of piling up as orphan-heap deferred frees.
+// run_thread uses an unbounded pool for long-lived jobs; run_async caps short jobs at hardware concurrency.
+// Pool workers live until process teardown so rpmalloc thread heaps remain adoptable
 
-// Sets / queries the name of the calling thread. The name is surfaced to Tracy, the OS thread list, and to log lines
-// that capture the `[ThreadName]` tag. The pool's `worker_loop` sets the name inline for each picked-up task; the rest
-// of the engine just calls these as plain free functions.
+// Set or query the calling thread's Tracy, OS, and log name
 extern void set_this_thread_name(const string& name) noexcept;
 extern auto get_this_thread_name() noexcept -> string_view;
 
-// Move-only completion handle for a task submitted to `run_thread`. Mirrors the slim subset of `std::thread` the engine
-// actually uses (`join` / `joinable` / `detach` / `get_id`) without exposing the `std::future` implementation detail to
-// callers, so storage sites can declare a `fo::thread` member instead of leaking the future type.
-//
-// Unlike `std::thread`, the destructor does NOT call `std::terminate` when the handle is still joinable — it silently
-// releases the handle, leaving the pool worker to finish its body. This matches the engine's fire-and-forget usage
-// (Panic watchdog, CurlRequest) where the caller explicitly wants the task to outlive the handle. Use `join()` (or
-// store the handle in a member that outlives the task) when you need join-style semantics.
+// Move-only run_thread completion handle exposing join, detach, and get_id without the future type.
+// Destruction detaches rather than terminating; call join when completion is required
 class thread
 {
 public:
@@ -258,45 +233,38 @@ private:
     shared_ptr<std::atomic<std::thread::id>> _runningThreadId {};
 };
 
-// Submit `task` to the unbounded run-thread pool. Returns a `fo::thread` handle that can be `.join()`-ed or discarded
-// (fire-and-forget). Use this for any task that runs to completion — short-lived fire-and-forget, or long-lived loop
-// bodies (network backends, database committer, WorkerPool entry, etc.). The pool grows on demand: every submit either
-// reuses an idle worker or spawns a new one. Workers never exit during process lifetime, so the rpmalloc heap a task
-// allocated on stays adoptable across the worker's idle reuse.
+// Submit to the unbounded run-thread pool and return a joinable or discardable handle.
+// Workers persist for process lifetime so rpmalloc thread heaps remain adoptable
 [[nodiscard]] extern auto run_thread(string_view task_name, function<void()> task) -> thread;
 
 // Launch mode for `run_async`. There are three meaningful modes, exposed as the named constants below — pass one of
-// them to `run_async(mode, ...)`.
+// them to `run_async(mode, ...)`
 struct async_launch_mode
 {
     bool use_async {}; // submit to the bounded async pool
     bool use_deferred {}; // allow synchronous execution (lazy-deferred, or inline fallback when the pool is saturated)
 };
 
-// Submit to the async pool; the caller never runs the task inline (it waits in the FIFO queue if the pool is at cap).
+// Submit to the async pool; the caller never runs the task inline (it waits in the FIFO queue if the pool is at cap)
 inline constexpr async_launch_mode launch_async_only {.use_async = true, .use_deferred = false};
-// Run synchronously on the calling thread when the future is queried — like std::async(std::launch::deferred, ...).
+// Run synchronously on the calling thread when the future is queried — like std::async(std::launch::deferred, ...)
 inline constexpr async_launch_mode launch_deferred_only {.use_async = false, .use_deferred = true};
-// Try the pool first; if every worker is busy and the pool is at cap, run the task synchronously inline right now.
+// Try the pool first; if every worker is busy and the pool is at cap, run the task synchronously inline right now
 inline constexpr async_launch_mode launch_async_and_deferred {.use_async = true, .use_deferred = true};
 
-// Submit primitives backing the templated `run_async` wrapper below (which must live in the header to handle arbitrary
-// callable types). `submit_async` always enqueues onto the bounded async pool; `try_submit_async` instead returns false
-// when every worker is busy and the pool is at cap, letting `run_async` fall back to inline execution.
+// submit_async always queues; try_submit_async returns false at a fully busy cap for inline fallback
 extern void submit_async(string_view task_name, std::function<void()> task);
 extern auto try_submit_async(string_view task_name, std::function<void()> task) -> bool;
 
-// Runs `task` and returns a `std::future` for its result. Drop-in replacement for `std::async(mode, ...)` with the
-// launch-mode semantics described on the `launch_*` constants above. Exceptions raised by the task propagate through
-// `future.get()`. The async pool is intentionally bounded so a burst of short async tasks can't grow the process
-// thread count past the host's real parallelism; for long-lived loops use `run_thread` instead.
+// Run under the selected launch mode and propagate task exceptions through future.get().
+// The bounded pool is for short jobs; use run_thread for long-lived loops
 template<typename Func>
 [[nodiscard]] auto run_async(async_launch_mode mode, string_view task_name, Func&& task) -> std::future<std::invoke_result_t<std::decay_t<Func>>>
 {
     using ResultType = std::invoke_result_t<std::decay_t<Func>>;
 
     // Pure deferred: skip the pool entirely. std::async(std::launch::deferred, ...) returns a future whose .get()
-    // invokes the task on the calling thread — lazy synchronous, exactly what launch_deferred_only specifies.
+    // invokes the task on the calling thread — lazy synchronous, exactly what launch_deferred_only specifies
     if (!mode.use_async) {
         return std::async(std::launch::deferred, std::forward<Func>(task));
     }
@@ -305,10 +273,8 @@ template<typename Func>
     auto future = packaged->get_future();
 
     if (mode.use_deferred) {
-        // launch_async_and_deferred — try the pool, fall back to inline synchronous execution if the pool is
-        // saturated. The caller asked for either mode, so running sync is in-spec and avoids letting the FIFO queue
-        // grow unbounded. packaged_task::operator() captures the task's exception into the future, so the caller
-        // still observes failure through future.get().
+        // Mixed launch mode falls back inline when the pool is saturated, avoiding an unbounded queue
+        // packaged_task preserves exceptions for future.get()
         if (try_submit_async(task_name, [packaged]() mutable { (*packaged)(); })) {
             return future;
         }
@@ -318,12 +284,12 @@ template<typename Func>
     }
 
     // launch_async_only — must run on a pool worker. If every worker is busy and the cap is reached, submit_async
-    // queues the task; a worker picks it up when it frees. The caller's thread returns immediately with the future.
+    // queues the task; a worker picks it up when it frees. The caller's thread returns immediately with the future
     submit_async(task_name, [packaged]() mutable { (*packaged)(); });
     return future;
 }
 
-// Convenience overload for callers that always want async execution with no deferred fallback.
+// Convenience overload for callers that always want async execution with no deferred fallback
 template<typename Func>
 [[nodiscard]] auto run_async(string_view task_name, Func&& task) -> std::future<std::invoke_result_t<std::decay_t<Func>>>
 {

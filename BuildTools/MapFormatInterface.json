@@ -325,7 +325,7 @@
       "requirement": "Review mapper-saved diffs as normalized output, not byte-preserving serialization.",
       "stability": "experimental",
       "description": "The mapper emits $Name and normalized [$Name/...] sections for the edited map, retains $Text fields, flattens inherited map properties, and preserves sibling map blocks byte-exact in a multi-map container.",
-      "source": {"path": "Source/Tools/Mapper.cpp", "anchors": ["SpliceMapIntoFomapContent", "Sections of other maps are preserved byte-exact", "SetHeaderExtraFields"]}
+      "source": {"path": "Source/Tools/Mapper.cpp", "anchors": ["SpliceMapIntoFomapContent", "Other maps in the file are preserved byte-exact", "SetHeaderExtraFields"]}
     },
     {
       "id": "map-format.rule.multihex-mesh",

@@ -20,10 +20,10 @@ This reference describes the Engine-owned AngelScript GUI runtime. It is not a d
 | Stability | <code>experimental</code> |
 | Support policy | The CoreScripts GUI runtime is production-used but remains experimental until it has a standalone client example, focused runtime fixtures, and an explicit compatibility policy. |
 | Source manifest | [BuildTools/GuiRuntimeInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/GuiRuntimeInterface.json) |
-| Contract digest | <code>ecdc56e4e0f650c6af06801b6d63159b9d39ff0d67759ba17751a9884323561a</code> |
+| Contract digest | <code>437603ed47bec7614b368acf6b424a9c27d3d7e9fce56c5211c0fa4a30d1fdbd</code> |
 | Runtime side | <code>client</code> |
 | Runtime types | 12 |
-| Documented type members | 159 |
+| Documented type members | 160 |
 | Callback signatures | 39 |
 | Top-level API overloads | 31 |
 | Engine declarative GUI formats | 0 |

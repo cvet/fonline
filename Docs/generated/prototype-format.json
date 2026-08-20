@@ -5,7 +5,7 @@
   "source_parser": "Source/Tools/ProtoBaker.cpp",
   "config_parser": "Source/Common/ConfigFile.cpp",
   "property_parser": "Source/Common/Properties.cpp",
-  "property_serializator": "Source/Common/PropertiesSerializator.cpp",
+  "property_serializer": "Source/Common/PropertiesSerializer.cpp",
   "api_model_generator": "BuildTools/docs_api.py",
   "repository": "cvet/fonline",
   "source_ref": "master",
@@ -33,7 +33,7 @@
     "source_parser": "Source/Tools/ProtoBaker.cpp",
     "config_parser": "Source/Common/ConfigFile.cpp",
     "property_parser": "Source/Common/Properties.cpp",
-    "property_serializator": "Source/Common/PropertiesSerializator.cpp",
+    "property_serializer": "Source/Common/PropertiesSerializer.cpp",
     "settings": "Source/Common/Settings.inc",
     "api_model_generator": "BuildTools/docs_api.py",
     "api_model": "Docs/generated/api.json",
@@ -266,7 +266,7 @@
       "stability": "experimental",
       "description": "The property serializer is the authority for scalar, enum, struct, array, dictionary, RefType, FixedType, and Proto reference text.",
       "source": {
-        "path": "Source/Common/PropertiesSerializator.cpp",
+        "path": "Source/Common/PropertiesSerializer.cpp",
         "anchors": [
           "ParseStrictIntText",
           "ParseStrictFloatText",
@@ -298,7 +298,7 @@
       "stability": "experimental",
       "description": "A removed or renamed referenced id needs an explicit Proto migration rule to a valid target or Remove according to the owning persistence policy.",
       "source": {
-        "path": "Source/Common/PropertiesSerializator.cpp",
+        "path": "Source/Common/PropertiesSerializer.cpp",
         "anchors": [
           "Proto reference does not exist",
           "Proto MigrationRule"
@@ -3627,5 +3627,5 @@
       "Map": 14
     }
   },
-  "contract_digest": "ae2a5ac0e5472fff22a70752fbacd37600b636ba46d326ec96965a856cbf7dfe"
+  "contract_digest": "38b76342c3494988f8fa27a2715cbe09b9e02937d9d71e9309f2e90eae23c4f5"
 }

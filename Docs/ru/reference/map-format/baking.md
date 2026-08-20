@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-map-format-baking","locale":"ru","source_path":"Docs/en/reference/map-format/baking.md","source_sha256":"036950e531ab5efa85b443ed9e492e9dee010d2ff52af0ef4064c925972e245f"} -->
+<!-- docs-translation: {"document_id":"generated-map-format-baking","locale":"ru","source_path":"Docs/en/reference/map-format/baking.md","source_sha256":"ecab24ee3141c5ff080f696d28afadc269e97de11ac54332d1cb06f3628d65dc"} -->
 
 # Запекание и runtime-загрузка карт
 
@@ -21,10 +21,10 @@ generated: true
 
 | Владение | Значение | Поддерживается картой | Ссылка/позиция | Значение | Источник enum |
 | --- | --- | --- | --- | --- | --- |
-| <a id="entry-map-format-ownership-map-hex-2dae405d94"></a><code>MapHex</code> | 0 | да | <code>Hex</code> | Размещает предмет на гексе карты. Статические предметы обязаны использовать этот режим. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1096) |
-| <a id="entry-map-format-ownership-critter-inventory-08f10bd139"></a><code>CritterInventory</code> | 1 | да | <code>CritterId</code> | Создаёт нестатический предмет в инвентаре размещённого криттера, заданного CritterId. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1097) |
-| <a id="entry-map-format-ownership-item-container-c580fe1c90"></a><code>ItemContainer</code> | 2 | да | <code>ContainerId</code> | Создаёт нестатический предмет внутри размещённого нестатического предмета, заданного ContainerId. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1098) |
-| <a id="entry-map-format-ownership-nowhere-a9c5a87d13"></a><code>Nowhere</code> | 3 | нет | <code>none</code> | Присутствует в enum, но не поддерживается как режим авторского размещения на карте. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1099) |
+| <a id="entry-map-format-ownership-map-hex-2dae405d94"></a><code>MapHex</code> | 0 | да | <code>Hex</code> | Размещает предмет на гексе карты. Статические предметы обязаны использовать этот режим. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1079) |
+| <a id="entry-map-format-ownership-critter-inventory-08f10bd139"></a><code>CritterInventory</code> | 1 | да | <code>CritterId</code> | Создаёт нестатический предмет в инвентаре размещённого криттера, заданного CritterId. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1080) |
+| <a id="entry-map-format-ownership-item-container-c580fe1c90"></a><code>ItemContainer</code> | 2 | да | <code>ContainerId</code> | Создаёт нестатический предмет внутри размещённого нестатического предмета, заданного ContainerId. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1081) |
+| <a id="entry-map-format-ownership-nowhere-a9c5a87d13"></a><code>Nowhere</code> | 3 | нет | <code>none</code> | Присутствует в enum, но не поддерживается как режим авторского размещения на карте. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1082) |
 
 ## Разделение runtime-данных
 

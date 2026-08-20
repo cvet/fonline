@@ -153,6 +153,8 @@ The client runtime should depend on the abstract connection interface where poss
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
+The send callback returns outgoing bytes **by value**, and each transport owns the buffer handed to its socket. A borrowed sender buffer can be refilled by another dispatch or freed during disconnect while an I/O thread is still compressing or sending it. `Disconnect()` clears the callback under the same lock used for invocation, so teardown waits for any in-flight pull and later transport ticks cannot reach a disappearing sender.
+
 `NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
 against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
 transport-specific listener/io-context shutdown and thread join. A connection accepted concurrently with
@@ -166,6 +168,28 @@ The server runtime applies two independent limits to connections that have not l
   authentication remote calls, and update-file requests refresh progress; transport pings do not. This lets a
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
+
+A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection.
+
+### Disconnect reasons
+
+Every close records its cause in `DisconnectReason`, and `HardDisconnect(reason)` requires callers to choose one:
+
+| Reason | Cause |
+|---|---|
+| `None` | still connected |
+| `ClientClosed` | the transport reported that the peer disappeared; voluntary quit and lost network are indistinguishable here |
+| `InactivityTimeout` | no inbound message before `InactivityDisconnectTime` |
+| `PingTimeout` | the previous ping was not answered |
+| `LoginTimeout` | no pre-login progress before `LoginTimeout` |
+| `ProtocolError` | malformed/unexpected data or failed connection publication |
+| `UpdaterError` | invalid update-file request |
+| `ServerShutdown` | orderly server stop |
+| `ScriptRequest` | `Player.HardDisconnect()` from script |
+| `LoginFailed` | login rolled back after a server-side failure |
+| `ReplacedByReconnect` | a new login for the same account replaced this session |
+
+The first recorded reason wins, preventing the transport's later generic `ClientClosed` callback from overwriting the specific cause. The reason appears in the closed-connection log and is available to `OnPlayerLogout` handlers through `Player.GetDisconnectReason()`. `ServerConnectionRecordsWhyItWasDisconnected` pins this contract.
 
 `ServerDisconnectsPreLoginConnectionAfterLoginTimeout` covers the runtime deadline, while
 `NetworkServerInterthreadCopiedListenerRejectsAfterShutdown` and the transport shutdown tests cover accepted

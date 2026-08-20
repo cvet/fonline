@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -111,7 +111,7 @@ void MapManager::LoadFromResources()
                             throw MapManagerException("Critter proto not found on map", map_proto->GetName(), cr_pid);
                         }
 
-                        auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrator());
+                        auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrar());
                         auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
@@ -152,7 +152,7 @@ void MapManager::LoadFromResources()
                             throw MapManagerException("Item proto not found on map", map_proto->GetName(), item_pid);
                         }
 
-                        auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
+                        auto item_props = Properties(item_proto->GetProperties()->GetRegistrar());
                         auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
@@ -422,7 +422,7 @@ void MapManager::DestroyMapContent(ptr<Map> map)
             _engine->ItemMngr.DestroyItem(item);
         }
 
-        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption.
+        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption
         size_t remaining_deps = map->GetCritters().size() + map->GetItems().size();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Map content destruction made no progress", map->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
@@ -622,7 +622,7 @@ void MapManager::DestroyLocation(ptr<Location> loc)
             ReportExceptionAndContinue(ex);
         }
 
-        // Each pass must strictly reduce the location's remaining inner entities; non-convergence is corruption.
+        // Each pass must strictly reduce the location's remaining inner entities; non-convergence is corruption
         size_t remaining_deps = loc->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Location inner-entity destruction made no progress", loc->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
@@ -670,7 +670,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
 
     EnsureEntitySynced(map);
 
-    // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap.
+    // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap
     while (map->HasSpectatorPlayers()) {
         auto player = map->GetSpectatorPlayers().back();
         ValidateEntityAccess(player);
@@ -692,7 +692,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
             ReportExceptionAndContinue(ex);
         }
 
-        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption.
+        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption
         size_t remaining_deps = map->GetCritters().size() + map->GetItems().size() + map->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Map destruction made no progress", map->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
@@ -1120,7 +1120,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         }
     }
 
-    // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments.
+    // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments
     ValidateEntityAccess(cr);
     ValidateEntityAccess(prev_map_ref);
     _engine->OnCritterTransfer.Fire(cr, prev_map_ref);
@@ -1190,7 +1190,7 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
         }
         else {
             // Tight lambda so the property lock is released (even on a throw) exactly when the
-            // trip-id read/advance finishes, without widening the locked region over the work below.
+            // trip-id read/advance finishes, without widening the locked region over the work below
             auto trip_id = [this]() {
                 _engine->LockForPropertyAccess();
                 auto unlock_prop = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });

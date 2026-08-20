@@ -6,13 +6,13 @@ document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
 
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"7ac756946fa758ba11a0fa75e7284cba07efe995e55de1f5abfe63a98aceffeb"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"867d028be74e636ddcc4cc229047c3f380c67617faa451abee41793f23e43fac"} -->
 
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
 
-Используйте его при изменении `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, `ProtoManager.*`, аннотаций метаданных или кода, который сохраняет либо синхронизирует состояние сущностей.
+Используйте его при изменении `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializer.*`, `ProtoManager.*`, аннотаций метаданных или кода, который сохраняет либо синхронизирует состояние сущностей.
 
 О том, как операции создания, уничтожения и регистрации сущностей сохраняют согласованность при исключении в середине операции, включая terminate-on-OOM, lifecycle-контракт throw-as-signal и политику `FO_STRONG_ASSERT` после изменения состояния, см. [ExceptionSafety.md](../../../ExceptionSafety.md).
 
@@ -37,7 +37,7 @@ permalink: /Docs/ru/explanation/entity-and-property-model/
 
 - является ли тип экспортируемым или глобальным;
 - поддерживает ли он прототипы, статические и абстрактные сущности либо holder entries;
-- используемый типом `PropertyRegistrator`;
+- используемый типом `PropertyRegistrar`;
 - экспортируемые методы и события;
 - политику синхронизации и сохранения holder entry.
 
@@ -74,6 +74,12 @@ permalink: /Docs/ru/explanation/entity-and-property-model/
 - `SetName()` записывает значение через `Properties::SetValue()`;
 - `IsNonEmptyName()` проверяет наличие raw-данных свойства.
 
+Эти generated accessors являются `noexcept`; внутренняя validation доступа служит fatal tripwire, а не recoverable synchronization boundary. Доступ к owning entity должен быть уже доказан до чтения или записи свойства. Если проверка сработала, исправляйте caller, пропустивший синхронизацию, а не ослабляйте accessor.
+
+Доказательство доступа к одной сущности не доказывает автоматически доступ к другой сущности, возвращённой из неё. В частности, `ServerEntity::GetParent()` проверяет child, но возвращает parent, который намеренно может быть uncovered, а lock дочерней сущности не покрывает её ancestor. Такой handle можно вернуть, но перед чтением свойств parent его доступ нужно проверить.
+
+Item ownership resolvers являются эталонным шаблоном: пути, продолжающие обход ownership, доказывают каждого critter/container parent перед чтением `GetMapId()`, `GetHex()` или `Ownership`; пути, которые лишь возвращают `Item.GetMap()`, не добавляют validation, отклоняющую обычные map-owned items. Срабатывание accessor tripwire означает, что caller не предоставил нужное доказательство.
+
 `Source/Common/EntityProperties.h` определяет сгенерированные классы-обёртки свойств:
 
 - `GameProperties`
@@ -89,7 +95,7 @@ permalink: /Docs/ru/explanation/entity-and-property-model/
 - `CustomHolderEntry`
 - `ExplicitlyPersistent`
 
-Сгенерированные классы-обёртки являются тонким слоем над `Properties`; фактическое хранение, сведения о типах, флаги синхронизации и сохранения, callback и решения о сериализации принадлежат `Property`, `Properties` и `PropertyRegistrator`.
+Сгенерированные классы-обёртки являются тонким слоем над `Properties`; фактическое хранение, сведения о типах, флаги синхронизации и сохранения, callback и решения о сериализации принадлежат `Property`, `Properties` и `PropertyRegistrar`.
 
 Серверные AngelScript getters свойств копируют raw-данные невиртуальных свойств через `Properties::CopyRawData()` перед преобразованием в скриптовые значения. `Properties` блокирует только окно копирования или записи raw-буфера; setter и post-setter callback выполняются вне блокировки хранилища, чтобы отправка событий, смена родителя и уничтожение не наследовали блокировку буфера свойств.
 
@@ -104,7 +110,7 @@ permalink: /Docs/ru/explanation/entity-and-property-model/
 - `PropertyRawData` - временный типизированный или raw-буфер для getters, setters и путей raw restore.
 - `Property` - метаданные одного свойства: имя и компонент, базовый тип, форма коллекции, флаги синхронизации, mutability, persistence, nullability, callback и индекс регистрации.
 - `Properties` - хранилище значений одной сущности, связь base/overlay, raw snapshot/restore, импорт и экспорт текста, типизированные helpers get/set и разрешение hash.
-- `PropertyRegistrator` - реестр одного типа сущности, который создаёт свойства из токенов метаданных и отслеживает lookup, группы, компоненты, layout данных и public/protected/private пространства данных.
+- `PropertyRegistrar` - реестр одного типа сущности, который создаёт свойства из токенов метаданных и отслеживает lookup, группы, компоненты, layout данных и public/protected/private пространства данных.
 
 Флаги свойств определяют поведение системы:
 
@@ -131,7 +137,7 @@ Overlays, производные от прототипов, лениво соз�
 
 Смещения overlay data имеют естественное выравнивание. Каждое свойство при регистрации получает внутреннее выравнивание данных (`Property::GetDataAlignment()`): простые значения и POD arrays используют наибольшую степень двойки, на которую делится размер base type, с ограничением `MAX_SERIALIZED_ALIGNMENT`; string arrays выравниваются по своим u32 prefixes, ref-type payloads по `MAX_SERIALIZED_ALIGNMENT`, dicts по наиболее строгому выравниванию ключа, значения и prefix, а одиночные strings остаются byte-aligned. `AllocOverlayData` сначала выполняет best-fit поиск по освобождённым holes и alignment paddings между существующими entries и только при отсутствии подходящего hole расширяет выровненный хвост overlay. `_overlayGarbageSize` точно учитывает байты внутри используемого диапазона, не принадлежащие ни одному entry, благодаря чему allocator пропускает поиск, если ни один hole заведомо не подходит. Рост capacity повторно оценивается после repack, поскольку перемещение entries переменного размера может сдвинуть конечный выровненный хвост за первоначально выбранную границу capacity. Repack и rebuild-from-full раскладывают данные entries в стабильном порядке убывания выравнивания, минимизируя padding: простые entries располагаются подряд, а complex payloads переменного размера могут оставлять небольшие выровненные gaps, учтённые как garbage. Основной POD block registrator выровнен конструктивно: offsets кратны размеру base type, а section bases кратны 8, поэтому `GetRawData()` всегда возвращает данные, выровненные для внутреннего layout независимо от backing storage.
 
-Внутренняя структура complex raw data свойств также выровнена. Контракт layout определён в `Properties.h` и использует `alignment_for_size()`: внутри blob каждый fixed-size item размещается с естественным выравниванием - u32 length/count prefixes по 4, POD keys/values/element runs по наибольшей степени двойки, на которую делится их размер, с ограничением `MAX_SERIALIZED_ALIGNMENT`, вложенные ref-type payloads по `MAX_SERIALIZED_ALIGNMENT`, payload полей ref-blob по собственному data alignment поля. Байты strings не выравниваются, padding bytes равны нулю, после последнего item padding отсутствует, поэтому dict parsers по-прежнему завершаются при точном исчерпании буфера. Все blob codecs повторяют одни и те же шаги `align_up`: `PropertiesSerializator` для values/text, AngelScript marshaling в `AngelScriptHelpers.cpp`, `DynamicRefTypeInstance` в `ScriptSystem.cpp`, codec string array в `Properties.h` и inbound validator в `ClientDataValidation.cpp`, который дополнительно отклоняет ненулевой padding в недоверенных клиентских payloads. Поскольку начало blob выровнено storage-слоем, а внутренние элементы следуют контракту, fixed-size items можно читать и записывать прямым типизированным доступом. Изменение этого layout нарушает совместимость клиента и сервера: обновите compatibility version marker в `Common.h` и повторно запеките ресурсы.
+Внутренняя структура complex raw data свойств также выровнена. Контракт layout определён в `Properties.h` и использует `alignment_for_size()`: внутри blob каждый fixed-size item размещается с естественным выравниванием - u32 length/count prefixes по 4, POD keys/values/element runs по наибольшей степени двойки, на которую делится их размер, с ограничением `MAX_SERIALIZED_ALIGNMENT`, вложенные ref-type payloads по `MAX_SERIALIZED_ALIGNMENT`, payload полей ref-blob по собственному data alignment поля. Байты strings не выравниваются, padding bytes равны нулю, после последнего item padding отсутствует, поэтому dict parsers по-прежнему завершаются при точном исчерпании буфера. Все blob codecs повторяют одни и те же шаги `align_up`: `PropertiesSerializer` для values/text, AngelScript marshaling в `AngelScriptHelpers.cpp`, `DynamicRefTypeInstance` в `ScriptSystem.cpp`, codec string array в `Properties.h` и inbound validator в `ClientDataValidation.cpp`, который дополнительно отклоняет ненулевой padding в недоверенных клиентских payloads. Поскольку начало blob выровнено storage-слоем, а внутренние элементы следуют контракту, fixed-size items можно читать и записывать прямым типизированным доступом. Изменение этого layout нарушает совместимость клиента и сервера: обновите compatibility version marker в `Common.h` и повторно запеките ресурсы.
 
 `MAX_SERIALIZED_ALIGNMENT`, определённый в `BasicCore.h` и сейчас равный 8, ограничивает весь контракт. Это единая compile-time константа, а не platform-dependent `alignof(std::max_align_t)`, равный 16 на x64 из-за `long double` и 8 на wasm, чтобы serialized byte layout был одинаков на всех targets независимо от platform `max_align_t` или стандартного выравнивания `new`. Контракт корректен, только пока каждый serialized scalar leaf помещается в `MAX_SERIALIZED_ALIGNMENT`: layout позднее читает fixed-size items прямым типизированным доступом (`reinterpret_as<T>()`), поэтому over-aligned leaf привёл бы к misaligned load, то есть UB, sanitizer trap или hard fault на targets со строгим выравниванием. Это закреплено на этапе компиляции: fundamental integer/float leaves проверяются в `BasicCore.h`, hash leaf hashed string в `Properties.h`, а каждый типизированный accessor свойства (`GetValue`/`GetValueFast`/`SetValue`) при инстанцировании статически проверяет `alignof(T) <= MAX_SERIALIZED_ALIGNMENT`. Добавление over-aligned типа (`SIMD`, `__int128`, `long double`, `alignas(16)`) в любой serialized path приводит к ошибке сборки, а не к незаметному недовыравниванию. Текущая type grammar не может выразить такой leaf: primitives имеют размер не более 8 байт, `hstring` сериализуется как 64-bit hash, а structs состоят из этих элементов, поэтому `alignof(struct)` не превышает 8.
 
@@ -197,7 +203,7 @@ Holder lock предоставляет инициатор публикации. 
 
 - raw binary snapshots свойств: `Entity::StoreData()` / `RestoreData()` и `Properties::StoreData()` / `RestoreData()`;
 - полные данные свойств: `Properties::StoreAllData()` / `RestoreAllData()`;
-- преобразование текста и документов: `Properties::SaveToText()`, `ApplyFromText()` и `PropertiesSerializator.*`.
+- преобразование текста и документов: `Properties::SaveToText()`, `ApplyFromText()` и `PropertiesSerializer.*`.
 
 При преобразовании числовых значений свойств из текста или документа serializer отклоняет значения, которые не помещаются в целевой primitive width, вместо переполнения или создания infinity.
 
@@ -222,7 +228,7 @@ Persistence backends хранят records `AnyData::Document`. Подробно�
 - Классы сущностей-прототипов: `Source/Common/EntityProtos.*`.
 - Lookup и загрузка прототипов: `Source/Common/ProtoManager.*`.
 - Хранение и флаги свойств: `Source/Common/Properties.*`.
-- Преобразование свойств в документ и текст: `Source/Common/PropertiesSerializator.*`.
+- Преобразование свойств в документ и текст: `Source/Common/PropertiesSerializer.*`.
 - Сгенерированные метаданные и регистрация: [GeneratedApiAndMetadata.md](../../reference/metadata/index.md).
 - Persistence: [сохранение данных](../persistence/).
 - Сетевая репликация и command buffers: [сеть и авторитетность](../authority-and-networking/).

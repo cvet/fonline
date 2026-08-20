@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -43,7 +44,7 @@
 FO_BEGIN_NAMESPACE
 
 // The global-map group fan-out is a script-driven follow-up to initial info, so its cover contract is pinned
-// through the script export itself.
+// through the script export itself
 void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self);
 
 namespace
@@ -122,7 +123,7 @@ namespace
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            const_span<uint8_t> encoded_data = SendCallback();
+            vector<uint8_t> encoded_data = SendCallback();
 
             if (!encoded_data.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
@@ -447,7 +448,7 @@ namespace EntityLifecycle
     }
 
     [[Event]]
-    EventResult OnPlayerLogin(Player player, Player? unloginedPlayer)
+    EventResult OnPlayerLogin(Player player, Player? notLoggedInPlayer)
     {
         PlayerLoginCalls++;
 
@@ -529,10 +530,10 @@ namespace EntityLifecycle
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -613,19 +614,19 @@ namespace EntityLifecycle
         return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
     }
 
-    static auto CreatePreparedUnloginedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
+    static auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
 
-        unlogined_player->SetName(name);
-        unlogined_player->SetLastControlledCritterId(ident_t {1});
+        not_logged_in_player->SetName(name);
+        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
 
-        return unlogined_player;
+        return not_logged_in_player;
     }
 
     // A map spectator is an ordinary Player entity, so the fixture only needs the connection shell — not a
-    // login. The caller covers the returned player explicitly through its own SyncEntities call.
+    // login. The caller covers the returned player explicitly through its own SyncEntities call
     static auto MakeSpectatorPlayer(ptr<ServerEngine> server) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
@@ -646,10 +647,10 @@ namespace EntityLifecycle
     {
         FO_VERIFY_AND_THROW(net_connection, "Missing required net connection");
 
-        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
-        unlogined_player->SetName(name);
-        unlogined_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(unlogined_player);
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        not_logged_in_player->SetName(name);
+        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
+        auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
 
         return player;
     }
@@ -1336,7 +1337,7 @@ TEST_CASE("CritterCppApi")
     SECTION("CritterDestroyState")
     {
         // Hold a ref so the critter object survives DestroyCritter (which drops the manager's last
-        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object
         auto cr = server->CreateCritter(fn("TestCritter"), false).hold_ref();
 
         CHECK_FALSE(cr->IsDestroyed());
@@ -1347,9 +1348,8 @@ TEST_CASE("CritterCppApi")
 
 // ========== Independent-Root Cover Enumeration Tests ==========
 
-// A global-map group member and a map spectator are entity-lock roots of their own: neither is reachable
-// through the map/location ancestry the caller already covers, so the engine has to let the caller enumerate
-// them before it can acquire the cover the native fan-outs then validate.
+// Group members and spectators are entity-lock roots outside the caller's ancestry, so the engine must let them
+// be enumerated before the cover the native fan-outs validate can be acquired
 TEST_CASE("IndependentRootCoverEnumeration")
 {
     auto settings = MakeSettings();
@@ -1362,7 +1362,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
         });
     });
 
-    const auto startup_error = WaitForStart(server);
+    string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1379,29 +1379,29 @@ TEST_CASE("IndependentRootCoverEnumeration")
         REQUIRE(leader->GetGlobalMapGroup().size() == 2);
 
         uint64_t revision = 0;
-        const vector<ident_t> ids = leader->GetGlobalMapGroupIds(revision);
+        vector<ident_t> ids = leader->GetGlobalMapGroupIds(revision);
         CHECK(ids.size() == 2);
         CHECK(std::ranges::find(ids, leader->GetId()) != ids.end());
         CHECK(std::ranges::find(ids, member->GetId()) != ids.end());
 
-        // One group object is shared by every member, so each of them reports the same membership and revision.
+        // One group object is shared by every member, so each of them reports the same membership and revision
         uint64_t member_revision = 0;
         CHECK(member->GetGlobalMapGroupIds(member_revision).size() == ids.size());
         CHECK(member_revision == revision);
 
-        // Reading again without a membership change must not move the revision.
+        // Reading again without a membership change must not move the revision
         uint64_t repeated_revision = 0;
         CHECK(leader->GetGlobalMapGroupIds(repeated_revision).size() == 2);
         CHECK(repeated_revision == revision);
 
-        // Leaving is a membership change: the reported ids shrink and the revision advances.
+        // Leaving is a membership change: the reported ids shrink and the revision advances
         server->MapMngr.RemoveCritterFromMap(member, nullptr);
 
         uint64_t shrunk_revision = 0;
         CHECK(leader->GetGlobalMapGroupIds(shrunk_revision) == vector<ident_t> {leader->GetId()});
         CHECK(shrunk_revision > revision);
 
-        // A critter with no global-map group has nothing to enumerate.
+        // A critter with no global-map group has nothing to enumerate
         uint64_t detached_revision = 42;
         CHECK(member->GetGlobalMapGroupIds(detached_revision).empty());
         CHECK(detached_revision == 0);
@@ -1420,20 +1420,20 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
         auto ctx = server->RequireCurrentSyncContext();
 
-        // Bootstrap: with nothing but the critter itself covered, the enumeration still reports the group.
-        const array<nptr<ServerEntity>, 1> leader_only_cover {leader};
+        // Bootstrap: with nothing but the critter itself covered, the enumeration still reports the group
+        small_vector<ptr<ServerEntity>, 1> leader_only_cover {leader};
         ctx->SyncEntities(leader_only_cover);
 
         uint64_t revision = 0;
-        const vector<ident_t> ids = leader->GetGlobalMapGroupIds(revision);
+        vector<ident_t> ids = leader->GetGlobalMapGroupIds(revision);
         REQUIRE(ids.size() == 2);
         REQUIRE(std::ranges::find(ids, member->GetId()) != ids.end());
 
-        // The group fan-out validates every group member, which that minimal cover does not include.
+        // The group fan-out validates every group member, which that minimal cover does not include
         CHECK_THROWS_WITH(leader->Send_AddCritter(member), Catch::Matchers::ContainsSubstring("Entity access without sync"));
 
-        // Covering exactly what the enumeration reported makes the same fan-out legal.
-        const array<nptr<ServerEntity>, 2> group_cover {leader, member};
+        // Covering exactly what the enumeration reported makes the same fan-out legal
+        small_vector<ptr<ServerEntity>, 2> group_cover {leader, member};
         ctx->SyncEntities(group_cover);
         CHECK_NOTHROW(leader->Send_AddCritter(member));
 
@@ -1459,8 +1459,8 @@ TEST_CASE("IndependentRootCoverEnumeration")
         auto ctx = server->RequireCurrentSyncContext();
 
         // The critter to attach is chosen inside the login callback, so the travelling companion is an
-        // independent root the caller could not pre-cover. Initial info must work with the attach pair alone.
-        const array<nptr<ServerEntity>, 2> attach_cover {player, cr};
+        // independent root the caller could not pre-cover. Initial info must work with the attach pair alone
+        small_vector<ptr<ServerEntity>, 2> attach_cover {player, cr};
         ctx->SyncEntities(attach_cover);
 
         test_connection->Dispatch();
@@ -1469,12 +1469,12 @@ TEST_CASE("IndependentRootCoverEnumeration")
         test_connection->Dispatch();
 
         CHECK(player->GetControlledCritter() == cr.get());
-        // Only the chosen critter itself: the companion is delivered later by Critter.SendGlobalMapGroupInfo.
+        // Only the chosen critter itself: the companion is delivered later by Critter.SendGlobalMapGroupInfo
         CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 1);
 
         server->SwitchPlayerCritter(player, nullptr);
 
-        const array<nptr<ServerEntity>, 3> group_cover {player, cr, group_member};
+        small_vector<ptr<ServerEntity>, 3> group_cover {player, cr, group_member};
         ctx->SyncEntities(group_cover);
         cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(group_member);
@@ -1493,7 +1493,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
         auto ctx = server->RequireCurrentSyncContext();
 
-        const array<nptr<ServerEntity>, 2> attach_cover {player, cr};
+        small_vector<ptr<ServerEntity>, 2> attach_cover {player, cr};
         ctx->SyncEntities(attach_cover);
         server->SwitchPlayerCritter(player, cr);
         REQUIRE(player->GetControlledCritter() == cr.get());
@@ -1501,14 +1501,14 @@ TEST_CASE("IndependentRootCoverEnumeration")
         test_connection->Dispatch();
         test_connection->ResetSentPacketCount();
 
-        // The export validates the group instead of acquiring it, so an incomplete cover sends nothing at all.
+        // The export validates the group instead of acquiring it, so an incomplete cover sends nothing at all
         ctx->SyncEntities(attach_cover);
         CHECK_THROWS_WITH(Server_Critter_SendGlobalMapGroupInfo(cr), Catch::Matchers::ContainsSubstring("Entity access without sync"));
         test_connection->Dispatch();
         CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 0);
 
-        // Covering exactly what Critter.GetGlobalMapCritterIds reports delivers the travelling companion.
-        const array<nptr<ServerEntity>, 3> group_cover {player, cr, group_member};
+        // Covering exactly what Critter.GetGlobalMapCritterIds reports delivers the travelling companion
+        small_vector<ptr<ServerEntity>, 3> group_cover {player, cr, group_member};
         ctx->SyncEntities(group_cover);
         CHECK_NOTHROW(Server_Critter_SendGlobalMapGroupInfo(cr));
         test_connection->Dispatch();
@@ -1529,29 +1529,29 @@ TEST_CASE("IndependentRootCoverEnumeration")
         REQUIRE(static_cast<bool>(map));
 
         auto spectator = MakeSpectatorPlayer(server);
-        const array<nptr<ServerEntity>, 3> full_cover {loc, map, spectator.as_ptr()};
+        small_vector<ptr<ServerEntity>, 3> full_cover {loc, map, spectator.as_ptr()};
         ctx->SyncEntities(full_cover);
         spectator->SetViewMap(map, mpos {10, 10});
 
-        const vector<refcount_ptr<Player>> spectators = map->GetSpectatorPlayersForSend();
+        vector<refcount_ptr<Player>> spectators = map->GetSpectatorPlayersForSend();
         REQUIRE(spectators.size() == 1);
         CHECK(spectators.front() == spectator);
 
-        // The spectator is not a map descendant, so the map tree cover alone cannot eject it.
-        const array<nptr<ServerEntity>, 2> tree_only_cover {loc, map};
+        // The spectator is not a map descendant, so the map tree cover alone cannot eject it
+        small_vector<ptr<ServerEntity>, 2> tree_only_cover {loc, map};
         ctx->SyncEntities(tree_only_cover);
         CHECK_THROWS_WITH(server->MapMngr.DestroyLocation(loc), Catch::Matchers::ContainsSubstring("Entity access without sync"));
 
-        // Detach the spectator from the location that stayed half-destroyed by that throw-as-signal failure.
+        // Detach the spectator from the location that stayed half-destroyed by that throw-as-signal failure
         ctx->SyncEntities(full_cover);
         spectator->ResetViewMap();
 
-        // The same destroy succeeds once the reported spectator is part of the cover.
+        // The same destroy succeeds once the reported spectator is part of the cover
         auto covered_loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
         auto covered_map = covered_loc->GetMapByIndex(0);
         REQUIRE(static_cast<bool>(covered_map));
 
-        const array<nptr<ServerEntity>, 3> covered_cover {covered_loc, covered_map, spectator.as_ptr()};
+        small_vector<ptr<ServerEntity>, 3> covered_cover {covered_loc, covered_map, spectator.as_ptr()};
         ctx->SyncEntities(covered_cover);
         spectator->SetViewMap(covered_map, mpos {10, 10});
         REQUIRE(covered_map->GetSpectatorPlayersForSend().size() == 1);
@@ -1587,7 +1587,7 @@ TEST_CASE("ItemCppApi")
     SECTION("ItemCreationAndDestruction")
     {
         // Hold a ref so the item survives DestroyItem (which drops the manager's last reference and
-        // frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        // frees it) and the post-destroy IsDestroyed() check reads a valid object
         auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr).hold_ref();
 
         CHECK(item->GetId() != ident_t {});
@@ -1678,7 +1678,7 @@ TEST_CASE("LocationCppApi")
     SECTION("CreateAndDestroyLocation")
     {
         // Hold a ref so the location survives DestroyLocation (which drops the manager's last
-        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation")).hold_ref();
 
         CHECK(loc->GetId() != ident_t {});
@@ -1797,7 +1797,7 @@ TEST_CASE("PlayerRegistrationCppApi")
     SECTION("RegisterPlayerRejectsDuplicateIdBeforeMutatingCandidate")
     {
         auto registered_player = CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref();
-        const ident_t registered_id = registered_player->GetId();
+        ident_t registered_id = registered_player->GetId();
         auto net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
         auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
         auto candidate = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
@@ -1822,8 +1822,8 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(5));
 
-        auto unlogined_player = CreatePreparedUnloginedPlayer(server, "RejectNewRecord");
-        CHECK_THROWS_WITH(server->LoginPlayerToNewRecord(unlogined_player), Catch::Matchers::ContainsSubstring("New player login rejected by OnPlayerLogin"));
+        auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, "RejectNewRecord");
+        CHECK_THROWS_WITH(server->LoginPlayerToNewRecord(not_logged_in_player), Catch::Matchers::ContainsSubstring("New player login rejected by OnPlayerLogin"));
     }
 
     SECTION("LoginPlayerToExistentRecordThrowsWhenPlayerLoginStopsChain")
@@ -1838,10 +1838,10 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(5));
 
-        auto unlogined_player = CreatePreparedUnloginedPlayer(server, "RejectReconnectNext");
-        array<nptr<ServerEntity>, 2> reconnect_cover {player, unlogined_player};
+        auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, "RejectReconnectNext");
+        small_vector<ptr<ServerEntity>, 2> reconnect_cover {player, not_logged_in_player};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
-        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(unlogined_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
+        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(not_logged_in_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
     }
 
     SECTION("LoginPlayerToExistentRecordUsesCallerProvidedLocalMapCover")
@@ -1870,13 +1870,13 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         REQUIRE(reset_func.Call());
 
-        auto reconnect_unlogined = CreatePreparedUnloginedPlayer(server, "ReconnectLocalMapNext");
-        array<nptr<ServerEntity>, 5> reconnect_cover {player, reconnect_unlogined, cr, map, loc};
+        auto reconnect_not_logged_in = CreatePreparedNotLoggedInPlayer(server, "ReconnectLocalMapNext");
+        small_vector<ptr<ServerEntity>, 5> reconnect_cover {player, reconnect_not_logged_in, cr, map, loc};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
-        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_unlogined, player->GetId());
+        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_not_logged_in, player->GetId());
 
         CHECK(reconnected_player == player);
-        CHECK(reconnect_unlogined->IsDestroyed());
+        CHECK(reconnect_not_logged_in->IsDestroyed());
         CHECK(player->GetControlledCritter() == cr.get());
         CHECK(cr->GetMapId() == map->GetId());
 
@@ -1906,13 +1906,13 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         REQUIRE(reset_func.Call());
 
-        auto reconnect_unlogined = CreatePreparedUnloginedPlayer(server, "ReconnectGlobalGroupNext");
-        array<nptr<ServerEntity>, 4> reconnect_cover {player, reconnect_unlogined, cr, group_member};
+        auto reconnect_not_logged_in = CreatePreparedNotLoggedInPlayer(server, "ReconnectGlobalGroupNext");
+        small_vector<ptr<ServerEntity>, 4> reconnect_cover {player, reconnect_not_logged_in, cr, group_member};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
-        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_unlogined, player->GetId());
+        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_not_logged_in, player->GetId());
 
         CHECK(reconnected_player == player);
-        CHECK(reconnect_unlogined->IsDestroyed());
+        CHECK(reconnect_not_logged_in->IsDestroyed());
         CHECK(player->GetControlledCritter() == cr.get());
 
         int32_t initial_info_calls = 0;
@@ -1935,8 +1935,8 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(5));
 
-        auto unlogined_player = CreatePreparedUnloginedPlayer(server, "RejectTempSession");
-        CHECK_THROWS_WITH(server->LoginPlayerToTempSession(unlogined_player), Catch::Matchers::ContainsSubstring("Temporary player login rejected by OnPlayerLogin"));
+        auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, "RejectTempSession");
+        CHECK_THROWS_WITH(server->LoginPlayerToTempSession(not_logged_in_player), Catch::Matchers::ContainsSubstring("Temporary player login rejected by OnPlayerLogin"));
     }
 
     SECTION("PlayerLoginHardDisconnectDefersDestructionToPlayerJob")
@@ -1951,11 +1951,11 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         size_t initial_player_count = server->EntityMngr.GetPlayersCount();
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
-        unlogined_player->SetName("LoginDisconnect");
-        unlogined_player->SetLastControlledCritterId(ident_t {1});
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        not_logged_in_player->SetName("LoginDisconnect");
+        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
 
-        (void)server->LoginPlayerToNewRecord(unlogined_player);
+        (void)server->LoginPlayerToNewRecord(not_logged_in_player);
 
         int32_t login_calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerLoginCalls"), login_calls));
@@ -1982,16 +1982,16 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         size_t initial_player_count = server->EntityMngr.GetPlayersCount();
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
-        unlogined_player->SetName("TempSessionDisconnect");
+        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        not_logged_in_player->SetName("TempSessionDisconnect");
 
-        auto player = server->LoginPlayerToTempSession(unlogined_player);
+        auto player = server->LoginPlayerToTempSession(not_logged_in_player);
 
         int32_t login_calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerLoginCalls"), login_calls));
         CHECK(login_calls == 1);
 
-        player->GetConnection()->HardDisconnect();
+        player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
 
@@ -2097,7 +2097,7 @@ TEST_CASE("PlayerRegistrationCppApi")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server and the later SyncEntities cover holds only
-                    // the map subtree, so the caller re-establishes the location cover for the destroy.
+                    // the map subtree, so the caller re-establishes the location cover for the destroy
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -2130,7 +2130,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
 
         auto ctx = server->RequireCurrentSyncContext();
-        array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        small_vector<ptr<ServerEntity>, 3> sync_entities {player, cr, map};
         ctx->SyncEntities(sync_entities);
 
         CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));
@@ -2156,7 +2156,7 @@ TEST_CASE("PlayerRegistrationCppApi")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server and the later SyncEntities cover holds only
-                    // the map subtree, so the caller re-establishes the location cover for the destroy.
+                    // the map subtree, so the caller re-establishes the location cover for the destroy
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -2193,7 +2193,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         }));
 
         auto ctx = server->RequireCurrentSyncContext();
-        array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        small_vector<ptr<ServerEntity>, 3> sync_entities {player, cr, map};
         ctx->SyncEntities(sync_entities);
 
         CHECK(cr->GetHex() == server_hex);

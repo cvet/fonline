@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -66,7 +66,7 @@ FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
 }
 
 // Creates a standalone client-side clone with the same id, prototype, and property values without inserting it into a map or inventory.
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
 {
     auto cloned_item = self->CreateRefClone();
@@ -75,7 +75,7 @@ FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
 }
 
 // Creates a standalone client-side clone, overrides its stack count, and does not insert it into a map or inventory.
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self, int32_t count)
 {
     auto cloned_item = self->CreateRefClone();

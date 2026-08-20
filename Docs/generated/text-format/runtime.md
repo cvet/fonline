@@ -16,6 +16,9 @@ Continue with the [canonical reference](../../en/reference/text-format/runtime.m
 <a id="entry-text-format-runtime-get-current-text-5e96e49ab2"></a>
 - [`entry-text-format-runtime-get-current-text-5e96e49ab2`](../../en/reference/text-format/runtime.md#entry-text-format-runtime-get-current-text-5e96e49ab2)
 
+<a id="entry-text-format-runtime-get-indexed-text-1c9e1cc0c1"></a>
+- [`entry-text-format-runtime-get-indexed-text-1c9e1cc0c1`](../../en/reference/text-format/runtime.md#entry-text-format-runtime-get-indexed-text-1c9e1cc0c1)
+
 <a id="entry-text-format-runtime-get-language-text-eeccc868d4"></a>
 - [`entry-text-format-runtime-get-language-text-eeccc868d4`](../../en/reference/text-format/runtime.md#entry-text-format-runtime-get-language-text-eeccc868d4)
 

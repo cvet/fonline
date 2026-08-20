@@ -10,7 +10,7 @@ permalink: /Docs/en/explanation/entity-and-property-model/
 
 This document explains the reusable runtime entity model: entity type descriptors, generated property accessors, prototype entities, inner-entity ownership, entity events, and the property storage model that other runtime systems build on.
 
-Use it when changing `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, `ProtoManager.*`, metadata annotations, or code that persists/synchronizes entity state.
+Use it when changing `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializer.*`, `ProtoManager.*`, metadata annotations, or code that persists/synchronizes entity state.
 
 For how entity create/destroy/register stays consistent when an exception is thrown mid-operation — the terminate-on-OOM allocation model, the lifecycle throw-as-signal contract, and the post-mutation `FO_STRONG_ASSERT` policy — see [ExceptionSafety.md](../../../ExceptionSafety.md).
 
@@ -35,7 +35,7 @@ Keep this document focused on reusable engine behavior. Put project-specific ite
 
 - whether the type is exported or global;
 - whether it has prototypes, statics, abstract entities, or holder entries;
-- the `PropertyRegistrator` used by that type;
+- the `PropertyRegistrar` used by that type;
 - exported methods and events;
 - holder-entry sync/persistence policy.
 
@@ -72,6 +72,12 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 - `SetName()` writes through `Properties::SetValue()`;
 - `IsNonEmptyName()` checks whether raw property data exists.
 
+These generated accessors are `noexcept`; their internal access validation is a fatal tripwire, not a recoverable synchronization boundary. Access to the owning entity must already have been proven before a property is read or written. If the check fires, fix the caller that skipped synchronization rather than weakening the accessor.
+
+Proving access to one entity does not automatically prove access to another entity returned from it. In particular, `ServerEntity::GetParent()` validates the child but returns a parent that may be intentionally uncovered, and holding a child's lock does not cover its ancestor. Code may return that handle, but it must validate the parent before reading the parent's properties.
+
+The item ownership resolvers are the reference pattern: paths that continue the ownership walk prove each critter/container parent before reading `GetMapId()`, `GetHex()`, or `Ownership`; paths that merely return `Item.GetMap()` do not add a validation that would reject ordinary map-owned items. Treat an accessor tripwire as evidence of the missing proof at the caller.
+
 `Source/Common/EntityProperties.h` defines the generated property wrapper classes:
 
 - `GameProperties`
@@ -87,7 +93,7 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 - `CustomHolderEntry`
 - `ExplicitlyPersistent`
 
-The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrator`.
+The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrar`.
 
 Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
 
@@ -102,7 +108,7 @@ Property raw data storage is naturally aligned: the storage blob and `PropertyRa
 - `PropertyRawData` — temporary typed/raw buffer used by getters/setters and raw restore paths.
 - `Property` — metadata for one property: name/component, base type, collection shape, sync flags, mutability, persistence, nullability, callbacks, and registration index.
 - `Properties` — per-entity value storage, base/overlay relation, raw snapshot/restore, text import/export, typed get/set helpers, and hash resolution.
-- `PropertyRegistrator` — per-entity-type registry that creates properties from metadata tokens and tracks lookup, groups, components, data layout, and public/protected/private data spaces.
+- `PropertyRegistrar` — per-entity-type registry that creates properties from metadata tokens and tracks lookup, groups, components, data layout, and public/protected/private data spaces.
 
 Property flags are load-bearing:
 
@@ -129,7 +135,7 @@ Proto-derived overlays keep the dense property index lazy: small overlays use a 
 
 Overlay data offsets are naturally aligned. Each property gets an interior data alignment at registration (`Property::GetDataAlignment()`): plain values and POD arrays use the largest power of two dividing the base size (capped at `MAX_SERIALIZED_ALIGNMENT`), string arrays align to their u32 prefixes, ref-type payloads to `MAX_SERIALIZED_ALIGNMENT`, dicts to the strictest of their key/value/prefix alignments, and single strings stay byte-aligned. `AllocOverlayData` first best-fit searches freed holes and alignment paddings between existing entries and only extends the overlay tail (aligned) when no hole fits; `_overlayGarbageSize` tracks exactly the bytes inside the used range not owned by any entry, which lets the allocator skip the hole search when no hole can possibly fit. Capacity growth is re-evaluated after repacking because moving variable-size entries can shift the final aligned tail across the initially selected capacity boundary. Repack and rebuild-from-full lay entry data out in stable alignment-descending order, which minimizes padding (plain entries pack back-to-back; variable-size complex payloads may leave small aligned gaps accounted as garbage). The registrator's main POD block is aligned by construction (offsets are multiples of the property base size, section bases are multiples of 8), so `GetRawData()` always returns data aligned for its interior layout regardless of which storage backs it.
 
-Complex property raw data also keeps its interior aligned. The layout contract lives in `Properties.h` and uses `alignment_for_size()`: inside a blob, every fixed-size item is placed at its natural alignment — u32 length/count prefixes at 4, POD keys/values/element runs at the largest power of two dividing their size (capped at `MAX_SERIALIZED_ALIGNMENT`), nested ref-type payloads at `MAX_SERIALIZED_ALIGNMENT`, ref-blob field payloads at the field's own data alignment; string bytes are unaligned, padding bytes are zero, and no padding follows the last item, so dict parsers still terminate on exact buffer exhaustion. All blob codecs mirror the same `align_up` steps: `PropertiesSerializator` (value/text), the AngelScript marshaling in `AngelScriptHelpers.cpp`, `DynamicRefTypeInstance` in `ScriptSystem.cpp`, the string-array codec in `Properties.h`, and the inbound validator in `ClientDataValidation.cpp` (which additionally rejects non-zero padding in untrusted client payloads). Since the blob start is aligned by storage and interiors follow the contract, fixed-size items can be read and written with direct typed access. Changing this layout is a client/server compatibility break: bump the compatibility version marker in `Common.h` and rebake resources.
+Complex property raw data also keeps its interior aligned. The layout contract lives in `Properties.h` and uses `alignment_for_size()`: inside a blob, every fixed-size item is placed at its natural alignment — u32 length/count prefixes at 4, POD keys/values/element runs at the largest power of two dividing their size (capped at `MAX_SERIALIZED_ALIGNMENT`), nested ref-type payloads at `MAX_SERIALIZED_ALIGNMENT`, ref-blob field payloads at the field's own data alignment; string bytes are unaligned, padding bytes are zero, and no padding follows the last item, so dict parsers still terminate on exact buffer exhaustion. All blob codecs mirror the same `align_up` steps: `PropertiesSerializer` (value/text), the AngelScript marshaling in `AngelScriptHelpers.cpp`, `DynamicRefTypeInstance` in `ScriptSystem.cpp`, the string-array codec in `Properties.h`, and the inbound validator in `ClientDataValidation.cpp` (which additionally rejects non-zero padding in untrusted client payloads). Since the blob start is aligned by storage and interiors follow the contract, fixed-size items can be read and written with direct typed access. Changing this layout is a client/server compatibility break: bump the compatibility version marker in `Common.h` and rebake resources.
 
 `MAX_SERIALIZED_ALIGNMENT` (defined in `BasicCore.h`, currently 8) is the cap for this whole contract, chosen as a single compile-time constant rather than the platform-dependent `alignof(std::max_align_t)` (16 on x64 via `long double`, 8 on wasm) precisely so the serialized byte layout is identical on every target regardless of the platform's `max_align_t` or default `new` alignment. The contract stays sound only while every serialized scalar leaf fits within `MAX_SERIALIZED_ALIGNMENT`; because the layout later reads fixed-size items with direct typed access (`reinterpret_as<T>()`), an over-aligned leaf would produce a misaligned load (UB / sanitizer trap / hard fault on strict-alignment targets). This is pinned at compile time: the fundamental integer/float leaves are asserted in `BasicCore.h`, the hashed-string hash leaf in `Properties.h`, and every typed property accessor (`GetValue`/`GetValueFast`/`SetValue`) statically asserts `alignof(T) <= MAX_SERIALIZED_ALIGNMENT` at instantiation, so adding an over-aligned type (SIMD, `__int128`, `long double`, `alignas(16)`) anywhere on the serialized path fails the build instead of silently under-aligning. The current type grammar cannot express such a leaf — primitives are ≤ 8 bytes, `hstring` serializes as a 64-bit hash, and structs are compositions of those, so `alignof(struct)` never exceeds 8.
 
@@ -195,7 +201,7 @@ Entity state is serialized through property data, not by hand-copying entity fie
 
 - raw binary property snapshots: `Entity::StoreData()` / `RestoreData()` and `Properties::StoreData()` / `RestoreData()`;
 - full property data: `Properties::StoreAllData()` / `RestoreAllData()`;
-- text/document conversion: `Properties::SaveToText()`, `ApplyFromText()`, and `PropertiesSerializator.*`.
+- text/document conversion: `Properties::SaveToText()`, `ApplyFromText()`, and `PropertiesSerializer.*`.
 
 When text/document loading converts numeric property values, the serializer rejects values that do not fit the target primitive width instead of wrapping or producing infinity.
 
@@ -220,7 +226,7 @@ Relevant tests include:
 - Prototype entity classes: `Source/Common/EntityProtos.*`.
 - Prototype lookup/loading: `Source/Common/ProtoManager.*`.
 - Property storage and flags: `Source/Common/Properties.*`.
-- Property document/text conversion: `Source/Common/PropertiesSerializator.*`.
+- Property document/text conversion: `Source/Common/PropertiesSerializer.*`.
 - Generated metadata and registration: [GeneratedApiAndMetadata.md](../../reference/metadata/index.md).
 - Persistence: [Persistence](../persistence/).
 - Network replication and command buffers: [Networking](../authority-and-networking/).

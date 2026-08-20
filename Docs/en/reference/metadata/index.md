@@ -285,7 +285,7 @@ Reader-facing descriptions stay with the export metadata that defines each symbo
 
 ```cpp
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2472 InventorySha256=75fca70d7e56ae0647d004411014c7b7bd1a2a8422075941895fea957345602b
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2492 InventorySha256=8f70fbf7882f6b81ca6141efc8e3e0240eb97b0e8a9b36fe6be530345846f4ab
 ///@ ApiContract script.method.common.Game.LoadData experimental Since=0.4.0 Example=Docs/Examples/LoadData.md
 ///@ ApiContract script.method.common.Game.OldCall deprecated DeprecatedSince=0.5.0 Replacement=script.method.common.Game.NewCall Removal=1.0.0
 ```
@@ -941,7 +941,7 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 
 This is the runtime side of metadata that can be loaded from generated/baked data rather than compiled static registration alone.
 
-Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializator` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
+Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializer` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
 
 ## Properties and generated contracts
 
@@ -949,7 +949,7 @@ Migration rules are generic `(kind, extra-info, target → replacement)` remaps 
 
 - `PropertyRawData`
 - `Property`
-- `PropertyRegistrator`
+- `PropertyRegistrar`
 - `Properties`
 - property getter/setter/post-set callbacks
 - base type, struct layout, and serialization-related descriptors

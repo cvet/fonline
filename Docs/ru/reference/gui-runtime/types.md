@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-gui-runtime-types","locale":"ru","source_path":"Docs/en/reference/gui-runtime/types.md","source_sha256":"beb0e78341c091c567b5cb8ed30c2ee5db1734cf5fd508a5935997dbab63c841"} -->
+<!-- docs-translation: {"document_id":"generated-gui-runtime-types","locale":"ru","source_path":"Docs/en/reference/gui-runtime/types.md","source_sha256":"a4a718698ac0d82e1129d66f8d3c310e4e8c3642fcfa5fd9e094df22db722fef"} -->
 
 # Типы GUI Runtime
 
@@ -16,7 +16,7 @@ generated: true
 | Стабильный ID | Тип | Базовый тип | Члены | Callbacks | Роль |
 | --- | --- | --- | --- | --- | --- |
 | <a id="entry-gui-runtime-type-object-f26b45999e"></a><code>gui-runtime.type.object</code> | <code>Object</code> | - | 56 | 36 | Базовый узел дерева для активности, геометрии, иерархии, hit testing, фокуса, перетаскивания, callback-функций, поиска и рекурсивной отрисовки. |
-| <a id="entry-gui-runtime-type-panel-ba52e2409f"></a><code>gui-runtime.type.panel</code> | <code>Panel</code> | <code>Object</code> | 16 | 0 | Объект со спрайтовым фоном, необязательной рамкой 9-slice, crop/scissor и анимированной вертикальной или горизонтальной прокруткой. |
+| <a id="entry-gui-runtime-type-panel-ba52e2409f"></a><code>gui-runtime.type.panel</code> | <code>Panel</code> | <code>Object</code> | 17 | 0 | Объект со спрайтовым фоном, необязательной рамкой 9-slice, crop/scissor и анимированной вертикальной или горизонтальной прокруткой. |
 | <a id="entry-gui-runtime-type-text-b7ebcc2a6b"></a><code>gui-runtime.type.text</code> | <code>Text</code> | <code>Object</code> | 12 | 0 | Отрисовываемый текстовый узел с привязанным FontType, набором FontFlag, цветами, состоянием skip-lines и необязательным измерением высоты. |
 | <a id="entry-gui-runtime-type-text-input-e905911387"></a><code>gui-runtime.type.text-input</code> | <code>TextInput</code> | <code>Text</code> | 6 | 0 | Фокусируемый редактируемый текстовый узел с длиной, паролем, carriage, буфером обмена и экранной клавиатурой. |
 | <a id="entry-gui-runtime-type-button-a91e38fc0a"></a><code>gui-runtime.type.button</code> | <code>Button</code> | <code>Panel</code> | 14 | 0 | Panel с состояниями pressed, hover, disabled, switched и condition. |
@@ -150,6 +150,7 @@ generated: true
 - <code>void SetFrameImage(hstring imageName)</code>
 - <code>void SetCapInsets(int left, int top, int right, int bottom)</code>
 - <code>void SetCropContent(bool enabled)</code>
+- <code>bool CropContent</code>
 - <code>void SetAutoScroll(bool ver, bool hor)</code>
 - <code>int VerticalScrollValue</code>
 - <code>int HorizontalScrollValue</code>
