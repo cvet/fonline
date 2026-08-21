@@ -20,7 +20,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * tracy - [tracy-0.13.1](https://github.com/wolfpld/tracy)
 * Theora - [libtheora-1.2.0](https://www.theora.org)
 * Vorbis - [libvorbis-1.3.7](https://xiph.org/vorbis)
-* imgui - [imgui-1.92.8](https://github.com/ocornut/imgui)
+* imgui - [imgui-1.92.9b](https://github.com/ocornut/imgui)
 * libpng - [libpng-1.6.58](https://github.com/pnggroup/libpng)
 * LibreSSL - [4.3.2](https://www.libressl.org)
 * meshoptimizer - [v1.2](https://github.com/zeux/meshoptimizer/releases/tag/v1.2)

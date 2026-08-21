@@ -2327,7 +2327,7 @@ void Application::EndFrame()
         auto clip_scale = draw_data->FramebufferScale;
 
         // Render command lists
-        for (int32_t cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
+        for (int32_t cmd = 0; cmd < draw_data->CmdLists.Size; cmd++) {
             ptr<const ImDrawList> cmd_list = draw_data->CmdLists[cmd];
 
             _imguiDrawBuf->Vertices.resize(cmd_list->VtxBuffer.Size);
