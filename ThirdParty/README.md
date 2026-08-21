@@ -4,7 +4,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 
 * AcmDecoder by Abel - ACM sound format reader
 * AngelScript - [2.39.0 WIP 15.03.26](https://github.com/anjo76/angelscript)
-* Asio - [asio-1.36.0](https://github.com/chriskohlhoff/asio)
+* Asio - [asio-1.38.2](https://github.com/chriskohlhoff/asio)
 * Catch2 - [Catch2-3.15.2](https://github.com/catchorg/Catch2)
 * Effekseer - [Effekseer-1.80.5](https://github.com/effekseer/Effekseer)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)

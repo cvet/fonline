@@ -2,7 +2,7 @@
 // bind_allocator.hpp
 // ~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -26,6 +26,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 namespace detail {
 
 // Helper to automatically define nested typedef result_type.
@@ -148,6 +149,10 @@ struct allocator_binder_argument_type<R(&)(A1, A2)>
 
 /// A call wrapper type to bind an allocator of type @c Allocator
 /// to an object of type @c T.
+/**
+ * @sa @ref overview_associators "Associators",
+ * @ref overview_token_adapters "Completion token adapters"
+ */
 template <typename T, typename Allocator>
 class allocator_binder
 #if !defined(GENERATING_DOCUMENTATION)
@@ -596,6 +601,7 @@ struct associated_allocator<allocator_binder<T, Allocator>, Allocator1>
 
 #endif // !defined(GENERATING_DOCUMENTATION)
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

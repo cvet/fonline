@@ -2,7 +2,7 @@
 // cancel_after.hpp
 // ~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -25,12 +25,15 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 
 /// A @ref completion_token adapter that cancels an operation after a timeout.
 /**
  * The cancel_after_t class is used to indicate that an asynchronous operation
  * should be cancelled if not complete before the specified duration has
  * elapsed.
+ *
+ * @sa @ref overview_token_adapters "Completion token adapters"
  */
 template <typename CompletionToken, typename Clock,
     typename WaitTraits = asio::wait_traits<Clock>>
@@ -281,7 +284,7 @@ cancel_after(basic_waitable_timer<Clock, WaitTraits, Executor>& timer,
 template <typename Clock, typename WaitTraits, typename Executor,
     typename Rep, typename Period, typename CompletionToken>
 ASIO_NODISCARD inline
-cancel_after_timer<decay_t<CompletionToken>, chrono::steady_clock>
+cancel_after_timer<decay_t<CompletionToken>, Clock, WaitTraits, Executor>
 cancel_after(basic_waitable_timer<Clock, WaitTraits, Executor>& timer,
     const chrono::duration<Rep, Period>& timeout,
     cancellation_type_t cancel_type, CompletionToken&& completion_token)
@@ -292,6 +295,7 @@ cancel_after(basic_waitable_timer<Clock, WaitTraits, Executor>& timer,
       timer, timeout, cancel_type);
 }
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"
