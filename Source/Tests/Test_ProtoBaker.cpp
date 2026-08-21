@@ -60,29 +60,6 @@ TEST_CASE("ProtoBaker")
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
-    auto make_dynamic_metadata_blob = [](const vector<pair<string_view, vector<vector<string_view>>>>& sections) {
-        vector<uint8_t> metadata;
-        auto writer = DataWriter(metadata);
-
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
-
-        for (const auto& [section_name, entries] : sections) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
-            writer.WriteStringBytes(section_name);
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
-
-            for (const auto& tokens : entries) {
-                writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
-
-                for (string_view token : tokens) {
-                    writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-                    writer.WriteStringBytes(token);
-                }
-            }
-        }
-
-        return metadata;
-    };
     auto add_client_mapper_metadata_blob = [](TestRig& local_rig, const vector<uint8_t>& metadata_blob) {
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
@@ -172,7 +149,7 @@ $Parent = ParentItem
         local_rig.AddSourceFile("Custom/Gizmo.fopro", R"([ProtoGizmo]
 $Name = CustomGizmo
 )");
-        add_client_mapper_metadata_blob(local_rig, make_dynamic_metadata_blob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
+        add_client_mapper_metadata_blob(local_rig, BakerTests::MakeMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
 
         ProtoBaker baker(local_rig.MakeContext("ProtoPackCustom", client_mapper_bake));
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
@@ -187,7 +164,7 @@ $Name = CustomGizmo
         local_rig.AddSourceFile("Protos/Blueprint.fopro", R"([Blueprint]
 $Name = VaultDoorBlueprint
 )");
-        add_client_mapper_metadata_blob(local_rig, make_dynamic_metadata_blob({{"FixedType", {{"Blueprint"}}}}));
+        add_client_mapper_metadata_blob(local_rig, BakerTests::MakeMetadataBlob({{"FixedType", {{"Blueprint"}}}}));
 
         ProtoBaker baker(local_rig.MakeContext("ProtoPackFixed", client_mapper_bake));
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
@@ -214,7 +191,7 @@ $Name = Broken
         local_rig.AddSourceFile("Custom/AuditLog.fopro", R"([ProtoAuditLog]
 $Name = AuditLogEntry
 )");
-        add_client_mapper_metadata_blob(local_rig, make_dynamic_metadata_blob({{"Entity", {{"AuditLog"}}}}));
+        add_client_mapper_metadata_blob(local_rig, BakerTests::MakeMetadataBlob({{"Entity", {{"AuditLog"}}}}));
 
         ProtoBaker baker(local_rig.MakeContext("ProtoPackNoProtos", client_mapper_bake));
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);

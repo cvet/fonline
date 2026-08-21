@@ -62,6 +62,7 @@ public:
     ~EngineMetadata() override = default;
 
     [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
+    [[nodiscard]] auto GetMetadataVersion() const noexcept -> string_view { return _metadataVersion; }
     [[nodiscard]] auto GetPropertyRegistrar(hstring type_name) const noexcept -> nptr<const PropertyRegistrar>;
     [[nodiscard]] auto GetPropertyRegistrar(string_view type_name) const noexcept -> nptr<const PropertyRegistrar>;
     [[nodiscard]] auto GetPropertyRegistrarForEdit(string_view type_name) -> ptr<PropertyRegistrar>;
@@ -102,6 +103,7 @@ public:
     [[nodiscard]] auto GetAnimationInfo(hstring resource_name) const noexcept -> nptr<const AnimationInfo>;
 
     void RegisterSide(EngineSideKind side);
+    void RegisterMetadataVersion(string_view version);
     auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrar>;
     auto RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrar>;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent);
@@ -133,6 +135,7 @@ private:
     auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;
 
     EngineSideKind _side {};
+    string _metadataVersion {};
     bool _registrationFinalized {};
     map<hstring, EntityTypeDesc> _entityTypes {};
     map<hstring, EntityTypeDesc> _fixedTypes {};

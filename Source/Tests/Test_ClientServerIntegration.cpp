@@ -1619,6 +1619,87 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
     CHECK(WaitForServerConnectionCount(server, 0));
 }
 
+TEST_CASE("ServerReportsMetadataMismatchInHandshake")
+{
+    using namespace TestClientServerIntegration;
+
+    uint16_t port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.DisableZlibCompression, true);
+    auto server = MakeServerEngine(server_settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(InterthreadListeners.count(port) == 1);
+
+    mutex received_data_lock;
+    vector<uint8_t> received_data;
+    auto send_to_server = InterthreadListeners[port]([&received_data_lock, &received_data](const_span<uint8_t> data) {
+        if (!data.empty()) {
+            scoped_lock locker {received_data_lock};
+            received_data.insert(received_data.end(), data.begin(), data.end());
+        }
+    });
+    REQUIRE(send_to_server);
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+
+    // A binary-compatible client whose resources come from another bake: the layout verdict is what keeps its
+    // property payloads from reaching deserialization
+    REQUIRE_FALSE(server->GetMetadataVersion().empty());
+    auto handshake = NetOutBuffer(128);
+    handshake.StartMsg(NetMessage::Handshake);
+    handshake.Write(server_settings.CompatibilityVersion);
+    handshake.Write<string_view>("0123456789abcdef");
+    handshake.Write<uint32_t>(FO_UPDATER_VERSION);
+    handshake.Write<string_view>("Linux-x64");
+    handshake.Write<uint32_t>(0x12345678);
+    handshake.EndMsg();
+    send_to_server(handshake.GetData());
+
+    bool received_answer = false;
+
+    for (int32_t i = 0; i < 2000 && !received_answer; i++) {
+        vector<uint8_t> response_data;
+        {
+            scoped_lock locker {received_data_lock};
+            response_data = received_data;
+        }
+
+        if (!response_data.empty()) {
+            NetInBuffer response {response_data.size()};
+            response.AddData(response_data);
+
+            if (response.NeedProcess()) {
+                REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
+                CHECK_FALSE(response.Read<bool>());
+                CHECK_FALSE(response.Read<bool>());
+                CHECK(response.Read<bool>());
+                CHECK(response.Read<string>() == server->GetMetadataVersion());
+                uint32_t response_encrypt_key = response.Read<uint32_t>();
+                CHECK(response_encrypt_key != 0);
+                received_answer = true;
+            }
+        }
+
+        if (!received_answer) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    REQUIRE(received_answer);
+    send_to_server({});
+    CHECK(WaitForServerConnectionCount(server, 0));
+}
+
 TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 {
     using namespace TestClientServerIntegration;
@@ -1656,6 +1737,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     auto handshake = NetOutBuffer(128);
     handshake.StartMsg(NetMessage::Handshake);
     handshake.Write(server_settings.CompatibilityVersion);
+    handshake.Write(server->GetMetadataVersion());
     handshake.Write<uint32_t>(FO_UPDATER_VERSION - 1);
     handshake.Write<string_view>("Linux-x64");
     handshake.Write<uint32_t>(0x12345678);
@@ -1678,6 +1760,8 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
                 REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
                 CHECK_FALSE(response.Read<bool>());
                 CHECK(response.Read<bool>());
+                CHECK_FALSE(response.Read<bool>());
+                CHECK(response.Read<string>() == server->GetMetadataVersion());
                 uint32_t response_encrypt_key = response.Read<uint32_t>();
                 CHECK(response_encrypt_key != 0);
                 response.SetEncryptKey(response_encrypt_key);
@@ -1865,6 +1949,10 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     string updater_bake_output = PrepareClientUpdaterBakeOutput();
     auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs_remove_dir_tree(updater_bake_output); });
     BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
+
+    // The rig has no resource packs to read a version back from, and this case is about the hash list rather
+    // than about pack reading, so the client reports the version the test metadata carries
+    BakerTests::OverrideSetting(client_settings.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
 
     auto server = MakeServerEngine(server_settings);
     auto client = MakeClientEngine(client_settings);

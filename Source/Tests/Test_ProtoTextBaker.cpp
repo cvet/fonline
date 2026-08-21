@@ -39,31 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto MakeDynamicMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
-{
-    vector<uint8_t> metadata;
-    auto writer = DataWriter(metadata);
-
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
-
-    for (const auto& [section_name, entries] : sections) {
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
-        writer.WriteStringBytes(section_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
-
-        for (const auto& tokens : entries) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
-
-            for (string_view token : tokens) {
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-                writer.WriteStringBytes(token);
-            }
-        }
-    }
-
-    return metadata;
-}
-
 static auto LoadOutputTextPack(const BakerTests::TestRig& rig, string_view path, HashStorage& hashes) -> TextPack
 {
     auto it = rig.Outputs.find(string(path));
@@ -121,7 +96,7 @@ $Text engl Name = Ignored
         TestRig local_rig;
         OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
         OverrideSetting(local_rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
-        local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
+        local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
         local_rig.AddSourceFile("Items/TextItems.fopro", R"([ProtoItem]
 $Name = BaseItem
 $Text engl Name = Base item name
@@ -184,7 +159,7 @@ $Text engl Name = Custom gizmo name
     {
         TestRig local_rig;
         OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl"});
-        local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"FixedType", {{"Blueprint"}}}}));
+        local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"FixedType", {{"Blueprint"}}}}));
         local_rig.AddSourceFile("Protos/Blueprint.fopro", R"([Blueprint]
 $Name = VaultDoorBlueprint
 $Text engl Name = Blueprint name
@@ -237,7 +212,7 @@ $Text engl Name = Broken
         }
         {
             TestRig local_rig;
-            local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"Entity", {{"AuditLog"}}}}));
+            local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Entity", {{"AuditLog"}}}}));
             local_rig.AddSourceFile("Custom/AuditLog.fopro", R"([ProtoAuditLog]
 $Name = AuditLogEntry
 $Text engl Name = Audit
@@ -326,7 +301,7 @@ $Text engl Name = Child
         {
             TestRig local_rig;
             OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl"});
-            local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}, {"Widget", "HasProtos"}}}}));
+            local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}, {"Widget", "HasProtos"}}}}));
             local_rig.AddSourceFile("Custom/Intersections.fopro", R"([ProtoGizmo]
 $Name = SharedCustomProto
 $Text engl Name = Gizmo name

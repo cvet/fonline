@@ -94,6 +94,7 @@ FIXED_SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in millise
 FIXED_SETTING(int32_t, Network, ArtificalLagsJitter, 0); // Extra per-batch random delay in milliseconds on top of the artificial lag, emulating stalls
 FIXED_SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 FIXED_SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
+FIXED_SETTING(string, Network, ForceMetadataVersion, ""); // Custom metadata version, for simulating a client baked apart from the server
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

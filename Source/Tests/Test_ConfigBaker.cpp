@@ -56,31 +56,6 @@ static void AddConfigBakerMetadata(BakerTests::TestRig& rig)
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
 }
 
-static auto MakeConfigBakerMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
-{
-    vector<uint8_t> metadata;
-    auto writer = DataWriter(metadata);
-
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
-
-    for (const auto& [section_name, entries] : sections) {
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
-        writer.WriteStringBytes(section_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
-
-        for (const auto& tokens : entries) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
-
-            for (string_view token : tokens) {
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-                writer.WriteStringBytes(token);
-            }
-        }
-    }
-
-    return metadata;
-}
-
 template<typename T>
 static auto FormatConfigBakerScalarValue(const T& value) -> string
 {
@@ -212,8 +187,8 @@ TEST_CASE("ConfigBaker")
                 "Unknown.CustomSetting = Visible\n"));
 
         TestRig rig;
-        rig.AddBakedFile("Metadata.fometa-server", MakeConfigBakerMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool"}}}}));
-        rig.AddBakedFile("Metadata.fometa-client", MakeConfigBakerMetadataBlob({{"Setting", {{"Client.CustomTitle", "string"}}}}));
+        rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool"}}}}));
+        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Setting", {{"Client.CustomTitle", "string"}}}}));
         rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
 
         ConfigBaker baker(rig.MakeContext("ConfigPack"));

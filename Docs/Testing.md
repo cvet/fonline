@@ -368,7 +368,9 @@ created, posed and drawn without a GPU. The fixture chain is what makes it work:
   source-file format.
 - The baking rig needs `Metadata.fometa-client` added as a **baked** file, and
   the mesh needs a **source** entry as well as its baked output, because the info
-  baker resolves it through the source loader.
+  baker resolves it through the source loader. Build the blob with
+  `BakerTests::MakeMetadataBlob` / `MakeEmptyMetadataBlob`: registration rejects
+  metadata without a version, which those helpers fill in.
 - The runtime additionally requires `ModelAnimationInfo.foinfo` — a plain config
   keyed by the model resource name, with `BoundsVersion = 2`, the twelve
   model/view bounds keys, and at least one animation duration record.

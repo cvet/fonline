@@ -93,6 +93,12 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitManagedScripting(this, Resources);
 #endif
 
+    WriteLog("Client compatibility version: {}", Settings->CompatibilityVersion);
+
+    string metadata_version = !Settings->ForceMetadataVersion.empty() ? Settings->ForceMetadataVersion : string(GetMetadataVersion());
+    _conn.SetMetadataVersion(metadata_version);
+    WriteLog("Client metadata version: {}", metadata_version);
+
     Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
 
     _curLang = TextPack {&Hashes};
@@ -602,6 +608,9 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
     }
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
         throw ResourcesOutdatedException("Binary outdated");
+    }
+    else if (result == ClientConnection::ConnectResult::MetadataOutdated) {
+        throw ResourcesOutdatedException("Client metadata does not match the server", GetMetadataVersion(), _conn.GetServerMetadataVersion());
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
         throw ResourcesOutdatedException("Updater outdated");

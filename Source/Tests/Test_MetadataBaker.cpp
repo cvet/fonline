@@ -64,9 +64,26 @@ TEST_CASE("MetadataBaker")
 
     TestRig rig;
     auto bakers = MakeRequestedBakers({string(MetadataBaker::NAME)}, rig);
-    auto read_baked_tags = [](const vector<uint8_t>& output) {
+    auto skip_baked_header = [](DataReader& reader) {
+        ignore_unused(reader.Read<uint32_t>());
+        ignore_unused(reader.Read<uint16_t>());
+        auto version_size = reader.Read<uint16_t>();
+        ignore_unused(reader.ReadStringView(version_size));
+    };
+    auto read_baked_header = [](const vector<uint8_t>& output) {
+        DataReader reader(output);
+        CHECK(reader.Read<uint32_t>() == METADATA_FILE_MAGIC);
+        CHECK(reader.Read<uint16_t>() == METADATA_FILE_VERSION);
+        auto version_size = reader.Read<uint16_t>();
+        string version;
+        version.resize(version_size);
+        reader.ReadStringBytes(version);
+        return version;
+    };
+    auto read_baked_tags = [&skip_baked_header](const vector<uint8_t>& output) {
         map<string, vector<vector<string>>> tags;
         DataReader reader(output);
+        skip_baked_header(reader);
         auto tag_count = reader.Read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;
@@ -206,6 +223,99 @@ namespace TestManagedMetadata
         CHECK(checks[1] == pair<string, uint64_t> {"MetaPack.fometa-client", 7});
         CHECK(checks[2] == pair<string, uint64_t> {"MetaPack.fometa-mapper", 7});
         CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("writes one metadata version shared by every target")
+    {
+        rig.AddSourceFile("Scripts/TestMetadataVersion.fos", R"(
+namespace TestMetadataVersion
+{
+///@ Property Critter Server int32 LayoutValue Mutable
+///@ Property Critter Common bool LayoutFlag Mutable PublicSync
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        auto read_metadata_version = [&](string_view target) -> string {
+            string output_name = strex("TestPack.fometa-{}", target).str();
+            REQUIRE(rig.Outputs.contains(output_name));
+
+            return read_baked_header(rig.Outputs.at(output_name));
+        };
+
+        // Client and server resolve wire property indices through their own metadata, so a target-dependent
+        // version would leave the mismatch it exists to catch undetectable
+        string client_version = read_metadata_version("client");
+        CHECK_FALSE(client_version.empty());
+        CHECK(read_metadata_version("server") == client_version);
+        CHECK(read_metadata_version("mapper") == client_version);
+
+        auto bake_version_of = [&](string_view script) -> string {
+            TestRig changed_rig;
+            changed_rig.AddSourceFile("Scripts/TestMetadataVersion.fos", string(script));
+
+            MetadataBaker changed_baker(changed_rig.MakeContext());
+            REQUIRE_NOTHROW(changed_baker.BakeFiles(changed_rig.GetAllSourceFiles(), ""));
+            REQUIRE(changed_rig.Outputs.contains("TestPack.fometa-client"));
+
+            return read_baked_header(changed_rig.Outputs.at("TestPack.fometa-client"));
+        };
+
+        // Inserting a property shifts every reg index below it, which is exactly the desync being versioned
+        CHECK(bake_version_of(R"(
+namespace TestMetadataVersion
+{
+///@ Property Critter Server int32 LayoutValue Mutable
+///@ Property Critter Server int32 LayoutExtra Mutable
+///@ Property Critter Common bool LayoutFlag Mutable PublicSync
+}
+)") != client_version);
+
+        // Every tag kind takes part, not only the ones that shape the property table: metadata that differs in
+        // any way came from another bake, and that is what the version has to catch
+        CHECK(bake_version_of(R"(
+namespace TestMetadataVersion
+{
+///@ Property Critter Server int32 LayoutValue Mutable
+///@ Property Critter Common bool LayoutFlag Mutable PublicSync
+///@ Enum CoverageMood Calm = 1
+}
+)") != client_version);
+    }
+
+    SECTION("keeps the metadata version apart when a token repeats the tag name")
+    {
+        auto bake_version_of = [&](string_view script) -> string {
+            TestRig local_rig;
+            local_rig.AddSourceFile("Scripts/TestMetadataVersionCollision.fos", string(script));
+
+            MetadataBaker baker(local_rig.MakeContext());
+            REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+            REQUIRE(local_rig.Outputs.contains("TestPack.fometa-client"));
+
+            return read_baked_header(local_rig.Outputs.at("TestPack.fometa-client"));
+        };
+
+        // Two tags versus one tag whose trailing tokens spell out the second one. ParseEnum reads the first entry
+        // and ignores the tail, so these are genuinely different metadata, and the version has to say so
+        string two_tags = bake_version_of(R"(
+namespace TestMetadataVersionCollision
+{
+///@ Enum CoverageAlpha Key = 1
+///@ Enum CoverageBeta Key = 2
+}
+)");
+        string one_tag = bake_version_of(R"(
+namespace TestMetadataVersionCollision
+{
+///@ Enum CoverageAlpha Key = 1 Enum CoverageBeta Key = 2
+}
+)");
+
+        CHECK_FALSE(two_tags.empty());
+        CHECK(two_tags != one_tag);
     }
 
     SECTION("parses continued tags and strips trailing comments")
@@ -530,6 +640,7 @@ namespace TestSettings
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
+        skip_baked_header(reader);
         auto tag_count = reader.Read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;
@@ -674,6 +785,7 @@ namespace TestMigration
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
+        skip_baked_header(reader);
         auto tag_count = reader.Read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;

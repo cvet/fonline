@@ -34,6 +34,7 @@
 #include "Updater.h"
 #include "Application.h"
 #include "DefaultSprites.h"
+#include "MetadataRegistration.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -48,6 +49,7 @@ static constexpr string_view StrUpdaterOutdated = "Client updater is incompatibl
 static constexpr string_view StrPlatformUnsupported = "Client outdated, please update via your app store";
 static constexpr string_view StrNativeUpdateFailed = "Failed to update native client modules for binary target {}. Please update the client manually";
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
+static constexpr string_view StrMetadataMismatch = "Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later.";
 static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
@@ -115,6 +117,8 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     // Connect
     AddText(StrConnectToServer);
+
+    _conn.SetMetadataVersion(ReadLocalMetadataVersion());
     _conn.Connect();
 
     // Unlock all resources to prevent collision with new files
@@ -227,6 +231,56 @@ void Updater::Abort(string_view text)
 
     if (_tempFile.is_open()) {
         _tempFile.close();
+    }
+}
+
+void Updater::FinishResourcesUpdate()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string local_metadata_version = ReadLocalMetadataVersion();
+
+    if (local_metadata_version != _serverMetadataVersion) {
+        WriteLog("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, IsPackaged() ? _settings->ClientResources : _settings->BakeOutput);
+        _result = UpdaterResult::MetadataMismatch;
+        return;
+    }
+
+    WriteLog("Client updater: resources ready, metadata version {}", local_metadata_version);
+    _result = UpdaterResult::ResourcesReady;
+}
+
+auto Updater::ReadLocalMetadataVersion() const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The override stands in for a client baked apart from the server, so it has to reach the updater too -
+    // otherwise the updater would keep declaring resources ready while the client keeps being rejected
+    if (!_settings->ForceMetadataVersion.empty()) {
+        return string(_settings->ForceMetadataVersion);
+    }
+
+    // Mounted separately from the updater resources, which carry directories rather than the game packs
+    try {
+        FileSystem resources;
+        resources.AddPacksSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->ClientResourceEntries);
+
+        // Downloaded packs land under the writable root, so for an installed client they are the current ones
+        // and must win over the install-dir copies
+        if (!_settings->UserWritablePath.empty()) {
+            string writable_dir = fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources);
+
+            for (const auto& pack : _settings->ClientResourceEntries) {
+                resources.AddPackSource(writable_dir, pack, true);
+            }
+        }
+
+        vector<uint8_t> metadata_bin = ReadMetadataBin(&resources, "Client");
+        return ReadMetadataVersion(metadata_bin);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Client updater: can't read local metadata version, {}", ex.what());
+        return {};
     }
 }
 
@@ -348,8 +402,8 @@ void Updater::GetNextFile()
             }
         }
         else {
-            WriteLog("Client updater: finished resource update, resources ready");
-            _result = UpdaterResult::ResourcesReady;
+            WriteLog("Client updater: finished resource update");
+            FinishResourcesUpdate();
         }
     }
 
@@ -381,6 +435,9 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
     case ClientConnection::ConnectResult::CompatibilityOutdated:
         result_str = "CompatibilityOutdated";
         break;
+    case ClientConnection::ConnectResult::MetadataOutdated:
+        result_str = "MetadataOutdated";
+        break;
     case ClientConnection::ConnectResult::UpdaterOutdated:
         result_str = "UpdaterOutdated";
         break;
@@ -392,9 +449,10 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         break;
     }
 
-    WriteLog("Client updater: server answered {}, client compatibility {}", result_str, _settings->CompatibilityVersion);
+    _serverMetadataVersion = string(_conn.GetServerMetadataVersion());
+    WriteLog("Client updater: server answered {}, client compatibility {}, server metadata version {}", result_str, _settings->CompatibilityVersion, _serverMetadataVersion);
 
-    if (result == ClientConnection::ConnectResult::Success) {
+    if (result == ClientConnection::ConnectResult::Success || result == ClientConnection::ConnectResult::MetadataOutdated) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
         _binariesMode = false;
@@ -467,8 +525,8 @@ void Updater::Net_OnInitData()
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
         else {
-            WriteLog("Client updater: resource update list is empty, resources ready");
-            _result = UpdaterResult::ResourcesReady;
+            WriteLog("Client updater: resource update list is empty");
+            FinishResourcesUpdate();
         }
 
         return;
@@ -478,6 +536,10 @@ void Updater::Net_OnInitData()
 
     if (!_binariesMode) {
         resources.AddDirSource(_settings->ClientResources, false, true, true);
+
+        if (!_settings->UserWritablePath.empty()) {
+            resources.AddDirSource(fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources), false, true, true);
+        }
     }
 
     auto reader = DataReader(data);
@@ -617,8 +679,8 @@ void Updater::Net_OnInitData()
         }
     }
     else {
-        WriteLog("Client updater: resources ready");
-        _result = UpdaterResult::ResourcesReady;
+        WriteLog("Client updater: no files to update");
+        FinishResourcesUpdate();
     }
 }
 
@@ -1122,6 +1184,9 @@ void ShowUpdaterFailure(UpdaterResult result)
         break;
     case UpdaterResult::PlatformUnsupported:
         Application::ShowErrorMessage(StrPlatformUnsupported, StrErrorMessageCaption, true);
+        break;
+    case UpdaterResult::MetadataMismatch:
+        Application::ShowErrorMessage(StrMetadataMismatch, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::Failed:
         Application::ShowErrorMessage(strex(strex::dynamic_format, StrNativeUpdateFailed, target_name).str(), StrErrorMessageCaption, true);

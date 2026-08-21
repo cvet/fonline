@@ -167,6 +167,17 @@ void EngineMetadata::RegisterSide(EngineSideKind side)
     _side = side;
 }
 
+void EngineMetadata::RegisterMetadataVersion(string_view version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+    FO_VERIFY_AND_THROW(!version.empty(), "Metadata version is empty");
+    FO_VERIFY_AND_THROW(_metadataVersion.empty() || _metadataVersion == version, "Metadata version differs between metadata targets", _metadataVersion, version);
+
+    _metadataVersion = version;
+}
+
 auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrar>
 {
     FO_STACK_TRACE_ENTRY();
