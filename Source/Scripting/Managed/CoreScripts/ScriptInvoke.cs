@@ -136,6 +136,20 @@ namespace FOnline
             return _managedContextExceptionCount;
         }
 
+        // A managed exception caught entirely inside project C# never crosses InvokeCore or a native callback
+        // boundary, so the runtime cannot observe it automatically. Test harnesses that deliberately exercise
+        // and catch such a path report the caught instance here before acknowledging it; this preserves the
+        // same bounded exception accounting that AngelScript provided for caught script exceptions.
+        public static void RecordCaughtException(Exception exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException(nameof(exception));
+            }
+
+            RecordManagedException(exception, false);
+        }
+
         public static int GetAsInt(GameProperty prop)
         {
             return Convert.ToInt32(Native.GetProperty("Game", prop.ToString(), IntPtr.Zero), CultureInfo.InvariantCulture);
