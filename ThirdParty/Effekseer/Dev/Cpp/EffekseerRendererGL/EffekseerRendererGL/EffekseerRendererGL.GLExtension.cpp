@@ -204,6 +204,10 @@ static FP_glTexImage3D g_glTexImage3D = nullptr;
 
 static FP_glCopyTexSubImage3D g_glCopyTexSubImage3D = nullptr;
 
+typedef const GLubyte*(EFK_STDCALL* FP_glGetStringi)(GLenum name, GLuint index);
+
+static FP_glGetStringi g_glGetStringi = nullptr;
+
 #elif defined(__EFFEKSEER_RENDERER_GLES2__)
 
 typedef void (*FP_glGenVertexArraysOES)(GLsizei n, GLuint* arrays);
@@ -502,10 +506,51 @@ bool Initialize(OpenGLDeviceType deviceType, bool isExtensionsEnabled)
 
 #endif
 
-	const char* glExtensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-	g_isSupportedBPTC = (glExtensions != nullptr) &&
-						(strstr(glExtensions, "GL_ARB_texture_compression_bptc") != nullptr ||
-						 strstr(glExtensions, "GL_EXT_texture_compression_bptc") != nullptr);
+#if _WIN32
+	g_glGetStringi = (FP_glGetStringi)wglGetProcAddress("glGetStringi");
+#endif
+
+	const auto isBPTCExtension = [](const char* name) -> bool
+	{
+		return name != nullptr && (strstr(name, "GL_ARB_texture_compression_bptc") != nullptr ||
+								   strstr(name, "GL_EXT_texture_compression_bptc") != nullptr);
+	};
+
+	g_isSupportedBPTC = false;
+
+	if (deviceType == OpenGLDeviceType::OpenGL3 || deviceType == OpenGLDeviceType::OpenGLES3)
+	{
+		// glGetString(GL_EXTENSIONS) is invalid on the OpenGL 3+ core profile,
+		// so enumerate the extensions with glGetStringi.
+#ifndef GL_NUM_EXTENSIONS
+#define GL_NUM_EXTENSIONS 0x821D
+#endif
+		const auto getExtension = [](GLuint index) -> const char*
+		{
+#if _WIN32
+			return g_glGetStringi != nullptr ? reinterpret_cast<const char*>(g_glGetStringi(GL_EXTENSIONS, index)) : nullptr;
+#elif defined(__EFFEKSEER_RENDERER_GL2__) || defined(__EFFEKSEER_RENDERER_GLES2__)
+			return nullptr;
+#else
+			return reinterpret_cast<const char*>(::glGetStringi(GL_EXTENSIONS, index));
+#endif
+		};
+
+		GLint extensionCount = 0;
+		glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
+		for (GLint i = 0; i < extensionCount; i++)
+		{
+			if (isBPTCExtension(getExtension(static_cast<GLuint>(i))))
+			{
+				g_isSupportedBPTC = true;
+				break;
+			}
+		}
+	}
+	else
+	{
+		g_isSupportedBPTC = isBPTCExtension(reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS)));
+	}
 
 	g_isInitialized = true;
 	return true;
