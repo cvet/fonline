@@ -49,7 +49,9 @@ void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources, str
     auto managed_backend = SafeAlloc::MakeUnique<ManagedScriptBackend>();
     ptr<ManagedScriptBackend> backend = managed_backend;
 
-    if (auto* script_sys = dynamic_cast<ScriptSystem*>(meta)) {
+    nptr<EngineMetadata> metadata = meta;
+
+    if (nptr<ScriptSystem> script_sys = metadata.dyn_cast<ScriptSystem>(); script_sys) {
         script_sys->RegisterBackend(ScriptSystemBackend::MANAGED_BACKEND_INDEX, std::move(managed_backend));
     }
 

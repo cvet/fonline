@@ -48,12 +48,12 @@ void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDe
     else if (type.IsEnum) {
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Enum type has no underlying type to serialize");
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type must be integral to serialize");
-        writer.WritePtr(value.reinterpret_as<const uint8_t>().get(), type.Size);
+        writer.WriteBytes(make_const_span(value.reinterpret_as<const uint8_t>(), type.Size));
     }
     else if (type.IsString) {
         const auto& str = *value.reinterpret_as<const string>();
         writer.Write<int32_t>(numeric_cast<int32_t>(str.length()));
-        writer.WritePtr(str.c_str(), str.length());
+        writer.WriteStringBytes(str);
     }
     else if (type.IsHashedString) {
         const auto& hstr = *value.reinterpret_as<const hstring>();
@@ -64,7 +64,7 @@ void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDe
         writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
         if (!raw_data.empty()) {
-            writer.WritePtr(raw_data.data(), raw_data.size());
+            writer.WriteBytes(make_const_span(raw_data));
         }
     }
     else if (type.IsStruct) {
@@ -86,7 +86,7 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
     const auto read_plain = [&](size_t size) -> ptr<void> {
         FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
         ptr<uint8_t> buf = storage.StorePlainBytes();
-        reader.ReadPtr(buf.get(), size);
+        reader.ReadBytes(make_span(buf, size));
         return ptr<void> {buf};
     };
 
@@ -101,8 +101,7 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
     else if (type.IsString) {
         const auto str_len = reader.Read<int32_t>();
         FO_VERIFY_AND_THROW(str_len >= 0, "Wire string length must be non-negative");
-        const nptr<const char> s = reader.ReadPtr<char>(str_len);
-        return storage.StoreString(string(s.get(), str_len));
+        return storage.StoreString(string {reader.ReadStringView(numeric_cast<size_t>(str_len))});
     }
     else if (type.IsHashedString) {
         const auto hash = reader.Read<hstring::hash_t>();
@@ -110,8 +109,8 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
     }
     else if (type.IsRefType) {
         const uint32_t raw_size = reader.Read<uint32_t>();
-        const nptr<const uint8_t> raw_data = reader.ReadPtr<uint8_t>(raw_size);
-        return hooks.RawToRefType(type, {raw_data.get(), raw_size});
+        const_span<uint8_t> raw_data = reader.ReadBytes(raw_size);
+        return hooks.RawToRefType(type, raw_data);
     }
     else if (type.IsStruct) {
         ptr<uint8_t> buf = storage.StoreStructBytes(type.Size);
