@@ -13,7 +13,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * GLM - [glm-1.0.3](https://github.com/g-truc/glm)
 * glslang - [glslang-1.4.357.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.12.0](https://github.com/azadkuh/nlohmann_json_release)
-* SDL - [SDL-3.4.12](https://github.com/libsdl-org/SDL)
+* SDL - [SDL-3.4.14](https://github.com/libsdl-org/SDL)
 * small_vector - [small_vector-0.10.2](https://github.com/gharveymn/small_vector)
 * spark - [SPARK master ff3e1c8](https://github.com/fredakilla/SPARK)
 * SPIRV-Cross - [SPIRV-Cross-1.4.357.0](https://github.com/KhronosGroup/SPIRV-Cross)
