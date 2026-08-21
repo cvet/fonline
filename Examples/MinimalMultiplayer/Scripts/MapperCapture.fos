@@ -1,0 +1,63 @@
+namespace MapperCapture
+{
+
+#if MAPPER
+
+const string CaptureMap = "TutorialMap";
+const string CaptureEffect = "Documentation.spk";
+const string CaptureSource = "Documentation.spark";
+const string CapturePath = "MapperDocumentationCapture.tga";
+const int CaptureWarmupFrames = 300;
+
+int WarmupFrames = 0;
+int QuitDelayFrames = 0;
+bool CaptureFinished = false;
+
+[[ModuleInit]]
+void InitMapperCapture()
+{
+    bool capturePreview = Settings.Mapper.ParticlePreviewEffect == CaptureEffect;
+    bool captureSparkEditor = Settings.Mapper.SparkEditorSource == CaptureSource;
+
+    if (Settings.Mapper.StartMap != CaptureMap || (!capturePreview && !captureSparkEditor)) {
+        return;
+    }
+
+    WarmupFrames = CaptureWarmupFrames;
+    Game.OnLoop.Subscribe(OnMapperCaptureLoop);
+}
+
+[[Event]]
+void OnMapperCaptureLoop()
+{
+    if (CaptureFinished) {
+        if (QuitDelayFrames > 0) {
+            QuitDelayFrames--;
+            return;
+        }
+
+        Game.RequestQuit();
+        return;
+    }
+
+    if (WarmupFrames > 0) {
+        WarmupFrames--;
+        return;
+    }
+
+    CaptureFinished = true;
+
+    try {
+        Game.RequestMapperWindowScreenshot(CapturePath);
+        QuitDelayFrames = 1;
+        Game.Log("mapper_documentation_capture_requested=" + CapturePath);
+    }
+    catch {
+        Game.Log("mapper_documentation_capture_failed=" + CapturePath);
+        Game.RequestQuit(false);
+    }
+}
+
+#endif
+
+}

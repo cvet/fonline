@@ -1,0 +1,6 @@
+* {{CODEOWNER}}
+
+/Engine {{CODEOWNER}}
+/example-repository.json {{CODEOWNER}}
+/assets/provenance.json {{CODEOWNER}}
+/.github/workflows/ {{CODEOWNER}}

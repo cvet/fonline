@@ -77,6 +77,45 @@ static auto MakeBakerSetupFullReportPath(string_view output_dir) -> string
     return strex(normalized_output).combine_path("Baking.full.report.json").str();
 }
 
+template<typename T>
+static auto FormatBakerSetupSettingValue(const T& value) -> string
+{
+    return strex("{}", value);
+}
+
+template<typename T>
+static auto FormatBakerSetupSettingValue(const vector<T>& value) -> string
+{
+    string result;
+
+    for (const auto& entry : value) {
+        if (!result.empty()) {
+            result += " ";
+        }
+
+        result += FormatBakerSetupSettingValue(entry);
+    }
+
+    return result;
+}
+
+static auto MakeCompleteBakerSetupConfig() -> string
+{
+    string config;
+
+#define FIXED_SETTING(type, group, name, ...) config += strex("{}.{} = {}\n", #group, #name, FormatBakerSetupSettingValue(type {__VA_ARGS__}))
+#define VARIABLE_SETTING(type, group, name, ...) config += strex("{}.{} = {}\n", #group, #name, FormatBakerSetupSettingValue(type {__VA_ARGS__}))
+#define SETTING_GROUP(name, ...)
+#define SETTING_GROUP_END()
+#include "Settings.inc"
+#undef FIXED_SETTING
+#undef VARIABLE_SETTING
+#undef SETTING_GROUP
+#undef SETTING_GROUP_END
+
+    return config;
+}
+
 static auto ReadBakerSetupReport(string_view output_dir) -> nlohmann::json
 {
     FO_STACK_TRACE_ENTRY();
@@ -443,6 +482,61 @@ Bakers = {}
     CHECK(data_source.GetFileNames("Other", true, "json").empty());
     CHECK(data_source.GetFileNames("Data/Nested/child/extra", true, "json").empty());
     CHECK(data_source.GetFileNames("Data", true, "txt").empty());
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
+TEST_CASE("BakerDataSourceAcceptsAlwaysRebuildOutputs")
+{
+    using namespace BakerTests;
+
+    string temp_dir = MakeTempBakerSetupDir("baker_data_source_always_rebuild");
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
+    string metadata_output_dir = strex(output_dir).combine_path("Metadata").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
+
+    auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
+    SetBakerSetupFileWriteTime(metadata_input_path, source_time);
+
+    for (string_view target : array<string_view, 3> {"server", "client", "mapper"}) {
+        string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
+        REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
+        SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
+    }
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    string config_path = strex(temp_dir).combine_path("Test.fomain").str();
+    string config_content = MakeCompleteBakerSetupConfig();
+    config_content += strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Metadata
+InputDirs = metadata_input
+IncludePatterns = **/*.fos
+Bakers = {}
+[ResourcePack]
+Name = Configs
+Bakers = {}
+)",
+        output_dir, MetadataBaker::NAME, ConfigBaker::NAME).str();
+
+    REQUIRE(fs_write_file(config_path, config_content));
+    settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+
+    BakerDataSource data_source {&settings};
+    size_t size = 0;
+    uint64_t write_time = 0;
+
+    REQUIRE_NOTHROW(data_source.GetFileInfo("(Root).fomain-server", size, write_time));
+    CHECK(size != 0);
+    CHECK(write_time == std::numeric_limits<uint64_t>::max());
+    CHECK(fs_exists(strex(output_dir).combine_path("Configs/(Root).fomain-server").str()));
 
     CHECK(fs_remove_dir_tree(temp_dir));
 }

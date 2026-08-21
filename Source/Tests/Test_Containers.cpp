@@ -113,6 +113,54 @@ TEST_CASE("Containers")
         auto text = std::format("{}", values);
         CHECK(text == "7 8 9");
     }
+
+    SECTION("SmallVectorInlineStorageAndAllocator")
+    {
+        STATIC_REQUIRE(std::same_as<typename small_vector<int32_t, 2>::allocator_type, SafeAllocator<int32_t>>);
+
+        small_vector<int32_t, 2> values;
+        CHECK(values.inlined());
+
+        values.push_back(1);
+        values.push_back(2);
+        CHECK(values.inlined());
+
+        values.push_back(3);
+        CHECK_FALSE(values.inlined());
+        CHECK(values == small_vector<int32_t, 2> {1, 2, 3});
+    }
+
+    SECTION("SmallVectorMoveStorageModes")
+    {
+        small_vector<int32_t, 4> inline_values = {1, 2, 3};
+        REQUIRE(inline_values.inlined());
+        const int32_t* inline_data = inline_values.data();
+
+        small_vector<int32_t, 4> moved_inline = std::move(inline_values);
+        CHECK(moved_inline.inlined());
+        CHECK(moved_inline.data() != inline_data);
+        CHECK(moved_inline == small_vector<int32_t, 4> {1, 2, 3});
+
+        small_vector<int32_t, 2> heap_values = {4, 5, 6};
+        REQUIRE_FALSE(heap_values.inlined());
+        const int32_t* heap_data = heap_values.data();
+
+        small_vector<int32_t, 2> moved_heap = std::move(heap_values);
+        CHECK_FALSE(moved_heap.inlined());
+        CHECK(moved_heap.data() == heap_data);
+        CHECK(moved_heap == small_vector<int32_t, 2> {4, 5, 6});
+    }
+
+    SECTION("SmallVectorSwap")
+    {
+        small_vector<int32_t, 2> inline_values = {1};
+        small_vector<int32_t, 2> heap_values = {2, 3, 4};
+
+        inline_values.swap(heap_values);
+
+        CHECK(inline_values == small_vector<int32_t, 2> {2, 3, 4});
+        CHECK(heap_values == small_vector<int32_t, 2> {1});
+    }
 }
 
 FO_END_NAMESPACE

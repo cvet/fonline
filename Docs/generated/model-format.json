@@ -1,0 +1,1540 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_model_format.py",
+  "source_manifest": "BuildTools/ModelFormatInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed authoring, baking, and runtime composition contract for FOnline .fo3d model descriptions and their 3D assets.",
+  "scope": {
+    "surface": "model-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The contract is generated for a pinned Engine revision. Projects own model catalogs, layer meanings, animation enums, visual policy, and concrete assets.",
+    "included": [
+      ".fo3d lexical syntax, include templates, parser state, and path resolution",
+      "model layers, root modifiers, mesh/model/particle attachments, transforms, materials, effects, and cuts",
+      "FBX and OBJ mesh input, baked hierarchy requirements, compile-time model limits, and runtime composition",
+      "animation integration points that connect to the dedicated model-animation reference"
+    ],
+    "excluded": [
+      "project model catalogs, layer-number semantics, enum assignments, equipment policy, and gameplay timing",
+      "DCC authoring tutorials for Blender, Maya, 3ds Max, or other external tools",
+      "renderer backend implementation details and shader-language reference",
+      "2D sprite frame offsets and sprite root motion"
+    ]
+  },
+  "sources": {
+    "model_info_baker": "Source/Tools/ModelInfoBaker.cpp",
+    "model_mesh_baker": "Source/Tools/ModelMeshBaker.cpp",
+    "client_runtime": "Source/Client/ModelInstance.cpp",
+    "client_types": "Source/Client/ModelInformation.h",
+    "rendering_limits": "Source/Frontend/Rendering.h",
+    "project_interface": "BuildTools/cmake/ProjectInterface.json",
+    "baking_pipeline": "Source/Tools/Baker.cpp",
+    "tests": [
+      "Source/Tests/Test_ModelBaker.cpp",
+      "Source/Tests/Test_CommonScriptMethods.cpp"
+    ]
+  },
+  "outputs": {
+    "source_extension": ".fo3d",
+    "mesh_extensions": [
+      ".fbx",
+      ".obj"
+    ],
+    "template_prefix": "TEMPLATE_",
+    "baked_description": "same resource path as the concrete .fo3d source",
+    "animation_metadata": "ModelAnimationInfo.foinfo",
+    "runtime_side": "client"
+  },
+  "compile_limits": [
+    {
+      "id": "model-format.limit.layers",
+      "option": "FO_MODEL_LAYERS_COUNT",
+      "runtime_name": "MODEL_LAYERS_COUNT",
+      "description": "Number of layer slots in every model-layer array and the exclusive upper bound for Layer, DisableLayer, AnimLayerValue, and Cut layer indices.",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;"
+          ]
+        },
+        {
+          "path": "BuildTools/cmake/ProjectInterface.json",
+          "anchors": [
+            "\"name\": \"FO_MODEL_LAYERS_COUNT\""
+          ]
+        }
+      ],
+      "default": "30",
+      "value_kind": "integer",
+      "category": "model-shape"
+    },
+    {
+      "id": "model-format.limit.textures",
+      "option": "FO_MODEL_MAX_TEXTURES",
+      "runtime_name": "MODEL_MAX_TEXTURES",
+      "description": "Number of texture slots available to each mesh and the exclusive upper bound for Texture indices.",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;"
+          ]
+        },
+        {
+          "path": "BuildTools/cmake/ProjectInterface.json",
+          "anchors": [
+            "\"name\": \"FO_MODEL_MAX_TEXTURES\""
+          ]
+        }
+      ],
+      "default": "8",
+      "value_kind": "integer",
+      "category": "model-shape"
+    },
+    {
+      "id": "model-format.limit.bones",
+      "option": "FO_MODEL_MAX_BONES",
+      "runtime_name": "MODEL_MAX_BONES",
+      "description": "Maximum number of skin-bone matrices that one combined draw batch can carry.",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;"
+          ]
+        },
+        {
+          "path": "Source/Tools/ModelMeshBaker.cpp",
+          "anchors": [
+            "exceeds MODEL_MAX_BONES limit"
+          ]
+        }
+      ],
+      "default": "54",
+      "value_kind": "integer",
+      "category": "model-shape"
+    },
+    {
+      "id": "model-format.limit.bones-per-vertex",
+      "option": "FO_MODEL_BONES_PER_VERTEX",
+      "runtime_name": "MODEL_BONES_PER_VERTEX",
+      "description": "Maximum number of imported skin influences retained per vertex before weights are normalized.",
+      "source": [
+        {
+          "path": "Source/Frontend/Rendering.h",
+          "anchors": [
+            "constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;"
+          ]
+        },
+        {
+          "path": "Source/Tools/ModelMeshBaker.cpp",
+          "anchors": [
+            "MODEL_BONES_PER_VERTEX"
+          ]
+        }
+      ],
+      "default": "4",
+      "value_kind": "integer",
+      "category": "model-shape"
+    }
+  ],
+  "assets": [
+    {
+      "id": "model-format.asset.fbx",
+      "name": "FBX mesh",
+      "extensions": [
+        ".fbx"
+      ],
+      "stability": "experimental",
+      "description": "Imports the drawable hierarchy, material texture names, and skin data for the mesh payload, while ModelSourceLoader extracts the source skeleton and animation clips that ModelInfoBaker converts into the required runtime rig.",
+      "requirements": [
+        "faces must be triangulatable and the imported face count must agree with the generated triangle count",
+        "skin clusters must fit FO_MODEL_MAX_BONES",
+        "mesh skin references must resolve against the physical mesh hierarchy",
+        "source skeletons and clips must pass finite-value, hierarchy, count, key, and compatibility validation before conversion"
+      ],
+      "source": [
+        {
+          "path": "Source/Tools/ModelMeshBaker.cpp",
+          "anchors": [
+            "ufbx_load_memory",
+            "ConvertFbxHierarchy",
+            "ConvertFbxMeshes"
+          ]
+        },
+        {
+          "path": "Source/Tools/ModelSourceLoader.cpp",
+          "anchors": [
+            "ufbx_load_memory",
+            "ExtractModelSourceAnimations",
+            "ValidateModelSourceAsset"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.asset.obj",
+      "name": "OBJ mesh",
+      "extensions": [
+        ".obj"
+      ],
+      "stability": "experimental",
+      "description": "Imports a static hierarchy and drawable mesh through the same ufbx path; missing vertex attributes receive deterministic defaults.",
+      "requirements": [
+        "the file must contain at least one drawable mesh for use as a concrete model",
+        "OBJ is suitable for static attachments and cut volumes, not authored skeletal animation stacks"
+      ],
+      "source": [
+        {
+          "path": "Source/Tools/ModelMeshBaker.cpp",
+          "anchors": [
+            "ext != \"fbx\" && ext != \"obj\"",
+            "BakeFbxFile"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ModelBaker.cpp",
+          "anchors": [
+            "Bakes a minimal OBJ mesh",
+            "Bakes position-only OBJ mesh with default vertex fields"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.asset.description",
+      "name": "Model description",
+      "extensions": [
+        ".fo3d"
+      ],
+      "stability": "experimental",
+      "description": "Composes a primary baked mesh with layer-selected root modifiers, child models, particles, materials, effects, cuts, and animation mappings.",
+      "requirements": [
+        "every concrete description must resolve a Model directive",
+        "files whose basename starts with TEMPLATE_ are include-only and are not emitted as models"
+      ],
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "IsModelDescriptionTemplateFile",
+            "'Model' section not found"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.asset.texture",
+      "name": "Model texture",
+      "extensions": [
+        ".png",
+        ".tga",
+        ".dds"
+      ],
+      "stability": "experimental",
+      "description": "Default diffuse textures and explicit non-Parent Texture values resolve relative to the owning baked mesh file.",
+      "requirements": [
+        "every imported default diffuse texture must exist in baked resources",
+        "an explicit texture target mesh must be drawable"
+      ],
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "ValidateModelDescriptionTexture",
+            "ValidateModelDescriptionMeshReference"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelHierarchy.cpp",
+          "anchors": [
+            "ModelHierarchy::GetTexture",
+            "combine_path(tex_name)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.asset.effect",
+      "name": "Model effect",
+      "extensions": [
+        ".fofx"
+      ],
+      "stability": "experimental",
+      "description": "An explicit non-Parent Effect value is a baked-resource path loaded for EffectUsage::Model.",
+      "requirements": [
+        "the effect resource must exist",
+        "an explicit effect target mesh must be drawable"
+      ],
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "ValidateModelDescriptionEffect",
+            "ValidateModelDescriptionBakedFileExists"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelHierarchy.cpp",
+          "anchors": [
+            "ModelHierarchy::GetEffect",
+            "EffectUsage::Model"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.asset.particle",
+      "name": "Particle attachment",
+      "extensions": [
+        ".spk",
+        ".efk"
+      ],
+      "stability": "experimental",
+      "description": "A layer-selected AttachParticles entry instantiates a baked SPARK or Effekseer particle resource on a model bone while that layer value remains active.",
+      "requirements": [
+        "the particle resource must exist in baked resources",
+        "reference the baked .spk or .efk path, not its .spark or .efkproj authoring source",
+        "author a non-empty Link bone; runtime particle creation requires it"
+      ],
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "AttachParticles",
+            "ValidateModelDescriptionBakedFileExists"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "Particle model link has no target bone",
+            "CreateParticle(link.ChildName)"
+          ]
+        }
+      ]
+    }
+  ],
+  "tokens": [
+    {
+      "id": "model-format.token.model",
+      "names": [
+        "Model"
+      ],
+      "category": "structure",
+      "syntax": "Model <mesh.fbx|mesh.obj>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Selects the primary baked mesh hierarchy and base source skeleton. The path is resolved relative to the file containing the directive; the last assignment wins.",
+      "runtime_effect": "The selected mesh supplies physical bones, drawables, skinning, and default materials; ModelInfoBaker separately converts selected source clips and compatible contributed joints into the immutable runtime rig.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "if (token == \"Model\")",
+            "description.Model ="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.include",
+      "names": [
+        "Include"
+      ],
+      "category": "structure",
+      "syntax": "Include <file.fo3d> [<name> <value> ...]",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Parses another description inline with optional %name% replacements. Include paths are relative, arguments must be paired, state is shared, and recursion is rejected.",
+      "runtime_effect": "Included directives become part of the concrete description before validation and baking.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Include\")",
+            "has unpaired template argument",
+            "Recursive model description include"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.mesh",
+      "names": [
+        "Mesh"
+      ],
+      "category": "selector",
+      "syntax": "Mesh <draw-bone-name|All>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Selects the drawable mesh targeted by following Texture and Effect directives. All clears the selector and targets every drawable mesh.",
+      "runtime_effect": "Material overrides apply only to the selected mesh, or to all meshes when the selector is empty.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Mesh\")",
+            "value != \"All\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.subset",
+      "names": [
+        "Subset"
+      ],
+      "category": "selector",
+      "syntax": "Subset <ignored>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "deprecated",
+      "description": "Obsolete compatibility spelling. The parser consumes one argument, logs a warning, and does not select a mesh.",
+      "runtime_effect": "None. Replace it with Mesh; do not use it in new content.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Subset\")",
+            "Tag 'Subset' obsolete, use 'Mesh' instead"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.layer",
+      "names": [
+        "Layer"
+      ],
+      "category": "selector",
+      "syntax": "Layer <index-or-enum>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Selects a compile-time layer slot. Selecting a layer clears the mesh selector and moves subsequent modifiers to a dummy link until Root or Attach creates an active link.",
+      "runtime_effect": "The selected layer participates only when its project-provided model-layer value is non-zero.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"Layer\" || token == \"Value\"",
+            "ValidateModelDescriptionLayer",
+            "state.Link = ModelDescriptionLinkPtr(state.DummyLink)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.value",
+      "names": [
+        "Value"
+      ],
+      "category": "selector",
+      "syntax": "Value <integer-or-enum>",
+      "context": "selected Layer",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Selects the exact non-zero value that activates the next Root or Attach entry. Selecting a value also clears the mesh selector and current link.",
+      "runtime_effect": "A link is active only when the runtime layer array contains this exact value at the selected index.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"Layer\" || token == \"Value\"",
+            "state.LayerValue = parsed_value"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.root",
+      "names": [
+        "Root"
+      ],
+      "category": "composition",
+      "syntax": "Root",
+      "context": "description or selected Layer/Value",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Selects the default root modifier when no Layer was selected, or creates a layer/value root modifier when Layer and non-zero Value are active.",
+      "runtime_effect": "The selected modifier can transform the model, change speed/materials/effects, disable meshes/layers, and apply cuts without creating a child.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Root\")",
+            "Wrong zero value for layer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.attach",
+      "names": [
+        "Attach"
+      ],
+      "category": "composition",
+      "syntax": "Attach <child.fo3d|child.fbx|child.obj>",
+      "context": "selected Layer/Value",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Creates a layer-selected child-model link. The path is relative to the file containing the directive.",
+      "runtime_effect": "With Link, the child is attached to one parent bone. Without Link, same-named child and parent bones are paired for a shared-skeleton attachment. A direct FBX/OBJ child has no description-level scale correction, so its static extent must stay within Baking.ModelAttachmentMinExtent and Baking.ModelAttachmentMaxExtent.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"Attach\" || token == \"AttachParticles\"",
+            "state.Link->ChildName"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "Link to main bone",
+            "Link all bones"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.attach-particles",
+      "names": [
+        "AttachParticles"
+      ],
+      "category": "composition",
+      "syntax": "AttachParticles <particle.spk|particle.efk>",
+      "context": "selected Layer/Value",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Creates a layer-selected baked-particle link. The resource path is stored verbatim rather than relative to the description.",
+      "runtime_effect": "The client creates the particle on the Link bone and removes it when the activating layer value is no longer selected.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"Attach\" || token == \"AttachParticles\"",
+            "state.Link->IsParticles"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "keep_alive_particles",
+            "Particle model link has no target bone"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.link",
+      "names": [
+        "Link"
+      ],
+      "category": "composition",
+      "syntax": "Link <parent-bone>",
+      "context": "current layer link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Sets the parent bone for the current non-default link. It is ignored while the parser points at the default or dummy link.",
+      "runtime_effect": "A child model attaches as one object to this bone; particles require this bone. Empty child-model links do not consume it at runtime.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Link\")",
+            "state.Link->LinkBone = value"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.cut",
+      "names": [
+        "Cut"
+      ],
+      "category": "geometry",
+      "syntax": "Cut <volume.fbx|volume.obj> <layer-list|All> <shape-list|All> <unskin-bone-1|-> <unskin-bone-2|-> <unskin-shape|~shape|->",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Adds one or more baked cut volumes to selected composed-mesh layers. Hyphen separates layer and shape lists; - omits unskin fields and ~ reverses the unskin shape.",
+      "runtime_effect": "Combined geometry inside or outside the authored cut shapes is removed; optional paired bones drive unskin handling.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Cut\")",
+            "RevertUnskinShape",
+            "ValidateModelDescriptionCut"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "CutCombinedMeshes",
+            "CutCombinedMesh"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.transform-set",
+      "names": [
+        "RotX",
+        "RotY",
+        "RotZ",
+        "MoveX",
+        "MoveY",
+        "MoveZ",
+        "ScaleX",
+        "ScaleY",
+        "ScaleZ",
+        "Speed"
+      ],
+      "category": "transform",
+      "syntax": "<token> <finite-float>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Sets one transform axis or playback-speed multiplier on the current link. Rotation values are authored in degrees.",
+      "runtime_effect": "Non-zero values multiply the model transform or speed chain. Zero means no contribution at runtime.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"RotX\" || token == \"RotY\"",
+            "AssignMode::Set"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "void ModelInstance::SetAnimData",
+            "data.SpeedAjust != 0.0f"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.scale-set",
+      "names": [
+        "Scale"
+      ],
+      "category": "transform",
+      "syntax": "Scale <finite-float>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Sets ScaleX, ScaleY, and ScaleZ to the same authored value.",
+      "runtime_effect": "A non-zero value contributes a uniform scale transform.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Scale\")",
+            "state.Link->ScaleX = parsed_value"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.transform-add",
+      "names": [
+        "RotX+",
+        "RotY+",
+        "RotZ+",
+        "MoveX+",
+        "MoveY+",
+        "MoveZ+",
+        "ScaleX+",
+        "ScaleY+",
+        "ScaleZ+",
+        "Speed+"
+      ],
+      "category": "transform",
+      "syntax": "<token> <finite-float>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Adds to one transform or speed field. When the current field is zero, the operand becomes the initial value.",
+      "runtime_effect": "Includes can layer additive adjustments without requiring a preceding base assignment.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"RotX+\" || token == \"RotY+\"",
+            "AssignMode::Add",
+            "ApplyModelDescriptionAdd"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.scale-add",
+      "names": [
+        "Scale+"
+      ],
+      "category": "transform",
+      "syntax": "Scale+ <finite-float>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Applies the additive rule to all three scale axes.",
+      "runtime_effect": "Provides a uniform additive scale adjustment for templates and selected links.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Scale+\")",
+            "ApplyModelDescriptionAdd(state.Link->ScaleX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.transform-multiply",
+      "names": [
+        "RotX*",
+        "RotY*",
+        "RotZ*",
+        "MoveX*",
+        "MoveY*",
+        "MoveZ*",
+        "ScaleX*",
+        "ScaleY*",
+        "ScaleZ*",
+        "Speed*"
+      ],
+      "category": "transform",
+      "syntax": "<token> <finite-float>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Multiplies one transform or speed field. When the current field is zero, the operand becomes the initial value.",
+      "runtime_effect": "Includes can apply proportional adjustments while preserving zero as the runtime identity sentinel.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"RotX*\" || token == \"RotY*\"",
+            "AssignMode::Mul",
+            "ApplyModelDescriptionMul"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.scale-multiply",
+      "names": [
+        "Scale*"
+      ],
+      "category": "transform",
+      "syntax": "Scale* <finite-float>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Applies the multiplicative rule to all three scale axes.",
+      "runtime_effect": "Provides a uniform proportional scale adjustment for templates and selected links.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Scale*\")",
+            "ApplyModelDescriptionMul(state.Link->ScaleX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.disable-layer",
+      "names": [
+        "DisableLayer"
+      ],
+      "category": "composition",
+      "syntax": "DisableLayer <layer[-layer...]>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Adds layer indices to the current link's disabled-layer set. Every value is range checked.",
+      "runtime_effect": "When the link is active, matching layer slots are skipped for that model instance.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"DisableLayer\")",
+            "DisabledLayer.emplace_back"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "unused_layers[j] = true"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.disable-mesh",
+      "names": [
+        "DisableMesh"
+      ],
+      "category": "composition",
+      "syntax": "DisableMesh <mesh[-mesh...]|All>",
+      "context": "current link",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Adds drawable mesh names to the current link's disabled set. All stores the empty wildcard.",
+      "runtime_effect": "When the link is active, matching meshes in that model instance are omitted from combined geometry.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"DisableMesh\")",
+            "disabled_mesh_name != \"All\""
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "mesh->Disabled = true"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.texture",
+      "names": [
+        "Texture"
+      ],
+      "category": "material",
+      "syntax": "Texture <slot> <texture-name|Parent[_mesh]>",
+      "context": "current link and Mesh selector",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Overrides one texture slot on the selected mesh or all meshes. Non-Parent names resolve relative to the current model mesh; Parent copies the active parent texture from an attached-model context.",
+      "runtime_effect": "The override participates in mesh batching and texture-atlas coordinate adjustment.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Texture\")",
+            "Parent texture"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "Parent texture was requested without a parent model",
+            "mesh->CurTexures[tex_num] = texture"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.effect",
+      "names": [
+        "Effect"
+      ],
+      "category": "material",
+      "syntax": "Effect <effect.fofx|Parent[_mesh]>",
+      "context": "current link and Mesh selector",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Overrides the draw effect on the selected mesh or all meshes. Parent copies the active parent effect from an attached-model context.",
+      "runtime_effect": "Meshes with different effects cannot share one combined draw batch.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Effect\")",
+            "Parent effect"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "Parent effect was requested without a parent model",
+            "mesh->CurEffect = effect"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.anim",
+      "names": [
+        "Anim"
+      ],
+      "category": "animation",
+      "syntax": "Anim <state> <action> <ModelFile|animation-mesh> <clip|~clip|Base>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Maps a state/action pair to a source animation clip. ModelFile selects the primary model source, ~ reverses playback, and Base selects the first source clip before conversion into the baked runtime rig.",
+      "runtime_effect": "The first declaration for a pair is registered; model-specific lookup and substitutions are described in the canonical model-animation guide.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"Anim\")",
+            "description.AnimationEntries.emplace_back"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "bool reversed = anim_entry.Name.starts_with('~')",
+            "_animController->RegisterAnimation("
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.anim-speed",
+      "names": [
+        "AnimSpeed"
+      ],
+      "category": "animation",
+      "syntax": "AnimSpeed <state> <action> <positive-float>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Sets authored playback speed for one mapped state/action pair.",
+      "runtime_effect": "The speed multiplies runtime playback and divides the common effective duration.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"AnimSpeed\")",
+            "must be positive"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.allow-animation-geometry",
+      "names": [
+        "AllowAnimationGeometry"
+      ],
+      "category": "animation",
+      "syntax": "AllowAnimationGeometry <external-animation-file>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Temporarily permits drawable geometry in one exact external Anim source while that source is repaired into a geometry-free animation file. The path resolves from the final concrete description, like an external Anim path.",
+      "runtime_effect": "Validation-only: the exception is not serialized. Duplicate, unselected, duplicate-resolved, or stale exceptions fail the bake, so remove each line with the repaired source export.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"AllowAnimationGeometry\")",
+            "AnimationGeometryExceptions.emplace",
+            "External animation model contains drawable mesh nodes"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ModelBaker.cpp",
+          "anchors": [
+            "Requires explicit temporary exceptions for known external animation geometry",
+            "Rejects animation geometry exceptions after geometry removal"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.anim-layer-value",
+      "names": [
+        "AnimLayerValue"
+      ],
+      "category": "animation",
+      "syntax": "AnimLayerValue <state> <action> <layer> <value>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Overrides one layer value whenever the exact authored state/action pair is requested.",
+      "runtime_effect": "The override is applied before redundant-call detection and model composition.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"AnimLayerValue\")",
+            "AnimLayerValues.emplace_back"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "_animLayerValues.find(anim_pair)",
+            "new_layers[layer_index] = value"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.fast-transition-bone",
+      "names": [
+        "FastTransitionBone"
+      ],
+      "category": "animation",
+      "syntax": "FastTransitionBone <bone>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Marks a validated base-model bone for immediate transition reset when a newly attached child uses that Link bone.",
+      "runtime_effect": "The next body-animation track resets transition state for the marked attachment bone.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"FastTransitionBone\")",
+            "ValidateModelDescriptionBoneReference"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "fast_transition_bones.emplace_back",
+            "ResetBonesTransition"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.state-alias",
+      "names": [
+        "StateAnimEqual"
+      ],
+      "category": "animation",
+      "syntax": "StateAnimEqual <from-state> <to-state>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Defines a one-step state-animation alias.",
+      "runtime_effect": "The alias is applied once before exact animation lookup and has priority over an exact source-key entry.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"StateAnimEqual\")",
+            "StateAnimEquals.emplace_back"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.action-alias",
+      "names": [
+        "ActionAnimEqual"
+      ],
+      "category": "animation",
+      "syntax": "ActionAnimEqual <from-action> <to-action>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Defines a one-step action-animation alias.",
+      "runtime_effect": "The alias is applied once before exact animation lookup and has priority over an exact source-key entry.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"ActionAnimEqual\")",
+            "ActionAnimEquals.emplace_back"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.disable-shadow",
+      "names": [
+        "DisableShadow"
+      ],
+      "category": "rendering",
+      "syntax": "DisableShadow",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Disables shadow rendering for every instance of the description.",
+      "runtime_effect": "The model-level flag combines with the per-instance shadow toggle.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"DisableShadow\")",
+            "description.ShadowDisabled = true"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "_shadowDisabled || _modelInfo->_shadowDisabled"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.disable-interpolation",
+      "names": [
+        "DisableAnimationInterpolation"
+      ],
+      "category": "animation",
+      "syntax": "DisableAnimationInterpolation",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Disables keyframe interpolation on the model animation controller.",
+      "runtime_effect": "The registered animation controller samples without interpolation.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"DisableAnimationInterpolation\")",
+            "description.DisableAnimationInterpolation = true"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "disable_animation_interpolation",
+            "LoadModelAnimationRuntimeRig"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.disable-backward",
+      "names": [
+        "DisableBackwardAnim"
+      ],
+      "category": "animation",
+      "syntax": "DisableBackwardAnim",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Disables WalkBack and RunBack selection for movement-pose animation.",
+      "runtime_effect": "Movement always uses forward walk/run and SetMoveDir also aligns look direction.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"DisableBackwardAnim\")",
+            "description.DisableBackwardAnim = true"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "bool forbid_back = _modelInfo->_disableBackwardAnim",
+            "if (!_modelInfo->_rotationBone ||"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.token.rotation-bone",
+      "names": [
+        "RotationBone"
+      ],
+      "category": "animation",
+      "syntax": "RotationBone <bone>",
+      "context": "description",
+      "repeatable": true,
+      "stability": "experimental",
+      "description": "Selects the validated torso/body rotation bone and enables the movement overlay controller.",
+      "runtime_effect": "Look and move directions may diverge; body and configured head bones receive directional rotation while movement/turn animations play on the overlay controller.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "else if (token == \"RotationBone\")",
+            "description.RotationBone"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "_rotationBone =",
+            "Rotation bone was not found in a baked model description"
+          ]
+        }
+      ]
+    }
+  ],
+  "parser_tokens": [
+    "Model",
+    "Include",
+    "Mesh",
+    "Subset",
+    "Layer",
+    "Value",
+    "Root",
+    "Attach",
+    "AttachParticles",
+    "Link",
+    "Cut",
+    "RotX",
+    "RotY",
+    "RotZ",
+    "MoveX",
+    "MoveY",
+    "MoveZ",
+    "ScaleX",
+    "ScaleY",
+    "ScaleZ",
+    "Speed",
+    "Scale",
+    "RotX+",
+    "RotY+",
+    "RotZ+",
+    "MoveX+",
+    "MoveY+",
+    "MoveZ+",
+    "ScaleX+",
+    "ScaleY+",
+    "ScaleZ+",
+    "Speed+",
+    "Scale+",
+    "RotX*",
+    "RotY*",
+    "RotZ*",
+    "MoveX*",
+    "MoveY*",
+    "MoveZ*",
+    "ScaleX*",
+    "ScaleY*",
+    "ScaleZ*",
+    "Speed*",
+    "Scale*",
+    "DisableLayer",
+    "DisableMesh",
+    "Texture",
+    "Effect",
+    "Anim",
+    "AllowAnimationGeometry",
+    "AnimSpeed",
+    "AnimLayerValue",
+    "FastTransitionBone",
+    "StateAnimEqual",
+    "ActionAnimEqual",
+    "DisableShadow",
+    "DisableAnimationInterpolation",
+    "DisableBackwardAnim",
+    "RotationBone"
+  ],
+  "rules": [
+    {
+      "id": "model-format.rule.lexical-syntax",
+      "name": "Whitespace tokenization",
+      "requirement": "Directives and arguments are whitespace-separated; # and ; start comments; there is no quoting or escaping for paths containing spaces.",
+      "rationale": "The parser strips comments and feeds each line through istringstream token extraction.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "TokenizeModelDescriptionLine",
+            "line.find('#')",
+            "line.find(';')",
+            "while (istr >> token)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.multiple-directives",
+      "name": "Sequential line parsing",
+      "requirement": "A line may contain multiple directives; each directive consumes its exact argument count and parsing continues with the next token.",
+      "rationale": "Compact layer entries are legal, but ordering changes which current link or mesh selector receives later modifiers.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "while (index < tokens.size())",
+            "ParseToken(fname, line, token"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.selector-order",
+      "name": "Selector ordering",
+      "requirement": "After Layer or Value, author Root, Attach, or AttachParticles before link modifiers such as transforms, materials, disables, or cuts.",
+      "rationale": "Layer and Value point at a dummy link and clear Mesh; modifiers written before a real link is created are discarded.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "state.Link = ModelDescriptionLinkPtr(state.DummyLink)",
+            "state.Mesh.clear()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.template-files",
+      "name": "Template naming",
+      "requirement": "Name include-only files with a basename beginning TEMPLATE_; concrete files must not use that prefix.",
+      "rationale": "Template files participate in include timestamps and parsing but ModelInfoBaker does not emit them as independent resources or animation-metadata sections.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "IsModelDescriptionTemplateFile",
+            "starts_with(\"TEMPLATE_\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.include-replacements",
+      "name": "Include replacement scope",
+      "requirement": "Include arguments are name/value pairs replacing every literal %name% occurrence in the included text before tokenization.",
+      "rationale": "Replacement is plain text and does not understand token boundaries; choose placeholder names that cannot collide accidentally.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "ApplyModelDescriptionReplacements",
+            "replace(strex(\"%{}%\", name), value)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.relative-paths",
+      "name": "Path ownership",
+      "requirement": "Model, Include, Attach, and Cut paths resolve relative to their declaring .fo3d file; animation files resolve relative to the concrete description unless ModelFile is used; particle and effect paths are global baked-resource paths.",
+      "rationale": "Moving a template or concrete description can change the asset paths contributed by directives inside that file.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "extract_dir().combine_path(value)",
+            "extract_dir().combine_path(include_name)",
+            "extract_dir().combine_path(file_name)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.zero-identity",
+      "name": "Zero is transform identity",
+      "requirement": "Treat zero transform and Speed fields as no contribution. The + and * variants initialize a zero field from their operand before applying later operations.",
+      "rationale": "Runtime SetAnimData skips zero fields, while parser accumulation deliberately makes template-only Scale* and Speed* useful.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "value = value == 0.0f ? operand : value + operand",
+            "value = value == 0.0f ? operand : value * operand"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "if (data.ScaleX != 0.0f)",
+            "if (data.SpeedAjust != 0.0f)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.layer-zero",
+      "name": "Layer zero value is inactive",
+      "requirement": "A runtime layer value of zero selects no link; authored Root and Attach entries require a non-zero Value.",
+      "rationale": "The composition loop skips zero layer values and the baker rejects links created with zero.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "requires non-zero layer value",
+            "Wrong zero value for layer"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "if (new_layers[i] == 0)",
+            "link.LayerValue == new_layers[i]"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.parent-materials",
+      "name": "Parent material inheritance",
+      "requirement": "Use Parent or Parent_<mesh> only inside an attached child model; the parent mesh must already expose the requested texture slot or effect.",
+      "rationale": "The child copies the parent's current material state, not the imported default, and root descriptions have no parent context.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "is used without parent model context"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "Parent texture was requested without a parent model",
+            "Parent effect was requested without a parent model"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.mesh-before-info",
+      "name": "Baker order",
+      "requirement": "Run ModelMeshBaker before ModelInfoBaker so every mesh, hierarchy, material, animation, and cut reference can be validated from baked data.",
+      "rationale": "Built-in baker orders are 4 for ModelMesh and 6 for ModelInfo.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelMeshBaker.h",
+          "anchors": [
+            "GetOrder() const -> int32_t override { return 4; }"
+          ]
+        },
+        {
+          "path": "Source/Tools/ModelInfoBaker.h",
+          "anchors": [
+            "GetOrder() const -> int32_t override { return 6; }"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.first-animation-wins",
+      "name": "First animation mapping wins",
+      "requirement": "Do not declare the same state/action Anim pair more than once; only the first mapping is validated and registered.",
+      "rationale": "Duplicates are skipped by both model-info validation and client registration.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "if (!anim_pairs.emplace",
+            "continue;"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "if (_animIndexes.count(anim_pair) != 0)",
+            "continue;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.runtime-composition",
+      "name": "Layer changes rebuild composition",
+      "requirement": "Treat model-layer arrays as composition state: changing a value may create or remove children and particles, change materials/effects, disable geometry, apply cuts, and regenerate combined meshes.",
+      "rationale": "A layer change is not a cosmetic integer update; it changes the render graph and batching state.",
+      "source": [
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "bool layers_changed",
+            "Erase unused stuff",
+            "GenerateCombinedMeshes()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.source-units-and-mirroring",
+      "name": "Positive scale and Engine world units",
+      "requirement": "Freeze mirrored mesh nodes to a positive transform before export, and author direct FBX/OBJ attachments within Baking.ModelAttachmentMinExtent and Baking.ModelAttachmentMaxExtent. Use a child .fo3d when an explicit description-level scale is required.",
+      "rationale": "Negative transforms invert winding and normals; foreign unit scales produce impossible model-sprite frames. Failing the bake keeps both defects at their authored source.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelMeshBaker.cpp",
+          "anchors": [
+            "FBX mesh node is mirrored",
+            "ufbx_matrix_determinant"
+          ]
+        },
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "ModelAttachmentMaxExtent",
+            "ModelAttachmentMinExtent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.validation-boundary",
+      "name": "Bake plus visible validation",
+      "requirement": "Require a clean resource bake for syntax and asset closure, then exercise the model in a visible client scene for scale, pose, layer composition, attachments, materials, cuts, and interaction bounds.",
+      "rationale": "Baking proves references and serialized structure; only the client renderer proves the composed visual result.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_ModelBaker.cpp",
+          "anchors": [
+            "TEST_CASE(\"ModelInfoBakerValidations\")",
+            "Parses model description option tokens into saved description"
+          ]
+        }
+      ]
+    }
+  ],
+  "removed_legacy": [
+    {
+      "name": "AnimEqual",
+      "replacement": "StateAnimEqual or ActionAnimEqual",
+      "description": "The current parser requires the enum domain to be explicit."
+    },
+    {
+      "name": "CalculateTangentSpace",
+      "replacement": "none",
+      "description": "Mesh import configures ufbx to generate and normalize missing normals and tangents; there is no .fo3d directive."
+    },
+    {
+      "name": "RenderFrame",
+      "replacement": "none",
+      "description": "Current model descriptions do not generate 2D render frames."
+    },
+    {
+      "name": "RenderFrames",
+      "replacement": "none",
+      "description": "Current model descriptions do not generate 2D render-frame sequences."
+    },
+    {
+      "name": "DrawSize",
+      "replacement": "automatic model-sprite layout from baked animation bounds",
+      "description": "ModelInfo baking records aggregate and per-animation bounds; the client derives the offscreen frame for the active composition and pose."
+    },
+    {
+      "name": "ViewSize",
+      "replacement": "automatic view/name layout from baked idle-priority bounds",
+      "description": "The client projects baked model bounds and active child layers instead of accepting an authored interaction rectangle."
+    }
+  ],
+  "summary": {
+    "token_group_count": 32,
+    "parser_token_count": 59,
+    "asset_count": 6,
+    "limit_count": 4,
+    "rule_count": 14,
+    "removed_legacy_count": 6,
+    "tokens_by_category": {
+      "animation": 10,
+      "composition": 6,
+      "geometry": 1,
+      "material": 2,
+      "rendering": 1,
+      "selector": 4,
+      "structure": 2,
+      "transform": 6
+    },
+    "tokens_by_stability": {
+      "deprecated": 1,
+      "experimental": 31
+    }
+  },
+  "contract_digest": "f185b1e41f9b14fae37b009f28aabe9a1230483dc706f3960d24a4622fc8f23a"
+}

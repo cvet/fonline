@@ -22,6 +22,13 @@ IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/helpers/Options.cmake")
 IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/helpers/Build.cmake")
 IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/helpers/State.cmake")
 
+LoadProjectInterface("${FO_BUILDTOOLS_DIR}/cmake/ProjectInterface.json" FO_PROJECT_INTERFACE_JSON)
+LoadNativeExtensionInterface(
+	"${FO_BUILDTOOLS_DIR}/NativeExtensionInterface.json"
+	FO_NATIVE_EXTENSION_INTERFACE_JSON
+	FO_NATIVE_EXTENSION_ROLES)
+ValidateProjectInterfaceNativeExtensionRoles(FO_PROJECT_INTERFACE_JSON)
+
 macro(IncludeBuildTool)
 	foreach(buildTool ${ARGV})
 		IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/${buildTool}.cmake")
@@ -48,20 +55,23 @@ macro(NotFoundFindPackage _fo_nf_pkg)
 	set(${_fo_nf_pkg}_FOUND FALSE)
 endmacro()
 
-# Invoke every public pipeline stage exactly once in its validated canonical order.
-# AddStageHook registers ordered Pre or Post extensions at stage boundaries
+# ---------------------------------------------------------------------------
+# Pipeline stages
+#
+# The build is structured as a strict sequence of named stages. Each stage
+# is exposed via a public macro and must be invoked exactly once, in the
+# canonical order. Stage helpers validate ordering: invoking a stage out of
+# order, twice, or skipping it produces a hard error during CMake configure.
+#
+# Stage entry-point macros and their canonical order are declared in
+# cmake/ProjectInterface.json and loaded below.
+#
+# Each stage exposes Pre and Post hook lists. Hooks are macros (or functions)
+# invoked in registration order at the boundaries of the stage. Register a
+# hook with AddStageHook(<Stage> Pre|Post <macro-name>).
+# ---------------------------------------------------------------------------
 
-set(FO_KNOWN_STAGES
-	Init
-	ProjectOptions
-	ThirdParty
-	EngineSources
-	Codegen
-	CoreLibs
-	Applications
-	ScriptsAndBaking
-	Packages
-	Finalize)
+LoadProjectInterfaceStages(FO_PROJECT_INTERFACE_JSON)
 
 set(FO_STAGES_EXECUTED "")
 
@@ -69,8 +79,8 @@ macro(AddStageHook stage when hookName)
 	if(NOT "${stage}" IN_LIST FO_KNOWN_STAGES)
 		AbortMessage("AddStageHook: unknown stage '${stage}'. Known: ${FO_KNOWN_STAGES}")
 	endif()
-	if(NOT "${when}" STREQUAL "Pre" AND NOT "${when}" STREQUAL "Post")
-		AbortMessage("AddStageHook: 'when' must be Pre or Post (got '${when}')")
+	if(NOT "${when}" IN_LIST FO_STAGE_HOOKS_${stage})
+		AbortMessage("AddStageHook: unsupported hook '${when}' for stage '${stage}'. Allowed: ${FO_STAGE_HOOKS_${stage}}")
 	endif()
 	if("${stage}" IN_LIST FO_STAGES_EXECUTED)
 		AbortMessage("AddStageHook: stage '${stage}' has already executed; hooks must be registered before the stage runs")
@@ -111,53 +121,24 @@ macro(_RunStage stage)
 	IncludeBuildTool(stages/${stage})
 	InvokeStageHooks(${stage} Post)
 	list(APPEND FO_STAGES_EXECUTED "${stage}")
+
+	if("${stage}" STREQUAL "Finalize")
+		foreach(_requiredStage IN LISTS FO_KNOWN_STAGES)
+			if(NOT "${_requiredStage}" IN_LIST FO_STAGES_EXECUTED)
+				AbortMessage("Pipeline: stage '${_requiredStage}' was never executed. Project must call every stage in order before FinalizeProjectGeneration().")
+			endif()
+		endforeach()
+	endif()
 endmacro()
 
 # Public stage entry points — strict, no auto-cascade. Calling a stage out of
 # sequence, twice, or skipping any predecessor aborts CMake configure
-macro(StartProjectGeneration)
-	_RunStage(Init)
-endmacro()
+foreach(_stage IN LISTS FO_KNOWN_STAGES)
+	set(_stageEntrypoint "${FO_STAGE_ENTRYPOINT_${_stage}}")
+	cmake_language(EVAL CODE
+"macro(${_stageEntrypoint})
+	_RunStage(${_stage})
+endmacro()")
+endforeach()
 
-macro(RegisterProjectOptions)
-	_RunStage(ProjectOptions)
-endmacro()
-
-macro(AddThirdPartyLibraries)
-	_RunStage(ThirdParty)
-endmacro()
-
-macro(RegisterEngineSources)
-	_RunStage(EngineSources)
-endmacro()
-
-macro(SetupCodeGeneration)
-	_RunStage(Codegen)
-endmacro()
-
-macro(BuildCoreLibraries)
-	_RunStage(CoreLibs)
-endmacro()
-
-macro(BuildApplications)
-	_RunStage(Applications)
-endmacro()
-
-macro(SetupScriptsAndBaking)
-	_RunStage(ScriptsAndBaking)
-endmacro()
-
-macro(BuildPackages)
-	_RunStage(Packages)
-endmacro()
-
-macro(FinalizeProjectGeneration)
-	_RunStage(Finalize)
-
-	# Finalize requires every stage to have run
-	foreach(_stage IN LISTS FO_KNOWN_STAGES)
-		if(NOT "${_stage}" IN_LIST FO_STAGES_EXECUTED)
-			AbortMessage("Pipeline: stage '${_stage}' was never executed. Project must call every stage in order before FinalizeProjectGeneration().")
-		endif()
-	endforeach()
-endmacro()
+ValidateProjectInterfaceHelpers(FO_PROJECT_INTERFACE_JSON)

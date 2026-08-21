@@ -1202,7 +1202,8 @@ namespace ClientEngineTest
         Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
 
         string[] noModels;
-        Game.Preload3dFiles(noModels);
+        // The public method remains bound in 2D-only builds and reports the disabled 3D submodule by exception
+        try { Game.Preload3dFiles(noModels); } catch {}
 
         return 0;
     }

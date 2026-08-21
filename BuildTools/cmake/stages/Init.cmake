@@ -8,56 +8,9 @@ cmake_minimum_required(VERSION 3.22)
 
 StatusMessage("Start project generation")
 
-# Options
-DeclareRequiredValueOptions(
-	FO_MAIN_CONFIG "Main project config"
-	FO_DEV_NAME "Short name for project"
-	FO_NICE_NAME "More readable name for project"
-	FO_GEOMETRY "HEXAGONAL or SQUARE geometry mode"
-	FO_MAP_HEX_WIDTH "Map hex width in pixels"
-	FO_MAP_HEX_HEIGHT "Map hex height in pixels"
-	FO_MAP_CAMERA_ANGLE "Map camera angle in degrees"
-	FO_APP_ICON "Executable file icon"
-	FO_OUTPUT_PATH "Common output path")
-
-DeclareValueOptions(
-	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
-	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
-	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
-	FO_INTERNAL_CONFIG_CAPACITY "Capacity for embedded internal config in binaries" 10000
-	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
-	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
-	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30
-	FO_MODEL_MAX_TEXTURES "Maximum textures per 3D model" 8
-	FO_MODEL_MAX_BONES "Maximum bone matrices per 3D model" 54
-	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
-	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
-	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
-	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
-
-DeclareBoolOptions(
-	FO_ENABLE_3D "Supporting of 3d models" OFF
-	FO_SPARK_PARTICLES "Supporting of SPARK particles" OFF
-	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
-	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
-	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
-	FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF
-	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
-	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
-	FO_DISABLE_SQLITE "Force disable using of SQLite" OFF
-	FO_DISABLE_ASIO "Force disable using of Asio" OFF
-	FO_DISABLE_WEB_SOCKETS "Force disable using of WebSockets" OFF
-	FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF
-	FO_DISABLE_VULKAN "Force disable using of Vulkan rendering (built by default, headers vendored with SDL3, no SDK needed)" OFF
-	FO_DISABLE_SDL_GPU "Force disable using of SDL_GPU rendering (Vulkan / Metal / D3D12 via SDL3)" OFF
-	FO_VERBOSE_BUILD "Verbose build mode" OFF
-	FO_BUILD_CLIENT "Build Client binaries" OFF
-	FO_BUILD_SERVER "Build Server binaries" OFF
-	FO_BUILD_MAPPER "Build Mapper binaries" OFF
-	FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF
-	FO_BUILD_BAKER "Build Baker binaries" OFF
-	FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF
-	FO_CODE_COVERAGE "Build only binaries for Code Coverage reports" OFF)
+# Public project options are declared from the same versioned interface model
+# that generates the CMake reference pages
+DeclareProjectInterfaceOptions(FO_PROJECT_INTERFACE_JSON)
 
 # Quiet all non-error messages instead ourself
 if(FO_VERBOSE_BUILD)
@@ -218,16 +171,18 @@ AddCompileDefinitionsList(
 	$<$<NOT:${expr_DebugBuild}>:FO_DEBUG=0>)
 
 # AngelScript's hand-written native calling-convention trampolines (as_callfunc_x64_gcc.cpp, ...) are
-# incompatible with sanitizer instrumentation: AddressSanitizer cannot unwind a C++ exception thrown by a
-# registered function back through the asm to AngelScript's catch (the call terminates instead of being
-# translated to a script exception), and MemorySanitizer cannot track initialization through the asm (it
-# reports false use-of-uninitialized). The engine already uses AngelScript's portable generic calling
-# convention where native support is absent (e.g. wasm), and 32-bit ARM disables exceptions for the same
-# trampoline reason. Force the portable path under ASan/MSan so the sanitizers exercise the same engine and
-# game logic over pure C++ marshalling. TSan keeps the native path (unaffected, and green there); UBSan keeps
-# it too (its value-type misalignment is stack-layout-driven, not calling-convention-driven).
-SetValue(expr_PortableScriptCallConfigs $<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Address_Undefined>)
-AddCompileDefinitionsList($<${expr_PortableScriptCallConfigs}:AS_MAX_PORTABILITY>)
+# incompatible with sanitizer and coverage instrumentation: AddressSanitizer and GCC coverage cannot unwind
+# a C++ exception thrown by a registered function back through the asm to AngelScript's catch (the call
+# terminates instead of being translated to a script exception), and MemorySanitizer cannot track
+# initialization through the asm (it reports false use-of-uninitialized). The engine already uses
+# AngelScript's portable generic calling convention where native support is absent (e.g. wasm), and 32-bit
+# ARM disables exceptions for the same trampoline reason. Force the portable path under ASan/MSan/coverage
+# so those builds exercise the same engine and game logic over pure C++ marshalling. TSan keeps the native
+# path (unaffected, and green there); UBSan keeps it too (its value-type misalignment is stack-layout-driven,
+# not calling-convention-driven).
+SetValue(expr_PortableScriptCalls
+	$<OR:$<BOOL:${FO_CODE_COVERAGE}>,$<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Address_Undefined>>)
+AddCompileDefinitionsList($<${expr_PortableScriptCalls}:AS_MAX_PORTABILITY>)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	AddCompileOptionsList(

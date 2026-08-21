@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "scope": {
+    "visibility": "public",
+    "state": "current",
+    "human": true
+  },
+  "languages": {
+    "angelscript": {
+      "contract": "normative",
+      "harness": "c-family-parse"
+    },
+    "bash": {
+      "contract": "normative",
+      "harness": "bash-parse"
+    },
+    "cmake": {
+      "contract": "normative",
+      "harness": "cmake-parse"
+    },
+    "cpp": {
+      "contract": "normative",
+      "harness": "c-family-parse"
+    },
+    "glsl": {
+      "contract": "normative",
+      "harness": "c-family-parse"
+    },
+    "ini": {
+      "contract": "normative",
+      "harness": "ini-parse"
+    },
+    "json": {
+      "contract": "normative",
+      "harness": "json-parse"
+    },
+    "powershell": {
+      "contract": "normative",
+      "harness": "powershell-parse"
+    },
+    "python": {
+      "contract": "normative",
+      "harness": "python-parse"
+    },
+    "text": {
+      "contract": "evidence",
+      "harness": "text-contract"
+    },
+    "xml": {
+      "contract": "normative",
+      "harness": "xml-parse"
+    }
+  },
+  "external_parsers": {
+    "bash-parse": "Bash parser (`bash -n`)",
+    "powershell-parse": "PowerShell language parser"
+  }
+}

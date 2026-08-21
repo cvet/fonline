@@ -1,0 +1,732 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_audio.py",
+  "source_manifest": "BuildTools/AudioInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed contract for FOnline audio resource delivery, decoding, playback, mixing, script entry points, and validation boundaries.",
+  "scope": {
+    "surface": "audio",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The three current decoders and client playback behavior are revision-pinned while focused native decoder fixtures and a versioned compatibility policy are still missing.",
+    "included": [
+      "WAV, ACM, and Ogg Vorbis resource formats accepted by the stock client",
+      "RawCopyBaker delivery and ResourceManager sound-name indexing",
+      "SoundManager decoding, conversion, streaming, mixing, repeat, and stop behavior",
+      "Game.PlaySound and Game.PlayMusic client script entry points",
+      "Audio settings, headless behavior, diagnostics, and project validation boundaries"
+    ],
+    "excluded": [
+      "project sound catalogs, path conventions, music state machines, ambient selection, and spatialization policy",
+      "recording, voice chat, capture devices, DSP graphs, buses, ducking, and per-source gain",
+      "audio mastering targets, loudness policy, licensing, attribution, and source provenance",
+      "Effekseer sound nodes, which are not supported by the FOnline Effekseer runtime",
+      "video containers and video-associated audio"
+    ]
+  },
+  "sources": {
+    "sound_manager": "Source/Client/SoundManager.cpp",
+    "sound_manager_header": "Source/Client/SoundManager.h",
+    "resource_manager": "Source/Client/ResourceManager.cpp",
+    "client_global_scripts": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+    "settings": "Source/Common/Settings.inc",
+    "raw_copy_baker": "Source/Tools/RawCopyBaker.cpp",
+    "application": "Source/Frontend/Application.cpp",
+    "application_headless": "Source/Frontend/ApplicationHeadless.cpp",
+    "native_test_directory": "Source/Tests"
+  },
+  "outputs": {
+    "indexed_extensions": [
+      "wav",
+      "acm",
+      "ogg"
+    ],
+    "decoder_extensions": [
+      "wav",
+      "acm",
+      "ogg"
+    ],
+    "raw_copy_extensions": [
+      "fofnt",
+      "bmfc",
+      "fnt",
+      "acm",
+      "ogg",
+      "wav",
+      "ogv",
+      "json",
+      "ini"
+    ],
+    "default_extension": "acm",
+    "wav": {
+      "container": "RIFF/WAVE",
+      "format_tag": 1,
+      "sample_bits": [
+        8,
+        16
+      ],
+      "compression": "PCM"
+    },
+    "acm": {
+      "sample_format": "signed-16",
+      "sound_channels": 1,
+      "music_channels": 2,
+      "sample_rate": 22050
+    },
+    "ogg": {
+      "codec": "Vorbis",
+      "sample_format": "signed-16",
+      "native_stream_chunk_bytes": 65536,
+      "web_stream_chunk_bytes": 131072
+    },
+    "audio_settings": {
+      "DisableAudio": false,
+      "SoundVolume": 100,
+      "MusicVolume": 100
+    },
+    "mix_volume_range": [
+      0,
+      100
+    ],
+    "effect_variant_suffix_start": 1,
+    "effect_variant_selection": "contiguous",
+    "runtime_side": "client",
+    "headless_audio_enabled": false,
+    "native_test_files": []
+  },
+  "formats": [
+    {
+      "id": "audio.format.wav",
+      "name": "PCM WAV",
+      "extension": ".wav",
+      "role": "Short effects or music decoded fully before playback",
+      "stability": "experimental",
+      "requirement": "Use a RIFF/WAVE file with an immediate fmt chunk, optional fact chunk, an immediate data chunk, PCM format tag 1, and 8-bit unsigned or 16-bit signed samples.",
+      "rationale": "The stock loader is deliberately narrower than the general WAV family and rejects compression, unsupported sample widths, and unexpected chunk order.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "LoadWav",
+            "'RIFF' not found",
+            "WFormatTag != 1",
+            "case 8:",
+            "case 16:"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.format.acm",
+      "name": "Legacy Fallout ACM",
+      "extension": ".acm",
+      "role": "Legacy effects and music decoded fully before playback",
+      "stability": "experimental",
+      "requirement": "Supply an Interplay ACM stream accepted by CACMUnpacker; the stock playback contract treats effects as mono and music as stereo signed 16-bit audio at 22050 Hz.",
+      "rationale": "ACM compatibility exists for classic Fallout assets, but its playback shape is fixed by SoundManager instead of inferred from a modern container.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "LoadAcm",
+            "CACMUnpacker",
+            "is_music ? 2 : 1",
+            "OriginalRate = 22050"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.format.ogg",
+      "name": "Ogg Vorbis",
+      "extension": ".ogg",
+      "role": "Modern effects or streaming music",
+      "stability": "experimental",
+      "requirement": "Use an Ogg bitstream containing Vorbis audio; SoundManager decodes signed 16-bit interleaved data and retains the decoder only when more than the first chunk remains.",
+      "rationale": "The implementation uses libvorbisfile callbacks over the engine FileSystem and does not provide a generic Ogg-codec dispatch layer.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "LoadOgg",
+            "ov_open_callbacks",
+            "OV_ENOTVORBIS",
+            "AUDIO_FORMAT_S16",
+            "OggStream.reset"
+          ]
+        }
+      ]
+    }
+  ],
+  "delivery_rules": [
+    {
+      "id": "audio.delivery.raw-copy",
+      "name": "Raw-copy delivery",
+      "stability": "experimental",
+      "requirement": "Keep acm, ogg, and wav in Baking.RawCopyFileExtensions and include RawCopy in every resource pack that owns runtime audio.",
+      "rationale": "There is no dedicated audio baker; runtime decoders require the original bytes and relative path.",
+      "source": [
+        {
+          "path": "Source/Common/Settings.inc",
+          "anchors": [
+            "RawCopyFileExtensions",
+            "\"acm\"",
+            "\"ogg\"",
+            "\"wav\""
+          ]
+        },
+        {
+          "path": "Source/Tools/RawCopyBaker.cpp",
+          "anchors": [
+            "_context->WriteData(file.GetPath(), file.GetData())"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.delivery.client-index",
+      "name": "Client sound index",
+      "stability": "experimental",
+      "requirement": "Call ResourceManager.IndexFiles after client resources are available; it indexes every wav, acm, and ogg path for effect-name lookup.",
+      "rationale": "Game.PlaySound resolves through the prebuilt name map rather than scanning the filesystem on each call.",
+      "source": [
+        {
+          "path": "Source/Client/ResourceManager.cpp",
+          "anchors": [
+            "void ResourceManager::IndexFiles()",
+            "sound_extensions",
+            "_soundNames.emplace"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.delivery.effect-identity",
+      "name": "Effect identity",
+      "stability": "experimental",
+      "requirement": "Treat an effect identity as the lowercase resource path with its final extension removed.",
+      "rationale": "PlaySound erases the caller suffix and lowercases the name before querying ResourceManager's identically normalized index.",
+      "source": [
+        {
+          "path": "Source/Client/ResourceManager.cpp",
+          "anchors": [
+            "erase_file_extension().lower()",
+            "_soundNames"
+          ]
+        },
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "string sound_name",
+            "erase_file_extension().lower()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.delivery.extension-precedence",
+      "name": "Duplicate-stem precedence",
+      "stability": "experimental",
+      "requirement": "Do not ship multiple wav/acm/ogg resources with the same normalized effect stem; when they collide, the first indexed extension wins in wav, acm, ogg order.",
+      "rationale": "ResourceManager uses map::emplace while iterating the fixed extension array, so later formats do not replace an existing stem.",
+      "source": [
+        {
+          "path": "Source/Client/ResourceManager.cpp",
+          "anchors": [
+            "{\"wav\", \"acm\", \"ogg\"}",
+            "_soundNames.emplace"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.delivery.music-path",
+      "name": "Music path ownership",
+      "stability": "experimental",
+      "requirement": "Pass music as an exact resource path; unlike effects, music is not resolved through the normalized sound-name index.",
+      "rationale": "PlayMusic forwards the supplied filename directly to SoundManager.Load.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "auto SoundManager::PlayMusic",
+            "return Load(fname, true, repeat_time)"
+          ]
+        }
+      ]
+    }
+  ],
+  "decoding_rules": [
+    {
+      "id": "audio.decoding.wav-chunk-order",
+      "name": "WAV chunk order",
+      "stability": "experimental",
+      "requirement": "Place RIFF, WAVE, fmt, optional fact, and data in the exact order expected by LoadWav.",
+      "rationale": "The loader is a focused sequential reader, not a general RIFF chunk walker.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "MakeUInt('R', 'I', 'F', 'F')",
+            "MakeUInt('f', 'm', 't', ' ')",
+            "MakeUInt('f', 'a', 'c', 't')",
+            "MakeUInt('d', 'a', 't', 'a')"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.wav-pcm-width",
+      "name": "WAV PCM widths",
+      "stability": "experimental",
+      "requirement": "Author WAV as uncompressed PCM with either 8-bit unsigned or 16-bit signed samples; channel count and sample rate may vary and are converted by the frontend.",
+      "rationale": "LoadWav maps only those two widths to AppAudio formats before device conversion.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "Compressed files not supported",
+            "AUDIO_FORMAT_U8",
+            "AUDIO_FORMAT_S16",
+            "ConvertData(sound)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.acm-shape",
+      "name": "ACM playback shape",
+      "stability": "experimental",
+      "requirement": "Expect ACM effects to decode as mono and ACM music as stereo signed 16-bit samples at 22050 Hz.",
+      "rationale": "These values are assigned by playback role after CACMUnpacker runs.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "OriginalChannels = is_music ? 2 : 1",
+            "OriginalRate = 22050",
+            "Decode Acm error"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.ogg-streaming",
+      "name": "Ogg streaming",
+      "stability": "experimental",
+      "requirement": "Expect Ogg Vorbis to decode in 64 KiB native chunks and 128 KiB Web chunks; short files are retained fully and release the stream after the initial decode.",
+      "rationale": "SoundManager uses a platform-sized streaming portion and clears OggStream when the first read reaches EOF.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "_streamingPortion = 0x20000",
+            "_streamingPortion = 0x10000",
+            "No need streaming",
+            "StreamOgg"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.device-conversion",
+      "name": "Device conversion",
+      "stability": "experimental",
+      "requirement": "Let AppAudio convert decoded sample format, channel count, and rate to the active SDL output-device format before playback.",
+      "rationale": "SoundManager does not require authored assets to match one fixed hardware format.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "_audio->ConvertAudio",
+            "ConvertedBuf"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Application.cpp",
+          "anchors": [
+            "SDL_ConvertAudioSamples",
+            "AudioSpec"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.callback-mixing",
+      "name": "Audio callback mixing",
+      "stability": "experimental",
+      "requirement": "Treat playback as client audio-callback work; mutations of the active sound list must hold the audio-device lock.",
+      "rationale": "The SDL stream callback asks SoundManager to fill output while game-thread play/stop operations can add or erase sounds.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "SetSource",
+            "ProcessSounds",
+            "LockDevice",
+            "UnlockDevice"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Application.cpp",
+          "anchors": [
+            "SDL_OpenAudioDeviceStream",
+            "AudioStreamWriter",
+            "SDL_LockAudioStream"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.unsupported-extension",
+      "name": "Unsupported extension rejection",
+      "stability": "experimental",
+      "requirement": "Reject any explicit extension other than wav, acm, or ogg and log the unsupported suffix.",
+      "rationale": "Accepting an undecoded empty sound would report false success and enqueue unusable playback state.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "Unsupported sound format",
+            "return false;"
+          ]
+        }
+      ]
+    }
+  ],
+  "playback_rules": [
+    {
+      "id": "audio.playback.effect-api",
+      "name": "Game.PlaySound",
+      "stability": "experimental",
+      "requirement": "Use Game.PlaySound on the client for non-music playback and inspect its bool result when audio is active and SoundVolume is nonzero.",
+      "rationale": "The script method delegates to SoundManager.PlaySound with the indexed resource-name map.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PlaySound",
+            "GetSoundNames"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.effect-base-first",
+      "name": "Base effect before variants",
+      "stability": "experimental",
+      "requirement": "If the normalized base effect exists, play it directly and do not select numbered alternatives.",
+      "rationale": "Variant discovery runs only after the base lookup misses.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "auto it = sound_names.find(sound_name)",
+            "if (it != sound_names.end())",
+            "Check random pattern"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.effect-contiguous-variants",
+      "name": "Contiguous numbered variants",
+      "stability": "experimental",
+      "requirement": "To randomize an absent base effect, provide a contiguous one-based sequence NAME_1 through NAME_N; discovery stops at the first missing suffix.",
+      "rationale": "SoundManager counts consecutive map hits and chooses uniformly from 1 through count.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "sound_name, count + 1",
+            "uniform_int_distribution",
+            "random_index"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.global-mix",
+      "name": "No stock spatial source",
+      "stability": "experimental",
+      "requirement": "Treat every SoundManager sound as a global client mix input; implement listener selection, distance policy, or recipient filtering in project code.",
+      "rationale": "The stock playback object has no world position, radius, pan, or per-instance volume field.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "struct SoundManager::Sound",
+            "bool IsMusic",
+            "ProcessSounds"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.music-api",
+      "name": "Game.PlayMusic",
+      "stability": "experimental",
+      "requirement": "Use Game.PlayMusic with an exact resource path and repeat interval; an empty path stops current music and succeeds.",
+      "rationale": "The script entry point owns the empty-name stop convention before delegating to SoundManager.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PlayMusic",
+            "musicName.empty()",
+            "StopMusic",
+            "repeatTime"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.single-music",
+      "name": "Single music stream",
+      "stability": "experimental",
+      "requirement": "Expect a new music request to stop every existing music instance before attempting to load the replacement.",
+      "rationale": "SoundManager.PlayMusic calls StopMusic before Load, so a failed replacement does not restore the previous track.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "auto SoundManager::PlayMusic",
+            "StopMusic();",
+            "return Load(fname, true, repeat_time)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.repeat",
+      "name": "Repeat interval",
+      "stability": "experimental",
+      "requirement": "Pass a nonzero repeatTime to replay after completion; values at or below one millisecond repeat immediately, and larger values insert that delay.",
+      "rationale": "ProcessSound schedules NextPlayTime using a one-millisecond threshold and rewinds retained Ogg streams before replay.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "sound->RepeatTime",
+            "std::chrono::milliseconds {1}",
+            "ov_raw_seek",
+            "NextPlayTime"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.separate-volumes",
+      "name": "Sound and music volumes",
+      "stability": "experimental",
+      "requirement": "Control effects with Audio.SoundVolume and music with Audio.MusicVolume; the frontend clamps each mix operation to 0 through 100.",
+      "rationale": "SoundManager selects a volume by IsMusic and AppAudio normalizes the clamped percentage before SDL mixing.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "MusicVolume",
+            "SoundVolume",
+            "IsMusic"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Application.cpp",
+          "anchors": [
+            "std::clamp(volume, 0, 100)",
+            "SDL_MixAudio"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.disabled-success",
+      "name": "Disabled audio return convention",
+      "stability": "experimental",
+      "requirement": "Do not use a true PlaySound or PlayMusic result as resource-existence proof when audio is disabled, unavailable, or effect volume is zero.",
+      "rationale": "Inactive playback and zero effect volume intentionally return success without loading a resource.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "if (!_isActive || _settings->SoundVolume == 0)",
+            "if (!_isActive)",
+            "return true;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.default-acm",
+      "name": "Missing extension fallback",
+      "stability": "experimental",
+      "requirement": "An exact music path without an extension receives .acm; effect lookup ignores the caller extension and resolves by indexed stem.",
+      "rationale": "The default extension belongs to SoundManager.Load, while PlaySound normalizes before Load.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "Default ext",
+            "ext = \"acm\"",
+            "erase_file_extension().lower()"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "audio.validation.generated-reference",
+      "name": "Source-backed reference",
+      "stability": "internal",
+      "requirement": "Regenerate and check the audio model whenever SoundManager, ResourceManager, AppAudio, settings, raw-copy delivery, or script entry points change.",
+      "rationale": "The generated model rejects extension, decoder, chunk-size, default, setting, and headless drift before prose can silently become stale.",
+      "source": [
+        {
+          "path": "BuildTools/docs_audio.py",
+          "anchors": [
+            "generate_audio_model",
+            "_derive_outputs",
+            "ResourceManager index extensions and SoundManager dispatch extensions differ"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.raw-copy",
+      "name": "Baking gate",
+      "stability": "experimental",
+      "requirement": "Bake a pack containing representative audio and verify the expected relative paths and original bytes reach client resources.",
+      "rationale": "Documentation checks can prove configured extension coverage but cannot prove an embedding project's resource-pack wiring.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_RawCopyBaker.cpp",
+          "anchors": [
+            "TEST_CASE(\"RawCopyBaker\")"
+          ]
+        },
+        {
+          "path": "Source/Tools/RawCopyBaker.cpp",
+          "anchors": [
+            "WriteData",
+            "RawCopyFileExtensions"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.decoder-diagnostics",
+      "name": "Decoder diagnostics",
+      "stability": "experimental",
+      "requirement": "Treat false playback results and RIFF, PCM, ACM, Ogg, conversion, or unsupported-format log lines as authoring failures.",
+      "rationale": "The loaders report format-specific failure boundaries instead of substituting silence as a valid resource.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "'RIFF' not found",
+            "Compressed files not supported",
+            "Decode Acm error",
+            "Open OGG file",
+            "Unsupported sound format"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.headless-boundary",
+      "name": "Headless boundary",
+      "stability": "experimental",
+      "requirement": "Do not claim audible validation from a headless or stub application; AppAudio is disabled there and playback may report no-op success.",
+      "rationale": "Headless audio deliberately exposes no active device or callback.",
+      "source": [
+        {
+          "path": "Source/Frontend/ApplicationHeadless.cpp",
+          "anchors": [
+            "auto AppAudio::IsEnabled() const",
+            "return false;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.native-test-gap",
+      "name": "Focused native test gap",
+      "stability": "internal",
+      "requirement": "Keep the absence of focused SoundManager decoder/playback fixtures visible until tests cover valid and invalid WAV, ACM, Ogg, variant, repeat, and replacement behavior.",
+      "rationale": "RawCopyBaker and broad client tests do not execute the codec and callback contract documented here.",
+      "source": [
+        {
+          "path": "Source/Tests/README.md",
+          "anchors": [
+            "Test_RawCopyBaker.cpp"
+          ]
+        },
+        {
+          "path": "BuildTools/docs_audio.py",
+          "anchors": [
+            "native_test_files",
+            "native_test_directory"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.visible-client",
+      "name": "Visible audible validation",
+      "stability": "experimental",
+      "requirement": "On every claimed platform, use a visible client with audio enabled to play one asset per format, a numbered effect family, a replacement track, delayed and immediate repeats, and volume endpoints.",
+      "rationale": "Only an active platform audio device can prove conversion, callback scheduling, mixing, and audible output.",
+      "source": [
+        {
+          "path": "Source/Frontend/Application.cpp",
+          "anchors": [
+            "SDL_InitSubSystem(SDL_INIT_AUDIO)",
+            "SDL_OpenAudioDeviceStream",
+            "SDL_ResumeAudioStreamDevice"
+          ]
+        },
+        {
+          "path": "Source/Client/SoundManager.cpp",
+          "anchors": [
+            "ProcessSounds",
+            "PlaySound",
+            "PlayMusic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.project-boundary",
+      "name": "Embedding-project ownership",
+      "stability": "experimental",
+      "requirement": "Keep catalog conventions, spatial/recipient policy, mastering, licenses, attribution, budgets, and gameplay triggers in project documentation and tests.",
+      "rationale": "The engine supplies decoding and a global client mixer, not a complete game audio design or asset-governance system.",
+      "source": [
+        {
+          "path": "Source/Client/SoundManager.h",
+          "anchors": [
+            "PlaySound",
+            "PlayMusic",
+            "StopSounds",
+            "StopMusic"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "entry_count": 32,
+    "format_count": 3,
+    "delivery_rule_count": 5,
+    "decoding_rule_count": 7,
+    "playback_rule_count": 10,
+    "validation_rule_count": 7,
+    "entries_by_stability": {
+      "experimental": 30,
+      "internal": 2
+    }
+  },
+  "contract_digest": "f323ea212e9ad28ee8e41d2f75b8b930252b22de663b0f939a9a2df2f4ecb6e1"
+}

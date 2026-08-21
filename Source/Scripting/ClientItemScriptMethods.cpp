@@ -39,6 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
+// Returns whether this map item's sprite currently participates in rendering; throws if the item is not on the loaded map.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsVisible(ptr<ItemView> self)
 {
@@ -51,6 +52,7 @@ FO_SCRIPT_API bool Client_Item_IsVisible(ptr<ItemView> self)
     return hex_item->IsMapSpriteVisible();
 }
 
+// Returns the current rendered pixel offset of this map item's sprite; throws if the item is not on the loaded map.
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
 {
@@ -63,6 +65,7 @@ FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
     return hex_item->GetSpriteOffset();
 }
 
+// Creates a standalone client-side clone with the same id, prototype, and property values without inserting it into a map or inventory.
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
 {
@@ -71,6 +74,7 @@ FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
     return cloned_item;
 }
 
+// Creates a standalone client-side clone, overrides its stack count, and does not insert it into a map or inventory.
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self, int32_t count)
 {
@@ -120,6 +124,7 @@ static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
     }
 }
 
+// Resolves the item's map hex from direct map ownership, its owning critter, or recursively through containing items; throws when the map or ownership chain is invalid.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_GetMapPos(ptr<ItemView> self, mpos& hex)
 {
@@ -130,6 +135,7 @@ FO_SCRIPT_API void Client_Item_GetMapPos(ptr<ItemView> self, mpos& hex)
     ItemGetMapPos(self, hex);
 }
 
+// Reports whether this map item's sprite animation is playing; returns false for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ptr<ItemView> self)
 {
@@ -140,6 +146,7 @@ FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ptr<ItemView> self)
     return false;
 }
 
+// Starts the named sprite animation for a map item with the requested looping and reverse modes; does nothing for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_PlayAnim(ptr<ItemView> self, hstring animName, bool looped, bool reversed)
 {
@@ -148,6 +155,7 @@ FO_SCRIPT_API void Client_Item_PlayAnim(ptr<ItemView> self, hstring animName, bo
     }
 }
 
+// Stops the current sprite animation for a map item; does nothing for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
 {
@@ -156,6 +164,7 @@ FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
     }
 }
 
+// Sets the normalized playback position of a map item's sprite animation; does nothing for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normalizedTime)
 {
@@ -164,6 +173,7 @@ FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normali
     }
 }
 
+// Sets the directional variant used by a map item's sprite animation; does nothing for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAnimDir(ptr<ItemView> self, mdir dir)
 {
@@ -172,6 +182,7 @@ FO_SCRIPT_API void Client_Item_SetAnimDir(ptr<ItemView> self, mdir dir)
     }
 }
 
+// Reports whether this map item is undergoing client-side visual movement; returns false for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsMoving(ptr<ItemView> self)
 {
@@ -182,6 +193,7 @@ FO_SCRIPT_API bool Client_Item_IsMoving(ptr<ItemView> self)
     return false;
 }
 
+// Starts client-side visual movement of a map item toward the target hex at the requested speed; does nothing for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t speed)
 {
@@ -190,6 +202,7 @@ FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t
     }
 }
 
+// Returns a snapshot of handles to the item's immediate contained items, without recursively flattening nested containers.
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Item_GetInnerItems(ptr<ItemView> self)
 {
@@ -205,6 +218,7 @@ FO_SCRIPT_API vector<ptr<ItemView>> Client_Item_GetInnerItems(ptr<ItemView> self
     return items;
 }
 
+// Returns the map sprite's current rendered alpha, or 255 for an item outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ptr<ItemView> self)
 {
@@ -216,6 +230,7 @@ FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ptr<ItemView> self)
     return hex_item->GetCurAlpha();
 }
 
+// Fades a map item's sprite toward the requested target alpha; does nothing for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAlpha(ptr<ItemView> self, uint8_t alpha)
 {
@@ -224,6 +239,7 @@ FO_SCRIPT_API void Client_Item_SetAlpha(ptr<ItemView> self, uint8_t alpha)
     }
 }
 
+// Starts the standard fade-out and finish sequence for a map item once; does nothing for items outside the map view.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_Finish(ptr<ItemView> self)
 {

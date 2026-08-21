@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "description": "Source-backed authoring contract for FOnline prototype files.",
+  "scope": {
+    "surface": "prototype-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The grammar is documented for a pinned engine revision. Concrete project entity types, properties, file extensions, ids, and gameplay semantics remain project-owned.",
+    "included": [
+      "prototype file discovery and side-specific bake outputs",
+      "section forms, prototype identity, inheritance, and migration",
+      "property applicability and strict text-value validation",
+      "built-in InitScript callback signature validation",
+      "built-in HasProtos entity types and their engine-owned property catalog"
+    ],
+    "excluded": [
+      "project-authored entity and FixedType declarations or properties",
+      "nested map placement sections addressed as $Name/Critter or $Name/Item",
+      "gameplay balance, content ids, directory taxonomy, and localization policy",
+      "runtime persistence records and project migration rollout policy"
+    ]
+  },
+  "sources": {
+    "source_parser": "Source/Tools/ProtoBaker.cpp",
+    "config_parser": "Source/Common/ConfigFile.cpp",
+    "property_parser": "Source/Common/Properties.cpp",
+    "property_serializer": "Source/Common/PropertiesSerializer.cpp",
+    "settings": "Source/Common/Settings.inc",
+    "api_model_generator": "BuildTools/docs_api.py",
+    "api_model": "Docs/generated/api.json",
+    "tests": [
+      "Source/Tests/Test_ProtoBaker.cpp",
+        "Source/Tests/Test_ConfigFile.cpp",
+        "Source/Tests/Test_Properties.cpp",
+        "Source/Tests/Test_ProtoManager.cpp",
+        "Source/Tests/Test_EntityProtos.cpp"
+    ]
+  },
+  "file_selection": {
+    "setting": "Baking.ProtoFileExtensions",
+    "setting_anchor": "FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions",
+    "output_pattern": "<pack>.fopro-bin-<side>",
+    "runtime_sides": ["server", "client", "mapper"],
+    "nested_sections_skipped": true,
+    "description": "The engine defaults are read from Settings.inc; embedding projects may add extensions without changing the grammar. ProtoBaker consumes every top-level prototype/fixed-type section and skips nested map placements."
+  },
+  "section_forms": [
+    {
+      "id": "prototype-format.section.proto-entity",
+      "name": "Prototype entity section",
+      "syntax": "[Proto<Type>]",
+      "resolves_to": "Entity metadata type <Type> with HasProtos",
+      "stability": "experimental",
+      "description": "Declares a prototype for a built-in or project-authored entity type whose metadata enables prototypes.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["starts_with(\"Proto\")", "HasProtos"]
+      }
+    },
+    {
+      "id": "prototype-format.section.fixed-type",
+      "name": "Fixed type section",
+      "syntax": "[<FixedType>]",
+      "resolves_to": "A metadata type declared with ///@ FixedType",
+      "stability": "experimental",
+      "description": "Declares a prototype-like fixed value defined by embedding-project metadata.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["meta->IsFixedType(section_name)"]
+      }
+    },
+    {
+      "id": "prototype-format.section.fomap-proto-map",
+      "name": "Map prototype section",
+      "syntax": "[ProtoMap]",
+      "resolves_to": "Map",
+      "stability": "experimental",
+      "description": "Each top-level ProtoMap anchor declares a Map prototype. Nested $Name/Item and $Name/Critter placement sections are skipped by ProtoBaker and consumed by MapBaker.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["ConfigFileOption::SkipNestedSections", "strvex(section_name).starts_with(\"Proto\")"]
+      }
+    }
+  ],
+  "directives": [
+    {
+      "id": "prototype-format.directive.name",
+      "name": "$Name",
+      "syntax": "$Name = <PrototypeId>",
+      "default": "source file name without its extension",
+      "inherited": false,
+      "stability": "experimental",
+      "description": "Sets the prototype identity within its resolved type. The identity is migration-resolved before duplicate detection.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["section_kv.count(\"$Name\")", "file.GetNameNoExt()"]
+      }
+    },
+    {
+      "id": "prototype-format.directive.parent",
+      "name": "$Parent",
+      "syntax": "$Parent = <ParentId> [<ParentId> ...]",
+      "default": "no parents",
+      "inherited": false,
+      "stability": "experimental",
+      "description": "Lists same-type parent prototypes separated by spaces. Parents are merged left to right and the child is applied last.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["cur_kv.count(\"$Parent\")", "split(' ')", "fill_parent_recursive"]
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "prototype-format.rule.config-syntax",
+      "name": "Configuration syntax",
+      "requirement": "Use repeated INI-like sections, key = value assignments, # comments, whitespace-prefixed trailing backslash continuation, and key += value append where appropriate.",
+      "stability": "experimental",
+      "description": "Prototype files use the shared ConfigFile parser; quoted or escaped comment characters remain part of the value.",
+      "source": {
+        "path": "Source/Common/ConfigFile.cpp",
+        "anchors": ["ConfigFile::ParseConfigKeyValueLine", "append_value", "inside_double_quotes", "accum_line.append(\" \")"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.file-filter",
+      "name": "Extension filter",
+      "requirement": "Only files whose extension occurs in Baking.ProtoFileExtensions enter ProtoBaker.",
+      "stability": "experimental",
+      "description": "Directories and conventional extension names do not select a prototype type; the section does.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["Settings->ProtoFileExtensions", "filtered_files.emplace_back"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.identity-per-type",
+      "name": "Identity and duplicates",
+      "requirement": "A migration-resolved prototype id must be unique within its resolved type across the complete pack input.",
+      "stability": "experimental",
+      "description": "The same text id may exist in different prototype types; duplicate ids in one type fail the bake.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["Proto already loaded", "all_file_protos[type_name]"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.identifier-characters",
+      "name": "Reserved identifier characters",
+      "requirement": "Prototype ids must not contain / or $ because both characters are reserved for nested section addressing.",
+      "stability": "experimental",
+      "description": "The baker rejects either character after applying the file-basename fallback and before hashing or duplicate detection.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["name.find('/') != string::npos", "name.find('$') != string::npos", "Proto name must not contain a slash or dollar sign"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.inheritance-scope",
+      "name": "Inheritance scope",
+      "requirement": "Every parent must resolve inside the same prototype type and current pack input.",
+      "stability": "experimental",
+      "description": "Parents may be declared in another file, but cross-type and missing parents fail the bake.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["file_proto_pids.find(parent_pid)", "Proto fail to load parent"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.inheritance-precedence",
+      "name": "Inheritance precedence",
+      "requirement": "Merge ancestors depth first, then parents from left to right, then the child; later property values replace earlier values.",
+      "stability": "experimental",
+      "description": "$-prefixed control directives are not copied into the merged property map.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["fill_parent_recursive(parent_name", "insert_map_values(it_parent->second", "insert_map_values(file_kv"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.acyclic-inheritance",
+      "name": "Acyclic inheritance",
+      "requirement": "Prototype parent graphs must be acyclic.",
+      "stability": "experimental",
+      "description": "The current baker expands parents recursively and has no dedicated cycle diagnostic; validate this in project tooling and keep chains shallow.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["function<void(string_view", "fill_parent_recursive(parent_name"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.property-resolution",
+      "name": "Property resolution",
+      "requirement": "Every non-control key must resolve to a property available for the current bake side.",
+      "stability": "experimental",
+      "description": "Unknown, disabled-for-this-side, virtual, and temporary properties are rejected; opposite-side-only properties are skipped for that side.",
+      "source": {
+        "path": "Source/Common/Properties.cpp",
+        "anchors": ["Failed to load unknown property", "Failed to load virtual property", "Failed to load temporary property"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.strict-values",
+      "name": "Strict text values",
+      "requirement": "Property values must parse according to the metadata type without overflow, unknown enum/prototype references, non-finite numbers, or malformed collection structure.",
+      "stability": "experimental",
+      "description": "The property serializer is the authority for scalar, enum, struct, array, dictionary, RefType, FixedType, and Proto reference text.",
+      "source": {
+        "path": "Source/Common/PropertiesSerializer.cpp",
+        "anchors": ["ParseStrictIntText", "ParseStrictFloatText", "LoadPropertyFromText"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.init-script-signature",
+      "name": "InitScript callback signatures",
+      "requirement": "A non-empty built-in Item, Critter, Map, or Location InitScript property must resolve to a global void callback receiving that entity type and bool firstTime.",
+      "stability": "experimental",
+      "description": "Server baking validates ScriptFuncType metadata for every authored callback property and rejects missing functions or mismatched signatures before runtime.",
+      "source": {
+        "path": "Source/Tools/Baker.cpp",
+        "anchors": ["\"ItemInit\"", "\"CritterInit\"", "\"MapInit\"", "\"LocationInit\"", "Script function signature does not match property binding"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.proto-reference",
+      "name": "Prototype references",
+      "requirement": "FixedType and Proto entity property references must resolve after migration unless the property is nullable and the authored value is empty.",
+      "stability": "experimental",
+      "description": "A removed or renamed referenced id needs an explicit Proto migration rule to a valid target or Remove according to the owning persistence policy.",
+      "source": {
+        "path": "Source/Common/PropertiesSerializer.cpp",
+        "anchors": ["Proto reference does not exist", "Proto MigrationRule"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.proto-migration",
+      "name": "Prototype migration",
+      "requirement": "Proto migration rules are applied to declared ids, parent ids, lookups, and persisted references before final resolution.",
+      "stability": "experimental",
+      "description": "Author migrations in native/project metadata with ///@ MigrationRule Proto <Type> <Old> <NewOrRemove>.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["CheckMigrationRule(proto_rule_name, type_name, pid)", "CheckMigrationRule(proto_rule_name, type_name, parent_pid)"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.side-specific-output",
+      "name": "Side-specific output",
+      "requirement": "The same source set is parsed and serialized separately for server, client, and mapper metadata.",
+      "stability": "experimental",
+      "description": "A source property can be meaningful on one side and skipped on another; server output also validates script callback properties.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": [".fopro-bin-server", ".fopro-bin-client", ".fopro-bin-mapper", "ValidateProperties"]
+      }
+    }
+  ]
+}

@@ -332,6 +332,22 @@ TEST_CASE("MapBaker")
         CHECK(std::ranges::find(checked_paths, string {"Nested/UnitTestMap.fomap-bin-client"}) == checked_paths.end());
     }
 
+    SECTION("UsesExplicitProtoMapNameForBakedOutput")
+    {
+        TestRig local_rig;
+        AddMapBakerMetadataAndProto(local_rig, "CanonicalMap");
+        local_rig.AddSourceFile("Nested/SourceFileName.fomap",
+            "[ProtoMap]\n"
+            "$Name = CanonicalMap\n");
+
+        MapBaker baker(local_rig.MakeContext("Maps"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+        CHECK(local_rig.Outputs.contains("CanonicalMap.fomap-bin-server"));
+        CHECK(local_rig.Outputs.contains("CanonicalMap.fomap-bin-client"));
+        CHECK_FALSE(local_rig.Outputs.contains("SourceFileName.fomap-bin-server"));
+        CHECK_FALSE(local_rig.Outputs.contains("SourceFileName.fomap-bin-client"));
+    }
+
     SECTION("FindsExactSourceMapForTargetedRuntimeBake")
     {
         TestRig local_rig;

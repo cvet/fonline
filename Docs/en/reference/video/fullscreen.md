@@ -1,0 +1,24 @@
+---
+title: Fullscreen Video Contract
+document_id: generated-video-fullscreen
+locale: en
+generated: true
+---
+
+# Fullscreen Video Contract
+
+> Generated reference. Do not edit directly. Update `BuildTools/VideoInterface.json`, then run `python BuildTools/docs_video.py --write`.
+
+[Index](index.md) | [Formats](formats.md) | [Delivery](delivery.md) | [Decoding](decoding.md) | [Fullscreen](fullscreen.md) | [Embedded](embedded.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/video.json) | [Guide](../../how-to/content/video.md)
+
+| Stable ID | Rule | Requirement | Why | Source |
+| --- | --- | --- | --- | --- |
+| <a id="entry-video-fullscreen-play-api-de65cd8b3b"></a><code>video.fullscreen.play-api</code> | Fullscreen playback entry point | Use Game.PlayVideo(videoName, canInterrupt, enqueue) for the built-in fullscreen path. | The exported client method delegates to ClientEngine.PlayVideo. | [Source/Scripting/ClientGlobalScriptMethods.cpp](https://github.com/cvet/fonline/blob/master/Source/Scripting/ClientGlobalScriptMethods.cpp) |
+| <a id="entry-video-fullscreen-replace-1e5f62d475"></a><code>video.fullscreen.replace</code> | Replacement clears current queue | A non-enqueued request replaces the active clip and clears every queued request before attempting to load the new path. | PlayVideo resets _video and clears _videoQueue before resource lookup. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-enqueue-76a49c4052"></a><code>video.fullscreen.enqueue</code> | Queue while active | Set enqueue only to append behind an already active fullscreen clip; with no active clip, the request starts immediately and clears any stale queue. | The enqueue branch is conditional on _video, and ProcessVideo starts queued entries sequentially. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-interrupt-e5e732024c"></a><code>video.fullscreen.interrupt</code> | Input interruption | When canInterrupt is true, key-down, mouse-down, and touch input events stop the active clip; design project skip policy around this broad input set. | ProcessInputEvent stops the clip before normal input handling for the enumerated event classes. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-music-pair-00da3bde95"></a><code>video.fullscreen.music-pair</code> | Separate music pairing | Use video-path&#124;music-path to stop current music and start a separate one-shot music resource alongside the video; additional separators are not a playlist. | PlayVideo splits the request, loads the first component, and uses only names[1] for SoundManager music. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-music-stop-41d6c7a9c0"></a><code>video.fullscreen.music-stop</code> | Completion stops music | Expect fullscreen clip completion or interruption to stop the client's current music group, including music not started by the video. | ProcessVideo unconditionally calls StopMusic when the active clip reports stopped. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-draw-order-91c0ddf57c"></a><code>video.fullscreen.draw-order</code> | Late fullscreen draw | Expect the built-in frame to draw after Game.OnRenderIface and stretch over the complete current render target without alpha blending. | MainLoop calls ProcessVideo after OnRenderIface, and DrawTexture without source/target regions fills the target. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp), [Source/Client/SpriteManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.cpp) |
+| <a id="entry-video-fullscreen-missing-file-51a07ec443"></a><code>video.fullscreen.missing-file</code> | Missing fullscreen resource | Validate fullscreen resource existence before transitions; a missing file silently leaves no active clip after current playback and queue were cleared. | The void PlayVideo path returns when ReadFile fails and exposes no failure result. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-status-837b0a80f8"></a><code>video.fullscreen.status</code> | Playing status includes queued work | Interpret Game.IsVideoPlaying as active-or-queued state, not proof that a frame is currently visible. | ClientEngine reports true for an active playback or a non-empty queue. | [Source/Client/Client.h](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h) |

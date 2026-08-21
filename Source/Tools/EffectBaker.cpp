@@ -48,7 +48,7 @@ FO_DISABLE_WARNINGS_POP()
 FO_BEGIN_NAMESPACE
 
 // SDL_GPU mandates its own per-stage descriptor sets, so `-spv_sdl` rewrites the decorations of the native
-// SPIR-V and leaves the `-spv` that Rendering-Vulkan consumes untouched (Docs/FrontendAndRendering.md)
+// SPIR-V and leaves the native `-spv` that Rendering-Vulkan consumes untouched (Docs/FrontendAndRendering.md)
 static constexpr int32_t SDLGPU_MAX_SAMPLERS_PER_STAGE = 16;
 static constexpr int32_t SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE = 4;
 
@@ -382,8 +382,8 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     spv_options.disassemble = FO_DEBUG;
     spv_options.validate = true;
 
-    // Native Vulkan-1.0 SPIR-V (set 0 = uniform buffers, set 1 = samplers) consumed by Rendering-Vulkan and the
-    // GLSL / GLSL ES / HLSL cross-compilation. Left untouched
+    // Native Vulkan-1.0 SPIR-V consumed by Rendering-Vulkan and cross-compilation
+    // Set 0 contains uniform buffers and set 1 contains combined image samplers
     std::vector<uint32_t> spirv;
     spv::SpvBuildLogger logger;
     GlslangToSpv(intermediate, spirv, &logger, &spv_options);

@@ -1,0 +1,574 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_cli.py",
+  "source_parser": "BuildTools/buildtools.py",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "scope": {
+    "surface": "buildtools-cli",
+    "stability": "internal",
+    "since": null,
+    "support_note": "No versioned CLI support line is declared; pin an engine revision in automation.",
+    "included": [
+      "top-level commands and arguments exposed by BuildTools/buildtools.py create_parser()",
+      "argparse defaults, choices, cardinality, descriptions, usage, and --help output"
+    ],
+    "excluded": [
+      "helper-script command lines outside BuildTools/buildtools.py",
+      "package.py declaration and payload contracts",
+      "validation-target semantics and internal Python helpers"
+    ]
+  },
+  "program": "buildtools.py",
+  "description": "Shared BuildTools helpers",
+  "usage": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...",
+  "help_output": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...\n\nShared BuildTools helpers\n\npositional arguments:\n  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace}\n    env                 resolve BuildTools environment\n    build               configure and build a target\n    validate            configure and validate scenarios\n    setup-mono          prepare mono runtime\n    format-source       format engine source files\n    toolset             build an existing toolset target\n    build-auxiliary     build a separately packaged auxiliary tool\n    prepare-workspace   prepare shared workspace parts\n    repair-checkout-case\n                        realign working-tree entry names with the git index\n    package-web-debug   package the local web debug client\n    package-android-debug\n                        package the local android debug client\n    host-check          check host prerequisites\n    prepare-host-workspace\n                        prepare host workspace and prerequisites\n\noptions:\n  -h, --help            show this help message and exit\n",
+  "global_arguments": [],
+  "commands": [
+    {
+      "id": "cli.buildtools.command.env",
+      "name": "env",
+      "summary": "resolve BuildTools environment",
+      "description": null,
+      "usage": "usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary] [--summary-only]",
+      "help_output": "usage: buildtools.py env [-h] [--shell {bash,cmd,plain}] [--summary] [--summary-only]\n\noptions:\n  -h, --help            show this help message and exit\n  --shell {bash,cmd,plain}\n                        environment output syntax\n  --summary             append the resolved environment summary\n  --summary-only        print only the resolved environment summary\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.env.argument.shell",
+          "destination": "shell",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--shell"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": [
+            "bash",
+            "cmd",
+            "plain"
+          ],
+          "default": "plain",
+          "type": null,
+          "description": "environment output syntax"
+        },
+        {
+          "id": "cli.buildtools.command.env.argument.summary",
+          "destination": "summary",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--summary"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "append the resolved environment summary"
+        },
+        {
+          "id": "cli.buildtools.command.env.argument.summary_only",
+          "destination": "summary_only",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--summary-only"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "print only the resolved environment summary"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.build",
+      "name": "build",
+      "summary": "configure and build a target",
+      "description": null,
+      "usage": "usage: buildtools.py build [-h] platform target [config]",
+      "help_output": "usage: buildtools.py build [-h] platform target [config]\n\npositional arguments:\n  platform    engine platform key, such as linux, win64, web, or android-arm64\n  target      BuildTools target profile, such as client, server, baker, or unit-tests\n  config      CMake build configuration\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.build.argument.platform",
+          "destination": "platform",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "engine platform key, such as linux, win64, web, or android-arm64"
+        },
+        {
+          "id": "cli.buildtools.command.build.argument.target",
+          "destination": "target",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "BuildTools target profile, such as client, server, baker, or unit-tests"
+        },
+        {
+          "id": "cli.buildtools.command.build.argument.config",
+          "destination": "config",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": false,
+          "nargs": "?",
+          "choices": null,
+          "default": "Release",
+          "type": null,
+          "description": "CMake build configuration"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.validate",
+      "name": "validate",
+      "summary": "configure and validate scenarios",
+      "description": null,
+      "usage": "usage: buildtools.py validate [-h] names [names ...]",
+      "help_output": "usage: buildtools.py validate [-h] names [names ...]\n\npositional arguments:\n  names       one or more named validation scenarios\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.validate.argument.names",
+          "destination": "names",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": "+",
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "one or more named validation scenarios"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.setup-mono",
+      "name": "setup-mono",
+      "summary": "prepare mono runtime",
+      "description": null,
+      "usage": "usage: buildtools.py setup-mono [-h] os_name arch config",
+      "help_output": "usage: buildtools.py setup-mono [-h] os_name arch config\n\npositional arguments:\n  os_name     runtime operating-system key\n  arch        runtime architecture key\n  config      runtime build configuration\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.setup-mono.argument.os_name",
+          "destination": "os_name",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "runtime operating-system key"
+        },
+        {
+          "id": "cli.buildtools.command.setup-mono.argument.arch",
+          "destination": "arch",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "runtime architecture key"
+        },
+        {
+          "id": "cli.buildtools.command.setup-mono.argument.config",
+          "destination": "config",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "runtime build configuration"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.format-source",
+      "name": "format-source",
+      "summary": "format engine source files",
+      "description": null,
+      "usage": "usage: buildtools.py format-source [-h]",
+      "help_output": "usage: buildtools.py format-source [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "arguments": []
+    },
+    {
+      "id": "cli.buildtools.command.toolset",
+      "name": "toolset",
+      "summary": "build an existing toolset target",
+      "description": null,
+      "usage": "usage: buildtools.py toolset [-h] target",
+      "help_output": "usage: buildtools.py toolset [-h] target\n\npositional arguments:\n  target      target from the configured toolset build tree\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.toolset.argument.target",
+          "destination": "target",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "target from the configured toolset build tree"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.build-auxiliary",
+      "name": "build-auxiliary",
+      "summary": "build a separately packaged auxiliary tool",
+      "description": null,
+      "usage": "usage: buildtools.py build-auxiliary [-h] {effekseer-editor} [{Debug,Release}]",
+      "help_output": "usage: buildtools.py build-auxiliary [-h] {effekseer-editor} [{Debug,Release}]\n\npositional arguments:\n  {effekseer-editor}  auxiliary tool to build\n  {Debug,Release}     build configuration (default: Release)\n\noptions:\n  -h, --help          show this help message and exit\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.build-auxiliary.argument.target",
+          "destination": "target",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": [
+            "effekseer-editor"
+          ],
+          "default": null,
+          "type": null,
+          "description": "auxiliary tool to build"
+        },
+        {
+          "id": "cli.buildtools.command.build-auxiliary.argument.config",
+          "destination": "config",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": false,
+          "nargs": "?",
+          "choices": [
+            "Debug",
+            "Release"
+          ],
+          "default": "Release",
+          "type": null,
+          "description": "build configuration (default: Release)"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.prepare-workspace",
+      "name": "prepare-workspace",
+      "summary": "prepare shared workspace parts",
+      "description": null,
+      "usage": "usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]",
+      "help_output": "usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]\n\npositional arguments:\n  {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx}\n                        workspace components to prepare\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.prepare-workspace.argument.parts",
+          "destination": "parts",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": "+",
+          "choices": [
+            "toolset",
+            "emscripten",
+            "android-sdk",
+            "android-ndk",
+            "dotnet",
+            "xwin",
+            "msan-libcxx"
+          ],
+          "default": null,
+          "type": null,
+          "description": "workspace components to prepare"
+        },
+        {
+          "id": "cli.buildtools.command.prepare-workspace.argument.check",
+          "destination": "check",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--check"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "check availability without installing or building"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.repair-checkout-case",
+      "name": "repair-checkout-case",
+      "summary": "realign working-tree entry names with the git index",
+      "description": null,
+      "usage": "usage: buildtools.py repair-checkout-case [-h] [--check]",
+      "help_output": "usage: buildtools.py repair-checkout-case [-h] [--check]\n\noptions:\n  -h, --help  show this help message and exit\n  --check     check for case drift without renaming entries\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.repair-checkout-case.argument.check",
+          "destination": "check",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--check"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "check for case drift without renaming entries"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.package-web-debug",
+      "name": "package-web-debug",
+      "summary": "package the local web debug client",
+      "description": null,
+      "usage": "usage: buildtools.py package-web-debug [-h] devname configs [configs ...]",
+      "help_output": "usage: buildtools.py package-web-debug [-h] devname configs [configs ...]\n\npositional arguments:\n  devname     short project name for binary/directory naming (e.g. LF)\n  configs     config names to package (e.g. RemoteSceneLaunch LocalTest)\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.package-web-debug.argument.devname",
+          "destination": "devname",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "short project name for binary/directory naming (e.g. LF)"
+        },
+        {
+          "id": "cli.buildtools.command.package-web-debug.argument.configs",
+          "destination": "configs",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": "+",
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "config names to package (e.g. RemoteSceneLaunch LocalTest)"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.package-android-debug",
+      "name": "package-android-debug",
+      "summary": "package the local android debug client",
+      "description": null,
+      "usage": "usage: buildtools.py package-android-debug [-h] devname {android-arm32,android-arm64,android-x86} configs [configs ...]",
+      "help_output": "usage: buildtools.py package-android-debug [-h] devname {android-arm32,android-arm64,android-x86} configs [configs ...]\n\npositional arguments:\n  devname               short project name for binary/directory naming (e.g. LF)\n  {android-arm32,android-arm64,android-x86}\n                        Android target platform (e.g. android-arm64)\n  configs               config names to package (e.g. LocalTest)\n\noptions:\n  -h, --help            show this help message and exit\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.package-android-debug.argument.devname",
+          "destination": "devname",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "short project name for binary/directory naming (e.g. LF)"
+        },
+        {
+          "id": "cli.buildtools.command.package-android-debug.argument.platform",
+          "destination": "platform",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": [
+            "android-arm32",
+            "android-arm64",
+            "android-x86"
+          ],
+          "default": null,
+          "type": null,
+          "description": "Android target platform (e.g. android-arm64)"
+        },
+        {
+          "id": "cli.buildtools.command.package-android-debug.argument.configs",
+          "destination": "configs",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": "+",
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "config names to package (e.g. LocalTest)"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.host-check",
+      "name": "host-check",
+      "summary": "check host prerequisites",
+      "description": null,
+      "usage": "usage: buildtools.py host-check [-h] {linux,macos,windows}",
+      "help_output": "usage: buildtools.py host-check [-h] {linux,macos,windows}\n\npositional arguments:\n  {linux,macos,windows}\n                        host platform to inspect\n\noptions:\n  -h, --help            show this help message and exit\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.host-check.argument.host",
+          "destination": "host",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": [
+            "linux",
+            "macos",
+            "windows"
+          ],
+          "default": null,
+          "type": null,
+          "description": "host platform to inspect"
+        }
+      ]
+    },
+    {
+      "id": "cli.buildtools.command.prepare-host-workspace",
+      "name": "prepare-host-workspace",
+      "summary": "prepare host workspace and prerequisites",
+      "description": null,
+      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]",
+      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,showcase-display-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.prepare-host-workspace.argument.host",
+          "destination": "host",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": [
+            "linux",
+            "windows",
+            "macos"
+          ],
+          "default": null,
+          "type": null,
+          "description": "host platform to prepare"
+        },
+        {
+          "id": "cli.buildtools.command.prepare-host-workspace.argument.features",
+          "destination": "features",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": false,
+          "nargs": "*",
+          "choices": [
+            "common-packages",
+            "linux-packages",
+            "showcase-display-packages",
+            "web-packages",
+            "android-packages",
+            "windows-cross-packages",
+            "msi-packages",
+            "all-packages",
+            "linux",
+            "web",
+            "android-arm32",
+            "android-arm64",
+            "android-x86",
+            "toolset",
+            "dotnet",
+            "windows-cross",
+            "msan-libcxx",
+            "all"
+          ],
+          "default": null,
+          "type": null,
+          "description": "feature groups to prepare; omit to use the host defaults"
+        },
+        {
+          "id": "cli.buildtools.command.prepare-host-workspace.argument.check",
+          "destination": "check",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--check"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "check availability without installing or building"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "command_count": 13,
+    "global_argument_count": 0,
+    "command_argument_count": 25
+  },
+  "contract_digest": "c3ce1809eb5d4e0811e95f8e3880d746b7d9e3a0b4418d9567313516a72aa653"
+}

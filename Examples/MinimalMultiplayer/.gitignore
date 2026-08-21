@@ -1,0 +1,8 @@
+/Build/
+/Engine/
+/Baking/
+/Cache/
+/Resources/
+/ServerResources/
+/PlatformBinaries/
+/*.log

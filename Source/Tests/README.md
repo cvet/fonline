@@ -1,6 +1,14 @@
+---
+layout: default
+title: Unit Tests
+permalink: /Source/Tests/README.html
+locale: en
+document_id: unit-tests-readme
+---
+
 # Unit Tests
 
-This directory contains deterministic engine tests built into the generated test application. For the full maintained test map, validation routing, and coverage target details, see [../../Docs/Testing.md](../../Docs/Testing.md).
+This directory contains deterministic engine tests built into the generated test application. For the full maintained test map, validation routing, and coverage target details, see [Testing](../../Docs/en/contributing/testing/).
 
 ## Framework and target
 
@@ -11,13 +19,29 @@ This directory contains deterministic engine tests built into the generated test
 - Generated run target: `RunUnitTests`
 - Generated coverage target shape: `<ProjectDevName>_CodeCoverage` plus `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage` when coverage is enabled
 
-In Last Frontier-style builds the dev-name prefix is `LF`, so the common target names are `LF_UnitTests` and `RunUnitTests`. Treat that prefix as embedding-project generated, not universal engine API.
+The executable target uses the embedding project's development-name prefix (`<ProjectDevName>_UnitTests`); `RunUnitTests` is the generated runner target. Treat the prefix as project-generated, not universal engine API.
 
 ## Current test suites
 
-Current count: **100** `Test_*.cpp` suites.
+The complete source-backed filename list and count are generated in [source-inventory.json](../../Docs/generated/source-inventory.json). [Testing](../../Docs/en/contributing/testing/) provides the maintained ownership groups and validation routing.
 
-### Essentials and low-level utilities
+After adding, removing, or renaming a `Test_*.cpp` file, regenerate the inventory from the engine root:
+
+```bash
+python BuildTools/docs_inventory.py --write
+python BuildTools/docs_inventory.py --check
+```
+
+### Configuration, data sources, files, and caches
+
+- `Source/Tests/Test_CacheStorage.cpp`
+- `Source/Tests/Test_ConfigFile.cpp`
+- `Source/Tests/Test_DataSource.cpp`
+- `Source/Tests/Test_FileSystem.cpp`
+- `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
+
+### Core platform, containers, and utilities
 
 - `Source/Tests/Test_BaseLogging.cpp`
 - `Source/Tests/Test_BasicCore.cpp`
@@ -33,25 +57,16 @@ Current count: **100** `Test_*.cpp` suites.
 - `Source/Tests/Test_HashedString.cpp`
 - `Source/Tests/Test_Logging.cpp`
 - `Source/Tests/Test_MemorySystem.cpp`
-- `Source/Tests/Test_NetSockets.cpp`
 - `Source/Tests/Test_Platform.cpp`
 - `Source/Tests/Test_SafeArithmetics.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
-- `Source/Tests/Test_WorkThread.cpp`
 - `Source/Tests/Test_WorkerPool.cpp`
-
-### Configuration, data sources, files, and caches
-
-- `Source/Tests/Test_CacheStorage.cpp`
-- `Source/Tests/Test_ConfigFile.cpp`
-- `Source/Tests/Test_DataSource.cpp`
-- `Source/Tests/Test_FileSystem.cpp`
-- `Source/Tests/Test_Settings.cpp`
-- `Source/Tests/Test_SettingsStorage.cpp`
+- `Source/Tests/Test_WorkThread.cpp`
 
 ### Common runtime model
 
@@ -84,6 +99,7 @@ Current count: **100** `Test_*.cpp` suites.
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
 - `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
+- `Source/Tests/Test_NetSockets.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
@@ -131,32 +147,36 @@ Current count: **100** `Test_*.cpp` suites.
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_TextureAtlas.cpp`
 
-The model-animation coverage is intentionally split between wire-format corruption
-tests (`Test_ModelAnimationData.cpp`), offline conversion and production runtime
-ownership/type-tag tests (`Test_ModelAnimationConverter.cpp`), real
-baker-to-runtime/binding resolution (`Test_ModelBaker.cpp`), and the model
-animation controller/timeline contract (`Test_ModelAnimation.cpp`).
-Renderer-independent rest pose matrices and canonical joint links live in
-`Test_ModelAnimationRuntime.cpp`;
-bounded procedural rotations and exact link-matrix overrides live in
-`Test_ModelAnimationPoseProcedural.cpp`. Keep
-these boundaries green independently while the immutable production payload is
-staged ahead of the atomic sampler/matrix cutover.
+The model-pipeline coverage is intentionally split. `Test_ModelMeshData.cpp`
+owns the mesh-only wire contract; `Test_ModelSourceLoader.cpp` and
+`Test_ModelAnimationConverter.cpp` own source extraction and canonical
+conversion; `Test_ModelAnimationData.cpp` owns the versioned rig archive;
+`Test_ModelBaker.cpp` crosses source-backed baking and binding resolution; and
+the animation, runtime-pose, procedural, skeleton-compatibility, and Ozz suites
+cover the production sampling and matrix path. Keep these boundaries green
+independently, then use `Test_ClientEngine.cpp` for the baker-to-client parser
+boundary.
 
-### Rendering/frontend smoke tests
+### Rendering and frontend tests
 
-- `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget activation and
+- `Source/Tests/Test_ImGui.cpp` - pins the backend-less widget activation and
   window-state harness used by diagnostic-panel coverage.
-- `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
+- `Source/Tests/Test_EffekseerParticleRuntime.cpp` - runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
   multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget
   chunking, and facade-level scale reapplication without respawn or timing reset.
-- `Source/Tests/Test_ParticleBaker.cpp` — covers `.efkproj` source discovery,
+- `Source/Tests/Test_ImGui.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
+- `Source/Tests/Test_ParticleBaker.cpp` - covers `.efkproj` source discovery,
   `.spark`/`.efkproj` output-key mapping, generated binary validation, rejection
   of authored `.spk`/`.efk` runtime inputs, and SPARK seeded-stream isolation
   across interleaved effects and independent engine contexts. The build/integration bake path
   exercises the native fixed-profile exporter on real XML projects.
 - `Source/Tests/Test_Rendering.cpp`
+
+The documentation CI job rejects stale generated inventory. The headings above
+mirror the current source files for navigation but do not replace the generated
+complete list.
 
 ## Running tests
 
@@ -166,14 +186,14 @@ Prefer running the generated run target from a configured build directory:
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
 
-Use the executable target directly when you need Catch2 arguments. In common Last Frontier output layouts, binaries are emitted under `Binaries/Tests-*`, for example:
+Use the executable target directly when you need Catch2 arguments. Generated test binaries are normally emitted under `Binaries/Tests-*`, for example:
 
-- Windows: `Binaries/Tests-Windows-win64/LF_UnitTests.exe`
-- Linux: `Binaries/Tests-Linux-x64/LF_UnitTests`
+- Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
+- Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
 
 ## Running code coverage
 
-Coverage builds use the `FO_CODE_COVERAGE` path documented in [../../Docs/Testing.md](../../Docs/Testing.md). The generated targets are:
+Coverage builds use the `FO_CODE_COVERAGE` path documented in [Testing](../../Docs/en/contributing/testing/). The generated targets are:
 
 - `RunCodeCoverage`
 - `GenerateCodeCoverageReport`
@@ -199,5 +219,5 @@ Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOUR
 - Keep tests deterministic and platform-stable.
 - Avoid network, filesystem, and timing-sensitive behavior in unit suites unless mocked or isolated.
 - New test sources must be added to `FO_TESTS_SOURCE` in `BuildTools/cmake/stages/EngineSources.cmake`.
-- Update [../../Docs/Testing.md](../../Docs/Testing.md) and this README when adding, removing, or regrouping test suites.
+- Update [Testing](../../Docs/en/contributing/testing/) and this README when adding, removing, or regrouping test suites.
 - Treat `RunUnitTests` as the minimum broad validation baseline for engine-side changes after focused tests pass.

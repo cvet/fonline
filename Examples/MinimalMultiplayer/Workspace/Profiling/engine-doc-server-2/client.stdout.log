@@ -1,0 +1,44 @@
+[31/07/26] [08:19:23] Client runtime host: bundled DLL C:/Users/vladr/lf-6/Engine/Examples/MinimalMultiplayer/Build/windows/Binaries/Client-Windows-win64/FOMM_Client.dll, compatibility check disabled, explicit path no, force embedded no, native self-update enabled for Windows-win64, embedded build fac978a67d1e601eb77389e8dc562d7e511705a0, embedded compatibility bd476f0aaa9ff51d
+[31/07/26] [08:19:23] Client runtime host: preparing DLL C:/Users/vladr/lf-6/Engine/Examples/MinimalMultiplayer/Build/windows/Binaries/Client-Windows-win64/FOMM_Client.dll, compatibility check disabled
+[31/07/26] [08:19:23] Client runtime host: no staged DLL at C:/Users/vladr/lf-6/Engine/Examples/MinimalMultiplayer/Build/windows/Binaries/Client-Windows-win64/FOMM_Client.dll-staging
+[31/07/26] [08:19:23] Client runtime host: loading DLL C:/Users/vladr/lf-6/Engine/Examples/MinimalMultiplayer/Build/windows/Binaries/Client-Windows-win64/FOMM_Client.dll
+Client runtime DLL: export query from host ABI 3, runtime ABI 3, exports pointer set, build fac978a67d1e601eb77389e8dc562d7e511705a0, compatibility bd476f0aaa9ff51d
+Client runtime DLL: exports ready, runtime FOMM_Client, build fac978a67d1e601eb77389e8dc562d7e511705a0, compatibility bd476f0aaa9ff51d, ABI 3
+[31/07/26] [08:19:23] Client runtime host: accepted DLL C:/Users/vladr/lf-6/Engine/Examples/MinimalMultiplayer/Build/windows/Binaries/Client-Windows-win64/FOMM_Client.dll, runtime FOMM_Client, build fac978a67d1e601eb77389e8dc562d7e511705a0, compatibility bd476f0aaa9ff51d, ABI 3
+[31/07/26] [08:19:23] Client runtime host: loaded DLL C:/Users/vladr/lf-6/Engine/Examples/MinimalMultiplayer/Build/windows/Binaries/Client-Windows-win64/FOMM_Client.dll, runtime FOMM_Client, build fac978a67d1e601eb77389e8dc562d7e511705a0, compatibility bd476f0aaa9ff51d, ABI 3
+[31/07/26] [08:19:23] Client runtime host: entering DLL C:/Users/vladr/lf-6/Engine/Examples/MinimalMultiplayer/Build/windows/Binaries/Client-Windows-win64/FOMM_Client.dll, runtime FOMM_Client, build fac978a67d1e601eb77389e8dc562d7e511705a0
+Client runtime DLL: starting, build fac978a67d1e601eb77389e8dc562d7e511705a0, compatibility bd476f0aaa9ff51d
+[31/07/26] [08:19:23] Starting FOnline Minimal Multiplayer
+[31/07/26] [08:19:23] Apply config ../../FOnlineMinimalMultiplayer.fomain
+[31/07/26] [08:19:23] Version: 0.1.0
+[31/07/26] [08:19:23] Prebake resources
+[31/07/26] [08:19:23] Start baking
+[31/07/26] [08:19:23] [BakePack-Metadata-order1] Bake Metadata
+[31/07/26] [08:19:23] [BakePack-Metadata-order1] Baking of Metadata complete in 660.500 us, baked 0 files
+[31/07/26] [08:19:23] [BakePack-Embedded-order4] Bake Embedded
+[31/07/26] [08:19:23] [BakePack-Scripts-order4] Bake Scripts
+[31/07/26] [08:19:23] [BakePack-Core-order4] Bake Core
+[31/07/26] [08:19:23] [BakePack-Scripts-order4] Baking of Scripts complete in 737.200 us, baked 0 files
+[31/07/26] [08:19:23] [BakePack-Embedded-order4] Baking of Embedded complete in 1.567 ms, baked 0 files
+[31/07/26] [08:19:23] [BakePack-Core-order4] Baking of Core complete in 6.787 ms, baked 0 files
+[31/07/26] [08:19:23] [BakePack-Texts-order6] Bake Texts
+[31/07/26] [08:19:23] [BakePack-Texts-order6] Baking of Texts complete in 638.900 us, baked 0 files
+[31/07/26] [08:19:23] [BakePack-Protos-order7] Bake Protos
+[31/07/26] [08:19:23] [BakePack-Protos-order7] Baking of Protos complete in 519.900 us, baked 0 files
+[31/07/26] [08:19:23] [BakePack-Maps-order8] Bake Maps
+[31/07/26] [08:19:23] [BakePack-Maps-order8] Baking of Maps complete in 383.100 us, baked 0 files
+[31/07/26] [08:19:23] Time 11.595 ms
+[31/07/26] [08:19:23] Baking complete!
+[31/07/26] [08:19:23] Baking report saved to Baking/Baking.report.json
+[31/07/26] [08:19:23] Used DirectX rendering
+[31/07/26] [08:19:23] Direct3D device created with feature level 11.1
+[31/07/26] [08:19:23] Client runtime DLL: compatibility version: bd476f0aaa9ff51d
+[31/07/26] [08:19:24] Connecting to server '127.0.0.1:4010'
+[31/07/26] [08:19:24] Connection established
+[31/07/26] [08:19:24] tutorial_client_connected
+[31/07/26] [08:19:24] Authentication success
+[31/07/26] [08:19:24] Change map
+[31/07/26] [08:19:24] Start load map
+[31/07/26] [08:19:24] tutorial_client_map_loaded
+[31/07/26] [08:19:24] Map loaded
+[31/07/26] [08:19:24] tutorial_client_content=Signal cache

@@ -29,8 +29,12 @@ class ValidationTarget(TypedDict):
 	config: str
 	compiler: NotRequired[str]
 	run_target: NotRequired[str]
+	project: NotRequired[str]
 	workspace_parts: NotRequired[tuple[str, ...]]
 	msan_libcxx: NotRequired[bool]
+	host_target: NotRequired[str]
+	host_run_target: NotRequired[str]
+	showcase_web_runtime: NotRequired[bool]
 
 
 def make_flag_map(*enabled_flag_names: str) -> FlagMap:
@@ -43,6 +47,7 @@ def make_validation_target(
 	config_name: str,
 	compiler_name: str | None = None,
 	run_target_name: str | None = None,
+	project_name: str | None = None,
 	workspace_parts: Sequence[str] = (),
 	msan_libcxx: bool = False,
 ) -> ValidationTarget:
@@ -55,6 +60,8 @@ def make_validation_target(
 		validation_target['compiler'] = compiler_name
 	if run_target_name is not None:
 		validation_target['run_target'] = run_target_name
+	if project_name is not None:
+		validation_target['project'] = project_name
 	if workspace_parts:
 		validation_target['workspace_parts'] = tuple(workspace_parts)
 	if msan_libcxx:
@@ -115,6 +122,14 @@ SINGLE_CLIENT_VALIDATION_PLATFORMS = {
 
 BUILD_TARGETS: dict[str, FlagMap] = {
 	**{target_name: make_flag_map(flag_name) for target_name, flag_name in SINGLE_FLAG_BUILD_TARGETS.items()},
+	'starter-smoke': make_flag_map('FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
+	'native-extension-smoke': make_flag_map('FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
+	'tutorial-smoke': make_flag_map('FO_BUILD_CLIENT', 'FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
+	'showcase-smoke': make_flag_map('FO_BUILD_CLIENT', 'FO_BUILD_SERVER', 'FO_BUILD_MAPPER', 'FO_BUILD_BAKER'),
+	'showcase-web': make_flag_map('FO_BUILD_CLIENT'),
+	'showcase-web-package': make_flag_map('FO_BUILD_CLIENT'),
+	'showcase-web-package-host': make_flag_map('FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
+	'package-smoke': make_flag_map('FO_BUILD_CLIENT', 'FO_BUILD_SERVER', 'FO_BUILD_BAKER'),
 	'toolset': make_flag_map('FO_BUILD_ASCOMPILER', 'FO_BUILD_BAKER'),
 	'full': make_flag_map(
 		'FO_BUILD_CLIENT',
@@ -143,6 +158,39 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'unit-tests-san-undefined': make_validation_target('linux', 'unit-tests', 'San_Undefined', run_target_name='RunUnitTests'),
 	'unit-tests-san-thread': make_validation_target('linux', 'unit-tests', 'San_Thread', run_target_name='RunUnitTests'),
 	'win64-unit-tests-san-address': make_validation_target('win64', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
+	'linux-starter-smoke': make_validation_target('linux', 'starter-smoke', 'Release', run_target_name='RunStarterSmoke'),
+	'win64-starter-smoke': make_validation_target('win64', 'starter-smoke', 'Release', run_target_name='RunStarterSmoke'),
+	'linux-native-extension-smoke': make_validation_target('linux', 'native-extension-smoke', 'Release', run_target_name='RunNativeExtensionChecks', project_name='NativeExtensionSample'),
+	'win64-native-extension-smoke': make_validation_target('win64', 'native-extension-smoke', 'Release', run_target_name='RunNativeExtensionChecks', project_name='NativeExtensionSample'),
+	'linux-tutorial-smoke': make_validation_target('linux', 'tutorial-smoke', 'Release', run_target_name='RunTutorialChecks', project_name='MinimalMultiplayer'),
+	'win64-tutorial-smoke': make_validation_target('win64', 'tutorial-smoke', 'Release', run_target_name='RunTutorialChecks', project_name='MinimalMultiplayer'),
+	'linux-showcase-smoke': make_validation_target('linux', 'showcase-smoke', 'Release', run_target_name='RunShowcaseChecks', project_name='ContentShowcase'),
+	'linux-showcase-capture': make_validation_target('linux', 'showcase-smoke', 'Release', run_target_name='RunShowcaseCapture', project_name='ContentShowcase'),
+	'win64-showcase-smoke': make_validation_target('win64', 'showcase-smoke', 'Release', run_target_name='RunShowcaseChecks', project_name='ContentShowcase'),
+	'web-showcase-build': make_validation_target('web', 'showcase-web', 'Release', run_target_name='RunShowcaseWebChecks', project_name='ContentShowcase'),
+	'web-showcase-package': {
+		'platform': 'web',
+		'target': 'showcase-web-package',
+		'config': 'Release',
+		'run_target': 'RunShowcaseWebPackageChecks',
+		'project': 'ContentShowcase',
+		'host_target': 'showcase-web-package-host',
+		'host_run_target': 'ForceBakeResources',
+	},
+	'web-showcase-runtime': {
+		'platform': 'web',
+		'target': 'showcase-web-package',
+		'config': 'Release',
+		'run_target': 'RunShowcaseWebPackageChecks',
+		'project': 'ContentShowcase',
+		'host_target': 'showcase-web-package-host',
+		'host_run_target': 'ForceBakeResources',
+		'showcase_web_runtime': True,
+	},
+	'linux-tutorial-package': make_validation_target('linux', 'package-smoke', 'Release', run_target_name='RunTutorialPackageChecks', project_name='MinimalMultiplayer'),
+	'win64-tutorial-package': make_validation_target('win64', 'package-smoke', 'Release', run_target_name='RunTutorialPackageChecks', project_name='MinimalMultiplayer'),
+	'win64-package-smoke': make_validation_target('win64', 'package-smoke', 'Release', run_target_name='RunPackagingChecks', project_name='PackagingMatrix'),
+	'linux-package-smoke': make_validation_target('linux', 'package-smoke', 'Release', run_target_name='RunPackagingChecks', project_name='PackagingMatrix'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
 }
 
@@ -189,9 +237,9 @@ DOWNLOAD_RETRY_DELAY_SEC = 3
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
 # nullable type suffix (parsed natively by the engine since the
-# `asBC_RefCpyChk` change) and the project style is to keep `?` attached to
-# the type. The same regex is used by `Tools/Formatter/format_project.py`
-# in the embedding project; keep them in sync if the suffix shape changes.
+# `asBC_RefCpyChk` change) and the Engine convention is to keep `?` attached
+# to the type. Embedding-project formatter wrappers that duplicate this repair
+# must keep the suffix shape in sync.
 # The type token is either an uppercase identifier with optional namespace
 # and optional `[]` (covers `Critter`, `Critter[]`, `TutorialSystem::Point`,
 # etc.) or a lowercase primitive followed by `[]` (covers `hstring[]`,
@@ -215,8 +263,9 @@ FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 # (`foo(name: v)` -> `foo(name : v)`). A `?` immediately before `>` or an empty
 # `[]`, and a `:` whose left side is an argument-position identifier, are all
 # unambiguous markers, so the inserted spacing is collapsed back. String / char
-# literals and comments are masked first so literal text is never rewritten. Kept
-# in sync with `Tools/Formatter/format_project.py` in the embedding project
+# literals and comments are masked first so literal text is never rewritten. Embedding-project formatter wrappers
+# that duplicate these repairs must keep
+# them in sync with this Engine-owned implementation
 _FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
 _FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
 FOS_NULLABLE_ANGLE_CALL_RE = re.compile(
@@ -257,6 +306,10 @@ LINUX_PACKAGE_GROUPS = {
 	'linux-packages': (
 		'7',
 		['libc++-dev', 'libc++abi-dev', 'libx11-dev', 'libxcursor-dev', 'libxrandr-dev', 'libxss-dev', 'libxtst-dev', 'libjack-dev', 'libpulse-dev', 'libasound-dev', 'freeglut3-dev', 'libssl-dev', 'libevent-dev', 'libxi-dev', 'libzstd-dev'],
+	),
+	'showcase-display-packages': (
+		'1',
+		['xvfb', 'xauth', 'mesa-utils', 'libgl1-mesa-dri'],
 	),
 	'web-packages': (
 		'2',
@@ -328,8 +381,8 @@ def resolve_buildtools_cmake_path(env: Mapping[str, str], file_name: str) -> Pat
 	return resolve_buildtools_path(env, 'cmake', file_name)
 
 
-def resolve_validation_project_source(env: Mapping[str, str]) -> Path:
-	return resolve_buildtools_path(env, 'validation-project')
+def resolve_validation_project_source(env: Mapping[str, str], project_name: str) -> Path:
+	return Path(env['FO_ENGINE_ROOT']) / 'Examples' / project_name
 
 
 def resolve_workspace_path(env: Mapping[str, str], *parts: str) -> Path:
@@ -363,6 +416,14 @@ def resolve_validation_project_workspace(env: Mapping[str, str]) -> Path:
 
 def resolve_validation_build_dir(env: Mapping[str, str], name: str) -> Path:
 	return resolve_workspace_path(env, f'validate-{name}')
+
+
+def resolve_showcase_host_server(output_root: Path, host_platform: str) -> Path:
+	if host_platform == 'win64':
+		return output_root / 'Binaries' / 'Server-Windows-win64' / 'FOCS_ServerHeadless.exe'
+	if host_platform == 'linux':
+		return output_root / 'Binaries' / 'Server-Linux-x64' / 'FOCS_ServerHeadless'
+	raise SystemExit(f'Unsupported Content Showcase Web host: {host_platform}')
 
 
 def resolve_workspace_emsdk_root(workspace: Path) -> str:
@@ -508,6 +569,7 @@ def resolve_env() -> EnvMap:
 	workspace = Path(os.environ.get('FO_WORKSPACE') or (Path.cwd() / 'Workspace')).resolve()
 	output = Path(os.environ.get('FO_OUTPUT') or (workspace / 'output')).resolve()
 	binary_output_postfix = os.environ.get('FO_BINARY_OUTPUT_POSTFIX', '')
+	explicit_emsdk = os.environ.get('FO_EMSDK', '')
 	third_party = engine_root / 'ThirdParty'
 
 	env: EnvMap = {
@@ -516,7 +578,7 @@ def resolve_env() -> EnvMap:
 		'FO_WORKSPACE': str(workspace),
 		'FO_OUTPUT': str(output),
 		'FO_BINARY_OUTPUT_POSTFIX': binary_output_postfix,
-		'FO_EMSDK': resolve_workspace_emsdk_root(workspace),
+		'FO_EMSDK': str(Path(explicit_emsdk).resolve()) if explicit_emsdk else resolve_workspace_emsdk_root(workspace),
 		'FO_EMSCRIPTEN_VERSION': read_first_line(third_party / 'emscripten'),
 		'FO_ANDROID_NDK_VERSION': read_first_line(third_party / 'android-ndk'),
 		'FO_ANDROID_SDK_VERSION': read_first_line(third_party / 'android-sdk'),
@@ -724,8 +786,14 @@ def ensure_empty_dir(path: Path) -> None:
 	ensure_dir(path)
 
 
-def copy_directory(source_path: str | Path, target_path: str | Path, dirs_exist_ok: bool = False) -> None:
-	shutil.copytree(source_path, target_path, dirs_exist_ok=dirs_exist_ok)
+def copy_directory(
+	source_path: str | Path,
+	target_path: str | Path,
+	dirs_exist_ok: bool = False,
+	ignore_patterns: Sequence[str] = (),
+) -> None:
+	ignore = shutil.ignore_patterns(*ignore_patterns) if ignore_patterns else None
+	shutil.copytree(source_path, target_path, dirs_exist_ok=dirs_exist_ok, ignore=ignore)
 
 
 def download_file(url: str, target_path: Path, label: str) -> None:
@@ -1410,6 +1478,7 @@ HOST_DEFAULT_FEATURES = {
 LINUX_FEATURE_PACKAGE_GROUPS = {
 	'common-packages': ['common-packages'],
 	'linux-packages': ['linux-packages'],
+	'showcase-display-packages': ['showcase-display-packages'],
 	'web-packages': ['web-packages'],
 	'android-packages': ['android-packages'],
 	'windows-cross-packages': ['windows-cross-packages'],
@@ -1976,12 +2045,28 @@ def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) ->
 	return bool(match and match.group(1).strip() != expected_generator)
 
 
-def prepare_validation_project(env: Mapping[str, str]) -> Path:
+def prepare_validation_project(env: Mapping[str, str], project_name: str) -> Path:
 	workspace = Path(env['FO_WORKSPACE'])
 	validation_root = resolve_validation_project_workspace(env)
-	source_root = resolve_validation_project_source(env)
+	source_root = resolve_validation_project_source(env, project_name)
 	ensure_dir(workspace)
-	copy_directory(source_root, validation_root, dirs_exist_ok=True)
+	remove_path_if_exists(validation_root)
+	copy_directory(
+		source_root,
+		validation_root,
+		dirs_exist_ok=True,
+		ignore_patterns=(
+			'Engine',
+			'Build',
+			'Baking',
+			'Cache',
+			'Resources',
+			'ServerResources',
+			'PlatformBinaries',
+			'__pycache__',
+			'*.log',
+		),
+	)
 	engine_link = validation_root / 'Engine'
 	ensure_directory_link(engine_link, env['FO_ENGINE_ROOT'])
 	return validation_root
@@ -1995,7 +2080,7 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 	if workspace_parts:
 		prepare_workspace(workspace_parts, False, env)
 
-	validation_root = prepare_validation_project(env)
+	validation_root = prepare_validation_project(env, validation.get('project', 'MinimalProject'))
 	platform_name = validation['platform']
 	target_name = validation['target']
 	config = validation['config']
@@ -2015,6 +2100,41 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 	build_dir = resolve_validation_build_dir(env, name)
 	ensure_dir(build_dir)
 
+	host_target = validation.get('host_target')
+	shared_output: Path | None = None
+	host_platform: str | None = None
+	if host_target:
+		host_run_target = validation.get('host_run_target')
+		if not host_run_target:
+			raise SystemExit(f'Validation target {name} has host_target without host_run_target')
+		if os.name == 'nt':
+			host_platform = 'win64'
+		elif sys.platform.startswith('linux'):
+			host_platform = 'linux'
+		else:
+			raise SystemExit(f'Validation target {name} has no supported native host on {sys.platform}')
+
+		shared_output = resolve_validation_build_dir(env, f'{name}-output')
+		host_build_dir = resolve_validation_build_dir(env, f'{name}-host')
+		remove_path_if_exists(shared_output)
+		ensure_dir(shared_output)
+		ensure_dir(host_build_dir)
+		shared_output_args = make_output_path_cmake_args(str(shared_output))
+		host_env = make_platform_configure_env(host_platform, compiler_name)
+		run_platform_configure_build(
+			host_platform,
+			host_target,
+			str(validation_root),
+			host_build_dir,
+			config,
+			env,
+			extra_cmake_args=shared_output_args,
+			compiler_name=compiler_name,
+		)
+		log('Run host prerequisite', host_run_target)
+		run_cmake_target(host_build_dir, config, host_run_target, env=host_env)
+		extra_cmake_args.extend(shared_output_args)
+
 	run_platform_configure_build(
 		platform_name,
 		target_name,
@@ -2033,6 +2153,26 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 
 		if name == 'code-coverage' and os.environ.get('CODECOV_TOKEN'):
 			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
+
+	if validation.get('showcase_web_runtime'):
+		if shared_output is None or host_platform is None:
+			raise SystemExit(f'Validation target {name} has no native host output')
+		log('Run Content Showcase Web browser runtime')
+		run(
+			[
+				sys.executable,
+				validation_root / 'capture_showcase_web.py',
+				'--server',
+				resolve_showcase_host_server(shared_output, host_platform),
+				'--package-dir',
+				shared_output / 'FOCS-ShowcaseWeb' / 'FOCS-Client-ShowcaseRelease-Web',
+				'--config',
+				validation_root / 'FOnlineContentShowcase.fomain',
+				'--playwright-root',
+				validation_root / 'WebTests',
+			],
+			cwd=validation_root,
+		)
 
 
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
@@ -2360,43 +2500,48 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 
 
 def create_parser() -> argparse.ArgumentParser:
-	parser = argparse.ArgumentParser(description='Shared BuildTools helpers')
+	parser = argparse.ArgumentParser(prog='buildtools.py', description='Shared BuildTools helpers')
 	subparsers = parser.add_subparsers(dest='command', required=True)
 
 	env_parser = subparsers.add_parser('env', help='resolve BuildTools environment')
-	env_parser.add_argument('--shell', choices=['bash', 'cmd', 'plain'], default='plain')
-	env_parser.add_argument('--summary', action='store_true')
-	env_parser.add_argument('--summary-only', action='store_true')
+	env_parser.add_argument('--shell', choices=['bash', 'cmd', 'plain'], default='plain', help='environment output syntax')
+	env_parser.add_argument('--summary', action='store_true', help='append the resolved environment summary')
+	env_parser.add_argument('--summary-only', action='store_true', help='print only the resolved environment summary')
 
 	build_parser = subparsers.add_parser('build', help='configure and build a target')
-	build_parser.add_argument('platform')
-	build_parser.add_argument('target')
-	build_parser.add_argument('config', nargs='?', default='Release')
+	build_parser.add_argument('platform', help='engine platform key, such as linux, win64, web, or android-arm64')
+	build_parser.add_argument('target', help='BuildTools target profile, such as client, server, baker, or unit-tests')
+	build_parser.add_argument('config', nargs='?', default='Release', help='CMake build configuration')
 
 	validate_parser = subparsers.add_parser('validate', help='configure and validate scenarios')
-	validate_parser.add_argument('names', nargs='+')
+	validate_parser.add_argument('names', nargs='+', help='one or more named validation scenarios')
 
 	mono_parser = subparsers.add_parser('setup-mono', help='prepare mono runtime')
-	mono_parser.add_argument('os_name')
-	mono_parser.add_argument('arch')
-	mono_parser.add_argument('config')
+	mono_parser.add_argument('os_name', help='runtime operating-system key')
+	mono_parser.add_argument('arch', help='runtime architecture key')
+	mono_parser.add_argument('config', help='runtime build configuration')
 
 	format_parser = subparsers.add_parser('format-source', help='format engine source files')
 	format_parser.set_defaults(no_args=True)
 
 	toolset_parser = subparsers.add_parser('toolset', help='build an existing toolset target')
-	toolset_parser.add_argument('target')
+	toolset_parser.add_argument('target', help='target from the configured toolset build tree')
 
 	auxiliary_parser = subparsers.add_parser('build-auxiliary', help='build a separately packaged auxiliary tool')
-	auxiliary_parser.add_argument('target', choices=AUXILIARY_BUILD_TARGETS)
-	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release')
+	auxiliary_parser.add_argument('target', choices=AUXILIARY_BUILD_TARGETS, help='auxiliary tool to build')
+	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release', help='build configuration (default: Release)')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
-	prepare_parser.add_argument('--check', action='store_true')
+	prepare_parser.add_argument(
+		'parts',
+		nargs='+',
+		choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'],
+		help='workspace components to prepare',
+	)
+	prepare_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
 
 	repair_case_parser = subparsers.add_parser('repair-checkout-case', help='realign working-tree entry names with the git index')
-	repair_case_parser.add_argument('--check', action='store_true')
+	repair_case_parser.add_argument('--check', action='store_true', help='check for case drift without renaming entries')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
 	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
@@ -2408,16 +2553,17 @@ def create_parser() -> argparse.ArgumentParser:
 	package_android_parser.add_argument('configs', nargs='+', help='config names to package (e.g. LocalTest)')
 
 	host_check_parser = subparsers.add_parser('host-check', help='check host prerequisites')
-	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'])
+	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'], help='host platform to inspect')
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
-	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'])
+	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'], help='host platform to prepare')
 	prepare_host_parser.add_argument(
 		'features',
 		nargs='*',
 		choices=[
 			'common-packages',
 			'linux-packages',
+			'showcase-display-packages',
 			'web-packages',
 			'android-packages',
 			'windows-cross-packages',
@@ -2434,8 +2580,9 @@ def create_parser() -> argparse.ArgumentParser:
 			'msan-libcxx',
 			'all',
 		],
+		help='feature groups to prepare; omit to use the host defaults',
 	)
-	prepare_host_parser.add_argument('--check', action='store_true')
+	prepare_host_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
 
 	return parser
 

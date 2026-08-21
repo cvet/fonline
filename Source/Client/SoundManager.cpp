@@ -240,13 +240,23 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
 
     auto sound = SafeAlloc::MakeUnique<Sound>();
 
-    if (ext == "wav" && !LoadWav(sound, fixed_fname)) {
-        return false;
+    if (ext == "wav") {
+        if (!LoadWav(sound, fixed_fname)) {
+            return false;
+        }
     }
-    if (ext == "acm" && !LoadAcm(sound, fixed_fname, is_music)) {
-        return false;
+    else if (ext == "acm") {
+        if (!LoadAcm(sound, fixed_fname, is_music)) {
+            return false;
+        }
     }
-    if (ext == "ogg" && !LoadOgg(sound, fixed_fname)) {
+    else if (ext == "ogg") {
+        if (!LoadOgg(sound, fixed_fname)) {
+            return false;
+        }
+    }
+    else {
+        WriteLog("Unsupported sound format '{}'", ext);
         return false;
     }
 

@@ -72,8 +72,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// std-compatible synchronization primitives annotated for Clang Thread Safety Analysis.
-// Guarded state must use these wrappers because the platform STL types are not capabilities
+// std-compatible primitives annotated for Clang Thread Safety Analysis; the platform STL types are not capabilities
+// Method names mirror std, and fo::unique_lock works with condition_variable_any; see Docs/en/contributing/coding-contracts/thread-safety-analysis.md
 
 class FO_TSA_CAPABILITY("mutex") mutex
 {

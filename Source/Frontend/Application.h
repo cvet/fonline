@@ -46,6 +46,7 @@ class IAppWindow;
 
 FO_DECLARE_EXCEPTION(AppInitException);
 
+// Physical SDL-scancode key identifiers used by input events and key-state queries, plus a synthetic Text event for UTF-8 text, paste, and drop payloads.
 ///@ ExportEnum
 enum class KeyCode : uint8_t
 {
@@ -155,7 +156,10 @@ enum class KeyCode : uint8_t
     Rwin = 0xDC,
     Text = 0xFF,
 };
+///@ EnumValueDoc KeyCode None // Indicates that no physical or synthetic keyboard input code is selected.
+///@ EnumValueDoc KeyCode Text // Identifies a synthetic text event whose UTF-8 input, clipboard, or dropped-data payload is carried separately by the input event.
 
+// Mouse buttons and wheel directions exposed through application input events.
 ///@ ExportEnum
 enum class MouseButton : uint8_t
 {
@@ -170,8 +174,41 @@ enum class MouseButton : uint8_t
     Ext3 = 8,
     Ext4 = 9,
 };
+///@ EnumValueDoc MouseButton Left // Primary mouse button mapped from the platform left-button input.
+///@ EnumValueDoc MouseButton Right // Secondary mouse button mapped from the platform right-button input.
+///@ EnumValueDoc MouseButton Middle // Middle mouse button mapped from the platform middle-button input.
+///@ EnumValueDoc MouseButton WheelUp // Synthetic button event emitted for upward mouse-wheel motion.
+///@ EnumValueDoc MouseButton WheelDown // Synthetic button event emitted for downward mouse-wheel motion.
+///@ EnumValueDoc MouseButton Ext0 // First extended mouse button, mapped from the platform X1 button.
+///@ EnumValueDoc MouseButton Ext1 // Second extended mouse button, mapped from the platform X2 button.
+///@ EnumValueDoc MouseButton Ext2 // Third extended mouse button, mapped from platform button 6.
+///@ EnumValueDoc MouseButton Ext3 // Fourth extended mouse button, mapped from platform button 7.
+///@ EnumValueDoc MouseButton Ext4 // Fifth extended mouse button, mapped from platform button 8.
 
+// Per-frame gamepad snapshot containing availability, stick and trigger values, face buttons, shoulders, sticks, and D-pad state.
 ///@ ExportValueType Layout = float32-LeftStickX+float32-LeftStickY+float32-RightStickX+float32-RightStickY+float32-LeftTrigger+float32-RightTrigger+bool-Available+bool-South+bool-East+bool-West+bool-North+bool-Back+bool-Start+bool-LeftStickButton+bool-RightStickButton+bool-LeftShoulder+bool-RightShoulder+bool-DpadUp+bool-DpadDown+bool-DpadLeft+bool-DpadRight+bool-Reserved
+///@ ValueFieldDoc GamepadState LeftStickX // Left-stick horizontal axis normalized to -1 through 1 after the dead zone.
+///@ ValueFieldDoc GamepadState LeftStickY // Left-stick vertical axis normalized to -1 through 1 after the dead zone.
+///@ ValueFieldDoc GamepadState RightStickX // Right-stick horizontal axis normalized to -1 through 1 after the dead zone.
+///@ ValueFieldDoc GamepadState RightStickY // Right-stick vertical axis normalized to -1 through 1 after the dead zone.
+///@ ValueFieldDoc GamepadState LeftTrigger // Left-trigger pressure normalized to 0 through 1 after the dead zone.
+///@ ValueFieldDoc GamepadState RightTrigger // Right-trigger pressure normalized to 0 through 1 after the dead zone.
+///@ ValueFieldDoc GamepadState Available // Reports whether the application currently has an opened gamepad.
+///@ ValueFieldDoc GamepadState South // Reports whether the south face button is pressed.
+///@ ValueFieldDoc GamepadState East // Reports whether the east face button is pressed.
+///@ ValueFieldDoc GamepadState West // Reports whether the west face button is pressed.
+///@ ValueFieldDoc GamepadState North // Reports whether the north face button is pressed.
+///@ ValueFieldDoc GamepadState Back // Reports whether the back button is pressed.
+///@ ValueFieldDoc GamepadState Start // Reports whether the start button is pressed.
+///@ ValueFieldDoc GamepadState LeftStickButton // Reports whether the left-stick button is pressed.
+///@ ValueFieldDoc GamepadState RightStickButton // Reports whether the right-stick button is pressed.
+///@ ValueFieldDoc GamepadState LeftShoulder // Reports whether the left shoulder button is pressed.
+///@ ValueFieldDoc GamepadState RightShoulder // Reports whether the right shoulder button is pressed.
+///@ ValueFieldDoc GamepadState DpadUp // Reports whether the D-pad up button is pressed.
+///@ ValueFieldDoc GamepadState DpadDown // Reports whether the D-pad down button is pressed.
+///@ ValueFieldDoc GamepadState DpadLeft // Reports whether the D-pad left button is pressed.
+///@ ValueFieldDoc GamepadState DpadRight // Reports whether the D-pad right button is pressed.
+///@ ValueFieldDoc GamepadState Reserved // Reserved compatibility field; the current input backend leaves it false.
 struct GamepadState
 {
     float32_t LeftStickX {};
@@ -684,6 +721,7 @@ public:
     void LoadImGuiEffect(const FileSystem& resources);
     void BeginFrame();
     void EndFrame();
+    void RenderImGuiToTexture(ptr<RenderTexture> target);
     void RequestQuit(bool success = true) noexcept;
     void WaitForRequestedQuit();
 
@@ -698,6 +736,7 @@ public:
     GlobalSettings Settings;
 
     EventObserver<> OnFrameBegin {};
+    EventObserver<> OnBeforePresent {};
     EventObserver<> OnFrameEnd {};
     EventObserver<> OnPause {};
     EventObserver<> OnResume {};
@@ -801,6 +840,7 @@ private:
     std::condition_variable_any _quitEvent {};
     mutex _quitLocker {};
     EventDispatcher<> _onFrameBeginDispatcher {&OnFrameBegin};
+    EventDispatcher<> _onBeforePresentDispatcher {&OnBeforePresent};
     EventDispatcher<> _onFrameEndDispatcher {&OnFrameEnd};
     EventDispatcher<> _onPauseDispatcher {&OnPause};
     EventDispatcher<> _onResumeDispatcher {&OnResume};

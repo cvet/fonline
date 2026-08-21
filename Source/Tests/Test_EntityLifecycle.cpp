@@ -35,6 +35,7 @@
 
 #include "AngelScriptScripting.h"
 #include "Baker.h"
+#include "Compressor.h"
 #include "DataSerialization.h"
 #include "NetBuffer.h"
 #include "Server.h"

@@ -1,0 +1,21 @@
+[ProtoCritter]
+$Name = TutorialPlayer
+$Text engl = "Player"
+$Text russ = "Игрок"
+
+[ProtoCritter]
+$Name = TutorialGuide
+$Text engl = "Guide"
+$Text russ = "Проводник"
+
+[ProtoItem]
+$Name = TutorialSupply
+$Text engl = "Signal cache"
+$Text russ = "Сигнальный контейнер"
+Stackable = True
+
+[ProtoLocation]
+$Name = TutorialLocation
+$Text engl = "Tutorial outpost"
+$Text russ = "Учебный аванпост"
+

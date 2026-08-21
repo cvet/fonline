@@ -1,0 +1,24 @@
+---
+title: Binary BMFont Contract
+document_id: generated-font-format-bmfont
+locale: en
+generated: true
+---
+
+# Binary BMFont Contract
+
+> Generated reference. Do not edit directly. Update `BuildTools/FontFormatInterface.json`, then run `python BuildTools/docs_font_format.py --write`.
+
+[Index](index.md) | [Formats](formats.md) | [FOFNT](fofnt.md) | [BMFont](bmfont.md) | [Binding](binding.md) | [Layout](layout.md) | [Rendering](rendering.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/font-format.json) | [Guide](../../how-to/content/font-format.md)
+
+| Stable ID | Rule | Requirement | Why | Source |
+| --- | --- | --- | --- | --- |
+| <a id="entry-font-format-bmfont-binary-v3-signature-957f811130"></a><code>font-format.bmfont.binary-v3-signature</code> | Binary v3 signature | The first four bytes must be B, M, F, and binary-format version 3. | Any other signature or BMFont version is rejected before block parsing. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-block-order-0680abfc74"></a><code>font-format.bmfont.block-order</code> | Fixed block order | Export Info, Common, Pages, and Chars blocks in standard binary order without interposed optional blocks. | The parser advances by each block size and reads the next block payload directly; it does not search by block type. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-info-padding-0efcb0a3ce"></a><code>font-format.bmfont.info-padding</code> | One-pixel exporter padding | Set BMFont Info padding up, right, down, and left to exactly one pixel each. | The loader requires the four padding bytes to equal 0x01010101 and later removes one pixel from each side of every glyph rectangle. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-single-page-02e3e82348"></a><code>font-format.bmfont.single-page</code> | Single texture page | Export exactly one texture page. | The Common block page count must be one; multi-page BMFont descriptors are rejected. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-relative-page-image-70bb68aaf4"></a><code>font-format.bmfont.relative-page-image</code> | Relative page image | Store a NUL-terminated page filename resolvable relative to the .fnt descriptor directory. | The Pages payload is read as one string and combined with the descriptor directory before sprite loading. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-char-records-4e9087c8a5"></a><code>font-format.bmfont.char-records</code> | Twenty-byte character records | Encode each Chars record in the 20-byte BMFont v3 layout; xoffset, yoffset, and xadvance must be signed little-endian int16 values. | Negative bearings occur in bundled fonts and must remain negative instead of being reinterpreted as values near 65535. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp), [Source/Common/FileSystem.h](https://github.com/cvet/fonline/blob/master/Source/Common/FileSystem.h) |
+| <a id="entry-font-format-bmfont-metric-conversion-e214340bea"></a><code>font-format.bmfont.metric-conversion</code> | Engine metric conversion | Reserve one transparent pixel around every glyph; the loader shifts x/y inward, removes two pixels from width/height, negates bearings, and adds one pixel to xadvance. | The Engine samples an expanded rectangle for antialiasing and optional border dilation while keeping the visible glyph metrics separate. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-line-metrics-90d41b3f39"></a><code>font-format.bmfont.line-metrics</code> | Derived line metrics | Expect Engine LineHeight to use the visible W glyph height when W exists, otherwise Common.base; YAdvance is half that resulting height. | The BMFont Common.lineHeight field is used for bearing conversion but is not copied directly into the Engine line height. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
+| <a id="entry-font-format-bmfont-gray-bordered-391c95d210"></a><code>font-format.bmfont.gray-bordered</code> | Grayscale and border preparation | Binary BMFont bindings always normalize nontransparent pixels to gray and create a second bordered atlas copy. | This makes runtime tinting and FontFlag::Bordered available without descriptor-specific switches. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |

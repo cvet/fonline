@@ -98,7 +98,7 @@ namespace
         new (obj) ArrayNoDefaultValue(value);
     }
 
-    static void ArrayNoDefaultValueDestruct(void* obj) noexcept
+    static void ArrayNoDefaultValueDestruct(void* obj)
     {
         cast_from_void<ArrayNoDefaultValue*>(obj)->~ArrayNoDefaultValue();
     }

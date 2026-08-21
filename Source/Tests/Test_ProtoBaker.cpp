@@ -92,7 +92,7 @@ $Name = PlainItem
         CHECK(local_rig.Outputs.size() == 2);
     }
 
-    SECTION("BakesFomapHeaderWithDefaultProtoName")
+    SECTION("BakesFomapProtoMapWithDefaultProtoName")
     {
         TestRig local_rig;
         OverrideSetting(local_rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});

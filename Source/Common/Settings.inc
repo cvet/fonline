@@ -340,7 +340,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Server
 SETTING_GROUP(DataBaseSettings, virtual BaseSettings);
 FIXED_SETTING(bool, DataBase, OpLogEnabled, true); // If true, pending database changes are mirrored to oplog for recovery; if false, any database write failure causes immediate panic
-FIXED_SETTING(string, DataBase, OpLogPath, "DbPendingChanges.oplog"); // Pending database changes oplog path; committed replay progress path is derived as this value plus -committed
+FIXED_SETTING(string, DataBase, OpLogPath, "DbPendingChanges.oplog"); // Pending database changes oplog path; must end with .oplog, which is replaced by -committed.oplog for replay progress
 FIXED_SETTING(int32_t, DataBase, ReconnectRetryPeriod, 1000); // Database backend retry period in milliseconds while oplog mode is active
 FIXED_SETTING(int32_t, DataBase, PanicOpLogSizeThreshold, 10000000); // Pending database changes file size threshold in bytes after which panic is triggered
 FIXED_SETTING(int32_t, DataBase, PanicShutdownTimeout, 5000); // Graceful shutdown timeout in milliseconds after database panic callback before forced termination
@@ -366,6 +366,7 @@ VARIABLE_SETTING(string, Mapper, ParticlePreviewEffect, ""); // Particle resourc
 VARIABLE_SETTING(int32_t, Mapper, ParticlePreviewSeed, 0); // Seed used when the selected runtime supports seeded startup preview
 VARIABLE_SETTING(float32_t, Mapper, ParticlePreviewScale, 1.0f); // Scale for the startup particle preview
 VARIABLE_SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewarm the startup particle preview
+VARIABLE_SETTING(string, Mapper, SparkEditorSource, ""); // SPARK source to open in the particle editor during Mapper startup
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
