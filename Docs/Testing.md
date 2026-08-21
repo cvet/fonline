@@ -61,6 +61,12 @@ Use the smallest focused tests first, then the broader run target when the chang
 
 The validation project (`Engine/BuildTools/validation-project`) enables `FO_ANGELSCRIPT_SCRIPTING` and keeps `FO_MANAGED_SCRIPTING` off, so validators stay offline-friendly and do not pull in the Mono runtime build (`SetupManagedRuntime` / `setup-mono` clones and builds the pinned `dotnet/runtime` source, a heavy network step). The managed (C#/Mono) backend and `Test_ManagedScriptBaker` are exercised through the embedding project's managed build (the `auto-managed` preset), not through the validators.
 
+The unit-test executable follows the configured scripting backends. AngelScript-only test translation units are
+compiled only with `FO_ANGELSCRIPT_SCRIPTING`; `Test_ManagedScriptBaker` is compiled only with
+`FO_MANAGED_SCRIPTING`. A managed-only embedding project can therefore build and run its local `RunUnitTests`
+target without re-enabling the retired runtime backend, while the validation project remains the full AngelScript
+backend boundary.
+
 ### Unit tests under sanitizers
 
 The unit tests also run under Clang sanitizers via dedicated validators, which select

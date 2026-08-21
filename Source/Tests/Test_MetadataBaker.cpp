@@ -320,11 +320,13 @@ namespace TestMetadataVersionCollision
 
     SECTION("parses continued tags and strips trailing comments")
     {
-        rig.AddSourceFile("Scripts/TestContinuation.fos", R"(
+        rig.AddSourceFile("Scripts/TestContinuation.fos",
+            R"(
 namespace TestContinuation
 {
-///@ Enum ContinuedCoverage \
-Value = 5 // trailing comment
+///@ Enum ContinuedCoverage )"
+            "\\\n"
+            R"(Value = 5 // trailing comment
 }
 )");
 

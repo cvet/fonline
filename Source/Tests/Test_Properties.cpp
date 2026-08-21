@@ -2889,7 +2889,7 @@ TEST_CASE("PropertiesNameMigrationAppliesOnlyToStoredNames")
     doc.Emplace("Flag", int64_t {7});
 
     Properties props(&registrar);
-    CHECK(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
+    CHECK(PropertiesSerializer::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<int32_t>(legacy_prop) == 7);
     CHECK_FALSE(props.GetValue<bool>(live_prop));
 

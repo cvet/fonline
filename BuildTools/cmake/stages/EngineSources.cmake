@@ -430,21 +430,14 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
 AppendList(FO_TESTS_SOURCE
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BaseLogging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BasicCore.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BakerSetup.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CacheStorage.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SettingsStorage.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ConfigBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Compressor.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Common.cpp"
@@ -476,7 +469,6 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Logging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapBaker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimation.cpp"
@@ -508,17 +500,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientDataValidation.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptBuiltins.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptEntityOps.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerAdvancedOps.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextBaker.cpp"
@@ -530,6 +512,28 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")
+
+if(FO_ANGELSCRIPT_SCRIPTING)
+    AppendList(FO_TESTS_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptBuiltins.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptEntityOps.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerAdvancedOps.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerScriptMethods.cpp")
+endif()
 
 if(FO_MANAGED_SCRIPTING)
     AppendList(FO_TESTS_SOURCE
