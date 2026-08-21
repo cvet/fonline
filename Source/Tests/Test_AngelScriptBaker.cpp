@@ -109,6 +109,24 @@ TEST_CASE("AngelScriptBaker")
         CHECK(local_rig.Outputs.size() == 2);
     }
 
+    SECTION("RegistersVerifyMacroWithoutCoreScripts")
+    {
+        TestRig local_rig;
+        local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+
+        BakerServerEngine compiler_engine {local_rig.BakedFiles};
+        REQUIRE_NOTHROW(CompileInlineScripts(&compiler_engine, "VerifyMacroScripts", {{"Scripts/VerifyMacro.fos", R"(
+namespace VerifyMacro
+{
+    void Check(bool condition)
+    {
+        verify(condition, "Programmatic verify failed", 17, "context");
+    }
+}
+)"}},
+            [](string_view) { }));
+    }
+
     SECTION("RejectsBrokenScripts")
     {
         TestRig local_rig;

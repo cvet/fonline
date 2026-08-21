@@ -178,7 +178,6 @@ namespace FOnline
                 Path.Combine("Scripts", "Scenes"),
                 Path.Combine("Scripts", "Tests"),
                 Path.Combine("Scripts", "Debug"),
-                Path.Combine("Engine", "Source", "Scripting", "AngelScript", "CoreScripts"),
             };
 
             Dictionary<string, string> paths = new Dictionary<string, string>(StringComparer.Ordinal);

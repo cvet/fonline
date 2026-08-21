@@ -29,7 +29,6 @@ Read this page together with:
 - `Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
 - `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp`
 - `Source/Scripting/AngelScript/AngelScriptReflection.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/*.fos`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp`
 - `Source/Scripting/*ScriptMethods.cpp`
@@ -51,9 +50,12 @@ Read this page together with:
 The scripting subsystem has four layers:
 
 1. **Common runtime facade** — `Source/Common/ScriptSystem.h` / `.cpp` define the backend-agnostic `ScriptSystem`, `ScriptFuncDesc`, `ScriptFunc`, `FuncCallData`, `DataAccessor`, native call adapters, init functions, loop callbacks, and type maps.
-2. **Backend implementation** — `Source/Scripting/AngelScript/` provides the current production backend. `Source/Scripting/Managed/` is an implemented backend that embeds a Mono runtime with the marshalling, event-subscription, and settings bridges described later in this document; `Source/Scripting/Native/` is still a source-root stub. AngelScript owns the longest-running script compiler/runtime path in this tree.
+2. **Backend implementation** — `Source/Scripting/AngelScript/` provides the legacy AngelScript backend;
+   `Source/Scripting/Managed/` embeds the Mono runtime with the marshalling, event-subscription, and settings
+   bridges described later in this document; `Source/Scripting/Native/` is still a source-root stub. Embedding
+   projects select the backend through their build configuration.
 3. **Script-visible native methods** — `Source/Scripting/*ScriptMethods.cpp` files contain `///@ ExportMethod` functions grouped by runtime side and receiver type. Codegen reads these annotations and emits method descriptors/wrappers.
-4. **Core script library and game scripts** — `Source/Scripting/AngelScript/CoreScripts/*.fos` and `Source/Scripting/Managed/CoreScripts/*.cs` provide engine-owned reusable helpers for their respective backends. Embedding projects add their own script files and metadata through project configuration and resource/script baking.
+4. **Managed runtime support and project scripts** — `Source/Scripting/Managed/CoreScripts/*.cs` provides the engine-owned managed/runtime bridge. Embedding projects own higher-level script libraries and game scripts for either backend and add them through project configuration and resource/script baking. The engine does not bundle an AngelScript CoreScripts library.
 
 The engine owns the reusable bridge. The embedding project owns game scripts and chooses which features are enabled through project configuration, build presets, and `.fomain` inputs.
 
@@ -230,31 +232,21 @@ Client render helpers such as `Game.DrawSprite`, `Game.DrawSpritePattern`, and `
 
 ## Core scripts
 
-The engine-owned core libraries live in `Source/Scripting/AngelScript/CoreScripts/` and
-`Source/Scripting/Managed/CoreScripts/`. The AngelScript side includes reusable modules such as:
+The engine does not ship a high-level AngelScript CoreScripts library. An embedding project that enables the
+AngelScript backend owns every `.fos` utility module it needs and supplies those sources through its resource
+and script configuration. The backend itself registers the always-on variadic `verify(cond, ...)` invariant macro
+in each compilation's preprocessing context, so projects do not need a utility module merely to define it.
 
-- `Core.fos`
-- `Math.fos`
-- `Time.fos`
-- `Color.fos` (`namespace Color`, `Color::Text`, `Color::Neutral`)
-- `Input.fos`
-- `Gui.fos`
-- `Sprite.fos`
-- `LineTracer.fos`
-- `Serializer.fos`
-- `MapperCore.fos`
-- `FixedDropMenu.fos`
-- `Tween.fos`
+`Source/Scripting/Managed/CoreScripts/` is narrower: it contains only stable support that implements the managed
+runtime contract or adapts it to the engine. This includes script attributes and initialization, native internal
+calls, remote-call and registered-function dispatch, invoke/exception accounting, synchronization and async
+suspension, entity-holder mechanics, enum metadata parity, always-on invariant helpers, `hstring` hashing, and
+generated engine value-type adapters.
 
-Treat these files as engine library code. Game-specific script modules should live in the embedding project instead of expanding the engine core script library with project policy.
-
-Managed CoreScripts provide the equivalent reusable runtime surface where needed. In particular, managed
-`Math.cs` and `Time.cs` mirror the shared `FOnline.Math` / `FOnline.Time` helpers, including normalized angle
-delta and bisector calculations; backend-specific implementations must preserve the same units and wrap rules.
-Managed `Input.cs` sizes its keyboard and mouse state arrays before publishing any event subscription, so an
-input callback can never observe partially initialized core-script state. Its `GetKeyPressed()` and
-`GetMousePressed()` methods return snapshots, matching AngelScript array value semantics and preventing GUI
-consumers from clearing the live input state through an aliased `List<bool>`.
+Higher-level facilities such as GUI widgets and input state, color/math/time helpers, sprite composition, line
+tracing, serialization, tweening, reflection conveniences, and generic AngelScript-compatibility collection or
+string helpers belong to the embedding project. They may retain the `FOnline` namespace when that is part of the
+project's public script API, but that namespace does not make them engine-owned.
 
 ## Build and baking flow
 

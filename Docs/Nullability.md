@@ -352,15 +352,25 @@ The flag is parsed in [../Source/Common/Properties.cpp](../Source/Common/Propert
 
 For a **`Mutable`** nullable handle property the **setter** parameter is registered nullable too (`@?+`), matching the getter — see the `set_handle_str` branch in [AngelScriptEntity.cpp](../Source/Scripting/AngelScript/AngelScriptEntity.cpp). This is load-bearing, not cosmetic: AngelScript derives a virtual property's static type from the **setter parameter** whenever a setter exists (only getter-only / read-only properties fall back to the getter's return type — see `FindPropertyAccessor` in `as_compiler.cpp`). A non-nullable setter parameter alongside an `@?` getter would make `T? local = obj.MutableNullableProp` read as a *non-nullable* handle and wrongly trip the redundant-`?` warning (#3) — while `T local = obj.MutableNullableProp` (no `?`) still errors via the getter's nullable return — leaving the read with no warning-free spelling. Keeping the setter parameter nullable resolves both spellings consistently.
 
-### The `verify` macro
+### Always-on script invariants
 
-`verify(cond, message, ...)` is a variadic preprocessor macro defined in [Core.fos](../Source/Scripting/AngelScript/CoreScripts/Core.fos) (visible in every `.fos` module, like all `Core.fos` `#define`s):
+The engine no longer bundles an AngelScript CoreScripts library. Instead, the AngelScript backend registers the
+conventional variadic `verify(cond, message, ...)` macro programmatically in every fresh preprocessing context:
 
 ```
 #define verify(cond, ...) if (!(cond)) throw(__VA_ARGS__)
 ```
 
-It states an **invariant**: a condition that holds whenever our own code - server logic *and* our client - behaves correctly. A failure means a bug, so it throws. Crucially these checks run in **every** configuration; there is no `NDEBUG`-style strip, so they are always the runtime guard, never a debug-only check. (The name is `verify`, not `assert`, precisely to signal that — C's `assert` connotes a debug-only check that is compiled out in release, which would be dangerous here.)
+Embedding projects can therefore use `verify` in any `.fos` module without including or supplying a core script.
+
+The managed backend supplies the equivalent engine-owned `Game.Verify` helper in
+`Source/Scripting/Managed/CoreScripts/Verify.cs`; its condition is annotated with
+`[DoesNotReturnIf(false)]` so C# nullable flow analysis narrows a proved value. Both forms state an **invariant**:
+a condition that holds whenever our own code - server logic *and* our client - behaves correctly. A failure means
+a bug, so it throws. Crucially these checks run in **every** configuration; there is no `NDEBUG`-style strip, so
+they are always the runtime guard, never a debug-only check. (The name is `verify`, not `assert`, precisely to
+signal that — C's `assert` connotes a debug-only check that is compiled out in release, which would be dangerous
+here.)
 
 #### Verify vs. graceful recovery
 

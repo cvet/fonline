@@ -579,6 +579,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     auto preprocessor_context = make_unique_del_ptr(make_ptr(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
 
     Preprocessor::UndefAll(preprocessor_context.get());
+    Preprocessor::Define(preprocessor_context.get(), "verify #(cond, ...) if (!(cond)) throw(__VA_ARGS__)");
 
     switch (_meta->GetSide()) {
     case EngineSideKind::ServerSide:

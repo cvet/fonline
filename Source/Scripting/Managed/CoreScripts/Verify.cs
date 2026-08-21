@@ -6,11 +6,8 @@
 
 namespace FOnline
 {
-    // Managed equivalent of the always-on AngelScript `verify(cond, message[, ...args])` macro
-    // (Engine/Source/Scripting/AngelScript/CoreScripts/Core.fos): an invariant check that throws when the
-    // condition is false, never stripped in any build. The AngelScript macro expands to `throw(message, args...)`
-    // (AngelScriptGlobals.cpp Global_ThrowException -> ScriptException), whose message is the message followed by
-    // one "\n- <arg>" line per context value (ExceptionHandling.h). A thrown managed exception is caught by
+    // Always-on managed invariant checks use the engine exception layout: the message followed by one
+    // "\n- <arg>" line per context value. A thrown managed exception is caught by
     // Native.InvokeEvent, logged via Native.Log, and converts the event to StopChain -- mirroring AngelScript's
     // "violated verify => logged, chain stopped" behavior, so no new native binding is needed.
     //
