@@ -1158,7 +1158,7 @@ static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton
             throw ModelAnimationRuntimeException("Ozz skeleton has an invalid name for joint", context, joint);
         }
 
-        ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, joint), numeric_cast<size_t>(joint), context);
+        ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointRestPoseLocalSpace(skeleton, joint), numeric_cast<size_t>(joint), context);
     }
 }
 
@@ -1200,7 +1200,7 @@ static void ValidateModelAnimationRuntimeRestPose(const ModelAnimationRuntimeJoi
 {
     FO_STACK_TRACE_ENTRY();
 
-    mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, numeric_cast<int>(canonical_index)));
+    mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointRestPoseLocalSpace(skeleton, numeric_cast<int>(canonical_index)));
 
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {

@@ -26,9 +26,9 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * meshoptimizer - [v1.2](https://github.com/zeux/meshoptimizer/releases/tag/v1.2)
 * mongo-c-driver - [mongo-c-driver-2.4.0](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.6](https://xiph.org/ogg)
-* ozz-animation - [0.16.0](https://github.com/guillaumeblanc/ozz-animation/releases/tag/0.16.0), with the exact upstream revision and pruning list recorded in its manifest
+* ozz-animation - [0.17.0](https://github.com/guillaumeblanc/ozz-animation/releases/tag/0.17.0)
 * rpmalloc - [rpmalloc-2.0.1](https://github.com/mjansson/rpmalloc)
-* sqlite - [sqlite-amalgamation-3.48.0](https://sqlite.org), public domain
+* sqlite - [sqlite-amalgamation-3.48.0](https://sqlite.org)
 * ufbx - [ufbx-0.23.0](https://github.com/ufbx/ufbx)
 * unordered_dense - [unordered_dense-4.8.1](https://github.com/martinus/unordered_dense)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
