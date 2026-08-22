@@ -207,6 +207,8 @@ FIXED_SETTING(int32_t, Render, WalkAnimBaseSpeed, 60); // Walk animation base sp
 FIXED_SETTING(int32_t, Render, RunAnimStartSpeed, 80); // Run animation start speed
 FIXED_SETTING(int32_t, Render, RunAnimBaseSpeed, 120); // Run animation base speed
 FIXED_SETTING(float32_t, Render, ModelProjFactor, 40.0f); // Screen px per 3D world unit (1 unit = 1 hex = 1 m); scales 3D models and in-scene particles
+FIXED_SETTING(int32_t, Render, ModelSpriteMaxTextureWidth, 2048); // Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped
+FIXED_SETTING(int32_t, Render, ModelSpriteMaxTextureHeight, 2048); // Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 FIXED_SETTING(bool, Render, ModelDirectDraw, false); // If true, map 3D models render directly into the scene depth buffer; otherwise they render as cached atlas sprites
 FIXED_SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the per-map scene depth range; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
 FIXED_SETTING(int32_t, Render, EggEllipseWidthExt, 0); // Transparency egg ellipse extra width in pixels added to logical sprite/view width

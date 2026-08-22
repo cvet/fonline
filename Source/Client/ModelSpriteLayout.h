@@ -34,6 +34,8 @@
 #pragma once
 
 #include "Common.h"
+
+#include "Application.h"
 #include "ModelBounds.h"
 
 #if FO_ENABLE_3D
@@ -41,12 +43,15 @@
 FO_BEGIN_NAMESPACE
 
 constexpr int32_t MODEL_SPRITE_FRAME_SCALE = 2;
-constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION = 2048;
+
+// Bake-host MAX_ATLAS_WIDTH is not the game device. MIN_ATLAS_SIZE is the portable GPU floor, and the model renders at 2x
+constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION = AppRender::MIN_ATLAS_SIZE / MODEL_SPRITE_FRAME_SCALE;
 
 // Frame size keys the intermediate render-target cache, so it is quantized to this grid: an envelope that
 // breathed with the animation missed that cache and created a GPU texture mid-frame
 constexpr int32_t MODEL_SPRITE_FRAME_ALIGNMENT = 16;
 static_assert(MODEL_SPRITE_FRAME_ALIGNMENT % MODEL_SPRITE_FRAME_SCALE == 0, "Frame alignment must keep frames aligned to the frame scale");
+static_assert(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION % MODEL_SPRITE_FRAME_ALIGNMENT == 0, "Portable logical frame cap must stay on the frame grid");
 
 struct ModelSpriteLayout
 {
@@ -83,11 +88,13 @@ struct ModelSpriteFramePlacement
     ipos32 Pivot {};
 };
 
-auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y) -> optional<isize32>;
+auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, bool clamp_to_max_frame = false, isize32 max_logical_frame = {}) -> optional<isize32>;
 auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, ipos32 current_pivot, float32_t guard_padding, isize32 minimum_size) -> optional<ModelSpriteFramePlacement>;
 auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpriteFramePlacement required) -> optional<ModelSpriteFramePlacement>;
-auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>;
-auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor) -> ModelBounds3D;
+auto ResolveModelSpriteMaxLogicalFrame(int32_t max_texture_width, int32_t max_texture_height, int32_t device_atlas_width, int32_t device_atlas_height) -> isize32;
+auto ClampModelSpriteFramePlacement(ModelSpriteFramePlacement placement, isize32 max_logical_frame) -> ModelSpriteFramePlacement;
+auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow, bool clamp_to_max_frame = false, isize32 max_logical_frame = {}) -> optional<ModelSpriteLayout>;
+auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, isize32 max_logical_frame = {}) -> ModelBounds3D;
 
 FO_END_NAMESPACE
 
