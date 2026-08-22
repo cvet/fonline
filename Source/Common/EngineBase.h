@@ -182,8 +182,12 @@ public:
     virtual void RunScriptContext(const function<void()>& callback);
 
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
-    void SetRemoteCallHandler(hstring name, RemoteCallHandler handler);
+    [[nodiscard]] auto HasRemoteCallHandler(hstring name) const -> bool;
+    void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
+    // Dispatch an inbound remote call to its registered handler. Normally invoked by the derived engine when a call
+    // arrives over the network; also callable in-process (e.g
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;
@@ -196,7 +200,6 @@ protected:
     ~BaseEngine() override = default;
 
     virtual void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) { ignore_unused(name, caller, data); } // Managed by derived class
-    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data); // Called by derived class
 
 private:
     refcount_ptr<ScriptImGui> _imgui;

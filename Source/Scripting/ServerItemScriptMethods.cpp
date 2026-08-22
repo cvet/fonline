@@ -71,7 +71,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 
 // SyncScope: requires self; creates and attaches a new inner item under the container cover
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t count, any_t stackId = any_t {})
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t count, any_t stackId = any_t {})
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
@@ -86,7 +86,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t
 
 // SyncScope: requires self; creates and attaches a new inner item under the container cover
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, int32_t count, any_t stackId = any_t {})
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, int32_t count, any_t stackId = any_t {})
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
@@ -101,7 +101,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto
 
 // SyncScope: requires self; returns inner item handles covered by self while the cover remains
 ///@ ExportMethod
-FO_SCRIPT_API vector<ptr<Item>> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
+FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
 {
     vector<ptr<Item>> items = self->GetInnerItems(stackId);
 

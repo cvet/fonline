@@ -255,6 +255,28 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("Present") == "value");
     }
 
+    SECTION("RuntimeSettingWritesVariableAndCustomValues")
+    {
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+
+        settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "True");
+        CHECK(settings.WindowedMouseScroll);
+        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Hex.WindowedMouseScroll")));
+
+        settings.SetRuntimeSetting("WindowedMouseScroll", "False");
+        CHECK_FALSE(settings.WindowedMouseScroll);
+        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("WindowedMouseScroll")));
+
+        settings.SetRuntimeSetting("Project.RuntimeValue", "value");
+        CHECK(settings.GetCustomSetting("Project.RuntimeValue") == "value");
+
+        const string original_game_name = settings.GameName;
+        CHECK_THROWS_AS(settings.SetRuntimeSetting("Common.GameName", "Changed"), SettingsException);
+        CHECK(settings.GameName == original_game_name);
+        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Common.GameName")));
+    }
+
     SECTION("BakingModeSaveReturnsAppliedSettings")
     {
         GlobalSettings settings {true};

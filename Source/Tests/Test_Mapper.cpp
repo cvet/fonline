@@ -103,7 +103,7 @@ namespace MapperMergeTest
     }
 
     // The inspector renders one row per index this event hands back, so with no subscriber it draws an
-    // empty panel. Listing the first properties of the entity registrator is enough to exercise the rows
+    // empty panel. Listing the first properties of the entity registrar is enough to exercise the rows
     [[Event]]
     void OnInspectorProperties(Entity entity, int[]& properties)
     {

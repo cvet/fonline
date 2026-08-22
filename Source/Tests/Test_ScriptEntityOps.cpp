@@ -1293,6 +1293,7 @@ namespace EntityOps
         CoverageTarget target = MakeCoverageGuardTarget();
         target.GetAsInt(CoverageTargetProperty::ScoreHistory);
     }
+ )" + R"(
 
     void TestCustomSetAsIntNonPlainPropertyThrows()
     {
@@ -1591,6 +1592,7 @@ namespace EntityOps
         Game.DestroyCritter(cr);
         return 0;
     }
+ )" + R"(
 
  )" + R"(
     int TestCustomEntityHolderAccessors()

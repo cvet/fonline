@@ -522,6 +522,7 @@ struct BaseTypeDesc
     bool IsSingleton {};
     bool IsFixedType {};
     bool IsEntityProto {};
+    bool IsAbstractEntity {};
     nptr<const BaseTypeDesc> EnumUnderlyingType {};
     nptr<const StructLayoutDesc> StructLayout {};
     nptr<const RefTypeDesc> RefType {};
@@ -549,12 +550,20 @@ struct ComplexTypeDesc
     bool IsMutable {};
 };
 
+// Synchronization-cover markers for script exports. Both expand to nothing: the compiler never sees them, codegen
+// does
+#define FO_REQUIRES_COVER
+#define FO_PROVIDES_COVER
+
 struct ArgDesc
 {
     string Name {};
     ComplexTypeDesc Type {};
     bool Nullable {};
     string DefaultValue {};
+
+    // The caller must already hold synchronization cover for this argument
+    bool RequiresCover {};
 };
 
 struct FieldDesc
@@ -580,6 +589,10 @@ struct MethodDesc
     bool PassOwnership {};
     bool ReturnNullable {};
     bool Async {};
+
+    // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the receiver's
+    // cover already covers them. Declared with FO_PROVIDES_COVER before the return type
+    bool ReturnProvidesCover {};
 };
 
 struct StructLayoutDesc

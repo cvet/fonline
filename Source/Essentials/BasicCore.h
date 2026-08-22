@@ -80,6 +80,8 @@
 #include <fstream>
 #include <functional>
 #include <future>
+#include <initializer_list>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <limits>

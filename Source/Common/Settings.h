@@ -117,6 +117,7 @@ public:
     void ApplyAutoSettings();
     void CopyFrom(const GlobalSettings& other);
     void SetCustomSetting(string_view name, any_t value);
+    void SetRuntimeSetting(const string& name, const string& value);
     void Draw(bool editable);
 
 private:

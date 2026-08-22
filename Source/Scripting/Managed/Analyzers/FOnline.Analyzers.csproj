@@ -1,0 +1,39 @@
+<!--
+  Roslyn analyzers for managed FOnline scripts. Built as netstandard2.0 because that is what the C#
+  compiler loads analyzers as, regardless of the target framework of the code being analyzed.
+
+  The Microsoft.CodeAnalysis.CSharp version is deliberately BELOW the one shipped in the SDK that runs
+  the build: an analyzer may be older than the host compiler, never newer. Raising it past the host's
+  Roslyn makes every analyzed project fail to load the analyzer at all.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>false</ImplicitUsings>
+    <!-- The script build invokes this project with its own Configuration (Server/Client/Mapper), which
+         produces a second obj/<Config> tree. Listing sources explicitly instead of globbing keeps those
+         generated AssemblyInfo files out of the compilation; globbing picks them up and every attribute
+         collides (CS0579). -->
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="SyncCoverAnalyzer.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- RS2008 requires every diagnostic id to be tracked; these double as the rule changelog. -->
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

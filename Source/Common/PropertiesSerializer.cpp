@@ -105,14 +105,11 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
         }
 
         try {
-            // Find property
-            auto prop = props->GetRegistrar()->FindProperty(doc_key);
+            // Find property, migrating an obsolete stored name onto its replacement
+            auto prop = props->GetRegistrar()->FindPersistedProperty(doc_key);
 
             if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
-            }
-            else {
-                // WriteLog(LogType::Warning, "Skip unknown property {}", key);
             }
         }
         catch (const std::exception& ex) {
@@ -1303,7 +1300,7 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     Properties field_props(fields_registrar);
 
     for (auto&& [field_name, field_value] : dict) {
-        auto field_prop = fields_registrar->FindProperty(field_name);
+        auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
@@ -1336,7 +1333,7 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
 
     for (size_t i = 0; i < fields_arr.Size(); i += 2) {
         string_view field_name = fields_arr[i].AsString();
-        auto field_prop = fields_registrar->FindProperty(field_name);
+        auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);

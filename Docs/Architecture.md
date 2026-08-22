@@ -14,7 +14,7 @@ The main layers are:
 - **Client runtime** — presentation/resource/network-client side in `Source/Client/`.
 - **Server runtime** — authoritative world, managers, database backends, network-server side, and updater backend in `Source/Server/`.
 - **Frontend** — application/window/rendering abstraction in `Source/Frontend/`.
-- **Scripting** — AngelScript, Native, Mono, and script method registration in `Source/Scripting/`.
+- **Scripting** — AngelScript, Native, Managed, and script method registration in `Source/Scripting/`.
 - **Tools** — baker, Mapper-centered editing, asset processors, and related developer tooling in `Source/Tools/`.
 - **BuildTools** — CMake stages, helpers, toolchains, platform project generation, package layout, and validation support in `BuildTools/`.
 
@@ -25,7 +25,7 @@ The main layers are:
 - `ClientApp.cpp` and `ClientLib.cpp` for client host/runtime flows.
 - `ServerApp.cpp`, `ServerDaemonApp.cpp`, `ServerHeadlessApp.cpp`, and `ServerServiceApp.cpp` for server variants.
 - `MapperApp.cpp` for the central interactive editing tool.
-- `BakerApp.cpp` and `ASCompilerApp.cpp` for generation/build support.
+- `BakerApp.cpp`, `ASCompilerApp.cpp`, and `ManagedScriptBakerApp.cpp` for generation/build support.
 - `TestingApp.cpp` for test execution.
 
 `BuildTools/cmake/stages/Applications.cmake` wires these files into project-specific targets based on build options such as client/server/tool/platform/library modes. Avoid hard-coding target names in engine docs: target names are often derived from the embedding project's `FO_DEV_NAME` and presets.
@@ -88,7 +88,7 @@ Platform workflow docs:
 
 - `Source/Scripting/AngelScript/`
 - `Source/Scripting/Native/`
-- `Source/Scripting/Mono/`
+- `Source/Scripting/Managed/`
 - `Source/Scripting/*ScriptMethods.cpp`
 
 The engine owns the reusable script/native bridge. A game project owns concrete game script modules and gameplay logic.

@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#if FO_ANGELSCRIPT_SCRIPTING
 
 #include "Baker.h"
 #include "FileSystem.h"
@@ -63,5 +62,3 @@ public:
 };
 
 FO_END_NAMESPACE
-
-#endif

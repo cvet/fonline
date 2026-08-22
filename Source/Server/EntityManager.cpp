@@ -1543,6 +1543,12 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
     auto holder_ref = holder.hold_ref();
     ignore_unused(holder_ref);
 
+    nptr<ServerEntity> server_holder = holder.dyn_cast<ServerEntity>();
+
+    if (server_holder) {
+        EnsureEntitySynced(server_holder);
+    }
+
     FO_VERIFY_AND_THROW(_engine->GetEntityType(holder->GetTypeName()).HolderEntries.count(entry), "Holder entity type has no custom inner entry with the requested name", holder->GetTypeName(), holder->GetId(), entry);
 
     hstring type_name = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
