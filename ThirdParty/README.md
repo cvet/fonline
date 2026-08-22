@@ -28,7 +28,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * ogg - [libogg-1.3.6](https://xiph.org/ogg)
 * ozz-animation - [0.17.0](https://github.com/guillaumeblanc/ozz-animation/releases/tag/0.17.0)
 * rpmalloc - [rpmalloc-2.0.1](https://github.com/mjansson/rpmalloc)
-* sqlite - [sqlite-amalgamation-3.48.0](https://sqlite.org)
+* sqlite - [sqlite-amalgamation-3.53.4](https://sqlite.org)
 * ufbx - [ufbx-0.23.0](https://github.com/ufbx/ufbx)
 * unordered_dense - [unordered_dense-4.8.1](https://github.com/martinus/unordered_dense)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
