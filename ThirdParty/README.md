@@ -30,7 +30,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * rpmalloc - [rpmalloc-2.0.1](https://github.com/mjansson/rpmalloc)
 * sqlite - [sqlite-amalgamation-3.53.4](https://sqlite.org)
 * ufbx - [ufbx-0.23.0](https://github.com/ufbx/ufbx)
-* unordered_dense - [unordered_dense-4.8.1](https://github.com/martinus/unordered_dense)
+* unordered_dense - [unordered_dense-4.9.2](https://github.com/martinus/unordered_dense)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
 * zlib - [zlib-1.3.2](https://www.zlib.net)
 
