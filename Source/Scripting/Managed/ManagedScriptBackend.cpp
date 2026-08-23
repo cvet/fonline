@@ -1450,12 +1450,11 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
         }
         ref_type_owners_reconciled = true;
     };
-    auto reconcile_ref_type_owners_on_exit =
-        scope_exit([&]() noexcept {
-            if (!ref_type_owners_reconciled) {
-                reconcile_ref_type_owners();
-            }
-        });
+    auto reconcile_ref_type_owners_on_exit = scope_exit([&]() noexcept {
+        if (!ref_type_owners_reconciled) {
+            reconcile_ref_type_owners();
+        }
+    });
 
     const auto result = entity->FireEvent(event_name_str, call);
     reconcile_ref_type_owners();
@@ -1861,12 +1860,11 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
         }
         ref_type_owners_reconciled = true;
     };
-    auto reconcile_ref_type_owners_on_exit =
-        scope_exit([&]() noexcept {
-            if (!ref_type_owners_reconciled) {
-                reconcile_ref_type_owners();
-            }
-        });
+    auto reconcile_ref_type_owners_on_exit = scope_exit([&]() noexcept {
+        if (!ref_type_owners_reconciled) {
+            reconcile_ref_type_owners();
+        }
+    });
 
     method->Call(call);
     reconcile_ref_type_owners();
@@ -2026,12 +2024,11 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
             }
             ref_type_owners_reconciled = true;
         };
-        auto reconcile_ref_type_owners_on_exit =
-            scope_exit([&]() noexcept {
-                if (!ref_type_owners_reconciled) {
-                    reconcile_ref_type_owners();
-                }
-            });
+        auto reconcile_ref_type_owners_on_exit = scope_exit([&]() noexcept {
+            if (!ref_type_owners_reconciled) {
+                reconcile_ref_type_owners();
+            }
+        });
 
         if (is_result_call) {
             if (func_desc->Ret.Kind == ComplexTypeKind::Simple) {
@@ -4016,7 +4013,15 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
     }
     if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
         nptr<Entity> entity = *static_cast<Entity**>(data);
-        return CreateEntityObject(backend, base_type.Name, entity);
+        string managed_type_name = base_type.Name;
+
+        // Preserve the concrete runtime type when boxing an abstract entity argument
+        if (entity && base_type.IsAbstractEntity) {
+            const string entity_type_name = string(entity->GetTypeName());
+            managed_type_name = entity.dyn_cast<const ProtoEntity>() ? strex("Proto{}", entity_type_name).str() : entity_type_name;
+        }
+
+        return CreateEntityObject(backend, managed_type_name, entity);
     }
     if (base_type.IsRefType) {
         void* ref_ptr = *static_cast<void**>(data);
