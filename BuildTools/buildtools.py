@@ -1180,7 +1180,11 @@ def make_output_path_cmake_args(output_path: str, binary_output_postfix: str = '
 
 
 def make_toolset_cmake_args(output_path: str, config_name: str | None = None, binary_output_postfix: str = '') -> list[str]:
-	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *build_flag_args('toolset', config=config_name)]
+	# The baker belongs to every scripting backend, while ASCompiler only exists when the
+	# embedding project enables AngelScript. Leave FO_BUILD_ASCOMPILER to the project's
+	# SetOptionValues default instead of overriding managed-only projects with an invalid pair
+	toolset_args = [arg for arg in build_flag_args('toolset', config=config_name) if not arg.startswith('-DFO_BUILD_ASCOMPILER=')]
+	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *toolset_args]
 
 
 def prepare_toolset_workspace(env: Mapping[str, str]) -> None:

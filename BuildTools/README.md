@@ -163,6 +163,10 @@ python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten and
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
 ```
 
+The `toolset` workspace always enables the baker and disables runtime applications and tests. It leaves
+`FO_BUILD_ASCOMPILER` to the embedding project's `SetOptionValues` default, so AngelScript projects can
+prepare their compiler while managed-only projects do not receive an incompatible forced override.
+
 `msan-libcxx` is Linux-only and intentionally excluded from the default `all`
 workspace feature because it downloads matching LLVM sources and builds
 `libc++`, `libc++abi`, and `libunwind` with MemorySanitizer instrumentation. The
