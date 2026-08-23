@@ -2544,20 +2544,29 @@ void ModelInstance::RefreshFrameLayout()
 
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->ModelSpriteMaxTextureWidth, _modelMngr->_settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     optional<ModelBounds3D> active_bounds = CollectActiveAnimationBounds();
     const ModelBounds3D& draw_bounds = active_bounds ? *active_bounds : _modelInfo->_modelBounds;
-    optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled);
+    optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled, true, max_logical_frame);
     FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
     _layoutDrawSize = draw_layout->DrawSize;
     _drawRect = draw_layout->DrawRect;
 
-    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(_modelInfo->_modelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
-    FO_STRONG_ASSERT(lighting_layout, "Model sprite lighting layout could not be calculated", _modelInfo->_fileName);
+    // Lighting uses the aggregate envelope, not the current clip. A zoom that misses the texture cap is cropped to
+    // that cap rather than terminating, so what is left here is bounds the bake gate already rejects
+    const ModelBounds3D& lighting_bounds = _modelInfo->_modelBounds;
+    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(lighting_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false, true, max_logical_frame);
+    FO_STRONG_ASSERT(lighting_layout, "Model sprite lighting layout could not be calculated", _modelInfo->_fileName, lighting_bounds.Min.x, lighting_bounds.Min.y, lighting_bounds.Min.z, lighting_bounds.Max.x, lighting_bounds.Max.y, lighting_bounds.Max.z);
     _lightingDrawSize = lighting_layout->DrawSize;
 
-    // The model origin sits at its real projected position inside the tight frame (top-left of the draw rect is
-    // the frame's top-left), not at a fixed quarter fraction
+    // Origin is the projected root inside the tight frame. A tight frame may legitimately lie entirely on one side of
+    // that root, so the anchor stays signed; only a texture-cap crop pulls it back onto the smaller scratch RT
     ipos32 frame_pivot = {-_drawRect.x, -_drawRect.y};
+
+    if (_layoutDrawSize.width < _drawRect.width || _layoutDrawSize.height < _drawRect.height) {
+        frame_pivot.x = std::clamp(frame_pivot.x, 0, _layoutDrawSize.width);
+        frame_pivot.y = std::clamp(frame_pivot.y, 0, _layoutDrawSize.height);
+    }
 
     if (_frameSize.width != _layoutDrawSize.width * FRAME_SCALE || _frameSize.height != _layoutDrawSize.height * FRAME_SCALE) {
         SetupFrame(_layoutDrawSize, frame_pivot);
@@ -2634,9 +2643,10 @@ void ModelInstance::RefreshConfigurationLayout()
 
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
-    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(*_configurationModelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
-    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, CollectActiveAnimationBounds(), post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor);
-    optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(view_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->ModelSpriteMaxTextureWidth, _modelMngr->_settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(*_configurationModelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false, true, max_logical_frame);
+    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, CollectActiveAnimationBounds(), post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, max_logical_frame);
+    optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(view_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false, true, max_logical_frame);
 
     if (!lighting_layout || !view_layout) {
         return;

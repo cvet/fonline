@@ -654,8 +654,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     io.Fonts->TexDesiredFormat = ImTextureFormat_RGBA32;
     io.Fonts->TexMinWidth = Settings.ImGuiFontTextureSize;
     io.Fonts->TexMinHeight = Settings.ImGuiFontTextureSize;
-    io.Fonts->TexMaxWidth = AppRender::MAX_ATLAS_SIZE;
-    io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_SIZE;
+    io.Fonts->TexMaxWidth = AppRender::MAX_ATLAS_WIDTH;
+    io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_HEIGHT;
 
     // Default effect
     FileSystem base_fs;

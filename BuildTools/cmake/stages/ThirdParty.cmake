@@ -709,6 +709,12 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     SetCacheValues(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore")
     SetCacheValues(AS_DISABLE_INSTALL ON)
     AddSubdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    # Nested AngelScript project() leaves CMAKE_CL_64 unset, so its MASM trampoline never joins the target.
+    # Attach it from the parent on MSVC x64; without it LF_Baker fails to link CallX64
+    if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+        enable_language(ASM_MASM)
+        target_sources(AngelScriptCore PRIVATE "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/source/as_callfunc_x64_msvc_asm.asm")
+    endif()
     TargetCompileDefinitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
     TargetCompileDefinitions(AngelScriptCore PUBLIC AS_MODERN_THREADS)
     TargetCompileDefinitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)

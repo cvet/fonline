@@ -148,6 +148,7 @@ FIXED_SETTING(bool, View, HideNativeCursor, false); // If true, native cursor is
 FIXED_SETTING(int32_t, View, FadingDuration, 1000); // Fading duration in milliseconds
 FIXED_SETTING(bool, View, MapZoomEnabled); // Map view zooming
 FIXED_SETTING(bool, View, MapDirectDraw); // Draw map directly to main framebuffer (speed up rendering but disables zooming and make scrolling jumpy)
+FIXED_SETTING(float32_t, View, MapRenderTargetScale, 1.0f); // Fixed map/light/indoor-mask render-target scale relative to the logical screen; clamped to the device texture limit
 FIXED_SETTING(bool, View, DisableLighting); // Disables lighting for more performance
 FIXED_SETTING(bool, View, DisableFog); // Disables fog for more performance
 FIXED_SETTING(vector<int32_t>, View, GlobalDayColorTime, 300, 600, 1140, 1380); // Project-wide default DayColorTime in minutes (4 keys); maps may override per-map via Map.DayColorTime
@@ -216,6 +217,8 @@ FIXED_SETTING(int32_t, Render, WalkAnimBaseSpeed, 60); // Walk animation base sp
 FIXED_SETTING(int32_t, Render, RunAnimStartSpeed, 80); // Run animation start speed
 FIXED_SETTING(int32_t, Render, RunAnimBaseSpeed, 120); // Run animation base speed
 FIXED_SETTING(float32_t, Render, ModelProjFactor, 40.0f); // Screen px per 3D world unit (1 unit = 1 hex = 1 m); scales 3D models and in-scene particles
+FIXED_SETTING(int32_t, Render, ModelSpriteMaxTextureWidth, 2048); // Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped
+FIXED_SETTING(int32_t, Render, ModelSpriteMaxTextureHeight, 2048); // Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 FIXED_SETTING(bool, Render, ModelDirectDraw, false); // If true, map 3D models render directly into the scene depth buffer; otherwise they render as cached atlas sprites
 FIXED_SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the per-map scene depth range; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
 FIXED_SETTING(int32_t, Render, EggEllipseWidthExt, 0); // Transparency egg ellipse extra width in pixels added to logical sprite/view width

@@ -50,7 +50,7 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ENABLE_3D
 
-static void WriteTestModelBone(DataWriter& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names)
+static void WriteTestModelBone(DataWriter& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names, float32_t vertex_scale = 1.0f)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -63,9 +63,9 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
 
     if (attached_mesh) {
         array<ModelMeshVertexData, 3> vertices {};
-        vertices[0].Position = vec3 {-0.5f, 0.0f, 0.0f};
-        vertices[1].Position = vec3 {0.5f, 0.0f, 0.0f};
-        vertices[2].Position = vec3 {0.0f, 1.0f, 0.0f};
+        vertices[0].Position = vec3 {-0.5f, 0.0f, 0.0f} * vertex_scale;
+        vertices[1].Position = vec3 {0.5f, 0.0f, 0.0f} * vertex_scale;
+        vertices[2].Position = vec3 {0.0f, 1.0f, 0.0f} * vertex_scale;
 
         for (ModelMeshVertexData& vertex : vertices) {
             vertex.BlendWeights[0] = 1.0f;
@@ -277,14 +277,14 @@ static void AddTestModelSource(BakerTests::TestRig& rig, const ModelSourceAsset&
     rig.AddSourceFile(asset.FileName, WriteTestModelSourceFixture(asset), write_time);
 }
 
-static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}) -> vector<uint8_t>
+static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}, float32_t vertex_scale = 1.0f) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
     DataWriter writer {data};
     WriteModelMeshHeader(writer);
-    WriteTestModelBone(writer, root_bone, attached_mesh, diffuse_texture, skin_bone_names);
+    WriteTestModelBone(writer, root_bone, attached_mesh, diffuse_texture, skin_bone_names, vertex_scale);
     return data;
 }
 
@@ -430,22 +430,22 @@ static void AddModelInfoMetadata(BakerTests::TestRig& rig)
     rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
 }
 
-static void BakeModelInfoFiles(BakerTests::TestRig& rig)
+static void BakeModelInfoFiles(BakerTests::TestRig& rig, string_view target_path = {})
 {
     FO_STACK_TRACE_ENTRY();
 
     ModelInfoBaker info_baker(rig.MakeContext(), LoadTestModelSourceFixture);
-    info_baker.BakeFiles(rig.GetAllSourceFiles(), "");
+    info_baker.BakeFiles(rig.GetAllSourceFiles(), target_path);
 }
 
-static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig) -> string
+static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig, string_view target_path = {}) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<string> captured_messages;
     SetLogCallback("model-info-animation-geometry-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
     auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-info-animation-geometry-test", {}); });
-    CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
+    CHECK_THROWS_AS(BakeModelInfoFiles(rig, target_path), ModelInfoBakerException);
 
     auto diagnostic = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Model description baking error:") != string::npos; });
     REQUIRE(diagnostic != captured_messages.end());
@@ -1915,6 +1915,46 @@ TEST_CASE("ModelInfoBakerValidations")
 
         CHECK_NOTHROW(BakeModelInfoFiles(rig));
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
+    }
+
+    SECTION("Rejects a root model whose aggregate bounds leave the authored world extent")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        OverrideSetting(rig.Settings.ModelAttachmentMaxExtent, 2.0f);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\n", 1);
+        AddTestModelSource(rig, MakeTestModelSource("Critters/Body.fbx", "Body", {}));
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Body", true, {}, {}, 100.0f));
+
+        string diagnostic;
+        bool threw = false;
+
+        try {
+            BakeModelInfoFiles(rig);
+        }
+        catch (const ModelInfoBakerException& ex) {
+            threw = true;
+            diagnostic = ex.what();
+        }
+
+        REQUIRE(threw);
+        CHECK(diagnostic.find("Model bounds reach beyond the authored world extent") != string::npos);
+        CHECK(diagnostic.find("Critters/Test.fo3d") != string::npos);
+    }
+
+    SECTION("Rejects a targeted root model whose aggregate bounds leave the authored world extent")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        OverrideSetting(rig.Settings.ModelAttachmentMaxExtent, 2.0f);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\n", 1);
+        AddTestModelSource(rig, MakeTestModelSource("Critters/Body.fbx", "Body", {}));
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Body", true, {}, {}, 100.0f));
+
+        string diagnostic = CaptureModelInfoBakingError(rig, "Critters/Test.fo3d");
+        CHECK(diagnostic.find("Model bounds reach beyond the authored world extent") != string::npos);
+        CHECK(diagnostic.find("Critters/Test.fo3d") != string::npos);
+        CHECK(rig.Outputs.count("Critters/Test.fo3d") == 0);
     }
 
     SECTION("Rejects missing cut shapes")

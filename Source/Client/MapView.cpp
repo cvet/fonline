@@ -44,6 +44,7 @@ static constexpr int32_t LIGHT_RAW_INTENSITY_MAX = 10000;
 static constexpr int32_t LIGHT_HEX_COLOR_MAX = 200;
 static constexpr int32_t LIGHT_COLOR_CHANNEL_MAX = 255;
 static constexpr float32_t MAP_DEPTH_RANGE_MARGIN = 1000.0f;
+static constexpr isize32 MAP_RENDER_TARGET_PADDING = {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
 
 void SpritePattern::Finish()
 {
@@ -83,7 +84,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
     SetMapDayColor(ucolor {255, 255, 255, 255});
     SetGlobalDayColor(ucolor {255, 255, 255, 255});
 
-    isize32 map_rt_size = isize32(_screenSize.width + GameSettings::MAP_HEX_WIDTH, _screenSize.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
+    isize32 map_rt_size = CalculateMapRenderTargetSize();
 
     if (!_engine->Settings->MapDirectDraw) {
         _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(true, map_rt_size, true);
@@ -479,6 +480,27 @@ auto MapView::GetViewSize() const -> isize32
     int32_t view_hexes_height = is_float_equal(zoom, 1.0f) ? screen_hexes_height : iround<int32_t>(std::ceil(numeric_cast<float32_t>(screen_hexes_height) / zoom));
 
     return {view_hexes_width, view_hexes_height};
+}
+
+auto MapView::CalculateMapRenderTargetSize() const noexcept -> isize32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    float32_t map_rt_scale = std::max(_engine->Settings->MapRenderTargetScale, 1.0f);
+    isize32 requested_size = {
+        iround<int32_t>(std::ceil(numeric_cast<float32_t>(_screenSize.width) * map_rt_scale)) + MAP_RENDER_TARGET_PADDING.width,
+        iround<int32_t>(std::ceil(numeric_cast<float32_t>(_screenSize.height) * map_rt_scale)) + MAP_RENDER_TARGET_PADDING.height,
+    };
+    isize32 actual_size = {
+        std::min(requested_size.width, AppRender::MAX_ATLAS_WIDTH),
+        std::min(requested_size.height, AppRender::MAX_ATLAS_HEIGHT),
+    };
+
+    if (actual_size != requested_size) {
+        WriteLog(LogType::Warning, "Map render target size {}x{} requested by View.MapRenderTargetScale {} is not supported; using {}x{}", requested_size.width, requested_size.height, map_rt_scale, actual_size.width, actual_size.height);
+    }
+
+    return actual_size;
 }
 
 void MapView::AddItemToField(ptr<ItemHexView> item)
@@ -2480,12 +2502,14 @@ void MapView::DrawMap()
     _mapSprites.SortIfNeeded();
     _indoorMaskSprites.SortIfNeeded();
 
-    // Draw by parts if view size too big
+    // Draw by parts only when the visible world extent exceeds the fixed map render target
     fsize32 screen_size = fsize32(_screenSize);
     fpos32 draw_scale = {screen_size.width / _viewSize.width, screen_size.height / _viewSize.height};
-    int32_t steps_width = iround<int32_t>(std::ceil(1.0f / draw_scale.x));
-    int32_t steps_height = iround<int32_t>(std::ceil(1.0f / draw_scale.y));
     bool direct_draw = _engine->Settings->MapDirectDraw;
+    isize32 render_chunk_size = direct_draw ? _screenSize : _rtMap->GetSize() - MAP_RENDER_TARGET_PADDING;
+    fsize32 render_chunk_size_f = fsize32(render_chunk_size);
+    int32_t steps_width = direct_draw ? 1 : iround<int32_t>(std::ceil(_viewSize.width / render_chunk_size_f.width));
+    int32_t steps_height = direct_draw ? 1 : iround<int32_t>(std::ceil(_viewSize.height / render_chunk_size_f.height));
 
     for (int32_t step_x = 0; step_x < steps_width; step_x++) {
         for (int32_t step_y = 0; step_y < steps_height; step_y++) {
@@ -2501,22 +2525,24 @@ void MapView::DrawMap()
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtMap);
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
 
-                int32_t draw_x = iround<int32_t>(std::floor(_scrollOffset.x)) + step_x * _screenSize.width;
-                int32_t draw_y = iround<int32_t>(std::floor(_scrollOffset.y)) + step_y * _screenSize.height;
-                int32_t draw_width = std::min(iround<int32_t>(std::ceil(_viewSize.width)) - step_x * _screenSize.width, _screenSize.width);
-                int32_t draw_height = std::min(iround<int32_t>(std::ceil(_viewSize.height)) - step_y * _screenSize.height, _screenSize.height);
+                int32_t draw_x = iround<int32_t>(std::floor(_scrollOffset.x)) + step_x * render_chunk_size.width;
+                int32_t draw_y = iround<int32_t>(std::floor(_scrollOffset.y)) + step_y * render_chunk_size.height;
+                int32_t draw_width = std::min(iround<int32_t>(std::ceil(_viewSize.width)) - step_x * render_chunk_size.width, render_chunk_size.width);
+                int32_t draw_height = std::min(iround<int32_t>(std::ceil(_viewSize.height)) - step_y * render_chunk_size.height, render_chunk_size.height);
                 draw_area = {draw_x, draw_y, draw_width, draw_height};
             }
 
             float32_t step_xf = numeric_cast<float32_t>(step_x);
             float32_t step_yf = numeric_cast<float32_t>(step_y);
+            float32_t chunk_origin_x = step_xf * render_chunk_size_f.width;
+            float32_t chunk_origin_y = step_yf * render_chunk_size_f.height;
             float32_t source_x = std::fmod(_scrollOffset.x, 1.0f);
             float32_t source_y = std::fmod(_scrollOffset.y, 1.0f);
-            float32_t source_width = std::min(_viewSize.width - step_xf * screen_size.width, screen_size.width);
-            float32_t source_height = std::min(_viewSize.height - step_yf * screen_size.height, screen_size.height);
+            float32_t source_width = std::min(_viewSize.width - chunk_origin_x, render_chunk_size_f.width);
+            float32_t source_height = std::min(_viewSize.height - chunk_origin_y, render_chunk_size_f.height);
             frect32 source_rect = {source_x, source_y, source_width, source_height};
-            int32_t target_x = iround<int32_t>(std::floor(step_xf * screen_size.width * draw_scale.x));
-            int32_t target_y = iround<int32_t>(std::floor(step_yf * screen_size.height * draw_scale.y));
+            int32_t target_x = iround<int32_t>(std::floor(chunk_origin_x * draw_scale.x));
+            int32_t target_y = iround<int32_t>(std::floor(chunk_origin_y * draw_scale.y));
             int32_t target_width = iround<int32_t>(std::ceil(source_width * draw_scale.x));
             int32_t target_height = iround<int32_t>(std::ceil(source_height * draw_scale.y));
             irect32 target_rect = {target_x, target_y, target_width, target_height};
@@ -2554,12 +2580,12 @@ void MapView::DrawMap()
                     float32_t sw_f = numeric_cast<float32_t>(_screenSize.width);
                     float32_t sh_f = numeric_cast<float32_t>(_screenSize.height);
                     auto& cam_buf = flush_light->CameraBuf = RenderEffect::CameraBuffer();
-                    cam_buf->MapAnchorScreenPos[0] = step_xf - (anchor_world.x + source_x) / sw_f;
-                    cam_buf->MapAnchorScreenPos[1] = step_yf - (anchor_world.y + source_y) / sh_f;
+                    cam_buf->MapAnchorScreenPos[0] = chunk_origin_x / sw_f - (anchor_world.x + source_x) / sw_f;
+                    cam_buf->MapAnchorScreenPos[1] = chunk_origin_y / sh_f - (anchor_world.y + source_y) / sh_f;
                     cam_buf->MapAnchorScreenPos[2] = numeric_cast<float32_t>(rt_size.width) / sw_f;
                     cam_buf->MapAnchorScreenPos[3] = numeric_cast<float32_t>(rt_size.height) / sh_f;
-                    cam_buf->ChunkScreenAnchor[0] = (step_xf - source_x / sw_f) * draw_scale.x;
-                    cam_buf->ChunkScreenAnchor[1] = (step_yf - source_y / sh_f) * draw_scale.y;
+                    cam_buf->ChunkScreenAnchor[0] = (chunk_origin_x / sw_f - source_x / sw_f) * draw_scale.x;
+                    cam_buf->ChunkScreenAnchor[1] = (chunk_origin_y / sh_f - source_y / sh_f) * draw_scale.y;
                     cam_buf->ChunkScreenAnchor[2] = cam_buf->MapAnchorScreenPos[2] * draw_scale.x;
                     cam_buf->ChunkScreenAnchor[3] = cam_buf->MapAnchorScreenPos[3] * draw_scale.y;
                 }
@@ -2621,14 +2647,14 @@ void MapView::DrawMap()
                     float32_t sw_f = numeric_cast<float32_t>(_screenSize.width);
                     float32_t sh_f = numeric_cast<float32_t>(_screenSize.height);
                     auto& cam_buf = flush_map->CameraBuf = RenderEffect::CameraBuffer();
-                    cam_buf->MapAnchorScreenPos[0] = step_xf - (anchor_world.x + source_x) / sw_f;
-                    cam_buf->MapAnchorScreenPos[1] = step_yf - (anchor_world.y + source_y) / sh_f;
+                    cam_buf->MapAnchorScreenPos[0] = chunk_origin_x / sw_f - (anchor_world.x + source_x) / sw_f;
+                    cam_buf->MapAnchorScreenPos[1] = chunk_origin_y / sh_f - (anchor_world.y + source_y) / sh_f;
                     cam_buf->MapAnchorScreenPos[2] = numeric_cast<float32_t>(rt_size.width) / sw_f;
                     cam_buf->MapAnchorScreenPos[3] = numeric_cast<float32_t>(rt_size.height) / sh_f;
                     // Screen-anchored twin of the above, for effects that must stay attached to the screen frame;
                     // it takes the same rt-vs-screen correction, and the chunk anchor backs out source_x
-                    cam_buf->ChunkScreenAnchor[0] = (step_xf - source_x / sw_f) * draw_scale.x;
-                    cam_buf->ChunkScreenAnchor[1] = (step_yf - source_y / sh_f) * draw_scale.y;
+                    cam_buf->ChunkScreenAnchor[0] = (chunk_origin_x / sw_f - source_x / sw_f) * draw_scale.x;
+                    cam_buf->ChunkScreenAnchor[1] = (chunk_origin_y / sh_f - source_y / sh_f) * draw_scale.y;
                     cam_buf->ChunkScreenAnchor[2] = cam_buf->MapAnchorScreenPos[2] * draw_scale.x;
                     cam_buf->ChunkScreenAnchor[3] = cam_buf->MapAnchorScreenPos[3] * draw_scale.y;
                 }
@@ -4056,8 +4082,8 @@ void MapView::SetScreenSize(isize32 size)
     _screenSize = size;
     _viewSize = fsize32(_screenSize) / GetSpritesZoom();
 
+    isize32 map_rt_size = CalculateMapRenderTargetSize();
     auto& rt_mngr = _engine->SprMngr.GetRtMngr();
-    isize32 map_rt_size = isize32(_screenSize.width + GameSettings::MAP_HEX_WIDTH, _screenSize.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
 
     if (_rtMap) {
         rt_mngr.ResizeRenderTarget(_rtMap, map_rt_size);
