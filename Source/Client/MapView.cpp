@@ -311,16 +311,18 @@ void MapView::LoadStaticData()
 
     auto reader = DataReader(file.GetDataSpan());
 
+    MapLoader::ReadBakedFileHeader(reader, GetProtoId());
+
     // Hashes
     {
         auto hashes_count = reader.Read<uint32_t>();
 
-        string str;
+        // Counts and sizes come from a resource file that may be stale or damaged, so every one of them is
+        // preflighted against the buffer before it drives an allocation or a loop
+        reader.VerifyPayloadCount(hashes_count, sizeof(uint32_t));
 
         for (uint32_t i = 0; i < hashes_count; i++) {
-            auto str_len = reader.Read<uint32_t>();
-            str.resize(str_len);
-            reader.ReadStringBytes(str);
+            string str = reader.ReadString();
             hstring hstr = _engine->Hashes.ToHashedString(str);
             ignore_unused(hstr);
         }
@@ -332,6 +334,8 @@ void MapView::LoadStaticData()
         auto reset_loading = scope_exit([this]() noexcept { _mapLoading = false; });
 
         auto items_count = reader.Read<uint32_t>();
+
+        reader.VerifyPayloadCount(items_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
         _items.reserve(items_count);
         _staticItems.reserve(items_count);
@@ -348,6 +352,7 @@ void MapView::LoadStaticData()
 
             auto item_props = Properties(item_proto->GetProperties()->GetRegistrar());
             auto props_data_size = reader.Read<uint32_t>();
+            reader.VerifyPayloadCount(props_data_size, sizeof(uint8_t));
             props_data.resize(props_data_size);
             span<uint8_t> props_data_span = props_data;
             reader.ReadBytes(props_data_span);

@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "MapBaker.h"
+#include "MapLoader.h"
 #include "Test_BakerHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -187,13 +188,14 @@ static void SkipBakedMapEntities(DataReader& reader, uint32_t count)
     }
 }
 
-static auto ReadBakedMapServerSummary(const vector<uint8_t>& data) -> BakedMapServerSummary
+static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapServerSummary
 {
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader {data};
     auto summary = BakedMapServerSummary {};
 
+    MapLoader::ReadBakedFileHeader(reader, map_name);
     summary.Hashes = reader.Read<uint32_t>();
     SkipBakedMapStrings(reader, summary.Hashes);
     summary.Critters = reader.Read<uint32_t>();
@@ -205,13 +207,14 @@ static auto ReadBakedMapServerSummary(const vector<uint8_t>& data) -> BakedMapSe
     return summary;
 }
 
-static auto ReadBakedMapClientSummary(const vector<uint8_t>& data) -> BakedMapClientSummary
+static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapClientSummary
 {
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader {data};
     auto summary = BakedMapClientSummary {};
 
+    MapLoader::ReadBakedFileHeader(reader, map_name);
     summary.Hashes = reader.Read<uint32_t>();
     SkipBakedMapStrings(reader, summary.Hashes);
     summary.Items = reader.Read<uint32_t>();
@@ -392,8 +395,8 @@ TEST_CASE("MapBaker")
         REQUIRE(local_rig.Outputs.contains("RichMap.fomap-bin-server"));
         REQUIRE(local_rig.Outputs.contains("RichMap.fomap-bin-client"));
 
-        auto server_summary = ReadBakedMapServerSummary(local_rig.Outputs.at("RichMap.fomap-bin-server"));
-        auto client_summary = ReadBakedMapClientSummary(local_rig.Outputs.at("RichMap.fomap-bin-client"));
+        auto server_summary = ReadBakedMapServerSummary(local_rig.Outputs.at("RichMap.fomap-bin-server"), "RichMap");
+        auto client_summary = ReadBakedMapClientSummary(local_rig.Outputs.at("RichMap.fomap-bin-client"), "RichMap");
 
         CHECK(server_summary.Hashes >= 3);
         CHECK(server_summary.Critters == 1);

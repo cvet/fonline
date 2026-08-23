@@ -679,6 +679,17 @@ that an existing image output was baked with the same mesh settings.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
+Both blobs open with a format header - `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION` from
+`Source/Common/MapLoader.h` - which `MapLoader::ReadBakedFileHeader` validates before
+`MapManager::LoadStaticMaps` and `MapView::LoadStaticData` read anything else. Without it a stale output
+would be read as element counts, because the rest of the layout is bare numbers. The hash table is written and read through the
+`DataWriter::WriteString` / `DataReader::ReadString` pair, whose length check cannot be skipped at a call
+site, and every remaining count and size is preflighted with `DataReader::VerifyPayloadCount` before it
+drives an allocation or a loop, so a damaged file raises `DataReadingException` instead of reserving
+whatever the bytes happened to say. When the
+layout changes, bump `BAKED_MAP_FILE_VERSION` and run `ForceBakeResources` in the same change: source-file
+timestamps alone cannot prove that an existing map output was baked with the current layout.
+
 `ParticleBaker` exposes only the formats whose backend is enabled at build time.
 `FO_SPARK_PARTICLES` enables text `.spark` input and generated `.spk` output;
 `FO_EFFEKSEER_PARTICLES` enables text `.efkproj` input and generated `.efk`
