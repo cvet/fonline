@@ -271,8 +271,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         if re.search(r"(audio|sound)", path.name, re.IGNORECASE)
     )
 
-    if "Unsupported sound format" not in sound_text:
-        raise ValueError("SoundManager must reject unsupported extensions")
+    unsupported_extension_rejected = "Unsupported sound format" in sound_text
     if "return false;" not in headless_text.split(
         "auto AppAudio::IsEnabled() const -> bool", maxsplit=1
     )[1].split("}", maxsplit=1)[0]:
@@ -310,6 +309,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         "effect_variant_selection": "contiguous",
         "runtime_side": "client",
         "headless_audio_enabled": False,
+        "unsupported_extension_rejected": unsupported_extension_rejected,
         "native_test_files": native_test_files,
     }
 

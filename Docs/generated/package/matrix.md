@@ -41,14 +41,14 @@ Continue with the [canonical reference](../../en/reference/packages/matrix.md).
 <a id="entry-package-platform-android-0cfd01357a"></a>
 - [`entry-package-platform-android-0cfd01357a`](../../en/reference/packages/matrix.md#entry-package-platform-android-0cfd01357a)
 
-<a id="entry-package-platform-web-c4af6ceacd"></a>
-- [`entry-package-platform-web-c4af6ceacd`](../../en/reference/packages/matrix.md#entry-package-platform-web-c4af6ceacd)
-
 <a id="entry-package-platform-macos-a9032ded5f"></a>
 - [`entry-package-platform-macos-a9032ded5f`](../../en/reference/packages/matrix.md#entry-package-platform-macos-a9032ded5f)
 
 <a id="entry-package-platform-ios-15d87c2d03"></a>
 - [`entry-package-platform-ios-15d87c2d03`](../../en/reference/packages/matrix.md#entry-package-platform-ios-15d87c2d03)
+
+<a id="entry-package-platform-web-c4af6ceacd"></a>
+- [`entry-package-platform-web-c4af6ceacd`](../../en/reference/packages/matrix.md#entry-package-platform-web-c4af6ceacd)
 
 ## Pack tokens
 

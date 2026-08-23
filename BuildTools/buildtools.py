@@ -2360,43 +2360,48 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 
 
 def create_parser() -> argparse.ArgumentParser:
-	parser = argparse.ArgumentParser(description='Shared BuildTools helpers')
+	parser = argparse.ArgumentParser(prog='buildtools.py', description='Shared BuildTools helpers')
 	subparsers = parser.add_subparsers(dest='command', required=True)
 
 	env_parser = subparsers.add_parser('env', help='resolve BuildTools environment')
-	env_parser.add_argument('--shell', choices=['bash', 'cmd', 'plain'], default='plain')
-	env_parser.add_argument('--summary', action='store_true')
-	env_parser.add_argument('--summary-only', action='store_true')
+	env_parser.add_argument('--shell', choices=['bash', 'cmd', 'plain'], default='plain', help='environment output syntax')
+	env_parser.add_argument('--summary', action='store_true', help='append the resolved environment summary')
+	env_parser.add_argument('--summary-only', action='store_true', help='print only the resolved environment summary')
 
 	build_parser = subparsers.add_parser('build', help='configure and build a target')
-	build_parser.add_argument('platform')
-	build_parser.add_argument('target')
-	build_parser.add_argument('config', nargs='?', default='Release')
+	build_parser.add_argument('platform', help='engine platform key, such as linux, win64, web, or android-arm64')
+	build_parser.add_argument('target', help='BuildTools target profile, such as client, server, baker, or unit-tests')
+	build_parser.add_argument('config', nargs='?', default='Release', help='CMake build configuration')
 
 	validate_parser = subparsers.add_parser('validate', help='configure and validate scenarios')
-	validate_parser.add_argument('names', nargs='+')
+	validate_parser.add_argument('names', nargs='+', help='one or more named validation scenarios')
 
 	mono_parser = subparsers.add_parser('setup-mono', help='prepare mono runtime')
-	mono_parser.add_argument('os_name')
-	mono_parser.add_argument('arch')
-	mono_parser.add_argument('config')
+	mono_parser.add_argument('os_name', help='runtime operating-system key')
+	mono_parser.add_argument('arch', help='runtime architecture key')
+	mono_parser.add_argument('config', help='runtime build configuration')
 
 	format_parser = subparsers.add_parser('format-source', help='format engine source files')
 	format_parser.set_defaults(no_args=True)
 
 	toolset_parser = subparsers.add_parser('toolset', help='build an existing toolset target')
-	toolset_parser.add_argument('target')
+	toolset_parser.add_argument('target', help='target from the configured toolset build tree')
 
 	auxiliary_parser = subparsers.add_parser('build-auxiliary', help='build a separately packaged auxiliary tool')
-	auxiliary_parser.add_argument('target', choices=AUXILIARY_BUILD_TARGETS)
-	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release')
+	auxiliary_parser.add_argument('target', choices=AUXILIARY_BUILD_TARGETS, help='auxiliary tool to build')
+	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release', help='build configuration (default: Release)')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
-	prepare_parser.add_argument('--check', action='store_true')
+	prepare_parser.add_argument(
+		'parts',
+		nargs='+',
+		choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'],
+		help='workspace components to prepare',
+	)
+	prepare_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
 
 	repair_case_parser = subparsers.add_parser('repair-checkout-case', help='realign working-tree entry names with the git index')
-	repair_case_parser.add_argument('--check', action='store_true')
+	repair_case_parser.add_argument('--check', action='store_true', help='check for case drift without renaming entries')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
 	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
@@ -2408,10 +2413,10 @@ def create_parser() -> argparse.ArgumentParser:
 	package_android_parser.add_argument('configs', nargs='+', help='config names to package (e.g. LocalTest)')
 
 	host_check_parser = subparsers.add_parser('host-check', help='check host prerequisites')
-	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'])
+	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'], help='host platform to inspect')
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
-	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'])
+	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'], help='host platform to prepare')
 	prepare_host_parser.add_argument(
 		'features',
 		nargs='*',
@@ -2434,8 +2439,9 @@ def create_parser() -> argparse.ArgumentParser:
 			'msan-libcxx',
 			'all',
 		],
+		help='feature groups to prepare; omit to use the host defaults',
 	)
-	prepare_host_parser.add_argument('--check', action='store_true')
+	prepare_host_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
 
 	return parser
 

@@ -31,9 +31,9 @@ class SupportMatrixDocumentationTests(unittest.TestCase):
         )
         self.assertEqual(self.model["summary"]["platform_profile_count"], 10)
         self.assertEqual(self.model["summary"]["build_gated_profile_count"], 8)
-        self.assertEqual(self.model["summary"]["smoke_gated_profile_count"], 3)
+        self.assertEqual(self.model["summary"]["smoke_gated_profile_count"], 0)
         self.assertIn(
-            "linux-tutorial-smoke",
+            "linux-client",
             {
                 target
                 for platform in self.model["platforms"]

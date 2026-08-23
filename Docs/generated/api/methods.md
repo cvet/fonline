@@ -1914,9 +1914,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-mapper-game-newmapfromtext-cd3a1d6933"></a>
 - [`symbol-script-method-mapper-game-newmapfromtext-cd3a1d6933`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-newmapfromtext-cd3a1d6933)
 
-<a id="symbol-script-method-mapper-game-requestmapperwindowscreenshot-a3a8a4b91d"></a>
-- [`symbol-script-method-mapper-game-requestmapperwindowscreenshot-a3a8a4b91d`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-requestmapperwindowscreenshot-a3a8a4b91d)
-
 <a id="symbol-script-method-mapper-game-resizemap-cba6382d0a"></a>
 - [`symbol-script-method-mapper-game-resizemap-cba6382d0a`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-resizemap-cba6382d0a)
 

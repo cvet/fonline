@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_inventory.py",
   "script_api": {
-    "export_method_declarations": 958,
+    "export_method_declarations": 957,
     "method_file_count": 18,
     "method_files": [
       {
@@ -47,7 +47,7 @@
       },
       {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "export_method_declarations": 56
+        "export_method_declarations": 55
       },
       {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",

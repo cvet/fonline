@@ -2786,16 +2786,16 @@
           "translation": "Ожидайте декодирование Ogg Vorbis порциями 64 KiB на native и 128 KiB на Web; короткие файлы сохраняются целиком и освобождают stream после первого декодирования."
         },
         "/decoding_rules/@id=audio.decoding.unsupported-extension/name": {
-          "source_sha256": "5c204b2d2a4eab4e5bc40c65f2c072d382d5fad77e66d5b1f8510fdc7c46da9d",
-          "translation": "Отклонение неподдерживаемого расширения"
+          "source_sha256": "53cf32ac508aeb900f91b352aa76cdc764236c80064e9b1cefb997f379f2fc91",
+          "translation": "Ограничение неподдерживаемого расширения"
         },
         "/decoding_rules/@id=audio.decoding.unsupported-extension/rationale": {
-          "source_sha256": "06c015f032738ba9dbda8adda325a163769834bf248391572a76933a4a38c7c8",
-          "translation": "Принятие пустого недекодированного звука ложно сообщило бы об успехе и поставило в очередь непригодное состояние воспроизведения."
+          "source_sha256": "c4cf1dd10dfe5e3b6ebcc2bd394866aa11ad19a1f30658286f1f0aea71c4f766",
+          "translation": "Это задокументированное ограничение реализации, а не поддержка произвольных аудиоформатов; вызывающий код и проверка контента должны исключать неподдерживаемые суффиксы."
         },
         "/decoding_rules/@id=audio.decoding.unsupported-extension/requirement": {
-          "source_sha256": "663a1395130b29cdcc44937fadad4aba2484fe606ec04168593032a381172ae0",
-          "translation": "Отклоняйте любое явно указанное расширение, кроме wav, acm или ogg, и записывайте неподдерживаемый суффикс в лог."
+          "source_sha256": "4f551e7a9ba5d689234fa91a39625ebedd576a04f2604fdeb48c8db371546480",
+          "translation": "Используйте только пути wav, acm или ogg. В текущем загрузчике нет резервной ветки отклонения, поэтому другой явный суффикс минует все декодеры и может поставить в очередь пустой звук, вернув успех."
         },
         "/decoding_rules/@id=audio.decoding.wav-chunk-order/name": {
           "source_sha256": "64e1eb8dc2364a143fd8fa724aaa46dff3e1365b43de18d788dc8d3b57bf1225",
@@ -3090,8 +3090,8 @@
           "translation": "Загрузчики сообщают о границах ошибок конкретных форматов вместо подстановки тишины как допустимого ресурса."
         },
         "/validation_rules/@id=audio.validation.decoder-diagnostics/requirement": {
-          "source_sha256": "022574980b19645251bb63f58a0dc9e33d0f7e083b05274832a919f1266e1515",
-          "translation": "Считайте false-результаты воспроизведения и строки лога RIFF, PCM, ACM, Ogg, преобразования или неподдерживаемого формата ошибками авторинга."
+          "source_sha256": "3134736658f43e576951768b1ab167b74112f3eabec1558890c758cf61ffcab2",
+          "translation": "Считайте false-результаты воспроизведения и строки лога RIFF, PCM, ACM, Ogg или преобразования ошибками авторинга; отклоняйте неподдерживаемые суффиксы при проверке контента, поскольку runtime сейчас не выдаёт для них диагностику."
         },
         "/validation_rules/@id=audio.validation.generated-reference/name": {
           "source_sha256": "1877ee81c2e4a68728ba3e7d488d09a2401c8f1dcaeb926452ee8a0a092c6e13",
@@ -4721,8 +4721,8 @@
           "translation": "выходной каталог"
         },
         "/cli/arguments/@id=package.cli.argument.pack/description": {
-          "source_sha256": "c010be0477995f81d9edbf2cf24e084823c817a6f1fdab87efa1e2b5107efe58",
-          "translation": "разделённые знаком + токены наборов из PackageInterface.json"
+          "source_sha256": "77d59652e3bc18f893cdaa9e2cd7bb4f43cadf7001b23b6f484a69e3d12f281f",
+          "translation": "тип пакета"
         },
         "/cli/arguments/@id=package.cli.argument.platform/description": {
           "source_sha256": "caff39e103adc9a3ba5c88a33555b1118d301d33dd57dde05d24123b387461af",
@@ -6273,12 +6273,12 @@
           "translation": "Smoke-маршрут на симуляторе или устройстве не требуется."
         },
         "/platforms/@id=linux-x64-clang/limitations": {
-          "source_sha256": "3884e8e211754131a48db4d0d833ec89da7e96b7973d8970e00f8e243fd4255e",
-          "translation": "Текущая матрица квалифицирует только Ubuntu 24.04 и пути неподписанных тестовых пакетов после сохранения подтверждений обязательных job; другие дистрибутивы, установщики, подписание, магазины, развёртывание и откат требуют проектной приёмки."
+          "source_sha256": "f03786568b253d3aad79de51fc3b977c8d3d235e8e6b5e1da1864100f7a2f464",
+          "translation": "Текущая матрица квалифицирует только конфигурацию и компиляцию на Ubuntu 24.04; runtime, другие дистрибутивы, установщики, подписание, магазины, развёртывание и откат требуют проектной приёмки."
         },
         "/platforms/@id=linux-x64-clang/runtime_evidence": {
-          "source_sha256": "bacb78666a9c067f1f0318c8107af93042f7db38980fc0565a6be3adc976605f",
-          "translation": "Обязательный workflow отвечает за процессные маршруты исходного кода starter-, native-extension-, минимального многопользовательского проекта и Content Showcase, снимок OpenGL Content Showcase на программном Mesa с пиксельной проверкой, а также за упакованные маршруты tutorial и packaging-matrix, которые собирают tar-архивы, инвентаризируют содержимое и запускают упакованные headless-бинарные файлы клиента и сервера со встроенной конфигурацией."
+          "source_sha256": "bc4c9eca7f920efb63c901da4510a6c60e556f8b6a16b6e49ef7909385d44e5a",
+          "translation": "Проверяемый реестр валидации BuildTools не требует процессного smoke-маршрута."
         },
         "/platforms/@id=linux-x64-gcc/limitations": {
           "source_sha256": "1d478a1f596aad18d61c6b829ccddd8946d49b60a384adb47ba089f842ac3bdb",
@@ -6297,12 +6297,12 @@
           "translation": "Процессный smoke-маршрут клиента не требуется."
         },
         "/platforms/@id=web-client/limitations": {
-          "source_sha256": "6435755a11dcbdfe0b519665fab9acd7e0722a65803ec406c29fee1ac2ef38b6",
-          "translation": "Штатная Web-цель поддерживает только клиент WebGL 2. Content Showcase квалифицирует один детерминированный localhost fixture в закреплённом Chromium; он не квалифицирует все пары браузеров и GPU либо production hosting, заголовки, хранение, активацию звука, развёртывание, CDN, подписание или откат. Эти приёмочные gates остаются ответственностью проекта."
+          "source_sha256": "ace456af947eefced39ca4c5410ac8b03d940b771e954298003cdee224e26ca2",
+          "translation": "Штатная Web-цель поддерживает только клиент WebGL 2. Линия сборки не квалифицирует пары браузеров и GPU либо production hosting, заголовки, хранение, активацию звука, развёртывание, CDN, подписание или откат; эти приёмочные gates остаются ответственностью проекта."
         },
         "/platforms/@id=web-client/runtime_evidence": {
-          "source_sha256": "86bf29afd9e2e9510ca4ce240ee53247630b07a0280bf3f2dcb37eb64be1ff74",
-          "translation": "Обязательный workflow собирает штатный браузерный клиент и проводит Content Showcase через force-bake на native-хосте, raw/ZIP Web packaging, точные проверки payload, native-сервер, поставку пакета через HTTP, Chromium, настоящий контекст WebGL 2, lifecycle-маркеры и проверку пикселей композитора."
+          "source_sha256": "8deaffd8bbe65c727205735168b5f68b2f3623f52761217cc3d5a9ee05beb0f8",
+          "translation": "Проверяемый реестр валидации BuildTools не требует браузерного процессного smoke-маршрута."
         },
         "/platforms/@id=windows-x64-clangcl/limitations": {
           "source_sha256": "007bb0e1a07d9a2550ca4d272784e674f5dced7fcc60123da156ed3b62bceb0f",
@@ -6313,12 +6313,12 @@
           "translation": "Обязательная линия CI или runtime отсутствует."
         },
         "/platforms/@id=windows-x64-msvc/limitations": {
-          "source_sha256": "6d53379c6889fbb9efb7b26d952ae514d7bf2d47465b6f33696e3e611d77422e",
-          "translation": "Успешный smoke-маршрут подтверждает штатное руководство и пути неподписанных тестовых пакетов, но не все сочетания рендерера, драйвера, базы данных, установщика, подписания, магазина, развёртывания или отката."
+          "source_sha256": "f8ee591ee091ed2592adda0fe4a89a1b789db4b0e8fcd7b589b4fad328124166",
+          "translation": "Обязательная линия подтверждает конфигурацию и компиляцию, но не поведение рендерера, драйвера, базы данных, установщика, подписания, магазина, развёртывания, отката или runtime lifecycle."
         },
         "/platforms/@id=windows-x64-msvc/runtime_evidence": {
-          "source_sha256": "1e048535edc4bcb0c1a1db67c9d85b52437f5320ae7d3f19f56097ecc8684b0f",
-          "translation": "Процессные маршруты starter-, native-extension-, минимального многопользовательского проекта и Content Showcase выполняются проверками BuildTools; маршруты packaging-matrix и tutorial-package собирают архивы, инвентаризируют содержимое и запускают упакованные headless-бинарные файлы клиента и сервера со встроенной конфигурацией."
+          "source_sha256": "bc4c9eca7f920efb63c901da4510a6c60e556f8b6a16b6e49ef7909385d44e5a",
+          "translation": "Проверяемый реестр валидации BuildTools не требует процессного smoke-маршрута."
         },
         "/platforms/@id=windows-x86-msvc/limitations": {
           "source_sha256": "76fefaa7769e0d813106d1fb882e0d18074cb2d8cc11a20259fd76dada42ba05",
@@ -7383,12 +7383,12 @@
           "translation": "Двадцатибайтные записи символов"
         },
         "/bmfont_rules/@id=font-format.bmfont.char-records/rationale": {
-          "source_sha256": "bee6a0a1d70ab48fa4b67171bf6ac91c8077795c6b593d2d1d9eada317157087",
-          "translation": "Отрицательные выносы встречаются в поставляемых шрифтах и должны оставаться отрицательными, а не превращаться в значения около 65535."
+          "source_sha256": "2edb337751f913c7a9343f3324fa85e1906405308b545b235dfb59357044b10f",
+          "translation": "В поставляемых шрифтах встречаются отрицательные выносы, поэтому это подтверждённое исходным кодом ограничение должно быть явно указано, а не описано как корректное знаковое декодирование."
         },
         "/bmfont_rules/@id=font-format.bmfont.char-records/requirement": {
-          "source_sha256": "5261806ef0c0ff155305a91d7d158a4ba0755ceed8c91643afd56571a5b23dc5",
-          "translation": "Кодируйте каждую запись Chars в 20-байтной раскладке BMFont v3; xoffset, yoffset и xadvance должны быть знаковыми little-endian int16."
+          "source_sha256": "54d8b84cbcb72233ba593319c0fce7b075c87d1b96f2e893a7791e4421954b56",
+          "translation": "Кодируйте каждую запись Chars в 20-байтной раскладке BMFont v3. Формат определяет xoffset, yoffset и xadvance как знаковые поля, но текущий загрузчик читает все три как беззнаковые little-endian uint16; избегайте отрицательных метрик, пока этот дефект runtime не будет исправлен отдельно."
         },
         "/bmfont_rules/@id=font-format.bmfont.gray-bordered/name": {
           "source_sha256": "0b22e93f033df5beb0ec8ab3edcd3b256b1f90e11fa9afbd681bbeb5943141c3",
@@ -7498,8 +7498,8 @@
           "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.image/rationale": {
-          "source_sha256": "a2e58bcf34bbee119952b7809daf03955e500bfe4b7aed3186ad0dc610c4efda",
-          "translation": "Отсутствующее изображение отклоняется, а завершающий маркер удаляется до разрешения относительного ресурса."
+          "source_sha256": "ecf0e8f842c7b6b7730639120d25a5906fcb058f35b12d37435c5ec98abf4034",
+          "translation": "Текущий загрузчик обращается к image_name.back() без проверки на пустоту, поэтому авторская валидация должна требовать это поле до запуска; завершающий маркер удаляется до разрешения относительного ресурса."
         },
         "/fofnt_fields/@id=font-format.fofnt.image/requirement": {
           "source_sha256": "681edfa346c78de64c311caba1d291c31af1faa06db795f3e2edcf647d30f7c8",
@@ -7955,12 +7955,12 @@
           "translation": "Наличие дескриптора и изображения"
         },
         "/validation_rules/@id=font-format.validation.descriptor-and-image-presence/rationale": {
-          "source_sha256": "f3688ac340f9a9576e41679bb412d4aca90b88ec7ba574cfabc8bfc4e2f7f2b1",
-          "translation": "Каждое условие создаёт отдельное FontManagerException при привязке."
+          "source_sha256": "290b1628f7cbd81d621759b470fbeb8fefc657f684743922f55bd655606dec8a",
+          "translation": "Проверка до запуска должна покрывать отсутствие Image, потому что загрузчик достигает image_name.back() раньше, чем может выдать диагностическое сообщение."
         },
         "/validation_rules/@id=font-format.validation.descriptor-and-image-presence/requirement": {
-          "source_sha256": "3fbad615fa3a246eb7aa3720ae3fd38c1a729200626b910309d662ef9dd3afc1",
-          "translation": "Считайте ресурс непрошедшим gate, если дескриптор отсутствует, FOFNT не содержит Image или относительное изображение не загружается как спрайт атласа."
+          "source_sha256": "d6325ace5203f3e4cfe1807ba76ec7d2b34e809c480a02d2a6a9402c083f32c1",
+          "translation": "Считайте ресурс непрошедшим gate, если дескриптор отсутствует, FOFNT не содержит Image или относительное изображение не загружается как спрайт атласа. Runtime сообщает об отсутствующем дескрипторе и файле изображения, но сейчас не имеет явной проверки пустого Image."
         },
         "/validation_rules/@id=font-format.validation.embedding-project/name": {
           "source_sha256": "21b41cc4347ff9504b6877471380ab6c28d76a79a80817827f2c5b8a9b29f337",
@@ -8023,16 +8023,16 @@
           "translation": "Отклоняйте NaN, бесконечность, ноль, отрицательные значения и значения больше единицы до изменения таблицы шрифтов или атласа."
         },
         "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/name": {
-          "source_sha256": "a67739da5b142648c888ebf21c552e9020895fc48b7d5268b9e1dcafc32042eb",
-          "translation": "Регрессия знаковых метрик BMFont"
+          "source_sha256": "7ebe0ab56d7ee12efacd1093318ce858a2b6a5d5c0f7226481ff38f26ec84f8f",
+          "translation": "Ограничение беззнаковых метрик BMFont"
         },
         "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/rationale": {
-          "source_sha256": "2fba12a8d04108ee8698a0040f26be74237e82a3d60a6a92458b8413a033acd5",
-          "translation": "Беззнаковое чтение превращает -2 в 65534 и перемещает глиф далеко за ожидаемую позицию."
+          "source_sha256": "b979d4df8a02863f12222f278012bba6c677a338bf4c24679668dd2a4502b2f3",
+          "translation": "Значения вроде -2 сейчас интерпретируются как 65534 и могут смещать отрисованный глиф далеко от ожидаемой позиции; исправление runtime должно быть отдельным изменением кода."
         },
         "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/requirement": {
-          "source_sha256": "a27d3cad38e64d8f2657893ef13a4062a05076fc9f8510a4707850bb866f01c5",
-          "translation": "Сохраняйте xoffset, yoffset и xadvance на GetLEInt16 и тестируйте по поставляемым бинарным шрифтам с отрицательными выносами."
+          "source_sha256": "3d66e13d231f5a82addd560733a0fb847a6ed44d870ca68d42a2886f2bdb8dcf",
+          "translation": "Учитывайте, что текущий загрузчик читает xoffset, yoffset и xadvance через GetLEUInt16, хотя поставляемые бинарные шрифты содержат отрицательные выносы."
         }
       }
     },
@@ -14301,10 +14301,6 @@
           "source_sha256": "4eb4c169a83c19cb1bace6848fee01851f0155154afbe79563a7081827e075bb",
           "translation": "Загружает именованную карту из авторского текста с секцией ProtoMap; пустое имя или отсутствие секции приводят к исключению, а ошибка разбора может вернуть null."
         },
-        "/symbols/@id=script.method.mapper.Game.RequestMapperWindowScreenshot/description": {
-          "source_sha256": "0a56c728eea6e118a04ed008a1a37984d6e3b7a50016f1357a115e1757a4151b",
-          "translation": "Ставит в очередь снимок всего окна Mapper по непустому пути; в момент запроса должна быть показана текущая карта."
-        },
         "/symbols/@id=script.method.mapper.Game.ResizeMap/description": {
           "source_sha256": "0664067262b9804aba56ed6865a9533a40b3b1c75a19141555a15422212e44cf",
           "translation": "Изменяет размеры текущей карты Mapper через обычную операцию редактора."
@@ -17061,10 +17057,6 @@
           "source_sha256": "522587314a3d65317692f42eec018bcda62441efdc2dbc2d4f6c37d0e82d8adc",
           "translation": "Seed стартового предпросмотра, используемый выбранным runtime при поддержке детерминированного seed"
         },
-        "/symbols/@id=setting.client.Mapper.SparkEditorSource/description": {
-          "source_sha256": "75541bf24abe60429eab6c2faed8a1d670be667f27dc873bc55971388b049de6",
-          "translation": "Исходник SPARK, который нужно открыть в редакторе частиц при запуске Mapper"
-        },
         "/symbols/@id=setting.client.Mapper.SplitTilesCollection/description": {
           "source_sha256": "14dc767c2e31e5f251dd079e2075886cb30c409bfc85b1c062c0b90b5e139363",
           "translation": "Если true, коллекция тайлов разделена"
@@ -17304,6 +17296,10 @@
         "/symbols/@id=setting.client.View.MapDirectDraw/description": {
           "source_sha256": "c179d38c43af58ac16be74cc65dbd5896c4461fa668d1f9f0ac805acb770bbe8",
           "translation": "Рисует карту напрямую в основной framebuffer: ускоряет рендеринг, но отключает масштабирование и делает прокрутку скачкообразной"
+        },
+        "/symbols/@id=setting.client.View.MapRenderTargetScale/description": {
+          "source_sha256": "c06e9cdce3785dd47d7df0391ff7af2c53e805645b25ab351399d8a62bea3a91",
+          "translation": "Фиксированный масштаб render target карты, освещения и маски помещений относительно логического экрана; ограничивается максимальным размером текстуры устройства"
         },
         "/symbols/@id=setting.client.View.MapZoomEnabled/description": {
           "source_sha256": "cfd62d50790ea88985797fdb7773674ccc566630379fd5d686aa6b83a20877d4",
@@ -17774,8 +17770,8 @@
           "translation": "Если true, ожидающие изменения базы данных зеркалируются в oplog для восстановления; если false, любая ошибка записи в базу данных немедленно вызывает panic"
         },
         "/symbols/@id=setting.server.DataBase.OpLogPath/description": {
-          "source_sha256": "bc193cacd5d6cb00efd531123685c2d3a123a3610685eabd319bccd15779e135",
-          "translation": "Путь oplog ожидающих изменений базы данных; должен оканчиваться на .oplog, которое заменяется на -committed.oplog для отслеживания прогресса воспроизведения"
+          "source_sha256": "a0ce5dfec1ff5ec542aad25fefe42558bfdbcea95aefa446fde8b3f561e3148d",
+          "translation": "Путь oplog ожидающих изменений базы данных; путь прогресса воспроизведения формируется добавлением -committed к этому значению"
         },
         "/symbols/@id=setting.server.DataBase.PanicOpLogSizeThreshold/description": {
           "source_sha256": "aeee95400970c8fb05028157a8c8527b0775350893725465571e7bcbc3ae1414",

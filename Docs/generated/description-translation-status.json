@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4948,
-    "current_count": 4948,
+    "entry_count": 4947,
+    "current_count": 4947,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2496,
-      "current_count": 2496,
+      "entry_count": 2495,
+      "current_count": 2495,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -10489,12 +10489,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.mapper.Game.RequestMapperWindowScreenshot/description",
-          "source": "Queues a full Mapper-window screenshot to a nonempty file path; a current map must be shown when the request is made.",
-          "source_sha256": "0a56c728eea6e118a04ed008a1a37984d6e3b7a50016f1357a115e1757a4151b",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=script.method.mapper.Game.ResizeMap/description",
           "source": "Resizes the currently shown Mapper map to the requested dimensions through the editor's normal resize operation.",
           "source_sha256": "0664067262b9804aba56ed6865a9533a40b3b1c75a19141555a15422212e44cf",
@@ -14629,12 +14623,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.client.Mapper.SparkEditorSource/description",
-          "source": "SPARK source to open in the particle editor during Mapper startup",
-          "source_sha256": "75541bf24abe60429eab6c2faed8a1d670be667f27dc873bc55971388b049de6",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.client.Mapper.SplitTilesCollection/description",
           "source": "If true, tiles collection is split",
           "source_sha256": "14dc767c2e31e5f251dd079e2075886cb30c409bfc85b1c062c0b90b5e139363",
@@ -14992,6 +14980,12 @@
           "locator": "/symbols/@id=setting.client.View.MapDirectDraw/description",
           "source": "Draw map directly to main framebuffer (speed up rendering but disables zooming and make scrolling jumpy)",
           "source_sha256": "c179d38c43af58ac16be74cc65dbd5896c4461fa668d1f9f0ac805acb770bbe8",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.View.MapRenderTargetScale/description",
+          "source": "Fixed map/light/indoor-mask render-target scale relative to the logical screen; clamped to the device texture limit",
+          "source_sha256": "c06e9cdce3785dd47d7df0391ff7af2c53e805645b25ab351399d8a62bea3a91",
           "status": "current"
         },
         {
@@ -15698,8 +15692,8 @@
         },
         {
           "locator": "/symbols/@id=setting.server.DataBase.OpLogPath/description",
-          "source": "Pending database changes oplog path; must end with .oplog, which is replaced by -committed.oplog for replay progress",
-          "source_sha256": "bc193cacd5d6cb00efd531123685c2d3a123a3610685eabd319bccd15779e135",
+          "source": "Pending database changes oplog path; committed replay progress path is derived as this value plus -committed",
+          "source_sha256": "a0ce5dfec1ff5ec542aad25fefe42558bfdbcea95aefa446fde8b3f561e3148d",
           "status": "current"
         },
         {
@@ -16037,20 +16031,20 @@
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.unsupported-extension/name",
-          "source": "Unsupported extension rejection",
-          "source_sha256": "5c204b2d2a4eab4e5bc40c65f2c072d382d5fad77e66d5b1f8510fdc7c46da9d",
+          "source": "Unsupported extension limitation",
+          "source_sha256": "53cf32ac508aeb900f91b352aa76cdc764236c80064e9b1cefb997f379f2fc91",
           "status": "current"
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.unsupported-extension/rationale",
-          "source": "Accepting an undecoded empty sound would report false success and enqueue unusable playback state.",
-          "source_sha256": "06c015f032738ba9dbda8adda325a163769834bf248391572a76933a4a38c7c8",
+          "source": "This is a documented implementation limitation, not support for arbitrary audio formats; callers and content validation must keep unsupported suffixes out.",
+          "source_sha256": "c4cf1dd10dfe5e3b6ebcc2bd394866aa11ad19a1f30658286f1f0aea71c4f766",
           "status": "current"
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.unsupported-extension/requirement",
-          "source": "Reject any explicit extension other than wav, acm, or ogg and log the unsupported suffix.",
-          "source_sha256": "663a1395130b29cdcc44937fadad4aba2484fe606ec04168593032a381172ae0",
+          "source": "Author only wav, acm, or ogg paths. The current loader has no fallback rejection branch, so another explicit suffix bypasses all decoders and can enqueue an empty sound while returning success.",
+          "source_sha256": "4f551e7a9ba5d689234fa91a39625ebedd576a04f2604fdeb48c8db371546480",
           "status": "current"
         },
         {
@@ -16481,8 +16475,8 @@
         },
         {
           "locator": "/validation_rules/@id=audio.validation.decoder-diagnostics/requirement",
-          "source": "Treat false playback results and RIFF, PCM, ACM, Ogg, conversion, or unsupported-format log lines as authoring failures.",
-          "source_sha256": "022574980b19645251bb63f58a0dc9e33d0f7e083b05274832a919f1266e1515",
+          "source": "Treat false playback results and RIFF, PCM, ACM, Ogg, or conversion log lines as authoring failures; reject unsupported suffixes in content validation because the runtime currently has no diagnostic for them.",
+          "source_sha256": "3134736658f43e576951768b1ab167b74112f3eabec1558890c758cf61ffcab2",
           "status": "current"
         },
         {
@@ -18432,14 +18426,14 @@
         },
         {
           "locator": "/bmfont_rules/@id=font-format.bmfont.char-records/rationale",
-          "source": "Negative bearings occur in bundled fonts and must remain negative instead of being reinterpreted as values near 65535.",
-          "source_sha256": "bee6a0a1d70ab48fa4b67171bf6ac91c8077795c6b593d2d1d9eada317157087",
+          "source": "Bundled fonts contain negative bearings, so this source-backed limitation must remain visible instead of being documented as correct signed decoding.",
+          "source_sha256": "2edb337751f913c7a9343f3324fa85e1906405308b545b235dfb59357044b10f",
           "status": "current"
         },
         {
           "locator": "/bmfont_rules/@id=font-format.bmfont.char-records/requirement",
-          "source": "Encode each Chars record in the 20-byte BMFont v3 layout; xoffset, yoffset, and xadvance must be signed little-endian int16 values.",
-          "source_sha256": "5261806ef0c0ff155305a91d7d158a4ba0755ceed8c91643afd56571a5b23dc5",
+          "source": "Encode each Chars record in the 20-byte BMFont v3 layout. The format defines signed xoffset, yoffset, and xadvance fields, but the current loader reads all three as unsigned little-endian uint16 values; avoid negative metrics until that runtime defect is fixed separately.",
+          "source_sha256": "54d8b84cbcb72233ba593319c0fce7b075c87d1b96f2e893a7791e4421954b56",
           "status": "current"
         },
         {
@@ -18600,8 +18594,8 @@
         },
         {
           "locator": "/fofnt_fields/@id=font-format.fofnt.image/rationale",
-          "source": "A missing image is rejected, and the trailing marker is removed before relative resource resolution.",
-          "source_sha256": "a2e58bcf34bbee119952b7809daf03955e500bfe4b7aed3186ad0dc610c4efda",
+          "source": "The current loader accesses image_name.back() without an empty guard, so authoring validation must enforce this mandatory field before runtime; the trailing marker is removed before relative resource resolution.",
+          "source_sha256": "ecf0e8f842c7b6b7730639120d25a5906fcb058f35b12d37435c5ec98abf4034",
           "status": "current"
         },
         {
@@ -19263,14 +19257,14 @@
         },
         {
           "locator": "/validation_rules/@id=font-format.validation.descriptor-and-image-presence/rationale",
-          "source": "Each condition throws a distinct FontManagerException during binding.",
-          "source_sha256": "f3688ac340f9a9576e41679bb412d4aca90b88ec7ba574cfabc8bfc4e2f7f2b1",
+          "source": "Pre-runtime validation must cover the omitted-Image case because the loader reaches image_name.back() before it can produce a diagnostic.",
+          "source_sha256": "290b1628f7cbd81d621759b470fbeb8fefc657f684743922f55bd655606dec8a",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=font-format.validation.descriptor-and-image-presence/requirement",
-          "source": "Fail the asset gate when the descriptor is missing, FOFNT omits Image, or the relative image cannot load as an atlas sprite.",
-          "source_sha256": "3fbad615fa3a246eb7aa3720ae3fd38c1a729200626b910309d662ef9dd3afc1",
+          "source": "Fail the asset gate when the descriptor is missing, FOFNT omits Image, or the relative image cannot load as an atlas sprite. The runtime reports missing descriptor and image files, but currently has no explicit empty-Image guard.",
+          "source_sha256": "d6325ace5203f3e4cfe1807ba76ec7d2b34e809c480a02d2a6a9402c083f32c1",
           "status": "current"
         },
         {
@@ -19365,20 +19359,20 @@
         },
         {
           "locator": "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/name",
-          "source": "Signed BMFont metric regression",
-          "source_sha256": "a67739da5b142648c888ebf21c552e9020895fc48b7d5268b9e1dcafc32042eb",
+          "source": "Unsigned BMFont metric limitation",
+          "source_sha256": "7ebe0ab56d7ee12efacd1093318ce858a2b6a5d5c0f7226481ff38f26ec84f8f",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/rationale",
-          "source": "Unsigned reads turn values such as -2 into 65534 and move rendered glyphs far outside their intended position.",
-          "source_sha256": "2fba12a8d04108ee8698a0040f26be74237e82a3d60a6a92458b8413a033acd5",
+          "source": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
+          "source_sha256": "b979d4df8a02863f12222f278012bba6c677a338bf4c24679668dd2a4502b2f3",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/requirement",
-          "source": "Keep xoffset, yoffset, and xadvance on GetLEInt16 and test against bundled binary fonts that contain negative bearings.",
-          "source_sha256": "a27d3cad38e64d8f2657893ef13a4062a05076fc9f8510a4707850bb866f01c5",
+          "source": "Track that the current loader reads xoffset, yoffset, and xadvance with GetLEUInt16 even though bundled binary fonts contain negative bearings.",
+          "source_sha256": "3d66e13d231f5a82addd560733a0fb847a6ed44d870ca68d42a2886f2bdb8dcf",
           "status": "current"
         }
       ]
@@ -24783,8 +24777,8 @@
         },
         {
           "locator": "/cli/arguments/@id=package.cli.argument.pack/description",
-          "source": "plus-separated pack tokens from PackageInterface.json",
-          "source_sha256": "c010be0477995f81d9edbf2cf24e084823c817a6f1fdab87efa1e2b5107efe58",
+          "source": "package type",
+          "source_sha256": "77d59652e3bc18f893cdaa9e2cd7bb4f43cadf7001b23b6f484a69e3d12f281f",
           "status": "current"
         },
         {
@@ -28539,14 +28533,14 @@
         },
         {
           "locator": "/platforms/@id=linux-x64-clang/limitations",
-          "source": "The current matrix qualifies Ubuntu 24.04 and unsigned fixture package paths only after retained required-job evidence; other distributions, installers, signing, stores, deployment, and rollback require project acceptance.",
-          "source_sha256": "3884e8e211754131a48db4d0d833ec89da7e96b7973d8970e00f8e243fd4255e",
+          "source": "The current matrix qualifies Ubuntu 24.04 configure and compilation only; runtime, other distributions, installers, signing, stores, deployment, and rollback require project acceptance.",
+          "source_sha256": "f03786568b253d3aad79de51fc3b977c8d3d235e8e6b5e1da1864100f7a2f464",
           "status": "current"
         },
         {
           "locator": "/platforms/@id=linux-x64-clang/runtime_evidence",
-          "source": "The required workflow owns starter, native-extension, minimal-multiplayer, and content-showcase source process routes, a software-Mesa OpenGL Content Showcase capture with pixel validation, plus packaged tutorial and packaging-matrix routes that build tarballs, inventory payloads, and start packaged headless client/server binaries with embedded config.",
-          "source_sha256": "bacb78666a9c067f1f0318c8107af93042f7db38980fc0565a6be3adc976605f",
+          "source": "No process-level smoke route is required by the checked BuildTools validation registry.",
+          "source_sha256": "bc4c9eca7f920efb63c901da4510a6c60e556f8b6a16b6e49ef7909385d44e5a",
           "status": "current"
         },
         {
@@ -28657,14 +28651,14 @@
         },
         {
           "locator": "/platforms/@id=web-client/limitations",
-          "source": "The stock web target is WebGL 2 client-only. The Content Showcase qualifies one deterministic localhost fixture under pinned Chromium; it does not qualify every browser/GPU pair or production hosting, headers, persistence, audio activation, deployment, CDN, signing, or rollback behavior. Those remain project-owned acceptance gates.",
-          "source_sha256": "6435755a11dcbdfe0b519665fab9acd7e0722a65803ec406c29fee1ac2ef38b6",
+          "source": "The stock web target is WebGL 2 client-only. The build lane does not qualify browser/GPU pairs or production hosting, headers, persistence, audio activation, deployment, CDN, signing, or rollback behavior; those remain project-owned acceptance gates.",
+          "source_sha256": "ace456af947eefced39ca4c5410ac8b03d940b771e954298003cdee224e26ca2",
           "status": "current"
         },
         {
           "locator": "/platforms/@id=web-client/runtime_evidence",
-          "source": "The required workflow builds the stock browser client and runs the Content Showcase through native-host force-baking, raw/ZIP Web packaging, exact payload checks, a native server, packaged HTTP delivery, Chromium, a real WebGL 2 context, lifecycle markers, and compositor-pixel validation.",
-          "source_sha256": "86bf29afd9e2e9510ca4ce240ee53247630b07a0280bf3f2dcb37eb64be1ff74",
+          "source": "No browser process smoke route is required by the checked BuildTools validation registry.",
+          "source_sha256": "8deaffd8bbe65c727205735168b5f68b2f3623f52761217cc3d5a9ee05beb0f8",
           "status": "current"
         },
         {
@@ -28740,14 +28734,14 @@
         },
         {
           "locator": "/platforms/@id=windows-x64-msvc/limitations",
-          "source": "A green smoke route proves the stock tutorial and unsigned package-fixture paths, not every renderer, driver, database, installer, signing, store, deployment, or rollback combination.",
-          "source_sha256": "6d53379c6889fbb9efb7b26d952ae514d7bf2d47465b6f33696e3e611d77422e",
+          "source": "The required lane proves configure and compilation, not renderer, driver, database, installer, signing, store, deployment, rollback, or runtime lifecycle behavior.",
+          "source_sha256": "f8ee591ee091ed2592adda0fe4a89a1b789db4b0e8fcd7b589b4fad328124166",
           "status": "current"
         },
         {
           "locator": "/platforms/@id=windows-x64-msvc/runtime_evidence",
-          "source": "The starter, native-extension, minimal-multiplayer, and content-showcase process routes run through BuildTools validation; packaging-matrix and tutorial-package routes build archives, inventory payloads, and start packaged headless client/server binaries with embedded config.",
-          "source_sha256": "1e048535edc4bcb0c1a1db67c9d85b52437f5320ae7d3f19f56097ecc8684b0f",
+          "source": "No process-level smoke route is required by the checked BuildTools validation registry.",
+          "source_sha256": "bc4c9eca7f920efb63c901da4510a6c60e556f8b6a16b6e49ef7909385d44e5a",
           "status": "current"
         },
         {

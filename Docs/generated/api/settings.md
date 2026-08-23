@@ -220,9 +220,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-mapper-particlepreviewseed-db72c9569f"></a>
 - [`symbol-setting-client-mapper-particlepreviewseed-db72c9569f`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-particlepreviewseed-db72c9569f)
 
-<a id="symbol-setting-client-mapper-sparkeditorsource-66cc25d025"></a>
-- [`symbol-setting-client-mapper-sparkeditorsource-66cc25d025`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-sparkeditorsource-66cc25d025)
-
 <a id="symbol-setting-client-mapper-splittilescollection-78fa7b7987"></a>
 - [`symbol-setting-client-mapper-splittilescollection-78fa7b7987`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-splittilescollection-78fa7b7987)
 
@@ -416,6 +413,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-client-view-mapdirectdraw-c221b250f1"></a>
 - [`symbol-setting-client-view-mapdirectdraw-c221b250f1`](../../en/reference/script-api/settings.md#symbol-setting-client-view-mapdirectdraw-c221b250f1)
+
+<a id="symbol-setting-client-view-maprendertargetscale-64019eb9cb"></a>
+- [`symbol-setting-client-view-maprendertargetscale-64019eb9cb`](../../en/reference/script-api/settings.md#symbol-setting-client-view-maprendertargetscale-64019eb9cb)
 
 <a id="symbol-setting-client-view-mapzoomenabled-5e57c737b6"></a>
 - [`symbol-setting-client-view-mapzoomenabled-5e57c737b6`](../../en/reference/script-api/settings.md#symbol-setting-client-view-mapzoomenabled-5e57c737b6)

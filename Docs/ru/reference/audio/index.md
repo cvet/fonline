@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-audio-index","locale":"ru","source_path":"Docs/en/reference/audio/index.md","source_sha256":"6283d7c83ca6a9e6c003c4148bc7859685d0518e0cc9e196bef1b22dac39fa9b"} -->
+<!-- docs-translation: {"document_id":"generated-audio-index","locale":"ru","source_path":"Docs/en/reference/audio/index.md","source_sha256":"0a554d5097b58ef2f0505da2d7f381f359d09f563a569855fe7ac59f45a3b179"} -->
 
 # Сгенерированный справочник audio
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Три текущих декодера и поведение клиентского воспроизведения привязаны к ревизии, пока отсутствуют сфокусированные нативные fixture декодеров и версионированная политика совместимости. |
 | Исходный манифест | [BuildTools/AudioInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/AudioInterface.json) |
-| Digest контракта | <code>f323ea212e9ad28ee8e41d2f75b8b930252b22de663b0f939a9a2df2f4ecb6e1</code> |
+| Digest контракта | <code>4814942cb1f64d3daaf85bf42b35a5f4782f0294f74392ced8ff4c43b147f71b</code> |
 | Runtime-форматы | <code>.wav</code>, <code>.acm</code>, <code>.ogg</code> |
 | Суффикс по умолчанию при его отсутствии | <code>acm</code> |
 | Сторона выполнения | <code>client</code> |

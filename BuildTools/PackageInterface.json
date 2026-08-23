@@ -71,9 +71,9 @@
     {"name": "Windows", "status": "implemented", "architectures": ["win32", "win64", "win32-win7", "win64-win7", "arm64"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Native PE payloads with optional runtime DLLs, symbols, archives, and MSI. The -win7 keys resolve to canonical win32/win64 binary architectures and require a matching explicit POSTFIX when the build output is postfixed. arm64 is accepted as an existing package input, but the standard BuildTools platform registry does not provide a Windows arm64 build lane."},
     {"name": "Linux", "status": "implemented", "architectures": ["x64", "arm64", "x86", "arm"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Native ELF payloads with optional runtime libraries and archives."},
     {"name": "Android", "status": "implemented", "architectures": ["arm32", "arm64", "x86"], "targets": ["Client"], "description": "Gradle client project with native ABI libraries, assets, and optional APK."},
-    {"name": "Web", "status": "implemented", "architectures": ["wasm"], "targets": ["Client"], "description": "Browser client JavaScript/Wasm payload with preloaded resources."},
     {"name": "macOS", "status": "unsupported", "architectures": ["x64", "arm64"], "targets": ["Client"], "description": "Accepted by argparse but package_macos currently aborts."},
-    {"name": "iOS", "status": "unsupported", "architectures": ["arm64", "simulator"], "targets": ["Client"], "description": "Accepted by argparse but package_ios currently aborts."}
+    {"name": "iOS", "status": "unsupported", "architectures": ["arm64", "simulator"], "targets": ["Client"], "description": "Accepted by argparse but package_ios currently aborts."},
+    {"name": "Web", "status": "implemented", "architectures": ["wasm"], "targets": ["Client"], "description": "Browser client JavaScript/Wasm payload with preloaded resources."}
   ],
   "packs": [
     {"name": "Raw", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Windows", "Linux", "Android", "Web"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Retain the staged target directory after finalization.", "output": "<target-output>"},

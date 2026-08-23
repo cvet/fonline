@@ -360,7 +360,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 0ac1a7fd3c7961c193379db270377116968bc40071e8dc7f3863cb17c039877a
+Content SHA-256: 6bb8fc411c79ba2c851b5b64b46a77550f542860fd332b5345db64f822307cae
 
 ---
 title: FOnline Public Contract Index
@@ -408,10 +408,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2494**
-- Symbols with source-backed descriptions: **2494**
+- Discovered symbols: **2493**
+- Symbols with source-backed descriptions: **2493**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2494**
+- Explicitly classified symbols: **2493**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -9312,7 +9312,7 @@ tests, and runtime behavior remain the authority.
 ===== BEGIN DOCUMENT font-format-guide =====
 Source: Docs/en/how-to/content/font-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/font-format.html
-Content SHA-256: 12b8fa712f5f01ed2b349ba036df863af49494a895c3f85383cf91d10b6e4ba5
+Content SHA-256: 40b691afb97e7264162953a58b48a42f1e52b25f53282ed366d8200f0adb2340
 
 ---
 layout: default
@@ -9431,7 +9431,9 @@ End
 
 The trailing `*` on `Image` requests grayscale normalization. Omit it when the
 bitmap's authored RGB must remain. `Image` is mandatory and relative to the
-descriptor.
+descriptor. The current loader reaches `image_name.back()` without an explicit
+empty-value guard, so validate the field before runtime instead of relying on a
+binding diagnostic.
 
 `Letter` decodes one UTF-8 codepoint beginning after the first apostrophe. Its
 following metric keys modify that current glyph until another `Letter` appears.
@@ -9478,10 +9480,13 @@ Use a BMFont exporter with these settings:
 - Info, Common, Pages, and Chars blocks in standard order;
 - page image filename relative to the `.fnt` file.
 
-The client expects 20-byte character records. `xoffset`, `yoffset`, and
-`xadvance` are signed little-endian 16-bit fields. Negative bearings are normal
-and occur in the bundled fonts; converting them to unsigned values moves glyphs
-by tens of thousands of pixels.
+The client expects 20-byte character records. BMFont defines `xoffset`,
+`yoffset`, and `xadvance` as signed little-endian 16-bit fields, and negative
+bearings occur in the bundled fonts. The current loader nevertheless reads all
+three with `GetLEUInt16`; negative values are therefore reinterpreted near
+65535 and can move glyphs far outside their intended position. Treat this as a
+known runtime limitation and avoid negative metrics until the code fix lands in
+a separate change.
 
 The loader removes the exporter's padding from each record: it shifts X/Y by
 one, subtracts two from width/height, negates bearings into the Engine offset
@@ -9668,7 +9673,7 @@ backend behavior, and asset rights.
 ===== BEGIN DOCUMENT audio-guide =====
 Source: Docs/en/how-to/content/audio.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/audio.html
-Content SHA-256: afe90f8bb48a8a66a6ce1b16f5510ca23d45f35c39806026a5d01c866afe6a75
+Content SHA-256: 4779878c2317a45e3578841610f7da0774deb6215f9f702179159bc525de469e
 
 ---
 layout: default
@@ -9721,7 +9726,9 @@ These are audio-runtime formats, not generic container promises. In particular:
 - an Ogg stream must contain Vorbis, not another Ogg-carried codec;
 - MP3, FLAC, Opus, AAC, and arbitrary SDL-supported formats are not accepted by
   `SoundManager`;
-- an explicit unknown suffix is logged and returns failure.
+- an explicit unknown suffix currently bypasses all decoder branches and can
+  return success with an empty queued sound. This is a known limitation, not
+  support for another format; reject such paths during content validation.
 
 `strex::get_file_extension()` lowercases the suffix, so `.OGG` and `.ACM` reach
 the same decoder dispatch. Prefer lowercase authored names for portable,
@@ -9964,7 +9971,7 @@ Common failures and their likely causes:
 | Diagnostic or result | Likely cause |
 |---|---|
 | false with no matching effect | No base identity and no `_1` variant in the client index |
-| `Unsupported sound format` | Explicit path uses a suffix other than WAV, ACM, or Ogg |
+| true but no decoded data for an explicit path | The suffix is not WAV, ACM, or Ogg; the current loader does not reject this case itself |
 | `'RIFF' not found` / `'WAVE' not found` | File is not the expected WAV container |
 | `'fmt ' not found` / `Unknown format2` | Unsupported WAV chunk order |
 | `Compressed files not supported` | WAV format tag is not PCM |
@@ -17271,7 +17278,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 40c017ed228736fc663964dc8685a36e137e1ce09d82f7cc584f4557f85a67fe
+Content SHA-256: 3e745199398353924e26b0b5c0bfa7832cddb86c55ef8d5581664b5be69c4393
 
 ---
 layout: default
@@ -17864,6 +17871,8 @@ acceptance claim is driver-specific.
 - dump render-target textures for debugging.
 
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
+
+When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
 
 Model-attached SPARK particle systems keep already spawned particles in their simulation space while the emitter follows the model attachment point. A non-identity root transform in the particle resource selects the position-plus-facing path instead of inheriting the full bone matrix; this keeps lingering particles world-stable during model movement while new particles spawn at the current attachment point. The model movement offset is subtracted in particle model space before camera rotation and projection so the setup-time positive offset and draw-time negative offset cancel for newly emitted particles.
 
@@ -22673,7 +22682,7 @@ When adding or changing an application entry point:
 ===== BEGIN DOCUMENT generated-audio-index =====
 Source: Docs/en/reference/audio/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/audio/
-Content SHA-256: 6283d7c83ca6a9e6c003c4148bc7859685d0518e0cc9e196bef1b22dac39fa9b
+Content SHA-256: 0a554d5097b58ef2f0505da2d7f381f359d09f563a569855fe7ac59f45a3b179
 
 ---
 title: Generated Audio Reference
@@ -22697,7 +22706,7 @@ This reference describes Engine-owned audio resource delivery, decoding, playbac
 | Stability | <code>experimental</code> |
 | Support policy | The three current decoders and client playback behavior are revision-pinned while focused native decoder fixtures and a versioned compatibility policy are still missing. |
 | Source manifest | [BuildTools/AudioInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/AudioInterface.json) |
-| Contract digest | <code>f323ea212e9ad28ee8e41d2f75b8b930252b22de663b0f939a9a2df2f4ecb6e1</code> |
+| Contract digest | <code>4814942cb1f64d3daaf85bf42b35a5f4782f0294f74392ced8ff4c43b147f71b</code> |
 | Runtime formats | <code>.wav</code>, <code>.acm</code>, <code>.ogg</code> |
 | Default missing suffix | <code>acm</code> |
 | Runtime side | <code>client</code> |
@@ -22734,7 +22743,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-cli-index =====
 Source: Docs/en/reference/buildtools/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/buildtools/
-Content SHA-256: 32e4c9f0476ec64a6cc3b073624786d2aa2f6523f17c0bd281aeaee7a91d166e
+Content SHA-256: 5292418969b8b4d962a49343d5208ce2bb4cec8df98f8395cfd7608d4d43d3ee
 
 ---
 title: Generated BuildTools CLI Reference
@@ -22759,7 +22768,7 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 | Since | Not declared |
 | Support policy | No versioned CLI support line is declared; pin an engine revision in automation. |
 | Source parser | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Contract digest | <code>c3ce1809eb5d4e0811e95f8e3880d746b7d9e3a0b4418d9567313516a72aa653</code> |
+| Contract digest | <code>7c062060f0beefe2657884e93a041fe0d079b5c535d122214e81ab94357b782d</code> |
 
 ## Coverage
 
@@ -23205,7 +23214,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-font-format-index =====
 Source: Docs/en/reference/font-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/font-format/
-Content SHA-256: afcb3a8126ef98129aac6d81067a9a5f44afe3bc7b3c51b9ea564f0ba8dc6ee1
+Content SHA-256: 306d08a1d4c9fe3bb708a45d5572e9ac5da0cfc7b467dabd5ce2310f731dea16
 
 ---
 title: Generated Font Format Reference
@@ -23229,7 +23238,7 @@ This reference describes Engine-owned font descriptors, client binding, text lay
 | Stability | <code>experimental</code> |
 | Support policy | The two runtime descriptor formats and client layout behavior are supported but still experimental; embedding projects own font choice, glyph coverage, typography, GUI slots, and visual acceptance. |
 | Source manifest | [BuildTools/FontFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/FontFormatInterface.json) |
-| Contract digest | <code>bb663fe4cf25ccd150c4136bbd4854a07ec38984661ffda543e5048d677374a5</code> |
+| Contract digest | <code>fbbd65366de988ee1d0d93b5ae07d9f96feb9de9da930cfb8db6433548957975</code> |
 | Runtime descriptors | <code>.fofnt</code>, <code>.fnt</code> |
 | FOFNT maximum version | <code>2</code> |
 | BMFont binary version | <code>3</code> |
@@ -25007,7 +25016,7 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 ===== BEGIN DOCUMENT generated-package-index =====
 Source: Docs/en/reference/packages/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/packages/
-Content SHA-256: 8e1ac7ecd20bdf6a8d8f866644771ea31374025ac10c7c145382b6a48eb56fcf
+Content SHA-256: 75afc94394f3e53e17cc2b76b7bdd1f3a9b576510eebd006c40ea6e30464286d
 
 ---
 title: Generated Package Interface
@@ -25043,7 +25052,7 @@ Use this cross-contract sequence:
 | Support policy | No versioned package support line is declared; embedding projects must pin an engine revision. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>f29e90d028047fa72b20019bf0ecced0d00aec88ac4d40c750fdbc1d25fdc2ea</code> |
+| Contract digest | <code>f82bcea977109ff6214369c76a0281b7c30bec1edda2e8d147b7c74f9951aad2</code> |
 
 ## Coverage
 
@@ -25374,7 +25383,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 735e1f0672de731945599c8b8639c666c7a37a81bedd86358e1bb357dd44e41f
+Content SHA-256: d245053e4d0d6b7d3473f36d876b5b0dc099f3115b06cb0e95e136b78cfc6f61
 
 ---
 title: Generated API Reference
@@ -25391,7 +25400,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 958 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 957 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 133 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 978 | Entities, enums, value types, reference types, fields, and methods. |
@@ -25402,25 +25411,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2494 |
-| Symbols with descriptions | 2494 |
+| Addressable symbols | 2493 |
+| Symbols with descriptions | 2493 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2494 |
+| Explicitly classified symbols | 2493 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2493 |
+| <code>experimental</code> | 2492 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2494 stable IDs with SHA-256 <code>e3e7f0bd3a273d0941acc3c31e1455adb54ebe39682243e49b51051839cb6b30</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2493 stable IDs with SHA-256 <code>041a7001f1a0f7b610aeb6c57ef1075924ceb869216214c26f879accdb80569e</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 

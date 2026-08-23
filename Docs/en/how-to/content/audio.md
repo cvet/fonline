@@ -49,7 +49,9 @@ These are audio-runtime formats, not generic container promises. In particular:
 - an Ogg stream must contain Vorbis, not another Ogg-carried codec;
 - MP3, FLAC, Opus, AAC, and arbitrary SDL-supported formats are not accepted by
   `SoundManager`;
-- an explicit unknown suffix is logged and returns failure.
+- an explicit unknown suffix currently bypasses all decoder branches and can
+  return success with an empty queued sound. This is a known limitation, not
+  support for another format; reject such paths during content validation.
 
 `strex::get_file_extension()` lowercases the suffix, so `.OGG` and `.ACM` reach
 the same decoder dispatch. Prefer lowercase authored names for portable,
@@ -292,7 +294,7 @@ Common failures and their likely causes:
 | Diagnostic or result | Likely cause |
 |---|---|
 | false with no matching effect | No base identity and no `_1` variant in the client index |
-| `Unsupported sound format` | Explicit path uses a suffix other than WAV, ACM, or Ogg |
+| true but no decoded data for an explicit path | The suffix is not WAV, ACM, or Ogg; the current loader does not reject this case itself |
 | `'RIFF' not found` / `'WAVE' not found` | File is not the expected WAV container |
 | `'fmt ' not found` / `Unknown format2` | Unsupported WAV chunk order |
 | `Compressed files not supported` | WAV format tag is not PCM |

@@ -21,19 +21,13 @@
       "host": "Windows",
       "target": "Windows x64",
       "compiler": "MSVC 19.44 or newer",
-      "level": "smoke_gated",
+      "level": "build_gated",
       "ci_validation_targets": [
         "win64-client",
         "win64-server",
         "win64-mapper",
         "win64-ascompiler",
-        "win64-baker",
-        "win64-starter-smoke",
-        "win64-native-extension-smoke",
-        "win64-tutorial-smoke",
-        "win64-showcase-smoke",
-        "win64-tutorial-package",
-        "win64-package-smoke"
+        "win64-baker"
       ],
       "applications": [
         "desktop client and headless client",
@@ -42,8 +36,8 @@
         "AngelScript compiler",
         "resource baker"
       ],
-      "runtime_evidence": "The starter, native-extension, minimal-multiplayer, and content-showcase process routes run through BuildTools validation; packaging-matrix and tutorial-package routes build archives, inventory payloads, and start packaged headless client/server binaries with embedded config.",
-      "limitations": "A green smoke route proves the stock tutorial and unsigned package-fixture paths, not every renderer, driver, database, installer, signing, store, deployment, or rollback combination.",
+      "runtime_evidence": "No process-level smoke route is required by the checked BuildTools validation registry.",
+      "limitations": "The required lane proves configure and compilation, not renderer, driver, database, installer, signing, store, deployment, rollback, or runtime lifecycle behavior.",
       "available_validation_targets": []
     },
     {
@@ -67,20 +61,13 @@
       "host": "Ubuntu 24.04",
       "target": "Linux x64",
       "compiler": "Clang 20 or newer",
-      "level": "smoke_gated",
+      "level": "build_gated",
       "ci_validation_targets": [
         "linux-client",
         "linux-server",
         "linux-mapper",
         "linux-ascompiler",
-        "linux-baker",
-        "linux-starter-smoke",
-        "linux-native-extension-smoke",
-        "linux-tutorial-smoke",
-        "linux-showcase-smoke",
-        "linux-showcase-capture",
-        "linux-tutorial-package",
-        "linux-package-smoke"
+        "linux-baker"
       ],
       "applications": [
         "desktop client and headless client",
@@ -89,8 +76,8 @@
         "AngelScript compiler",
         "resource baker"
       ],
-      "runtime_evidence": "The required workflow owns starter, native-extension, minimal-multiplayer, and content-showcase source process routes, a software-Mesa OpenGL Content Showcase capture with pixel validation, plus packaged tutorial and packaging-matrix routes that build tarballs, inventory payloads, and start packaged headless client/server binaries with embedded config.",
-      "limitations": "The current matrix qualifies Ubuntu 24.04 and unsigned fixture package paths only after retained required-job evidence; other distributions, installers, signing, stores, deployment, and rollback require project acceptance.",
+      "runtime_evidence": "No process-level smoke route is required by the checked BuildTools validation registry.",
+      "limitations": "The current matrix qualifies Ubuntu 24.04 configure and compilation only; runtime, other distributions, installers, signing, stores, deployment, and rollback require project acceptance.",
       "available_validation_targets": []
     },
     {
@@ -187,16 +174,15 @@
       "host": "Ubuntu 24.04 cross-build host",
       "target": "WebAssembly",
       "compiler": "Emscripten Clang",
-      "level": "smoke_gated",
+      "level": "build_gated",
       "ci_validation_targets": [
-        "web-client",
-        "web-showcase-runtime"
+        "web-client"
       ],
       "applications": [
         "browser client"
       ],
-      "runtime_evidence": "The required workflow builds the stock browser client and runs the Content Showcase through native-host force-baking, raw/ZIP Web packaging, exact payload checks, a native server, packaged HTTP delivery, Chromium, a real WebGL 2 context, lifecycle markers, and compositor-pixel validation.",
-      "limitations": "The stock web target is WebGL 2 client-only. The Content Showcase qualifies one deterministic localhost fixture under pinned Chromium; it does not qualify every browser/GPU pair or production hosting, headers, persistence, audio activation, deployment, CDN, signing, or rollback behavior. Those remain project-owned acceptance gates.",
+      "runtime_evidence": "No browser process smoke route is required by the checked BuildTools validation registry.",
+      "limitations": "The stock web target is WebGL 2 client-only. The build lane does not qualify browser/GPU pairs or production hosting, headers, persistence, audio activation, deployment, CDN, signing, or rollback behavior; those remain project-owned acceptance gates.",
       "available_validation_targets": []
     },
     {
@@ -247,7 +233,7 @@
   "summary": {
     "platform_profile_count": 10,
     "build_gated_profile_count": 8,
-    "smoke_gated_profile_count": 3,
-    "ci_validation_target_count": 35
+    "smoke_gated_profile_count": 0,
+    "ci_validation_target_count": 21
   }
 }

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"dd478cc907d9c76eb83409503bb9004ec2a9c4950ee8928aec4da44939856261"} -->
+<!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"26e9fd81c63624a476df71c977e2f1da8f566709990c91b5955ba21a6290c6c2"} -->
 
 # Цели, платформы и наборы пакетов
 
@@ -31,9 +31,9 @@ generated: true
 | <a id="entry-package-platform-windows-8e4a2bee4e"></a><code>package.platform.Windows</code> | <code>Windows</code> | <code>implemented</code> | <code>win32</code>, <code>win64</code>, <code>win32-win7</code>, <code>win64-win7</code>, <code>arm64</code> | <code>Server</code>, <code>Client</code>, <code>Mapper</code>, <code>Baker</code>, <code>AnimationViewer</code>, <code>ParticleViewer</code> | Нативное содержимое PE с необязательными runtime-DLL, символами, архивами и MSI. Ключи -win7 разрешаются в канонические архитектуры бинарных файлов win32/win64 и требуют совпадающего явного POSTFIX, когда выход сборки имеет суффикс. arm64 принимается как существующий вход пакета, но стандартный реестр платформ BuildTools не предоставляет линию сборки Windows arm64. |
 | <a id="entry-package-platform-linux-35772b1287"></a><code>package.platform.Linux</code> | <code>Linux</code> | <code>implemented</code> | <code>x64</code>, <code>arm64</code>, <code>x86</code>, <code>arm</code> | <code>Server</code>, <code>Client</code>, <code>Mapper</code>, <code>Baker</code>, <code>AnimationViewer</code>, <code>ParticleViewer</code> | Нативное содержимое ELF с необязательными runtime-библиотеками и архивами. |
 | <a id="entry-package-platform-android-0cfd01357a"></a><code>package.platform.Android</code> | <code>Android</code> | <code>implemented</code> | <code>arm32</code>, <code>arm64</code>, <code>x86</code> | <code>Client</code> | Проект клиента Gradle с нативными библиотеками ABI, ресурсами и необязательным APK. |
-| <a id="entry-package-platform-web-c4af6ceacd"></a><code>package.platform.Web</code> | <code>Web</code> | <code>implemented</code> | <code>wasm</code> | <code>Client</code> | Содержимое браузерного клиента JavaScript/Wasm с предварительно загруженными ресурсами. |
 | <a id="entry-package-platform-macos-a9032ded5f"></a><code>package.platform.macOS</code> | <code>macOS</code> | <code>unsupported</code> | <code>x64</code>, <code>arm64</code> | <code>Client</code> | Принимается argparse, но package_macos сейчас прерывает работу. |
 | <a id="entry-package-platform-ios-15d87c2d03"></a><code>package.platform.iOS</code> | <code>iOS</code> | <code>unsupported</code> | <code>arm64</code>, <code>simulator</code> | <code>Client</code> | Принимается argparse, но package_ios сейчас прерывает работу. |
+| <a id="entry-package-platform-web-c4af6ceacd"></a><code>package.platform.Web</code> | <code>Web</code> | <code>implemented</code> | <code>wasm</code> | <code>Client</code> | Содержимое браузерного клиента JavaScript/Wasm с предварительно загруженными ресурсами. |
 
 ## Токены наборов
 

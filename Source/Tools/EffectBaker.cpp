@@ -383,7 +383,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     spv_options.validate = true;
 
     // Native Vulkan-1.0 SPIR-V consumed by Rendering-Vulkan and cross-compilation
-    // Set 0 contains uniform buffers and set 1 contains combined image samplers
+    // Native `-spv`: set 0 = uniform buffers and set 1 = combined image samplers
     std::vector<uint32_t> spirv;
     spv::SpvBuildLogger logger;
     GlslangToSpv(intermediate, spirv, &logger, &spv_options);

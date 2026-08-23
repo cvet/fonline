@@ -53,7 +53,7 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
         self.assertTrue(first["summary"]["complete"])
         for domain, count in (
             ("ai-control-protocol", 134),
-            ("api", 2496),
+            ("api", 2495),
             ("audio", 103),
             ("cli", 42),
             ("cmake", 65),
@@ -64,7 +64,7 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
             ("image-format", 154),
             ("map-format", 207),
             ("model-format", 138),
-            ("native-extension", 43),
+            ("native-extension", 44),
             ("package", 62),
             ("particle-format", 339),
             ("prototype-format", 188),

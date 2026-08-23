@@ -115,7 +115,9 @@ End
 
 The trailing `*` on `Image` requests grayscale normalization. Omit it when the
 bitmap's authored RGB must remain. `Image` is mandatory and relative to the
-descriptor.
+descriptor. The current loader reaches `image_name.back()` without an explicit
+empty-value guard, so validate the field before runtime instead of relying on a
+binding diagnostic.
 
 `Letter` decodes one UTF-8 codepoint beginning after the first apostrophe. Its
 following metric keys modify that current glyph until another `Letter` appears.
@@ -162,10 +164,13 @@ Use a BMFont exporter with these settings:
 - Info, Common, Pages, and Chars blocks in standard order;
 - page image filename relative to the `.fnt` file.
 
-The client expects 20-byte character records. `xoffset`, `yoffset`, and
-`xadvance` are signed little-endian 16-bit fields. Negative bearings are normal
-and occur in the bundled fonts; converting them to unsigned values moves glyphs
-by tens of thousands of pixels.
+The client expects 20-byte character records. BMFont defines `xoffset`,
+`yoffset`, and `xadvance` as signed little-endian 16-bit fields, and negative
+bearings occur in the bundled fonts. The current loader nevertheless reads all
+three with `GetLEUInt16`; negative values are therefore reinterpreted near
+65535 and can move glyphs far outside their intended position. Treat this as a
+known runtime limitation and avoid negative metrics until the code fix lands in
+a separate change.
 
 The loader removes the exporter's padding from each record: it shifts X/Y by
 one, subtracts two from width/height, negates bearings into the Engine offset

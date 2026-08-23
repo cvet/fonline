@@ -197,18 +197,6 @@
       "id": "package.platform.Android"
     },
     {
-      "name": "Web",
-      "status": "implemented",
-      "architectures": [
-        "wasm"
-      ],
-      "targets": [
-        "Client"
-      ],
-      "description": "Browser client JavaScript/Wasm payload with preloaded resources.",
-      "id": "package.platform.Web"
-    },
-    {
       "name": "macOS",
       "status": "unsupported",
       "architectures": [
@@ -233,6 +221,18 @@
       ],
       "description": "Accepted by argparse but package_ios currently aborts.",
       "id": "package.platform.iOS"
+    },
+    {
+      "name": "Web",
+      "status": "implemented",
+      "architectures": [
+        "wasm"
+      ],
+      "targets": [
+        "Client"
+      ],
+      "description": "Browser client JavaScript/Wasm payload with preloaded resources.",
+      "id": "package.platform.Web"
     }
   ],
   "packs": [
@@ -615,8 +615,8 @@
   "cli": {
     "program": "package.py",
     "description": "FOnline packager",
-    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH -pack PACK\n                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]",
-    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,Web,macOS,iOS} -arch ARCH -pack PACK\n                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,Web,macOS,iOS}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -pack PACK            plus-separated pack tokens from PackageInterface.json\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -zip-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override zip compression level\n",
+    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH -pack PACK\n                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]",
+    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH -pack PACK\n                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,macOS,iOS,Web}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -pack PACK            package type\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -zip-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override zip compression level\n",
     "arguments": [
       {
         "id": "package.cli.argument.maincfg",
@@ -708,9 +708,9 @@
           "Windows",
           "Linux",
           "Android",
-          "Web",
           "macOS",
-          "iOS"
+          "iOS",
+          "Web"
         ],
         "default": null,
         "type": null,
@@ -742,7 +742,7 @@
         "choices": null,
         "default": null,
         "type": null,
-        "description": "plus-separated pack tokens from PackageInterface.json"
+        "description": "package type"
       },
       {
         "id": "package.cli.argument.config",
@@ -838,5 +838,5 @@
     "artifact_pack_count": 8,
     "cli_argument_count": 13
   },
-  "contract_digest": "f29e90d028047fa72b20019bf0ecced0d00aec88ac4d40c750fdbc1d25fdc2ea"
+  "contract_digest": "f82bcea977109ff6214369c76a0281b7c30bec1edda2e8d147b7c74f9951aad2"
 }

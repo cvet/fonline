@@ -84,7 +84,8 @@
       "padding_word": "0x01010101",
       "page_count": 1,
       "char_record_size": 20,
-      "signed_fields": [
+      "signed_fields": [],
+      "unsigned_fields": [
         "xoffset",
         "yoffset",
         "xadvance"
@@ -275,14 +276,14 @@
       "syntax": "Image <relative-resource>[*]",
       "stability": "experimental",
       "requirement": "Name a non-empty image resource relative to the descriptor; append * to request grayscale normalization and runtime tinting.",
-      "rationale": "A missing image is rejected, and the trailing marker is removed before relative resource resolution.",
+      "rationale": "The current loader accesses image_name.back() without an empty guard, so authoring validation must enforce this mandatory field before runtime; the trailing marker is removed before relative resource resolution.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "key == \"Image\"",
-            "Font image is not specified",
-            "image_name.back() == '*'"
+            "image_name.back() == '*'",
+            "Font image file not found"
           ]
         }
       ]
@@ -565,23 +566,22 @@
       "id": "font-format.bmfont.char-records",
       "name": "Twenty-byte character records",
       "stability": "experimental",
-      "requirement": "Encode each Chars record in the 20-byte BMFont v3 layout; xoffset, yoffset, and xadvance must be signed little-endian int16 values.",
-      "rationale": "Negative bearings occur in bundled fonts and must remain negative instead of being reinterpreted as values near 65535.",
+      "requirement": "Encode each Chars record in the 20-byte BMFont v3 layout. The format defines signed xoffset, yoffset, and xadvance fields, but the current loader reads all three as unsigned little-endian uint16 values; avoid negative metrics until that runtime defect is fixed separately.",
+      "rationale": "Bundled fonts contain negative bearings, so this source-backed limitation must remain visible instead of being documented as correct signed decoding.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "reader.GetLEUInt32() / 20",
-            "int16_t ox = reader.GetLEInt16()",
-            "int16_t oy = reader.GetLEInt16()",
-            "int16_t xa = reader.GetLEInt16()"
+            "uint16_t ox = reader.GetLEUInt16()",
+            "uint16_t oy = reader.GetLEUInt16()",
+            "uint16_t xa = reader.GetLEUInt16()"
           ]
         },
         {
           "path": "Source/Common/FileSystem.h",
           "anchors": [
-            "GetLEInt16()",
-            "std::bit_cast<int16_t>"
+            "GetLEUInt16()"
           ]
         }
       ]
@@ -1086,14 +1086,14 @@
       "id": "font-format.validation.descriptor-and-image-presence",
       "name": "Descriptor and image presence",
       "stability": "experimental",
-      "requirement": "Fail the asset gate when the descriptor is missing, FOFNT omits Image, or the relative image cannot load as an atlas sprite.",
-      "rationale": "Each condition throws a distinct FontManagerException during binding.",
+      "requirement": "Fail the asset gate when the descriptor is missing, FOFNT omits Image, or the relative image cannot load as an atlas sprite. The runtime reports missing descriptor and image files, but currently has no explicit empty-Image guard.",
+      "rationale": "Pre-runtime validation must cover the omitted-Image case because the loader reaches image_name.back() before it can produce a diagnostic.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "Font file not found",
-            "Font image is not specified",
+            "image_name.back() == '*'",
             "Font image file not found"
           ]
         }
@@ -1136,23 +1136,23 @@
     },
     {
       "id": "font-format.validation.signed-bmfont-metrics",
-      "name": "Signed BMFont metric regression",
+      "name": "Unsigned BMFont metric limitation",
       "stability": "experimental",
-      "requirement": "Keep xoffset, yoffset, and xadvance on GetLEInt16 and test against bundled binary fonts that contain negative bearings.",
-      "rationale": "Unsigned reads turn values such as -2 into 65534 and move rendered glyphs far outside their intended position.",
+      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with GetLEUInt16 even though bundled binary fonts contain negative bearings.",
+      "rationale": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "int16_t ox = reader.GetLEInt16()",
-            "int16_t oy = reader.GetLEInt16()",
-            "int16_t xa = reader.GetLEInt16()"
+            "uint16_t ox = reader.GetLEUInt16()",
+            "uint16_t oy = reader.GetLEUInt16()",
+            "uint16_t xa = reader.GetLEUInt16()"
           ]
         },
         {
           "path": "Source/Common/FileSystem.h",
           "anchors": [
-            "auto GetLEInt16() -> int16_t"
+            "auto GetLEUInt16() -> uint16_t"
           ]
         }
       ]
@@ -1253,5 +1253,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "bb663fe4cf25ccd150c4136bbd4854a07ec38984661ffda543e5048d677374a5"
+  "contract_digest": "fbbd65366de988ee1d0d93b5ae07d9f96feb9de9da930cfb8db6433548957975"
 }

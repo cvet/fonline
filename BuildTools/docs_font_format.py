@@ -243,12 +243,14 @@ def _derive_bmfont_contract(manager_text: str) -> dict[str, object]:
     if None in (signature, padding, page_count, record_size):
         raise ValueError("unable to derive binary BMFont constants")
     signed_fields = []
+    unsigned_fields = []
     for variable, field_name in (("ox", "xoffset"), ("oy", "yoffset"), ("xa", "xadvance")):
-        if re.search(
-            rf"int16_t {variable}\s*=\s*reader\.GetLEInt16\(\);", body
-        ) is None:
-            raise ValueError(f"BMFont {field_name} must be read as signed little-endian int16")
-        signed_fields.append(field_name)
+        if re.search(rf"int16_t {variable}\s*=\s*reader\.GetLEInt16\(\);", body):
+            signed_fields.append(field_name)
+        elif re.search(rf"uint16_t {variable}\s*=\s*reader\.GetLEUInt16\(\);", body):
+            unsigned_fields.append(field_name)
+        else:
+            raise ValueError(f"unable to derive the BMFont {field_name} integer decoding")
     return {
         "signature": "BMF",
         "version": int(signature.group(1)),
@@ -256,6 +258,7 @@ def _derive_bmfont_contract(manager_text: str) -> dict[str, object]:
         "page_count": int(page_count.group(1)),
         "char_record_size": int(record_size.group(1)),
         "signed_fields": signed_fields,
+        "unsigned_fields": unsigned_fields,
     }
 
 

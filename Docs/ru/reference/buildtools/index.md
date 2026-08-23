@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"32e4c9f0476ec64a6cc3b073624786d2aa2f6523f17c0bd281aeaee7a91d166e"} -->
+<!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"5292418969b8b4d962a49343d5208ce2bb4cec8df98f8395cfd7608d4d43d3ee"} -->
 
 # Сгенерированный справочник CLI BuildTools
 
@@ -23,7 +23,7 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Версионируемая линия поддержки CLI не объявлена; закрепляйте ревизию движка в автоматизации. |
 | Исходный парсер | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Дайджест контракта | <code>c3ce1809eb5d4e0811e95f8e3880d746b7d9e3a0b4418d9567313516a72aa653</code> |
+| Дайджест контракта | <code>7c062060f0beefe2657884e93a041fe0d079b5c535d122214e81ab94357b782d</code> |
 
 ## Покрытие
 

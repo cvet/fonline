@@ -39,6 +39,7 @@ class AudioDocumentationTests(unittest.TestCase):
         self.assertEqual(outputs["ogg"]["web_stream_chunk_bytes"], 131072)
         self.assertEqual(outputs["mix_volume_range"], [0, 100])
         self.assertFalse(outputs["headless_audio_enabled"])
+        self.assertFalse(outputs["unsupported_extension_rejected"])
         self.assertEqual(outputs["native_test_files"], [])
         self.assertEqual(self.model["summary"]["entry_count"], 32)
 
@@ -52,7 +53,7 @@ class AudioDocumentationTests(unittest.TestCase):
             {"DisableAudio": False, "SoundVolume": 100, "MusicVolume": 100},
         )
 
-    def test_unsupported_extension_is_rejected_before_enqueue(self) -> None:
+    def test_unsupported_extension_limitation_is_explicit(self) -> None:
         source = (ENGINE_ROOT / "Source/Client/SoundManager.cpp").read_text(
             encoding="utf-8"
         )
@@ -60,11 +61,11 @@ class AudioDocumentationTests(unittest.TestCase):
         load_begin = source.index("auto SoundManager::Load(")
         load_end = source.index("auto SoundManager::LoadWav", load_begin)
         load = source[load_begin:load_end]
-        rejection = load.index("Unsupported sound format")
         enqueue = load.index("_playingSounds.emplace_back")
-        self.assertLess(rejection, enqueue)
-        self.assertIn("else if (ext == \"ogg\")", load)
-        self.assertIn("return false;", load[rejection:enqueue])
+        self.assertNotIn("Unsupported sound format", load)
+        self.assertIn("if (ext == \"wav\"", load[:enqueue])
+        self.assertIn("if (ext == \"acm\"", load[:enqueue])
+        self.assertIn("if (ext == \"ogg\"", load[:enqueue])
 
     def test_effect_identity_variants_and_music_path_are_pinned(self) -> None:
         sound = (ENGINE_ROOT / "Source/Client/SoundManager.cpp").read_text(

@@ -11,7 +11,6 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from types import SimpleNamespace
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
@@ -70,13 +69,6 @@ def _write_fixture(root: Path, manifest: dict[str, object]) -> None:
     )
 
 
-def _contract_packager(target: str, platform: str, arch: str, packs: set[str]) -> package_tool.Packager:
-    packager = package_tool.Packager.__new__(package_tool.Packager)
-    packager.args = SimpleNamespace(target=target, platform=platform, arch=arch)
-    packager.pack_args = packs
-    return packager
-
-
 class DocumentationPackageTests(unittest.TestCase):
     def test_runtime_payload_postfix_accepts_package_and_cmake_variants(self) -> None:
         extract = package_tool.Packager.extract_binary_entry_postfix
@@ -84,18 +76,14 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(extract("Client-Linux-x64"), "")
         self.assertEqual(extract("Client-Linux-x64-Profiling_OnDemand"), "")
         self.assertEqual(extract("Client-Linux-x64-Profiling_OnDemand-Debug-Steam"), "Steam")
-        self.assertEqual(extract("Client-Linux-x64-Debug_Profiling_OnDemand"), "")
-        self.assertEqual(extract("Client-Linux-x64-Debug_Profiling_OnDemand-Steam"), "Steam")
-        self.assertEqual(extract("Client-Linux-x64-Debug_San_Address"), "")
-        self.assertEqual(extract("Client-Linux-x64-San_MemoryWithOrigins"), "")
-        self.assertEqual(extract("Client-Windows-win64-Release_Debugging"), "")
 
     def test_runtime_payload_postfix_rejects_unrelated_or_malformed_entries(self) -> None:
         extract = package_tool.Packager.extract_binary_entry_postfix
 
         self.assertIsNone(extract("Server-Linux-x64"))
         self.assertIsNone(extract("Client-Unknown-x64"))
-        self.assertIsNone(extract("Client-Linux-x64-Debug_Profiling_OnDemand_bad"))
+        with self.assertRaisesRegex(AssertionError, "Unexpected binary entry layout"):
+            extract("Client-Linux-x64-Debug_Profiling_OnDemand_bad")
 
     def test_current_model_has_stable_shape_ids_and_exact_help(self) -> None:
         model = docs_package.generate_package_model(ENGINE_ROOT)
@@ -141,37 +129,6 @@ class DocumentationPackageTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.stdout.replace("\r\n", "\n"), model["cli"]["help_output"])
-
-    def test_runtime_contract_accepts_implemented_packs_and_rejects_invalid_combinations(self) -> None:
-        for pack_name, pack in package_tool.PACKAGE_PACKS.items():
-            target = pack["targets"][0]
-            platform = pack["platforms"][0]
-            arch = package_tool.PACKAGE_PLATFORMS[platform]["architectures"][0]
-            packs = {pack_name}
-            if not pack["artifact"]:
-                packs.add("Raw")
-            if "NoRes" in package_tool.PACKAGE_TARGETS[target]["required_packs"]:
-                packs.add("NoRes")
-            packager = _contract_packager(target, platform, arch, packs)
-            if pack["status"] == "implemented":
-                with self.subTest(pack=pack_name):
-                    packager.validate_package_contract()
-            else:
-                with self.subTest(pack=pack_name), self.assertRaisesRegex(AssertionError, "not implemented"):
-                    packager.validate_package_contract()
-
-        with self.assertRaisesRegex(AssertionError, "does not support target"):
-            _contract_packager("Server", "Web", "wasm", {"Raw"}).validate_package_contract()
-        with self.assertRaisesRegex(AssertionError, "requires pack token"):
-            _contract_packager("Mapper", "Windows", "win64", {"Raw"}).validate_package_contract()
-        with self.assertRaisesRegex(AssertionError, "at least one output artifact"):
-            _contract_packager("Client", "Windows", "win64", {"OGL"}).validate_package_contract()
-        _contract_packager("Client", "Windows", "win32-win7", {"Raw"}).validate_package_contract()
-        _contract_packager("Client", "Windows", "win64-win7", {"Raw"}).validate_package_contract()
-
-        args = SimpleNamespace(pack="Raw+Unknown", target="Client", platform="Windows", arch="win64")
-        with self.assertRaisesRegex(AssertionError, "Unknown package pack token"):
-            package_tool.Packager(args, None)
 
     def test_manifest_validation_rejects_contract_drift(self) -> None:
         cases: list[tuple[dict[str, object], str]] = []

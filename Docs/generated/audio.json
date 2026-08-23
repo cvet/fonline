@@ -93,6 +93,7 @@
     "effect_variant_selection": "contiguous",
     "runtime_side": "client",
     "headless_audio_enabled": false,
+    "unsupported_extension_rejected": false,
     "native_test_files": []
   },
   "formats": [
@@ -380,16 +381,19 @@
     },
     {
       "id": "audio.decoding.unsupported-extension",
-      "name": "Unsupported extension rejection",
+      "name": "Unsupported extension limitation",
       "stability": "experimental",
-      "requirement": "Reject any explicit extension other than wav, acm, or ogg and log the unsupported suffix.",
-      "rationale": "Accepting an undecoded empty sound would report false success and enqueue unusable playback state.",
+      "requirement": "Author only wav, acm, or ogg paths. The current loader has no fallback rejection branch, so another explicit suffix bypasses all decoders and can enqueue an empty sound while returning success.",
+      "rationale": "This is a documented implementation limitation, not support for arbitrary audio formats; callers and content validation must keep unsupported suffixes out.",
       "source": [
         {
           "path": "Source/Client/SoundManager.cpp",
           "anchors": [
-            "Unsupported sound format",
-            "return false;"
+            "if (ext == \"wav\"",
+            "if (ext == \"acm\"",
+            "if (ext == \"ogg\"",
+            "_playingSounds.emplace_back",
+            "return true;"
           ]
         }
       ]
@@ -619,7 +623,7 @@
       "id": "audio.validation.decoder-diagnostics",
       "name": "Decoder diagnostics",
       "stability": "experimental",
-      "requirement": "Treat false playback results and RIFF, PCM, ACM, Ogg, conversion, or unsupported-format log lines as authoring failures.",
+      "requirement": "Treat false playback results and RIFF, PCM, ACM, Ogg, or conversion log lines as authoring failures; reject unsupported suffixes in content validation because the runtime currently has no diagnostic for them.",
       "rationale": "The loaders report format-specific failure boundaries instead of substituting silence as a valid resource.",
       "source": [
         {
@@ -628,8 +632,7 @@
             "'RIFF' not found",
             "Compressed files not supported",
             "Decode Acm error",
-            "Open OGG file",
-            "Unsupported sound format"
+            "Open OGG file"
           ]
         }
       ]
@@ -728,5 +731,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "f323ea212e9ad28ee8e41d2f75b8b930252b22de663b0f939a9a2df2f4ecb6e1"
+  "contract_digest": "4814942cb1f64d3daaf85bf42b35a5f4782f0294f74392ced8ff4c43b147f71b"
 }
