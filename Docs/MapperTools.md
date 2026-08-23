@@ -224,7 +224,7 @@ Native helpers in [../Source/Scripting/MapperGlobalScriptMethods.cpp](../Source/
 | `Game.SetMapperHiddenSpritesVisible(visible)` | Toggle mapper rendering of `AlwaysHideSprite` items. The normal mapper can still show them for editing, while the preview driver disables them by default for client-like captures without invisible blockers / entry markers. |
 | `Game.AddMapperIgnoredItemPids(itemPids)` | Add item prototypes to the active map's mapper ignore list and rebuild the map. The preview driver uses this for explicit special marker suppression (`Entrance`, `Trigger`, `ExitGrid`, blockers, lights). |
 | `Game.SetMapperScrollCheckEnabled(enabled)` | Toggle mapper scroll clamping (`MapView::SetScrollCheck`). Switching it ON updates the camera IMMEDIATELY: `RefreshMinZoom` raises the zoom *target* to the scroll min-zoom (SAA-fit), `SetScrollCheck` applies it through `InstantZoom` (which rebuilds the rendered view — writing `SpritesZoom` directly only moves the readout and leaves the view stuck at the old zoom) and re-clamps the scroll offset inside `ScrollAxialArea`. The render driver disables it before centering so large/low-zoom captures are not clamped back to `ScrollAxialArea`. |
-| `Game.SaveMapperScreenshot(filePath)` | Dump the active main render target to a TGA file (Y-flipped to match the renderer) via the engine-shared `WriteSimpleTga` helper; the helper swaps red/blue so the file is in TGA-native B,G,R,A order and reads back with correct colors |
+| `Game.SaveMapperScreenshot(filePath)` | Dump the active main render target to a TGA file (Y-flipped to match the renderer) via the engine-shared `ImageWriter::WriteSimpleTga` helper; the helper swaps red/blue so the file is in TGA-native B,G,R,A order and reads back with correct colors |
 
 Mapper exit is the common `Game.RequestQuit()` from [CommonGlobalScriptMethods.cpp](../Source/Scripting/CommonGlobalScriptMethods.cpp) â€” no mapper-specific wrapper.
 
@@ -247,7 +247,7 @@ Single-process batching exists because the mapper's startup is the slowest step 
 | Setting | Default | ÐžÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ |
 |---------|---------|----------|
 | `Mapper.RenderMaps` | `""` | Space-separated list of map names or paths relative to `Maps/` to load (without `.fomap`). Empty value disables the autopilot â€” mapper opens normally. |
-| `Mapper.RenderOutputDir` | `""` | Directory for `<OutputName>.tga` outputs. Forward slashes recommended. Created on demand by `WriteSimpleTga`. |
+| `Mapper.RenderOutputDir` | `""` | Directory for `<OutputName>.tga` outputs. Forward slashes recommended. Created on demand by `ImageWriter::WriteSimpleTga`. |
 | `Mapper.RenderWarmupFrames` | `4` | Number of `OnLoop` ticks to wait between `ShowMap` and `SaveMapperScreenshot`. Bumping this helps if the dumped TGA looks empty/half-painted. |
 | `Mapper.RenderQuitWhenDone` | `True` | If true, the mapper quits after the last map. Set to `False` for interactive debugging. |
 | `Mapper.RenderFitPadding` | `1.50` | Extra zoom-out factor above the calculated fit zoom. Keeps trees, cliffs, shadows, and other sprites that protrude outside `ScrollAxialArea` inside the captured viewport. |
@@ -398,7 +398,7 @@ The python script invokes `LF_Mapper` once for the planned batch, enables hidden
 End-to-end wall-clock on the dev machine (DirectX, 297 maps):
 
 - Mapper startup: paid per `LF_Mapper` invocation.
-- Per-map work (LoadMap + overlay-toggle RebuildMap + auto-fit zoom + 4 warmup frames + DrawMapperFrame + read `_rtMain` + WriteSimpleTga): ~1â€“2s.
+- Per-map work (LoadMap + overlay-toggle RebuildMap + auto-fit zoom + 4 warmup frames + DrawMapperFrame + read `_rtMain` + ImageWriter::WriteSimpleTga): ~1â€“2s.
 - TGA â†’ PNG crop + `MapEntrancePreviews.foinfo` update (Python, post-mapper): ~50ms per map.
 
 For full-map batches, prefer `--skip-existing` while tuning so interrupted or corrected runs resume from already generated previews.

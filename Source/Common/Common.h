@@ -869,7 +869,6 @@ private:
 };
 
 extern auto MakeSeededRandomGenerator() -> std::mt19937;
-extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
