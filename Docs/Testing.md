@@ -148,6 +148,11 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 - Clang: LLVM profile/coverage mapping;
 - GCC: GCC/lcov-style coverage flags.
 
+Coverage builds use AngelScript's portable generic calling convention. The native x64 GCC trampoline adjusts the
+stack inside inline assembly and cannot reliably unwind an application C++ exception once coverage instrumentation
+changes the surrounding frame; the portable path keeps the same registered-function behavior in ordinary C++ so
+expected exception tests remain catchable.
+
 `BuildTools/cmake/stages/Applications.cmake` wires coverage command targets through `BuildTools/codecoverage.py`:
 
 - `CleanCodeCoverageData`

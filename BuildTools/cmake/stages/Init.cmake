@@ -223,10 +223,10 @@ AddCompileDefinitionsList(
 # translated to a script exception), and MemorySanitizer cannot track initialization through the asm (it
 # reports false use-of-uninitialized). The engine already uses AngelScript's portable generic calling
 # convention where native support is absent (e.g. wasm), and 32-bit ARM disables exceptions for the same
-# trampoline reason. Force the portable path under ASan/MSan so the sanitizers exercise the same engine and
-# game logic over pure C++ marshalling. TSan keeps the native path (unaffected, and green there); UBSan keeps
-# it too (its value-type misalignment is stack-layout-driven, not calling-convention-driven).
-SetValue(expr_PortableScriptCallConfigs $<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Address_Undefined>)
+# trampoline reason. Force the portable path under ASan/MSan and code coverage so instrumentation exercises
+# the same engine and game logic over pure C++ marshalling. TSan keeps the native path; UBSan keeps it too
+# because its value-type misalignment is stack-layout-driven, not calling-convention-driven
+SetValue(expr_PortableScriptCallConfigs $<OR:$<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Address_Undefined>,$<BOOL:${FO_CODE_COVERAGE}>>)
 AddCompileDefinitionsList($<${expr_PortableScriptCallConfigs}:AS_MAX_PORTABILITY>)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
