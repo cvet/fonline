@@ -287,6 +287,8 @@ TEST_CASE("ManagedScriptBaker")
     const std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
     const std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
     const std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    const std::filesystem::path managed_reference = managed_source_dir / "References" / "ManagedDependency.dll";
+    const std::filesystem::path managed_analyzer = managed_source_dir / "Analyzers" / "ManagedAnalyzer.csproj";
     const std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
 
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
@@ -294,6 +296,8 @@ TEST_CASE("ManagedScriptBaker")
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
     WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(managed_reference, "managed-reference\n");
+    WriteTextFile(managed_analyzer, "<Project />\n");
 
     const std::filesystem::path server_source = script_dir / "ServerOnly.cs";
     const std::filesystem::path client_source = script_dir / "ClientOnly.cs";
@@ -329,22 +333,27 @@ TEST_CASE("ManagedScriptBaker")
     WriteTextFile(script_dir / "Obsolete.gen.txt", "stale generated sidecar\n");
     WriteTextFile(script_dir / "UnitManaged.Server.gen.csproj", "<Project />\n");
 
-    ScopedCurrentPath current_path(temp_dir.Path());
+    const std::filesystem::path work_dir = temp_dir.Path() / "Work";
+    std::filesystem::create_directories(work_dir);
+    WriteTextFile(temp_dir.Path() / "ManagedRoot.fomain", "");
+    ScopedCurrentPath current_path(work_dir);
 
     TestRig rig;
+    rig.Settings.ApplyConfigAtPath("ManagedRoot.fomain", temp_dir.Path().string());
     OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {"ManagedSupport/CoreScripts", "Scripts/Managed"});
+    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, "Scripts/Managed");
     OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
     OverrideSetting(rig.Settings.ManagedScriptExtraSources,
         vector<string> {
-            strex("UnitManaged,Server,{}", server_source.string()).str(),
-            strex("UnitManaged,Client,{}", client_source.string()).str(),
-            strex("UnitManaged,Mapper,{}", mapper_source.string()).str(),
-            strex("UnitManaged,All,{}", shared_source.string()).str(),
-            strex("UnitManaged,All,{}", tilde_source.string()).str(),
+            "UnitManaged,Server,Scripts/Managed/ServerOnly.cs",
+            "UnitManaged,Client,Scripts/Managed/ClientOnly.cs",
+            "UnitManaged,Mapper,Scripts/Managed/MapperOnly.cs",
+            "UnitManaged,All,Scripts/Managed/Shared.cs",
+            "UnitManaged,All,Scripts/Managed/Tilde~1.cs",
         });
-    OverrideSetting(rig.Settings.ManagedScriptExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,All,System.Core"});
+    OverrideSetting(rig.Settings.ManagedScriptExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,Server,ManagedSupport/References/ManagedDependency.dll", "UnitManaged,All,System.Core"});
+    OverrideSetting(rig.Settings.ManagedScriptAnalyzers, vector<string> {"ManagedSupport/Analyzers/ManagedAnalyzer.csproj"});
     OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
     rig.AddBakedFile("Metadata.fometa-server",
         MakeMetadataBlob({
@@ -387,6 +396,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(std::filesystem::exists(script_dir / "ServerEnums.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "ClientEnums.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "MapperEnums.gen.cs"));
+    CHECK_FALSE(std::filesystem::exists(work_dir / "Scripts"));
     CHECK_FALSE(std::filesystem::exists(script_dir / "Attributes.gen.cs"));
     CHECK_FALSE(std::filesystem::exists(script_dir / "CoreTagged.gen.cs"));
     CHECK_FALSE(std::filesystem::exists(script_dir / "Initializator.gen.cs"));
@@ -415,7 +425,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("<AssemblyName>TestPack.Client</AssemblyName>") != string::npos);
     CHECK(unified_project.find("<AssemblyName>TestPack.Mapper</AssemblyName>") != string::npos);
     CHECK(unified_project.find("TRACE;SERVER") != string::npos);
-    CHECK(unified_project.find("../../Baking/TestPack/Assemblies/ServerAssemblies/") != string::npos);
+    CHECK(unified_project.find("../../Work/Baking/TestPack/Assemblies/ServerAssemblies/") != string::npos);
     CHECK(unified_project.find("ServerEnums.gen.cs") != string::npos);
     CHECK(unified_project.find("ClientEnums.gen.cs") != string::npos);
     CHECK(unified_project.find("MapperEnums.gen.cs") != string::npos);
@@ -429,6 +439,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("Shared.cs") != string::npos);
     CHECK(unified_project.find("Tilde~1.cs") != string::npos);
     CHECK(unified_project.find("System.Core") != string::npos);
+    CHECK(unified_project.find("../../ManagedSupport/References/ManagedDependency.dll") != string::npos);
+    CHECK(unified_project.find("../../ManagedSupport/Analyzers/ManagedAnalyzer.csproj") != string::npos);
     CHECK(unified_project.find("System.Xml") != string::npos);
     CHECK(unified_project.find("Obsolete.gen.cs") != string::npos);
     CHECK(unified_project.find("<ProjectReference Include=\"FOnline.ManagedHost.gen.csproj\" />") != string::npos);

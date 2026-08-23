@@ -86,7 +86,10 @@ static auto MakeManagedEntryAssemblyResourcePath(string_view pack_name, string_v
 static auto MakeManagedOutputAssemblyResourcePath(string_view target_name, string_view assembly_file_name) -> string;
 static auto IsGeneratedManagedArtifactFileName(string_view file_name) noexcept -> bool;
 static void RemoveStaleGeneratedManagedArtifacts(const std::filesystem::path& project_dir, const unordered_set<string>& expected_files);
-static auto CollectManagedDirSources(const vector<string>& source_dirs) -> vector<std::filesystem::path>;
+static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesystem::path;
+static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_view path_value) -> std::filesystem::path;
+static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const vector<string>& path_values) -> vector<string>;
+static auto CollectManagedDirSources(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>;
 static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string;
 static auto MakeProjectOutputPath(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view target_name) -> string;
 static auto MakeSolutionProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string;
@@ -95,7 +98,7 @@ static auto HashManagedSolutionGuid(string_view value, uint64_t seed) noexcept -
 static auto MakeManagedSolutionGuid(string_view value) -> string;
 static auto MakeAbsoluteProjectOutputPath(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> string;
 static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::filesystem::path;
-static auto FindManagedHostSource(const vector<string>& source_dirs) -> std::filesystem::path;
+static auto FindManagedHostSource(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> std::filesystem::path;
 static auto GetManagedBakeStamp(const BakingContext& context, string_view target_name, const vector<std::filesystem::path>& source_files, const vector<string>& references, const std::filesystem::path& managed_host_source) -> uint64_t;
 static auto MakeCsTypeToken(string_view name) -> string;
 static auto MakeCsTypeToken(const ComplexTypeDesc& type) -> string;
@@ -189,10 +192,11 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     auto settings = _context->Settings.as_ptr();
-    const auto managed_generated_dir = GetManagedGeneratedDir(settings->ManagedScriptGeneratedDir);
+    const auto managed_config_dir = GetManagedConfigDir(*settings);
+    const auto managed_generated_dir = GetManagedGeneratedDir(settings->ManagedScriptGeneratedDir, managed_config_dir);
     const auto managed_assemblies_output_dir = GetManagedAssembliesOutputDir(*_context);
-    const auto dir_source_files = CollectManagedDirSources(settings->ManagedScriptDirs);
-    const auto managed_host_source = FindManagedHostSource(settings->ManagedScriptDirs);
+    const auto dir_source_files = CollectManagedDirSources(settings->ManagedScriptDirs, managed_config_dir);
+    const auto managed_host_source = FindManagedHostSource(settings->ManagedScriptDirs, managed_config_dir);
 
     const auto assemblies = settings->ManagedScriptAssemblies;
 
@@ -263,10 +267,10 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         };
 
         for (const string& assembly : assemblies) {
-            for (const std::filesystem::path& source_file : CollectSourceFiles(files, dir_source_files, settings->ManagedScriptExtraSources, assembly, target)) {
+            for (const std::filesystem::path& source_file : CollectSourceFiles(files, dir_source_files, settings->ManagedScriptExtraSources, assembly, target, managed_config_dir)) {
                 append_source_file(source_file);
             }
-            for (const string& reference : CollectReferences(settings->ManagedScriptExtraReferences, assembly, target)) {
+            for (const string& reference : CollectReferences(settings->ManagedScriptExtraReferences, assembly, target, managed_config_dir)) {
                 append_reference(reference);
             }
         }
@@ -304,7 +308,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     GenerateManagedHostProjectFile(managed_generated_dir, settings->ManagedScriptTargetFramework, managed_host_source);
-    GenerateUnifiedProjectFile(managed_generated_dir, managed_assemblies_output_dir, managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, settings->ManagedScriptAnalyzers);
+    GenerateUnifiedProjectFile(managed_generated_dir, managed_assemblies_output_dir, managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, ResolveManagedPaths(managed_config_dir, settings->ManagedScriptAnalyzers));
     GenerateSolutionFile(managed_generated_dir, project_name, vector<string> {project_name, string(MANAGED_HOST_PROJECT_NAME)});
 
     for (const string_view target : targets) {
@@ -652,13 +656,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 AppendCsCallableDeclaration(out, "    ", "public delegate void ", EscapeCsIdentifier(delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "    ", "public delegate global::System.Threading.Tasks.Task ", EscapeCsIdentifier(async_delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "    ", "public delegate EventResult ", EscapeCsIdentifier(result_delegate_name), event_arg_declarations, ";");
-                AppendCsCallableDeclaration(
-                    out,
-                    "    ",
-                    "public delegate global::System.Threading.Tasks.Task<EventResult> ",
-                    EscapeCsIdentifier(async_result_delegate_name),
-                    event_arg_declarations,
-                    ";");
+                AppendCsCallableDeclaration(out, "    ", "public delegate global::System.Threading.Tasks.Task<EventResult> ", EscapeCsIdentifier(async_result_delegate_name), event_arg_declarations, ";");
                 out << "\n";
                 out << "    public sealed class " << EscapeCsIdentifier(event_type_name) << "\n";
                 out << "    {\n";
@@ -733,13 +731,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "        true,\n";
                 out << CS_INDENT << "        (int)priority);\n";
                 out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(
-                    out,
-                    CS_INDENT,
-                    "public void ",
-                    "Subscribe",
-                    vector<string> {strex("{} handler", EscapeCsIdentifier(async_result_delegate_name)).str(), "EventPriority priority = EventPriority.Normal"},
-                    "");
+                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Subscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(async_result_delegate_name)).str(), "EventPriority priority = EventPriority.Normal"}, "");
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    if (handler == null)\n";
                 out << CS_INDENT << "    {\n";
@@ -811,13 +803,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "        _nativeSubscriptions.Remove(key);\n";
                 out << CS_INDENT << "    }\n";
                 out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(
-                    out,
-                    CS_INDENT,
-                    "public void ",
-                    "Unsubscribe",
-                    vector<string> {strex("{} handler", EscapeCsIdentifier(async_result_delegate_name)).str()},
-                    "");
+                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(async_result_delegate_name)).str()}, "");
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    if (handler == null)\n";
                 out << CS_INDENT << "    {\n";
@@ -1132,7 +1118,7 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
     std::filesystem::remove(project_dir / strex("{}.sln", solution_name).str(), ec);
 }
 
-auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& dir_source_files, const vector<string>& extra_sources, string_view assembly_name, string_view target_name) -> vector<std::filesystem::path>
+auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& dir_source_files, const vector<string>& extra_sources, string_view assembly_name, string_view target_name, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1174,7 +1160,7 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
     }
 
     for (const string& source_path : CollectScopedValues(extra_sources, assembly_name, target_name)) {
-        const std::filesystem::path source_file_path = source_path;
+        const std::filesystem::path source_file_path = ResolveManagedPath(config_dir, source_path);
 
         if (IsGeneratedManagedArtifactFileName(strex("{}", source_file_path.filename().string()).str())) {
             continue;
@@ -1190,14 +1176,21 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
     return result;
 }
 
-auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_references, string_view assembly_name, string_view target_name) -> vector<string>
+auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_references, string_view assembly_name, string_view target_name, const std::filesystem::path& config_dir) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<string> result;
     unordered_set<string> unique_refs(result.begin(), result.end());
 
-    for (const string& reference : CollectScopedValues(extra_references, assembly_name, target_name)) {
+    for (const string& reference_value : CollectScopedValues(extra_references, assembly_name, target_name)) {
+        const bool is_path_reference = reference_value.find('\\') != string::npos || reference_value.find('/') != string::npos || std::filesystem::path(reference_value).extension() == ".dll";
+        string reference = reference_value;
+
+        if (is_path_reference) {
+            reference = ResolveManagedPath(config_dir, reference_value).string();
+        }
+
         if (unique_refs.emplace(reference).second) {
             result.emplace_back(reference);
         }
@@ -1207,13 +1200,13 @@ auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_reference
     return result;
 }
 
-auto ManagedScriptBaker::GetManagedGeneratedDir(string_view dir_override) -> std::filesystem::path
+auto ManagedScriptBaker::GetManagedGeneratedDir(string_view dir_override, const std::filesystem::path& config_dir) -> std::filesystem::path
 {
     FO_STACK_TRACE_ENTRY();
 
     // Empty targets the build GeneratedSource tree (the same one native codegen writes to), so generated
     // managed scripts stay out of the authored source tree unless the project explicitly roots them there
-    const std::filesystem::path generated_dir = dir_override.empty() ? std::filesystem::path {FO_GENERATED_SOURCE_DIR} / "Managed" : std::filesystem::path {dir_override};
+    const std::filesystem::path generated_dir = dir_override.empty() ? std::filesystem::path {FO_GENERATED_SOURCE_DIR} / "Managed" : ResolveManagedPath(config_dir, dir_override);
 
     std::error_code ec;
     std::filesystem::create_directories(generated_dir, ec);
@@ -1276,12 +1269,12 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
     return stamp;
 }
 
-static auto FindManagedHostSource(const vector<string>& source_dirs) -> std::filesystem::path
+static auto FindManagedHostSource(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> std::filesystem::path
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const string& source_dir_value : source_dirs) {
-        const std::filesystem::path source_dir {source_dir_value};
+        const std::filesystem::path source_dir = ResolveManagedPath(config_dir, source_dir_value);
         const array candidates {
             source_dir / "ManagedHost" / MANAGED_HOST_SOURCE_FILE_NAME,
             source_dir.parent_path() / "ManagedHost" / MANAGED_HOST_SOURCE_FILE_NAME,
@@ -1684,7 +1677,68 @@ static void RemoveStaleGeneratedManagedArtifacts(const std::filesystem::path& pr
     }
 }
 
-static auto CollectManagedDirSources(const vector<string>& source_dirs) -> vector<std::filesystem::path>
+static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesystem::path
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::error_code ec;
+    std::filesystem::path config_dir = std::filesystem::current_path(ec);
+
+    if (ec) {
+        config_dir.clear();
+    }
+
+    const auto applied_configs = settings.GetAppliedConfigs();
+
+    if (!applied_configs.empty()) {
+        std::filesystem::path config_path {applied_configs.front()};
+
+        if (config_path.is_relative() && !config_dir.empty()) {
+            config_path = config_dir / config_path;
+        }
+
+        config_dir = config_path.parent_path();
+    }
+
+    const auto canonical_dir = std::filesystem::weakly_canonical(config_dir, ec);
+    return ec ? config_dir.lexically_normal() : canonical_dir;
+}
+
+static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_view path_value) -> std::filesystem::path
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::filesystem::path path {path_value};
+
+    if (path.is_relative() && !config_dir.empty()) {
+        path = config_dir / path;
+    }
+
+    std::error_code ec;
+    const auto canonical_path = std::filesystem::weakly_canonical(path, ec);
+    return ec ? path.lexically_normal() : canonical_path;
+}
+
+static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const vector<string>& path_values) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> paths;
+    paths.reserve(path_values.size());
+
+    for (const string& path_value : path_values) {
+        if (path_value.empty()) {
+            paths.emplace_back();
+        }
+        else {
+            paths.emplace_back(ResolveManagedPath(config_dir, path_value).string());
+        }
+    }
+
+    return paths;
+}
+
+static auto CollectManagedDirSources(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1695,11 +1749,11 @@ static auto CollectManagedDirSources(const vector<string>& source_dirs) -> vecto
     vector<std::filesystem::path> source_files;
 
     for (const string& dir : source_dirs) {
-        const std::filesystem::path source_dir {dir};
+        const std::filesystem::path source_dir = ResolveManagedPath(config_dir, dir);
         std::error_code ec;
 
         if (!std::filesystem::exists(source_dir, ec) || ec) {
-            throw ManagedScriptBakerException("Managed script directory not found", dir);
+            throw ManagedScriptBakerException("Managed script directory not found", source_dir.string());
         }
 
         for (std::filesystem::directory_iterator it(source_dir, ec); !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
@@ -1720,7 +1774,7 @@ static auto CollectManagedDirSources(const vector<string>& source_dirs) -> vecto
         }
 
         if (ec) {
-            throw ManagedScriptBakerException("Can't enumerate Managed script directory", dir);
+            throw ManagedScriptBakerException("Can't enumerate Managed script directory", source_dir.string());
         }
     }
 
