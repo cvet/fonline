@@ -1005,7 +1005,7 @@ void ImGui::TableUpdateLayout(ImGuiTable* table)
             {
                 if (column->InitStretchWeightOrWidth > 0.0f)
                     column->StretchWeight = column->InitStretchWeightOrWidth;
-                else if (table_sizing_policy == ImGuiTableFlags_SizingStretchProp)
+                else if (table_sizing_policy == ImGuiTableFlags_SizingStretchProp && stretch_sum_width_auto > 0.0f) // (FOnline Patch) avoid NaN weights while a fresh table has no measured content width
                     column->StretchWeight = (column->WidthAuto / stretch_sum_width_auto) * count_stretch;
                 else
                     column->StretchWeight = 1.0f;

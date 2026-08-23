@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"40c017ed228736fc663964dc8685a36e137e1ce09d82f7cc584f4557f85a67fe"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"3e745199398353924e26b0b5c0bfa7832cddb86c55ef8d5581664b5be69c4393"} -->
 
 # Frontend и рендеринг
 
@@ -604,6 +604,11 @@ textures. `RenderTargetManager`:
 `MapView`, `SpriteManager`, `ModelSpriteFactory` и `ParticleSpriteFactory`
 используют targets для map layers, light buffers, model/particle atlas render,
 hit testing и offscreen composition.
+
+При загрузке локальной карты `View.MapRenderTargetScale` фиксирует размеры
+render targets карты, освещения и indoor mask как логический размер экрана,
+умноженный на этот коэффициент. Движок ограничивает размер пределом текстуры
+renderer; вид, превышающий получившийся target, разбивается на несколько chunks.
 
 Model-attached SPARK systems сохраняют уже spawned particles в simulation space,
 пока emitter следует attachment point модели. Non-identity root transform

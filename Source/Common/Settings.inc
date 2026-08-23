@@ -138,6 +138,7 @@ FIXED_SETTING(bool, View, HideNativeCursor, false); // If true, native cursor is
 FIXED_SETTING(int32_t, View, FadingDuration, 1000); // Fading duration in milliseconds
 FIXED_SETTING(bool, View, MapZoomEnabled); // Map view zooming
 FIXED_SETTING(bool, View, MapDirectDraw); // Draw map directly to main framebuffer (speed up rendering but disables zooming and make scrolling jumpy)
+FIXED_SETTING(float32_t, View, MapRenderTargetScale, 1.0f); // Fixed map/light/indoor-mask render-target scale relative to the logical screen; clamped to the device texture limit
 FIXED_SETTING(bool, View, DisableLighting); // Disables lighting for more performance
 FIXED_SETTING(bool, View, DisableFog); // Disables fog for more performance
 FIXED_SETTING(vector<int32_t>, View, GlobalDayColorTime, 300, 600, 1140, 1380); // Project-wide default DayColorTime in minutes (4 keys); maps may override per-map via Map.DayColorTime

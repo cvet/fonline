@@ -42,6 +42,44 @@ TEST_CASE("PersistedImGuiLayoutIsDeferredWithoutContext", "[imgui][settings]")
     CHECK_FALSE(ImGuiExt::LoadIniSettingsIfContext("[Window][Persisted]\nPos=0,0\nSize=1,1\n"));
 }
 
+TEST_CASE("FreshProportionalStretchTableHasFiniteLayout", "[imgui][tables]")
+{
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+
+    auto destroy_context = FO_NAMESPACE scope_exit([]() noexcept {
+        FO_NAMESPACE safe_call([] {
+            if (ImGui::GetCurrentContext() != nullptr) {
+                ImGui::DestroyContext();
+            }
+        });
+    });
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {800.0f, 600.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+    ImGui::NewFrame();
+    REQUIRE(ImGui::Begin("ProportionalTableWindow"));
+    REQUIRE(ImGui::BeginTable("##FreshTable", 2, ImGuiTableFlags_SizingStretchProp));
+    ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed, 220.0f);
+    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted("Key");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::TextUnformatted("Value");
+    ImGui::EndTable();
+    ImGui::End();
+    ImGui::Render();
+
+    FO_NAMESPACE nptr<ImGuiWindow> window = FO_NAMESPACE ImGuiTestHarness::FindWindow("ProportionalTableWindow");
+    REQUIRE(window);
+    CHECK(std::isfinite(window->DC.IdealMaxPos.x));
+}
+
 TEST_CASE("ImGuiTestHarnessPressesWidgetsByLabel", "[imgui][harness]")
 {
     // The harness is what lets the panel tests take the branch behind a control, so it is pinned here

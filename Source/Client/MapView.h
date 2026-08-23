@@ -346,6 +346,7 @@ private:
     void HideHex(const ViewField& vf);
 
     auto GetViewSize() const -> isize32;
+    auto CalculateMapRenderTargetSize() const noexcept -> isize32;
     void InitView();
 
     void AddSpriteToChain(ptr<Field> field, ptr<MapSprite> mspr);
