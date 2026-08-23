@@ -465,20 +465,11 @@ void Application::EndFrame()
         EndWindowRender();
     }
 
-    _onBeforePresentDispatcher();
     _onFrameEndDispatcher();
 
 #if FO_TRACY
     FrameMark;
 #endif
-}
-
-void Application::RenderImGuiToTexture(ptr<RenderTexture> target)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(target);
-    throw GenericException("ImGui rendering is unavailable in a headless application");
 }
 
 auto Application::IsHeadless() const noexcept -> bool

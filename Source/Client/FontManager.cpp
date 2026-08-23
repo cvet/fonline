@@ -510,10 +510,6 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
     bool make_gray = false;
 
-    if (image_name.empty()) {
-        throw FontManagerException("Font image is not specified", font_path);
-    }
-
     if (image_name.back() == '*') {
         make_gray = true;
         image_name = image_name.substr(0, image_name.size() - 1);
@@ -614,9 +610,9 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
         uint16_t y = reader.GetLEUInt16();
         uint16_t w = reader.GetLEUInt16();
         uint16_t h = reader.GetLEUInt16();
-        int16_t ox = reader.GetLEInt16();
-        int16_t oy = reader.GetLEInt16();
-        int16_t xa = reader.GetLEInt16();
+        uint16_t ox = reader.GetLEUInt16();
+        uint16_t oy = reader.GetLEUInt16();
+        uint16_t xa = reader.GetLEUInt16();
         reader.GoForward(2);
 
         // Fill data

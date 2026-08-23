@@ -368,9 +368,6 @@ void DataBaseImpl::InitializeOpLogs()
     if (_settings->OpLogPath.empty()) {
         throw DataBaseException("Empty oplog path in settings");
     }
-    if (!_settings->OpLogPath.ends_with(".oplog")) {
-        throw DataBaseException("Oplog path must end with .oplog", _settings->OpLogPath);
-    }
 
     auto open_log_file = [&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc) {
         if (file_path.empty()) {

@@ -72,39 +72,29 @@ enum class LightFlag : uint16_t
     StopDir7 = 0x200,
 };
 
-// Map-owned controller that places copies of a named sprite on matching visible hexes until finished or the map is destroyed.
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
 class SpritePattern : public RefCounted<SpritePattern>
 {
 public:
-    // Clears the pattern sprites and marks the controller finished; repeated calls are harmless.
     void Finish();
 
-    // Reports whether Finish has stopped this pattern and released its sprite instances.
     bool Finished {};
-    // Positive nonzero X/Y hex intervals used as modulo divisors when selecting placement cells.
     ipos32 EveryHex {1, 1};
-    // Makes hidden roofs suppress the pattern and places matching roof sprites in the roof-particle draw order.
     bool InteractWithRoof {};
-    // Enables the required ground-tile property filter; false currently suppresses all pattern placement.
     bool CheckTileProperty {};
-    // Ground-tile item property read when CheckTileProperty is enabled.
     ItemProperty TileProperty {};
-    // Integer value that the selected ground-tile property must equal for sprite placement.
     int32_t ExpectedTilePropertyValue {};
     vector<shared_ptr<Sprite>> Sprites {};
 };
 
-// Map-owned fog or traced-zone layer whose shape and compositing parameters are rebuilt from mutable script fields each frame.
 ///@ ExportRefType Client RefCounted Export = Enabled, Distance, Radius, ExtraLength, TransitionDuration, OvalRoundness, EdgeNoise, Depth, ClearRadius, TintColor, OverlayColor, CenterColor, Traced, CheckShootBlocks, OriginHex, Disposed, Dispose
 class FogLayer : public RefCounted<FogLayer>
 {
 public:
-    // Marks this layer for removal during the map's next fog preparation pass; repeated calls are harmless.
     void Dispose() noexcept;
 
     // Script-tunable configuration (exported as properties)
-    bool Enabled {true}; // Enables shape generation while preserving transition state when toggled
+    bool Enabled {true};
     int32_t Distance {}; // Zone reach in hexes (traced overlay); 0 = derive from the look distance
     int32_t Radius {}; // Look radius in hexes; 0 = use the origin critter's look distance
     int32_t ExtraLength {1}; // Extra look length added to the derived radius
@@ -117,7 +107,7 @@ public:
     ucolor OverlayColor {}; // Traced-overlay (zone) color
     ucolor CenterColor {}; // Traced-overlay center color
     bool Traced {}; // Positive traced overlay (attack/observation zone) vs inverse look fog
-    bool CheckShootBlocks {true}; // Includes shoot-blocking map geometry when tracing the fog boundary
+    bool CheckShootBlocks {true};
     mpos OriginHex {}; // Origin for a hex-anchored fog (ignored when following a critter)
     bool Disposed {}; // Script-readable status: true once Dispose() ran or the owning map was destroyed (recreate then)
 

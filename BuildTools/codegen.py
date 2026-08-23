@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import os
 import re
 import subprocess
@@ -25,38 +24,19 @@ REGISTRATION_TARGETS = ('Server', 'Client', 'Mapper')
 CLIENT_ENTITY_TARGETS = ('Client', 'Mapper')
 MIGRATION_RULE_KINDS = ('Version', 'Property', 'Proto', 'Component', 'Remove')
 API_STABILITY_LABELS = ('stable', 'experimental', 'internal', 'deprecated')
+ENGINE_HOOK_NAMES = (
+    'ApplicationInitHook',
+    'ApplicationShutdownHook',
+    'ServerInitHook',
+    'ClientInitHook',
+    'ClientStartupSettingsHook',
+    'SetupBakersHook',
+    'CheckCritterVisibilityHook',
+    'CheckItemVisibilityHook',
+)
 NATIVE_EXTENSION_INTERFACE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NativeExtensionInterface.json')
 IMGUI_HEADER_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ThirdParty', 'imgui', 'imgui.h'))
 APPLICATION_SOURCE_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Source', 'Frontend', 'Application.cpp'))
-
-
-def load_native_extension_interface() -> dict[str, Any]:
-    with open(NATIVE_EXTENSION_INTERFACE_PATH, encoding='utf-8') as interface_file:
-        interface = json.load(interface_file)
-
-    assert isinstance(interface, dict) and interface.get('schema_version') == 1, 'Unsupported native extension interface schema'
-    scope = interface.get('scope')
-    assert isinstance(scope, dict) and scope.get('surface') == 'native-extension-interface', 'Invalid native extension interface scope'
-    roles = interface.get('roles')
-    hooks = interface.get('hooks')
-    assert isinstance(roles, list) and roles, 'Native extension interface roles are missing'
-    assert isinstance(hooks, list) and hooks, 'Native extension interface hooks are missing'
-
-    role_names = [role.get('name') for role in roles if isinstance(role, dict)]
-    hook_names = [hook.get('name') for hook in hooks if isinstance(hook, dict)]
-    assert len(role_names) == len(roles) and len(role_names) == len(set(role_names)), 'Invalid or duplicate native extension roles'
-    assert len(hook_names) == len(hooks) and len(hook_names) == len(set(hook_names)), 'Invalid or duplicate engine hooks'
-    for hook in hooks:
-        assert hook.get('role') in role_names, 'Engine hook has an unknown native extension role: ' + str(hook.get('name'))
-        assert isinstance(hook.get('stub_declarations'), list), 'Engine hook stub_declarations must be an array: ' + str(hook.get('name'))
-        assert isinstance(hook.get('stub_definition'), str) and hook['stub_definition'], 'Engine hook stub_definition is missing: ' + str(hook.get('name'))
-        assert isinstance(hook.get('compatibility_hashed'), bool), 'Engine hook compatibility_hashed must be boolean: ' + str(hook.get('name'))
-    return interface
-
-
-NATIVE_EXTENSION_INTERFACE = load_native_extension_interface()
-ENGINE_HOOK_DEFINITIONS = tuple(NATIVE_EXTENSION_INTERFACE['hooks'])
-ENGINE_HOOK_NAMES = tuple(hook['name'] for hook in ENGINE_HOOK_DEFINITIONS)
 
 
 @dataclass(slots=True)
@@ -1733,7 +1713,12 @@ def parse_ref_type_tags(valid_types: set[str]) -> None:
             fields, methods = parse_exported_ref_type_members(ref_type_lines, export_flags, valid_types)
 
             add_codegen_tag('ExportRefType', ExportRefTypeTag(target, ref_type_name, fields, methods, export_flags, comment), get_tag_source(tag_meta))
-            hash_recursive(compatibility_hasher, (target, ref_type_name, fields, methods, export_flags))
+            hashable_fields = [RefTypeField(field.field_type, field.name, []) for field in fields]
+            hashable_methods = [
+                RefTypeMethod(method.name, method.ret, method.args, [], method.ret_wrapper, method.ret_nullable)
+                for method in methods
+            ]
+            hash_recursive(compatibility_hasher, (target, ref_type_name, hashable_fields, hashable_methods, export_flags))
 
             valid_types.add(ref_type_name)
             ref_types.add(ref_type_name)
@@ -1850,11 +1835,11 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ENGINE_HOOK_NAMES, 'Invalid engine hook ' + name
+            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook',
+                            'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
 
             add_codegen_tag('EngineHook', EngineHookTag(name, [], comment), get_tag_source(tag_meta))
-            hook_definition = next(hook for hook in ENGINE_HOOK_DEFINITIONS if hook['name'] == name)
-            if hook_definition['compatibility_hashed']:
+            if name != 'ApplicationShutdownHook':
                 hash_recursive(compatibility_hasher, name)
 
         except Exception as ex:
@@ -2310,10 +2295,36 @@ def generate_generic_code() -> None:
     global_lines = []
     
     global_lines.append('// Engine hooks')
-    for hook_definition in ENGINE_HOOK_DEFINITIONS:
-        if not is_engine_hook_enabled(hook_definition['name']):
-            global_lines.extend(hook_definition['stub_declarations'])
-            global_lines.append(hook_definition['stub_definition'])
+    if not is_engine_hook_enabled('ApplicationInitHook'):
+        global_lines.append('enum class AppInitFlags : uint8_t;')
+        global_lines.append('struct GlobalSettings;')
+        global_lines.append('void ApplicationInitHook(AppInitFlags, GlobalSettings&) { /* Stub */ }')
+    if not is_engine_hook_enabled('ApplicationShutdownHook'):
+        global_lines.append('void ApplicationShutdownHook() { /* Stub */ }')
+    if not is_engine_hook_enabled('ServerInitHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('void ServerInitHook(ptr<ServerEngine>) { /* Stub */ }')
+    if not is_engine_hook_enabled('ClientInitHook'):
+        global_lines.append('class ClientEngine;')
+        global_lines.append('void ClientInitHook(ptr<ClientEngine>) { /* Stub */ }')
+    if not is_engine_hook_enabled('ClientStartupSettingsHook'):
+        global_lines.append('struct GlobalSettings;')
+        global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
+    if not is_engine_hook_enabled('SetupBakersHook'):
+        global_lines.append('class BaseBaker;')
+        global_lines.append('struct BakingContext;')
+        global_lines.append('void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }')
+    if not is_engine_hook_enabled('CheckCritterVisibilityHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('class Map;')
+        global_lines.append('class Critter;')
+        global_lines.append('CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>) { return CritterVisibilityMode::Full; }')
+    if not is_engine_hook_enabled('CheckItemVisibilityHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('class Map;')
+        global_lines.append('class Critter;')
+        global_lines.append('class Item;')
+        global_lines.append('bool CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) { return true; }')
     global_lines.append('')
     
     # Engine properties

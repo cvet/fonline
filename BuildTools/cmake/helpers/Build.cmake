@@ -287,10 +287,6 @@ macro(ResolveContributedFiles)
 endmacro()
 
 macro(AddEngineSource target)
-	if(NOT "${target}" IN_LIST FO_NATIVE_EXTENSION_ROLES)
-		AbortMessage("AddEngineSource: unknown native extension role '${target}'. Allowed: ${FO_NATIVE_EXTENSION_ROLES}")
-	endif()
-
 	ResolveContributedFiles(${ARGN})
 
 	foreach(resolvedFile ${resolvedFiles})
@@ -313,44 +309,6 @@ macro(AddNativeIncludeDir)
 			AddIncludeDirectories("${FO_CONTRIBUTION_DIR}/${dir}")
 		endforeach()
 	endif()
-endmacro()
-
-macro(AddProjectLibraries)
-	set(options)
-	set(oneValueArgs)
-	set(multiValueArgs ROLES LIBRARIES)
-	ParseArguments(PROJECT_LIBRARIES "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-	if(PROJECT_LIBRARIES_UNPARSED_ARGUMENTS)
-		AbortMessage("AddProjectLibraries got unexpected arguments: ${PROJECT_LIBRARIES_UNPARSED_ARGUMENTS}")
-	endif()
-	if(NOT PROJECT_LIBRARIES_ROLES)
-		AbortMessage("AddProjectLibraries requires at least one role in ROLES")
-	endif()
-	if(NOT PROJECT_LIBRARIES_LIBRARIES)
-		AbortMessage("AddProjectLibraries requires at least one target or library in LIBRARIES")
-	endif()
-	if("CoreLibs" IN_LIST FO_STAGES_EXECUTED)
-		AbortMessage("AddProjectLibraries must run before BuildCoreLibraries")
-	endif()
-
-	foreach(role ${PROJECT_LIBRARIES_ROLES})
-		if(NOT "${role}" IN_LIST FO_NATIVE_EXTENSION_ROLES)
-			AbortMessage("AddProjectLibraries: unknown project library role '${role}'. Allowed: ${FO_NATIVE_EXTENSION_ROLES}")
-		endif()
-		if(role STREQUAL "TESTS")
-			set(roleLibraries FO_TESTING_LIBS)
-		else()
-			set(roleLibraries FO_${role}_LIBS)
-		endif()
-
-		foreach(library ${PROJECT_LIBRARIES_LIBRARIES})
-			if(NOT "${library}" IN_LIST ${roleLibraries})
-				StatusMessage("Add project library (${role}): ${library}")
-				AppendList(${roleLibraries} "${library}")
-			endif()
-		endforeach()
-	endforeach()
 endmacro()
 
 macro(AddEngineSources)
@@ -461,9 +419,6 @@ macro(DefinePackage package)
 
 	if("${Package_${package}_Config}" STREQUAL "")
 		AbortMessage("DefinePackage ${package} requires CONFIG")
-	endif()
-	if(NOT Package_${package}_Parts)
-		AbortMessage("DefinePackage ${package} requires at least one BINARY")
 	endif()
 endmacro()
 
@@ -619,51 +574,6 @@ macro(AddCommandTarget target)
 	SetTargetProperty(${target} FOLDER "Commands")
 	AppendList(FO_COMMANDS_GROUP ${target})
 endmacro()
-
-function(AddBakingTarget target)
-	set(options FORCE)
-	set(oneValueArgs SUB_CONFIG COMMENT)
-	set(multiValueArgs)
-	ParseArguments(BAKING_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-	if(BAKING_TARGET_UNPARSED_ARGUMENTS)
-		AbortMessage("AddBakingTarget ${target} got unexpected arguments: ${BAKING_TARGET_UNPARSED_ARGUMENTS}")
-	endif()
-	if(BAKING_TARGET_KEYWORDS_MISSING_VALUES)
-		AbortMessage("AddBakingTarget ${target} expects values for: ${BAKING_TARGET_KEYWORDS_MISSING_VALUES}")
-	endif()
-
-	if(NOT DEFINED BAKING_TARGET_SUB_CONFIG)
-		set(BAKING_TARGET_SUB_CONFIG "NONE")
-	endif()
-	if(NOT DEFINED BAKING_TARGET_COMMENT)
-		set(BAKING_TARGET_COMMENT "Bake resources")
-	endif()
-
-	if(BAKING_TARGET_FORCE)
-		set(forceBaking "True")
-	else()
-		set(forceBaking "False")
-	endif()
-
-	SetValue(bakeResources
-		"${FO_DEV_NAME}_Baker"
-		-ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}"
-		-ApplySubConfig "${BAKING_TARGET_SUB_CONFIG}")
-	SetValue(resourceBuildHashCommand
-		${CMAKE_COMMAND}
-		-DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash"
-		-DGIT_ROOT="${FO_GIT_ROOT}"
-		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
-
-	AddCommandTarget(${target}
-		COMMAND_ARGS
-		COMMAND ${bakeResources} -ForceBaking ${forceBaking}
-		COMMAND ${resourceBuildHashCommand}
-		DEPENDS ForceCodeGeneration
-		WORKING_DIRECTORY ${FO_OUTPUT_PATH}
-		COMMENT "${BAKING_TARGET_COMMENT}")
-endfunction()
 
 macro(AddCoreStaticLibrary target sourceList)
 	set(options)

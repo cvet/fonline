@@ -214,7 +214,6 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     FO_STACK_TRACE_ENTRY();
 
     auto settings = GlobalSettings(false);
-    settings.ApplyDefaultSettings();
 
     if (!IsPackaged()) {
         // Apply config

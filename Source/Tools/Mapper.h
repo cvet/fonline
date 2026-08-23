@@ -189,8 +189,6 @@ public:
     auto BeginMapperFrameInput() -> bool;
     void ProcessMapperInputEvent(const InputEvent& ev);
     void DrawMapperFrame();
-    void SaveMapperScreenshot(string_view file_path);
-    void RequestMapperWindowScreenshot(string_view file_path);
     void HandleMapperKeyboardEvent(const InputEvent& ev);
     void HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys);
     void HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys);
@@ -321,16 +319,12 @@ public:
     auto CaptureMapSnapshot(nptr<const MapView> map) const -> string;
     auto RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool;
 
-    // Runs for submitted Mapper console text; handlers may replace `text`, and `StopChain` suppresses built-in command parsing.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapperMessage, string& /*text*/);
-    // Runs after a map is loaded and normalized, before it is added to the Mapper's loaded-map list.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnEditMapLoad, ptr<MapView> /*map*/);
-    // Runs after Mapper writes a map successfully and before it marks the undo state clean.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnEditMapSave, ptr<MapView> /*map*/);
-    // Runs when the Inspector selects `entity`; handlers populate or reorder the mutable property-index list.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInspectorProperties, ptr<Entity> /*entity*/, vector<int32_t>& /*properties*/);
 
@@ -481,13 +475,10 @@ private:
     auto IsInspectorValueSameAsProto(ptr<const Entity> entity, ptr<const Property> prop, string_view value_text) const -> bool;
     void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_view value) const;
     void SetSelectionContour(ptr<ClientEntity> entity, ucolor color) const;
-    void CompletePendingMapperWindowScreenshot();
 
     // Per-user editor settings (currently the ImGui window layout). Registry-backed on Windows, file-backed
     // elsewhere; distinct from the resource Cache so tool preferences do not live in the baked-resource store
     SettingsStorage _uiSettings {"Mapper"};
-    EventUnsubscriber _appEventUnsubscriber {};
-    string _pendingWindowScreenshotPath {};
 };
 
 FO_END_NAMESPACE

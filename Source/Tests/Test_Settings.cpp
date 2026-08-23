@@ -214,34 +214,6 @@ TEST_CASE("Settings")
         CHECK(settings.GameName == "Tag Tag");
     }
 
-    SECTION("LoadAppSettingsAppliesDefaultsBeforeProjectOverrides")
-    {
-        string temp_dir = MakeTempSettingsDir("runtime_defaults");
-        ignore_unused(fs_remove_dir_tree(temp_dir));
-        REQUIRE(fs_create_directories(temp_dir));
-
-        string config_path = strex(temp_dir).combine_path("runtime-defaults.fomain").str();
-        string cache_path = strex(temp_dir).combine_path("cache").str();
-        REQUIRE(fs_write_file(config_path,
-            strex("Common.GameName = Runtime Defaults Probe\n"
-                  "Baking.CacheResources = {}\n",
-                cache_path)
-                .str()));
-
-        string arg0 = "lf_tests";
-        string arg1 = "--ApplyConfig";
-        string arg2 = config_path;
-        vector<CommandLineArg> argv = {arg0.data(), arg1.data(), arg2.data()};
-
-        auto settings = LoadAppSettings(CommandLineArgs {argv});
-
-        CHECK(settings.GameName == "Runtime Defaults Probe");
-        CHECK(settings.NetBufferSize == 4096);
-        CHECK(settings.ImGuiFontTextureSize == 256);
-
-        ignore_unused(fs_remove_dir_tree(temp_dir));
-    }
-
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
         string temp_dir = MakeTempSettingsDir("settings_config");

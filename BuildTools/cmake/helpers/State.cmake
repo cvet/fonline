@@ -24,7 +24,6 @@ SetDefaultVariables(""
 	FO_SERVER_LIBS
 	FO_CLIENT_SYSTEM_LIBS
 	FO_CLIENT_LIBS
-	FO_MAPPER_LIBS
 	FO_RENDER_SYSTEM_LIBS
 	FO_RENDER_LIBS
 	FO_BAKER_SYSTEM_LIBS
@@ -148,10 +147,11 @@ SetDefaultVariables(0
 	FO_HAVE_SDL_GPU)
 
 # Configuration duplication
+SetValue(configVarsFile "${CMAKE_CURRENT_BINARY_DIR}/cmake-vars.txt")
 ExecuteProcess(
 	COMMAND ${CMAKE_COMMAND} --help-variable-list
-	OUTPUT_VARIABLE configVarFullListText)
-string(REGEX MATCHALL "[^\r\n]+" configVarFullList "${configVarFullListText}")
+	OUTPUT_FILE "${configVarsFile}")
+FileReadStrings("${configVarsFile}" configVarFullList)
 
 foreach(configVar ${configVarFullList})
 	if("${configVar}" MATCHES "<CONFIG>")

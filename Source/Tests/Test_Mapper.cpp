@@ -470,8 +470,7 @@ namespace MapperMergeTest
         cr.StopAnim();
 
         ipos boneOffset;
-        // The public method remains bound in 2D-only builds and reports the disabled 3D submodule by exception
-        try { cr.GetBonePos("Head".hstr(), boneOffset); } catch {}
+        cr.GetBonePos("Head".hstr(), boneOffset);
 
         ProtoItem tileProto = Game.GetProtoItem("MapperMergeTileA".hstr());
         if (cr.CountItem(tileProto) != 0) return -11;

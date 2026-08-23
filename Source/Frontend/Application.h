@@ -721,7 +721,6 @@ public:
     void LoadImGuiEffect(const FileSystem& resources);
     void BeginFrame();
     void EndFrame();
-    void RenderImGuiToTexture(ptr<RenderTexture> target);
     void RequestQuit(bool success = true) noexcept;
     void WaitForRequestedQuit();
 
@@ -736,7 +735,6 @@ public:
     GlobalSettings Settings;
 
     EventObserver<> OnFrameBegin {};
-    EventObserver<> OnBeforePresent {};
     EventObserver<> OnFrameEnd {};
     EventObserver<> OnPause {};
     EventObserver<> OnResume {};
@@ -840,7 +838,6 @@ private:
     std::condition_variable_any _quitEvent {};
     mutex _quitLocker {};
     EventDispatcher<> _onFrameBeginDispatcher {&OnFrameBegin};
-    EventDispatcher<> _onBeforePresentDispatcher {&OnBeforePresent};
     EventDispatcher<> _onFrameEndDispatcher {&OnFrameEnd};
     EventDispatcher<> _onPauseDispatcher {&OnPause};
     EventDispatcher<> _onResumeDispatcher {&OnResume};

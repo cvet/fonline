@@ -6,7 +6,7 @@
 # planes are parallel and never intersect, which makes the painter order by screen row exactly equivalent
 # to a per-pixel depth test while being immune to the interpolation noise that made coincident planes
 # z-fight in horizontal stripes. Draw order is authoritative for sprite-vs-sprite occlusion; see
-# MapSpriteList::MakeDrawOrderPos and Docs/en/explanation/rendering/index.md.
+# MapSpriteList::MakeDrawOrderPos and Docs/FrontendAndRendering.md.
 # Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
 
 [Effect]

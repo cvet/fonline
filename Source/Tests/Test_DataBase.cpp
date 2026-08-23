@@ -1048,15 +1048,6 @@ TEST_CASE("DataBaseInitializeOpLogsRejectsUnknownCommand")
     }
 }
 
-TEST_CASE("DataBaseInitializeOpLogsRejectsPathWithoutOpLogSuffix")
-{
-    GlobalSettings settings {false};
-    ConfigureRecoverySettings(settings, "DbPendingChanges");
-
-    TestDataBase db {settings};
-    REQUIRE_THROWS_WITH(db.InitializeOpLogs(), Catch::Matchers::ContainsSubstring("must end with .oplog"));
-}
-
 TEST_CASE("DataBaseInitializeOpLogsRejectsInvalidNumericKey")
 {
     GlobalSettings settings {false};

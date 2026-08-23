@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 #endif
 
     try {
-        FO_VERIFY_AND_THROW(Platform::ForkProcess(), "Failed to fork server daemon process");
+        Platform::ForkProcess();
 
         InitApp(args, AppInitFlags::PrebakeResources);
 

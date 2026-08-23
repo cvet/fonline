@@ -245,13 +245,6 @@ def generate_native_extension_model(root: Path, manifest_relative_path: str = DE
     project_roles = _project_roles(root)
     if project_roles != role_names:
         raise ValueError(f"native extension roles differ from ProjectInterface.json: {role_names} != {project_roles}")
-    if Path(codegen.NATIVE_EXTENSION_INTERFACE_PATH).resolve() == manifest_path.resolve():
-        runtime_hooks = [dict(hook) for hook in codegen.ENGINE_HOOK_DEFINITIONS]
-        if runtime_hooks != hooks:
-            raise ValueError("native extension hooks differ from codegen runtime definitions")
-        if list(codegen.ENGINE_HOOK_NAMES) != [hook["name"] for hook in hooks]:
-            raise ValueError("native extension hook order differs from codegen runtime")
-
     identities = [entry["id"] for entry in [*roles, *hooks, *binding_rules]]
     if len(identities) != len(set(identities)):
         raise ValueError("native extension model IDs must be unique")

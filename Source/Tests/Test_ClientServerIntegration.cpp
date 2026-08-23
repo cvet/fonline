@@ -648,8 +648,7 @@ namespace ClientServerIntegrationClient
         Chosen.GetBodyAngle();
 
         ipos bonePos;
-        // The public method remains bound in 2D-only builds and reports the disabled 3D submodule by exception
-        try { Chosen.GetBonePos("Root".hstr(), bonePos); } catch {}
+        Chosen.GetBonePos("Root".hstr(), bonePos);
 
         return 0;
     }

@@ -70,7 +70,7 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
     TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
     # rpmalloc.c uses <stdatomic.h> unconditionally; MSVC compiles C sources without C11 by
     # default and keeps C atomics behind an extra switch (still experimental as of VS 17.14).
-    SetTargetProperties(rpmalloc C_STANDARD 11 C_STANDARD_REQUIRED ON)
+    SetTargetProperty(rpmalloc C_STANDARD 11)
     TargetCompileOptions(rpmalloc PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:MSVC>>:/experimental:c11atomics>")
 else()
     AddCompileDefinitionsList(FO_HAVE_RPMALLOC=0)

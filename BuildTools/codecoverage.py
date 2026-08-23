@@ -834,30 +834,18 @@ def generate_report(args: argparse.Namespace) -> None:
     log("HTML report:", html_path)
 
 
-def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="codecoverage.py", description="Run and analyze engine code coverage")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run and analyze engine code coverage")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    commands = {
-        "clean": "Remove previously collected coverage data and reports",
-        "run": "Run the instrumented test binary and collect coverage data",
-        "report": "Generate text and HTML reports from collected coverage data",
-        "full": "Clean, run the instrumented binary, and generate reports",
-    }
-    for command_name, command_help in commands.items():
-        subparser = subparsers.add_parser(command_name, help=command_help, description=command_help)
-        subparser.add_argument("--workspace-root", type=Path, required=True, help="embedding-project source directory")
-        subparser.add_argument("--build-dir", type=Path, required=True, help="configured CMake build directory")
-        subparser.add_argument("--binary", type=Path, required=True, help="instrumented test executable")
-        subparser.add_argument("--backend", choices=("gcc", "llvm", "msvc"), required=True, help="coverage compiler/toolchain backend")
-        subparser.add_argument("--output-dir", type=Path, required=True, help="coverage data and report output directory")
-        subparser.add_argument("binary_args", nargs=argparse.REMAINDER, help="arguments passed to the test binary")
-
-    return parser
-
-
-def parse_args() -> argparse.Namespace:
-    parser = create_parser()
+    for command_name in ("clean", "run", "report", "full"):
+        subparser = subparsers.add_parser(command_name)
+        subparser.add_argument("--workspace-root", type=Path, required=True)
+        subparser.add_argument("--build-dir", type=Path, required=True)
+        subparser.add_argument("--binary", type=Path, required=True)
+        subparser.add_argument("--backend", choices=("gcc", "llvm", "msvc"), required=True)
+        subparser.add_argument("--output-dir", type=Path, required=True)
+        subparser.add_argument("binary_args", nargs=argparse.REMAINDER)
 
     return parser.parse_args()
 

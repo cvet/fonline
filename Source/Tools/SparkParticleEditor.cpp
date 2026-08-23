@@ -81,21 +81,6 @@ public:
 
     ~SparkParticleSubEditor() override { FO_STACK_TRACE_ENTRY(); }
 
-    void Initialize() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        if (_mapper->Settings->SparkEditorSource.empty()) {
-            return;
-        }
-
-        RefreshResources();
-
-        auto source = std::ranges::find(_resourcePaths, _mapper->Settings->SparkEditorSource);
-        FO_VERIFY_AND_THROW(source != _resourcePaths.end(), "SPARK particle editor startup source not found", _mapper->Settings->SparkEditorSource);
-        OpenEditor(*source);
-    }
-
     void Shutdown() override
     {
         FO_STACK_TRACE_ENTRY();
@@ -264,16 +249,35 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
             return {nullptr, {}};
         }
 
-        SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
-        FO_VERIFY_AND_THROW(resource.Directions.size() == 1, "SPARK particle texture must contain exactly one direction", path, resource.Directions.size());
-        SpriteResourceDirectionData& direction = resource.Directions.front();
-        FO_VERIFY_AND_THROW(direction.Frames.size() == 1, "SPARK particle texture must contain exactly one frame", path, direction.Frames.size());
-        SpriteResourceFrameData& frame = direction.Frames.front();
-        FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Single-frame SPARK particle texture cannot contain a shared-frame reference", path);
-        SpriteResourceImageData image = ExtractSpriteResourceFrameImage(std::move(frame));
+        auto reader = file.GetReader();
 
-        unique_ptr<RenderTexture> tex = GetApp()->Render.CreateTexture(image.Size, true, false);
-        tex->UpdateTextureRegion({}, image.Size, image.Pixels);
+        uint8_t magic = reader.GetUInt8();
+        FO_VERIFY_AND_THROW(magic == SPRITE_RESOURCE_MAGIC, "Sprite file header magic is invalid", magic);
+
+        uint8_t version = reader.GetUInt8();
+        FO_VERIFY_AND_THROW(version == SPRITE_RESOURCE_VERSION, "Sprite file version is not supported", version);
+
+        // Collection header: frame count, animation ticks, direction count
+        (void)reader.GetLEUInt16();
+        (void)reader.GetLEUInt16();
+        (void)reader.GetUInt8();
+
+        // First frame of the first direction: shared-reference flag, then offset and size
+        (void)reader.GetUInt8();
+        (void)reader.GetLEInt16();
+        (void)reader.GetLEInt16();
+        uint16_t w = reader.GetLEUInt16();
+        uint16_t h = reader.GetLEUInt16();
+        (void)reader.GetLEInt16();
+        (void)reader.GetLEInt16();
+
+        const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
+        FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
+
+        auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
+        nptr<const uint8_t> data_ptr = data.data();
+        const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
+        tex->UpdateTextureRegion({}, {w, h}, pixels);
 
         nptr<RenderTexture> texture = tex.as_nptr();
         loaded_textures_ptr->emplace_back(std::move(tex));
