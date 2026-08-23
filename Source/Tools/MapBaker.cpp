@@ -270,12 +270,12 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             vector<uint8_t> map_data;
             auto final_writer = DataWriter(map_data);
 
+            final_writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+            final_writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
             final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str_hashes.size()));
 
             for (const auto& hstr : str_hashes) {
-                string_view str = hstr.as_str();
-                final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
-                final_writer.WriteStringBytes(str);
+                final_writer.WriteString(hstr);
             }
 
             final_writer.Write<uint32_t>(map_cr_count);
@@ -292,12 +292,12 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             vector<uint8_t> map_data;
             auto final_writer = DataWriter(map_data);
 
+            final_writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+            final_writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
             final_writer.Write<uint32_t>(numeric_cast<uint32_t>(client_str_hashes.size()));
 
             for (const auto& hstr : client_str_hashes) {
-                string_view str = hstr.as_str();
-                final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
-                final_writer.WriteStringBytes(str);
+                final_writer.WriteString(hstr);
             }
 
             final_writer.Write<uint32_t>(map_client_item_count);

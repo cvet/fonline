@@ -2798,6 +2798,8 @@ namespace ScriptMethodsTest
         vector<uint8_t> map_data;
         auto writer = DataWriter(map_data);
 
+        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
         writer.Write<uint32_t>(uint32_t {0}); // hashes_count
         writer.Write<uint32_t>(uint32_t {0}); // cr_count
         writer.Write<uint32_t>(uint32_t {0}); // item_count

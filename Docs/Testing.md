@@ -333,9 +333,11 @@ line up:
   sync), the handler continues with `Game.CreateCritter(pid, true)` →
   `player.SwitchCritter(cr)` → `Game.CreateLocation(pid, mapPids)` →
   `cr.TransferToMap(map, hex)`.
-- The two static map resources have different layouts: `.fomap-bin-server`
-  carries three counts (hashes, items, critters), `.fomap-bin-client` stops after
-  the hash table and the static items. An empty client blob is two `uint32`
+- Both static map resources open with the format header (`BAKED_MAP_FILE_MAGIC`,
+  `BAKED_MAP_FILE_VERSION`); a blob without it is rejected before anything else
+  is read. After the header the layouts differ: `.fomap-bin-server` carries three
+  counts (hashes, items, critters), `.fomap-bin-client` stops after the hash table
+  and the static items. An empty client blob is the header plus two `uint32`
   zeros; a third one fails the load with "Not all data read".
 
 ### Reaching the world-reload path
@@ -377,16 +379,16 @@ Get the manager from the live client with
 
 ### Authoring static map content for a server fixture
 
-A `.fomap-bin-server` blob is the hash table, then the critter records, then the
-item records. Each record is `ident` (`int64`), the prototype hash (`uint64`) and
+A `.fomap-bin-server` blob is the format header, then the hash table, then the
+critter records, then the item records. Each record is `ident` (`int64`), the prototype hash (`uint64`) and
 a properties blob preceded by its `uint32` size. Writing a zero size fails with
 "Unexpected end of buffer" — a default-constructed `Properties` still serializes
 to a non-empty payload, so produce it with `props.StoreAllData(...)` rather than
 assuming empty means zero bytes. With content present, map creation runs the
 content generator instead of skipping it.
 
-The client-side `.fomap-bin-client` blob is a different, shorter layout (hash
-table plus static items only).
+The client-side `.fomap-bin-client` blob is a different, shorter layout (header,
+hash table and static items only).
 
 ### Writing into a real Maps root from the mapper
 
