@@ -89,15 +89,28 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
         },
     )
 
-    target, entity, name, ret, args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = _codegen.parse_export_method_signature(
+    (
+        target,
+        entity,
+        name,
+        ret,
+        args,
+        ret_nullable,
+        ret_wrapper,
+        ret_container_element_wrapper,
+        receiver_wrapper,
+        ret_provides_cover,
+    ) = _codegen.parse_export_method_signature(
         "FO_SCRIPT_API string Client_Game_FormatTags(nptr<ClientEngine> client, string_view text, nptr<CritterView> talker = nullptr)",
         {"void", "bool", "int32", "string", "Game", "Critter"},
         ["Game", "Critter"],
     )
 
     assert (target, entity, name, ret, ret_nullable) == ("Client", "Game", "FormatTags", "string", False)
+    assert not ret_wrapper
     assert ret_container_element_wrapper == ""
     assert receiver_wrapper
+    assert not ret_provides_cover
     assert [(arg.arg_type, arg.name, arg.nullable, arg.default_value) for arg in args] == [
         ("string", "text", False, None),
         ("Critter", "talker", True, "null"),
