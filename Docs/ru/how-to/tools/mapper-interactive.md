@@ -6,7 +6,7 @@ document_id: mapper-interactive-manual
 permalink: /Docs/ru/how-to/tools/mapper-interactive.html
 ---
 
-<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"bcd9ff6c9b6aee35af2fb44a0e1b213368f54247f6cc9522ed95677091ae4251"} -->
+<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"ee99c8ec0f80820d15a80ec3ef43832c6d1e1badc643f4bb8d66172e0135eab8"} -->
 
 # Интерактивное руководство по Mapper
 
@@ -291,16 +291,15 @@ Particle Viewer предназначен для изолированного в�
 
 ## Контракт снимков и автоматизации
 
-Два метода скриптов только для Mapper решают разные задачи:
+Mapper script API предоставляет один метод снимка:
 
 | Метод | Содержимое кадра | Завершение |
 |---|---|---|
 | `Game.SaveMapperScreenshot(path)` | Текущий render target карты и рисование скриптового интерфейса Mapper; без более поздней композиции ImGui уровня приложения. | Синхронная запись TGA. |
-| `Game.RequestMapperWindowScreenshot(path)` | Полный кадр Mapper с окнами ImGui приложения, скомпонованными поверх render target карты до `Present()`. | Отложено до конца текущего кадра; одновременно допустим только один запрос. |
 
-Для снимка полного окна запросите его, дайте Mapper выполнить ещё хотя бы один
-цикл и только затем завершайте процесс. Минимальный многопользовательский
-пример содержит полный профиль:
+В Engine нет script method захвата полного окна UI. Минимальный
+многопользовательский пример предоставляет воспроизводимый видимый профиль;
+после стабилизации окон захватите окно приложения platform screenshot tool:
 
 ```powershell
 cmake --build Build\windows --config Release --target ForceBakeResources FOMM_Mapper
@@ -310,8 +309,7 @@ Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
 ```
 
 Профиль открывает `TutorialMap`, запускает `Documentation.spk` с фиксированным
-seed, снимает `1280x800` и записывает `MapperDocumentationCapture.tga`.
-Проверяемый PNG и полные хэши исходников зарегистрированы в
+seed и закрепляет viewport `1280x800`. Проверяемый PNG и полные хэши исходников зарегистрированы в
 [generated/screenshots.json](../../../generated/screenshots.json).
 
 Используйте `Render.HeadlessWindow = True` для внеэкранного рендера карты, но
@@ -328,7 +326,7 @@ seed, снимает `1280x800` и записывает `MapperDocumentationCapt
 | Inspector отклоняет значение | Сгенерированный тип свойства, написание enum, синтаксис массива/структуры, nullability и ограничения прототипа. |
 | Исходник частицы есть в списке, но предпросмотра нет | Включённую подсистему, запечённый `.spk`/`.efk`, эффект и текстуру, границы, seed/prewarm и исключения в журнале. |
 | Окна отсутствуют или находятся за экраном | Откройте меню Windows, затем выполните Settings -> Reset layout. |
-| На снимке полного окна нет UI | Используйте `RequestMapperWindowScreenshot` вместо синхронного метода карты и дождитесь одного кадра до выхода. |
+| На снимке UI видна только карта | `SaveMapperScreenshot` захватывает только карту; снимите видимое окно приложения platform screenshot tool. |
 
 Считайте ошибками `ScriptException`, `VerificationException`, строки
 assert/fatal, отсутствующие ресурсы, неудачное сохранение и недействительные

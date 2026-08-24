@@ -284,34 +284,9 @@ jobs:
         - win64-mapper
         - win64-ascompiler
         - win64-baker
-        - win64-starter-smoke
-        - win64-native-extension-smoke
-        - win64-tutorial-smoke
-        - win64-showcase-smoke
-        - win64-tutorial-package
-        - win64-package-smoke
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/validate.cmd ${{matrix.app}}
-    - name: Upload immutable packaging evidence
-      if: matrix.app == 'win64-package-smoke'
-      uses: actions/upload-artifact@v4
-      with:
-        name: packaging-evidence-${{ matrix.app }}-${{ github.sha }}
-        path: |
-          Workspace/validate-${{ matrix.app }}/FOPKG-PackageSmoke/*.zip
-          Workspace/validate-${{ matrix.app }}/FOPKG-PackageSmoke/packaging-manifest.json
-        if-no-files-found: error
-    - name: Upload immutable tutorial packaging evidence
-      if: matrix.app == 'win64-tutorial-package'
-      uses: actions/upload-artifact@v4
-      with:
-        name: tutorial-packaging-evidence-${{ matrix.app }}-${{ github.sha }}
-        path: |
-          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/*.zip
-          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/tutorial-packaging-manifest.json
-          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/tutorial-package-runtime-report.json
-        if-no-files-found: error
   ubuntu:
     name: Ubuntu validate (${{ matrix.app }})
     runs-on: ubuntu-24.04
@@ -332,8 +307,6 @@ jobs:
           prepare: android-packages android-arm64
         - app: web-client
           prepare: web-packages web
-        - app: web-showcase-runtime
-          prepare: linux-packages web-packages linux web
         - app: linux-server
           prepare: linux-packages linux
         - app: linux-gcc-server
@@ -350,81 +323,10 @@ jobs:
           prepare: linux-packages linux
         - app: linux-gcc-baker
           prepare: linux-packages linux
-        - app: linux-starter-smoke
-          prepare: linux-packages linux
-        - app: linux-native-extension-smoke
-          prepare: linux-packages linux
-        - app: linux-tutorial-smoke
-          prepare: linux-packages linux
-        - app: linux-showcase-smoke
-          prepare: linux-packages linux
-        - app: linux-showcase-capture
-          prepare: linux-packages showcase-display-packages linux
-        - app: linux-tutorial-package
-          prepare: linux-packages linux
-        - app: linux-package-smoke
-          prepare: linux-packages linux
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh ${{ matrix.prepare }}
-    - name: Install Content Showcase browser runtime
-      if: matrix.app == 'web-showcase-runtime'
-      working-directory: Examples/ContentShowcase/WebTests
-      run: |
-        npm ci
-        npx playwright install --with-deps chromium
-    - name: Run validation
-      if: matrix.app != 'linux-showcase-capture'
-      run: BuildTools/validate.sh ${{matrix.app}}
-    - name: Run Linux OpenGL capture
-      if: matrix.app == 'linux-showcase-capture'
-      env:
-        LIBGL_ALWAYS_SOFTWARE: '1'
-        SDL_VIDEODRIVER: x11
-      run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" BuildTools/validate.sh ${{matrix.app}}
-    - name: Upload Content Showcase Web runtime evidence
-      if: matrix.app == 'web-showcase-runtime'
-      uses: actions/upload-artifact@v4
-      with:
-        name: showcase-web-runtime-${{ github.sha }}
-        path: |
-          Workspace/validate-web-showcase-runtime-output/FOCS-ShowcaseWeb/FOCS-Client-ShowcaseRelease-Web.zip
-          Workspace/validate-web-showcase-runtime-output/FOCS-ShowcaseWeb/FOCS-Client-ShowcaseRelease-Web/
-          Workspace/validation-project/Workspace/showcase-web-runtime-report.json
-          Workspace/validation-project/Workspace/showcase-web-server.log
-          Workspace/validation-project/Workspace/web-webgl2.png
-        if-no-files-found: error
-        retention-days: 14
-    - name: Upload Content Showcase Linux OpenGL evidence
-      if: matrix.app == 'linux-showcase-capture'
-      uses: actions/upload-artifact@v4
-      with:
-        name: showcase-linux-opengl-${{ github.sha }}
-        path: |
-          Examples/ContentShowcase/captures/linux-opengl.png
-          Examples/ContentShowcase/captures/capture-contract.json
-          Examples/ContentShowcase/Workspace/showcase-capture-report.json
-        if-no-files-found: error
-        retention-days: 14
-    - name: Upload immutable packaging evidence
-      if: matrix.app == 'linux-package-smoke'
-      uses: actions/upload-artifact@v4
-      with:
-        name: packaging-evidence-${{ matrix.app }}-${{ github.sha }}
-        path: |
-          Workspace/validate-${{ matrix.app }}/FOPKG-PackageSmoke/*.tar.gz
-          Workspace/validate-${{ matrix.app }}/FOPKG-PackageSmoke/packaging-manifest.json
-        if-no-files-found: error
-    - name: Upload immutable tutorial packaging evidence
-      if: matrix.app == 'linux-tutorial-package'
-      uses: actions/upload-artifact@v4
-      with:
-        name: tutorial-packaging-evidence-${{ matrix.app }}-${{ github.sha }}
-        path: |
-          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/*.tar.gz
-          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/tutorial-packaging-manifest.json
-          Workspace/validate-${{ matrix.app }}/FOMM-Tutorial/tutorial-package-runtime-report.json
-        if-no-files-found: error
+    - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
     name: macOS validate (${{ matrix.runner }} / ${{ matrix.app }})
     runs-on: ${{ matrix.runner }}

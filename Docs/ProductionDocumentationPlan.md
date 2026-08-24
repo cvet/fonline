@@ -702,12 +702,12 @@ Exit gate: a new developer can reach a successful server/client or documented he
 - [x] Publish the native-extension guide and generated interface reference.
 - [x] Publish the broader project-local dependency guide.
   [ProjectDependencies.md](ProjectDependencies.md) now owns dependency
-  classification, delivery models and records, the public role-scoped
-  `AddProjectLibraries` helper, controlled package discovery, platform and ABI
-  boundaries, runtime payloads, licensing/security, updates, rollback, and the
-  validation matrix. The CMake interface has a mapper-only dependency lane;
-  the minimal project compiles a server-role usage requirement, and Last
-  Frontier consumes the public helper instead of mutating internal role lists.
+  classification, delivery models and records, the revision-pinned library-list
+  integration point, controlled package discovery, platform and ABI boundaries,
+  runtime payloads, licensing/security, updates, rollback, and the validation
+  matrix. The current CMake interface has no mapper-only dependency lane or
+  public project-library helper; the minimal project compiles a server-role
+  usage requirement through `FO_SERVER_LIBS`.
 
 Exit gate: every supported authored input and developer tool has a reference page, at least one how-to, a validation route, and an honest ownership label.
 

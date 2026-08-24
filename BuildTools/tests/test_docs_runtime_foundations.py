@@ -72,12 +72,12 @@ class DocumentationRuntimeFoundationsTests(unittest.TestCase):
         )
 
         for marker in (
-            "must be non-empty and end with the exact `.oplog` suffix",
-            "replacing that final suffix with `-committed.oplog`",
+            "must be non-empty",
+            "replacing `.oplog` with `-committed.oplog`",
             "Source/Tests/Test_DataBase.cpp",
         ):
             self.assertIn(marker, guide)
-        self.assertIn('ends_with(".oplog")', database)
+        self.assertIn('throw DataBaseException("Empty oplog path in settings")', database)
         self.assertIn('replace(".oplog", "-committed.oplog")', database)
 
     def test_manifest_owns_canonical_and_legacy_routes(self) -> None:

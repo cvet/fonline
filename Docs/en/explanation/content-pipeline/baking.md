@@ -731,6 +731,19 @@ that an existing image output was baked with the same mesh settings.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
+Both blobs start with `BAKED_MAP_FILE_MAGIC` and
+`BAKED_MAP_FILE_VERSION` from `Source/Common/MapLoader.h`.
+`MapLoader::ReadBakedFileHeader` validates this header before
+`MapManager::LoadStaticMaps` or `MapView::LoadStaticData` reads the payload.
+The hash table uses the paired `DataWriter::WriteString` and
+`DataReader::ReadString` contract, and every remaining count or byte size is
+preflighted with `DataReader::VerifyPayloadCount` before it drives an
+allocation or loop. Missing, stale, truncated, or damaged data therefore raises
+`DataReadingException` instead of being interpreted as element counts. When
+the layout changes, bump `BAKED_MAP_FILE_VERSION` and run
+`ForceBakeResources` in the same change; source timestamps do not prove that
+an existing output uses the current layout.
+
 `ParticleBaker` exposes only the formats whose backend is enabled at build time.
 `FO_SPARK_PARTICLES` enables text `.spark` input and generated `.spk` output;
 `FO_EFFEKSEER_PARTICLES` enables text `.efkproj` input and generated `.efk`
@@ -817,13 +830,23 @@ lighting and back-face culling. The baker does not hide the source defect by
 flipping normals and winding; freeze the mirrored object back to a positive
 scale in the authoring tool.
 
-`ModelInfoBaker` also checks the size of a directly attached model: an `Attach`
-link to a bare `.fbx`, rather than to a `.fo3d` description. A direct attachment
-has no description-level scale correction, so its static maximum-axis extent
-must stay within `Baking.ModelAttachmentMinExtent` ..
-`Baking.ModelAttachmentMaxExtent`. A failure names the file, measured extent,
-and limit. `.fo3d` attachments are exempt because their description can apply
-an explicit scale.
+`ModelInfoBaker` also checks model scale against
+`Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`. A
+direct `Attach` link to a bare `.fbx` is checked from its static maximum-axis
+extent. Each `.fo3d` section is checked from its aggregate `ModelBounds`: the
+union of animation envelopes, or static geometry when the model has no
+mappings. A full bake checks the envelope while writing
+`ModelAnimationInfo.foinfo`; a targeted `.fo3d` bake runs the same check before
+writing the description. A `.fo3d` `Scale` token does not change the baked
+envelope, so a centimetre-space root model is not exempt. Failures name the
+file, measured extent, and limit.
+
+Baker code does not use the build host's `AppRender::MAX_ATLAS_WIDTH` /
+`HEIGHT` as a device contract. Portable layout math uses
+`AppRender::MIN_ATLAS_SIZE / FRAME_SCALE`. Runtime preview zoom can still push
+a valid envelope beyond `Render.ModelSpriteMaxTextureWidth` / `Height`;
+`RefreshFrameLayout` clamps that scratch texture and draws cropped instead of
+terminating.
 
 Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz

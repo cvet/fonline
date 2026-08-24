@@ -146,18 +146,20 @@ The packager patches reserved data regions after linking. It embeds resources an
 
 `Examples/PackagingMatrix` is the executable Engine-owned baseline for native package mechanics. It is intentionally separate from the readable starter and multiplayer tutorials because `ConfigBaker` requires every server/client runtime setting to be initialized. Its checked-in `FOnlinePackagingMatrix.fomain` is deterministically generated from `Source/Common/Settings.inc`; `generate_config.py --check` fails when settings and the fixture diverge.
 
-Run the host route through BuildTools:
+In a standalone checkout of `Examples/PackagingMatrix` with its `Engine`
+submodule initialized, configure the host build and build the fixture-owned
+`RunPackagingChecks` target. This target is not registered as a required
+Engine `BuildTools validate` lane.
 
 ```bash
-python BuildTools/buildtools.py validate win64-package-smoke
-python BuildTools/buildtools.py validate linux-package-smoke
+cmake --build <packaging-matrix-build-dir> --config Release --target RunPackagingChecks
 ```
 
 Each route builds the client, headless client, server, headless server, host service/daemon role, and baker; force-bakes resources plus server/client `PackageSmoke` configs; creates raw payloads and ZIP or TAR.GZ archives; compares archive members with staged payloads; and starts the packaged headless client against the packaged server through the real updater handshake. Both processes must observe `Common.Packaged`, consume the embedded fixture setting, emit success markers, and stop with code zero.
 
-The verifier writes `FOPKG-PackageSmoke/packaging-manifest.json` with the exact Engine revision, archive hashes and sizes, complete payload inventories, role presence, and runtime results. The required workflow uploads the manifest and archives as `packaging-evidence-<validation-target>-<commit-sha>`; a missing artifact fails the job.
+The verifier writes `FOPKG-PackageSmoke/packaging-manifest.json` with the exact Engine revision, archive hashes and sizes, complete payload inventories, role presence, and runtime results. Preserve the manifest and archives in the embedding project's release lane when this evidence is required; the current Engine workflow does not publish them.
 
-This fixture qualifies the current Windows x64 and Ubuntu/Linux x64 Engine package path only after the corresponding required job passes. It does not qualify another game's package declaration, signing, installer, store, deployment host, database, renderer, or rollback. Copy the evidence pattern into the embedding project's release lane and keep its concrete acceptance there.
+This fixture provides opt-in evidence for the Windows x64 or Ubuntu/Linux x64 Engine package path on the host where it is run. It does not qualify another game's package declaration, signing, installer, store, deployment host, database, renderer, or rollback. Copy the evidence pattern into the embedding project's required release lane and keep its concrete acceptance there.
 
 ### Public multiplayer package acceptance
 
@@ -173,9 +175,11 @@ reviewed tutorial overrides and sections. `CheckTutorialConfig` runs before
 baking, so a new or changed saved setting fails on stale source instead of
 appearing later as an incomplete packaged config.
 
-`win64-tutorial-package` and `linux-tutorial-package` are required workflow
-lanes and upload commit-addressed archives, the package manifest, and the
-runtime report. This evidence remains narrower than a product release: the
+The `windows-package` and `linux-package` presets in `Examples/MinimalMultiplayer`
+build the fixture-owned `RunTutorialPackageChecks` target on demand. Preserve
+the archives, package manifest, and runtime report in a project workflow when
+they are required; the current Engine workflow does not run these presets.
+This evidence remains narrower than a product release: the
 archives are unsigned, headless, audio-disabled fixtures with no installer,
 store, public deployment, durable backend, upgrade, or rollback claim.
 
@@ -209,7 +213,7 @@ Preserve executable modes when a downstream publication system unpacks and repac
 
 ### Web client
 
-The Web client payload contains JavaScript, patched Wasm, an HTML shell, preloaded `Resources.data` / `Resources.js`, and optionally the local `WebServer` helper. The Engine-owned `web-showcase-runtime` BuildTools route proves native-host baking, exact raw/ZIP package inventory, localhost HTTP delivery, a native server connection, required lifecycle markers, a real WebGL 2 context, and compositor pixels for one deterministic Content Showcase fixture under pinned Chromium. It does not prove an embedding game's public browser deployment.
+The Web client payload contains JavaScript, patched Wasm, an HTML shell, preloaded `Resources.data` / `Resources.js`, and optionally the local `WebServer` helper. The Engine-owned Content Showcase command `python validate.py --web-runtime` can provide opt-in evidence for native-host baking, exact raw/ZIP package inventory, localhost HTTP delivery, a native server connection, required lifecycle markers, a real WebGL 2 context, and compositor pixels for one deterministic fixture under pinned Chromium. It is not a required Engine workflow lane and does not prove an embedding game's public browser deployment.
 
 Follow [Web Build, Packaging, and Browser Debugging](../platforms/web-debugging.md) for local staging. A release lane must additionally verify HTTPS hosting, MIME types, cache policy, cross-origin isolation or other required headers, WebSocket reachability, browser compatibility, storage persistence, audio activation, loading failure UX, and at least one visible representative scene.
 
@@ -264,13 +268,13 @@ Generate hashes from the files that will actually be published, after signing an
 
 ## Signing and secret boundaries
 
-Windows signing is optional and off by default. `Packaging.CodeSigningHook` points to a project-owned executable. The packager resolves root plus the selected sub-config and packaging-host `$ENV`/`$FILE` or `$TARGET_ENV`/`$TARGET_FILE` directives, then invokes the hook once per staged `.exe` and `.dll` after binary patching and before archive/MSI creation. A nonzero hook exit fails packaging. The hook owns the signing provider, certificate, timestamp service, retry policy, and verification.
+Windows signing is optional and off by default. `Packaging.CodeSigningHook` points to a project-owned executable through a directly usable non-secret path in project config; the packager does not resolve target directives for it. The packager invokes the hook once per staged `.exe` and `.dll` after binary patching and before archive/MSI creation. A nonzero hook exit fails packaging. The hook owns the signing provider, certificate, timestamp service, retry policy, credential environment, and verification.
 
-Android release credentials come from `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword`. The same authored root plus selected sub-config is resolved on the packaging host; password values are passed to Gradle through dedicated environment variables rather than written into the generated project. Use target forms for sensitive package inputs so baking retains a directive rather than embedding the concrete value.
+Android release fields come from `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the baked effective target config. Password strings are passed to Gradle through dedicated environment variables rather than written into the generated project, but they have already traversed baked config and target directives are not resolved. The current Engine therefore has no host-only Android signing-secret handoff; keep production credentials out of Engine config and use a protected project-owned signing stage.
 
 Never commit a private key, token, password, keystore password, signing session, production endpoint secret, or decrypted credential to a `.fomain`, package include, log, test fixture, documentation page, artifact manifest, or CI artifact. Use the project's secret manager, limit credentials to the packaging job, redact command output, and verify that fork/untrusted jobs cannot request them. Record identities and verification results, not secret values.
 
-[Security and Secrets](security-and-secrets.md) owns substitution timing, the narrow `Common.SecretSettingTokens` masking boundary, package-host handoff, CI isolation, rotation/revocation, incident routing, and secret-free artifact verification.
+[Security and Secrets](security-and-secrets.md) owns substitution timing, the narrow `Common.SecretSettingTokens` masking boundary, the current package-secret limitations, CI isolation, rotation/revocation, incident routing, and secret-free artifact verification.
 
 Signing proves artifact integrity and publisher identity. It does not prove gameplay correctness, malware absence, store acceptance, updater compatibility, or safe rollback.
 

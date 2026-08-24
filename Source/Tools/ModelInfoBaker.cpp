@@ -198,6 +198,14 @@ static auto ValidateModelDescriptionAnimations(const FileCollection& source_file
 static void ValidateModelDescriptionAnimationData(ModelSkeletonCompatibilityReport& compatibility_report, const vector<ModelAnimationSource>& animation_sources, string_view fname);
 static void ValidateModelDescriptionAttachment(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateDirectAttachmentSize(const BakingSettings& settings, const BakedModelMeshInfo& child_info, string_view child_name, string_view fname);
+static void ValidateFo3dAggregateModelBounds(const BakingSettings& settings, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname);
+static void ValidateAggregateModelBoundsExtent(const BakingSettings& settings, const ModelBounds3D& bounds, string_view fname);
+static void ValidateModelWorldExtent(const BakingSettings& settings, const ModelBounds3D& bounds, string_view too_large_message, string_view too_small_message, string_view what, string_view fname);
+static auto GetModelBoundsMaxAbsExtent(const ModelBounds3D& bounds) -> float32_t;
+static auto CalculateFo3dAggregateModelBounds(const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ModelBounds3D;
+static auto ReadBakedModelMeshForBounds(const FileSystem& baked_files, const BakerModelDescription& description, string_view fname) -> ModelMeshData;
+static auto CalculateModelAnimationBoundsForDescription(const ModelMeshData& model_mesh, const ModelSourceAsset& anim_source, string_view anim_name, bool reversed, const BakerModelDescription& description, int32_t state_anim, int32_t action_anim, string_view fname, uint64_t& disabled_mesh_retries) -> optional<ModelBounds3D>;
+static auto CalculateModelStaticBoundsForDescription(const ModelMeshData& model_mesh, const BakerModelDescription& description, string_view fname) -> ModelBounds3D;
 static void ValidateModelDescriptionLinkData(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateModelDescriptionCut(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakerModelDescriptionCut& cut, string_view fname);
 static void ValidateModelDescriptionTexture(const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname);
@@ -245,6 +253,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_context->BakedFiles, "Baker context has no baked file registry");
+    FO_VERIFY_AND_THROW(_context->Settings, "Baker context has no baking settings");
     ModelSourceAssetCache model_sources {files, _modelSourceLoader};
 
     if (target_path == "ModelAnimationInfo.foinfo") {
@@ -305,10 +314,11 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
     }
 
     vector<std::future<void>> file_bakings;
+    bool validate_aggregate_bounds = !target_path.empty();
 
     for (File& file_ : files_to_bake) {
         string task_name = strex("BakeModelInfo-{}", file_.GetPath()).str();
-        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &model_sources, file = std::move(file_)]() FO_DEFERRED {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &model_sources, validate_aggregate_bounds, file = std::move(file_)]() FO_DEFERRED {
             BakerClientEngine client_engine(*_context->BakedFiles);
 
             if (_context->BakeChecker) {
@@ -324,6 +334,11 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             ignore_unused(max_write_time);
 
             ValidatedModelDescription validated = ValidateModelDescription(*_context->Settings, files, *_context->BakedFiles, client_engine, model_sources, description, file.GetPath());
+
+            // A targeted .fo3d bake does not run BakeModelAnimationInfo, so the lighting envelope is checked here
+            if (validate_aggregate_bounds) {
+                ValidateFo3dAggregateModelBounds(*_context->Settings, *_context->BakedFiles, model_sources, description, file.GetPath());
+            }
 
             vector<uint8_t> data;
             DataWriter writer(data);
@@ -1081,6 +1096,27 @@ static void ValidateModelDescriptionAttachment(const BakingSettings& settings, c
     ValidateModelDescriptionLinkData(source_files, baked_files, mesh_cache, child_info, &main_info, link, fname);
 }
 
+static auto GetModelBoundsMaxAbsExtent(const ModelBounds3D& bounds) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::max({std::abs(bounds.Min.x), std::abs(bounds.Min.y), std::abs(bounds.Min.z), std::abs(bounds.Max.x), std::abs(bounds.Max.y), std::abs(bounds.Max.z)});
+}
+
+static void ValidateModelWorldExtent(const BakingSettings& settings, const ModelBounds3D& bounds, string_view too_large_message, string_view too_small_message, string_view what, string_view fname)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    float32_t extent = GetModelBoundsMaxAbsExtent(bounds);
+
+    if (extent > settings.ModelAttachmentMaxExtent) {
+        throw ModelInfoBakerException(too_large_message, what, fname, extent, settings.ModelAttachmentMaxExtent);
+    }
+    if (extent < settings.ModelAttachmentMinExtent) {
+        throw ModelInfoBakerException(too_small_message, what, fname, extent, settings.ModelAttachmentMinExtent);
+    }
+}
+
 // An attachment renders on the parent skeleton, so a foreign unit space shows up not in the render but in the sprite
 // frame the client sizes from these bounds. See Engine/Docs/BakingPipeline.md
 static void ValidateDirectAttachmentSize(const BakingSettings& settings, const BakedModelMeshInfo& child_info, string_view child_name, string_view fname)
@@ -1091,15 +1127,138 @@ static void ValidateDirectAttachmentSize(const BakingSettings& settings, const B
         return;
     }
 
-    const ModelBounds3D& bounds = *child_info.StaticBounds;
-    float32_t extent = std::max({std::abs(bounds.Min.x), std::abs(bounds.Min.y), std::abs(bounds.Min.z), std::abs(bounds.Max.x), std::abs(bounds.Max.y), std::abs(bounds.Max.z)});
+    ValidateModelWorldExtent(settings, *child_info.StaticBounds, "Direct attached model reaches beyond the authored world extent; export it in the same units as the other models", "Direct attached model stays below the authored world extent; export it in the same units as the other models", child_name, fname);
+}
 
-    if (extent > settings.ModelAttachmentMaxExtent) {
-        throw ModelInfoBakerException("Direct attached model reaches beyond the authored world extent; export it in the same units as the other models", child_name, fname, extent, settings.ModelAttachmentMaxExtent);
+static auto ReadBakedModelMeshForBounds(const FileSystem& baked_files, const BakerModelDescription& description, string_view fname) -> ModelMeshData
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (description.Model.empty()) {
+        throw ModelInfoBakerException("Model description has no Model section", fname);
     }
-    if (extent < settings.ModelAttachmentMinExtent) {
-        throw ModelInfoBakerException("Direct attached model stays below the authored world extent; export it in the same units as the other models", child_name, fname, extent, settings.ModelAttachmentMinExtent);
+
+    File model_file = baked_files.ReadFile(description.Model);
+
+    if (!model_file) {
+        throw ModelInfoBakerException("Baked model data for bounds is not readable", description.Model, fname);
     }
+
+    try {
+        auto model_reader = DataReader(model_file.GetDataSpan());
+        return ReadModelMeshData(model_reader, description.Model);
+    }
+    catch (const std::exception& ex) {
+        throw ModelInfoBakerException("Invalid baked model mesh while calculating bounds", description.Model, fname, ex.what());
+    }
+}
+
+// A clip whose visible geometry is entirely disabled falls back to the unfiltered mesh; the retry counter lets the
+// full bake keep its calculation statistics while the targeted bake ignores them
+static auto CalculateModelAnimationBoundsForDescription(const ModelMeshData& model_mesh, const ModelSourceAsset& anim_source, string_view anim_name, bool reversed, const BakerModelDescription& description, int32_t state_anim, int32_t action_anim, string_view fname, uint64_t& disabled_mesh_retries) -> optional<ModelBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<ModelBounds3D> calculated_bounds;
+
+    try {
+        const ModelAnimationSource& animation = GetModelSourceAnimation(anim_source, anim_name);
+        calculated_bounds = CalculateModelAnimationBounds(model_mesh, animation, reversed, description.DefaultLink.DisabledMesh);
+
+        if (!calculated_bounds && !description.DefaultLink.DisabledMesh.empty()) {
+            disabled_mesh_retries++;
+            calculated_bounds = CalculateModelAnimationBounds(model_mesh, animation, reversed);
+        }
+    }
+    catch (const ModelBoundsException& ex) {
+        throw ModelInfoBakerException("Failed to calculate animation bounds", state_anim, action_anim, fname, ex.what());
+    }
+
+    return calculated_bounds;
+}
+
+static auto CalculateModelStaticBoundsForDescription(const ModelMeshData& model_mesh, const BakerModelDescription& description, string_view fname) -> ModelBounds3D
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<ModelBounds3D> model_bounds;
+
+    try {
+        model_bounds = CalculateModelStaticBounds(model_mesh, description.DefaultLink.DisabledMesh);
+
+        if (!model_bounds && !description.DefaultLink.DisabledMesh.empty()) {
+            model_bounds = CalculateModelStaticBounds(model_mesh);
+        }
+    }
+    catch (const ModelBoundsException& ex) {
+        throw ModelInfoBakerException("Failed to calculate static model bounds", fname, ex.what());
+    }
+
+    if (!model_bounds) {
+        throw ModelInfoBakerException("Static model bounds could not be calculated", fname);
+    }
+
+    return *model_bounds;
+}
+
+static auto CalculateFo3dAggregateModelBounds(const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ModelBounds3D
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ModelMeshData model_mesh = ReadBakedModelMeshForBounds(baked_files, description, fname);
+    optional<ModelBounds3D> model_bounds;
+    set<pair<int32_t, int32_t>> seen;
+    uint64_t disabled_mesh_retries = 0;
+
+    for (const BakerModelDescriptionAnimationEntry& anim_entry : description.AnimationEntries) {
+        if (!seen.emplace(anim_entry.StateAnim, anim_entry.ActionAnim).second) {
+            continue;
+        }
+
+        string anim_file = anim_entry.FileName == "ModelFile" ? description.Model : strex(fname).extract_dir().combine_path(anim_entry.FileName).str();
+        shared_ptr<const ModelSourceAsset> anim_source = GetModelSourceAsset(model_sources, anim_file, fname);
+        string anim_name = anim_entry.Name;
+        bool reversed = !anim_name.empty() && anim_name.front() == '~';
+
+        if (reversed) {
+            anim_name.erase(anim_name.begin());
+        }
+
+        float32_t clip_duration = GetModelSourceAnimationDuration(*anim_source, anim_name);
+
+        if (clip_duration <= 0.0f) {
+            continue;
+        }
+
+        optional<ModelBounds3D> calculated_bounds = CalculateModelAnimationBoundsForDescription(model_mesh, *anim_source, anim_name, reversed, description, anim_entry.StateAnim, anim_entry.ActionAnim, fname, disabled_mesh_retries);
+
+        if (!calculated_bounds) {
+            throw ModelInfoBakerException("Animation bounds could not be calculated", anim_entry.StateAnim, anim_entry.ActionAnim, fname);
+        }
+
+        FO_VERIFY_AND_THROW(IncludeModelBounds(model_bounds, *calculated_bounds), "Calculated model animation bounds are invalid", fname, anim_entry.StateAnim, anim_entry.ActionAnim);
+    }
+
+    if (!model_bounds) {
+        model_bounds = CalculateModelStaticBoundsForDescription(model_mesh, description, fname);
+    }
+
+    return *model_bounds;
+}
+
+static void ValidateFo3dAggregateModelBounds(const BakingSettings& settings, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ValidateAggregateModelBoundsExtent(settings, CalculateFo3dAggregateModelBounds(baked_files, model_sources, description, fname), fname);
+}
+
+// The client sizes its lighting frame from this envelope, so a centimetre-space aggregate must fail the bake
+static void ValidateAggregateModelBoundsExtent(const BakingSettings& settings, const ModelBounds3D& bounds, string_view fname)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ValidateModelWorldExtent(settings, bounds, "Model bounds reach beyond the authored world extent; export it in the same units as the other models", "Model bounds stay below the authored world extent; export it in the same units as the other models", "aggregate ModelBounds", fname);
 }
 
 static void ValidateModelDescriptionLinkData(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname)
@@ -1485,25 +1644,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         string bounds_max_y;
         string bounds_max_z;
 
-        if (description.Model.empty()) {
-            throw ModelInfoBakerException("Model description has no Model section", file.GetPath());
-        }
-
-        File model_file = ctx.BakedFiles->ReadFile(description.Model);
-
-        if (!model_file) {
-            throw ModelInfoBakerException("Baked model data for bounds is not readable", description.Model, file.GetPath());
-        }
-
-        ModelMeshData model_mesh;
-
-        try {
-            auto model_reader = DataReader(model_file.GetDataSpan());
-            model_mesh = ReadModelMeshData(model_reader, description.Model);
-        }
-        catch (const std::exception& ex) {
-            throw ModelInfoBakerException("Invalid baked model mesh while calculating bounds", description.Model, file.GetPath(), ex.what());
-        }
+        ModelMeshData model_mesh = ReadBakedModelMeshForBounds(*ctx.BakedFiles, description, file.GetPath());
         optional<ModelBounds3D> model_bounds;
         optional<ModelBounds3D> view_bounds;
         int32_t view_bounds_priority = -1;
@@ -1573,20 +1714,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
 
             if (bounds_it == animation_bounds_cache.end()) {
                 stats.BoundsCalculations++;
-                optional<ModelBounds3D> calculated_bounds;
-
-                try {
-                    const ModelAnimationSource& animation = GetModelSourceAnimation(*anim_source, anim_name);
-                    calculated_bounds = CalculateModelAnimationBounds(model_mesh, animation, reversed, description.DefaultLink.DisabledMesh);
-
-                    if (!calculated_bounds && !description.DefaultLink.DisabledMesh.empty()) {
-                        stats.BoundsCalculations++;
-                        calculated_bounds = CalculateModelAnimationBounds(model_mesh, animation, reversed);
-                    }
-                }
-                catch (const ModelBoundsException& ex) {
-                    throw ModelInfoBakerException("Failed to calculate animation bounds", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), ex.what());
-                }
+                optional<ModelBounds3D> calculated_bounds = CalculateModelAnimationBoundsForDescription(model_mesh, *anim_source, anim_name, reversed, description, anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), stats.BoundsCalculations);
 
                 bounds_it = animation_bounds_cache.emplace(cache_key, calculated_bounds).first;
             }
@@ -1672,26 +1800,16 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         }
 
         if (!model_bounds) {
-            try {
-                model_bounds = CalculateModelStaticBounds(model_mesh, description.DefaultLink.DisabledMesh);
-
-                if (!model_bounds && !description.DefaultLink.DisabledMesh.empty()) {
-                    model_bounds = CalculateModelStaticBounds(model_mesh);
-                }
-            }
-            catch (const ModelBoundsException& ex) {
-                throw ModelInfoBakerException("Failed to calculate static model bounds", file.GetPath(), ex.what());
-            }
-
-            if (!model_bounds) {
-                throw ModelInfoBakerException("Static model bounds could not be calculated", file.GetPath());
-            }
+            model_bounds = CalculateModelStaticBoundsForDescription(model_mesh, description, file.GetPath());
             view_bounds = model_bounds;
         }
 
         if (!view_bounds) {
             throw ModelInfoBakerException("Model view bounds were not selected", file.GetPath());
         }
+
+        ValidateAggregateModelBoundsExtent(*ctx.Settings, *model_bounds, file.GetPath());
+
         stats.ModelSections++;
         stats.ModelBounds++;
 

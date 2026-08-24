@@ -6,7 +6,7 @@ document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"b270041c6a1d06f964954ed2682bea7869cb48fae0f190b4727837dfd04f9159"} -->
+<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"0bf03c58c6aaee97beb3359b3cf58e2e1cbc5c78f9a84ea484df4821f535c81f"} -->
 
 # Сборка, упаковка и отладка FOnline на Android
 
@@ -156,7 +156,7 @@ Fixed package settings зарегистрированы в `Source/Common/Settin
 | `Android.CompileSdk` | `35` | Compile SDK Gradle; соответствующая SDK platform должна быть установлена. |
 | `Android.ScreenOrientation` | `landscape` | Значение orientation для activity в manifest. |
 | `Android.Icon` | `Engine/Resources/Radiation.png` | Существующий PNG, копируемый во все legacy mipmap densities. |
-| `Android.Keystore` | пусто | Путь release keystore, разрешаемый на packaging host. |
+| `Android.Keystore` | пусто | Путь release keystore, читаемый из baked target config и разрешаемый относительно project config. |
 | `Android.KeystorePassword` | пусто | Пароль release store. |
 | `Android.KeyAlias` | пусто | Alias release key. |
 | `Android.KeyPassword` | пусто | Пароль release key. |
@@ -182,9 +182,9 @@ Keys обрабатываются в sorted order. Basenames Java sources дол
 
 ### Приоритет конфигурации и секреты
 
-`package.py` начинает с baked effective config, затем накладывает каждый authored key `Android.*` из root и выбранного sub-config. Packaging-host directives `$ENV{...}`, `$FILE{...}`, `$TARGET_ENV{...}` и `$TARGET_FILE{...}` разрешаются во время packaging. Так package-only signing inputs не попадают в baked client config, а обычное наследование sub-config сохраняется.
+`package.py` читает Android settings из baked effective target config. Он не накладывает authored keys `Android.*` и не разрешает `$TARGET_ENV{...}` / `$TARGET_FILE{...}` на packaging host. Поэтому конкретный signing password попадает в baked config, а сохранённая target directive остаётся literal string и не может предоставить signing credentials.
 
-Для секретов используйте target-scoped directives:
+Следующий синтаксис runtime directives намеренно **не** является рабочим package-secret handoff:
 
 ```ini
 Android.Keystore = $TARGET_ENV{MYGAME_ANDROID_KEYSTORE_PATH}
@@ -193,7 +193,7 @@ Android.KeyAlias = $TARGET_ENV{MYGAME_ANDROID_KEY_ALIAS}
 Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 ```
 
-Никогда не помещайте реальные значения в документацию, fixtures, logs, generated trees, archives или manifests. [Безопасность и секреты](../release/security-and-secrets.md) владеет provisioning, redaction, rotation, CI trust и обработкой incidents.
+Никогда не помещайте реальные signing values в authored или baked config, документацию, fixtures, logs, generated trees, archives или manifests. Текущий Engine не имеет host-only input для Android signing secrets; оставляйте tuple пустым для development output либо подписывайте в защищённой project-owned стадии. [Безопасность и секреты](../release/security-and-secrets.md) владеет provisioning, redaction, rotation, CI trust и обработкой incidents.
 
 ## Runtime bootstrap и staging ресурсов
 
@@ -320,7 +320,7 @@ CI-матрица Engine намеренно не предоставляет эт
 
 | Симптом | Что проверить сначала |
 |---|---|
-| Ошибка подготовки host | Java 17/system package group, disk permissions, network access, pins SDK/NDK и принятые licenses |
+| Ошибка подготовки host | Java 17/system package group, disk permissions, network access, pins SDK/NDK и принятые licenses. Обрезанные архивы Google CDN (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) повторно загружаются через `download_file` / `run_with_retry`; постоянная ошибка означает проблему host/network, а не отсутствие pin |
 | CMake не конфигурирует Android | `FO_ANDROID_NDK_ROOT`, toolchain file, ABI mapping, native API pin, Clang floor и чистый build directory |
 | Native build успешен, но package input отсутствует | `FO_OUTPUT`, target/config/build hash, ожидаемый `lib<ProjectDevName>_Client.so` и совпадающий resource bake |
 | Packaging отклоняет resources | выбранный sub-config, `Baking.ClientResources`, свежий `Metadata.zip` и отсутствие token `NoRes` |

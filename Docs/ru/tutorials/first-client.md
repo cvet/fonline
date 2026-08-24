@@ -6,7 +6,7 @@ document_id: first-client-tutorial
 permalink: /Docs/ru/tutorials/first-client.html
 ---
 
-<!-- docs-translation: {"document_id":"first-client-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-client.md","source_sha256":"6fbc04d60c13d799ddf302d635197ce8f8c929953c6634a115b06d36545c4de6"} -->
+<!-- docs-translation: {"document_id":"first-client-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-client.md","source_sha256":"c96b9ffeaf641a1f2dc5af3b1d520d649740af3814044c84026f85cdde0f66c0"} -->
 
 # Первый игровой клиент
 
@@ -32,10 +32,11 @@ python validate.py
 репозитория без материализации отдельного репозитория:
 
 ```powershell
-python BuildTools/buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
-В Linux используйте `linux-tutorial-smoke`.
+В Linux используйте ту же точку входа `python3 validate.py` из `Examples/MinimalMultiplayer`.
 
 ## Запуск видимого клиента
 

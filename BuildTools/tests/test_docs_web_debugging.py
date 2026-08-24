@@ -47,7 +47,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
 
         for contract in (
             "Success at one layer does not qualify the next one.",
-            "The `smoke_gated` label qualifies the checked fixture under pinned Chromium",
+            "The `build_gated` label qualifies compilation of the browser client",
             "The helper does not build or bake.",
             "binds `('', port)`",
             "The audited generic path does not prove automatic write-back",
@@ -80,12 +80,11 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             self.assertIn(flag, init)
 
         platform = next(value for value in support["platforms"] if value["id"] == "web-client")
-        self.assertEqual(platform["level"], "smoke_gated")
+        self.assertEqual(platform["level"], "build_gated")
         self.assertEqual(platform["applications"], ["browser client"])
-        self.assertIn("web-showcase-runtime", platform["ci_validation_targets"])
-        self.assertIn("real WebGL 2 context", platform["runtime_evidence"])
+        self.assertEqual(platform["ci_validation_targets"], ["web-client"])
+        self.assertIn("No browser process smoke route", platform["runtime_evidence"])
         self.assertIn("web-client", workflow)
-        self.assertIn("web-showcase-runtime", workflow)
 
     def test_content_showcase_owns_the_reusable_browser_fixture(self) -> None:
         runtime = json.loads(self._read("Examples/ContentShowcase/showcase-web-runtime.json"))
@@ -99,25 +98,27 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         self.assertIn('failure.error !== "net::ERR_ABORTED"', browser)
         self.assertIn("verify_pixels", runner)
 
-    def test_explicit_emsdk_overrides_the_default_workspace(self) -> None:
+    def test_emsdk_is_resolved_from_the_selected_workspace(self) -> None:
         sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
         import buildtools
 
         with tempfile.TemporaryDirectory() as temporary_directory:
-            explicit_emsdk = Path(temporary_directory) / "explicit-emsdk"
+            workspace = Path(temporary_directory) / "workspace"
+            workspace_emsdk = workspace / "emsdk"
+            workspace_emsdk.mkdir(parents=True)
             with patch.dict(
                 os.environ,
                 {
                     "FO_ENGINE_ROOT": str(ENGINE_ROOT),
                     "FO_PROJECT_ROOT": str(ENGINE_ROOT),
-                    "FO_WORKSPACE": str(Path(temporary_directory) / "workspace"),
-                    "FO_EMSDK": str(explicit_emsdk),
+                    "FO_WORKSPACE": str(workspace),
+                    "FO_EMSDK": str(Path(temporary_directory) / "ignored-emsdk"),
                 },
                 clear=False,
             ):
                 env = buildtools.resolve_env()
 
-        self.assertEqual(env["FO_EMSDK"], str(explicit_emsdk.resolve()))
+        self.assertEqual(env["FO_EMSDK"], str(workspace_emsdk))
 
     def test_package_contract_matches_buildtools_and_packager(self) -> None:
         buildtools = self._read("BuildTools/buildtools.py")

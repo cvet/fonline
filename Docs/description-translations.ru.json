@@ -3360,10 +3360,6 @@
           "source_sha256": "6751e425fcaf582f1c1979374c79d8e5365beb5f78f13b81eb3961c3b0e7a206",
           "translation": "Добавляет относительные к проекту каталоги include, когда включены нативные скрипты."
         },
-        "/helpers/@id=cmake.helper.AddProjectLibraries/description": {
-          "source_sha256": "663606d46a67746ca79de07481a9d1c9d8ffe294748649b51bdd23d13bfdf0c3",
-          "translation": "Компонует принадлежащие проекту цели или явно заданные платформенные библиотеки только с использующими их ролями движка до BuildCoreLibraries."
-        },
         "/helpers/@id=cmake.helper.AddStageHook/description": {
           "source_sha256": "7f4580e6e2ceab2bc395eb42286e64b6ddae12ea571606b5a286ccfc3a31bdc1",
           "translation": "Регистрирует макрос проекта на границе стадии до её выполнения."
@@ -17216,6 +17212,14 @@
         "/symbols/@id=setting.client.Render.ModelProjFactor/description": {
           "source_sha256": "f9100beea6b6c023062cff5911a1cb657bad994c0bed840984519014002d7a3b",
           "translation": "Число экранных пикселей на единицу 3D-мира (1 единица = 1 гекс = 1 м); масштабирует 3D-модели и частицы в сцене"
+        },
+        "/symbols/@id=setting.client.Render.ModelSpriteMaxTextureHeight/description": {
+          "source_sha256": "264221c4de7f16d6d6425d87b723ce16045c3a698790b3936509dd8988c23615",
+          "translation": "Максимальная высота GPU scratch texture, которую может выделить спрайт 3D-модели; более крупные envelopes ограничиваются и рисуются с crop"
+        },
+        "/symbols/@id=setting.client.Render.ModelSpriteMaxTextureWidth/description": {
+          "source_sha256": "ef3bad459fcfcae345e7ac790cc265108df5554a0faccf105acb3eb183fab223",
+          "translation": "Максимальная ширина GPU scratch texture, которую может выделить спрайт 3D-модели; более крупные envelopes ограничиваются и рисуются с crop"
         },
         "/symbols/@id=setting.client.Render.NullRenderer/description": {
           "source_sha256": "5fa4323150c42ed136c2e451204ff83952651661633de8674dc03b16e5fbb922",

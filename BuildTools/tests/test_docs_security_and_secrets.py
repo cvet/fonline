@@ -40,18 +40,20 @@ class DocumentationSecurityAndSecretsTests(unittest.TestCase):
         self.assertNotIn("Android.KeyPassword = $ENV{", guide)
         self.assertNotIn("Auth.SessionSigningSecret = $ENV{", guide)
 
-    def test_packager_implements_documented_host_resolution_and_env_handoff(self) -> None:
+    def test_packager_uses_baked_config_and_gradle_env_handoff(self) -> None:
         package_source = (ENGINE_ROOT / "BuildTools/package.py").read_text(encoding="utf-8")
         gradle_source = (ENGINE_ROOT / "BuildTools/android-project/app/build.gradle").read_text(encoding="utf-8")
 
         for symbol in (
-            "build_effective_project_config",
-            "resolve_build_host_config_value",
-            "get_android_package_config_section",
+            "load_config_data",
+            "get_effective_config_section",
             "ANDROID_RELEASE_STORE_PASSWORD_ENV",
             "ANDROID_RELEASE_KEY_PASSWORD_ENV",
         ):
             self.assertIn(symbol, package_source)
+        self.assertNotIn("resolve_build_host_config_value", package_source)
+        self.assertIn("android_config.getStr('Android.KeystorePassword', '')", package_source)
+        self.assertIn("android_config.getStr('Android.KeyPassword', '')", package_source)
         self.assertIn("System.getenv('FO_ANDROID_RELEASE_STORE_PASSWORD')", gradle_source)
         self.assertIn("System.getenv('FO_ANDROID_RELEASE_KEY_PASSWORD')", gradle_source)
         self.assertNotIn("$RELEASE_STORE_PASSWORD$", gradle_source)

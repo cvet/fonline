@@ -53,7 +53,6 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
 
     def test_generated_workflow_keeps_codegen_and_docs_dependency_order(self) -> None:
         cmake = self._read("BuildTools/cmake/stages/ScriptsAndBaking.cmake")
-        helper = self._read("BuildTools/cmake/helpers/Build.cmake")
         self.assertIn(
             'SetValue(foMainConfigArgs -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")',
             cmake,
@@ -67,8 +66,8 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
         self.assertIn("DEPENDS ForceCodeGeneration", compile_block.group("body"))
         self.assertIn("AddBakingTarget(BakeResources)", cmake)
         self.assertIn("AddBakingTarget(ForceBakeResources FORCE)", cmake)
-        self.assertIn("DEPENDS ForceCodeGeneration", helper)
-        self.assertIn('-ApplySubConfig "${BAKING_TARGET_SUB_CONFIG}"', helper)
+        self.assertIn("DEPENDS ForceCodeGeneration", cmake)
+        self.assertIn('-ApplySubConfig "${BAKING_TARGET_SUB_CONFIG}"', cmake)
 
         guide = self._read(GENERATED_GUIDE)
         commands = (
@@ -135,11 +134,7 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
     def test_embedding_boundary_matches_the_minimal_project(self) -> None:
         project = self._read("Examples/MinimalProject/CMakeLists.txt")
         self.assertIn("add_library(StarterProjectDependency INTERFACE)", project)
-        self.assertIn(
-            "AddProjectLibraries(ROLES SERVER LIBRARIES StarterProjectDependency)",
-            project,
-        )
-        self.assertIn("if(COMMAND AddProjectLibraries)", project)
+        self.assertNotIn("AddProjectLibraries", project)
         self.assertIn("list(APPEND FO_SERVER_LIBS StarterProjectDependency)", project)
 
         stock_dialogs = [

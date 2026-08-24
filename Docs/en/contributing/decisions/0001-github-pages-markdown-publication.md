@@ -91,4 +91,3 @@ Introducing a separate site application would duplicate ownership and move the p
 - [ProductionDocumentationPlan.md](https://github.com/cvet/fonline/blob/master/Docs/ProductionDocumentationPlan.md)
 - [Documentation maintenance](../documentation/)
 - [documentation-manifest.json](../../../documentation-manifest.json)
-

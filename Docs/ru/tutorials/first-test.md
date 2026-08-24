@@ -6,7 +6,7 @@ document_id: first-test-tutorial
 permalink: /Docs/ru/tutorials/first-test.html
 ---
 
-<!-- docs-translation: {"document_id":"first-test-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-test.md","source_sha256":"95ef00518785a950f20afc17c619f36ba90736275e6109ac39eb202bdd1d773b"} -->
+<!-- docs-translation: {"document_id":"first-test-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-test.md","source_sha256":"a6a04fc38189630334396b16f1cc9e37436fbb7de3b9f8aa74e57a1c62a23f0d"} -->
 
 # Первый автоматизированный тест
 
@@ -48,7 +48,8 @@ cmake --build --preset windows-check
 CI движка использует эквивалентный переиспользуемый маршрут:
 
 ```powershell
-python BuildTools/buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
 ## Добавьте одно условие контента

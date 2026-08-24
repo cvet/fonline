@@ -73,7 +73,6 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
         manifest = json.loads((ENGINE_ROOT / "Examples/MinimalMultiplayer/package-smoke.json").read_text(encoding="utf-8"))
         cmake = (ENGINE_ROOT / "Examples/MinimalMultiplayer/CMakeLists.txt").read_text(encoding="utf-8")
         generator = (ENGINE_ROOT / "Examples/MinimalMultiplayer/generate_config.py").read_text(encoding="utf-8")
-        workflow = (ENGINE_ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8")
 
         self.assertEqual(manifest["schema_version"], 1)
         self.assertEqual(verify_tutorial_package.BUILDTOOLS_ROOT, ENGINE_ROOT / "BuildTools")
@@ -91,8 +90,6 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
         self.assertIn("FOMM_ClientHeadless ForceBakeResources", tutorial_checks)
         self.assertNotIn("FOMM_ClientHeadless BakeResources", tutorial_checks)
         self.assertIn("Settings.inc", generator)
-        self.assertIn("win64-tutorial-package", workflow)
-        self.assertIn("linux-tutorial-package", workflow)
 
     def test_generated_distribution_config_is_current(self) -> None:
         result = subprocess.run(

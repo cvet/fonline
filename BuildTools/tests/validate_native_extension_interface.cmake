@@ -46,7 +46,7 @@ if(NOT "${_expectedTestSource}" IN_LIST FO_SOURCE_META_FILES)
 	message(FATAL_ERROR "TESTS extension source was not routed to FO_SOURCE_META_FILES")
 endif()
 
-AddProjectLibraries(ROLES TESTS LIBRARIES project-native-test-library)
+list(APPEND FO_TESTING_LIBS project-native-test-library)
 if(NOT "project-native-test-library" IN_LIST FO_TESTING_LIBS)
 	message(FATAL_ERROR "TESTS project library was not routed to FO_TESTING_LIBS")
 endif()

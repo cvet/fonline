@@ -4091,7 +4091,7 @@
       "audiences": ["game-developer", "content-author", "tool-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "tooling", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/tools/mapper.md",
-      "sources": ["Source/Tools/Mapper.cpp", "Source/Tools/Mapper.h", "Source/Tools/ParticleEditor.h", "Source/Tools/ParticleEditor.cpp", "Source/Tools/SparkParticleEditor.h", "Source/Tools/SparkParticleEditor.cpp", "Source/Scripting/MapperGlobalScriptMethods.cpp", "Source/Scripting/ClientGlobalScriptMethods.cpp", "Source/Scripting/CommonGlobalScriptMethods.cpp", "Source/Common/Settings.inc", "Source/Common/Geometry.cpp", "Source/Client/MapView.cpp", "Source/Client/TextureAtlas.cpp", "Source/Client/ParticleSprites.h", "Source/Client/VisualParticles.h", "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain", "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos", "BuildTools/tests/test_docs_mapper_tools.py"]
+      "sources": ["Source/Tools/Mapper.cpp", "Source/Tools/Mapper.h", "Source/Tools/ParticleEditor.h", "Source/Tools/ParticleEditor.cpp", "Source/Tools/SparkParticleEditor.h", "Source/Tools/SparkParticleEditor.cpp", "Source/Scripting/MapperGlobalScriptMethods.cpp", "Source/Scripting/ClientGlobalScriptMethods.cpp", "Source/Scripting/CommonGlobalScriptMethods.cpp", "Source/Common/Settings.inc", "Source/Common/Geometry.cpp", "Source/Client/MapView.cpp", "Source/Client/TextureAtlas.cpp", "Source/Client/ParticleSprites.h", "Source/Client/VisualParticles.h", "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain", "BuildTools/tests/test_docs_mapper_tools.py"]
     },
     "Docs/MapperTools.md": {
       "id": "legacy-mapper-tools-route",
@@ -4107,7 +4107,7 @@
       "audiences": ["game-developer", "content-author", "tool-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "tooling", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/tools/mapper-interactive.md",
-      "sources": ["BuildTools/DocumentationScreenshots.json", "Docs/generated/screenshots.json", "Docs/assets/screenshots/mapper-particle-preview.png", "Source/Frontend/Application.cpp", "Source/Tools/Mapper.cpp", "Source/Tools/Mapper.h", "Source/Scripting/MapperGlobalScriptMethods.cpp", "Source/Common/Settings.inc", "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain", "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos", "BuildTools/tests/test_docs_mapper_tools.py"]
+      "sources": ["BuildTools/DocumentationScreenshots.json", "Docs/generated/screenshots.json", "Docs/assets/screenshots/mapper-particle-preview.png", "Source/Frontend/Application.cpp", "Source/Tools/Mapper.cpp", "Source/Tools/Mapper.h", "Source/Scripting/MapperGlobalScriptMethods.cpp", "Source/Common/Settings.inc", "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain", "BuildTools/tests/test_docs_mapper_tools.py"]
     },
     "Docs/MapperManual.md": {
       "id": "legacy-mapper-interactive-manual-route",

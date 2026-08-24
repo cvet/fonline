@@ -101,7 +101,9 @@ class AngelScriptStyleDocumentationTests(unittest.TestCase):
 
         self.assertIn("FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces)", settings)
         self.assertIn("matched as prefixes", settings)
-        self.assertIn("ScriptSettings::MutableGlobalsAllowedNamespaces", baker_tests)
+        self.assertIn('TEST_CASE("AngelScript mutable globals are disallowed")', baker_tests)
+        self.assertIn('ContainsSubstring("mutable global variable")', baker_tests)
+        self.assertIn("MutableGlobalsAllowedNamespaces", backend)
         self.assertIn("ConstGlobalScripts", baker_tests)
 
     def test_attribute_contract_pins_blockers_markers_and_project_exceptions(self) -> None:

@@ -77,9 +77,8 @@ tutorial_server_supply_collected=1
 Process-output lines may have runner labels around the markers. The markers and
 final passed summary are the contract.
 
-For an Engine checkout, use
-`python BuildTools/buildtools.py validate win64-tutorial-smoke` or the Linux
-equivalent.
+For an Engine checkout, run `python validate.py` from
+`Examples/MinimalMultiplayer`; the script selects the supported host preset.
 
 To inspect Russian text visibly, set the `Client.Language` override to `russ`
 in `generate_config.py`, regenerate the checked `.fomain`, rebuild the check

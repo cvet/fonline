@@ -804,6 +804,30 @@ def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, 
 	subprocess.check_call([str(part) for part in cmd], cwd=cwd, env=dict(env) if env is not None else None)
 
 
+def run_with_retry(
+	cmd: Sequence[object],
+	cwd: str | Path | None = None,
+	env: Mapping[str, str] | None = None,
+	*,
+	label: str,
+	on_retry: Callable[[], None] | None = None,
+) -> None:
+	# sdkmanager fetches platform zips from the same CDN as download_file and has no retry of its own
+	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
+		try:
+			run(cmd, cwd=cwd, env=env)
+			return
+		except subprocess.CalledProcessError as ex:
+			if attempt == DOWNLOAD_RETRY_COUNT:
+				raise
+
+			delay = DOWNLOAD_RETRY_DELAY_SEC * attempt
+			log(f'{label} failed (exit {ex.returncode}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
+			if on_retry is not None:
+				on_retry()
+			time.sleep(delay)
+
+
 def run_capture_text(
 	cmd: Sequence[object],
 	cwd: str | Path | None = None,
@@ -1215,13 +1239,15 @@ def prepare_android_sdk_workspace(env: Mapping[str, str]) -> None:
 	sdk_env['ANDROID_SDK_ROOT'] = str(android_sdk_root)
 
 	run_with_input([sdkmanager, f'--sdk_root={android_sdk_root}', '--licenses'], 'y\n' * 256, env=sdk_env)
-	run(
+	run_with_retry(
 		[
 			sdkmanager,
 			f'--sdk_root={android_sdk_root}',
 			*ANDROID_REQUIRED_SDK_PACKAGES,
 		],
 		env=sdk_env,
+		label='Android SDK packages',
+		on_retry=lambda: remove_path_if_exists(android_sdk_root / '.temp'),
 	)
 
 

@@ -97,6 +97,7 @@ See [Applications](../../reference/applications.md) for the application map.
 - `Geometry.h`, `Movement.h`, `PathFinding.h`, `MapLoader.h` — reusable map and movement primitives.
 - `NetBuffer.h`, `NetworkUdp.h` — common networking primitives.
 - `ConfigFile.h`, `DataSource.h`, `FileSystem.h`, `CacheStorage.h` — config and data access support.
+- `ImageWriter.h` — TGA/PNG encoders for diagnostic images written by the engine, including screenshots, render-target captures, and atlas dumps.
 
 This layer should stay reusable. Game rules should generally be expressed through content/scripts or project-native extensions, not by embedding one project's policy into common engine code.
 

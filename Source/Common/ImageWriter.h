@@ -35,31 +35,14 @@
 
 #include "Common.h"
 
-#include "ConfigFile.h"
-#include "EntityProtos.h"
-
 FO_BEGIN_NAMESPACE
 
-// Baked map binaries carry no self-description, so a stale or foreign file has to be rejected by this marker
-// instead of being read as element counts. Bump the version whenever the layout written by MapBaker changes
-constexpr uint32_t BAKED_MAP_FILE_MAGIC = 0x424D4F46; // "FOMB"
-constexpr uint32_t BAKED_MAP_FILE_VERSION = 1;
-
-FO_DECLARE_EXCEPTION(MapLoaderException);
-
-class EngineMetadata;
-
-class MapLoader final
+// Minimal encoders for the diagnostic images the engine writes itself: screenshots, render-target and
+// atlas dumps. Both take pixels in ucolor's R, G, B, A order and reorder channels if the format needs it
+namespace ImageWriter
 {
-public:
-    using CrLoadFunc = function<void(ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv)>;
-    using ItemLoadFunc = function<void(ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv)>;
-
-    MapLoader() = delete;
-
-    static void Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
-    static auto EnumerateMaps(string_view file_name, const string& buf) -> vector<string>;
-    static void ReadBakedFileHeader(DataReader& reader, string_view map_name);
-};
+    extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
+    extern void WriteSimplePng(string_view fname, isize32 size, const_span<ucolor> data);
+}
 
 FO_END_NAMESPACE

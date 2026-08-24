@@ -31,13 +31,15 @@ From the engine repository root, run the command for the current host.
 Windows x64:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-starter-smoke
+cd Examples\MinimalProject
+python validate.py
 ```
 
 Linux x64:
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-starter-smoke
+cd Examples/MinimalProject
+python3 validate.py
 ```
 
 BuildTools recreates `Workspace/validation-project`, copies the canonical scaffold into it, links that copy back to the current engine checkout, configures the server and baker, builds them, bakes resources, and runs the `StarterSmoke` sub-config. The smoke runner has a 60-second timeout.
@@ -58,9 +60,8 @@ The command must exit with code zero. The native value proves that the server-sc
 
 Generated files stay under `Workspace/`:
 
-- `Workspace/validation-project/` is the disposable project copy;
-- `Workspace/validate-win64-starter-smoke/` is the Windows build/output tree;
-- `Workspace/validate-linux-starter-smoke/` is the Linux build/output tree.
+- `Examples/MinimalProject/Build/windows/` is the Windows build/output tree;
+- `Examples/MinimalProject/Build/linux/` is the Linux build/output tree.
 
 ## Read the complete project
 

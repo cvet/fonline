@@ -104,7 +104,7 @@ ServerOnly = True
 [ResourcePack]
 Name = Scripts
 InputDirs = Scripts Engine/Source/Scripting/AngelScript/CoreScripts
-IncludePatterns = Tutorial.fos MapperCapture.fos Core.fos
+IncludePatterns = Tutorial.fos Core.fos
 Bakers = AngelScript
 
 [ResourcePack]

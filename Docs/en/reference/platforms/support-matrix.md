@@ -49,14 +49,11 @@ These labels are deliberately narrower than "works on my machine." A successful 
 
 ## Current qualified baseline
 
-The strongest reusable route is native Windows x64 and Ubuntu 24.04 x64:
+The strongest required reusable route is native Windows x64 and Ubuntu 24.04 x64:
 
 1. The required workflow builds the desktop client, server, mapper/viewers, AngelScript compiler, and baker.
-2. `win64-starter-smoke` / `linux-starter-smoke` exercise the minimal headless project.
-3. `win64-tutorial-smoke` / `linux-tutorial-smoke` build, bake, start a server and headless client, load the tutorial map, perform the item interaction, verify replication, and shut down cleanly.
-4. `win64-package-smoke` / `linux-package-smoke` build native package roles, force-bake embedded configs, compare archive and staged inventories, run the packaged client/server updater handshake, and retain commit-addressed manifest/archive evidence.
-5. `win64-tutorial-package` / `linux-tutorial-package` repeat archive parity and packaged headless gameplay against the readable Minimal Multiplayer project, retaining its archive hashes, complete payload inventory, limitations, and runtime report.
-6. Visible rendering, audio, signing/installers, persistence backends, public networking, and long-running service operation remain separate acceptance concerns.
+2. Engine-owned examples provide opt-in local validators for a minimal headless project, tutorial multiplayer flow, native extensions, packaging, and Content Showcase; they are not registered as required workflow lanes.
+3. Visible rendering, audio, signing/installers, persistence backends, public networking, and long-running service operation remain project-owned acceptance concerns.
 
 Windows x86, Linux GCC, macOS, iOS, Android ARM, and Web are build-gated at the narrower scope recorded in the generated matrix. Android x86 and Windows ClangCL are source-capable profiles, not release support claims.
 

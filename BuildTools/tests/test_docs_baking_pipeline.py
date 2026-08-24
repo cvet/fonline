@@ -56,7 +56,6 @@ class BakingPipelineDocumentationTests(unittest.TestCase):
 
     def test_cmake_targets_use_project_config_and_fresh_codegen(self) -> None:
         cmake = self._read("BuildTools/cmake/stages/ScriptsAndBaking.cmake")
-        helper = self._read("BuildTools/cmake/helpers/Build.cmake")
         self.assertIn(
             'SetValue(foMainConfigArgs -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")',
             cmake,
@@ -76,7 +75,7 @@ class BakingPipelineDocumentationTests(unittest.TestCase):
             'set(BAKING_TARGET_SUB_CONFIG "NONE")',
             "DEPENDS ForceCodeGeneration",
         ):
-            self.assertIn(marker, helper)
+            self.assertIn(marker, cmake)
 
         guide = self._read(GUIDE_PATH)
         self.assertIn("`-ApplyConfig <FO_MAIN_CONFIG>`", guide)

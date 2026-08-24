@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/backup-and-recovery.html
 
 # Резервное копирование и восстановление
 
-<!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"ec245f3ae1b0ce75dd3b7116048ca07770e36b6ad3b156ea864dafe5fef26bc8"} -->
+<!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"713a72447d6b5557f13815104d957372dae7cdc87820b332ee8827f55ec4991b"} -->
 
 Этот runbook определяет переиспользуемую границу резервного копирования, восстановления и disaster recovery для сервера FOnline. Используйте его вместе с [Persistence](../../explanation/persistence/) для механики хранилища, [Release Operations](operations.md) для управления процессом и [Engine Upgrade Guide](../migration/engine-upgrade.md), когда долговечные данные переходят между ревизиями Engine или игры.
 
@@ -58,7 +58,7 @@ Engine не предоставляет команду snapshot базы данн
 | `DbSQLite <directory>` | `<directory>/Storage.sqlite` и активные SQLite WAL sidecars | Engine открывает WAL mode с `synchronous=NORMAL`; отдельные записи выполняются с autocommit. Не копируйте только `Storage.sqlite` во время работы сервера. Используйте согласованный с provider/SQLite online backup либо остановите сервер и сохраните весь каталог хранилища. Engine не предоставляет команду online backup или checkpoint. |
 | `Mongo <URI> <database>` | Именованная база Mongo в настроенном deployment | URI и provider определяют write concern, репликацию, snapshot, dump и point-in-time возможности; Engine их не переопределяет. Используйте нативный согласованный метод провайдера и запишите его гарантии. |
 
-Engine также открывает `DataBase.OpLogPath` и файл подтверждённого прогресса, имя которого получается заменой обязательного финального суффикса `.oplog` на `-committed.oplog`. Имена по умолчанию: `DbPendingChanges.oplog` и `DbPendingChanges-committed.oplog`. Пути относительны рабочего каталога сервера, если проект не сделал их абсолютными. При запуске настроенный путь без нужного суффикса отклоняется до открытия обоих файлов.
+Engine также открывает `DataBase.OpLogPath` и получает путь файла подтверждённого прогресса заменой `.oplog` на `-committed.oplog`. Имена по умолчанию: `DbPendingChanges.oplog` и `DbPendingChanges-committed.oplog`. Пути относительны рабочего каталога сервера, если проект не сделал их абсолютными. При запуске отклоняется только пустой настроенный путь; суффикс `.oplog` не проверяется. Сохраняйте обычный суффикс и до deployment убеждайтесь, что два разрешённых пути различны.
 
 Оба oplog входят в backup и evidence инцидента. Сохраняйте их вместе со snapshot backend, даже если они пусты. Никогда не редактируйте, не объединяйте, не меняйте порядок, не копируйте частично и не обрезайте их вручную.
 

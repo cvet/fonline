@@ -76,8 +76,8 @@ pytest -q Engine/BuildTools/tests
 
 All internal CMake modules now live under `Engine/BuildTools/cmake`.
 The public entry point kept at the `Engine/BuildTools` root is `Init.cmake`; staged CMake implementation lives under `Engine/BuildTools/cmake/stages/` and helpers under `Engine/BuildTools/cmake/helpers/`.
-`cmake/ProjectInterface.json` is the versioned source of truth read by configure for project options, stage order, entrypoints, hooks, and the selected helper surface. Browse the generated [CMake project-interface reference](../Docs/en/reference/cmake/index.md) or its [canonical JSON model](../Docs/generated/cmake.json) instead of copying declarations from stage implementation files. For project-owned targets and SDKs, use [Project-Local Dependencies](../Docs/en/how-to/native-extensions/project-dependencies.md) and `AddProjectLibraries` instead of mutating internal role lists.
-The executable validation/starter project lives under `Engine/Examples/MinimalProject`. BuildTools copies it into `Workspace/validation-project` and links its `Engine/` child back to the current checkout before configuring validation targets.
+`cmake/ProjectInterface.json` is the versioned source of truth read by configure for project options, stage order, entrypoints, hooks, and the selected helper surface. Browse the generated [CMake project-interface reference](../Docs/en/reference/cmake/index.md) or its [canonical JSON model](../Docs/generated/cmake.json) instead of copying declarations from stage implementation files. For project-owned targets and SDKs, use [Project-Local Dependencies](../Docs/en/how-to/native-extensions/project-dependencies.md); the current revision has no declared project-library helper and uses revision-pinned `FO_*_LIBS` integration state.
+The executable opt-in starter project lives under `Engine/Examples/MinimalProject` and provides its own local validator. It is not a target in the current required Engine workflow.
 
 ## Documentation generators
 

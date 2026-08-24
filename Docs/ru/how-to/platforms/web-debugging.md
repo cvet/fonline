@@ -6,7 +6,7 @@ document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"6660847be720c83549266fbcbe7d5b9fa2a6af7dadd6072adafc4045571586f2"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"45a5732b66e4b5b7dacfa5979063f6c1a1748861dcc8241b05b400aa0071f0c7"} -->
 
 # Сборка, упаковка и отладка FOnline в браузере
 
@@ -51,9 +51,9 @@ Web-доставка имеет четыре отдельных слоя evidenc
 | Renderer | строго WebGL 2; Vulkan и SDL_GPU исключены | Скомпилированный графический контракт | Матрица браузер/GPU/driver и видимая корректность |
 | Package | Web `Client` + `wasm`, ресурсы обязательны | Можно выпустить штатный shell, patched wasm и preloaded resources | Публичный хостинг и неизменяемый release artifact |
 | Runtime | Engine canvas, clipboard, загрузка IDBFS, WebSocket и main-loop code | Переиспользуемые механизмы существуют | User gesture, storage, reconnect, lifecycle и game-flow acceptance |
-| Browser automation | обязательный маршрут `web-showcase-runtime` с закреплённым Chromium | Один детерминированный fixture пакета, сети, WebGL 2, lifecycle и пикселей композитора | Выпускные gates проекта для браузеров, GPU, устройств и game flow |
+| Browser automation | локальный Playwright harness в `Examples/ContentShowcase` | Необязательный детерминированный fixture пакета, сети, WebGL 2, lifecycle и пикселей композитора | Обязательный CI и выпускные gates проекта для браузеров, GPU, устройств и game flow |
 
-Поддерживаемое Engine приложение — браузерный клиент. Не выводите поддержку Web server, Mapper, Baker или других приложений из веток исходников, которые случайно могут собраться через Emscripten. Метка `smoke_gated` квалифицирует проверенный fixture в закреплённом Chromium; она не является production-сертификацией браузера для подключающей игры.
+Поддерживаемое Engine приложение — браузерный клиент. Не выводите поддержку Web server, Mapper, Baker или других приложений из веток исходников, которые случайно могут собраться через Emscripten. Метка `build_gated` квалифицирует компиляцию браузерного клиента; текущий реестр проверок не требует process smoke в браузере.
 
 ## Подготовка host и workspace
 
@@ -73,7 +73,7 @@ bash Engine/BuildTools/prepare-workspace.sh web
 
 На Windows используйте проверенный PowerShell wrapper или прямую host-workspace command с feature `web`. Windows-подготовка устанавливает workspace SDK, но не обеспечивает все host prerequisites. В текущей host map у macOS нет проверенного Web workspace preparer, поэтому он не заявлен как Web build host.
 
-Выбранный toolchain — `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. Явное значение `FO_EMSDK` имеет приоритет над найденным расположением в workspace и нормализуется до использования package/build helpers; применяйте override для уже активированного проверенного SDK, а не для обхода политики закреплённой версии. Windows использует Ninja Multi-Config, Linux — Unix Makefiles. Считайте `Workspace/emsdk` и каталоги build/output пересоздаваемыми, но проверяйте pin в исходниках.
+Выбранный toolchain — `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. BuildTools получает `FO_EMSDK` из выбранного workspace, если этот каталог существует; для другого пересоздаваемого workspace задайте `FO_WORKSPACE`, а не направляйте `FO_EMSDK` на посторонний SDK. Windows использует Ninja Multi-Config, Linux — Unix Makefiles. Считайте SDK и каталоги build/output пересоздаваемыми, но проверяйте pin в исходниках.
 
 ## Конфигурации сборки и ограничения Web
 
@@ -283,7 +283,7 @@ Engine build lane намеренно не предоставляет эти brow
 
 ## Project evidence и правила извлечения
 
-`Examples/ContentShowcase` является переиспользуемой базовой линией, принадлежащей Engine. Его маршрут `web-showcase-runtime` выполняет force-bake на native-хосте, собирает и проверяет raw/ZIP Web payload, запускает native-сервер и сгенерированный HTTP-сервер, требует успешные ответы `index.html`, JavaScript, WebAssembly и ресурсов, наблюдает маркеры готовности клиента/сервера, создаёт буфер WebGL 2 размером 1280 x 800 в закреплённом Chromium, отклоняет ошибки консоли, страницы, сети и Engine и проверяет снимок композитора по областям контента. Сохранённый WebGL-снимок и машинная запись являются локальным доказательством fixture. Они не квалифицируют production headers, публичный origin, аутентификацию, хранение, активацию звука, длительные сессии или поддерживаемую игрой матрицу браузеров/GPU.
+`Examples/ContentShowcase` является переиспользуемой базовой линией, принадлежащей Engine. Его локальный маршрут `python validate.py --web-runtime` выполняет force-bake на native-хосте, собирает и проверяет raw/ZIP Web payload, запускает native-сервер и сгенерированный HTTP-сервер, требует успешные ответы `index.html`, JavaScript, WebAssembly и ресурсов, наблюдает маркеры готовности клиента/сервера, создаёт буфер WebGL 2 размером 1280 x 800 в закреплённом Chromium, отклоняет ошибки консоли, страницы, сети и Engine и проверяет снимок композитора по областям контента. Сохранённый WebGL-снимок и машинная запись являются локальным доказательством fixture; текущий Engine workflow не требует этот маршрут. Они не квалифицируют production headers, публичный origin, аутентификацию, хранение, активацию звука, длительные сессии или поддерживаемую игрой матрицу браузеров/GPU.
 
 Закреплённый snapshot Last Frontier демонстрирует project-owned Web settings и secure deployment profiles, локальные VS Code build/package/server/Chrome tasks, reusable package declarations и обязательный nightly/manual Linux-Web pipeline. Его project runner выбирает случайный loopback port, принудительно задаёт `application/wasm`, добавляет COOP/COEP и no-cache headers, запускает Playwright Chromium с software WebGL, собирает console/page errors/crashes и проверяет packaged WebSocket login, token login и deterministic rendering/combat workload. Это сильный паттерн project qualification, а не обещание поддержки Engine.
 
@@ -323,7 +323,7 @@ python3 BuildTools/tests/test_docs_support_matrix.py
 python3 BuildTools/docs_validate.py
 ```
 
-Запускайте `BuildTools/validate.sh web-showcase-runtime` в Linux или `BuildTools\validate.cmd web-showcase-runtime` в Windows для изолированного переиспользуемого fixture пакета и браузера. Для изменения поведения также подготовьте закреплённый SDK, соберите Web client во всех затронутых configurations, заново выполните bake/package публичного minimal project, проверьте каждый output и HTTP header и выполните применимые строки browser/release acceptance matrix против реального project server и production-like origin. Host-only documentation test, успешный Emscripten link или localhost fixture не заменяет browser evidence проекта.
+Запускайте `python validate.py --web-runtime` из `Examples/ContentShowcase` для необязательного переиспользуемого fixture пакета и браузера после установки закреплённых зависимостей `WebTests`. Для изменения поведения также подготовьте закреплённый SDK, соберите Web client во всех затронутых configurations, заново выполните bake/package публичного minimal project, проверьте каждый output и HTTP header и выполните применимые строки browser/release acceptance matrix против реального project server и production-like origin. Host-only documentation test, успешный Emscripten link или localhost fixture не заменяет browser evidence проекта.
 
 ## См. также
 

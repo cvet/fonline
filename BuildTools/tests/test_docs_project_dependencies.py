@@ -32,8 +32,8 @@ class DocumentationProjectDependenciesTests(unittest.TestCase):
             self.assertIn(heading, guide)
 
         for contract in (
-            "AddProjectLibraries",
-            "FO_MAPPER_LIBS",
+            "FO_SERVER_LIBS",
+            "no dedicated mapper-only library list",
             "NotFoundFindPackage",
             "PassThroughFindPackage",
             "requested, compiled, and initialized at runtime",
@@ -44,8 +44,7 @@ class DocumentationProjectDependenciesTests(unittest.TestCase):
         ):
             self.assertIn(contract, guide)
 
-    def test_public_helper_routes_all_supported_roles_and_fixture_exercises_it(self) -> None:
-        build_helpers = (ENGINE_ROOT / "BuildTools/cmake/helpers/Build.cmake").read_text(encoding="utf-8")
+    def test_revision_pinned_lists_and_fixture_match_current_engine(self) -> None:
         state = (ENGINE_ROOT / "BuildTools/cmake/helpers/State.cmake").read_text(encoding="utf-8")
         core_libs = (ENGINE_ROOT / "BuildTools/cmake/stages/CoreLibs.cmake").read_text(encoding="utf-8")
         project_interface = json.loads(
@@ -56,30 +55,20 @@ class DocumentationProjectDependenciesTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        for marker in (
-            "macro(AddProjectLibraries)",
-            "PROJECT_LIBRARIES_ROLES",
-            "PROJECT_LIBRARIES_LIBRARIES",
-            "unknown project library role",
-            "must run before BuildCoreLibraries",
-            "AppendList(FO_${role}_LIBS",
-        ):
-            self.assertIn(marker, build_helpers)
-        self.assertIn("FO_MAPPER_LIBS", state)
-        self.assertIn("${FO_MAPPER_LIBS}", core_libs)
-
-        helper = next(entry for entry in project_interface["helpers"] if entry["name"] == "AddProjectLibraries")
-        self.assertEqual(helper["allowed_roles"], ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER"])
-        self.assertIn("ROLES <role>", helper["signature"])
-        self.assertIn("LIBRARIES <target-or-library>", helper["signature"])
+        self.assertNotIn("AddProjectLibraries", {entry["name"] for entry in project_interface["helpers"]})
+        for marker in ("FO_COMMON_LIBS", "FO_SERVER_LIBS", "FO_CLIENT_LIBS", "FO_BAKER_LIBS", "FO_TESTING_LIBS"):
+            self.assertIn(marker, state)
+        self.assertNotIn("FO_MAPPER_LIBS", state)
+        for marker in ("${FO_COMMON_LIBS}", "${FO_SERVER_LIBS}", "${FO_CLIENT_LIBS}", "${FO_BAKER_LIBS}"):
+            self.assertIn(marker, core_libs)
 
         self.assertIn("add_library(StarterProjectDependency INTERFACE)", fixture_cmake)
-        self.assertIn("AddProjectLibraries(ROLES SERVER LIBRARIES StarterProjectDependency)", fixture_cmake)
         self.assertIn("list(APPEND FO_SERVER_LIBS StarterProjectDependency)", fixture_cmake)
+        self.assertNotIn("AddProjectLibraries", fixture_cmake)
 
         native_fixture = (ENGINE_ROOT / "Examples/NativeExtensionSample/CMakeLists.txt").read_text(encoding="utf-8")
-        self.assertIn("if(COMMAND AddProjectLibraries)", native_fixture)
         self.assertIn("list(APPEND FO_SERVER_LIBS NativeExtensionCore)", native_fixture)
+        self.assertNotIn("AddProjectLibraries", native_fixture)
         self.assertIn("FO_STARTER_PROJECT_DEPENDENCY", fixture_source)
 
     def test_manifest_evaluation_evidence_and_ci_register_the_guide(self) -> None:

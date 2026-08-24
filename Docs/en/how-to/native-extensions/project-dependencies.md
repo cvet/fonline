@@ -29,9 +29,9 @@ Use this sequence for every project-local dependency:
    integrity, license, supported platforms/toolchains, update path, and rollback
    pin in the project.
 3. Create the project target after Engine third-party targets exist and before
-   `BuildCoreLibraries()` consumes role lists. Link it with
-   `AddProjectLibraries` only to the required `COMMON`, `SERVER`, `CLIENT`,
-   `MAPPER`, or `BAKER` roles.
+   `BuildCoreLibraries()` consumes its revision-pinned library lists. Append it
+   only to the required `FO_COMMON_LIBS`, `FO_SERVER_LIBS`, `FO_CLIENT_LIBS`,
+   `FO_BAKER_LIBS`, or `FO_TESTING_LIBS` list.
 4. Distinguish requested, compiled, and initialized-at-runtime states. Keep
    allocator ownership, exceptions, CRT/toolchain, architecture, generated
    headers, and C ABI boundaries explicit rather than treating header presence
@@ -53,15 +53,16 @@ ownership; package payload and integrity; and isolated runtime behavior.
 ## Contract Status
 
 The project-facing CMake interface is `experimental` and revision-pinned. The
-current Engine provides `AddProjectLibraries` for role-scoped linking, but does
-not promise binary compatibility for a project dependency or native extension
-across Engine revisions. Reconfigure and rebuild them together after changing
-the Engine pin.
+current Engine exposes no declared helper for role-scoped project-library
+registration. Embedding projects append targets to the current library lists,
+which are implementation state and may change with the Engine revision. Pin the
+Engine, re-audit the lists, and rebuild dependencies and extensions together
+after every pin change.
 
 The Engine owns:
 
-- the `COMMON`, `SERVER`, `CLIENT`, `MAPPER`, and `BAKER` link roles;
-- configure-time validation and routing performed by `AddProjectLibraries`;
+- the `COMMON`, `SERVER`, `CLIENT`, `BAKER`, and `TESTS` library lists;
+- the core-library targets that consume those lists;
 - the core-library graph that consumes each role list;
 - package declarations and generic package assembly mechanics;
 - the documented allocator, pointer, exception, and native-extension rules.
@@ -169,9 +170,8 @@ target_link_libraries(ProjectCodec INTERFACE upstream_codec)
 target_include_directories(ProjectCodec SYSTEM INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/ProjectCodec/include")
 
-AddProjectLibraries(
-    ROLES CLIENT BAKER
-    LIBRARIES ProjectCodec)
+list(APPEND FO_CLIENT_LIBS ProjectCodec)
+list(APPEND FO_BAKER_LIBS ProjectCodec)
 
 AddEngineSources(CLIENT SourceExt/ProjectCodecBridge.cpp)
 RegisterEngineSources()
@@ -179,19 +179,20 @@ SetupCodeGeneration()
 BuildCoreLibraries()
 ```
 
-`AddProjectLibraries` accepts one or more roles and one or more CMake targets or
-explicit platform-library items. It deduplicates each item within a role,
-rejects unknown roles, rejects missing lists, and rejects registration after
-the CoreLibs stage. The allowed roles come from the same project-interface
-contract as `AddEngineSources`; use the generated
-[CMake helper reference](../../reference/cmake/helpers.md) for the exact signature.
+The current revision consumes `FO_COMMON_LIBS`, `FO_SERVER_LIBS`,
+`FO_CLIENT_LIBS`, and `FO_BAKER_LIBS` when creating the corresponding core
+libraries; `FO_TESTING_LIBS` feeds native test targets. Append before
+`BuildCoreLibraries()`, avoid duplicates yourself, and fail project configure
+for unsupported combinations. There is no dedicated mapper-only library list:
+`MapperLib` consumes `ClientLib`, so a client dependency reaches Mapper with the
+wider client role. A truly mapper-only dependency requires an explicit Engine
+interface change instead of an invented `FO_MAPPER_LIBS` variable.
 
-Do not append to `FO_COMMON_LIBS`, `FO_SERVER_LIBS`, `FO_CLIENT_LIBS`,
-`FO_MAPPER_LIBS`, or `FO_BAKER_LIBS` directly. Those lists are implementation
-state, while `AddProjectLibraries` is the selected project-facing interface.
-Likewise, a helper's presence under `BuildTools/cmake` does not make it public;
-only commands in `BuildTools/cmake/ProjectInterface.json` are supported for an
-embedding project.
+These lists are revision-pinned integration state, not declared helpers in
+`BuildTools/cmake/ProjectInterface.json`. Re-check `State.cmake` and
+`CoreLibs.cmake` on every Engine update. A helper's presence under
+`BuildTools/cmake` would not make it public unless the interface manifest also
+declared it.
 
 ## Route To The Narrowest Role
 
@@ -202,8 +203,8 @@ Dependency roles follow the native source roles:
 | `COMMON` | `CommonLib` | Every enabled runtime/tool role | A genuinely common process/config primitive. Avoid placing a client or server SDK here for convenience. |
 | `SERVER` | `ServerLib` | Server and native tests that include it | Authority, persistence, server transport, or backend SDK code. |
 | `CLIENT` | `ClientLib` | Client plus current server-controller, Mapper, viewer, Baker, ASCompiler, and test paths | Rendering, input, client transport, or client SDK code. Account for the wider current consumer graph. |
-| `MAPPER` | `MapperLib` | Mapper and tests that include it | Mapper-only editor integration. |
 | `BAKER` | `BakerLib` | Baker, Mapper, viewers, ASCompiler, and tests | Resource import, validation, conversion, or authoring support. |
+| `TESTS` | Native test targets | Engine-owned native tests | Focused test-only support; do not rely on it for runtime delivery. |
 
 Split a dependency wrapper when different roles need different headers,
 features, or runtime payloads. Do not route a library through `COMMON` just to
@@ -355,22 +356,23 @@ At minimum, capture:
 | --- | --- |
 | Interface | `cmake -P BuildTools/tests/validate_project_interface.cmake` and current generated CMake reference. |
 | Configure | Clean configure for every affected platform/architecture and for required enabled/disabled feature states. |
-| Compile/link | Every role named in `AddProjectLibraries`; warning-clean first-party bridge and target-scoped dependency policy. |
+| Compile/link | Every core/test list changed by the project; warning-clean first-party bridge and target-scoped dependency policy. |
 | Codegen/script | Regenerated metadata plus resource bake when a native declaration or generated header changes. |
 | Runtime | Focused success, unavailable, initialization-failure, and shutdown paths. |
 | Package | Isolated launch, runtime payload presence/hash/architecture, notices, and secret-free artifact scan. |
 | Upgrade | Old/new Engine pin comparison, dependency compatibility review, and no reused native/generated binary from the old pin. |
 
-The Engine-owned minimal project compiles an `INTERFACE` project dependency
-through `AddProjectLibraries(ROLES SERVER ...)`; its server extension fails
-compilation if the role-scoped usage requirement is absent. This proves the
-public link path without making an external SDK part of the fixture.
+The Engine-owned minimal project compiles an `INTERFACE` project dependency by
+appending it to `FO_SERVER_LIBS`; its server extension fails compilation if the
+usage requirement is absent. This proves the current revision-pinned link path
+without pretending it is a stable helper or making an external SDK part of the
+fixture.
 
 ## Failure Routing
 
 | Symptom | Inspect first |
 | --- | --- |
-| Unknown role or late registration | `AddProjectLibraries` call and stage order. |
+| Library does not reach its consumer | Selected `FO_*_LIBS` list, current `CoreLibs.cmake`, and stage order. |
 | Header found locally but not in CI | Wrapper target include scope and accidental ambient include paths. |
 | Unregistered `find_package()` failure | Nested dependency probe and the explicit handler decision. |
 | Extension compiles but another role fails to link | Narrow role assignment, transitive target requirements, and actual core-library consumer graph. |

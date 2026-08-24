@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/security-and-secrets.html
 
 # Безопасность и секреты
 
-<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"3ce9efeb7e6119f9f6a60ea60edf0b677bcc6b23202b749e857343328b5cb6b8"} -->
+<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"1503b15539982e88ef71d5d2d559322d41f7bf5c390c4710ef20093c68e44be7"} -->
 
 Это руководство определяет переиспользуемые границы FOnline для credentials, подстановки конфигурации, подписи пакетов, CI, диагностики и incident response. Оно не выбирает secret manager, поставщика сертификатов, production account, срок хранения или incident policy для подключающей игры.
 
@@ -19,14 +19,17 @@ permalink: /Docs/ru/how-to/release/security-and-secrets.html
 Используйте `$ENV{NAME}` только тогда, когда значение может разрешиться на build
 или baking host: его конкретное значение может попасть в baked config.
 Используйте `$TARGET_ENV{NAME}` для значения, которое должно оставаться
-неразрешённым до запуска target application или package host. Лог command-line
+неразрешённым до запуска target application. Лог command-line
 override маскирует только узкую поддерживаемую форму и не скрывает target-time
 directives, generated files, process state или произвольные logs.
 
 Не помещайте signing material в staged artifacts. Передавайте native signing
-через `Packaging.CodeSigningHook`; пароли Android keystore предоставляйте через
-`FO_ANDROID_RELEASE_STORE_PASSWORD` и `FO_ANDROID_RELEASE_KEY_PASSWORD` на
-signing host. После утечки ограничьте доступ, отзовите затронутый credential,
+через `Packaging.CodeSigningHook`, project-owned процесс которого читает credentials
+из своей защищённой среды. Текущий Android packager не имеет host-only secret
+input: он читает пароли из baked target config, а затем копирует их в
+`FO_ANDROID_RELEASE_STORE_PASSWORD` и `FO_ANDROID_RELEASE_KEY_PASSWORD` для
+Gradle. Не помещайте production passwords в этот config; до появления отдельного
+handoff используйте project-owned защищённую стадию signing. После утечки ограничьте доступ, отзовите затронутый credential,
 выполните rotate замен, пересоберите или разверните заново затронутые artifacts
 и проверьте использование. Rewriting git history является очисткой, а не revoke.
 
@@ -55,12 +58,12 @@ Engine предоставляет механику подстановки, од�
 | literal | разбор config | копируется как значение | только публичная несекретная конфигурация |
 | `$ENV{NAME}` | процесс, читающий authored config | разрешается на baking host, поэтому конкретное значение может попасть в baked config | несекретный build input, который намеренно встраивается |
 | `$FILE{path}` | процесс, читающий authored config; путь относительно owning config directory | читается на baking host, поэтому содержимое файла может попасть в baked config | несекретные generated metadata, например version |
-| `$TARGET_ENV{NAME}` | runtime целевого приложения | остаётся directive при baking | runtime secret или package-host secret, который нельзя запекать |
+| `$TARGET_ENV{NAME}` | runtime целевого приложения | остаётся directive при baking | runtime secret, который нельзя запекать |
 | `$TARGET_FILE{path}` | runtime целевого приложения | остаётся directive при baking | защищённый файл target host, содержимое которого нужно runtime |
 
 Для runtime credentials предпочитайте `$TARGET_ENV{...}`. Используйте `$TARGET_FILE{...}` только когда deployment владеет путём и правами файла; относительный target-file path во встроенном config разрешается из контекста целевого процесса, а не исходного repository.
 
-Для package-only settings `package.py` получает root и выбранный sub-config непосредственно из authored `.fomain` и разрешает обычные и target forms на **packaging host**. Это сохраняет overrides sub-config без копирования разрешённого значения в baked client config. Для чувствительных package inputs используйте target forms, чтобы `ConfigBaker` сохранял directive вместо конкретного значения.
+Не предполагайте, что packager разрешает target directives. Android packaging читает уже запечённый effective target config; сохранённое значение `$TARGET_ENV{...}` остаётся строкой directive, а не package-host lookup секрета. Windows signing читает `Packaging.CodeSigningHook` как путь из project config и также не имеет resolver target directives. Не помещайте package credentials ни в authored, ни в baked config.
 
 ```ini
 # Values, paths, and aliases below are examples of variable names, not credentials.
@@ -71,8 +74,10 @@ Android.KeystorePassword = $TARGET_ENV{MYGAME_ANDROID_STORE_PASSWORD}
 Android.KeyAlias = $TARGET_ENV{MYGAME_ANDROID_KEY_ALIAS}
 Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 
-Packaging.CodeSigningHook = $TARGET_ENV{MYGAME_WINDOWS_SIGNING_HOOK}
+Packaging.CodeSigningHook = Tools/SignWindowsArtifacts
 ```
+
+Строки Android выше только иллюстрируют синтаксис runtime directives; текущий packager не разрешает их для signing. Путь Windows hook несекретен. Его executable получает credentials из защищённой среды, которую Engine не исследует.
 
 Не передавайте secret как command-line setting. `Common.SecretSettingTokens` маскирует совпадающие значения только в строке лога `ApplyCommandLine()` вида `Set <name> to <value>`. Raw argument всё ещё может быть виден в shell history, process inspection, `Common.CommandLine`, `Common.CommandLineArgs`, debugger или crash dump.
 
@@ -97,11 +102,13 @@ Engine **не** определяет тип credential, не шифрует sett
 
 `Packaging.CodeSigningHook` называет принадлежащий проекту executable. Packager вызывает его как `<hook> <absolute-binary-path>` после binary patching и до создания archive или MSI. Engine не передаёт signing credential аргументом командной строки. Hook получает provider session или credentials из защищённой среды packaging host и должен завершаться ненулевым кодом при ошибке подписи или её проверки.
 
-Путь hook может использовать `$TARGET_ENV{...}`. Держите executable вне workspace, доступного недоверенной записи, pin или hash его, ограничьте право замены и заставьте его проверять итоговую signature и timestamp. Текущий hook Engine подписывает staged `.exe` и `.dll`; подпись внешнего installer или publication metadata остаётся ответственностью проекта.
+Путь hook должен быть непосредственно используемым несекретным путём; packager не разрешает в нём `$TARGET_ENV{...}`. Держите executable вне workspace, доступного недоверенной записи, pin или hash его, ограничьте право замены и заставьте его проверять итоговую signature и timestamp. Текущий hook Engine подписывает staged `.exe` и `.dll`; подпись внешнего installer или publication metadata остаётся ответственностью проекта.
 
 ### Android
 
-Android release packaging читает `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias` и `Android.KeyPassword` из authored root и выбранного sub-config на packaging host. Если задан любой member, требуется полный tuple. `package.py` передаёт два passwords в Gradle только через `FO_ANDROID_RELEASE_STORE_PASSWORD` и `FO_ANDROID_RELEASE_KEY_PASSWORD`; generated `build.gradle` читает эти environment variables и не содержит passwords.
+Android release packaging читает `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias` и `Android.KeyPassword` из baked effective target config. Если задан любой member, требуется полный tuple. Затем `package.py` передаёт две строки password в Gradle через `FO_ANDROID_RELEASE_STORE_PASSWORD` и `FO_ANDROID_RELEASE_KEY_PASSWORD`; generated `build.gradle` читает эти environment variables и не содержит passwords.
+
+Этот Gradle handoff предотвращает подстановку password в `build.gradle`, но не делает input host-only: конкретный пароль уже прошёл через baked config, а directive `$TARGET_ENV{...}` не разрешается. Поэтому текущий Engine не предоставляет безопасную для production границу Android signing secrets. Оставляйте tuple пустым для development output либо используйте защищённую project-owned стадию Android signing, credentials которой никогда не попадают в authored или baked Engine config.
 
 Keystore path и key alias встраиваются в generated project и не считаются passwords. Защищайте сам keystore, generated Gradle tree, `GRADLE_USER_HOME`, process memory и worker logs. APK, созданный через fallback к debug key, является development artifact, а не production release.
 
@@ -166,13 +173,13 @@ python BuildTools/docs_validate.py
 Затем квалифицируйте затронутую project lane с непроизводственными credentials:
 
 1. проверьте authored `.fomain` и выбранный sub-config на literals;
-2. выполните bake и убедитесь, что runtime/package secrets остаются directives `$TARGET_*` в `Baking/Configs`;
-3. выполните package с synthetic credentials и проверьте generated tree, raw package, archives, logs и manifest;
-4. убедитесь, что signing hook или Gradle получил input через защищённую host boundary;
+2. выполните bake и убедитесь, что runtime secrets остаются directives `$TARGET_*` в `Baking/Configs`, а package credentials отсутствуют;
+3. создайте development package и проверьте generated tree, raw package, archives, logs и manifest;
+4. убедитесь, что Windows signing hook получает credentials из своей защищённой среды, либо проверьте project-owned Android signing stage без помещения секретов в Engine config;
 5. установите или разверните, запустите packaged application и проверьте updater/network behavior;
 6. отзовите или удалите synthetic credentials и очистите isolated evidence согласно test policy.
 
-Успешные Engine tests доказывают поведение substitution и handoff. Они не доказывают безопасность provider account, runner, secret manager, application log, database, distribution store или incident process.
+Успешные Engine tests доказывают runtime substitution и текущие границы packager, включая отсутствие Android host-only handoff. Они не доказывают безопасность provider account, runner, secret manager, application log, database, distribution store или incident process.
 
 Используйте [Release Operations](operations.md) для preflight целевого хоста, staged rollout, сохранения evidence и rollback. Используйте [Backup and Recovery](backup-and-recovery.md) для зашифрованных recovery sets, доступа restore role, key identifiers и sidecar manifests без секретов. Не помещайте credentials и чувствительный incident material в обе эксплуатационные записи.
 
@@ -182,10 +189,10 @@ python BuildTools/docs_validate.py
 |---|---|
 | Конкретный credential появился в `Baking/Configs` | замените `$ENV`/`$FILE` на target form и повторите bake из чистого output |
 | Command-line log показывает credential | имя setting и `Common.SecretSettingTokens`; замените значение, поскольку сохраняются другие пути раскрытия arguments |
-| Packaging сообщает об отсутствующей variable/file | environment packaging host, выбранный sub-config, защищённый file path и permissions |
+| Packaging сообщает об отсутствующем path/file | baked target config или root project config, выбранный sub-config и permissions файла; не помещайте туда secret |
 | Android release использует debug key | полный signing tuple из четырёх полей и выбранный package config |
 | Generated Gradle file содержит password | regression реализации packaging; остановитесь и выполните rotation до publication |
-| Windows hook пропущен | разрешённый `Packaging.CodeSigningHook`, выбранный sub-config и доступность hook file |
+| Windows hook пропущен | literal path `Packaging.CodeSigningHook` в project config и доступность hook file |
 | Signature отсутствует после успешного hook | contract проверки и failure hook и порядок post-sign mutation |
 | Secret появился в logs, artifacts, cache или history | сначала revoke/rotate, ограничьте доступ, сохраните очищенное evidence, затем удалите копии |
 | Недоверенный CI job достигает protected material | workflow event, permissions, environment approval, runner isolation и scope cache/artifact |

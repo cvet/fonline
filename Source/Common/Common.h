@@ -45,10 +45,10 @@ FO_BEGIN_NAMESPACE
 // The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-
 // pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,
 // removal, or stable-ID change instead of silently extending this experimental promise.
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2493 InventorySha256=041a7001f1a0f7b610aeb6c57ef1075924ceb869216214c26f879accdb80569e
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2495 InventorySha256=cb63d1b009a81b8a971431851d0a93b7b89f4f0cd40b1763c339cea7f506c05e
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 37
+///@ MigrationRule Version 0 0 38
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -917,7 +917,6 @@ private:
 };
 
 extern auto MakeSeededRandomGenerator() -> std::mt19937;
-extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;

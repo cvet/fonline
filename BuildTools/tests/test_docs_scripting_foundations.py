@@ -49,13 +49,9 @@ class DocumentationScriptingFoundationsTests(unittest.TestCase):
         }
         self.assertEqual(documented, actual)
         mapper = self._read("Source/Scripting/MapperGlobalScriptMethods.cpp")
-        for marker in ("SaveMapperScreenshot", "RequestMapperWindowScreenshot"):
-            self.assertIn(marker, guide)
-        for marker in (
-            "Mapper_Game_SaveMapperScreenshot",
-            "Mapper_Game_RequestMapperWindowScreenshot",
-        ):
-            self.assertIn(marker, mapper)
+        self.assertIn("SaveMapperScreenshot", guide)
+        self.assertIn("Mapper_Game_SaveMapperScreenshot", mapper)
+        self.assertNotIn("RequestMapperWindowScreenshot", guide)
 
     def test_remote_call_validation_precedes_cover_and_dispatch(self) -> None:
         guide = self._read("Docs/en/reference/scripting/remote-calls.md")

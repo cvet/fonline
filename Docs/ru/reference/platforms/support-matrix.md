@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/platforms/support-matrix.html
 
 # Матрица поддержки
 
-<!-- docs-translation: {"document_id":"support-matrix","locale":"ru","source_path":"Docs/en/reference/platforms/support-matrix.md","source_sha256":"2fad7f18d54e8119cf01a7c30670fcd42cfd2de67f44423bbdbb32f51d818334"} -->
+<!-- docs-translation: {"document_id":"support-matrix","locale":"ru","source_path":"Docs/en/reference/platforms/support-matrix.md","source_sha256":"d356552b3da1aa91e0a16896da15f00e8113d95f2a259a0c730f454458d4efa4"} -->
 
 Эта страница определяет, что документация текущего канала (`current`) FOnline
 может называть поддерживаемым. Она разделяет наличие возможности в исходниках,
@@ -72,19 +72,13 @@ Ubuntu 24.04 x64:
 
 1. Обязательный workflow собирает desktop client, server, mapper/viewers,
    AngelScript compiler и baker.
-2. `win64-starter-smoke` / `linux-starter-smoke` проверяют минимальный
-   headless-проект.
-3. `win64-tutorial-smoke` / `linux-tutorial-smoke` собирают и запекают проект,
-   запускают server и headless client, загружают tutorial map, выполняют
-   взаимодействие с предметом, проверяют репликацию и корректно завершаются.
-4. `win64-package-smoke` / `linux-package-smoke` собирают нативные package
-   roles, принудительно запекают встроенные конфиги, сравнивают содержимое
-   архивов и staging, запускают updater-handshake упакованных client/server и
-   сохраняют адресуемые по commit manifest/archive evidence.
-5. `win64-tutorial-package` / `linux-tutorial-package` повторяют проверку
-   архивов и упакованный headless gameplay для читаемого Minimal Multiplayer,
-   сохраняя хэши архивов, полную инвентаризацию payload, ограничения и runtime
-   report.
+2. Принадлежащие Engine examples предоставляют необязательные локальные
+   validators для minimal headless project, tutorial multiplayer flow, native
+   extensions, packaging и Content Showcase; они не зарегистрированы как
+   обязательные workflow lanes.
+3. Видимый rendering, audio, signing/installers, persistence backends, public
+   networking и длительная service operation остаются project-owned acceptance
+   concerns.
 6. Видимый rendering, audio, подпись и installers, persistence backends,
    публичная сеть и длительная работа службы остаются отдельными предметами
    приёмки.

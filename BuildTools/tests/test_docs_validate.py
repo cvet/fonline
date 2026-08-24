@@ -1535,7 +1535,11 @@ class DocumentationValidatorTests(unittest.TestCase):
                 for bits in audio_outputs["wav"]["sample_bits"]
             )
             + f'\nsound->OriginalRate = {audio_outputs["acm"]["sample_rate"]};\n'
-            'WriteLog("Unsupported sound format");\n'
+            + (
+                'WriteLog("Unsupported sound format");\n'
+                if audio_outputs["unsupported_extension_rejected"]
+                else ""
+            )
         )
         settings_fixture = (
             "FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "

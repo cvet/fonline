@@ -28,7 +28,7 @@ The owning sources are:
 - `Source/Common/Movement.*` for authoritative time/path progress and integer-pixel `HexOffset` construction;
 - `Source/Common/Geometry.*` for lossless hex/offset re-splitting and passability-aware normalization;
 - `Source/Client/CritterHexView.*` for cycle anchoring, movement displacement, frame selection, rendered animation offsets, and stop-time normalization;
-- `Source/Client/ResourceManager.cpp` for animation selection, frame extraction, merges, cloning, and offset preservation;
+- `Source/Client/ResourceManager.cpp` for animation selection, frame extraction, merges, cloning, and their private offset transforms;
 - `Source/Tests/Test_ImageBaker.cpp` and `Source/Tests/Test_Geometry.cpp` for format-level offset and geometry-normalization coverage.
 
 Project documents and content repositories are useful integration evidence, but they are not the authority for reusable Engine behavior.
@@ -74,7 +74,7 @@ NextY_1 = -1
 
 Nested FOFRM references add the referencing frame's offset to the selected nested frame. Other supported formats carry or derive offsets according to their own importer. Missing values normally become zero; inspect the format-specific `ImageBaker` loader instead of assuming that every source format exposes the same authored fields.
 
-Offsets are direction-specific. Image baking may mirror, crop, or compose frames. Client resource selection may extract the first or last frame, clone a sheet, or merge a base and extra Fallout animation. A merge copies both sheets and rebases the first extra frame by subtracting the base cycle total independently on `x` and `y`. These transformations are private Engine behavior, so validate the selected baked sheet rather than editing the baked stream.
+Offsets are direction-specific. Image baking may mirror, crop, or compose frames. Client resource selection may extract the first or last frame, clone a sheet, or merge a base and extra Fallout animation. That merge path is private Engine behavior and has no focused per-axis regression in the current native suite; do not treat offset preservation across the splice as a public guarantee. Validate the selected baked sheet on both axes rather than editing the baked stream.
 
 ## Baked and runtime representation
 

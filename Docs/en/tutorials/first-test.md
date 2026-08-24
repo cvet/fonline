@@ -44,7 +44,8 @@ commands for the current host.
 Engine CI uses the equivalent reusable route:
 
 ```powershell
-python BuildTools/buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
 ## Add one content invariant

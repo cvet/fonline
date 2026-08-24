@@ -61,7 +61,7 @@ class DocumentationCMakeTests(unittest.TestCase):
         self.assertEqual(model["summary"]["option_count"], 44)
         self.assertEqual(model["summary"]["required_option_count"], 9)
         self.assertEqual(model["summary"]["stage_count"], 10)
-        self.assertEqual(model["summary"]["helper_count"], 7)
+        self.assertEqual(model["summary"]["helper_count"], 6)
         self.assertEqual(model["stages"][0]["id"], "cmake.stage.Init")
         self.assertEqual(model["stages"][-1]["entrypoint"], "FinalizeProjectGeneration")
         self.assertEqual(model["options"][0]["id"], "cmake.option.FO_MAIN_CONFIG")
@@ -87,8 +87,8 @@ class DocumentationCMakeTests(unittest.TestCase):
         self.assertEqual(len(identities), len(set(identities)))
 
     def test_add_baking_target_implementation_matches_public_contract(self) -> None:
-        helper_source = (
-            ENGINE_ROOT / "BuildTools/cmake/helpers/Build.cmake"
+        stage_source = (
+            ENGINE_ROOT / "BuildTools/cmake/stages/ScriptsAndBaking.cmake"
         ).read_text(encoding="utf-8")
 
         for expected in (
@@ -102,11 +102,8 @@ class DocumentationCMakeTests(unittest.TestCase):
             "WORKING_DIRECTORY ${FO_OUTPUT_PATH}",
         ):
             with self.subTest(expected=expected):
-                self.assertIn(expected, helper_source)
+                self.assertIn(expected, stage_source)
 
-        stage_source = (
-            ENGINE_ROOT / "BuildTools/cmake/stages/ScriptsAndBaking.cmake"
-        ).read_text(encoding="utf-8")
         self.assertIn("AddBakingTarget(BakeResources)", stage_source)
         self.assertIn("AddBakingTarget(ForceBakeResources FORCE)", stage_source)
 

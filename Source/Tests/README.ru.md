@@ -6,7 +6,7 @@ locale: ru
 document_id: unit-tests-readme
 ---
 
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"d422323e6854355c954b25abb0c2c2418f5d5e72ffa9ede1e6386214e0551825"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"03516dba46d095ef5b59fdcf84f9dfbd842c1561a943ce7ba11c7a8f6a74225c"} -->
 
 # Модульные тесты
 
@@ -128,6 +128,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_ImageWriter.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`

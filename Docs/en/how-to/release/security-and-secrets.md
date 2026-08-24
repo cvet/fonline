@@ -16,15 +16,18 @@ Use [Project Configuration](../build/project-configuration.md) for general `.fom
 
 Use `$ENV{NAME}` only when the value may resolve on the build or baking host;
 its concrete value can enter baked config. Use `$TARGET_ENV{NAME}` for a value
-that must remain unresolved until the target application or package host runs.
+that must remain unresolved until the target application runs.
 The command-line override log masks only its narrow supported form and does not
 redact target-time directives, generated files, process state, or arbitrary
 logs.
 
 Keep signing material outside staged artifacts. Hand native signing through
-`Packaging.CodeSigningHook`; provide Android keystore passwords through
-`FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` on the
-signing host. After exposure, contain access, revoke the affected credential,
+`Packaging.CodeSigningHook`, whose project-owned process reads credentials from
+its protected environment. The current Android packager has no host-only secret
+input: it reads passwords from baked target config before copying them into
+`FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` for
+Gradle. Do not put production passwords into that config; use a project-owned
+protected signing stage until a dedicated handoff exists. After exposure, contain access, revoke the affected credential,
 rotate replacements, rebuild or redeploy affected artifacts, and audit use.
 Rewriting git history is cleanup, not revocation.
 
@@ -53,12 +56,12 @@ The Engine provides substitution mechanics, one narrow log-masking rule, package
 | literal | config parse | copied as the value | public, non-sensitive configuration only |
 | `$ENV{NAME}` | process reading the authored config | resolves on the baking host, so the concrete value can enter baked config | non-secret build input that is intended to be embedded |
 | `$FILE{path}` | process reading the authored config; relative to the owning config directory | reads on the baking host, so file contents can enter baked config | non-secret generated metadata such as a version |
-| `$TARGET_ENV{NAME}` | target application runtime | remains a directive while baking | runtime secret or package-host secret that must not be baked |
+| `$TARGET_ENV{NAME}` | target application runtime | remains a directive while baking | runtime secret that must not be baked |
 | `$TARGET_FILE{path}` | target application runtime | remains a directive while baking | protected target-host file whose contents are needed at runtime |
 
 For runtime credentials, prefer `$TARGET_ENV{...}`. Use `$TARGET_FILE{...}` only when the deployment owns the file path and permissions; a relative target-file path in an embedded config resolves from the target process context, not from the original repository.
 
-For package-only settings, `package.py` derives root plus the selected sub-config directly from the authored `.fomain` and resolves both ordinary and target forms on the **packaging host**. This preserves sub-config overrides without copying the resolved value into the baked client config. Use target forms for sensitive package inputs so `ConfigBaker` retains the directive rather than the concrete value.
+Do not assume the packager resolves target directives. Android packaging reads the already baked effective target config; a retained `$TARGET_ENV{...}` value is still a directive string, not a package-host secret lookup. Windows signing reads `Packaging.CodeSigningHook` as a path from the project config and likewise has no target-directive resolver. Keep package credentials out of both authored and baked config.
 
 ```ini
 # Values, paths, and aliases below are examples of variable names, not credentials.
@@ -69,8 +72,10 @@ Android.KeystorePassword = $TARGET_ENV{MYGAME_ANDROID_STORE_PASSWORD}
 Android.KeyAlias = $TARGET_ENV{MYGAME_ANDROID_KEY_ALIAS}
 Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 
-Packaging.CodeSigningHook = $TARGET_ENV{MYGAME_WINDOWS_SIGNING_HOOK}
+Packaging.CodeSigningHook = Tools/SignWindowsArtifacts
 ```
+
+The Android lines above illustrate runtime-directive syntax only; the current packager does not resolve them for signing. The Windows hook path is non-secret. Its executable obtains credentials from a protected environment that Engine does not inspect.
 
 Do not pass a secret as a command-line setting. `Common.SecretSettingTokens` masks matching values only in `ApplyCommandLine()`'s `Set <name> to <value>` log line. The raw argument can still be visible in shell history, process inspection, `Common.CommandLine`, `Common.CommandLineArgs`, a debugger, or a crash dump.
 
@@ -95,11 +100,13 @@ Therefore, target-time directives are the default for runtime secrets, productio
 
 `Packaging.CodeSigningHook` names a project-owned executable. The packager calls it as `<hook> <absolute-binary-path>` after binary patching and before archive or MSI production. No signing credential is passed as a command-line argument by the Engine. The hook obtains its provider session or credentials from the protected packaging-host environment and must fail nonzero when signing or signature verification fails.
 
-The hook path itself may use `$TARGET_ENV{...}`. Keep the executable outside untrusted workspace writes, pin or hash it, restrict who can replace it, and have it verify the final signature and timestamp. The current Engine hook signs staged `.exe` and `.dll` files; signing the enclosing installer or publication metadata remains project-owned.
+The hook path itself must be a directly usable non-secret path; the packager does not resolve `$TARGET_ENV{...}` there. Keep the executable outside untrusted workspace writes, pin or hash it, restrict who can replace it, and have it verify the final signature and timestamp. The current Engine hook signs staged `.exe` and `.dll` files; signing the enclosing installer or publication metadata remains project-owned.
 
 ### Android
 
-Android release packaging reads `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` from the authored root plus selected sub-config on the packaging host. The complete tuple is required when any member is set. `package.py` passes the two passwords to Gradle only through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD`; the generated `build.gradle` reads those environment variables instead of containing the passwords.
+Android release packaging reads `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` from the baked effective target config. The complete tuple is required when any member is set. `package.py` then passes the two password strings to Gradle through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD`; the generated `build.gradle` reads those environment variables instead of containing the passwords.
+
+That Gradle handoff prevents password substitution into `build.gradle`, but it does not make the input host-only: a concrete password has already passed through baked config, while a `$TARGET_ENV{...}` directive is not resolved. The current Engine therefore does not provide a production-safe Android signing-secret boundary. Leave the tuple empty for development output or use a protected project-owned Android signing stage whose credentials never enter authored or baked Engine config.
 
 The keystore path and key alias are patched into the generated project and are not treated as passwords. Protect the keystore itself, the generated Gradle tree, `GRADLE_USER_HOME`, process memory, and worker logs. An APK produced through the debug-key fallback is a development artifact, not a production release.
 
@@ -164,13 +171,13 @@ python BuildTools/docs_validate.py
 Then qualify the affected project lane with non-production credentials:
 
 1. inspect the authored `.fomain` and selected sub-config for literals;
-2. bake and verify that runtime/package secrets remain `$TARGET_*` directives in `Baking/Configs`;
-3. package with synthetic credentials and inspect the generated tree, raw package, archives, logs, and manifest;
-4. verify the signing hook or Gradle received its input through the protected host boundary;
+2. bake and verify that runtime secrets remain `$TARGET_*` directives in `Baking/Configs`, and that package credentials are absent;
+3. package a development artifact and inspect the generated tree, raw package, archives, logs, and manifest;
+4. verify the Windows signing hook obtains credentials from its own protected environment, or verify the project-owned Android signing stage without placing secrets in Engine config;
 5. install or deploy, start the packaged application, and exercise updater/network behavior;
 6. revoke or delete the synthetic credentials and purge the isolated evidence according to test policy.
 
-Passing Engine tests proves substitution and handoff behavior. It does not prove a provider account, runner, secret manager, application log, database, distribution store, or incident process is secure.
+Passing Engine tests proves runtime substitution and the current packager boundaries, including the Android host-only handoff gap. It does not prove a provider account, runner, secret manager, application log, database, distribution store, or incident process is secure.
 
 Use [Release Operations](operations.md) for target-host preflight, staged rollout, evidence preservation, and rollback. Use [Backup and Recovery](backup-and-recovery.md) for encrypted recovery sets, restore-role access, key identifiers, and secret-free sidecar manifests. Keep credentials and sensitive incident material out of both operational records.
 
@@ -180,10 +187,10 @@ Use [Release Operations](operations.md) for target-host preflight, staged rollou
 |---|---|
 | Concrete credential appears in `Baking/Configs` | replace `$ENV`/`$FILE` with a target form and rebake from a clean output |
 | Command-line log shows a credential | setting name and `Common.SecretSettingTokens`; rotate the value because other argument exposures remain |
-| Packaging reports a missing variable/file | packaging-host environment, selected sub-config, protected file path and permissions |
+| Packaging reports a missing path/file | baked target config or root project config, selected sub-config, and file permissions; do not put a secret there |
 | Android release uses the debug key | complete four-field signing tuple and selected package config |
 | Generated Gradle file contains a password | packaging implementation regression; stop and rotate before publication |
-| Windows hook was skipped | resolved `Packaging.CodeSigningHook`, selected sub-config, and hook file visibility |
+| Windows hook was skipped | literal `Packaging.CodeSigningHook` path in project config and hook file visibility |
 | Signature is absent after a successful hook | hook verification/failure contract and post-sign mutation order |
 | Secret appears in logs, artifacts, cache, or history | revoke/rotate first, restrict access, preserve sanitized evidence, then remove copies |
 | Untrusted CI job can reach protected material | workflow event, permissions, environment approval, runner isolation, and cache/artifact scope |

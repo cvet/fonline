@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2493,
-      "inventory_sha256": "041a7001f1a0f7b610aeb6c57ef1075924ceb869216214c26f879accdb80569e",
+      "symbol_count": 2495,
+      "inventory_sha256": "cb63d1b009a81b8a971431851d0a93b7b89f4f0cd40b1763c339cea7f506c05e",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,7 +70,7 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2493,
+    "symbol_count": 2495,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 55,
@@ -82,22 +82,22 @@
       "ref-field": 41,
       "ref-method": 28,
       "ref-type": 6,
-      "setting": 276,
+      "setting": 278,
       "value-field": 62,
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2492,
+      "experimental": 2494,
       "internal": 1
     },
     "explicit_contract_declaration_count": 2,
-    "explicit_contract_symbol_count": 2493,
+    "explicit_contract_symbol_count": 2495,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2492,
+      "experimental": 2494,
       "internal": 1
     },
-    "described_symbol_count": 2493,
+    "described_symbol_count": 2495,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 45,
@@ -1107,7 +1107,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 37",
+      "signature": "Version 0 0 38",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1129,7 +1129,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "37"
+      "replacement": "38"
     },
     {
       "id": "script.entity.Critter",
@@ -1458,7 +1458,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1097
+        "line": 1096
       },
       "contract": {
         "explicit": true,
@@ -1494,7 +1494,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1100
+        "line": 1099
       },
       "contract": {
         "explicit": true,
@@ -1530,7 +1530,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1099
+        "line": 1098
       },
       "contract": {
         "explicit": true,
@@ -1566,7 +1566,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1095
+        "line": 1094
       },
       "contract": {
         "explicit": true,
@@ -1602,7 +1602,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1098
+        "line": 1097
       },
       "contract": {
         "explicit": true,
@@ -1638,7 +1638,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1096
+        "line": 1095
       },
       "contract": {
         "explicit": true,
@@ -1674,7 +1674,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 975
+        "line": 974
       },
       "contract": {
         "explicit": true,
@@ -1710,7 +1710,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 974
+        "line": 973
       },
       "contract": {
         "explicit": true,
@@ -1746,7 +1746,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 976
+        "line": 975
       },
       "contract": {
         "explicit": true,
@@ -1782,7 +1782,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 971
+        "line": 970
       },
       "contract": {
         "explicit": true,
@@ -1818,7 +1818,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 972
+        "line": 971
       },
       "contract": {
         "explicit": true,
@@ -1854,7 +1854,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 969
+        "line": 968
       },
       "contract": {
         "explicit": true,
@@ -1890,7 +1890,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 968
+        "line": 967
       },
       "contract": {
         "explicit": true,
@@ -1926,7 +1926,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 978
+        "line": 977
       },
       "contract": {
         "explicit": true,
@@ -1962,7 +1962,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 977
+        "line": 976
       },
       "contract": {
         "explicit": true,
@@ -1998,7 +1998,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 973
+        "line": 972
       },
       "contract": {
         "explicit": true,
@@ -2034,7 +2034,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 970
+        "line": 969
       },
       "contract": {
         "explicit": true,
@@ -2070,7 +2070,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1022
+        "line": 1021
       },
       "contract": {
         "explicit": true,
@@ -2106,7 +2106,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1010
+        "line": 1009
       },
       "contract": {
         "explicit": true,
@@ -2142,7 +2142,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1021
+        "line": 1020
       },
       "contract": {
         "explicit": true,
@@ -2178,7 +2178,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1013
+        "line": 1012
       },
       "contract": {
         "explicit": true,
@@ -2214,7 +2214,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1009
+        "line": 1008
       },
       "contract": {
         "explicit": true,
@@ -2250,7 +2250,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1018
+        "line": 1017
       },
       "contract": {
         "explicit": true,
@@ -2286,7 +2286,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1014
+        "line": 1013
       },
       "contract": {
         "explicit": true,
@@ -2322,7 +2322,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1015
+        "line": 1014
       },
       "contract": {
         "explicit": true,
@@ -2358,7 +2358,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1020
+        "line": 1019
       },
       "contract": {
         "explicit": true,
@@ -2394,7 +2394,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1019
+        "line": 1018
       },
       "contract": {
         "explicit": true,
@@ -2430,7 +2430,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1017
+        "line": 1016
       },
       "contract": {
         "explicit": true,
@@ -2466,7 +2466,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1016
+        "line": 1015
       },
       "contract": {
         "explicit": true,
@@ -2502,7 +2502,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1011
+        "line": 1010
       },
       "contract": {
         "explicit": true,
@@ -2538,7 +2538,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1012
+        "line": 1011
       },
       "contract": {
         "explicit": true,
@@ -2574,7 +2574,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 947
+        "line": 946
       },
       "contract": {
         "explicit": true,
@@ -2610,7 +2610,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 949
+        "line": 948
       },
       "contract": {
         "explicit": true,
@@ -2646,7 +2646,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 948
+        "line": 947
       },
       "contract": {
         "explicit": true,
@@ -2682,7 +2682,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1060
+        "line": 1059
       },
       "contract": {
         "explicit": true,
@@ -2718,7 +2718,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1062
+        "line": 1061
       },
       "contract": {
         "explicit": true,
@@ -2754,7 +2754,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1068
+        "line": 1067
       },
       "contract": {
         "explicit": true,
@@ -2790,7 +2790,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1066
+        "line": 1065
       },
       "contract": {
         "explicit": true,
@@ -2826,7 +2826,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1061
+        "line": 1060
       },
       "contract": {
         "explicit": true,
@@ -2862,7 +2862,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1067
+        "line": 1066
       },
       "contract": {
         "explicit": true,
@@ -2898,7 +2898,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1065
+        "line": 1064
       },
       "contract": {
         "explicit": true,
@@ -2934,7 +2934,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1064
+        "line": 1063
       },
       "contract": {
         "explicit": true,
@@ -2970,7 +2970,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1063
+        "line": 1062
       },
       "contract": {
         "explicit": true,
@@ -3006,7 +3006,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 935
+        "line": 934
       },
       "contract": {
         "explicit": true,
@@ -3042,7 +3042,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 936
+        "line": 935
       },
       "contract": {
         "explicit": true,
@@ -3078,7 +3078,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 937
+        "line": 936
       },
       "contract": {
         "explicit": true,
@@ -4407,7 +4407,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1032
+        "line": 1031
       },
       "contract": {
         "explicit": true,
@@ -4443,7 +4443,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1034
+        "line": 1033
       },
       "contract": {
         "explicit": true,
@@ -4479,7 +4479,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1033
+        "line": 1032
       },
       "contract": {
         "explicit": true,
@@ -4515,7 +4515,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 987
+        "line": 986
       },
       "contract": {
         "explicit": true,
@@ -4551,7 +4551,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 988
+        "line": 987
       },
       "contract": {
         "explicit": true,
@@ -4587,7 +4587,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1044
+        "line": 1043
       },
       "contract": {
         "explicit": true,
@@ -4623,7 +4623,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1043
+        "line": 1042
       },
       "contract": {
         "explicit": true,
@@ -20385,7 +20385,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1080
+        "line": 1079
       },
       "contract": {
         "explicit": true,
@@ -20421,7 +20421,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1081
+        "line": 1080
       },
       "contract": {
         "explicit": true,
@@ -20457,7 +20457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1079
+        "line": 1078
       },
       "contract": {
         "explicit": true,
@@ -20493,7 +20493,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1082
+        "line": 1081
       },
       "contract": {
         "explicit": true,
@@ -28080,7 +28080,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1112
+        "line": 1111
       },
       "contract": {
         "explicit": true,
@@ -28116,7 +28116,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1110
+        "line": 1109
       },
       "contract": {
         "explicit": true,
@@ -28152,7 +28152,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1111
+        "line": 1110
       },
       "contract": {
         "explicit": true,
@@ -28689,7 +28689,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1085
+        "line": 1084
       },
       "contract": {
         "explicit": true,
@@ -28723,7 +28723,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 953
+        "line": 952
       },
       "contract": {
         "explicit": true,
@@ -28757,7 +28757,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 991
+        "line": 990
       },
       "contract": {
         "explicit": true,
@@ -28791,7 +28791,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 940
+        "line": 939
       },
       "contract": {
         "explicit": true,
@@ -28825,7 +28825,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1047
+        "line": 1046
       },
       "contract": {
         "explicit": true,
@@ -28859,7 +28859,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 928
+        "line": 927
       },
       "contract": {
         "explicit": true,
@@ -28924,7 +28924,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1025
+        "line": 1024
       },
       "contract": {
         "explicit": true,
@@ -28958,7 +28958,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 981
+        "line": 980
       },
       "contract": {
         "explicit": true,
@@ -28992,7 +28992,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1037
+        "line": 1036
       },
       "contract": {
         "explicit": true,
@@ -30176,7 +30176,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1071
+        "line": 1070
       },
       "contract": {
         "explicit": true,
@@ -30405,7 +30405,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1103
+        "line": 1102
       },
       "contract": {
         "explicit": true,
@@ -39772,7 +39772,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1518
+        "line": 1519
       },
       "contract": {
         "explicit": true,
@@ -39820,7 +39820,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 803
+        "line": 804
       },
       "contract": {
         "explicit": true,
@@ -39882,7 +39882,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 373
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -39922,7 +39922,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 366
+        "line": 367
       },
       "contract": {
         "explicit": true,
@@ -39962,7 +39962,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1820
+        "line": 1821
       },
       "contract": {
         "explicit": true,
@@ -40012,7 +40012,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 55
+        "line": 56
       },
       "contract": {
         "explicit": true,
@@ -40052,7 +40052,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 845
+        "line": 846
       },
       "contract": {
         "explicit": true,
@@ -40107,7 +40107,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1813
+        "line": 1814
       },
       "contract": {
         "explicit": true,
@@ -40147,7 +40147,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1836
+        "line": 1837
       },
       "contract": {
         "explicit": true,
@@ -40189,7 +40189,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 674
+        "line": 675
       },
       "contract": {
         "explicit": true,
@@ -40246,7 +40246,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 95
+        "line": 96
       },
       "contract": {
         "explicit": true,
@@ -40288,7 +40288,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 115
+        "line": 116
       },
       "contract": {
         "explicit": true,
@@ -40330,7 +40330,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 75
+        "line": 76
       },
       "contract": {
         "explicit": true,
@@ -40370,7 +40370,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1843
+        "line": 1844
       },
       "contract": {
         "explicit": true,
@@ -40410,7 +40410,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1323
+        "line": 1324
       },
       "contract": {
         "explicit": true,
@@ -40528,7 +40528,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1334
+        "line": 1335
       },
       "contract": {
         "explicit": true,
@@ -40618,7 +40618,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -40694,7 +40694,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1301
+        "line": 1302
       },
       "contract": {
         "explicit": true,
@@ -40749,7 +40749,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1162
+        "line": 1163
       },
       "contract": {
         "explicit": true,
@@ -40818,7 +40818,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1204
+        "line": 1205
       },
       "contract": {
         "explicit": true,
@@ -40887,7 +40887,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1187
+        "line": 1188
       },
       "contract": {
         "explicit": true,
@@ -40949,7 +40949,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1221
+        "line": 1222
       },
       "contract": {
         "explicit": true,
@@ -41032,7 +41032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1239
+        "line": 1240
       },
       "contract": {
         "explicit": true,
@@ -41108,7 +41108,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1256
+        "line": 1257
       },
       "contract": {
         "explicit": true,
@@ -41191,7 +41191,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1273
+        "line": 1274
       },
       "contract": {
         "explicit": true,
@@ -41267,7 +41267,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 697
+        "line": 698
       },
       "contract": {
         "explicit": true,
@@ -41329,7 +41329,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 334
+        "line": 335
       },
       "contract": {
         "explicit": true,
@@ -41369,7 +41369,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1827
+        "line": 1828
       },
       "contract": {
         "explicit": true,
@@ -41409,7 +41409,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1015
+        "line": 1016
       },
       "contract": {
         "explicit": true,
@@ -41457,7 +41457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1737
+        "line": 1738
       },
       "contract": {
         "explicit": true,
@@ -41505,7 +41505,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1751
+        "line": 1752
       },
       "contract": {
         "explicit": true,
@@ -41553,7 +41553,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 450
+        "line": 451
       },
       "contract": {
         "explicit": true,
@@ -41601,7 +41601,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 477
+        "line": 478
       },
       "contract": {
         "explicit": true,
@@ -41649,7 +41649,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 511
+        "line": 512
       },
       "contract": {
         "explicit": true,
@@ -41704,7 +41704,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 565
+        "line": 566
       },
       "contract": {
         "explicit": true,
@@ -41759,7 +41759,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 206
+        "line": 207
       },
       "contract": {
         "explicit": true,
@@ -41814,7 +41814,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 248
+        "line": 249
       },
       "contract": {
         "explicit": true,
@@ -41869,7 +41869,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 287
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -41924,7 +41924,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 226
+        "line": 227
       },
       "contract": {
         "explicit": true,
@@ -41979,7 +41979,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 319
+        "line": 320
       },
       "contract": {
         "explicit": true,
@@ -42034,7 +42034,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 270
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -42089,7 +42089,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 304
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -42144,7 +42144,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 184
+        "line": 185
       },
       "contract": {
         "explicit": true,
@@ -42199,7 +42199,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1442
+        "line": 1443
       },
       "contract": {
         "explicit": true,
@@ -42268,7 +42268,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 142
+        "line": 143
       },
       "contract": {
         "explicit": true,
@@ -42308,7 +42308,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 380
+        "line": 381
       },
       "contract": {
         "explicit": true,
@@ -42356,7 +42356,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1022
+        "line": 1023
       },
       "contract": {
         "explicit": true,
@@ -42404,7 +42404,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 742
+        "line": 743
       },
       "contract": {
         "explicit": true,
@@ -42459,7 +42459,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 728
+        "line": 729
       },
       "contract": {
         "explicit": true,
@@ -42514,7 +42514,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 735
+        "line": 736
       },
       "contract": {
         "explicit": true,
@@ -42562,7 +42562,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 753
+        "line": 754
       },
       "contract": {
         "explicit": true,
@@ -42610,7 +42610,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1146
+        "line": 1147
       },
       "contract": {
         "explicit": true,
@@ -42686,7 +42686,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1155
+        "line": 1156
       },
       "contract": {
         "explicit": true,
@@ -42743,7 +42743,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 48
+        "line": 49
       },
       "contract": {
         "explicit": true,
@@ -42785,7 +42785,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 88
+        "line": 89
       },
       "contract": {
         "explicit": true,
@@ -42827,7 +42827,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 108
+        "line": 109
       },
       "contract": {
         "explicit": true,
@@ -42869,7 +42869,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 68
+        "line": 69
       },
       "contract": {
         "explicit": true,
@@ -42909,7 +42909,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1758
+        "line": 1759
       },
       "contract": {
         "explicit": true,
@@ -42957,7 +42957,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 177
+        "line": 178
       },
       "contract": {
         "explicit": true,
@@ -42997,7 +42997,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 170
+        "line": 171
       },
       "contract": {
         "explicit": true,
@@ -43037,7 +43037,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 149
+        "line": 150
       },
       "contract": {
         "explicit": true,
@@ -43077,7 +43077,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 135
+        "line": 136
       },
       "contract": {
         "explicit": true,
@@ -43117,7 +43117,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1035
+        "line": 1036
       },
       "contract": {
         "explicit": true,
@@ -43172,7 +43172,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 760
+        "line": 761
       },
       "contract": {
         "explicit": true,
@@ -43220,7 +43220,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 667
+        "line": 668
       },
       "contract": {
         "explicit": true,
@@ -43260,7 +43260,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 987
+        "line": 988
       },
       "contract": {
         "explicit": true,
@@ -43308,7 +43308,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 994
+        "line": 995
       },
       "contract": {
         "explicit": true,
@@ -43356,7 +43356,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1001
+        "line": 1002
       },
       "contract": {
         "explicit": true,
@@ -43404,7 +43404,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1008
+        "line": 1009
       },
       "contract": {
         "explicit": true,
@@ -43452,7 +43452,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 973
+        "line": 974
       },
       "contract": {
         "explicit": true,
@@ -43500,7 +43500,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 980
+        "line": 981
       },
       "contract": {
         "explicit": true,
@@ -43548,7 +43548,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 163
+        "line": 164
       },
       "contract": {
         "explicit": true,
@@ -43590,7 +43590,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 128
+        "line": 129
       },
       "contract": {
         "explicit": true,
@@ -43630,7 +43630,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 648
+        "line": 649
       },
       "contract": {
         "explicit": true,
@@ -43685,7 +43685,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1107
+        "line": 1108
       },
       "contract": {
         "explicit": true,
@@ -43740,7 +43740,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 641
+        "line": 642
       },
       "contract": {
         "explicit": true,
@@ -43788,7 +43788,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1094
+        "line": 1095
       },
       "contract": {
         "explicit": true,
@@ -43857,7 +43857,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 660
+        "line": 661
       },
       "contract": {
         "explicit": true,
@@ -43919,7 +43919,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1490
+        "line": 1491
       },
       "contract": {
         "explicit": true,
@@ -43959,7 +43959,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 785
+        "line": 786
       },
       "contract": {
         "explicit": true,
@@ -44007,7 +44007,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1616
+        "line": 1617
       },
       "contract": {
         "explicit": true,
@@ -44111,7 +44111,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1571
+        "line": 1572
       },
       "contract": {
         "explicit": true,
@@ -44173,7 +44173,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1588
+        "line": 1589
       },
       "contract": {
         "explicit": true,
@@ -44263,7 +44263,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1561
+        "line": 1562
       },
       "contract": {
         "explicit": true,
@@ -44311,7 +44311,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1126
+        "line": 1127
       },
       "contract": {
         "explicit": true,
@@ -44359,7 +44359,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1483
+        "line": 1484
       },
       "contract": {
         "explicit": true,
@@ -44414,7 +44414,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 359
+        "line": 360
       },
       "contract": {
         "explicit": true,
@@ -44454,7 +44454,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1765
+        "line": 1766
       },
       "contract": {
         "explicit": true,
@@ -44502,7 +44502,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 767
+        "line": 768
       },
       "contract": {
         "explicit": true,
@@ -44564,7 +44564,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 776
+        "line": 777
       },
       "contract": {
         "explicit": true,
@@ -44626,7 +44626,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1635
+        "line": 1636
       },
       "contract": {
         "explicit": true,
@@ -44674,7 +44674,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1687
+        "line": 1688
       },
       "contract": {
         "explicit": true,
@@ -44729,7 +44729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1724
+        "line": 1725
       },
       "contract": {
         "explicit": true,
@@ -44791,7 +44791,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1717
+        "line": 1718
       },
       "contract": {
         "explicit": true,
@@ -44846,7 +44846,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1744
+        "line": 1745
       },
       "contract": {
         "explicit": true,
@@ -44901,7 +44901,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 818
+        "line": 819
       },
       "contract": {
         "explicit": true,
@@ -44963,7 +44963,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 825
+        "line": 826
       },
       "contract": {
         "explicit": true,
@@ -45032,7 +45032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 832
+        "line": 833
       },
       "contract": {
         "explicit": true,
@@ -45115,7 +45115,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1805
+        "line": 1806
       },
       "contract": {
         "explicit": true,
@@ -45163,7 +45163,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1798
+        "line": 1799
       },
       "contract": {
         "explicit": true,
@@ -45211,7 +45211,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1074
+        "line": 1075
       },
       "contract": {
         "explicit": true,
@@ -45266,7 +45266,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 341
+        "line": 342
       },
       "contract": {
         "explicit": true,
@@ -45321,7 +45321,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1850
+        "line": 1851
       },
       "contract": {
         "explicit": true,
@@ -45369,7 +45369,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1061
+        "line": 1062
       },
       "contract": {
         "explicit": true,
@@ -45424,7 +45424,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1785
+        "line": 1786
       },
       "contract": {
         "explicit": true,
@@ -45472,7 +45472,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1772
+        "line": 1773
       },
       "contract": {
         "explicit": true,
@@ -45520,7 +45520,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 939
+        "line": 940
       },
       "contract": {
         "explicit": true,
@@ -45575,7 +45575,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 951
+        "line": 952
       },
       "contract": {
         "explicit": true,
@@ -45644,7 +45644,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 889
+        "line": 890
       },
       "contract": {
         "explicit": true,
@@ -45699,7 +45699,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 863
+        "line": 864
       },
       "contract": {
         "explicit": true,
@@ -45754,7 +45754,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 852
+        "line": 853
       },
       "contract": {
         "explicit": true,
@@ -45802,7 +45802,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 876
+        "line": 877
       },
       "contract": {
         "explicit": true,
@@ -45857,7 +45857,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 911
+        "line": 912
       },
       "contract": {
         "explicit": true,
@@ -45912,7 +45912,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 918
+        "line": 919
       },
       "contract": {
         "explicit": true,
@@ -45974,7 +45974,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 932
+        "line": 933
       },
       "contract": {
         "explicit": true,
@@ -46022,7 +46022,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 925
+        "line": 926
       },
       "contract": {
         "explicit": true,
@@ -46077,7 +46077,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 597
+        "line": 598
       },
       "contract": {
         "explicit": true,
@@ -46125,7 +46125,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1048
+        "line": 1049
       },
       "contract": {
         "explicit": true,
@@ -46173,7 +46173,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 156
+        "line": 157
       },
       "contract": {
         "explicit": true,
@@ -67458,7 +67458,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 122
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -67512,7 +67512,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 136
+        "line": 137
       },
       "contract": {
         "explicit": true,
@@ -67566,7 +67566,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 108
+        "line": 109
       },
       "contract": {
         "explicit": true,
@@ -67620,7 +67620,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 94
+        "line": 95
       },
       "contract": {
         "explicit": true,
@@ -67674,7 +67674,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 847
+        "line": 848
       },
       "contract": {
         "explicit": true,
@@ -67721,7 +67721,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 665
+        "line": 666
       },
       "contract": {
         "explicit": true,
@@ -67768,7 +67768,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 302
+        "line": 303
       },
       "contract": {
         "explicit": true,
@@ -67836,7 +67836,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 870
+        "line": 871
       },
       "contract": {
         "explicit": true,
@@ -67883,7 +67883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 728
+        "line": 729
       },
       "contract": {
         "explicit": true,
@@ -67930,7 +67930,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 706
+        "line": 707
       },
       "contract": {
         "explicit": true,
@@ -67969,7 +67969,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 741
+        "line": 742
       },
       "contract": {
         "explicit": true,
@@ -68016,7 +68016,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 216
+        "line": 217
       },
       "contract": {
         "explicit": true,
@@ -68063,7 +68063,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 209
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -68110,7 +68110,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 280
+        "line": 281
       },
       "contract": {
         "explicit": true,
@@ -68157,7 +68157,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 168
+        "line": 169
       },
       "contract": {
         "explicit": true,
@@ -68211,7 +68211,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 183
+        "line": 184
       },
       "contract": {
         "explicit": true,
@@ -68265,7 +68265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 672
+        "line": 673
       },
       "contract": {
         "explicit": true,
@@ -68304,7 +68304,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 681
+        "line": 682
       },
       "contract": {
         "explicit": true,
@@ -68343,7 +68343,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 150
+        "line": 151
       },
       "contract": {
         "explicit": true,
@@ -68390,7 +68390,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 159
+        "line": 160
       },
       "contract": {
         "explicit": true,
@@ -68437,7 +68437,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 400
+        "line": 401
       },
       "contract": {
         "explicit": true,
@@ -68484,7 +68484,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 424
+        "line": 425
       },
       "contract": {
         "explicit": true,
@@ -68538,7 +68538,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 800
+        "line": 801
       },
       "contract": {
         "explicit": true,
@@ -68577,7 +68577,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 786
+        "line": 787
       },
       "contract": {
         "explicit": true,
@@ -68616,7 +68616,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 793
+        "line": 794
       },
       "contract": {
         "explicit": true,
@@ -68655,7 +68655,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 266
+        "line": 267
       },
       "contract": {
         "explicit": true,
@@ -68694,7 +68694,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 259
+        "line": 260
       },
       "contract": {
         "explicit": true,
@@ -68733,7 +68733,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 779
+        "line": 780
       },
       "contract": {
         "explicit": true,
@@ -68772,7 +68772,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 759
+        "line": 760
       },
       "contract": {
         "explicit": true,
@@ -68811,7 +68811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 353
+        "line": 354
       },
       "contract": {
         "explicit": true,
@@ -68858,7 +68858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 192
+        "line": 193
       },
       "contract": {
         "explicit": true,
@@ -68912,7 +68912,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 321
+        "line": 322
       },
       "contract": {
         "explicit": true,
@@ -68973,7 +68973,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 339
+        "line": 340
       },
       "contract": {
         "explicit": true,
@@ -69027,7 +69027,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 447
+        "line": 448
       },
       "contract": {
         "explicit": true,
@@ -69081,7 +69081,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 368
+        "line": 369
       },
       "contract": {
         "explicit": true,
@@ -69135,7 +69135,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 375
+        "line": 376
       },
       "contract": {
         "explicit": true,
@@ -69196,7 +69196,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 913
+        "line": 914
       },
       "contract": {
         "explicit": true,
@@ -69243,7 +69243,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 243
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -69297,7 +69297,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 231
+        "line": 232
       },
       "contract": {
         "explicit": true,
@@ -69351,7 +69351,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 289
+        "line": 290
       },
       "contract": {
         "explicit": true,
@@ -69412,7 +69412,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 772
+        "line": 773
       },
       "contract": {
         "explicit": true,
@@ -69459,7 +69459,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 838
+        "line": 839
       },
       "contract": {
         "explicit": true,
@@ -69506,7 +69506,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 750
+        "line": 751
       },
       "contract": {
         "explicit": true,
@@ -69553,7 +69553,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 860
+        "line": 861
       },
       "contract": {
         "explicit": true,
@@ -69600,7 +69600,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 693
+        "line": 694
       },
       "contract": {
         "explicit": true,
@@ -69647,7 +69647,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 899
+        "line": 900
       },
       "contract": {
         "explicit": true,
@@ -69694,7 +69694,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 393
+        "line": 394
       },
       "contract": {
         "explicit": true,
@@ -69741,7 +69741,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 619
+        "line": 620
       },
       "contract": {
         "explicit": true,
@@ -69788,7 +69788,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 476
+        "line": 477
       },
       "contract": {
         "explicit": true,
@@ -69842,7 +69842,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 455
+        "line": 456
       },
       "contract": {
         "explicit": true,
@@ -69896,7 +69896,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 632
+        "line": 633
       },
       "contract": {
         "explicit": true,
@@ -69957,7 +69957,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 558
+        "line": 559
       },
       "contract": {
         "explicit": true,
@@ -70018,7 +70018,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 497
+        "line": 498
       },
       "contract": {
         "explicit": true,
@@ -70079,7 +70079,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 654
+        "line": 655
       },
       "contract": {
         "explicit": true,
@@ -70133,7 +70133,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/MapperGlobalScriptMethods.cpp",
-        "line": 361
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -98417,7 +98417,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98458,7 +98458,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98497,7 +98497,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98536,7 +98536,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98577,7 +98577,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98618,7 +98618,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98659,7 +98659,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98700,7 +98700,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98741,7 +98741,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98782,7 +98782,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -98821,7 +98821,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 372
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -99311,7 +99311,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 298
+        "line": 300
       },
       "contract": {
         "explicit": true,
@@ -99352,7 +99352,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99393,7 +99393,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99434,7 +99434,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99475,7 +99475,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99516,7 +99516,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99557,7 +99557,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99598,7 +99598,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99639,7 +99639,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99680,7 +99680,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99721,7 +99721,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99762,7 +99762,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99803,7 +99803,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99844,7 +99844,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99885,7 +99885,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99926,7 +99926,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -99967,7 +99967,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -100008,7 +100008,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -100049,7 +100049,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -100090,7 +100090,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -100131,7 +100131,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -100172,7 +100172,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -100213,7 +100213,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -100254,7 +100254,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 353
+        "line": 355
       },
       "contract": {
         "explicit": true,
@@ -100295,7 +100295,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 353
+        "line": 355
       },
       "contract": {
         "explicit": true,
@@ -100336,7 +100336,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 353
+        "line": 355
       },
       "contract": {
         "explicit": true,
@@ -100377,7 +100377,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 360
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -100418,7 +100418,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 360
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -100459,7 +100459,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 360
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -100500,7 +100500,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 360
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -100541,7 +100541,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 360
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -100582,7 +100582,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 360
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -100623,7 +100623,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 360
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -100664,7 +100664,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 360
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -102155,6 +102155,88 @@
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
     },
     {
+      "id": "setting.client.Render.ModelSpriteMaxTextureHeight",
+      "family_id": "setting.client.Render.ModelSpriteMaxTextureHeight",
+      "kind": "setting",
+      "name": "Render.ModelSpriteMaxTextureHeight",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "int32 Render.ModelSpriteMaxTextureHeight = 2048",
+      "description": "Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 175
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 48
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "group": "Render",
+      "type": "int32",
+      "setting_kind": "fixed",
+      "mutability": "startup-fixed",
+      "default_values": [
+        "2048"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.client.Render.ModelSpriteMaxTextureWidth",
+      "family_id": "setting.client.Render.ModelSpriteMaxTextureWidth",
+      "kind": "setting",
+      "name": "Render.ModelSpriteMaxTextureWidth",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "int32 Render.ModelSpriteMaxTextureWidth = 2048",
+      "description": "Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 175
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 48
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "group": "Render",
+      "type": "int32",
+      "setting_kind": "fixed",
+      "mutability": "startup-fixed",
+      "default_values": [
+        "2048"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
       "id": "setting.client.Render.NullRenderer",
       "family_id": "setting.client.Render.NullRenderer",
       "kind": "setting",
@@ -103241,7 +103323,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103282,7 +103364,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103323,7 +103405,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103366,7 +103448,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103407,7 +103489,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103448,7 +103530,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103489,7 +103571,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103530,7 +103612,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103571,7 +103653,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103612,7 +103694,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103653,7 +103735,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 227
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -103695,7 +103777,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -103737,7 +103819,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -103779,7 +103861,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -103821,7 +103903,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -103861,7 +103943,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -103903,7 +103985,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -103945,7 +104027,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -103987,7 +104069,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104027,7 +104109,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104069,7 +104151,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104111,7 +104193,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104153,7 +104235,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104195,7 +104277,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104245,7 +104327,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104285,7 +104367,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104327,7 +104409,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -104369,7 +104451,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 269
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -106324,7 +106406,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -106364,7 +106446,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -106404,7 +106486,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -106444,7 +106526,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -106484,7 +106566,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -106524,7 +106606,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -106564,7 +106646,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -106604,7 +106686,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -107056,7 +107138,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 264
+        "line": 266
       },
       "contract": {
         "explicit": true,
@@ -107096,7 +107178,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107136,7 +107218,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107176,7 +107258,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107216,7 +107298,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107256,7 +107338,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107296,7 +107378,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107336,7 +107418,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107376,7 +107458,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107416,7 +107498,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107456,7 +107538,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107496,7 +107578,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 242
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -107536,7 +107618,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 290
+        "line": 292
       },
       "contract": {
         "explicit": true,
@@ -107577,7 +107659,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 290
+        "line": 292
       },
       "contract": {
         "explicit": true,
@@ -107618,7 +107700,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 290
+        "line": 292
       },
       "contract": {
         "explicit": true,
@@ -107659,7 +107741,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 290
+        "line": 292
       },
       "contract": {
         "explicit": true,
@@ -107699,7 +107781,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -107737,7 +107819,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -107777,7 +107859,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -107817,7 +107899,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -107857,7 +107939,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -107897,7 +107979,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -107937,7 +108019,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -107977,7 +108059,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -108017,7 +108099,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 257
+        "line": 259
       },
       "contract": {
         "explicit": true,
@@ -108057,7 +108139,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 257
+        "line": 259
       },
       "contract": {
         "explicit": true,
@@ -108097,7 +108179,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 257
+        "line": 259
       },
       "contract": {
         "explicit": true,
@@ -108137,7 +108219,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108177,7 +108259,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108217,7 +108299,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108257,7 +108339,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108297,7 +108379,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108337,7 +108419,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108377,7 +108459,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108417,7 +108499,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108457,7 +108539,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108497,7 +108579,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108537,7 +108619,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108577,7 +108659,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108617,7 +108699,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108657,7 +108739,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108697,7 +108779,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108737,7 +108819,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108777,7 +108859,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108817,7 +108899,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108857,7 +108939,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108897,7 +108979,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -108937,7 +109019,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 387
+        "line": 389
       },
       "contract": {
         "explicit": true,

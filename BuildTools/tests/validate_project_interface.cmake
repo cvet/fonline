@@ -32,7 +32,7 @@ endforeach()
 string(JSON _optionCount LENGTH "${FO_PROJECT_INTERFACE_JSON}" options)
 string(JSON _stageCount LENGTH "${FO_PROJECT_INTERFACE_JSON}" stages)
 string(JSON _helperCount LENGTH "${FO_PROJECT_INTERFACE_JSON}" helpers)
-if(NOT _optionCount EQUAL 44 OR NOT _stageCount EQUAL 10 OR NOT _helperCount EQUAL 7)
+if(NOT _optionCount EQUAL 44 OR NOT _stageCount EQUAL 10 OR NOT _helperCount EQUAL 6)
 	message(FATAL_ERROR "Unexpected project-interface shape: ${_optionCount} options, ${_stageCount} stages, ${_helperCount} helpers")
 endif()
 
@@ -44,40 +44,16 @@ foreach(_helperIndex RANGE 0 ${_lastHelperIndex})
 	endif()
 endforeach()
 
-if(FO_PROJECT_LIBRARY_TEST_INVALID_ROLE)
-	AddProjectLibraries(ROLES EDITOR LIBRARIES InvalidProjectLibrary)
-	message(FATAL_ERROR "Unknown project library role unexpectedly passed")
+if(COMMAND AddProjectLibraries)
+	message(FATAL_ERROR "Undeclared AddProjectLibraries helper unexpectedly exists")
 endif()
-
-AddProjectLibraries(
-	ROLES COMMON SERVER
-	LIBRARIES ProjectShared ProjectNetwork)
-AddProjectLibraries(
-	ROLES MAPPER
-	LIBRARIES ProjectMapper)
-if(NOT "ProjectShared" IN_LIST FO_COMMON_LIBS OR NOT "ProjectNetwork" IN_LIST FO_COMMON_LIBS)
-	message(FATAL_ERROR "COMMON project libraries were not routed to FO_COMMON_LIBS: ${FO_COMMON_LIBS}")
-endif()
-if(NOT "ProjectShared" IN_LIST FO_SERVER_LIBS OR NOT "ProjectNetwork" IN_LIST FO_SERVER_LIBS)
-	message(FATAL_ERROR "SERVER project libraries were not routed to FO_SERVER_LIBS: ${FO_SERVER_LIBS}")
-endif()
-if(NOT "ProjectMapper" IN_LIST FO_MAPPER_LIBS)
-	message(FATAL_ERROR "MAPPER project library was not routed to FO_MAPPER_LIBS: ${FO_MAPPER_LIBS}")
-endif()
-
-execute_process(
-	COMMAND "${CMAKE_COMMAND}"
-		-DFO_PROJECT_LIBRARY_TEST_INVALID_ROLE=ON
-		-P "${CMAKE_CURRENT_LIST_FILE}"
-	RESULT_VARIABLE _invalidProjectLibraryRoleResult
-	OUTPUT_VARIABLE _invalidProjectLibraryRoleOutput
-	ERROR_VARIABLE _invalidProjectLibraryRoleError)
-if(_invalidProjectLibraryRoleResult EQUAL 0)
-	message(FATAL_ERROR "Unknown project library role validation unexpectedly passed")
-endif()
-set(_invalidProjectLibraryRoleCombined "${_invalidProjectLibraryRoleOutput}\n${_invalidProjectLibraryRoleError}")
-if(NOT _invalidProjectLibraryRoleCombined MATCHES "unknown project library role 'EDITOR'")
-	message(FATAL_ERROR "Unknown project library role diagnostic is missing: ${_invalidProjectLibraryRoleCombined}")
+foreach(_libraryList IN ITEMS FO_COMMON_LIBS FO_SERVER_LIBS FO_CLIENT_LIBS FO_BAKER_LIBS FO_TESTING_LIBS)
+	if(NOT DEFINED ${_libraryList})
+		message(FATAL_ERROR "Missing revision-pinned project library list: ${_libraryList}")
+	endif()
+endforeach()
+if(DEFINED FO_MAPPER_LIBS)
+	message(FATAL_ERROR "Undocumented mapper-only library list unexpectedly exists")
 endif()
 
 set(FO_ENGINE_ROOT ".")

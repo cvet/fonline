@@ -15,4 +15,3 @@ python BuildTools/gameplay_test_runner.py \
 A pass requires both processes to exit with code 0, every required marker to appear, no forbidden marker to appear, and the scenario to finish before its deadline. The runner returns 0 for a passing suite, 1 for a process/marker/timeout failure, and 2 for invalid CLI or manifest input.
 
 The fixture process is intentionally not a mock FOnline runtime. Its only job is to make runner failures deterministic and fast. Use the Minimal Multiplayer scenario for actual engine startup, content, networking, remote-call, map-load, and interaction evidence.
-

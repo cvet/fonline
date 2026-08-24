@@ -6,7 +6,7 @@ document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
 
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"a1b169c4348ff21d943000d405c7d4106cc28f6e1b79e18fb5ca9282b9e726da"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"04ead23529b85d79eb2294313cd3aed667fc46b8facdd37859f67624cddd09a5"} -->
 
 # Корневое движение спрайтов и циклы ходьбы
 
@@ -30,7 +30,7 @@ permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 - `Source/Common/Movement.*` - авторитетный прогресс времени/пути и построение целочисленного пиксельного `HexOffset`;
 - `Source/Common/Geometry.*` - re-split без потери позиции между гексом и offset с учётом проходимости;
 - `Source/Client/CritterHexView.*` - anchor цикла, displacement движения, выбор кадра, отображаемый animation offset и нормализация при остановке;
-- `Source/Client/ResourceManager.cpp` - выбор анимации, извлечение кадров, merge, clone и сохранение offsets;
+- `Source/Client/ResourceManager.cpp` - выбор анимации, извлечение кадров, merge, clone и их внутренние преобразования offsets;
 - `Source/Tests/Test_ImageBaker.cpp` и `Source/Tests/Test_Geometry.cpp` - покрытие offsets на уровне формата и нормализации геометрии.
 
 Документация и контент проектов полезны как integration evidence, но не являются источником истины для переиспользуемого поведения Engine.
@@ -76,7 +76,7 @@ NextY_1 = -1
 
 Вложенные ссылки FOFRM добавляют offset ссылающегося кадра к выбранному вложенному кадру. Другие поддерживаемые форматы переносят или вычисляют offsets по правилам своего importer. Отсутствующие значения обычно становятся нулём; проверяйте loader конкретного формата в `ImageBaker`, а не предполагайте, что каждый формат предоставляет одинаковые авторские поля.
 
-Offsets зависят от направления. Image baking может отражать, обрезать или компоновать кадры. Клиентский выбор ресурсов может извлечь первый или последний кадр, клонировать sheet либо объединить базовую и дополнительную Fallout-анимации. Merge копирует оба sheet и переносит первый дополнительный кадр, отдельно вычитая полный цикл базы по `x` и `y`. Эти преобразования являются внутренним поведением Engine, поэтому проверяйте выбранный запечённый sheet и не редактируйте baked stream.
+Offsets зависят от направления. Image baking может отражать, обрезать или компоновать кадры. Клиентский выбор ресурсов может извлечь первый или последний кадр, клонировать sheet либо объединить базовую и дополнительную Fallout-анимации. Этот merge path является внутренним поведением Engine и не имеет focused per-axis regression в текущем native suite; не считайте сохранение offsets на splice публичной гарантией. Проверяйте выбранный baked sheet по обеим осям и не редактируйте baked stream.
 
 ## Запечённое и runtime-представление
 

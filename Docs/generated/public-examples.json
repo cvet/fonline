@@ -1,5 +1,5 @@
 {
-  "contract_digest": "393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516",
+  "contract_digest": "e8623467586bebf8c0e4c02370c42fe99aa722d23f7d6cf1f252a163e3eee16d",
   "generated_by": "BuildTools/docs_examples.py",
   "program": {
     "compatibility": {
@@ -225,7 +225,6 @@
         "Content/StarterContent.fopro",
         "Maps/TutorialMap.fomap",
         "Particles/Documentation.spark",
-        "Scripts/MapperCapture.fos",
         "Scripts/Tutorial.fos",
         "assets/provenance.json",
         "package-smoke.json",

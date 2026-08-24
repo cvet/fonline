@@ -115,7 +115,7 @@ The public `DataBase` facade forwards write calls into this machinery. Backend w
 - `_pendingChangesLog`
 - `_committedChangesLog`
 
-When operation logging is enabled, `DataBase.OpLogPath` must be non-empty and end with the exact `.oplog` suffix. `InitializeOpLogs()` rejects any other path before opening files. The configured path owns the pending log; the committed-progress log is derived by replacing that final suffix with `-committed.oplog`. Keep the suffix contract intact rather than relying on a broad substring replacement in an arbitrary filename.
+When operation logging is enabled, `DataBase.OpLogPath` must be non-empty. The configured path owns the pending log; the committed-progress path is derived by replacing `.oplog` with `-committed.oplog`. `InitializeOpLogs()` does not enforce that suffix, so keep the conventional `.oplog` name and verify that the derived path is distinct rather than relying on an arbitrary filename.
 
 Recovery/panic settings include:
 
@@ -189,6 +189,6 @@ Relevant tests include:
 3. Validate integer-key and string-key collections when changing key handling.
 4. Validate commit queue drain with `StartCommitChanges()` / `WaitCommitChanges()`.
 5. Validate operation-log restore after a simulated failed commit when durability/recovery behavior changes.
-6. Validate that an enabled `DataBase.OpLogPath` is non-empty and ends with `.oplog`, and that the derived `-committed.oplog` path cannot collide with the pending log.
+6. Validate that an enabled `DataBase.OpLogPath` is non-empty and that replacing `.oplog` with `-committed.oplog` produces a distinct committed-log path.
 7. Validate entity save/load paths when persistent property semantics change.
 8. Never put production credentials or live connection strings into repository docs or tests.

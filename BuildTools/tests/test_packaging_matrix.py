@@ -63,20 +63,15 @@ class PackagingMatrixTests(unittest.TestCase):
         for marker in ("packaging-manifest.json", "verify_archive", "run_packaged", "engine_revision"):
             self.assertIn(marker, verifier)
 
-    def test_required_validation_and_support_routes_own_package_smoke(self) -> None:
+    def test_package_smoke_is_fixture_owned_and_not_a_required_engine_lane(self) -> None:
         sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
         import buildtools
 
-        for name, platform in (("win64-package-smoke", "win64"), ("linux-package-smoke", "linux")):
-            target = buildtools.VALIDATION_TARGETS[name]
-            self.assertEqual(target["platform"], platform)
-            self.assertEqual(target["target"], "package-smoke")
-            self.assertEqual(target["project"], "PackagingMatrix")
-            self.assertEqual(target["run_target"], "RunPackagingChecks")
+        self.assertNotIn("win64-package-smoke", buildtools.VALIDATION_TARGETS)
+        self.assertNotIn("linux-package-smoke", buildtools.VALIDATION_TARGETS)
 
         workflow = (ENGINE_ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8")
-        for marker in ("win64-package-smoke", "linux-package-smoke", "packaging-evidence-${{ matrix.app }}-${{ github.sha }}"):
-            self.assertIn(marker, workflow)
+        self.assertNotIn("package-smoke", workflow)
 
         support = json.loads((ENGINE_ROOT / "BuildTools/SupportMatrix.json").read_text(encoding="utf-8"))
         targets = {
@@ -84,8 +79,8 @@ class PackagingMatrixTests(unittest.TestCase):
             for platform in support["platforms"]
             for target in platform["ci_validation_targets"]
         }
-        self.assertIn("win64-package-smoke", targets)
-        self.assertIn("linux-package-smoke", targets)
+        self.assertNotIn("win64-package-smoke", targets)
+        self.assertNotIn("linux-package-smoke", targets)
 
 
 if __name__ == "__main__":

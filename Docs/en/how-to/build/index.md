@@ -64,11 +64,13 @@ The repository includes one stable exception to project-specific target naming: 
 From the engine root, use the host-specific validation target:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-starter-smoke
+cd Examples\MinimalProject
+python validate.py
 ```
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-starter-smoke
+cd Examples/MinimalProject
+python3 validate.py
 ```
 
 Both routes configure and build the baker plus headless server, bake the
@@ -81,11 +83,13 @@ headless server, and baker, then tests metadata, content, login, map loading,
 localized text, remote calls, and replicated state:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-tutorial-smoke
+cd Examples/MinimalMultiplayer
+python3 validate.py
 ```
 
 The source and manual launch path are documented in
@@ -127,7 +131,7 @@ Use the generated [BuildTools CLI reference](../../reference/buildtools/index.md
 
 Use the generated [package interface reference](../../reference/packages/index.md) for `DefinePackage` grammar, accepted targets/platforms/architectures, pack-token compatibility, payload layouts, and output artifacts. Follow [Packaging and Release](../release/packaging.md) for the build/bake/package order, platform procedures, artifact evidence, signing, acceptance, and recovery boundaries. Keep a game's concrete package matrix in that embedding project's documentation.
 
-For a library, SDK, framework, or runtime payload owned by the game repository, follow [Project-Local Dependencies](../../../ProjectDependencies.md). Create a project CMake target, link it through `AddProjectLibraries` to the narrowest consuming role, and validate both its compiled feature state and packaged runtime state.
+For a library, SDK, framework, or runtime payload owned by the game repository, follow [Project-Local Dependencies](../../../ProjectDependencies.md). Create a project CMake target, append it to the narrowest consumed `FO_*_LIBS` list supported by the pinned revision, and validate both its compiled feature state and packaged runtime state.
 
 - [BuildTools overview](../../../../BuildTools/README.md).
 - [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) — staged CMake pipeline and change routing.
@@ -139,7 +143,7 @@ For a library, SDK, framework, or runtime payload owned by the game repository, 
 
 When `BuildTools/buildtools.py::create_parser()` changes, regenerate and check the CLI model/pages before validating the affected command in an embedding project.
 
-When package declarations or payload behavior change, update `BuildTools/PackageInterface.json`, regenerate/check its model/pages, run `validate_package_interface.cmake` and `test_packaging_matrix.py`, then exercise `win64-package-smoke`, `linux-package-smoke`, or the narrower affected product package target. The Engine fixture proves native raw/archive/config/updater mechanics; it does not replace a game's signing, install, deployment, or rollback lane.
+When package declarations or payload behavior change, update `BuildTools/PackageInterface.json`, regenerate/check its model/pages, run `validate_package_interface.cmake` and `test_packaging_matrix.py`, then build `RunPackagingChecks`, `RunTutorialPackageChecks`, or the narrower affected product package target from the owning example/project. These example targets are opt-in and are not part of the required Engine validation registry. The Engine fixtures prove native raw/archive/config/updater mechanics; they do not replace a game's signing, install, deployment, or rollback lane.
 
 - **Runtime C++:** build and run the project unit-test target; use [Testing](../../contributing/testing/) to choose focused suites and understand generated test targets.
 - **CMake/BuildTools:** reconfigure from a clean or relevant build directory and run the affected build/package target; use [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) for stage ownership.

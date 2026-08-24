@@ -273,16 +273,15 @@ playback and viewport diagnostics. Use the SPARK editor only on authored
 
 ## Screenshot and automation contract
 
-Two mapper-only script methods have different purposes:
+The mapper script API exposes one screenshot method:
 
 | Method | Frame contents | Completion |
 |---|---|---|
 | `Game.SaveMapperScreenshot(path)` | Current map render target and mapper script interface drawing; excludes the later application-level ImGui composition. | Synchronous TGA write. |
-| `Game.RequestMapperWindowScreenshot(path)` | Full Mapper frame with application ImGui windows composited onto the map render target before `Present()`. | Deferred to the end of the current frame; only one request may be pending. |
 
-For a full-window capture, request the screenshot, allow at least one more
-Mapper loop, then quit. The minimal multiplayer example provides a complete
-profile:
+There is no Engine script method for full-window UI capture. The minimal
+multiplayer example provides a reproducible visible profile; after its windows
+settle, capture the application window with a platform screenshot tool:
 
 ```powershell
 cmake --build Build\windows --config Release --target ForceBakeResources FOMM_Mapper
@@ -292,8 +291,8 @@ Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
 ```
 
 The profile opens `TutorialMap`, starts `Documentation.spk` with a fixed seed,
-captures `1280x800`, and writes `MapperDocumentationCapture.tga`. The checked-in
-PNG and complete source hashes are recorded in
+and fixes the viewport at `1280x800`. The checked-in PNG and complete source
+hashes are recorded in
 [generated/screenshots.json](../../../generated/screenshots.json).
 
 Use `Render.HeadlessWindow = True` for off-screen map rendering, but not
@@ -310,7 +309,7 @@ Use `Render.HeadlessWindow = True` for off-screen map rendering, but not
 | Inspector rejects a value | Generated property type, enum spelling, array/struct syntax, nullability, and prototype constraints. |
 | Particle source is listed but preview is not | Enabled backend, baked `.spk`/`.efk`, referenced effect/texture, bounds, seed/prewarm, and log exceptions. |
 | Windows are missing or off-screen | Open Windows menu, then use Settings -> Reset layout. |
-| Full-window screenshot has no UI | Use `RequestMapperWindowScreenshot`, not the map-only synchronous method, and wait one frame before quit. |
+| UI screenshot contains only the map | `SaveMapperScreenshot` is map-only; capture the visible application window with a platform screenshot tool. |
 
 Treat `ScriptException`, `VerificationException`, assertion/fatal lines,
 missing resource logs, failed saves, and invalid map declarations as failures.

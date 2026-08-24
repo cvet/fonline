@@ -76,7 +76,7 @@ Baking.CacheResources = Cache
 
 Unknown names become project custom settings and are available through `GetCustomSetting` / `FindCustomSetting`. That is intentional for game-owned configuration, but a typo in a built-in setting can therefore look valid. Add a focused project test for every content ID, port/profile, prototype name, path, or custom setting that affects startup or gameplay.
 
-Values beginning with `+` accumulate instead of replacing. String values append with a space, vectors append elements, numeric values add, booleans use logical OR, and enums use bitwise OR; use this deliberately and test the resulting value rather than assuming list-only behavior. `$ENV{NAME}` and `$FILE{path}` resolve while the authored config is read, including during baking, so their concrete values can enter generated internal configs. `$TARGET_ENV{NAME}` and `$TARGET_FILE{path}` remain directives while baking and resolve on the target application or packaging host. Keep credentials outside tracked config, use target forms for sensitive values, and follow [Security and Secrets](../release/security-and-secrets.md) for command-line, logging, signing, CI, rotation, and artifact boundaries.
+Values beginning with `+` accumulate instead of replacing. String values append with a space, vectors append elements, numeric values add, booleans use logical OR, and enums use bitwise OR; use this deliberately and test the resulting value rather than assuming list-only behavior. `$ENV{NAME}` and `$FILE{path}` resolve while the authored config is read, including during baking, so their concrete values can enter generated internal configs. `$TARGET_ENV{NAME}` and `$TARGET_FILE{path}` remain directives while baking and resolve only when a target application reads them; the current packager does not provide a general target-directive resolver. Keep credentials outside tracked config, use target forms for runtime secrets, and follow [Security and Secrets](../release/security-and-secrets.md) for command-line, logging, signing, CI, rotation, and artifact boundaries.
 
 ## Define resource packs
 
@@ -167,8 +167,8 @@ Keep sub-configs narrow:
 The two Engine-owned examples are executable configuration fixtures:
 
 ```bash
-python BuildTools/buildtools.py validate linux-starter-smoke
-python BuildTools/buildtools.py validate linux-tutorial-smoke
+(cd Examples/MinimalProject && python3 validate.py)
+(cd Examples/MinimalMultiplayer && python3 validate.py)
 ```
 
 Use the `win64-` equivalents on Windows.

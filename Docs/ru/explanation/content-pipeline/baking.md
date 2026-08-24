@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"222f747b0c5782a01c85bef560bec1c4fb38c8d5b0529194a0864719541e65bd"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"29865d4b780b6d286adc46044b6dac5f4611f56885b749a3f9c0cd2dad49bbdd"} -->
 
 # Конвейер запекания ресурсов
 
@@ -346,6 +346,19 @@ Baked sprite использует engine-owned magic/version, per-frame draw off
 
 `MapBaker` пишет отдельные server/client blobs. Client blob содержит видимые static items, а hash dictionary также собирает client properties скрытых static items, чтобы `Common` hstring разрешались без раскрытия entities.
 
+Оба blob начинаются с `BAKED_MAP_FILE_MAGIC` и
+`BAKED_MAP_FILE_VERSION` из `Source/Common/MapLoader.h`.
+`MapLoader::ReadBakedFileHeader` проверяет header до чтения payload в
+`MapManager::LoadStaticMaps` или `MapView::LoadStaticData`. Hash table использует
+парный контракт `DataWriter::WriteString` / `DataReader::ReadString`, а каждый
+последующий count или byte size проверяется через
+`DataReader::VerifyPayloadCount` до allocation или loop. Поэтому отсутствующие,
+устаревшие, обрезанные или повреждённые данные вызывают
+`DataReadingException`, а не интерпретируются как counts элементов. При
+изменении layout увеличьте `BAKED_MAP_FILE_VERSION` и в том же изменении
+запустите `ForceBakeResources`: timestamps исходников не доказывают, что
+существующий output использует текущий layout.
+
 `ParticleBaker` обрабатывает `.spark` -> `.spk` при `FO_SPARK_PARTICLES` и `.efkproj` -> `.efk` при `FO_EFFEKSEER_PARTICLES`; обе options по умолчанию `OFF`. SPARK XML загружается с `SparkQuadRenderer`, texture paths разрешаются относительно source и не могут выходить из него. Unknown types, malformed XML, authored `.spk` и binary-save failure являются hard errors. Client и baker используют один `SparkExtension.cpp` через `ClientLib`; binary loader ограничивает payload, object/attribute counts, reads, signatures и typed references.
 
 Effekseer source должен быть on-disk XML проекта Editor 1.80.5, version 3. Native `EffekseerCompiler` выдаёт `SKFE` bytes и dependencies, которые проверяются pinned C++ Core. Compiler входит в `BakerLib`, но не в production client; Mapper использует тот же on-demand path, Web получает заранее baked `.efk`.
@@ -356,7 +369,22 @@ Dependency snapshot хранится в `<BakeOutput>/.baker-cache/Effekseer/<pa
 
 `ModelMeshBaker` отклоняет mesh node с отрицательным determinant `geometry_to_world`. Такой node экспортирован с отрицательным scale: отражение меняет ориентацию поверхности, поэтому normals и winding треугольников расходятся с lighting и back-face culling. Baker не скрывает дефект source переворотом normals/winding; mirrored object нужно заморозить обратно к положительному scale в authoring tool.
 
-`ModelInfoBaker` также проверяет размер напрямую присоединённой модели: ссылки `Attach` на bare `.fbx`, а не на `.fo3d`. У direct attachment нет description-level коррекции scale, поэтому maximum-axis extent статических bounds должен лежать в диапазоне `Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`. Ошибка называет файл, измеренный extent и limit. Attachments через `.fo3d` освобождены от проверки, потому что их description может задать явный scale.
+`ModelInfoBaker` также проверяет масштаб модели по диапазону
+`Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`. Для
+прямой ссылки `Attach` на bare `.fbx` проверяется maximum-axis extent статических
+bounds. Для каждой секции `.fo3d` проверяется aggregate `ModelBounds`: union
+animation envelopes либо static geometry, если mappings отсутствуют. Full bake
+проверяет envelope при записи `ModelAnimationInfo.foinfo`, а targeted `.fo3d`
+bake выполняет ту же проверку перед записью description. Token `.fo3d` `Scale`
+не меняет baked envelope, поэтому root model в сантиметрах не освобождается от
+проверки. Ошибка называет файл, измеренный extent и limit.
+
+Baker не использует `AppRender::MAX_ATLAS_WIDTH` / `HEIGHT` build host как
+контракт устройства. Portable layout math использует
+`AppRender::MIN_ATLAS_SIZE / FRAME_SCALE`. Runtime preview zoom всё ещё может
+увеличить допустимый envelope сверх `Render.ModelSpriteMaxTextureWidth` /
+`Height`; `RefreshFrameLayout` ограничивает scratch texture и рисует с crop
+вместо завершения процесса.
 
 Schema 1 остаётся native-endian для little-endian targets; big-endian потребует новой схемы.
 

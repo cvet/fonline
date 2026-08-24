@@ -127,6 +127,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_ImageWriter.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`

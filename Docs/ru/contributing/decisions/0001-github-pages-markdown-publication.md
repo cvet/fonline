@@ -6,7 +6,7 @@ document_id: adr-github-pages-markdown-publication
 permalink: /Docs/ru/contributing/decisions/0001-github-pages-markdown-publication.html
 ---
 
-<!-- docs-translation: {"document_id":"adr-github-pages-markdown-publication","locale":"ru","source_path":"Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md","source_sha256":"3f8780800df30e332c78b325c2ab575cdee17e7a675587ebe869e74954db68b6"} -->
+<!-- docs-translation: {"document_id":"adr-github-pages-markdown-publication","locale":"ru","source_path":"Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md","source_sha256":"bf9e7605e8e044f83467f2c2ef16cb7ae0a2b48132b1f44a9a33dfcfbb6a62dc"} -->
 
 # ADR-0001: публикация Markdown через GitHub Pages и структура локалей
 

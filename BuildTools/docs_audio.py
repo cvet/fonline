@@ -246,7 +246,9 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         raise ValueError("unable to derive the complete audio runtime contract")
 
     indexed_extensions = _quoted_values(index_match.group("values"))
-    dispatch_extensions = re.findall(r'ext == "([A-Za-z0-9]+)"', sound_text)
+    dispatch_extensions = list(
+        dict.fromkeys(re.findall(r'ext == "([A-Za-z0-9]+)"', sound_text))
+    )
     if indexed_extensions != dispatch_extensions:
         raise ValueError(
             "ResourceManager index extensions and SoundManager dispatch extensions differ"

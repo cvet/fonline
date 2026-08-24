@@ -27,9 +27,9 @@ standalone Particle Viewer.
    pinned external editor.
 3. Re-bake, then pin the backend, resource, seed, prewarm, direction, and replay
    state before comparing the focused preview and runtime routes.
-4. For review evidence, `Game.RequestMapperWindowScreenshot` captures the Full
-   Mapper frame and only one request may be pending. Keep that full-window proof
-   separate from a world-render-only screenshot.
+4. For review evidence, capture the visible Mapper application window with a
+   platform screenshot tool. Keep that UI proof separate from the map-only TGA
+   produced by `Game.SaveMapperScreenshot`.
 
 ## Choose the backend before authoring
 

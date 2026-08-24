@@ -13,7 +13,7 @@ permalink: /Docs/en/how-to/tools/mapper.html
 The mapper is both an interactive editor and a scriptable map-processing host. Mapper-side AngelScript can create or load maps, author entities, control the editor view, capture a rendered frame, inspect atlas geometry, preview particles, and quit without connecting to a game server.
 
 Use [Mapper Interactive Manual](mapper-interactive.md) for menus, windows, manual
-editing, history, save discipline, and full-window visual captures. This page
+editing, history, save discipline, and visible UI evidence. This page
 owns the scriptable and native integration surface.
 
 ## Automation decision
@@ -24,12 +24,11 @@ scene. A reproducible headless batch starts in `Game.OnStart`, advances bounded
 warmup loops from `Game.OnLoop`, calls `Game.SaveMapperScreenshot`, and exits
 through `Game.RequestQuit`.
 
-Choose the capture primitive deliberately. `SaveMapperScreenshot` synchronously
+Choose the capture route deliberately. `SaveMapperScreenshot` synchronously
 writes the map render as TGA only; warm up a newly shown map before the call,
-and expect non-uniform dimensions after resize or crop.
-`Game.RequestMapperWindowScreenshot` is deferred, captures the complete
-interactive Mapper window, permits only one pending request, and requires at
-least one further loop before quit.
+and expect non-uniform dimensions after resize or crop. It does not include the
+application-level ImGui windows. Capture the visible application window with a
+platform screenshot tool when review evidence must include Mapper UI.
 The embedding project owns the batch plan, map selection, output naming,
 conversion, retries, and validation of generated assets.
 
@@ -184,7 +183,6 @@ placement, and gameplay validation.
 | `Game.AddMapperIgnoredItemPids(pids)` | Add item prototype ids to the current map's mapper ignore list and rebuild it. |
 | `Game.SetMapperScrollCheckEnabled(enabled)` | Enable or disable camera clamping to authored scroll bounds. |
 | `Game.SaveMapperScreenshot(path)` | Redraw and synchronously save the map render target as TGA; application-level ImGui windows are not included. |
-| `Game.RequestMapperWindowScreenshot(path)` | Queue one full Mapper frame, composite the current application ImGui draw data before `Present()`, and save it as TGA. |
 | `Game.DumpAtlases()` | Save diagnostic TGA copies of live texture atlases with allocation and sprite-mesh overlays. |
 
 `CalcMapperFitZoom` uses `ScrollAxialArea` when present and falls back to map bounds. A batch tool can apply an additional project-owned padding factor when tall sprites, shadows, or effects extend beyond the playable area.
@@ -234,30 +232,21 @@ Single-process batching is preferred when many maps share one resource set becau
 3. calls `DrawMapperFrame()` to refresh the intermediate main render target;
 4. reads RGBA pixels from that target;
 5. flips rows and swaps red/blue channels for TGA ordering;
-6. writes through the engine-shared `WriteSimpleTga` helper.
+6. writes through the engine-shared `ImageWriter::WriteSimpleTga` helper.
 
 It captures mapper script-interface drawing that is already in the map target,
 but not the later application-level ImGui menu and tool windows.
 
-`RequestMapperWindowScreenshot` is the deferred full-window path:
+This Engine script API has no full-window capture method. Use the synchronous
+method for deterministic batch map frames. For manuals, bug reports, or UI
+regression evidence, launch a visible reproducible profile and capture the
+application window with a platform screenshot tool. [Mapper Interactive
+Manual](mapper-interactive.md#screenshot-and-automation-contract) contains the
+minimal-example recipe.
 
-1. rejects an empty path and a second request while one is pending;
-2. waits until Mapper and the application have emitted the current ImGui draw
-   data;
-3. runs from `Application::OnBeforePresent`;
-4. replays that ImGui draw data onto the readable main render target;
-5. writes the target through the same canonical TGA conversion;
-6. clears the pending request even when capture fails.
-
-A script must allow at least one further loop after requesting the capture
-before quitting. Use the synchronous method for deterministic batch map
-frames and the deferred method for manuals, bug reports, or UI regression
-evidence. [Mapper Interactive Manual](mapper-interactive.md#screenshot-and-automation-contract)
-contains the executable minimal-example recipe.
-
-Both methods produce TGA only. The Engine-owned documentation screenshot
-pipeline may convert a recorded fixture to PNG and then pins the exact source,
-dimensions, image hash, environment, and recapture triggers in
+The script method produces TGA only. The Engine-owned documentation screenshot
+pipeline may record an external visible-window capture and pins the exact
+source, dimensions, image hash, environment, and recapture triggers in
 `BuildTools/DocumentationScreenshots.json`. Project screenshot conversion,
 cropping, size limits, alpha-bound analysis, and asset registration remain
 embedding-project responsibilities unless a reusable helper is deliberately
@@ -294,8 +283,8 @@ Use [Script Methods Map](../../reference/script-api/method-ownership.md) as the 
 2. Compile a minimal mapper script that loads, shows, captures, unloads, and quits.
 3. Run one visible interactive mapper smoke test to confirm editor behavior is unchanged.
 4. Run one `Render.HeadlessWindow=True` capture and verify dimensions plus non-uniform pixels.
-5. Run one visible full-window capture, verify that menu/tool windows are
-   present, and allow one frame between request and quit.
+5. Capture one visible application window with a platform screenshot tool and
+   verify that the intended menu/tool windows are present.
 6. Preview one baked effect for each enabled particle backend; for SPARK editor changes, save and reload one `.spark` source.
 7. When atlas diagnostics change, dump one warmed atlas and inspect mesh, quad, and empty-frame markers.
 8. Confirm `SaveMapToPath` rejects traversal and writes only below the map data-source root.

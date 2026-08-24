@@ -325,7 +325,7 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         for workflow in (pinned_workflow, current_workflow):
             self.assertIn("Engine/BuildTools/prepare-workspace.sh linux-packages linux", workflow)
         prepare_workspace = (ENGINE_ROOT / "BuildTools/prepare-workspace.sh").read_text(encoding="utf-8")
-        self.assertIn("showcase-display-packages", prepare_workspace)
+        self.assertNotIn("showcase-display-packages", prepare_workspace)
         evidence_collector = (
             ENGINE_ROOT / "Examples/PublicRepositoryTemplate/collect-evidence.py"
         ).read_text(encoding="utf-8")
@@ -583,15 +583,13 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         )
         native_cmake = (ENGINE_ROOT / "Examples/NativeExtensionSample/CMakeLists.txt").read_text(encoding="utf-8")
         for marker in (
-            "AddProjectLibraries(",
-            "ROLES SERVER",
-            "if(COMMAND AddProjectLibraries)",
             "list(APPEND FO_SERVER_LIBS NativeExtensionCore)",
             "AddEngineSources(SERVER SourceExt/ServerExtension.cpp)",
             "FONATIVE_NativeExtensionCoreTest",
             "RunNativeExtensionChecks",
         ):
             self.assertIn(marker, native_cmake)
+        self.assertNotIn("AddProjectLibraries", native_cmake)
         native_extension = (
             ENGINE_ROOT / "Examples/NativeExtensionSample/SourceExt/ServerExtension.cpp"
         ).read_text(encoding="utf-8")
@@ -603,49 +601,15 @@ class PublicExampleDocumentationTests(unittest.TestCase):
             "server->UserData",
         ):
             self.assertIn(marker, native_extension)
-        sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
-        import buildtools
-
-        for target_name, platform_name in (
-            ("win64-native-extension-smoke", "win64"),
-            ("linux-native-extension-smoke", "linux"),
-        ):
-            target = buildtools.VALIDATION_TARGETS[target_name]
-            self.assertEqual(target["platform"], platform_name)
-            self.assertEqual(target["target"], "native-extension-smoke")
-            self.assertEqual(target["project"], "NativeExtensionSample")
-            self.assertEqual(target["run_target"], "RunNativeExtensionChecks")
-
-        for target_name, platform_name, build_target, run_target in (
-            ("win64-showcase-smoke", "win64", "showcase-smoke", "RunShowcaseChecks"),
-            ("linux-showcase-smoke", "linux", "showcase-smoke", "RunShowcaseChecks"),
-            ("linux-showcase-capture", "linux", "showcase-smoke", "RunShowcaseCapture"),
-            ("web-showcase-build", "web", "showcase-web", "RunShowcaseWebChecks"),
-            (
-                "web-showcase-package",
-                "web",
-                "showcase-web-package",
-                "RunShowcaseWebPackageChecks",
-            ),
-            (
-                "web-showcase-runtime",
-                "web",
-                "showcase-web-package",
-                "RunShowcaseWebPackageChecks",
-            ),
-        ):
-            target = buildtools.VALIDATION_TARGETS[target_name]
-            self.assertEqual(target["platform"], platform_name)
-            self.assertEqual(target["target"], build_target)
-            self.assertEqual(target["project"], "ContentShowcase")
-            self.assertEqual(target["run_target"], run_target)
-        web_package_target = buildtools.VALIDATION_TARGETS["web-showcase-package"]
-        self.assertEqual(web_package_target["host_target"], "showcase-web-package-host")
-        self.assertEqual(web_package_target["host_run_target"], "ForceBakeResources")
-        web_runtime_target = buildtools.VALIDATION_TARGETS["web-showcase-runtime"]
-        self.assertEqual(web_runtime_target["host_target"], "showcase-web-package-host")
-        self.assertEqual(web_runtime_target["host_run_target"], "ForceBakeResources")
-        self.assertTrue(web_runtime_target["showcase_web_runtime"])
+        native_validator = (
+            ENGINE_ROOT / "Examples/NativeExtensionSample/validate.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('f"{preset}-check"', native_validator)
+        showcase_validator = (
+            ENGINE_ROOT / "Examples/ContentShowcase/validate.py"
+        ).read_text(encoding="utf-8")
+        for marker in ("--web", "--web-package", "--web-runtime"):
+            self.assertIn(marker, showcase_validator)
 
     def test_registry_rejects_floating_release_duplicate_and_bad_dependency(self) -> None:
         root = self.make_fixture()

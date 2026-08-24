@@ -6,7 +6,7 @@ document_id: native-extension-sample-readme
 
 # Пример native-расширения FOnline
 
-<!-- docs-translation: {"document_id":"native-extension-sample-readme","locale":"ru","source_path":"Examples/NativeExtensionSample/README.md","source_sha256":"393210f4b00ca5b2051f62439563d96ca3347d60ca3f315b6d2db5f80c945f91"} -->
+<!-- docs-translation: {"document_id":"native-extension-sample-readme","locale":"ru","source_path":"Examples/NativeExtensionSample/README.md","source_sha256":"2b20525120004086efe0011fdd84e8deba8279546849a9e4907a715309b335dc"} -->
 
 Этот принадлежащий движку проект показывает полный путь проектного C++-расширения без игровых сервисов и сторонних SDK. Он отделён от минимального starter-проекта, чтобы границы владения native-кодом и совместимости оставались явными.
 
@@ -15,7 +15,7 @@ document_id: native-extension-sample-readme
 - `SourceExt/ServerExtension.cpp` зарегистрирован в узкой роли `SERVER`;
 - `ServerInitHook` создаёт состояние одного экземпляра `ServerEngine` и освобождает его через аллокатор движка;
 - `Server_Game_NativeExtensionValue` становится методом `Game.NativeExtensionValue()` в серверном AngelScript;
-- `NativeExtensionCore` подключается через `AddProjectLibraries`, а compile-time проверка отклоняет неверную маршрутизацию роли;
+- `NativeExtensionCore` подключается через текущий привязанный к ревизии список `FO_SERVER_LIBS`, а compile-time проверка подтверждает передачу usage requirement;
 - `FONATIVE_NativeExtensionCoreTest` проверяет независимую от движка границу значений фиксированной ширины;
 - `run_native_extension_smoke.py` проверяет lifecycle hook, сгенерированный script binding, чтение состояния и чистое завершение сервера.
 
@@ -60,11 +60,9 @@ native_extension_smoke_passed
 
 `NativeExtensionCore` передаёт focused-тесту только значения фиксированной ширины. Engine handles остаются в зарегистрированной единице трансляции и используют заимствования `ptr<T>`. Состояние отдельного сервера хранится в `ServerEngine.UserData`; изменяемых file-scope переменных нет. Реальный проект с несколькими native-подсистемами должен хранить в этом слоте один проектный агрегат, а не позволять независимым расширениям конкурировать за него.
 
-Ветка совместимости в `CMakeLists.txt` добавляет `NativeExtensionCore` напрямую в
-`FO_SERVER_LIBS` только для старых ревизий Engine, в которых ещё нет
-`AddProjectLibraries`. Поэтому закреплённый release-маршрут проверяет
-документированную вспомогательную функцию, а маршрут текущего Engine остаётся
-полезным во время её внедрения.
+`FO_SERVER_LIBS` является текущим привязанным к ревизии integration state, а не
+helper-командой, объявленной в `BuildTools/cmake/ProjectInterface.json`;
+проверяйте его заново при каждом изменении pin Engine.
 
 В примере нет распространяемых материалов, runtime-библиотек, credentials и интеграций с сервисами. Добавляйте их только вместе с явным происхождением, платформенным контрактом, приёмкой пакета и владельцем безопасности.
 

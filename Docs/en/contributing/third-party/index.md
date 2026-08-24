@@ -187,4 +187,3 @@ option(ZLIB_BUILD_SHARED "Enable zlib shared library" OFF) # (FOnline Patch) eng
 
 Avoid reformatting large upstream files just to add the marker. Keep the local
 delta small enough that the next update can reapply it by inspection.
-

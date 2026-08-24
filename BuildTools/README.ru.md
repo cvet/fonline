@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"9c3ca2e8c4d3bbd080832dfbf3332ff542c9c5428d0461cdf9a7c60a0467ed99"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"192f85f99856636e14b88c94864d2a76916055eeac0d088747f0e215f9dd67fd"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -167,12 +167,12 @@ hooks и выбранной поверхности helpers. Используйт
 [справочник CMake project interface](../Docs/ru/reference/cmake/index.md) или его
 [каноническую JSON-модель](../Docs/generated/cmake.json), а не копируйте
 декларации из файлов реализации stages. Для принадлежащих проекту targets и
-SDK используйте [Проектные зависимости](../Docs/ru/how-to/native-extensions/project-dependencies.md) и
-`AddProjectLibraries`, а не изменяйте внутренние списки ролей.
-Исполняемый validation/starter project находится в
-`Engine/Examples/MinimalProject`. BuildTools копирует его в
-`Workspace/validation-project` и связывает дочерний `Engine/` с текущим
-checkout перед конфигурацией validation targets.
+SDK используйте [Проектные зависимости](../Docs/ru/how-to/native-extensions/project-dependencies.md).
+Текущая ревизия не имеет объявленной helper-команды project libraries и
+использует привязанное к ревизии integration state `FO_*_LIBS`.
+Исполняемый opt-in starter project находится в `Engine/Examples/MinimalProject`
+и предоставляет свой локальный validator. Он не является target текущего
+обязательного workflow Engine.
 
 ## Генераторы документации
 

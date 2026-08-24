@@ -154,7 +154,7 @@ The fixed package settings are registered in `Source/Common/Settings.inc` and ex
 | `Android.CompileSdk` | `35` | Gradle compile SDK; provision the matching SDK platform. |
 | `Android.ScreenOrientation` | `landscape` | Manifest activity orientation value. |
 | `Android.Icon` | `Engine/Resources/Radiation.png` | Existing PNG copied to every legacy mipmap density. |
-| `Android.Keystore` | empty | Release keystore path resolved on the packaging host. |
+| `Android.Keystore` | empty | Release keystore path read from baked target config and resolved relative to project config. |
 | `Android.KeystorePassword` | empty | Release store password. |
 | `Android.KeyAlias` | empty | Release key alias. |
 | `Android.KeyPassword` | empty | Release key password. |
@@ -180,9 +180,9 @@ The current manifest template has no generic config family for extra permissions
 
 ### Config precedence and secrets
 
-`package.py` starts from the baked effective config, then overlays every authored `Android.*` key from the root plus the selected sub-config. Packaging-host `$ENV{...}`, `$FILE{...}`, `$TARGET_ENV{...}`, and `$TARGET_FILE{...}` directives are resolved at package time. This keeps package-only signing inputs out of baked client config while preserving normal sub-config inheritance.
+`package.py` reads Android settings from the baked effective target config. It does not overlay authored `Android.*` keys or resolve `$TARGET_ENV{...}` / `$TARGET_FILE{...}` on the packaging host. A concrete signing password therefore enters baked config, while a retained target directive remains a literal string and cannot supply signing credentials.
 
-Use target-scoped directives for secrets:
+The following runtime-directive syntax is intentionally **not** a working package-secret handoff:
 
 ```ini
 Android.Keystore = $TARGET_ENV{MYGAME_ANDROID_KEYSTORE_PATH}
@@ -191,7 +191,7 @@ Android.KeyAlias = $TARGET_ENV{MYGAME_ANDROID_KEY_ALIAS}
 Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 ```
 
-Never put real values in documentation, fixtures, logs, generated trees, archives, or manifests. [Security and Secrets](../release/security-and-secrets.md) owns provisioning, redaction, rotation, CI trust, and incident handling.
+Never put real signing values in authored or baked config, documentation, fixtures, logs, generated trees, archives, or manifests. The current Engine has no host-only Android signing-secret input; leave the tuple empty for development output or sign in a protected project-owned stage. [Security and Secrets](../release/security-and-secrets.md) owns provisioning, redaction, rotation, CI trust, and incident handling.
 
 ## Runtime bootstrap and resource staging
 
@@ -318,7 +318,7 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 
 | Symptom | Inspect first |
 |---|---|
-| Host preparation fails | Java 17/system package group, disk permissions, network access, pinned SDK/NDK descriptors, and accepted licenses |
+| Host preparation fails | Java 17/system package group, disk permissions, network access, pinned SDK/NDK descriptors, and accepted licenses. Truncated Google CDN archives (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) are retried by `download_file` / `run_with_retry`; a persistent failure is a host/network problem, not a missing pin |
 | CMake cannot configure Android | `FO_ANDROID_NDK_ROOT`, toolchain file, ABI mapping, native API pin, Clang floor, and clean build directory |
 | Native build succeeds but package input is missing | `FO_OUTPUT`, target/config/build hash, expected `lib<ProjectDevName>_Client.so`, and matching resource bake |
 | Packaging rejects resources | selected sub-config, `Baking.ClientResources`, fresh `Metadata.zip`, and no `NoRes` token |

@@ -121,7 +121,6 @@ synchronized counter in the top panel increments.
 | `Content/StarterContent.fopro` | player, guide, supply, and location prototypes |
 | `Maps/TutorialMap.fomap` | the one-map world |
 | `Scripts/Tutorial.fos` | lifecycle, login, interaction, rendering, metadata, and content test |
-| `Scripts/MapperCapture.fos` | delayed full-window Mapper documentation capture |
 | `SourceExt/ServerExtension.cpp` | distance-based `CheckCritterVisibilityHook` used by the tutorial server |
 | `Particles/Documentation.spark` | minimal looping SPARK authoring fixture |
 | `assets/provenance.json` | machine-readable license and exact source hash for the Engine-owned particle texture |

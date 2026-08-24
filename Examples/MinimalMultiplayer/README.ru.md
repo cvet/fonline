@@ -4,7 +4,7 @@ locale: ru
 document_id: minimal-multiplayer-readme
 ---
 
-<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"0020f520f46c8ba91d8217287b2f3241eb00dd2b50059cb3e08b527fee97f406"} -->
+<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"ad90b82633801cdc08ce4ac47dcd8ca34b2497da81a3d371b7aa12c004d6258d"} -->
 
 # Минимальный многопользовательский проект FOnline
 
@@ -125,7 +125,6 @@ Set-Location Build\windows
 | `Content/StarterContent.fopro` | прототипы игрока, проводника, запаса и локации |
 | `Maps/TutorialMap.fomap` | мир из одной карты |
 | `Scripts/Tutorial.fos` | жизненный цикл, вход, взаимодействие, отрисовка, метаданные и тест контента |
-| `Scripts/MapperCapture.fos` | отложенный полнооконный capture документации Mapper |
 | `SourceExt/ServerExtension.cpp` | `CheckCritterVisibilityHook` для видимости по расстоянию на сервере туториала |
 | `Particles/Documentation.spark` | минимальный зацикленный fixture авторинга SPARK |
 | `assets/provenance.json` | машиночитаемая лицензия и точный хэш исходника принадлежащей движку текстуры частицы |

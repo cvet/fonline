@@ -243,7 +243,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
   - set any per-instance entity property by name/text (`SetEntityProperty`, via the inspector apply path);
   - add tiles;
   - load/unload/save/show maps, plus a sandboxed save into a sub-directory (`SaveMapToPath`);
-  - save the map-only render target synchronously with `SaveMapperScreenshot`, or request a deferred full-window capture including application ImGui composition with `RequestMapperWindowScreenshot`;
+  - save the map-only render target synchronously with `SaveMapperScreenshot`; application-level ImGui windows are outside this script capture;
   - query loaded map files;
   - resize maps;
   - manage mapper tabs and tab pid filters.

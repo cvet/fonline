@@ -6,7 +6,7 @@ document_id: particle-authoring-tools
 permalink: /Docs/ru/how-to/tools/particle-authoring.html
 ---
 
-<!-- docs-translation: {"document_id":"particle-authoring-tools","locale":"ru","source_path":"Docs/en/how-to/tools/particle-authoring.md","source_sha256":"513858aebaf925f78503af99f07adf8747f7ebb8a38498d78f78b270ca85c5a1"} -->
+<!-- docs-translation: {"document_id":"particle-authoring-tools","locale":"ru","source_path":"Docs/en/how-to/tools/particle-authoring.md","source_sha256":"9dbc060c7f534201f014e8fe86db20133ec83a55bf01eda4a437a2401535dc8c"} -->
 
 # Инструменты авторинга частиц
 
@@ -29,9 +29,9 @@ permalink: /Docs/ru/how-to/tools/particle-authoring.html
    Effekseer остаётся во внешнем editor закреплённой версии.
 3. Повторно запеките ресурс, затем закрепите backend, resource, seed, prewarm,
    direction и состояние replay перед сравнением focused preview и runtime routes.
-4. Для свидетельства ревью `Game.RequestMapperWindowScreenshot` захватывает Full
-   Mapper frame, и одновременно может ожидать только один запрос. Храните это
-   полнооконное свидетельство отдельно от снимка только world render.
+4. Для свидетельства ревью захватите видимое окно приложения Mapper platform
+   screenshot tool. Храните это UI-свидетельство отдельно от map-only TGA,
+   создаваемого `Game.SaveMapperScreenshot`.
 
 ## Выберите backend до авторинга
 

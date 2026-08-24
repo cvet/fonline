@@ -13,7 +13,7 @@ The sample proves:
 - `SourceExt/ServerExtension.cpp` is registered in the narrow `SERVER` role;
 - `ServerInitHook` installs state owned by one `ServerEngine` instance and releases it through the engine allocator;
 - `Server_Game_NativeExtensionValue` becomes `Game.NativeExtensionValue()` in server AngelScript;
-- `NativeExtensionCore` is linked through `AddProjectLibraries`, with a compile-time check that rejects incorrect role routing;
+- `NativeExtensionCore` is linked through the current revision-pinned `FO_SERVER_LIBS` list, with a compile-time check for the propagated usage requirement;
 - `FONATIVE_NativeExtensionCoreTest` tests the engine-independent fixed-width value boundary;
 - `run_native_extension_smoke.py` proves the lifecycle hook, generated script binding, state read, and clean server shutdown.
 
@@ -58,7 +58,7 @@ The project compiles the extension and Engine from source in one build. It does 
 
 `NativeExtensionCore` exposes only fixed-width values to its focused test. Engine handles stay in the registered extension translation unit and use `ptr<T>` borrows. Per-server state lives in `ServerEngine.UserData`; there is no file-scope mutable state. A real project with several native subsystems should place one project-owned aggregate in that slot instead of letting independent extensions compete for it.
 
-The `CMakeLists.txt` compatibility branch appends `NativeExtensionCore` directly to `FO_SERVER_LIBS` only when an older Engine revision does not yet expose `AddProjectLibraries`. The pinned release lane therefore proves the documented helper, while the current-Engine lane remains useful during helper rollout.
+`FO_SERVER_LIBS` is current revision-pinned integration state, not a helper declared by `BuildTools/cmake/ProjectInterface.json`; re-audit it whenever the Engine pin changes.
 
 The sample contains no distributable assets, runtime libraries, credentials, or service integration. Add those only with explicit provenance, platform support, package acceptance, and security ownership.
 

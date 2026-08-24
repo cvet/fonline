@@ -360,7 +360,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 6bb8fc411c79ba2c851b5b64b46a77550f542860fd332b5345db64f822307cae
+Content SHA-256: 00167afddbb95e0a54fdf1966c654434191e06c2da66576d4db2884d58213357
 
 ---
 title: FOnline Public Contract Index
@@ -408,10 +408,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2493**
-- Symbols with source-backed descriptions: **2493**
+- Discovered symbols: **2495**
+- Symbols with source-backed descriptions: **2495**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2493**
+- Explicitly classified symbols: **2495**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -533,7 +533,7 @@ When changing behavior, update the owning doc in the same change. Do not leave a
 ===== BEGIN DOCUMENT first-client-tutorial =====
 Source: Docs/en/tutorials/first-client.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/first-client.html
-Content SHA-256: 6fbc04d60c13d799ddf302d635197ce8f8c929953c6634a115b06d36545c4de6
+Content SHA-256: c96b9ffeaf641a1f2dc5af3b1d520d649740af3814044c84026f85cdde0f66c0
 
 ---
 layout: default
@@ -567,10 +567,11 @@ Engine maintainers can exercise the checked-in source without materializing a
 separate repository:
 
 ```powershell
-python BuildTools/buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
-Use `linux-tutorial-smoke` on Linux.
+Use the same `python3 validate.py` entry point from `Examples/MinimalMultiplayer` on Linux.
 
 ## Start the visible client
 
@@ -658,7 +659,7 @@ Continue with [First Content Change](first-content.md).
 ===== BEGIN DOCUMENT first-content-tutorial =====
 Source: Docs/en/tutorials/first-content.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/first-content.html
-Content SHA-256: 8da0c82371079add4a5dc05948b334fd2f56383caee460998674b118ee8e82dc
+Content SHA-256: a0a9fe220acacb221721f0bf121f77fad810f1b290dee6ffb7242fcaac04301d
 
 ---
 layout: default
@@ -739,9 +740,8 @@ tutorial_server_supply_collected=1
 Process-output lines may have runner labels around the markers. The markers and
 final passed summary are the contract.
 
-For an Engine checkout, use
-`python BuildTools/buildtools.py validate win64-tutorial-smoke` or the Linux
-equivalent.
+For an Engine checkout, run `python validate.py` from
+`Examples/MinimalMultiplayer`; the script selects the supported host preset.
 
 To inspect Russian text visibly, set the `Client.Language` override to `russ`
 in `generate_config.py`, regenerate the checked `.fomain`, rebuild the check
@@ -784,7 +784,7 @@ Continue with [First Automated Test](first-test.md).
 ===== BEGIN DOCUMENT first-test-tutorial =====
 Source: Docs/en/tutorials/first-test.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/first-test.html
-Content SHA-256: 95ef00518785a950f20afc17c619f36ba90736275e6109ac39eb202bdd1d773b
+Content SHA-256: a6a04fc38189630334396b16f1cc9e37436fbb7de3b9f8aa74e57a1c62a23f0d
 
 ---
 layout: default
@@ -832,7 +832,8 @@ commands for the current host.
 Engine CI uses the equivalent reusable route:
 
 ```powershell
-python BuildTools/buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
 ## Add one content invariant
@@ -901,7 +902,7 @@ native Catch2 ownership and coverage, use [Testing](../../Testing.md).
 ===== BEGIN DOCUMENT embedding-project =====
 Source: Docs/en/how-to/build/embedding-project.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/embedding-project.html
-Content SHA-256: ce02151c8179929c91e596e69f3e4e02042a60e4fb0e3939bdc5b3fa9394a270
+Content SHA-256: 4dd2a2ba33ecd8927bb9c511b2bbbff89d1ef107e23a21f5f4ee326a8878e1ac
 
 ---
 layout: default
@@ -1010,7 +1011,7 @@ The game repository should drive the build. In practice this means:
 3. Let engine `BuildTools` provide reusable stages and helper functions.
 4. Keep generated files out of hand-authored docs unless the generation process is part of the topic.
 
-Use `Examples/MinimalProject/CMakeLists.txt` as the smallest current composition example. It also proves a server-only `INTERFACE` dependency through `AddProjectLibraries`; expand it by adding project-owned modules and targets without copying unrelated wiring from a large game.
+Use `Examples/MinimalProject/CMakeLists.txt` as the smallest current composition example. It also proves a server-only `INTERFACE` dependency through the revision-pinned `FO_SERVER_LIBS` list; expand it by adding project-owned modules and targets without copying unrelated wiring from a large game.
 
 ### Add a project-specific baking target
 
@@ -1039,14 +1040,14 @@ Use this routing:
 
 ## Validation principle
 
-Validate engine changes through a real embedding project whenever possible. The engine-owned minimal project provides the baseline `win64-starter-smoke` and `linux-starter-smoke` routes; larger projects remain necessary for client, content, packaging, and gameplay contracts. A reusable engine change may compile in isolation but still break generated APIs, project packaging, scripts, or content baking. Choose the narrowest project target that exercises the changed layer.
+Validate engine changes through a real embedding project whenever possible. The engine-owned minimal project provides the baseline host-aware `Examples/MinimalProject/validate.py` route; larger projects remain necessary for client, content, packaging, and gameplay contracts. The example validator is opt-in and is not a required Engine workflow lane. A reusable engine change may compile in isolation but still break generated APIs, project packaging, scripts, or content baking. Choose the narrowest project target that exercises the changed layer.
 
 ===== END DOCUMENT embedding-project =====
 
 ===== BEGIN DOCUMENT engine-architecture =====
 Source: Docs/en/explanation/architecture/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/architecture/
-Content SHA-256: 10eaec1a4e85161cf90f8b13b997ea5495950d9bf6e99ed8faa6641a2c7e45f2
+Content SHA-256: c029d979974afe0265f7b765970c086c3ce9c9f2355321fb74760dfc9ae2b6f4
 
 ---
 layout: default
@@ -1147,6 +1148,7 @@ See [Applications](../../reference/applications.md) for the application map.
 - `Geometry.h`, `Movement.h`, `PathFinding.h`, `MapLoader.h` — reusable map and movement primitives.
 - `NetBuffer.h`, `NetworkUdp.h` — common networking primitives.
 - `ConfigFile.h`, `DataSource.h`, `FileSystem.h`, `CacheStorage.h` — config and data access support.
+- `ImageWriter.h` — TGA/PNG encoders for diagnostic images written by the engine, including screenshots, render-target captures, and atlas dumps.
 
 This layer should stay reusable. Game rules should generally be expressed through content/scripts or project-native extensions, not by embedding one project's policy into common engine code.
 
@@ -1224,7 +1226,7 @@ A normal embedding-project workflow looks like this:
 ===== BEGIN DOCUMENT build-workflow =====
 Source: Docs/en/how-to/build/index.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/
-Content SHA-256: a2f1799dc0a10ed120c80d44d4b34a499b4ee8b8a4a872ee0d6eeb01def3d46b
+Content SHA-256: 3c5210f482fd03630c1c3cd9ed6913f08b134cad1c069d4212a70703054ba15b
 
 ---
 layout: default
@@ -1292,11 +1294,13 @@ The repository includes one stable exception to project-specific target naming: 
 From the engine root, use the host-specific validation target:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-starter-smoke
+cd Examples\MinimalProject
+python validate.py
 ```
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-starter-smoke
+cd Examples/MinimalProject
+python3 validate.py
 ```
 
 Both routes configure and build the baker plus headless server, bake the
@@ -1309,11 +1313,13 @@ headless server, and baker, then tests metadata, content, login, map loading,
 localized text, remote calls, and replicated state:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-tutorial-smoke
+cd Examples/MinimalMultiplayer
+python3 validate.py
 ```
 
 The source and manual launch path are documented in
@@ -1355,7 +1361,7 @@ Use the generated [BuildTools CLI reference](../../reference/buildtools/index.md
 
 Use the generated [package interface reference](../../reference/packages/index.md) for `DefinePackage` grammar, accepted targets/platforms/architectures, pack-token compatibility, payload layouts, and output artifacts. Follow [Packaging and Release](../release/packaging.md) for the build/bake/package order, platform procedures, artifact evidence, signing, acceptance, and recovery boundaries. Keep a game's concrete package matrix in that embedding project's documentation.
 
-For a library, SDK, framework, or runtime payload owned by the game repository, follow [Project-Local Dependencies](../../../ProjectDependencies.md). Create a project CMake target, link it through `AddProjectLibraries` to the narrowest consuming role, and validate both its compiled feature state and packaged runtime state.
+For a library, SDK, framework, or runtime payload owned by the game repository, follow [Project-Local Dependencies](../../../ProjectDependencies.md). Create a project CMake target, append it to the narrowest consumed `FO_*_LIBS` list supported by the pinned revision, and validate both its compiled feature state and packaged runtime state.
 
 - [BuildTools overview](../../../../BuildTools/README.md).
 - [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) — staged CMake pipeline and change routing.
@@ -1367,7 +1373,7 @@ For a library, SDK, framework, or runtime payload owned by the game repository, 
 
 When `BuildTools/buildtools.py::create_parser()` changes, regenerate and check the CLI model/pages before validating the affected command in an embedding project.
 
-When package declarations or payload behavior change, update `BuildTools/PackageInterface.json`, regenerate/check its model/pages, run `validate_package_interface.cmake` and `test_packaging_matrix.py`, then exercise `win64-package-smoke`, `linux-package-smoke`, or the narrower affected product package target. The Engine fixture proves native raw/archive/config/updater mechanics; it does not replace a game's signing, install, deployment, or rollback lane.
+When package declarations or payload behavior change, update `BuildTools/PackageInterface.json`, regenerate/check its model/pages, run `validate_package_interface.cmake` and `test_packaging_matrix.py`, then build `RunPackagingChecks`, `RunTutorialPackageChecks`, or the narrower affected product package target from the owning example/project. These example targets are opt-in and are not part of the required Engine validation registry. The Engine fixtures prove native raw/archive/config/updater mechanics; they do not replace a game's signing, install, deployment, or rollback lane.
 
 - **Runtime C++:** build and run the project unit-test target; use [Testing](../../contributing/testing/) to choose focused suites and understand generated test targets.
 - **CMake/BuildTools:** reconfigure from a clean or relevant build directory and run the affected build/package target; use [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) for stage ownership.
@@ -1404,7 +1410,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: 603c687bb0972641ff27a1cad16e77740a6c0f186784538db1b496d1dbb72061
+Content SHA-256: 9da1af0d23d70ad0d6015b0d5f93a5b4351b16bd93c732bbea32bdd3a6758e49
 
 ---
 layout: default
@@ -1554,18 +1560,20 @@ The packager patches reserved data regions after linking. It embeds resources an
 
 `Examples/PackagingMatrix` is the executable Engine-owned baseline for native package mechanics. It is intentionally separate from the readable starter and multiplayer tutorials because `ConfigBaker` requires every server/client runtime setting to be initialized. Its checked-in `FOnlinePackagingMatrix.fomain` is deterministically generated from `Source/Common/Settings.inc`; `generate_config.py --check` fails when settings and the fixture diverge.
 
-Run the host route through BuildTools:
+In a standalone checkout of `Examples/PackagingMatrix` with its `Engine`
+submodule initialized, configure the host build and build the fixture-owned
+`RunPackagingChecks` target. This target is not registered as a required
+Engine `BuildTools validate` lane.
 
 ```bash
-python BuildTools/buildtools.py validate win64-package-smoke
-python BuildTools/buildtools.py validate linux-package-smoke
+cmake --build <packaging-matrix-build-dir> --config Release --target RunPackagingChecks
 ```
 
 Each route builds the client, headless client, server, headless server, host service/daemon role, and baker; force-bakes resources plus server/client `PackageSmoke` configs; creates raw payloads and ZIP or TAR.GZ archives; compares archive members with staged payloads; and starts the packaged headless client against the packaged server through the real updater handshake. Both processes must observe `Common.Packaged`, consume the embedded fixture setting, emit success markers, and stop with code zero.
 
-The verifier writes `FOPKG-PackageSmoke/packaging-manifest.json` with the exact Engine revision, archive hashes and sizes, complete payload inventories, role presence, and runtime results. The required workflow uploads the manifest and archives as `packaging-evidence-<validation-target>-<commit-sha>`; a missing artifact fails the job.
+The verifier writes `FOPKG-PackageSmoke/packaging-manifest.json` with the exact Engine revision, archive hashes and sizes, complete payload inventories, role presence, and runtime results. Preserve the manifest and archives in the embedding project's release lane when this evidence is required; the current Engine workflow does not publish them.
 
-This fixture qualifies the current Windows x64 and Ubuntu/Linux x64 Engine package path only after the corresponding required job passes. It does not qualify another game's package declaration, signing, installer, store, deployment host, database, renderer, or rollback. Copy the evidence pattern into the embedding project's release lane and keep its concrete acceptance there.
+This fixture provides opt-in evidence for the Windows x64 or Ubuntu/Linux x64 Engine package path on the host where it is run. It does not qualify another game's package declaration, signing, installer, store, deployment host, database, renderer, or rollback. Copy the evidence pattern into the embedding project's required release lane and keep its concrete acceptance there.
 
 ### Public multiplayer package acceptance
 
@@ -1581,9 +1589,11 @@ reviewed tutorial overrides and sections. `CheckTutorialConfig` runs before
 baking, so a new or changed saved setting fails on stale source instead of
 appearing later as an incomplete packaged config.
 
-`win64-tutorial-package` and `linux-tutorial-package` are required workflow
-lanes and upload commit-addressed archives, the package manifest, and the
-runtime report. This evidence remains narrower than a product release: the
+The `windows-package` and `linux-package` presets in `Examples/MinimalMultiplayer`
+build the fixture-owned `RunTutorialPackageChecks` target on demand. Preserve
+the archives, package manifest, and runtime report in a project workflow when
+they are required; the current Engine workflow does not run these presets.
+This evidence remains narrower than a product release: the
 archives are unsigned, headless, audio-disabled fixtures with no installer,
 store, public deployment, durable backend, upgrade, or rollback claim.
 
@@ -1617,7 +1627,7 @@ Preserve executable modes when a downstream publication system unpacks and repac
 
 ### Web client
 
-The Web client payload contains JavaScript, patched Wasm, an HTML shell, preloaded `Resources.data` / `Resources.js`, and optionally the local `WebServer` helper. The Engine-owned `web-showcase-runtime` BuildTools route proves native-host baking, exact raw/ZIP package inventory, localhost HTTP delivery, a native server connection, required lifecycle markers, a real WebGL 2 context, and compositor pixels for one deterministic Content Showcase fixture under pinned Chromium. It does not prove an embedding game's public browser deployment.
+The Web client payload contains JavaScript, patched Wasm, an HTML shell, preloaded `Resources.data` / `Resources.js`, and optionally the local `WebServer` helper. The Engine-owned Content Showcase command `python validate.py --web-runtime` can provide opt-in evidence for native-host baking, exact raw/ZIP package inventory, localhost HTTP delivery, a native server connection, required lifecycle markers, a real WebGL 2 context, and compositor pixels for one deterministic fixture under pinned Chromium. It is not a required Engine workflow lane and does not prove an embedding game's public browser deployment.
 
 Follow [Web Build, Packaging, and Browser Debugging](../platforms/web-debugging.md) for local staging. A release lane must additionally verify HTTPS hosting, MIME types, cache policy, cross-origin isolation or other required headers, WebSocket reachability, browser compatibility, storage persistence, audio activation, loading failure UX, and at least one visible representative scene.
 
@@ -1672,13 +1682,13 @@ Generate hashes from the files that will actually be published, after signing an
 
 ## Signing and secret boundaries
 
-Windows signing is optional and off by default. `Packaging.CodeSigningHook` points to a project-owned executable. The packager resolves root plus the selected sub-config and packaging-host `$ENV`/`$FILE` or `$TARGET_ENV`/`$TARGET_FILE` directives, then invokes the hook once per staged `.exe` and `.dll` after binary patching and before archive/MSI creation. A nonzero hook exit fails packaging. The hook owns the signing provider, certificate, timestamp service, retry policy, and verification.
+Windows signing is optional and off by default. `Packaging.CodeSigningHook` points to a project-owned executable through a directly usable non-secret path in project config; the packager does not resolve target directives for it. The packager invokes the hook once per staged `.exe` and `.dll` after binary patching and before archive/MSI creation. A nonzero hook exit fails packaging. The hook owns the signing provider, certificate, timestamp service, retry policy, credential environment, and verification.
 
-Android release credentials come from `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword`. The same authored root plus selected sub-config is resolved on the packaging host; password values are passed to Gradle through dedicated environment variables rather than written into the generated project. Use target forms for sensitive package inputs so baking retains a directive rather than embedding the concrete value.
+Android release fields come from `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the baked effective target config. Password strings are passed to Gradle through dedicated environment variables rather than written into the generated project, but they have already traversed baked config and target directives are not resolved. The current Engine therefore has no host-only Android signing-secret handoff; keep production credentials out of Engine config and use a protected project-owned signing stage.
 
 Never commit a private key, token, password, keystore password, signing session, production endpoint secret, or decrypted credential to a `.fomain`, package include, log, test fixture, documentation page, artifact manifest, or CI artifact. Use the project's secret manager, limit credentials to the packaging job, redact command output, and verify that fork/untrusted jobs cannot request them. Record identities and verification results, not secret values.
 
-[Security and Secrets](security-and-secrets.md) owns substitution timing, the narrow `Common.SecretSettingTokens` masking boundary, package-host handoff, CI isolation, rotation/revocation, incident routing, and secret-free artifact verification.
+[Security and Secrets](security-and-secrets.md) owns substitution timing, the narrow `Common.SecretSettingTokens` masking boundary, the current package-secret limitations, CI isolation, rotation/revocation, incident routing, and secret-free artifact verification.
 
 Signing proves artifact integrity and publisher identity. It does not prove gameplay correctness, malware absence, store acceptance, updater compatibility, or safe rollback.
 
@@ -1775,7 +1785,7 @@ Promote a package row to project-qualified only when the named lane is versioned
 ===== BEGIN DOCUMENT release-operations =====
 Source: Docs/en/how-to/release/operations.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/operations.html
-Content SHA-256: 99d8502fc5c3118782ad93976639a0aa47187434756a09093a44eabe36407cea
+Content SHA-256: 181fa2dd286535bba9400214f037cf5163cfe4faa9f56f53fb358cf466e206c4
 
 ---
 layout: default
@@ -1822,11 +1832,11 @@ explicitly; launch environments need not choose the same locations.
 | `<Game>_Server` | Windowed server with the application frontend | Local development and attended diagnosis |
 | `<Game>_ServerHeadless` | Foreground, no rendering; waits until quit or startup failure | Preferred process under an external supervisor or container |
 | `<Game>_ServerService` | Windows-only SCM integration; reports `RUNNING` after `ServerEngine::IsStarted()`, stops cleanly on startup failure, and handles `SERVICE_CONTROL_STOP` | A project-qualified native Windows service route |
-| `<Game>_ServerDaemon` | Non-Windows process requires `fork()` to succeed, closes standard streams, calls `setsid()`, and runs in the child | Legacy detached launch where the project owns PID and child monitoring |
+| `<Game>_ServerDaemon` | Non-Windows process calls `fork()`, closes standard streams and calls `setsid()` in the child; the current app ignores the returned failure flag and can continue in the original process when `fork()` fails | Legacy detached launch requiring project qualification, PID ownership, and child monitoring |
 
 Prefer the foreground headless binary under a supervisor. The daemon's parent exits before the child completes startup, so successful launch exit is not readiness evidence; it writes no PID file and implements no manager protocol.
 
-The Windows helper registers fixed SCM name `FOnlineServer` as demand-start. Running the service executable without a service-control flag registers or updates the exact current command line with `--server-service-start`; `--server-service-delete` removes the registration. It configures no working directory, account, dependencies, recovery actions, or product-specific name. Qualify the registered image path and start/stop behavior on Windows, or wrap it for stronger policy and side-by-side games.
+The Windows helper registers fixed SCM name `FOnlineServer` as demand-start. Running the service executable without a recognized control flag registers or updates a command composed from the quoted executable path, the current command line, and `--server-service`; `--server-service-delete` removes the registration, while `--server-service-start` enters the SCM dispatcher. The registered command does not itself use that start flag, so treat the current helper as requiring Windows qualification rather than assuming registration proves service startup. It configures no working directory, account, dependencies, recovery actions, or product-specific name.
 
 ## Define readiness and health
 
@@ -1924,7 +1934,7 @@ Run [Examples/PackagingMatrix](../../../../Examples/PackagingMatrix/) plus proje
 ===== BEGIN DOCUMENT backup-and-recovery =====
 Source: Docs/en/how-to/release/backup-and-recovery.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/backup-and-recovery.html
-Content SHA-256: ec245f3ae1b0ce75dd3b7116048ca07770e36b6ad3b156ea864dafe5fef26bc8
+Content SHA-256: 713a72447d6b5557f13815104d957372dae7cdc87820b332ee8827f55ec4991b
 
 ---
 layout: default
@@ -1983,7 +1993,7 @@ Treat one recoverable release as a compatible unit: immutable server package, ef
 | `DbSQLite <directory>` | `<directory>/Storage.sqlite` plus active SQLite WAL sidecars | The Engine opens WAL mode with `synchronous=NORMAL`; individual writes autocommit. Do not copy only `Storage.sqlite` while the server is running. Use a provider/SQLite-consistent online backup or stop the server and preserve the complete storage directory. The Engine exposes no online backup or checkpoint command. |
 | `Mongo <URI> <database>` | The named Mongo database in the configured deployment | The URI/provider defines write concern, replication, snapshot, dump, and point-in-time capabilities; the Engine does not override them. Use a provider-native database-consistent method and record its guarantees. |
 
-The Engine also opens `DataBase.OpLogPath` and a committed-progress file derived by replacing its required final `.oplog` suffix with `-committed.oplog`. Their default names are `DbPendingChanges.oplog` and `DbPendingChanges-committed.oplog`. Paths are relative to the server working directory unless the project makes them absolute. Startup rejects a configured path without the suffix before either file is opened.
+The Engine also opens `DataBase.OpLogPath` and derives the committed-progress path by replacing `.oplog` with `-committed.oplog`. Their default names are `DbPendingChanges.oplog` and `DbPendingChanges-committed.oplog`. Paths are relative to the server working directory unless the project makes them absolute. Startup rejects only an empty configured path; it does not enforce the `.oplog` suffix. Keep the conventional suffix and verify that the two resolved paths are distinct before deployment.
 
 Both oplog files belong to capture and incident evidence. Preserve them with the backend snapshot, even when empty. Never edit, merge, reorder, partially copy, or manually truncate them.
 
@@ -2116,7 +2126,7 @@ When persistence or recovery source changes, run `Source/Tests/Test_DataBase.cpp
 ===== BEGIN DOCUMENT security-and-secrets =====
 Source: Docs/en/how-to/release/security-and-secrets.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/security-and-secrets.html
-Content SHA-256: 3ce9efeb7e6119f9f6a60ea60edf0b677bcc6b23202b749e857343328b5cb6b8
+Content SHA-256: 1503b15539982e88ef71d5d2d559322d41f7bf5c390c4710ef20093c68e44be7
 
 ---
 layout: default
@@ -2136,15 +2146,18 @@ Use [Project Configuration](../build/project-configuration.md) for general `.fom
 
 Use `$ENV{NAME}` only when the value may resolve on the build or baking host;
 its concrete value can enter baked config. Use `$TARGET_ENV{NAME}` for a value
-that must remain unresolved until the target application or package host runs.
+that must remain unresolved until the target application runs.
 The command-line override log masks only its narrow supported form and does not
 redact target-time directives, generated files, process state, or arbitrary
 logs.
 
 Keep signing material outside staged artifacts. Hand native signing through
-`Packaging.CodeSigningHook`; provide Android keystore passwords through
-`FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` on the
-signing host. After exposure, contain access, revoke the affected credential,
+`Packaging.CodeSigningHook`, whose project-owned process reads credentials from
+its protected environment. The current Android packager has no host-only secret
+input: it reads passwords from baked target config before copying them into
+`FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` for
+Gradle. Do not put production passwords into that config; use a project-owned
+protected signing stage until a dedicated handoff exists. After exposure, contain access, revoke the affected credential,
 rotate replacements, rebuild or redeploy affected artifacts, and audit use.
 Rewriting git history is cleanup, not revocation.
 
@@ -2173,12 +2186,12 @@ The Engine provides substitution mechanics, one narrow log-masking rule, package
 | literal | config parse | copied as the value | public, non-sensitive configuration only |
 | `$ENV{NAME}` | process reading the authored config | resolves on the baking host, so the concrete value can enter baked config | non-secret build input that is intended to be embedded |
 | `$FILE{path}` | process reading the authored config; relative to the owning config directory | reads on the baking host, so file contents can enter baked config | non-secret generated metadata such as a version |
-| `$TARGET_ENV{NAME}` | target application runtime | remains a directive while baking | runtime secret or package-host secret that must not be baked |
+| `$TARGET_ENV{NAME}` | target application runtime | remains a directive while baking | runtime secret that must not be baked |
 | `$TARGET_FILE{path}` | target application runtime | remains a directive while baking | protected target-host file whose contents are needed at runtime |
 
 For runtime credentials, prefer `$TARGET_ENV{...}`. Use `$TARGET_FILE{...}` only when the deployment owns the file path and permissions; a relative target-file path in an embedded config resolves from the target process context, not from the original repository.
 
-For package-only settings, `package.py` derives root plus the selected sub-config directly from the authored `.fomain` and resolves both ordinary and target forms on the **packaging host**. This preserves sub-config overrides without copying the resolved value into the baked client config. Use target forms for sensitive package inputs so `ConfigBaker` retains the directive rather than the concrete value.
+Do not assume the packager resolves target directives. Android packaging reads the already baked effective target config; a retained `$TARGET_ENV{...}` value is still a directive string, not a package-host secret lookup. Windows signing reads `Packaging.CodeSigningHook` as a path from the project config and likewise has no target-directive resolver. Keep package credentials out of both authored and baked config.
 
 ```ini
 # Values, paths, and aliases below are examples of variable names, not credentials.
@@ -2189,8 +2202,10 @@ Android.KeystorePassword = $TARGET_ENV{MYGAME_ANDROID_STORE_PASSWORD}
 Android.KeyAlias = $TARGET_ENV{MYGAME_ANDROID_KEY_ALIAS}
 Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 
-Packaging.CodeSigningHook = $TARGET_ENV{MYGAME_WINDOWS_SIGNING_HOOK}
+Packaging.CodeSigningHook = Tools/SignWindowsArtifacts
 ```
+
+The Android lines above illustrate runtime-directive syntax only; the current packager does not resolve them for signing. The Windows hook path is non-secret. Its executable obtains credentials from a protected environment that Engine does not inspect.
 
 Do not pass a secret as a command-line setting. `Common.SecretSettingTokens` masks matching values only in `ApplyCommandLine()`'s `Set <name> to <value>` log line. The raw argument can still be visible in shell history, process inspection, `Common.CommandLine`, `Common.CommandLineArgs`, a debugger, or a crash dump.
 
@@ -2215,11 +2230,13 @@ Therefore, target-time directives are the default for runtime secrets, productio
 
 `Packaging.CodeSigningHook` names a project-owned executable. The packager calls it as `<hook> <absolute-binary-path>` after binary patching and before archive or MSI production. No signing credential is passed as a command-line argument by the Engine. The hook obtains its provider session or credentials from the protected packaging-host environment and must fail nonzero when signing or signature verification fails.
 
-The hook path itself may use `$TARGET_ENV{...}`. Keep the executable outside untrusted workspace writes, pin or hash it, restrict who can replace it, and have it verify the final signature and timestamp. The current Engine hook signs staged `.exe` and `.dll` files; signing the enclosing installer or publication metadata remains project-owned.
+The hook path itself must be a directly usable non-secret path; the packager does not resolve `$TARGET_ENV{...}` there. Keep the executable outside untrusted workspace writes, pin or hash it, restrict who can replace it, and have it verify the final signature and timestamp. The current Engine hook signs staged `.exe` and `.dll` files; signing the enclosing installer or publication metadata remains project-owned.
 
 ### Android
 
-Android release packaging reads `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` from the authored root plus selected sub-config on the packaging host. The complete tuple is required when any member is set. `package.py` passes the two passwords to Gradle only through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD`; the generated `build.gradle` reads those environment variables instead of containing the passwords.
+Android release packaging reads `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` from the baked effective target config. The complete tuple is required when any member is set. `package.py` then passes the two password strings to Gradle through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD`; the generated `build.gradle` reads those environment variables instead of containing the passwords.
+
+That Gradle handoff prevents password substitution into `build.gradle`, but it does not make the input host-only: a concrete password has already passed through baked config, while a `$TARGET_ENV{...}` directive is not resolved. The current Engine therefore does not provide a production-safe Android signing-secret boundary. Leave the tuple empty for development output or use a protected project-owned Android signing stage whose credentials never enter authored or baked Engine config.
 
 The keystore path and key alias are patched into the generated project and are not treated as passwords. Protect the keystore itself, the generated Gradle tree, `GRADLE_USER_HOME`, process memory, and worker logs. An APK produced through the debug-key fallback is a development artifact, not a production release.
 
@@ -2284,13 +2301,13 @@ python BuildTools/docs_validate.py
 Then qualify the affected project lane with non-production credentials:
 
 1. inspect the authored `.fomain` and selected sub-config for literals;
-2. bake and verify that runtime/package secrets remain `$TARGET_*` directives in `Baking/Configs`;
-3. package with synthetic credentials and inspect the generated tree, raw package, archives, logs, and manifest;
-4. verify the signing hook or Gradle received its input through the protected host boundary;
+2. bake and verify that runtime secrets remain `$TARGET_*` directives in `Baking/Configs`, and that package credentials are absent;
+3. package a development artifact and inspect the generated tree, raw package, archives, logs, and manifest;
+4. verify the Windows signing hook obtains credentials from its own protected environment, or verify the project-owned Android signing stage without placing secrets in Engine config;
 5. install or deploy, start the packaged application, and exercise updater/network behavior;
 6. revoke or delete the synthetic credentials and purge the isolated evidence according to test policy.
 
-Passing Engine tests proves substitution and handoff behavior. It does not prove a provider account, runner, secret manager, application log, database, distribution store, or incident process is secure.
+Passing Engine tests proves runtime substitution and the current packager boundaries, including the Android host-only handoff gap. It does not prove a provider account, runner, secret manager, application log, database, distribution store, or incident process is secure.
 
 Use [Release Operations](operations.md) for target-host preflight, staged rollout, evidence preservation, and rollback. Use [Backup and Recovery](backup-and-recovery.md) for encrypted recovery sets, restore-role access, key identifiers, and secret-free sidecar manifests. Keep credentials and sensitive incident material out of both operational records.
 
@@ -2300,10 +2317,10 @@ Use [Release Operations](operations.md) for target-host preflight, staged rollou
 |---|---|
 | Concrete credential appears in `Baking/Configs` | replace `$ENV`/`$FILE` with a target form and rebake from a clean output |
 | Command-line log shows a credential | setting name and `Common.SecretSettingTokens`; rotate the value because other argument exposures remain |
-| Packaging reports a missing variable/file | packaging-host environment, selected sub-config, protected file path and permissions |
+| Packaging reports a missing path/file | baked target config or root project config, selected sub-config, and file permissions; do not put a secret there |
 | Android release uses the debug key | complete four-field signing tuple and selected package config |
 | Generated Gradle file contains a password | packaging implementation regression; stop and rotate before publication |
-| Windows hook was skipped | resolved `Packaging.CodeSigningHook`, selected sub-config, and hook file visibility |
+| Windows hook was skipped | literal `Packaging.CodeSigningHook` path in project config and hook file visibility |
 | Signature is absent after a successful hook | hook verification/failure contract and post-sign mutation order |
 | Secret appears in logs, artifacts, cache, or history | revoke/rotate first, restrict access, preserve sanitized evidence, then remove copies |
 | Untrusted CI job can reach protected material | workflow event, permissions, environment approval, runner isolation, and cache/artifact scope |
@@ -2326,7 +2343,7 @@ Use [Release Operations](operations.md) for target-host preflight, staged rollou
 ===== BEGIN DOCUMENT project-configuration =====
 Source: Docs/en/how-to/build/project-configuration.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/project-configuration.html
-Content SHA-256: ec43d0c6697e09ac74cd5b7c0db10f513d422f7396fcfc070af08c49cd42b655
+Content SHA-256: 71a8c645980f4ceebf8256c8b9f3535173273e6e4495db94b1845e28b3fbf839
 
 ---
 layout: default
@@ -2406,7 +2423,7 @@ Baking.CacheResources = Cache
 
 Unknown names become project custom settings and are available through `GetCustomSetting` / `FindCustomSetting`. That is intentional for game-owned configuration, but a typo in a built-in setting can therefore look valid. Add a focused project test for every content ID, port/profile, prototype name, path, or custom setting that affects startup or gameplay.
 
-Values beginning with `+` accumulate instead of replacing. String values append with a space, vectors append elements, numeric values add, booleans use logical OR, and enums use bitwise OR; use this deliberately and test the resulting value rather than assuming list-only behavior. `$ENV{NAME}` and `$FILE{path}` resolve while the authored config is read, including during baking, so their concrete values can enter generated internal configs. `$TARGET_ENV{NAME}` and `$TARGET_FILE{path}` remain directives while baking and resolve on the target application or packaging host. Keep credentials outside tracked config, use target forms for sensitive values, and follow [Security and Secrets](../release/security-and-secrets.md) for command-line, logging, signing, CI, rotation, and artifact boundaries.
+Values beginning with `+` accumulate instead of replacing. String values append with a space, vectors append elements, numeric values add, booleans use logical OR, and enums use bitwise OR; use this deliberately and test the resulting value rather than assuming list-only behavior. `$ENV{NAME}` and `$FILE{path}` resolve while the authored config is read, including during baking, so their concrete values can enter generated internal configs. `$TARGET_ENV{NAME}` and `$TARGET_FILE{path}` remain directives while baking and resolve only when a target application reads them; the current packager does not provide a general target-directive resolver. Keep credentials outside tracked config, use target forms for runtime secrets, and follow [Security and Secrets](../release/security-and-secrets.md) for command-line, logging, signing, CI, rotation, and artifact boundaries.
 
 ## Define resource packs
 
@@ -2497,8 +2514,8 @@ Keep sub-configs narrow:
 The two Engine-owned examples are executable configuration fixtures:
 
 ```bash
-python BuildTools/buildtools.py validate linux-starter-smoke
-python BuildTools/buildtools.py validate linux-tutorial-smoke
+(cd Examples/MinimalProject && python3 validate.py)
+(cd Examples/MinimalMultiplayer && python3 validate.py)
 ```
 
 Use the `win64-` equivalents on Windows.
@@ -2745,7 +2762,7 @@ Every Engine or embedding-project update is a generation-bearing change. Record 
 ===== BEGIN DOCUMENT support-matrix =====
 Source: Docs/en/reference/platforms/support-matrix.md
 Canonical URL: https://fonline.ru/Docs/en/reference/platforms/support-matrix.html
-Content SHA-256: 2fad7f18d54e8119cf01a7c30670fcd42cfd2de67f44423bbdbb32f51d818334
+Content SHA-256: d356552b3da1aa91e0a16896da15f00e8113d95f2a259a0c730f454458d4efa4
 
 ---
 layout: default
@@ -2798,14 +2815,11 @@ These labels are deliberately narrower than "works on my machine." A successful 
 
 ## Current qualified baseline
 
-The strongest reusable route is native Windows x64 and Ubuntu 24.04 x64:
+The strongest required reusable route is native Windows x64 and Ubuntu 24.04 x64:
 
 1. The required workflow builds the desktop client, server, mapper/viewers, AngelScript compiler, and baker.
-2. `win64-starter-smoke` / `linux-starter-smoke` exercise the minimal headless project.
-3. `win64-tutorial-smoke` / `linux-tutorial-smoke` build, bake, start a server and headless client, load the tutorial map, perform the item interaction, verify replication, and shut down cleanly.
-4. `win64-package-smoke` / `linux-package-smoke` build native package roles, force-bake embedded configs, compare archive and staged inventories, run the packaged client/server updater handshake, and retain commit-addressed manifest/archive evidence.
-5. `win64-tutorial-package` / `linux-tutorial-package` repeat archive parity and packaged headless gameplay against the readable Minimal Multiplayer project, retaining its archive hashes, complete payload inventory, limitations, and runtime report.
-6. Visible rendering, audio, signing/installers, persistence backends, public networking, and long-running service operation remain separate acceptance concerns.
+2. Engine-owned examples provide opt-in local validators for a minimal headless project, tutorial multiplayer flow, native extensions, packaging, and Content Showcase; they are not registered as required workflow lanes.
+3. Visible rendering, audio, signing/installers, persistence backends, public networking, and long-running service operation remain project-owned acceptance concerns.
 
 Windows x86, Linux GCC, macOS, iOS, Android ARM, and Web are build-gated at the narrower scope recorded in the generated matrix. Android x86 and Windows ClangCL are source-capable profiles, not release support claims.
 
@@ -4127,7 +4141,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: 76ef07baa74e611a6e3a24d83e0fb2f47c58d2d8da82bee8e2ca4e8887159497
+Content SHA-256: 8f2a1bc129a0c7bdd1c681b53b9c080734eea8d9d4b67b2bde0351ee756e9333
 
 ---
 layout: default
@@ -4301,10 +4315,10 @@ Coverage is platform- and environment-specific. Sources not compiled in the curr
 - **Inbound remote calls:** entry covers the calling player and its controlled critter. Any second entity needs explicit `Game.Sync`; do not probe an operation expected to violate cover behind script `try/catch`, because the session is torn down before the next probe arrives.
 - **Crash reporting:** test non-terminating crash-stream formatting through a private log file, then restore logging to `NUL` or `/dev/null`. Test terminating reporters out of process with `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit` distinguish early fatal reporting from raw status-only exit.
 - **Fonts without assets:** synthesize `.fofnt` text or BMFont `BMF\3` blocks in memory, provide a matching sprite, and bind with scale in `(0..1]`. `SplitLines` emits rect-sized pages, so use a short rectangle when a test needs multiple outputs.
-- **Logged-in client/server:** declare login remote calls in both metadata blobs with opposite directions and the correct subsystem/namespace, add at least one project-owned persistent `Player` property before login insertion, then create/switch a critter and transfer it into a location/map to reach world-entry replication. Server and client `.fomap-bin-*` empty layouts differ; the client blob ends after two `uint32` counts.
+- **Logged-in client/server:** declare login remote calls in both metadata blobs with opposite directions and the correct subsystem/namespace, add at least one project-owned persistent `Player` property before login insertion, then create/switch a critter and transfer it into a location/map to reach world-entry replication. Both `.fomap-bin-*` blobs start with `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION`; after the header, the client layout ends after the hash-table and static-item counts.
 - **World reload:** use file-backed JSON, mark expected entities persistent, shut down one server, and start another on the same directory. Reload reaches critters through their owning map or global-map membership; an off-map runtime critter is not restored.
 - **Headless 3D:** bake a non-degenerate triangle, build the description with `ModelInfoBaker`, provide both source and baked mesh entries plus `Metadata.fometa-client` and `ModelAnimationInfo.foinfo`, then instantiate through the null renderer. Build fixture metadata with `BakerTests::MakeMetadataBlob` or `MakeEmptyMetadataBlob`; registration rejects a blob without the required metadata version.
-- **Static maps and mapper disk writes:** serialize real `Properties::StoreAllData()` payloads for server map records; zero length is invalid. Mapper save tests need an actual `InputDirs` Maps root containing a reference `.fomap`; prefer `SaveMapToDir`, because plain `SaveMap` may otherwise write into the process working directory.
+- **Static maps and mapper disk writes:** write the baked-map format header first, then serialize real `Properties::StoreAllData()` payloads for server map records; zero length is invalid. The server payload continues with hashes, critters, and items, while the shorter client payload contains hashes and static items. Mapper save tests need an actual `InputDirs` Maps root containing a reference `.fomap`; prefer `SaveMapToDir`, because plain `SaveMap` may otherwise write into the process working directory.
 
 ## Current test inventory
 
@@ -5073,7 +5087,7 @@ names, and QA policy in their owning projects.
 ===== BEGIN DOCUMENT native-extensions-guide =====
 Source: Docs/en/how-to/native-extensions.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/native-extensions.html
-Content SHA-256: cd486f05a1ecb70a880faad5966c78274a8a661c5ec005b532be6f46b2b26d20
+Content SHA-256: a4cb0f008e005d026b18efddb9c0ac4966375e4fa2c6aeece7f265113c29310d
 
 ---
 layout: default
@@ -5271,7 +5285,7 @@ Use the engine pointer vocabulary:
 
 ## Dependencies and platforms
 
-`AddEngineSources` does not infer dependencies. The embedding project must add libraries, include directories, compile definitions, generated headers, and platform frameworks before core libraries/applications are built. Keep third-party source in its own target and route it only to consuming roles with `AddProjectLibraries`; [Project-Local Dependencies](native-extensions/project-dependencies.md) owns the complete selection, provenance, CMake, ABI, package, and update workflow.
+`AddEngineSources` does not infer dependencies. The embedding project must add libraries, include directories, compile definitions, generated headers, and platform frameworks before core libraries/applications are built. Keep third-party source in its own target and route it only through the current revision's narrowest consumed `FO_*_LIBS` list; [Project-Local Dependencies](native-extensions/project-dependencies.md) owns the complete selection, provenance, CMake, ABI, package, and update workflow.
 
 Platform-specific extensions need an explicit availability contract:
 
@@ -5289,13 +5303,13 @@ Use the smallest route that proves the affected boundary:
 
 - CMake registration/role changes: `cmake -P BuildTools/tests/validate_native_extension_interface.cmake`.
 - Hook/metadata/codegen changes: regenerate and check the native-extension/API references, then run `BakeResources` in a real embedding project.
-- Reusable minimal server hook: `python BuildTools/buildtools.py validate win64-starter-smoke` or `linux-starter-smoke`.
-- Complete native lifecycle, role-link, script-export, and focused-test path: `python BuildTools/buildtools.py validate win64-native-extension-smoke` or `linux-native-extension-smoke`.
+- Reusable minimal server hook: run `python validate.py` from `Examples/MinimalProject`.
+- Complete native lifecycle, role-link, script-export, and focused-test path: run `python validate.py` from `Examples/NativeExtensionSample`.
 - Script export: add a script compile/bake assertion and a focused runtime test that calls the generated method on the correct side.
 - Client-visible extension: build/run a real standalone client path; a server-only or headless smoke cannot prove rendering, input, dynamic-library, or package behavior.
 - External SDK/platform bridge: exercise enabled, disabled, and packaged-runtime paths on the owning platform.
 
-The engine-owned minimal project is the normative starter. `Examples/NativeExtensionSample` is the focused complete native path: it keeps per-server state in `ServerEngine.UserData`, routes a small library through `AddProjectLibraries`, exports one server method, and runs both a native unit and runtime smoke check. A large game project is valuable integration evidence but does not define the reusable contract.
+The engine-owned minimal project is the normative starter. `Examples/NativeExtensionSample` is the focused complete native path: it keeps per-server state in `ServerEngine.UserData`, routes a small library through the current `FO_SERVER_LIBS` integration state, exports one server method, and runs both a native unit and runtime smoke check. A large game project is valuable integration evidence but does not define the reusable contract.
 
 ## Updating the engine revision
 
@@ -5335,7 +5349,7 @@ Treat an Engine gitlink change as an extension compatibility event:
 ===== BEGIN DOCUMENT project-local-dependencies =====
 Source: Docs/en/how-to/native-extensions/project-dependencies.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/native-extensions/project-dependencies.html
-Content SHA-256: 7558f67a0a35d482fca0c924d431feb879a6f46a0697db07b175c1659c46e25d
+Content SHA-256: 2062a10908b13e067c7fb83accd407bcd6167a371556b32fe1be35c80c994d6b
 
 ---
 layout: default
@@ -5368,9 +5382,9 @@ Use this sequence for every project-local dependency:
    integrity, license, supported platforms/toolchains, update path, and rollback
    pin in the project.
 3. Create the project target after Engine third-party targets exist and before
-   `BuildCoreLibraries()` consumes role lists. Link it with
-   `AddProjectLibraries` only to the required `COMMON`, `SERVER`, `CLIENT`,
-   `MAPPER`, or `BAKER` roles.
+   `BuildCoreLibraries()` consumes its revision-pinned library lists. Append it
+   only to the required `FO_COMMON_LIBS`, `FO_SERVER_LIBS`, `FO_CLIENT_LIBS`,
+   `FO_BAKER_LIBS`, or `FO_TESTING_LIBS` list.
 4. Distinguish requested, compiled, and initialized-at-runtime states. Keep
    allocator ownership, exceptions, CRT/toolchain, architecture, generated
    headers, and C ABI boundaries explicit rather than treating header presence
@@ -5392,15 +5406,16 @@ ownership; package payload and integrity; and isolated runtime behavior.
 ## Contract Status
 
 The project-facing CMake interface is `experimental` and revision-pinned. The
-current Engine provides `AddProjectLibraries` for role-scoped linking, but does
-not promise binary compatibility for a project dependency or native extension
-across Engine revisions. Reconfigure and rebuild them together after changing
-the Engine pin.
+current Engine exposes no declared helper for role-scoped project-library
+registration. Embedding projects append targets to the current library lists,
+which are implementation state and may change with the Engine revision. Pin the
+Engine, re-audit the lists, and rebuild dependencies and extensions together
+after every pin change.
 
 The Engine owns:
 
-- the `COMMON`, `SERVER`, `CLIENT`, `MAPPER`, and `BAKER` link roles;
-- configure-time validation and routing performed by `AddProjectLibraries`;
+- the `COMMON`, `SERVER`, `CLIENT`, `BAKER`, and `TESTS` library lists;
+- the core-library targets that consume those lists;
 - the core-library graph that consumes each role list;
 - package declarations and generic package assembly mechanics;
 - the documented allocator, pointer, exception, and native-extension rules.
@@ -5508,9 +5523,8 @@ target_link_libraries(ProjectCodec INTERFACE upstream_codec)
 target_include_directories(ProjectCodec SYSTEM INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/ProjectCodec/include")
 
-AddProjectLibraries(
-    ROLES CLIENT BAKER
-    LIBRARIES ProjectCodec)
+list(APPEND FO_CLIENT_LIBS ProjectCodec)
+list(APPEND FO_BAKER_LIBS ProjectCodec)
 
 AddEngineSources(CLIENT SourceExt/ProjectCodecBridge.cpp)
 RegisterEngineSources()
@@ -5518,19 +5532,20 @@ SetupCodeGeneration()
 BuildCoreLibraries()
 ```
 
-`AddProjectLibraries` accepts one or more roles and one or more CMake targets or
-explicit platform-library items. It deduplicates each item within a role,
-rejects unknown roles, rejects missing lists, and rejects registration after
-the CoreLibs stage. The allowed roles come from the same project-interface
-contract as `AddEngineSources`; use the generated
-[CMake helper reference](../../reference/cmake/helpers.md) for the exact signature.
+The current revision consumes `FO_COMMON_LIBS`, `FO_SERVER_LIBS`,
+`FO_CLIENT_LIBS`, and `FO_BAKER_LIBS` when creating the corresponding core
+libraries; `FO_TESTING_LIBS` feeds native test targets. Append before
+`BuildCoreLibraries()`, avoid duplicates yourself, and fail project configure
+for unsupported combinations. There is no dedicated mapper-only library list:
+`MapperLib` consumes `ClientLib`, so a client dependency reaches Mapper with the
+wider client role. A truly mapper-only dependency requires an explicit Engine
+interface change instead of an invented `FO_MAPPER_LIBS` variable.
 
-Do not append to `FO_COMMON_LIBS`, `FO_SERVER_LIBS`, `FO_CLIENT_LIBS`,
-`FO_MAPPER_LIBS`, or `FO_BAKER_LIBS` directly. Those lists are implementation
-state, while `AddProjectLibraries` is the selected project-facing interface.
-Likewise, a helper's presence under `BuildTools/cmake` does not make it public;
-only commands in `BuildTools/cmake/ProjectInterface.json` are supported for an
-embedding project.
+These lists are revision-pinned integration state, not declared helpers in
+`BuildTools/cmake/ProjectInterface.json`. Re-check `State.cmake` and
+`CoreLibs.cmake` on every Engine update. A helper's presence under
+`BuildTools/cmake` would not make it public unless the interface manifest also
+declared it.
 
 ## Route To The Narrowest Role
 
@@ -5541,8 +5556,8 @@ Dependency roles follow the native source roles:
 | `COMMON` | `CommonLib` | Every enabled runtime/tool role | A genuinely common process/config primitive. Avoid placing a client or server SDK here for convenience. |
 | `SERVER` | `ServerLib` | Server and native tests that include it | Authority, persistence, server transport, or backend SDK code. |
 | `CLIENT` | `ClientLib` | Client plus current server-controller, Mapper, viewer, Baker, ASCompiler, and test paths | Rendering, input, client transport, or client SDK code. Account for the wider current consumer graph. |
-| `MAPPER` | `MapperLib` | Mapper and tests that include it | Mapper-only editor integration. |
 | `BAKER` | `BakerLib` | Baker, Mapper, viewers, ASCompiler, and tests | Resource import, validation, conversion, or authoring support. |
+| `TESTS` | Native test targets | Engine-owned native tests | Focused test-only support; do not rely on it for runtime delivery. |
 
 Split a dependency wrapper when different roles need different headers,
 features, or runtime payloads. Do not route a library through `COMMON` just to
@@ -5694,22 +5709,23 @@ At minimum, capture:
 | --- | --- |
 | Interface | `cmake -P BuildTools/tests/validate_project_interface.cmake` and current generated CMake reference. |
 | Configure | Clean configure for every affected platform/architecture and for required enabled/disabled feature states. |
-| Compile/link | Every role named in `AddProjectLibraries`; warning-clean first-party bridge and target-scoped dependency policy. |
+| Compile/link | Every core/test list changed by the project; warning-clean first-party bridge and target-scoped dependency policy. |
 | Codegen/script | Regenerated metadata plus resource bake when a native declaration or generated header changes. |
 | Runtime | Focused success, unavailable, initialization-failure, and shutdown paths. |
 | Package | Isolated launch, runtime payload presence/hash/architecture, notices, and secret-free artifact scan. |
 | Upgrade | Old/new Engine pin comparison, dependency compatibility review, and no reused native/generated binary from the old pin. |
 
-The Engine-owned minimal project compiles an `INTERFACE` project dependency
-through `AddProjectLibraries(ROLES SERVER ...)`; its server extension fails
-compilation if the role-scoped usage requirement is absent. This proves the
-public link path without making an external SDK part of the fixture.
+The Engine-owned minimal project compiles an `INTERFACE` project dependency by
+appending it to `FO_SERVER_LIBS`; its server extension fails compilation if the
+usage requirement is absent. This proves the current revision-pinned link path
+without pretending it is a stable helper or making an external SDK part of the
+fixture.
 
 ## Failure Routing
 
 | Symptom | Inspect first |
 | --- | --- |
-| Unknown role or late registration | `AddProjectLibraries` call and stage order. |
+| Library does not reach its consumer | Selected `FO_*_LIBS` list, current `CoreLibs.cmake`, and stage order. |
 | Header found locally but not in CI | Wrapper target include scope and accidental ambient include paths. |
 | Unregistered `find_package()` failure | Nested dependency probe and the explicit handler decision. |
 | Extension compiles but another role fails to link | Narrow role assignment, transitive target requirements, and actual core-library consumer graph. |
@@ -8605,7 +8621,7 @@ production frame budget.
 ===== BEGIN DOCUMENT particle-authoring-tools =====
 Source: Docs/en/how-to/tools/particle-authoring.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/particle-authoring.html
-Content SHA-256: 513858aebaf925f78503af99f07adf8747f7ebb8a38498d78f78b270ca85c5a1
+Content SHA-256: 9dbc060c7f534201f014e8fe86db20133ec83a55bf01eda4a437a2401535dc8c
 
 ---
 layout: default
@@ -8636,9 +8652,9 @@ standalone Particle Viewer.
    pinned external editor.
 3. Re-bake, then pin the backend, resource, seed, prewarm, direction, and replay
    state before comparing the focused preview and runtime routes.
-4. For review evidence, `Game.RequestMapperWindowScreenshot` captures the Full
-   Mapper frame and only one request may be pending. Keep that full-window proof
-   separate from a world-render-only screenshot.
+4. For review evidence, capture the visible Mapper application window with a
+   platform screenshot tool. Keep that UI proof separate from the map-only TGA
+   produced by `Game.SaveMapperScreenshot`.
 
 ## Choose the backend before authoring
 
@@ -8970,7 +8986,7 @@ production game's visual policy.
 ===== BEGIN DOCUMENT mapper-interactive-manual =====
 Source: Docs/en/how-to/tools/mapper-interactive.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper-interactive.html
-Content SHA-256: bcd9ff6c9b6aee35af2fb44a0e1b213368f54247f6cc9522ed95677091ae4251
+Content SHA-256: ee99c8ec0f80820d15a80ec3ef43832c6d1e1badc643f4bb8d66172e0135eab8
 
 ---
 layout: default
@@ -9247,16 +9263,15 @@ playback and viewport diagnostics. Use the SPARK editor only on authored
 
 ## Screenshot and automation contract
 
-Two mapper-only script methods have different purposes:
+The mapper script API exposes one screenshot method:
 
 | Method | Frame contents | Completion |
 |---|---|---|
 | `Game.SaveMapperScreenshot(path)` | Current map render target and mapper script interface drawing; excludes the later application-level ImGui composition. | Synchronous TGA write. |
-| `Game.RequestMapperWindowScreenshot(path)` | Full Mapper frame with application ImGui windows composited onto the map render target before `Present()`. | Deferred to the end of the current frame; only one request may be pending. |
 
-For a full-window capture, request the screenshot, allow at least one more
-Mapper loop, then quit. The minimal multiplayer example provides a complete
-profile:
+There is no Engine script method for full-window UI capture. The minimal
+multiplayer example provides a reproducible visible profile; after its windows
+settle, capture the application window with a platform screenshot tool:
 
 ```powershell
 cmake --build Build\windows --config Release --target ForceBakeResources FOMM_Mapper
@@ -9266,8 +9281,8 @@ Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
 ```
 
 The profile opens `TutorialMap`, starts `Documentation.spk` with a fixed seed,
-captures `1280x800`, and writes `MapperDocumentationCapture.tga`. The checked-in
-PNG and complete source hashes are recorded in
+and fixes the viewport at `1280x800`. The checked-in PNG and complete source
+hashes are recorded in
 [generated/screenshots.json](../../../generated/screenshots.json).
 
 Use `Render.HeadlessWindow = True` for off-screen map rendering, but not
@@ -9284,7 +9299,7 @@ Use `Render.HeadlessWindow = True` for off-screen map rendering, but not
 | Inspector rejects a value | Generated property type, enum spelling, array/struct syntax, nullability, and prototype constraints. |
 | Particle source is listed but preview is not | Enabled backend, baked `.spk`/`.efk`, referenced effect/texture, bounds, seed/prewarm, and log exceptions. |
 | Windows are missing or off-screen | Open Windows menu, then use Settings -> Reset layout. |
-| Full-window screenshot has no UI | Use `RequestMapperWindowScreenshot`, not the map-only synchronous method, and wait one frame before quit. |
+| UI screenshot contains only the map | `SaveMapperScreenshot` is map-only; capture the visible application window with a platform screenshot tool. |
 
 Treat `ScriptException`, `VerificationException`, assertion/fatal lines,
 missing resource logs, failed saves, and invalid map declarations as failures.
@@ -12647,7 +12662,7 @@ Runtime, structural CMake, native-extension, prototype/map/model/text/effect/ima
 ===== BEGIN DOCUMENT adr-github-pages-markdown-publication =====
 Source: Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0001-github-pages-markdown-publication.html
-Content SHA-256: 3f8780800df30e332c78b325c2ab575cdee17e7a675587ebe869e74954db68b6
+Content SHA-256: bf9e7605e8e044f83467f2c2ef16cb7ae0a2b48132b1f44a9a33dfcfbb6a62dc
 
 ---
 layout: default
@@ -13614,7 +13629,7 @@ are owned by [Documentation Snippet Validation](snippets.md).
 ===== BEGIN DOCUMENT documentation-maintenance =====
 Source: Docs/en/contributing/documentation/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/
-Content SHA-256: 5cc2095af74b81c9fdddbf90316277fd9df9fb9b03bd5440911a1b88d0c55951
+Content SHA-256: 46b5925efb42b329b3d8d78989a5d7de5b60529273394d4466b0d7584466c2c7
 
 ---
 layout: default
@@ -13916,7 +13931,7 @@ Generated-surface triggers:
 | `EffectBaker`, `.fofx` sections/state, `RenderEffect` buffers, renderer descriptor/pipeline handling, `EffectManager`, effect script methods, or `FO_EFFECT_*` limits | Update `BuildTools/EffectFormatInterface.json` and [Effect Format](../../how-to/content/effect-format.md); regenerate/check the effect-format model/pages, run `test_docs_effect_format.py`, focused effect-baker tests, and the aggregate diff, then rebake an affected project and validate every changed slot/backend/profile in a visible client. |
 | `ImageBaker`, FOFRM fields/flattening, built-in image loaders, baked sprite records, `DefaultSpriteFactory`, `SpriteManager` extension/cache behavior, or `TextureAtlas` upload | Update `BuildTools/ImageFormatInterface.json` and [Image And Sprite Formats](../../how-to/content/image-format.md); regenerate/check the image-format model/pages, run `test_docs_image_format.py`, focused image/atlas tests, and the aggregate diff, then rebake an affected project and inspect dimensions, alpha, directions, cadence, hit masks, and relevant client profiles visibly. |
 | `FO_*_PARTICLES`, `.spark`/`.efkproj` parsing, `.spk`/`.efk` baking, backend composition/rendering, Mapper particle tools, `ParticleManager`, `ParticleSpriteFactory`, script methods, or model-particle links | Update `BuildTools/ParticleFormatInterface.json` and [Particle Format And Runtime](../../how-to/content/particle-format.md); regenerate/check the particle-format model/pages, run `test_docs_particle_format.py`, focused baker/runtime/model tests, and the aggregate diff, then rebake an affected project and inspect every enabled backend plus sprite, map, script, and model-bone routes visibly. |
-| `MapperEngine`, stock Mapper menus/windows/controls/hotkeys/history/layout, mapper-side script exports, headless view/capture, TGA/atlas readback, or full-window composition | Update [Mapper Interactive Manual](../../how-to/tools/mapper-interactive.md) and [Mapper Tools](../../how-to/tools/mapper.md), run `test_docs_mapper_tools.py`, and exercise the affected interactive or headless path against an Engine-owned fixture. A changed UI, capture path, fixture, or recorded trigger also requires recapturing the exact screenshot, regenerating its provenance, rebuilding Jekyll, and inspecting desktop/mobile output; a changed map format or particle path additionally follows its owning row. |
+| `MapperEngine`, stock Mapper menus/windows/controls/hotkeys/history/layout, mapper-side script exports, headless map capture, TGA/atlas readback, or visible-window evidence | Update [Mapper Interactive Manual](../../how-to/tools/mapper-interactive.md) and [Mapper Tools](../../how-to/tools/mapper.md), run `test_docs_mapper_tools.py`, and exercise the affected interactive or headless path against an Engine-owned fixture. A changed UI, capture path, fixture, or recorded trigger also requires recapturing the exact screenshot, regenerating its provenance, rebuilding Jekyll, and inspecting desktop/mobile output; a changed map format or particle path additionally follows its owning row. |
 | `AnimationViewer`, `ParticleViewer`, their application hosts/libraries/targets/output paths/package roles, Mapper embedding, focused controls, data-source mounting, or persisted settings | Update [Animation and Particle Viewers](../../how-to/tools/animation-particle-viewers.md), run `test_docs_viewer_tools.py`, build and launch both viewers when shared host/CMake/settings behavior changed (otherwise the affected viewer), and execute the affected visible review workflow against current content. Particle changes also follow the particle-format row; model/animation changes also follow the model-format and model-animation routes. |
 | `.fofnt`/`.fnt` parsing, `Baking.RawCopyFileExtensions`, `FontManager`, `FontType`, `FontFlag`, `TextFormat`, `Game.BindFont`, measurement, wrapping, or inline colors | Update `BuildTools/FontFormatInterface.json` and [Font Formats And Text Layout](../../how-to/content/font-format.md); regenerate/check the font-format model/pages, run `test_docs_font_format.py`, native unit tests, and the aggregate diff, then rebake an affected project and validate measurement plus visible text rendering. |
 | `SoundManager`, `ResourceManager` sound indexing, WAV/ACM/Ogg decoding, `Game.PlaySound`/`Game.PlayMusic`, `Audio.*`, `AppAudio`, or audio raw-copy delivery | Update `BuildTools/AudioInterface.json` and [Audio.md](../../../Audio.md); regenerate/check the audio model/pages, run `test_docs_audio.py`, native unit tests, and the aggregate diff, then rebake representative formats and validate effects, music, repeat, volume, and diagnostics audibly in a visible client on every claimed platform. |
@@ -14879,7 +14894,7 @@ The tests are the executable knowledge base for many engine subsystems. File nam
 ===== BEGIN DOCUMENT third-party-maintenance =====
 Source: Docs/en/contributing/third-party/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/third-party/
-Content SHA-256: a3bfe3d33386311e4cfb6fb2d1674c170cacfa1a88d81c94c69c1c0e0403b25f
+Content SHA-256: efdcd467d86463329b80824a4ad5626002839102dd6ab1473f4982147e931a13
 
 ---
 layout: default
@@ -15438,7 +15453,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 222f747b0c5782a01c85bef560bec1c4fb38c8d5b0529194a0864719541e65bd
+Content SHA-256: 29865d4b780b6d286adc46044b6dac5f4611f56885b749a3f9c0cd2dad49bbdd
 
 ---
 layout: default
@@ -16173,6 +16188,19 @@ that an existing image output was baked with the same mesh settings.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
+Both blobs start with `BAKED_MAP_FILE_MAGIC` and
+`BAKED_MAP_FILE_VERSION` from `Source/Common/MapLoader.h`.
+`MapLoader::ReadBakedFileHeader` validates this header before
+`MapManager::LoadStaticMaps` or `MapView::LoadStaticData` reads the payload.
+The hash table uses the paired `DataWriter::WriteString` and
+`DataReader::ReadString` contract, and every remaining count or byte size is
+preflighted with `DataReader::VerifyPayloadCount` before it drives an
+allocation or loop. Missing, stale, truncated, or damaged data therefore raises
+`DataReadingException` instead of being interpreted as element counts. When
+the layout changes, bump `BAKED_MAP_FILE_VERSION` and run
+`ForceBakeResources` in the same change; source timestamps do not prove that
+an existing output uses the current layout.
+
 `ParticleBaker` exposes only the formats whose backend is enabled at build time.
 `FO_SPARK_PARTICLES` enables text `.spark` input and generated `.spk` output;
 `FO_EFFEKSEER_PARTICLES` enables text `.efkproj` input and generated `.efk`
@@ -16259,13 +16287,23 @@ lighting and back-face culling. The baker does not hide the source defect by
 flipping normals and winding; freeze the mirrored object back to a positive
 scale in the authoring tool.
 
-`ModelInfoBaker` also checks the size of a directly attached model: an `Attach`
-link to a bare `.fbx`, rather than to a `.fo3d` description. A direct attachment
-has no description-level scale correction, so its static maximum-axis extent
-must stay within `Baking.ModelAttachmentMinExtent` ..
-`Baking.ModelAttachmentMaxExtent`. A failure names the file, measured extent,
-and limit. `.fo3d` attachments are exempt because their description can apply
-an explicit scale.
+`ModelInfoBaker` also checks model scale against
+`Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`. A
+direct `Attach` link to a bare `.fbx` is checked from its static maximum-axis
+extent. Each `.fo3d` section is checked from its aggregate `ModelBounds`: the
+union of animation envelopes, or static geometry when the model has no
+mappings. A full bake checks the envelope while writing
+`ModelAnimationInfo.foinfo`; a targeted `.fo3d` bake runs the same check before
+writing the description. A `.fo3d` `Scale` token does not change the baked
+envelope, so a centimetre-space root model is not exempt. Failures name the
+file, measured extent, and limit.
+
+Baker code does not use the build host's `AppRender::MAX_ATLAS_WIDTH` /
+`HEIGHT` as a device contract. Portable layout math uses
+`AppRender::MIN_ATLAS_SIZE / FRAME_SCALE`. Runtime preview zoom can still push
+a valid envelope beyond `Render.ModelSpriteMaxTextureWidth` / `Height`;
+`RefreshFrameLayout` clamps that scratch texture and draws cropped instead of
+terminating.
 
 Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
@@ -17076,7 +17114,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT persistence =====
 Source: Docs/en/explanation/persistence/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/persistence/
-Content SHA-256: f9f0717abc97c87def8b53253b8b7731f6186f2980b20219939b43e9bfd7a924
+Content SHA-256: 0cc2d410296794ff1b79efe7db64f834c30841f95e0d6c22f01ca02d5076308c
 
 ---
 layout: default
@@ -17195,7 +17233,7 @@ The public `DataBase` facade forwards write calls into this machinery. Backend w
 - `_pendingChangesLog`
 - `_committedChangesLog`
 
-When operation logging is enabled, `DataBase.OpLogPath` must be non-empty and end with the exact `.oplog` suffix. `InitializeOpLogs()` rejects any other path before opening files. The configured path owns the pending log; the committed-progress log is derived by replacing that final suffix with `-committed.oplog`. Keep the suffix contract intact rather than relying on a broad substring replacement in an arbitrary filename.
+When operation logging is enabled, `DataBase.OpLogPath` must be non-empty. The configured path owns the pending log; the committed-progress path is derived by replacing `.oplog` with `-committed.oplog`. `InitializeOpLogs()` does not enforce that suffix, so keep the conventional `.oplog` name and verify that the derived path is distinct rather than relying on an arbitrary filename.
 
 Recovery/panic settings include:
 
@@ -17269,7 +17307,7 @@ Relevant tests include:
 3. Validate integer-key and string-key collections when changing key handling.
 4. Validate commit queue drain with `StartCommitChanges()` / `WaitCommitChanges()`.
 5. Validate operation-log restore after a simulated failed commit when durability/recovery behavior changes.
-6. Validate that an enabled `DataBase.OpLogPath` is non-empty and ends with `.oplog`, and that the derived `-committed.oplog` path cannot collide with the pending log.
+6. Validate that an enabled `DataBase.OpLogPath` is non-empty and that replacing `.oplog` with `-committed.oplog` produces a distinct committed-log path.
 7. Validate entity save/load paths when persistent property semantics change.
 8. Never put production credentials or live connection strings into repository docs or tests.
 
@@ -17278,7 +17316,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 3e745199398353924e26b0b5c0bfa7832cddb86c55ef8d5581664b5be69c4393
+Content SHA-256: e69d9d067e53ec7791e635eda074072318026c0f0d170505346c4400e5c6726a
 
 ---
 layout: default
@@ -17626,7 +17664,20 @@ alternate forever. The interval anchor is signed: a tight frame may legitimately
 lie completely on one side of the model root, leaving its pivot outside the frame;
 the bounded retry loop still rejects a genuinely unbounded layout.
 
-`ModelInstance::SetupFrame` rejects a logical `draw_size * FRAME_SCALE` above `AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT`, naming the model and both sizes before an anonymous device texture-allocation failure can occur. Meshes disabled by the model's own default `.fo3d` link contribute to neither drawn nor pose bounds; runtime honors that default exactly as it honors layer/attachment `DisableMesh`, keeping runtime geometry inside the baked layout budget.
+Layout helpers without a live GPU use
+`AppRender::MIN_ATLAS_SIZE / FRAME_SCALE`
+(`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`) as the portable logical ceiling;
+the bake host's atlas limit is not the game device. A model sprite's scratch
+texture is capped by `Render.ModelSpriteMaxTextureWidth` / `Height` and the
+current machine's atlas. An envelope beyond that cap is drawn cropped, while
+the bounded retry loop still rejects a layout that cannot converge inside it.
+`ModelInstance::SetupFrame` also rejects a logical
+`draw_size * FRAME_SCALE` above the current machine's
+`AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT`, naming the model and both
+sizes before an anonymous device texture-allocation failure can occur. Meshes
+disabled by the model's own default `.fo3d` link contribute to neither drawn nor
+pose bounds; runtime honors that default exactly as it honors layer/attachment
+`DisableMesh`, keeping runtime geometry inside the baked layout budget.
 
 Only the selected region is allocated
 and copied into the atlas. The crop origin is reflected in the sprite offset,
@@ -18114,7 +18165,14 @@ The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDra
 
 `ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK and Effekseer particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth; Effekseer distortion attachments additionally pull the direct replay's scene-background snapshot on demand. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
 
-Cached model-sprite frames are capped at `2048x2048` logical pixels (`4096x4096` for the supersampled intermediate target). Dynamic model-bone particle bounds above this budget are treated as unavailable: the established model frame remains valid and only runaway outlying geometry is clipped. This prevents malformed or long-lived particle motion from requesting unbounded CPU/GPU allocations in headless and rendered paths.
+Cached model-sprite frames use the resolved logical cap: the minimum of
+`Render.ModelSpriteMaxTextureWidth` / `Height` and the current machine's
+`AppRender::MAX_ATLAS_WIDTH` / `HEIGHT`, divided by `FRAME_SCALE` because the
+model renders at 2x into the physical scratch texture. Dynamic model-bone
+particle bounds above this budget are treated as unavailable: the established
+model frame remains valid and only runaway outlying geometry is clipped. This
+prevents malformed or long-lived particle motion from requesting unbounded
+CPU/GPU allocations in headless and rendered paths.
 
 **World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit and is shared by 3D models and in-scene particles. The Engine default is `40.0`; an embedding project may override it consistently for both systems. **1 world unit = 1 hex = 1 m** remains the authoring metric, but the pixel projection factor does not have to equal `MAP_HEX_WIDTH`. A scene-type system that emits within a radius of N units therefore spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale. See [Particle Format And Runtime](../../how-to/content/particle-format.md#runtime-contract) for the complete backend-neutral particle route.
 
@@ -18821,7 +18879,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: b36d77a61958702d5617a22fae61c155b90ddfcb59840fff94b05ff426f578ce
+Content SHA-256: 42ee513fbfe6cbf83b6064aa025c34cd43f5a75d9c47ab7c53a9763b0e25dbbc
 
 ---
 layout: default
@@ -19161,10 +19219,20 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   layer never reopens or reparses that companion, and no authored `.fo3d`
   `DrawSize` or `ViewSize` remains.
   Enabled body/movement animation envelopes are projected through the active
-  model transform across every facing direction to derive a power-of-two
+  model transform across every facing direction to derive a grid-aligned
   logical scratch frame large enough for the body and projected shadow. The
   separate view envelope (`Unarmed + Idle`, any Idle, then deterministic
-  fallback) seeds the body `ViewRect`. Runtime layer and child-model bounds
+  fallback) seeds the body `ViewRect`; aggregate `ModelBounds` sizes the
+  horizontal-lighting frame. Layout math without a live GPU uses
+  `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` as the portable logical ceiling
+  (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`), rather than treating the bake
+  host's atlas limit as the game device. At runtime the scratch texture is
+  capped by `Render.ModelSpriteMaxTextureWidth` / `Height` and the current
+  machine's atlas; the logical frame is that texture divided by `FRAME_SCALE`.
+  A pose or lighting envelope that exceeds the cap is cropped, including when
+  authored scale and GUI preview `SetScale` combine to enlarge an otherwise
+  valid model. Invalid or non-finite bounds still assert and report the six
+  coordinates plus the model file. Runtime layer and child-model bounds
   extend both the view/name rectangle and the aggregate horizontal-lighting
   frame; the envelope resets when mesh composition changes and otherwise only
   grows. Names, coarse picking, transparent eggs, flying text, and attachments
@@ -19754,7 +19822,7 @@ When changing server runtime behavior, verify:
 ===== BEGIN DOCUMENT public-example-repositories =====
 Source: Docs/en/how-to/build/public-example-repositories.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/public-example-repositories.html
-Content SHA-256: 69a2ee63b27441f90ac8c9ba40d3a5a554f74c3d8c9a1d835cd3daedcb579c41
+Content SHA-256: faae854133e244465ed0758c64b7d03a90bbe342ca2a9eccf17247ffd699e1cc
 
 ---
 layout: default
@@ -19804,7 +19872,7 @@ Remote existence, source readiness, and public release are separate states. `rem
 
 [`Examples/ContentShowcase`](../../../../Examples/ContentShowcase/README.md) is the executable, Engine-owned gallery behind the third portfolio entry. It contains a one-map scene, an animated FOFRM beacon, a scripted sprite panel, SPARK particles rendered through a `.fofx` effect, a generated WAV cue, project-original TGA inputs, a prototype, and the smallest client/server script needed to prove loading and interaction. The authored inputs live under `ShowcaseAssets/`; generated `Resources/`, `ServerResources/`, `Baking/`, `Build/`, and `Workspace/` trees never belong to a staged repository.
 
-Run `python validate.py` for the native source/bake/process gate and `python validate.py --web` for the fast Web source/compile gate. `python validate.py --web-package` adds native-host force-baking, exact raw/ZIP payload validation, WebAssembly and `Resources.data` checks, and archive parity. After `npm ci` and `npx playwright install chromium` in `WebTests/`, `python validate.py --web-runtime` adds a native server, packaged HTTP delivery, required response and lifecycle markers, a real WebGL 2 context, console/page/network failure checks, and compositor-pixel evidence. The same complete route is exposed as `web-showcase-runtime` in BuildTools and the required workflow. On Windows, `cmake --build --preset windows-capture` launches the real Direct3D 11 client. On Linux, `linux-showcase-capture` runs `linux-capture` under Xvfb with software Mesa and retains the PNG, process report, exact Engine SHA, and backend record as a commit-addressed workflow artifact. Both native routes record twelve warmed samples, validate independent header/runtime/gallery/footer regions, and keep the strongest complete frame. `assets/provenance.json`, `quality/performance-budget.json`, and `captures/capture-contract.json` are release inputs: update them in the same change as any asset, layout, renderer, budget, or supported-backend change. Direct3D 11 and WebGL 2 captures are checked local backend evidence; Linux OpenGL is checked CI evidence from `cvet/fonline-content-showcase` run `30937990249`, whose artifact digest, PNG hash, process report, Engine pin, and pixel regions were independently verified before admission.
+Run `python validate.py` for the native source/bake/process gate and `python validate.py --web` for the fast Web source/compile gate. `python validate.py --web-package` adds native-host force-baking, exact raw/ZIP payload validation, WebAssembly and `Resources.data` checks, and archive parity. After `npm ci` and `npx playwright install chromium` in `WebTests/`, `python validate.py --web-runtime` adds a native server, packaged HTTP delivery, required response and lifecycle markers, a real WebGL 2 context, console/page/network failure checks, and compositor-pixel evidence. These example routes are opt-in and are not part of the required Engine validation registry or workflow. On Windows, `cmake --build --preset windows-capture` launches the real Direct3D 11 client. On Linux, run `linux-capture` under Xvfb with software Mesa when Linux OpenGL evidence is needed; preserve the PNG, process report, exact Engine SHA, and backend record in the owning project workflow. Both native routes record twelve warmed samples, validate independent header/runtime/gallery/footer regions, and keep the strongest complete frame. `assets/provenance.json`, `quality/performance-budget.json`, and `captures/capture-contract.json` are release inputs: update them in the same change as any asset, layout, renderer, budget, or supported-backend change. Direct3D 11 and WebGL 2 captures are checked local backend evidence; Linux OpenGL is checked historical CI evidence from `cvet/fonline-content-showcase` run `30937990249`, whose artifact digest, PNG hash, process report, Engine pin, and pixel regions were independently verified before admission.
 
 ### Supporting in-repository fixtures
 
@@ -19925,7 +19993,7 @@ Updater protocol generation 2 and client host/runtime ABI 3 reject older unsafe 
 
 Linux jobs prepare host dependencies through the checked-out revision's `Engine/BuildTools/prepare-workspace.sh linux-packages linux` command. Do not copy an apt package list into example workflows: the Engine-owned command is the versioned platform contract and keeps pinned and compatibility lanes on the same prerequisites.
 
-Content Showcase adds `showcase-display-packages web-packages web` to that command. Because the helper runs from the example repository root, it installs the pinned SDK under `Workspace/emsdk`; set `FO_EMSDK` to that root-owned path, not `Engine/Workspace/emsdk`. The Linux OpenGL PNG, capture contract, and process report are uploaded immediately after the successful Xvfb/Mesa capture and before the longer WebGL 2 runtime lane. A later Web failure therefore cannot erase already valid backend evidence, while the overall required job still remains failed until every lane passes.
+Content Showcase uses `web-packages web` for the Engine-owned Web prerequisites; any Xvfb/Mesa packages needed by its visual lane remain in the example repository's own workflow. Run the helper with the example-owned `Workspace` selected through `FO_WORKSPACE`; BuildTools derives the pinned `Workspace/emsdk` path and does not honor an unrelated `FO_EMSDK` override. Upload Linux OpenGL PNG, capture-contract, and process evidence before the longer WebGL 2 runtime lane so a later Web failure does not erase already valid backend evidence, while the overall required job remains failed until every lane passes.
 
 `current-engine` runs weekly and on demand. It temporarily checks out Engine `master`, records the tested commit, and runs the same primary behavior. It must not rewrite `example-repository.json`, the gitlink, generated files, tags, or release artifacts.
 
@@ -20266,7 +20334,7 @@ After changing `.fo3d` animation declarations, enum metadata, model sources, mes
 ===== BEGIN DOCUMENT sprite-root-motion =====
 Source: Docs/en/how-to/content/sprite-root-motion.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/sprite-root-motion.html
-Content SHA-256: a1b169c4348ff21d943000d405c7d4106cc28f6e1b79e18fb5ca9282b9e726da
+Content SHA-256: 04ead23529b85d79eb2294313cd3aed667fc46b8facdd37859f67624cddd09a5
 
 ---
 layout: default
@@ -20298,7 +20366,7 @@ The owning sources are:
 - `Source/Common/Movement.*` for authoritative time/path progress and integer-pixel `HexOffset` construction;
 - `Source/Common/Geometry.*` for lossless hex/offset re-splitting and passability-aware normalization;
 - `Source/Client/CritterHexView.*` for cycle anchoring, movement displacement, frame selection, rendered animation offsets, and stop-time normalization;
-- `Source/Client/ResourceManager.cpp` for animation selection, frame extraction, merges, cloning, and offset preservation;
+- `Source/Client/ResourceManager.cpp` for animation selection, frame extraction, merges, cloning, and their private offset transforms;
 - `Source/Tests/Test_ImageBaker.cpp` and `Source/Tests/Test_Geometry.cpp` for format-level offset and geometry-normalization coverage.
 
 Project documents and content repositories are useful integration evidence, but they are not the authority for reusable Engine behavior.
@@ -20344,7 +20412,7 @@ NextY_1 = -1
 
 Nested FOFRM references add the referencing frame's offset to the selected nested frame. Other supported formats carry or derive offsets according to their own importer. Missing values normally become zero; inspect the format-specific `ImageBaker` loader instead of assuming that every source format exposes the same authored fields.
 
-Offsets are direction-specific. Image baking may mirror, crop, or compose frames. Client resource selection may extract the first or last frame, clone a sheet, or merge a base and extra Fallout animation. A merge copies both sheets and rebases the first extra frame by subtracting the base cycle total independently on `x` and `y`. These transformations are private Engine behavior, so validate the selected baked sheet rather than editing the baked stream.
+Offsets are direction-specific. Image baking may mirror, crop, or compose frames. Client resource selection may extract the first or last frame, clone a sheet, or merge a base and extra Fallout animation. That merge path is private Engine behavior and has no focused per-axis regression in the current native suite; do not treat offset preservation across the splice as a public guarantee. Validate the selected baked sheet on both axes rather than editing the baked stream.
 
 ## Baked and runtime representation
 
@@ -20551,7 +20619,7 @@ The current native suite does not expose a focused `CritterHexView` root-motion 
 ===== BEGIN DOCUMENT android-debugging =====
 Source: Docs/en/how-to/platforms/android-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/android-debugging.html
-Content SHA-256: b270041c6a1d06f964954ed2682bea7869cb48fae0f190b4727837dfd04f9159
+Content SHA-256: 0bf03c58c6aaee97beb3359b3cf58e2e1cbc5c78f9a84ea484df4821f535c81f
 
 ---
 layout: default
@@ -20709,7 +20777,7 @@ The fixed package settings are registered in `Source/Common/Settings.inc` and ex
 | `Android.CompileSdk` | `35` | Gradle compile SDK; provision the matching SDK platform. |
 | `Android.ScreenOrientation` | `landscape` | Manifest activity orientation value. |
 | `Android.Icon` | `Engine/Resources/Radiation.png` | Existing PNG copied to every legacy mipmap density. |
-| `Android.Keystore` | empty | Release keystore path resolved on the packaging host. |
+| `Android.Keystore` | empty | Release keystore path read from baked target config and resolved relative to project config. |
 | `Android.KeystorePassword` | empty | Release store password. |
 | `Android.KeyAlias` | empty | Release key alias. |
 | `Android.KeyPassword` | empty | Release key password. |
@@ -20735,9 +20803,9 @@ The current manifest template has no generic config family for extra permissions
 
 ### Config precedence and secrets
 
-`package.py` starts from the baked effective config, then overlays every authored `Android.*` key from the root plus the selected sub-config. Packaging-host `$ENV{...}`, `$FILE{...}`, `$TARGET_ENV{...}`, and `$TARGET_FILE{...}` directives are resolved at package time. This keeps package-only signing inputs out of baked client config while preserving normal sub-config inheritance.
+`package.py` reads Android settings from the baked effective target config. It does not overlay authored `Android.*` keys or resolve `$TARGET_ENV{...}` / `$TARGET_FILE{...}` on the packaging host. A concrete signing password therefore enters baked config, while a retained target directive remains a literal string and cannot supply signing credentials.
 
-Use target-scoped directives for secrets:
+The following runtime-directive syntax is intentionally **not** a working package-secret handoff:
 
 ```ini
 Android.Keystore = $TARGET_ENV{MYGAME_ANDROID_KEYSTORE_PATH}
@@ -20746,7 +20814,7 @@ Android.KeyAlias = $TARGET_ENV{MYGAME_ANDROID_KEY_ALIAS}
 Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 ```
 
-Never put real values in documentation, fixtures, logs, generated trees, archives, or manifests. [Security and Secrets](../release/security-and-secrets.md) owns provisioning, redaction, rotation, CI trust, and incident handling.
+Never put real signing values in authored or baked config, documentation, fixtures, logs, generated trees, archives, or manifests. The current Engine has no host-only Android signing-secret input; leave the tuple empty for development output or sign in a protected project-owned stage. [Security and Secrets](../release/security-and-secrets.md) owns provisioning, redaction, rotation, CI trust, and incident handling.
 
 ## Runtime bootstrap and resource staging
 
@@ -20873,7 +20941,7 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 
 | Symptom | Inspect first |
 |---|---|
-| Host preparation fails | Java 17/system package group, disk permissions, network access, pinned SDK/NDK descriptors, and accepted licenses |
+| Host preparation fails | Java 17/system package group, disk permissions, network access, pinned SDK/NDK descriptors, and accepted licenses. Truncated Google CDN archives (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) are retried by `download_file` / `run_with_retry`; a persistent failure is a host/network problem, not a missing pin |
 | CMake cannot configure Android | `FO_ANDROID_NDK_ROOT`, toolchain file, ABI mapping, native API pin, Clang floor, and clean build directory |
 | Native build succeeds but package input is missing | `FO_OUTPUT`, target/config/build hash, expected `lib<ProjectDevName>_Client.so`, and matching resource bake |
 | Packaging rejects resources | selected sub-config, `Baking.ClientResources`, fresh `Metadata.zip`, and no `NoRes` token |
@@ -20951,7 +21019,7 @@ For an Android change, also run the narrowest affected native validation target 
 ===== BEGIN DOCUMENT web-debugging =====
 Source: Docs/en/how-to/platforms/web-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/web-debugging.html
-Content SHA-256: 6660847be720c83549266fbcbe7d5b9fa2a6af7dadd6072adafc4045571586f2
+Content SHA-256: 45a5732b66e4b5b7dacfa5979063f6c1a1748861dcc8241b05b400aa0071f0c7
 
 ---
 layout: default
@@ -21004,9 +21072,9 @@ An embedding project owns the `.fomain`, resource bake, selected config, server,
 | Renderer | WebGL exactly 2; Vulkan and SDL_GPU excluded | Compiled graphics contract | Browser/GPU/driver matrix and visible correctness |
 | Package | Web `Client` + `wasm`, resources required | Stock shell, patched wasm, and preloaded resources can be emitted | Public hosting and immutable release artifact |
 | Runtime | Engine canvas, clipboard, IDBFS load, WebSocket, and main-loop code | Reusable mechanisms exist | User-gesture, storage, reconnect, lifecycle, and game-flow acceptance |
-| Browser automation | required `web-showcase-runtime` route with pinned Chromium | One deterministic package, network, WebGL 2, lifecycle, and compositor-pixel fixture | Project browser/GPU/device/game-flow release gates |
+| Browser automation | local `Examples/ContentShowcase` Playwright harness | An opt-in deterministic package, network, WebGL 2, lifecycle, and compositor-pixel fixture | Required CI and project browser/GPU/device/game-flow release gates |
 
-The supported Engine application is the browser client. Do not infer support for Web server, Mapper, Baker, or other applications from source branches that happen to compile under Emscripten. The `smoke_gated` label qualifies the checked fixture under pinned Chromium; it is not production-browser certification for an embedding game.
+The supported Engine application is the browser client. Do not infer support for Web server, Mapper, Baker, or other applications from source branches that happen to compile under Emscripten. The `build_gated` label qualifies compilation of the browser client; the checked validation registry does not require a browser process smoke route.
 
 ## Prepare the host and workspace
 
@@ -21026,7 +21094,7 @@ bash Engine/BuildTools/prepare-workspace.sh web
 
 On Windows, use the checked PowerShell wrapper or direct host-workspace command for the `web` feature. Windows preparation installs the workspace SDK but does not provision every host prerequisite. macOS has no checked Web workspace preparer in the current host map and therefore is not an advertised Web build host.
 
-The selected toolchain is `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. An explicit `FO_EMSDK` value takes precedence over that inferred workspace location and is normalized before package/build helpers use it; use this override for an already activated reviewed SDK, not to bypass the checked version policy. Windows uses Ninja Multi-Config; Linux uses Unix Makefiles. Keep `Workspace/emsdk` and build/output directories disposable, but keep the pin reviewed in source.
+The selected toolchain is `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. BuildTools resolves `FO_EMSDK` from the selected workspace when that directory exists; select another disposable workspace through `FO_WORKSPACE` instead of pointing `FO_EMSDK` at an unrelated SDK. Windows uses Ninja Multi-Config; Linux uses Unix Makefiles. Keep the SDK and build/output directories disposable, but keep the pin reviewed in source.
 
 ## Build configurations and Web limits
 
@@ -21236,7 +21304,7 @@ Keep evidence per layer: workspace/configure/build log, package log and file inv
 
 ## Project evidence and extraction rules
 
-`Examples/ContentShowcase` is the Engine-owned reusable baseline. Its `web-showcase-runtime` route force-bakes on the native host, builds and verifies the raw/ZIP Web payload, starts the native server and generated HTTP server, requires successful `index.html`, JavaScript, WebAssembly, and resource responses, observes client/server readiness markers, creates a 1280 x 800 WebGL 2 drawing buffer in pinned Chromium, rejects console/page/network/Engine failures, and validates a compositor screenshot by content regions. The checked WebGL capture and machine record are local fixture evidence. They do not qualify production headers, public origin, authentication, persistence, audio activation, long-session behavior, or a game's supported browser/GPU matrix.
+`Examples/ContentShowcase` is the Engine-owned reusable baseline. Its local `python validate.py --web-runtime` route force-bakes on the native host, builds and verifies the raw/ZIP Web payload, starts the native server and generated HTTP server, requires successful `index.html`, JavaScript, WebAssembly, and resource responses, observes client/server readiness markers, creates a 1280 x 800 WebGL 2 drawing buffer in pinned Chromium, rejects console/page/network/Engine failures, and validates a compositor screenshot by content regions. The checked WebGL capture and machine record are local fixture evidence; the current Engine workflow does not require this route. They do not qualify production headers, public origin, authentication, persistence, audio activation, long-session behavior, or a game's supported browser/GPU matrix.
 
 The pinned Last Frontier snapshot demonstrates project-owned Web settings and secure deployment profiles, local VS Code build/package/server/Chrome tasks, reusable package declarations, and a required nightly/manual Linux-Web pipeline. Its project runner binds a random loopback port, forces `application/wasm`, adds COOP/COEP and no-cache headers, launches Playwright Chromium with software WebGL, captures console/page errors/crashes, and tests packaged WebSocket login, token login, and a deterministic rendering/combat workload. This is a strong project qualification pattern, not an Engine support promise.
 
@@ -21276,7 +21344,7 @@ python3 BuildTools/tests/test_docs_support_matrix.py
 python3 BuildTools/docs_validate.py
 ```
 
-Run `BuildTools/validate.sh web-showcase-runtime` on Linux or `BuildTools\validate.cmd web-showcase-runtime` on Windows for the isolated reusable package/browser fixture. For a behavior change, also prepare the pinned SDK, build the Web client in the affected configurations, freshly bake/package a public minimal project, inspect every output and HTTP header, and execute applicable rows of the browser/release acceptance matrix against the real project server and production-like origin. A host-only documentation test, successful Emscripten link, or localhost fixture cannot replace project browser evidence.
+Run `python validate.py --web-runtime` from `Examples/ContentShowcase` for the opt-in reusable package/browser fixture after installing its pinned `WebTests` dependencies. For a behavior change, also prepare the pinned SDK, build the Web client in the affected configurations, freshly bake/package a public minimal project, inspect every output and HTTP header, and execute applicable rows of the browser/release acceptance matrix against the real project server and production-like origin. A host-only documentation test, successful Emscripten link, or localhost fixture cannot replace project browser evidence.
 
 ## See also
 
@@ -22148,7 +22216,7 @@ owning model tests.
 ===== BEGIN DOCUMENT mapper-tools =====
 Source: Docs/en/how-to/tools/mapper.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper.html
-Content SHA-256: 89b9687950a134ae6983ac0f7993037fcfe76258ee2e953acd614c44e35eadd6
+Content SHA-256: 864b3d9b161bb9f46393f397223fdf2ee5cdb61ee83364a7c6e329f50d2db5bb
 
 ---
 layout: default
@@ -22165,7 +22233,7 @@ permalink: /Docs/en/how-to/tools/mapper.html
 The mapper is both an interactive editor and a scriptable map-processing host. Mapper-side AngelScript can create or load maps, author entities, control the editor view, capture a rendered frame, inspect atlas geometry, preview particles, and quit without connecting to a game server.
 
 Use [Mapper Interactive Manual](mapper-interactive.md) for menus, windows, manual
-editing, history, save discipline, and full-window visual captures. This page
+editing, history, save discipline, and visible UI evidence. This page
 owns the scriptable and native integration surface.
 
 ## Automation decision
@@ -22176,12 +22244,11 @@ scene. A reproducible headless batch starts in `Game.OnStart`, advances bounded
 warmup loops from `Game.OnLoop`, calls `Game.SaveMapperScreenshot`, and exits
 through `Game.RequestQuit`.
 
-Choose the capture primitive deliberately. `SaveMapperScreenshot` synchronously
+Choose the capture route deliberately. `SaveMapperScreenshot` synchronously
 writes the map render as TGA only; warm up a newly shown map before the call,
-and expect non-uniform dimensions after resize or crop.
-`Game.RequestMapperWindowScreenshot` is deferred, captures the complete
-interactive Mapper window, permits only one pending request, and requires at
-least one further loop before quit.
+and expect non-uniform dimensions after resize or crop. It does not include the
+application-level ImGui windows. Capture the visible application window with a
+platform screenshot tool when review evidence must include Mapper UI.
 The embedding project owns the batch plan, map selection, output naming,
 conversion, retries, and validation of generated assets.
 
@@ -22336,7 +22403,6 @@ placement, and gameplay validation.
 | `Game.AddMapperIgnoredItemPids(pids)` | Add item prototype ids to the current map's mapper ignore list and rebuild it. |
 | `Game.SetMapperScrollCheckEnabled(enabled)` | Enable or disable camera clamping to authored scroll bounds. |
 | `Game.SaveMapperScreenshot(path)` | Redraw and synchronously save the map render target as TGA; application-level ImGui windows are not included. |
-| `Game.RequestMapperWindowScreenshot(path)` | Queue one full Mapper frame, composite the current application ImGui draw data before `Present()`, and save it as TGA. |
 | `Game.DumpAtlases()` | Save diagnostic TGA copies of live texture atlases with allocation and sprite-mesh overlays. |
 
 `CalcMapperFitZoom` uses `ScrollAxialArea` when present and falls back to map bounds. A batch tool can apply an additional project-owned padding factor when tall sprites, shadows, or effects extend beyond the playable area.
@@ -22386,30 +22452,21 @@ Single-process batching is preferred when many maps share one resource set becau
 3. calls `DrawMapperFrame()` to refresh the intermediate main render target;
 4. reads RGBA pixels from that target;
 5. flips rows and swaps red/blue channels for TGA ordering;
-6. writes through the engine-shared `WriteSimpleTga` helper.
+6. writes through the engine-shared `ImageWriter::WriteSimpleTga` helper.
 
 It captures mapper script-interface drawing that is already in the map target,
 but not the later application-level ImGui menu and tool windows.
 
-`RequestMapperWindowScreenshot` is the deferred full-window path:
+This Engine script API has no full-window capture method. Use the synchronous
+method for deterministic batch map frames. For manuals, bug reports, or UI
+regression evidence, launch a visible reproducible profile and capture the
+application window with a platform screenshot tool. [Mapper Interactive
+Manual](mapper-interactive.md#screenshot-and-automation-contract) contains the
+minimal-example recipe.
 
-1. rejects an empty path and a second request while one is pending;
-2. waits until Mapper and the application have emitted the current ImGui draw
-   data;
-3. runs from `Application::OnBeforePresent`;
-4. replays that ImGui draw data onto the readable main render target;
-5. writes the target through the same canonical TGA conversion;
-6. clears the pending request even when capture fails.
-
-A script must allow at least one further loop after requesting the capture
-before quitting. Use the synchronous method for deterministic batch map
-frames and the deferred method for manuals, bug reports, or UI regression
-evidence. [Mapper Interactive Manual](mapper-interactive.md#screenshot-and-automation-contract)
-contains the executable minimal-example recipe.
-
-Both methods produce TGA only. The Engine-owned documentation screenshot
-pipeline may convert a recorded fixture to PNG and then pins the exact source,
-dimensions, image hash, environment, and recapture triggers in
+The script method produces TGA only. The Engine-owned documentation screenshot
+pipeline may record an external visible-window capture and pins the exact
+source, dimensions, image hash, environment, and recapture triggers in
 `BuildTools/DocumentationScreenshots.json`. Project screenshot conversion,
 cropping, size limits, alpha-bound analysis, and asset registration remain
 embedding-project responsibilities unless a reusable helper is deliberately
@@ -22446,8 +22503,8 @@ Use [Script Methods Map](../../reference/script-api/method-ownership.md) as the 
 2. Compile a minimal mapper script that loads, shows, captures, unloads, and quits.
 3. Run one visible interactive mapper smoke test to confirm editor behavior is unchanged.
 4. Run one `Render.HeadlessWindow=True` capture and verify dimensions plus non-uniform pixels.
-5. Run one visible full-window capture, verify that menu/tool windows are
-   present, and allow one frame between request and quit.
+5. Capture one visible application window with a platform screenshot tool and
+   verify that the intended menu/tool windows are present.
 6. Preview one baked effect for each enabled particle backend; for SPARK editor changes, save and reload one `.spark` source.
 7. When atlas diagnostics change, dump one warmed atlas and inspect mesh, quad, and empty-frame markers.
 8. Confirm `SaveMapToPath` rejects traversal and writes only below the map data-source root.
@@ -22827,7 +22884,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 1d914c192551c374065bbd7c23a5fbf6ead42368a7cd2279d8e7371c258bf895
+Content SHA-256: d4d5a2c7a9690de0eb50cf5fca7c3b9c17c2436a999d9bd175a49ce213bf139c
 
 ---
 layout: default
@@ -23053,7 +23110,7 @@ The generated [stage and hook reference](../cmake/stages.md) is authoritative fo
 
 - New project option: `BuildTools/cmake/ProjectInterface.json`; option application/validation: `Init.cmake` / `ProjectOptions.cmake`.
 - New vendored dependency: `ThirdParty.cmake`.
-- New project-local dependency or role link: [ProjectDependencies.md](../../../ProjectDependencies.md), `AddProjectLibraries`, and the consuming embedding-project target/package matrix.
+- New project-local dependency or role link: [ProjectDependencies.md](../../../ProjectDependencies.md), the pinned revision's consumed `FO_*_LIBS` list, and the embedding-project target/package matrix.
 - New engine source file: `EngineSources.cmake` and maybe `CoreLibs.cmake`.
 - New generated metadata/API behavior: `Codegen.cmake` and [GeneratedApiAndMetadata.md](../metadata/index.md).
 - New helper command or argument: the executable `create_parser()`, `BuildTools/HelperCliInterface.json`, [helper CLI reference](../helper-cli/index.md), and `BuildTools/docs_helper_cli.py`.
@@ -23092,7 +23149,7 @@ For BuildTools changes:
 ===== BEGIN DOCUMENT generated-cmake-index =====
 Source: Docs/en/reference/cmake/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake/
-Content SHA-256: 6beb1b29ae2077772d4490f9758c12eaf771faa8bdfff182b3ccc32605dca0ed
+Content SHA-256: b49fbf3acb9d7ee06b80fc2fb734f8c9eecdc944c05fe7c9f6edee18999150f9
 
 ---
 title: Generated CMake Project Interface
@@ -23124,7 +23181,7 @@ This reference describes the project-facing CMake surface consumed by an embeddi
 | --- | --- | --- |
 | [Project options](options.md) | 44 | Required inputs, defaults, and override precedence. |
 | [Stages and hooks](stages.md) | 10 | Strict project-generation order and extension boundaries. |
-| [Project helpers](helpers.md) | 7 | Selected commands intended for embedding projects. |
+| [Project helpers](helpers.md) | 6 | Selected commands intended for embedding projects. |
 
 ## Option override precedence
 
@@ -23466,7 +23523,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: 576e52570c2cd33258aea39b13a87118c4f1bd1687db94200e1acf3bc7268ecf
+Content SHA-256: fa5673640721963d342400349447fe5634d35c033e5766aac959d0bc8c32b3ea
 
 ---
 title: Generated Map Format Reference
@@ -23490,7 +23547,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>fe29b8823c11b9f7f41743e0ac7a11b98e9a3bd4ce89a3c9dd773a20b5a15560</code> |
+| Contract digest | <code>26e06460dea8d380d939cf84d5831408ea2eab41e3f353514b063ed28221b367</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
@@ -25202,7 +25259,7 @@ Embedding projects must generate or document their additional entity declaration
 ===== BEGIN DOCUMENT generated-public-examples-index =====
 Source: Docs/en/reference/public-examples/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-examples/
-Content SHA-256: b57c2cbe9b742fb9d6347de9d3da5cfdd1364f381aa2220c6908330a8e2b42f5
+Content SHA-256: 0a939c4cab0d9aa503b6b844df3a87521cda024272d3750b31d9ee0ba2109ea4
 
 ---
 title: Generated Public Example Repository Registry
@@ -25228,7 +25285,7 @@ This registry describes illustrative embedding-project repositories. Engine beha
 | Release Engine ref | `exact-commit` |
 | Development ref | `master` (weekly) |
 | Update delivery | `reviewed-pull-request` |
-| Contract digest | `393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516` |
+| Contract digest | `e8623467586bebf8c0e4c02370c42fe99aa722d23f7d6cf1f252a163e3eee16d` |
 
 ## Publication evidence
 
@@ -25239,7 +25296,7 @@ Read each repository's source status, remote visibility/state, observed required
 - Source/remote: `4` source-ready, `4` private, and `0` published repositories.
 - Observed required-check states: `not-observed`.
 - Observed Engine pins: `project-template`=`9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`, `minimal-multiplayer`=not observed, `content-showcase`=not observed, `native-extension-sample`=not observed.
-- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `393b44e06fd2cfca00c3a48268d9bc2aaa15c11d42ba6d4000aede1d5e086516`.
+- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `e8623467586bebf8c0e4c02370c42fe99aa722d23f7d6cf1f252a163e3eee16d`.
 - `project-template`: source `source-ready`; remote `private` / `source-staged`; Engine pin `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`; required checks `not-observed`.
 - `minimal-multiplayer`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
 - `content-showcase`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
@@ -25383,7 +25440,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: d245053e4d0d6b7d3473f36d876b5b0dc099f3115b06cb0e95e136b78cfc6f61
+Content SHA-256: ca0d21bbafb61b033ef9482404385e60516fbe4c88216524a75c80279d6f7e0b
 
 ---
 title: Generated API Reference
@@ -25404,32 +25461,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 133 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 978 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 276 | Fixed and runtime-variable engine settings. |
+| [Engine settings](settings.md) | 278 | Fixed and runtime-variable engine settings. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2493 |
-| Symbols with descriptions | 2493 |
+| Addressable symbols | 2495 |
+| Symbols with descriptions | 2495 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2493 |
+| Explicitly classified symbols | 2495 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2492 |
+| <code>experimental</code> | 2494 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2493 stable IDs with SHA-256 <code>041a7001f1a0f7b610aeb6c57ef1075924ceb869216214c26f879accdb80569e</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2495 stable IDs with SHA-256 <code>cb63d1b009a81b8a971431851d0a93b7b89f4f0cd40b1763c339cea7f506c05e</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 
@@ -26550,7 +26607,7 @@ Update the canonical English and Russian pages together, refresh the normalized 
 ===== BEGIN DOCUMENT legacy-tutorial-entry =====
 Source: Docs/en/tutorials/first-project.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/first-project.html
-Content SHA-256: 87261924456d21b4ffceb6863aff3e972e43aecebe55d8f707bbacaec0dd2893
+Content SHA-256: b136193f90ed0307bac291d22ffd2e28c37645d533293a2df113015126567758
 
 ---
 layout: default
@@ -26585,13 +26642,15 @@ From the engine repository root, run the command for the current host.
 Windows x64:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-starter-smoke
+cd Examples\MinimalProject
+python validate.py
 ```
 
 Linux x64:
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-starter-smoke
+cd Examples/MinimalProject
+python3 validate.py
 ```
 
 BuildTools recreates `Workspace/validation-project`, copies the canonical scaffold into it, links that copy back to the current engine checkout, configures the server and baker, builds them, bakes resources, and runs the `StarterSmoke` sub-config. The smoke runner has a 60-second timeout.
@@ -26612,9 +26671,8 @@ The command must exit with code zero. The native value proves that the server-sc
 
 Generated files stay under `Workspace/`:
 
-- `Workspace/validation-project/` is the disposable project copy;
-- `Workspace/validate-win64-starter-smoke/` is the Windows build/output tree;
-- `Workspace/validate-linux-starter-smoke/` is the Linux build/output tree.
+- `Examples/MinimalProject/Build/windows/` is the Windows build/output tree;
+- `Examples/MinimalProject/Build/linux/` is the Linux build/output tree.
 
 ## Read the complete project
 
@@ -26948,7 +27006,7 @@ is intentional.
 ===== BEGIN DOCUMENT minimal-multiplayer-readme =====
 Source: Examples/MinimalMultiplayer/README.md
 Canonical URL: https://fonline.ru/Examples/MinimalMultiplayer/README.html
-Content SHA-256: 0020f520f46c8ba91d8217287b2f3241eb00dd2b50059cb3e08b527fee97f406
+Content SHA-256: ad90b82633801cdc08ce4ac47dcd8ca34b2497da81a3d371b7aa12c004d6258d
 
 ---
 permalink: /Examples/MinimalMultiplayer/README.html
@@ -27073,7 +27131,6 @@ synchronized counter in the top panel increments.
 | `Content/StarterContent.fopro` | player, guide, supply, and location prototypes |
 | `Maps/TutorialMap.fomap` | the one-map world |
 | `Scripts/Tutorial.fos` | lifecycle, login, interaction, rendering, metadata, and content test |
-| `Scripts/MapperCapture.fos` | delayed full-window Mapper documentation capture |
 | `SourceExt/ServerExtension.cpp` | distance-based `CheckCritterVisibilityHook` used by the tutorial server |
 | `Particles/Documentation.spark` | minimal looping SPARK authoring fixture |
 | `assets/provenance.json` | machine-readable license and exact source hash for the Engine-owned particle texture |
@@ -27154,7 +27211,7 @@ requires its complete saved settings contract.
 ===== BEGIN DOCUMENT minimal-project-readme =====
 Source: Examples/MinimalProject/README.md
 Canonical URL: https://fonline.ru/Examples/MinimalProject/README.html
-Content SHA-256: 92165d78de7674d593ba7eacc0e16f9c71114d4e2975fa7a4f4bad45e77f01dc
+Content SHA-256: 799fea6770f5d2181da542f6fb7487ba088c594b8c22e9b636c4dbcce6e13631
 
 ---
 permalink: /Examples/MinimalProject/README.html
@@ -27164,10 +27221,11 @@ document_id: minimal-project-readme
 
 # FOnline Minimal Project
 
-This is the engine-owned executable starter and CI validation project. It is intentionally small enough to explain completely:
+This is the engine-owned executable starter and opt-in validation project. It is intentionally small enough to explain completely:
 
 - `CMakeLists.txt` composes FOnline through the public stage helpers and routes
-  one server-only `INTERFACE` dependency through `AddProjectLibraries`;
+  one server-only `INTERFACE` dependency through the current revision-pinned
+  `FO_SERVER_LIBS` integration list;
 - `CMakePresets.json` provides standalone Windows x64 and Linux GCC configure/smoke presets;
 - `FOnlineStarter.fomain` defines one smoke sub-config and the minimum reusable resource packs;
 - `Scripts/Starter.fos` subscribes to the server start event and declares one remote call in each direction;
@@ -27180,15 +27238,14 @@ The project has no maps, critters, items, dialogs, GUI, authentication, or produ
 
 ## Automated smoke
 
-From the engine root:
+From the example root with `Engine/` initialized:
 
 ```bash
-python BuildTools/buildtools.py validate linux-starter-smoke
-# Windows:
-python BuildTools/buildtools.py validate win64-starter-smoke
+cd Examples/MinimalProject
+python validate.py
 ```
 
-BuildTools recreates `Workspace/validation-project`, copies this directory into it, links its `Engine/` child back to the current engine checkout, configures/builds the headless server and baker, bakes resources, then runs `RunStarterSmoke`.
+The local validator configures/builds the headless server and baker, bakes resources, then runs `RunStarterSmoke`. The current required Engine workflow does not execute this route.
 
 Success requires the server log to reach every marker and exit with code zero:
 
@@ -27198,9 +27255,9 @@ starter_server_started
 starter_smoke_passed
 ```
 
-The native marker proves that a `SERVER` source was compiled into `ServerLib`, its `ExportMethod` declaration entered codegen, and baked AngelScript called the generated `Game.NativeStarterValue()` binding at runtime. The same translation unit requires `FO_STARTER_PROJECT_DEPENDENCY=1`, so compilation also proves that the server-role `INTERFACE` target propagated through `AddProjectLibraries`. The visibility hook proves optional hook discovery and fallback suppression during code generation. The self-contained runner also rejects a process that hangs for more than 60 seconds, exits without every marker, or produces inconsistent `Metadata.fometa-server` / `Metadata.fometa-client` contracts. The baked outputs must contain `script.remote-call.server.StarterPing` and `script.remote-call.client.StarterNotice`; this exercises the same `MetadataBaker` format consumed by the richer Engine-side `BuildTools/docs_metadata.py` catalog generator without making the standalone example depend on that documentation tool. The Windows x64 route was run successfully on 2026-07-31. Both Windows and Linux routes are registered in `.github/workflows/validate.yml`; the Linux route must not be described as verified until its CI job is green.
+The native marker proves that a `SERVER` source was compiled into `ServerLib`, its `ExportMethod` declaration entered codegen, and baked AngelScript called the generated `Game.NativeStarterValue()` binding at runtime. The same translation unit requires `FO_STARTER_PROJECT_DEPENDENCY=1`, so compilation also proves that the server-role `INTERFACE` target propagated through `FO_SERVER_LIBS`. The visibility hook proves optional hook discovery and fallback suppression during code generation. The self-contained runner also rejects a process that hangs for more than 60 seconds, exits without every marker, or produces inconsistent `Metadata.fometa-server` / `Metadata.fometa-client` contracts. The baked outputs must contain `script.remote-call.server.StarterPing` and `script.remote-call.client.StarterNotice`; this exercises the same `MetadataBaker` format consumed by the richer Engine-side `BuildTools/docs_metadata.py` catalog generator without making the standalone example depend on that documentation tool. The Windows x64 route was run successfully on 2026-07-31. These standalone build routes are opt-in local evidence; the current Engine validation workflow does not execute them.
 
-The `CMakeLists.txt` compatibility branch appends the same target to `FO_SERVER_LIBS` only when an older Engine revision does not yet expose `AddProjectLibraries`. The pinned release lane exercises the public helper; the current-Engine lane keeps the starter buildable while the helper is moving from the documentation candidate into `master`.
+`FO_SERVER_LIBS` is current revision-pinned integration state, not a helper declared by `BuildTools/cmake/ProjectInterface.json`. Re-audit it whenever the Engine pin changes.
 
 ## Deliberate limits
 
@@ -27245,7 +27302,7 @@ The tested first lesson is
 ===== BEGIN DOCUMENT native-extension-sample-readme =====
 Source: Examples/NativeExtensionSample/README.md
 Canonical URL: https://fonline.ru/Examples/NativeExtensionSample/README.html
-Content SHA-256: 393210f4b00ca5b2051f62439563d96ca3347d60ca3f315b6d2db5f80c945f91
+Content SHA-256: 2b20525120004086efe0011fdd84e8deba8279546849a9e4907a715309b335dc
 
 ---
 permalink: /Examples/NativeExtensionSample/README.html
@@ -27262,7 +27319,7 @@ The sample proves:
 - `SourceExt/ServerExtension.cpp` is registered in the narrow `SERVER` role;
 - `ServerInitHook` installs state owned by one `ServerEngine` instance and releases it through the engine allocator;
 - `Server_Game_NativeExtensionValue` becomes `Game.NativeExtensionValue()` in server AngelScript;
-- `NativeExtensionCore` is linked through `AddProjectLibraries`, with a compile-time check that rejects incorrect role routing;
+- `NativeExtensionCore` is linked through the current revision-pinned `FO_SERVER_LIBS` list, with a compile-time check for the propagated usage requirement;
 - `FONATIVE_NativeExtensionCoreTest` tests the engine-independent fixed-width value boundary;
 - `run_native_extension_smoke.py` proves the lifecycle hook, generated script binding, state read, and clean server shutdown.
 
@@ -27307,7 +27364,7 @@ The project compiles the extension and Engine from source in one build. It does 
 
 `NativeExtensionCore` exposes only fixed-width values to its focused test. Engine handles stay in the registered extension translation unit and use `ptr<T>` borrows. Per-server state lives in `ServerEngine.UserData`; there is no file-scope mutable state. A real project with several native subsystems should place one project-owned aggregate in that slot instead of letting independent extensions compete for it.
 
-The `CMakeLists.txt` compatibility branch appends `NativeExtensionCore` directly to `FO_SERVER_LIBS` only when an older Engine revision does not yet expose `AddProjectLibraries`. The pinned release lane therefore proves the documented helper, while the current-Engine lane remains useful during helper rollout.
+`FO_SERVER_LIBS` is current revision-pinned integration state, not a helper declared by `BuildTools/cmake/ProjectInterface.json`; re-audit it whenever the Engine pin changes.
 
 The sample contains no distributable assets, runtime libraries, credentials, or service integration. Add those only with explicit provenance, platform support, package acceptance, and security ownership.
 
@@ -27355,7 +27412,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: d422323e6854355c954b25abb0c2c2418f5d5e72ffa9ede1e6386214e0551825
+Content SHA-256: 03516dba46d095ef5b59fdcf84f9dfbd842c1561a943ce7ba11c7a8f6a74225c
 
 ---
 layout: default
@@ -27486,6 +27543,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_ImageWriter.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`

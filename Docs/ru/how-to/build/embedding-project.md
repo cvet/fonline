@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/embedding-project.html
 
 # Встраивание FOnline в игровой проект
 
-<!-- docs-translation: {"document_id":"embedding-project","locale":"ru","source_path":"Docs/en/how-to/build/embedding-project.md","source_sha256":"ce02151c8179929c91e596e69f3e4e02042a60e4fb0e3939bdc5b3fa9394a270"} -->
+<!-- docs-translation: {"document_id":"embedding-project","locale":"ru","source_path":"Docs/en/how-to/build/embedding-project.md","source_sha256":"4dd2a2ba33ecd8927bb9c511b2bbbff89d1ef107e23a21f5f4ee326a8878e1ac"} -->
 
 FOnline рассчитан на подключение как source submodule. Репозиторий движка
 поставляет переиспользуемую технологию, а репозиторий игры создает конкретный
@@ -129,7 +129,7 @@ format как стандартную возможность FOnline.
 
 Используйте `Examples/MinimalProject/CMakeLists.txt` как минимальный актуальный
 пример композиции. Он также доказывает server-only `INTERFACE` dependency через
-`AddProjectLibraries`; расширяйте его project-owned modules и targets, не
+привязанный к ревизии список `FO_SERVER_LIBS`; расширяйте его project-owned modules и targets, не
 копируя постороннее wiring из большой игры.
 
 ### Добавление проектной цели запекания
@@ -173,9 +173,11 @@ CI/пакетов должны оставаться в репозитории и
 ## Принцип проверки
 
 По возможности проверяйте изменения движка через реальный embedding project.
-Минимальный проект движка дает baseline-маршруты `win64-starter-smoke` и
-`linux-starter-smoke`; для client, content, packaging и gameplay contracts все
-еще нужны более крупные проекты. Reusable engine change может компилироваться
+Минимальный проект движка дает baseline-маршрут
+`Examples/MinimalProject/validate.py`, выбирающий preset по host; этот example
+validator необязателен и не входит в обязательный workflow Engine. Для client,
+content, packaging и gameplay contracts все еще нужны более крупные проекты.
+Reusable engine change может компилироваться
 изолированно, но ломать generated API, project packaging, scripts или content
 baking. Выбирайте самый узкий project target, который использует измененный
 слой.

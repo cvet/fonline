@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/persistence/
 
 # Сохранение данных
 
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"f9f0717abc97c87def8b53253b8b7731f6186f2980b20219939b43e9bfd7a924"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"0cc2d410296794ff1b79efe7db64f834c30841f95e0d6c22f01ca02d5076308c"} -->
 
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, журналы восстановления и реализации backend.
 
@@ -117,7 +117,7 @@ Backend может переопределять:
 - `_pendingChangesLog`
 - `_committedChangesLog`
 
-При включённом operation log настройка `DataBase.OpLogPath` должна быть непустой и заканчиваться точным суффиксом `.oplog`. `InitializeOpLogs()` отклоняет другой путь до открытия файлов. Настроенный путь принадлежит pending-журналу; путь progress-журнала подтверждённых записей получается заменой последнего суффикса на `-committed.oplog`. Сохраняйте этот контракт суффикса и не рассчитывайте на широкую замену подстроки в произвольном имени.
+При включённом operation log настройка `DataBase.OpLogPath` должна быть непустой. Настроенный путь принадлежит pending-журналу; путь progress-журнала подтверждённых записей получается заменой `.oplog` на `-committed.oplog`. `InitializeOpLogs()` не проверяет этот суффикс, поэтому сохраняйте обычное имя с `.oplog` и убеждайтесь, что производный путь отличается, вместо использования произвольного имени.
 
 Настройки recovery и panic:
 
@@ -191,6 +191,6 @@ Persistence хранит документы; состояние сущности
 3. При изменении ключей проверьте коллекции с integer и string key.
 4. Проверьте опустошение commit queue через `StartCommitChanges()` / `WaitCommitChanges()`.
 5. При изменении durability или recovery проверьте восстановление operation log после имитации неудачного commit.
-6. Проверьте, что при включённом operation log `DataBase.OpLogPath` непуст и заканчивается `.oplog`, а производный `-committed.oplog` не совпадает с pending-журналом.
+6. Проверьте, что при включённом operation log `DataBase.OpLogPath` непуст и замена `.oplog` на `-committed.oplog` даёт отдельный путь committed-журнала.
 7. При изменении семантики постоянного свойства проверьте загрузку и сохранение сущности.
 8. Никогда не помещайте производственные учётные данные или действующие строки подключения в документацию или тесты репозитория.

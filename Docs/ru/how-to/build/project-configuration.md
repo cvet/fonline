@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 
 # Конфигурация игрового проекта
 
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"ec43d0c6697e09ac74cd5b7c0db10f513d422f7396fcfc070af08c49cd42b655"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"71a8c645980f4ceebf8256c8b9f3535173273e6e4495db94b1845e28b3fbf839"} -->
 
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
@@ -105,8 +105,9 @@ booleans используют logical OR, а enums: bitwise OR. Использу
 `$ENV{NAME}` и `$FILE{path}` разрешаются при чтении authored config, в том числе
 во время baking, поэтому конкретные значения могут попасть в generated internal
 configs. `$TARGET_ENV{NAME}` и `$TARGET_FILE{path}` остаются directives во время
-baking и разрешаются на target application или packaging host. Не храните
-credentials в tracked config, используйте target forms для sensitive values и
+baking и разрешаются только тогда, когда их читает target application; текущий
+packager не предоставляет общий resolver target directives. Не храните
+credentials в tracked config, используйте target forms для runtime secrets и
 следуйте [Security and Secrets](../release/security-and-secrets.md) для command-line,
 logging, signing, CI, rotation и artifact boundaries.
 
@@ -214,8 +215,8 @@ parents применяются слева направо: поздние parents
 Два примера движка служат исполняемыми configuration fixtures:
 
 ```bash
-python BuildTools/buildtools.py validate linux-starter-smoke
-python BuildTools/buildtools.py validate linux-tutorial-smoke
+(cd Examples/MinimalProject && python3 validate.py)
+(cd Examples/MinimalMultiplayer && python3 validate.py)
 ```
 
 В Windows используйте варианты с `win64-`.

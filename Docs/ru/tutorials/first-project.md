@@ -6,7 +6,7 @@ document_id: legacy-tutorial-entry
 permalink: /Docs/ru/tutorials/first-project.html
 ---
 
-<!-- docs-translation: {"document_id":"legacy-tutorial-entry","locale":"ru","source_path":"Docs/en/tutorials/first-project.md","source_sha256":"87261924456d21b4ffceb6863aff3e972e43aecebe55d8f707bbacaec0dd2893"} -->
+<!-- docs-translation: {"document_id":"legacy-tutorial-entry","locale":"ru","source_path":"Docs/en/tutorials/first-project.md","source_sha256":"b136193f90ed0307bac291d22ffd2e28c37645d533293a2df113015126567758"} -->
 
 # Первый headless-проект FOnline
 
@@ -40,13 +40,15 @@ validation wrapper требуются:
 Windows x64:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-starter-smoke
+cd Examples\MinimalProject
+python validate.py
 ```
 
 Linux x64:
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-starter-smoke
+cd Examples/MinimalProject
+python3 validate.py
 ```
 
 BuildTools заново создаёт `Workspace/validation-project`, копирует туда
@@ -75,9 +77,8 @@ starter_smoke_passed
 
 Сгенерированные файлы остаются в `Workspace/`:
 
-- `Workspace/validation-project/` — одноразовая копия проекта;
-- `Workspace/validate-win64-starter-smoke/` — дерево сборки и результатов Windows;
-- `Workspace/validate-linux-starter-smoke/` — дерево сборки и результатов Linux.
+- `Examples/MinimalProject/Build/windows/` — дерево сборки и результатов Windows;
+- `Examples/MinimalProject/Build/linux/` — дерево сборки и результатов Linux.
 
 ## Изучите проект целиком
 

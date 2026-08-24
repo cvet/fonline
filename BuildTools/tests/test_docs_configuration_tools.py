@@ -91,8 +91,12 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
 
         load_settings = startup[startup.index("auto LoadAppSettings") :]
         self.assertLess(
-            load_settings.index("settings.ApplyDefaultSettings();"),
+            load_settings.index("auto settings = GlobalSettings(false);"),
             load_settings.index("if (!IsPackaged())"),
+        )
+        self.assertLess(
+            load_settings.index("settings.ApplyCommandLine(args);"),
+            load_settings.index("settings.ApplyAutoSettings();"),
         )
         self.assertIn("defaults before reading project input", english)
         self.assertIn("defaults движка применяются до чтения входов проекта", russian)
@@ -123,11 +127,10 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
             self.assertIn(f"`Source/Tools/{baker}.*`", english)
             self.assertIn(f"`Source/Tools/{baker}.*`", russian)
 
-        mapper_header = self._text("Source/Tools/Mapper.h")
-        for marker in ("SaveMapperScreenshot", "RequestMapperWindowScreenshot"):
-            self.assertIn(marker, mapper_header)
-            self.assertIn(f"`{marker}()`", english)
-            self.assertIn(f"`{marker}()`", russian)
+        mapper_bindings = self._text("Source/Scripting/MapperGlobalScriptMethods.cpp")
+        self.assertIn("Mapper_Game_SaveMapperScreenshot", mapper_bindings)
+        self.assertIn("`SaveMapperScreenshot()`", english)
+        self.assertIn("`SaveMapperScreenshot()`", russian)
 
     def test_legacy_pointers_preserve_heading_routes(self) -> None:
         for canonical_path, legacy_path in (

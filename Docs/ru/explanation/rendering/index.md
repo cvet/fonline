@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"3e745199398353924e26b0b5c0bfa7832cddb86c55ef8d5581664b5be69c4393"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"e69d9d067e53ec7791e635eda074072318026c0f0d170505346c4400e5c6726a"} -->
 
 # Frontend и рендеринг
 
@@ -377,7 +377,20 @@ Interval anchor знаковый: tight frame может целиком нахо
 от model root, оставляя pivot за пределами frame; bounded retry loop всё равно
 отклоняет действительно unbounded layout.
 
-`ModelInstance::SetupFrame` отклоняет logical `draw_size * FRAME_SCALE` выше `AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT`, называя model и оба размера до анонимного device texture-allocation failure. Meshes, отключённые собственным default link модели в `.fo3d`, не входят ни в drawn, ни в pose bounds; runtime учитывает default `DisableMesh` так же, как layer/attachment, удерживая geometry внутри baked layout budget.
+Layout helpers без live GPU используют
+`AppRender::MIN_ATLAS_SIZE / FRAME_SCALE`
+(`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`) как portable logical limit; atlas
+limit bake host не является контрактом игрового устройства. Scratch texture
+model sprite ограничивается `Render.ModelSpriteMaxTextureWidth` / `Height` и
+atlas текущей машины. Envelope сверх limit рисуется с crop, а bounded retry loop
+по-прежнему отклоняет layout, который не сходится внутри limit.
+`ModelInstance::SetupFrame` также отклоняет logical
+`draw_size * FRAME_SCALE` выше `AppRender::MAX_ATLAS_WIDTH` /
+`MAX_ATLAS_HEIGHT` текущей машины, называя model и оба размера до анонимного
+device texture-allocation failure. Meshes, отключённые собственным default link
+модели в `.fo3d`, не входят ни в drawn, ни в pose bounds; runtime учитывает
+default `DisableMesh` так же, как layer/attachment, удерживая geometry внутри
+baked layout budget.
 
 В atlas
 выделяется и копируется только selected region, а crop origin отражается в
@@ -952,7 +965,14 @@ camera tilt пропускается, а `DrawToAtlas` остаётся для p
 proj; distortion получает snapshot on demand. Старый shadow pass выключен,
 поскольку его math atlas-space.
 
-Cached model-sprite frames ограничены `2048x2048` logical pixels (`4096x4096` для supersampled intermediate target). Dynamic model-bone particle bounds выше этого budget считаются недоступными: существующий model frame остаётся валидным, а runaway outlying geometry обрезается. Это не позволяет malformed или long-lived particle motion запросить unbounded CPU/GPU allocation в headless и rendered paths.
+Cached model-sprite frames используют вычисленный logical limit: minimum из
+`Render.ModelSpriteMaxTextureWidth` / `Height` и
+`AppRender::MAX_ATLAS_WIDTH` / `HEIGHT` текущей машины, делённый на
+`FRAME_SCALE`, потому что model рендерится в physical scratch texture с
+масштабом 2x. Dynamic model-bone particle bounds выше этого budget считаются
+недоступными: существующий model frame остаётся валидным, а runaway outlying
+geometry обрезается. Это не позволяет malformed или long-lived particle motion
+запросить unbounded CPU/GPU allocation в headless и rendered paths.
 
 **World scale.** `Render.ModelProjFactor` задаёт screen pixels per 3D world unit
 одновременно для models и in-scene particles. Engine default `40.0`; проект

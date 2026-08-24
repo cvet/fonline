@@ -21,16 +21,15 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
         server = self._read("Source/Server/Server.cpp")
         guide = " ".join(self._read(OPERATIONS_GUIDE).split())
 
-        self.assertIn('wstring path = ::GetCommandLineW();', service)
-        self.assertIn('path.append(L" --server-service-start")', service)
-        self.assertNotIn('append(L" --server-service")', service)
+        self.assertIn('wstring path = wstring(L"\\\"").append(buf)', service)
+        self.assertIn('append(L" --server-service")', service)
         self.assertIn('LogToFile(GetExeLogFileName()', application)
         self.assertIn('if (!settings.UserWritablePath.empty())', application)
         self.assertIn('fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName())', application)
         self.assertIn('fs_make_path(_healthFileName)', server)
 
         for marker in (
-            "exact current command line with `--server-service-start`",
+            "quoted executable path, the current command line, and `--server-service`",
             "`--server-service-delete` removes the registration",
             "moves below the resolved `Client.UserWritablePath`",
             "health file uses an executable-derived name and remains in the working directory",
@@ -73,6 +72,7 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
         self.assertIn('WriteLog("Unknown setting {} = {}", key, value)', baker)
         self.assertIn("ANDROID_RELEASE_STORE_PASSWORD_ENV", packager)
         self.assertIn("ANDROID_RELEASE_KEY_PASSWORD_ENV", packager)
+        self.assertNotIn("resolve_build_host_config_value", packager)
 
         self.assertIn("target-time directives are the default for runtime secrets", guide)
         self.assertIn("Repository-secret masking is not a content scanner", guide)

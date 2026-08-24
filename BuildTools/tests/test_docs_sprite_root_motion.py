@@ -68,18 +68,15 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
         self.assertIn("NextX_0=5", tests)
         self.assertIn("next_y_0=6", tests)
 
-    def test_client_claims_match_sprite_loading_movement_and_merge_source(self) -> None:
+    def test_client_claims_match_sprite_loading_and_movement_source(self) -> None:
         sprites = self._read("Source/Client/DefaultSprites.cpp")
         movement = self._read("Source/Common/Movement.cpp")
-        resources = self._read("Source/Client/ResourceManager.cpp")
         critter = self._read("Source/Client/CritterHexView.cpp")
 
         self.assertIn("dir_anim->_sprOffset[j] = frame.NextOffset;", sprites)
         self.assertIn("dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];", sprites)
         self.assertIn("Do not clamp HexOffset: prediction can leave current_hex a full step behind", movement)
         self.assertIn("progress.HexOffset = ipos16", movement)
-        self.assertIn("anim_merge->_sprOffset[anim_->GetFramesCount()].x -= ox;", resources)
-        self.assertIn("anim_merge->_sprOffset[anim_->GetFramesCount()].y -= oy;", resources)
         self.assertIn("bool root_motion_drive = !_curAnim.has_value() && IsMoving()", critter)
         self.assertIn("EvaluateMovementFrameIndex(cur_anim.Frames)", critter)
         self.assertIn("_map->MoveCritter(this, progress.Hex, false);", critter)

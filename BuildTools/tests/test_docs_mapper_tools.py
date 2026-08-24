@@ -151,7 +151,6 @@ class MapperToolsDocumentationTests(unittest.TestCase):
             "AddMapperIgnoredItemPids",
             "SetMapperScrollCheckEnabled",
             "SaveMapperScreenshot",
-            "RequestMapperWindowScreenshot",
         )
         for method in methods:
             self.assertIn(f"Mapper_Game_{method}", bindings, method)
@@ -164,35 +163,29 @@ class MapperToolsDocumentationTests(unittest.TestCase):
         self.assertIn("Game.DumpAtlases()", guide)
 
     def test_screenshot_lifecycle_and_tga_contract_match_source(self) -> None:
-        source = self._read("Source/Tools/Mapper.cpp")
-        header = self._read("Source/Tools/Mapper.h")
+        source = self._read("Source/Scripting/MapperGlobalScriptMethods.cpp")
         manual = self._read(EN_MANUAL)
         guide = self._read(EN_TOOLS)
 
         for marker in (
-            "SaveMapperTextureToTga",
-            "WriteSimpleTga(file_path, size, std::move(pixels))",
-            "DrawMapperFrame();",
-            "A mapper window screenshot is already pending",
-            "CompletePendingMapperWindowScreenshot",
-            "GetApp()->RenderImGuiToTexture(texture)",
-            "std::exchange(_pendingWindowScreenshotPath, {})",
-            "GetApp()->OnBeforePresent",
+            "Mapper_Game_SaveMapperScreenshot",
+            "mapper->DrawMapperFrame();",
+            "main_rt->GetTexture()",
+            "texture->GetTextureRegion",
+            "ImageWriter::WriteSimpleTga(filePath, size, std::move(pixels))",
         ):
             self.assertIn(marker, source)
-        self.assertIn("string _pendingWindowScreenshotPath", header)
 
         normalized_manual = " ".join(manual.split())
         for marker in (
             "Synchronous TGA write",
-            "Deferred to the end of the current frame",
-            "only one request may be pending",
-            "allow at least one more Mapper loop",
+            "platform screenshot tool",
+            "application-level ImGui composition",
         ):
             self.assertIn(marker, normalized_manual)
         for marker in (
-            "Both methods produce TGA only",
-            "allow at least one further loop",
+            "map-only path",
+            "platform screenshot tool",
             "non-uniform test map and pixel inspection",
             "Render.HeadlessWindow=True",
         ):
@@ -252,9 +245,6 @@ class MapperToolsDocumentationTests(unittest.TestCase):
         config = self._read(
             "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain"
         )
-        capture = self._read(
-            "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
-        )
         screenshots = json.loads(
             self._read("BuildTools/DocumentationScreenshots.json")
         )
@@ -271,16 +261,11 @@ class MapperToolsDocumentationTests(unittest.TestCase):
             "Mapper.ParticlePreviewSeed",
         ):
             self.assertIn(marker, config)
-        for marker in (
-            "RequestMapperWindowScreenshot",
-            "MapperDocumentationCapture.tga",
-            "Game.RequestQuit()",
-        ):
-            self.assertIn(marker, capture)
 
         self.assertEqual(entry["owning_document"], EN_MANUAL)
         self.assertEqual(entry["width"], 1280)
         self.assertEqual(entry["height"], 800)
+        self.assertIn("platform screenshot tool", " ".join(entry["capture"]["interaction_steps"]))
         self.assertTrue((ENGINE_ROOT / entry["path"]).is_file())
         for path in entry["source_paths"]:
             self.assertTrue((ENGINE_ROOT / path).exists(), path)

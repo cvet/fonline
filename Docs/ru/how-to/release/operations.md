@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/operations.html
 
 # Эксплуатация релиза
 
-<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"99d8502fc5c3118782ad93976639a0aa47187434756a09093a44eabe36407cea"} -->
+<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"181fa2dd286535bba9400214f037cf5163cfe4faa9f56f53fb358cf466e206c4"} -->
 
 Это руководство описывает переиспользуемый жизненный цикл сервера FOnline: готовность, развёртывание, остановку и откат. [Упаковка и выпуск](packaging.md) владеет артефактами; [Persistence](../../explanation/persistence/) — механикой базы данных; [резервное копирование и восстановление](backup-and-recovery.md) — нейтральной к провайдеру процедурой восстановления. Игра владеет инфраструктурой, политикой данных, целевыми показателями и инцидентами.
 
@@ -46,11 +46,11 @@ Engine создаёт бинарные файлы, но не создаёт се
 | `<Game>_Server` | Оконный сервер с application frontend | Локальная разработка и диагностика под наблюдением |
 | `<Game>_ServerHeadless` | Foreground-процесс без рендеринга; ожидает запроса выхода или ошибки запуска | Предпочтительный процесс под внешним supervisor или в контейнере |
 | `<Game>_ServerService` | Только Windows SCM; сообщает `RUNNING` после `ServerEngine::IsStarted()`, корректно останавливается при ошибке запуска и обрабатывает `SERVICE_CONTROL_STOP` | Нативный Windows service route, который должен квалифицировать проект |
-| `<Game>_ServerDaemon` | На не-Windows требует успешного `fork()`, закрывает стандартные потоки, вызывает `setsid()` и работает в дочернем процессе | Устаревший detached launch, где проект владеет PID и наблюдением за дочерним процессом |
+| `<Game>_ServerDaemon` | На не-Windows вызывает `fork()`, закрывает standard streams и вызывает `setsid()` в child; текущее приложение игнорирует возвращённый failure flag и при ошибке `fork()` может продолжить работу в исходном процессе | Устаревший detached launch, требующий project qualification, владения PID и наблюдения за child |
 
 Предпочитайте foreground headless-бинарник под supervisor. Родитель daemon завершается до окончания запуска дочернего процесса, поэтому успешный exit команды запуска не доказывает готовность. Daemon не записывает PID-файл и не реализует протокол менеджера процессов.
 
-Windows helper регистрирует фиксированное имя SCM `FOnlineServer` с demand-start. Запуск service executable без service-control флага регистрирует или обновляет точную текущую командную строку с `--server-service-start`; `--server-service-delete` удаляет регистрацию. Helper не задаёт рабочий каталог, учётную запись, зависимости, recovery actions или продуктовое имя. Квалифицируйте зарегистрированный image path и поведение запуска/остановки на Windows либо оберните helper для более строгой политики и нескольких игр на одном хосте.
+Windows helper регистрирует фиксированное имя SCM `FOnlineServer` с demand-start. Запуск service executable без распознанного control-флага регистрирует или обновляет команду из quoted executable path, текущей command line и `--server-service`; `--server-service-delete` удаляет регистрацию, а `--server-service-start` входит в SCM dispatcher. Зарегистрированная команда сама не использует этот start-флаг, поэтому текущий helper требует отдельной проверки на Windows: одна регистрация не доказывает запуск службы. Helper не задаёт рабочий каталог, учётную запись, зависимости, recovery actions или продуктовое имя.
 
 ## Определите готовность и здоровье
 

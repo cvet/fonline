@@ -222,7 +222,7 @@ The generated [stage and hook reference](../cmake/stages.md) is authoritative fo
 
 - New project option: `BuildTools/cmake/ProjectInterface.json`; option application/validation: `Init.cmake` / `ProjectOptions.cmake`.
 - New vendored dependency: `ThirdParty.cmake`.
-- New project-local dependency or role link: [ProjectDependencies.md](../../../ProjectDependencies.md), `AddProjectLibraries`, and the consuming embedding-project target/package matrix.
+- New project-local dependency or role link: [ProjectDependencies.md](../../../ProjectDependencies.md), the pinned revision's consumed `FO_*_LIBS` list, and the embedding-project target/package matrix.
 - New engine source file: `EngineSources.cmake` and maybe `CoreLibs.cmake`.
 - New generated metadata/API behavior: `Codegen.cmake` and [GeneratedApiAndMetadata.md](../metadata/index.md).
 - New helper command or argument: the executable `create_parser()`, `BuildTools/HelperCliInterface.json`, [helper CLI reference](../helper-cli/index.md), and `BuildTools/docs_helper_cli.py`.

@@ -43,11 +43,11 @@ explicitly; launch environments need not choose the same locations.
 | `<Game>_Server` | Windowed server with the application frontend | Local development and attended diagnosis |
 | `<Game>_ServerHeadless` | Foreground, no rendering; waits until quit or startup failure | Preferred process under an external supervisor or container |
 | `<Game>_ServerService` | Windows-only SCM integration; reports `RUNNING` after `ServerEngine::IsStarted()`, stops cleanly on startup failure, and handles `SERVICE_CONTROL_STOP` | A project-qualified native Windows service route |
-| `<Game>_ServerDaemon` | Non-Windows process requires `fork()` to succeed, closes standard streams, calls `setsid()`, and runs in the child | Legacy detached launch where the project owns PID and child monitoring |
+| `<Game>_ServerDaemon` | Non-Windows process calls `fork()`, closes standard streams and calls `setsid()` in the child; the current app ignores the returned failure flag and can continue in the original process when `fork()` fails | Legacy detached launch requiring project qualification, PID ownership, and child monitoring |
 
 Prefer the foreground headless binary under a supervisor. The daemon's parent exits before the child completes startup, so successful launch exit is not readiness evidence; it writes no PID file and implements no manager protocol.
 
-The Windows helper registers fixed SCM name `FOnlineServer` as demand-start. Running the service executable without a service-control flag registers or updates the exact current command line with `--server-service-start`; `--server-service-delete` removes the registration. It configures no working directory, account, dependencies, recovery actions, or product-specific name. Qualify the registered image path and start/stop behavior on Windows, or wrap it for stronger policy and side-by-side games.
+The Windows helper registers fixed SCM name `FOnlineServer` as demand-start. Running the service executable without a recognized control flag registers or updates a command composed from the quoted executable path, the current command line, and `--server-service`; `--server-service-delete` removes the registration, while `--server-service-start` enters the SCM dispatcher. The registered command does not itself use that start flag, so treat the current helper as requiring Windows qualification rather than assuming registration proves service startup. It configures no working directory, account, dependencies, recovery actions, or product-specific name.
 
 ## Define readiness and health
 

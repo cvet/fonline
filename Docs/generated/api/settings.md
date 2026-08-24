@@ -347,6 +347,12 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-render-modelprojfactor-d5679aeaad"></a>
 - [`symbol-setting-client-render-modelprojfactor-d5679aeaad`](../../en/reference/script-api/settings.md#symbol-setting-client-render-modelprojfactor-d5679aeaad)
 
+<a id="symbol-setting-client-render-modelspritemaxtextureheight-c404bcbd24"></a>
+- [`symbol-setting-client-render-modelspritemaxtextureheight-c404bcbd24`](../../en/reference/script-api/settings.md#symbol-setting-client-render-modelspritemaxtextureheight-c404bcbd24)
+
+<a id="symbol-setting-client-render-modelspritemaxtexturewidth-1478bdaac4"></a>
+- [`symbol-setting-client-render-modelspritemaxtexturewidth-1478bdaac4`](../../en/reference/script-api/settings.md#symbol-setting-client-render-modelspritemaxtexturewidth-1478bdaac4)
+
 <a id="symbol-setting-client-render-nullrenderer-6e8501ff33"></a>
 - [`symbol-setting-client-render-nullrenderer-6e8501ff33`](../../en/reference/script-api/settings.md#symbol-setting-client-render-nullrenderer-6e8501ff33)
 

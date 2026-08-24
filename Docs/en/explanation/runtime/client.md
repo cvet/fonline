@@ -336,10 +336,20 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   layer never reopens or reparses that companion, and no authored `.fo3d`
   `DrawSize` or `ViewSize` remains.
   Enabled body/movement animation envelopes are projected through the active
-  model transform across every facing direction to derive a power-of-two
+  model transform across every facing direction to derive a grid-aligned
   logical scratch frame large enough for the body and projected shadow. The
   separate view envelope (`Unarmed + Idle`, any Idle, then deterministic
-  fallback) seeds the body `ViewRect`. Runtime layer and child-model bounds
+  fallback) seeds the body `ViewRect`; aggregate `ModelBounds` sizes the
+  horizontal-lighting frame. Layout math without a live GPU uses
+  `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` as the portable logical ceiling
+  (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`), rather than treating the bake
+  host's atlas limit as the game device. At runtime the scratch texture is
+  capped by `Render.ModelSpriteMaxTextureWidth` / `Height` and the current
+  machine's atlas; the logical frame is that texture divided by `FRAME_SCALE`.
+  A pose or lighting envelope that exceeds the cap is cropped, including when
+  authored scale and GUI preview `SetScale` combine to enlarge an otherwise
+  valid model. Invalid or non-finite bounds still assert and report the six
+  coordinates plus the model file. Runtime layer and child-model bounds
   extend both the view/name rectangle and the aggregate horizontal-lighting
   frame; the envelope resets when mesh composition changes and otherwise only
   grows. Names, coarse picking, transparent eggs, flying text, and attachments

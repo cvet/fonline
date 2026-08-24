@@ -49,9 +49,9 @@ An embedding project owns the `.fomain`, resource bake, selected config, server,
 | Renderer | WebGL exactly 2; Vulkan and SDL_GPU excluded | Compiled graphics contract | Browser/GPU/driver matrix and visible correctness |
 | Package | Web `Client` + `wasm`, resources required | Stock shell, patched wasm, and preloaded resources can be emitted | Public hosting and immutable release artifact |
 | Runtime | Engine canvas, clipboard, IDBFS load, WebSocket, and main-loop code | Reusable mechanisms exist | User-gesture, storage, reconnect, lifecycle, and game-flow acceptance |
-| Browser automation | required `web-showcase-runtime` route with pinned Chromium | One deterministic package, network, WebGL 2, lifecycle, and compositor-pixel fixture | Project browser/GPU/device/game-flow release gates |
+| Browser automation | local `Examples/ContentShowcase` Playwright harness | An opt-in deterministic package, network, WebGL 2, lifecycle, and compositor-pixel fixture | Required CI and project browser/GPU/device/game-flow release gates |
 
-The supported Engine application is the browser client. Do not infer support for Web server, Mapper, Baker, or other applications from source branches that happen to compile under Emscripten. The `smoke_gated` label qualifies the checked fixture under pinned Chromium; it is not production-browser certification for an embedding game.
+The supported Engine application is the browser client. Do not infer support for Web server, Mapper, Baker, or other applications from source branches that happen to compile under Emscripten. The `build_gated` label qualifies compilation of the browser client; the checked validation registry does not require a browser process smoke route.
 
 ## Prepare the host and workspace
 
@@ -71,7 +71,7 @@ bash Engine/BuildTools/prepare-workspace.sh web
 
 On Windows, use the checked PowerShell wrapper or direct host-workspace command for the `web` feature. Windows preparation installs the workspace SDK but does not provision every host prerequisite. macOS has no checked Web workspace preparer in the current host map and therefore is not an advertised Web build host.
 
-The selected toolchain is `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. An explicit `FO_EMSDK` value takes precedence over that inferred workspace location and is normalized before package/build helpers use it; use this override for an already activated reviewed SDK, not to bypass the checked version policy. Windows uses Ninja Multi-Config; Linux uses Unix Makefiles. Keep `Workspace/emsdk` and build/output directories disposable, but keep the pin reviewed in source.
+The selected toolchain is `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. BuildTools resolves `FO_EMSDK` from the selected workspace when that directory exists; select another disposable workspace through `FO_WORKSPACE` instead of pointing `FO_EMSDK` at an unrelated SDK. Windows uses Ninja Multi-Config; Linux uses Unix Makefiles. Keep the SDK and build/output directories disposable, but keep the pin reviewed in source.
 
 ## Build configurations and Web limits
 
@@ -281,7 +281,7 @@ Keep evidence per layer: workspace/configure/build log, package log and file inv
 
 ## Project evidence and extraction rules
 
-`Examples/ContentShowcase` is the Engine-owned reusable baseline. Its `web-showcase-runtime` route force-bakes on the native host, builds and verifies the raw/ZIP Web payload, starts the native server and generated HTTP server, requires successful `index.html`, JavaScript, WebAssembly, and resource responses, observes client/server readiness markers, creates a 1280 x 800 WebGL 2 drawing buffer in pinned Chromium, rejects console/page/network/Engine failures, and validates a compositor screenshot by content regions. The checked WebGL capture and machine record are local fixture evidence. They do not qualify production headers, public origin, authentication, persistence, audio activation, long-session behavior, or a game's supported browser/GPU matrix.
+`Examples/ContentShowcase` is the Engine-owned reusable baseline. Its local `python validate.py --web-runtime` route force-bakes on the native host, builds and verifies the raw/ZIP Web payload, starts the native server and generated HTTP server, requires successful `index.html`, JavaScript, WebAssembly, and resource responses, observes client/server readiness markers, creates a 1280 x 800 WebGL 2 drawing buffer in pinned Chromium, rejects console/page/network/Engine failures, and validates a compositor screenshot by content regions. The checked WebGL capture and machine record are local fixture evidence; the current Engine workflow does not require this route. They do not qualify production headers, public origin, authentication, persistence, audio activation, long-session behavior, or a game's supported browser/GPU matrix.
 
 The pinned Last Frontier snapshot demonstrates project-owned Web settings and secure deployment profiles, local VS Code build/package/server/Chrome tasks, reusable package declarations, and a required nightly/manual Linux-Web pipeline. Its project runner binds a random loopback port, forces `application/wasm`, adds COOP/COEP and no-cache headers, launches Playwright Chromium with software WebGL, captures console/page errors/crashes, and tests packaged WebSocket login, token login, and a deterministic rendering/combat workload. This is a strong project qualification pattern, not an Engine support promise.
 
@@ -321,7 +321,7 @@ python3 BuildTools/tests/test_docs_support_matrix.py
 python3 BuildTools/docs_validate.py
 ```
 
-Run `BuildTools/validate.sh web-showcase-runtime` on Linux or `BuildTools\validate.cmd web-showcase-runtime` on Windows for the isolated reusable package/browser fixture. For a behavior change, also prepare the pinned SDK, build the Web client in the affected configurations, freshly bake/package a public minimal project, inspect every output and HTTP header, and execute applicable rows of the browser/release acceptance matrix against the real project server and production-like origin. A host-only documentation test, successful Emscripten link, or localhost fixture cannot replace project browser evidence.
+Run `python validate.py --web-runtime` from `Examples/ContentShowcase` for the opt-in reusable package/browser fixture after installing its pinned `WebTests` dependencies. For a behavior change, also prepare the pinned SDK, build the Web client in the affected configurations, freshly bake/package a public minimal project, inspect every output and HTTP header, and execute applicable rows of the browser/release acceptance matrix against the real project server and production-like origin. A host-only documentation test, successful Emscripten link, or localhost fixture cannot replace project browser evidence.
 
 ## See also
 

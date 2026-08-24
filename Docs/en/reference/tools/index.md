@@ -141,7 +141,7 @@ Main areas inside `Mapper.cpp` include:
 - input handling and cursor/hex helpers;
 - ImGui panels for workspace, content, map list, map window, inspector, history, settings, console, script calls, and neutral particle-subeditor dispatch;
 - map loading/showing/saving through `LoadMapFromText()`, `LoadMap()`, `ShowMap()`, `SaveCurrentMap()`, and `SaveMap()`;
-- render-only capture through `SaveMapperScreenshot()` and deferred full-window capture through `RequestMapperWindowScreenshot()`, completed immediately before presentation so ImGui is included;
+- synchronous map-render capture through `SaveMapperScreenshot()`; application-level ImGui windows require an external visible-window screenshot;
 - mapper script system integration through mapper metadata and `MapperGlobalScriptMethods.cpp`.
 
 See [Mapper Interactive Manual](../../how-to/tools/mapper-interactive.md) for menus, windows, editing,

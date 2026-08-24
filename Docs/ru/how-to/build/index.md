@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/
 
 # Процесс сборки
 
-<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"a2f1799dc0a10ed120c80d44d4b34a499b4ee8b8a4a872ee0d6eeb01def3d46b"} -->
+<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"3c5210f482fd03630c1c3cd9ed6913f08b134cad1c069d4212a70703054ba15b"} -->
 
 Этот документ объясняет, как работать со сборками FOnline, не перенося
 предположения одного проекта в другой.
@@ -72,11 +72,13 @@ engine-only команда не требует иного.
 Из корня движка выполните validation target своей host-платформы:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-starter-smoke
+cd Examples\MinimalProject
+python validate.py
 ```
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-starter-smoke
+cd Examples/MinimalProject
+python3 validate.py
 ```
 
 Оба маршрута настраивают и собирают baker и headless server, выполняют baking
@@ -90,11 +92,13 @@ server и baker, затем проверяет metadata, content, login, заг�
 локализованный текст, remote calls и replicated state:
 
 ```powershell
-python BuildTools\buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
 ```bash
-python3 BuildTools/buildtools.py validate linux-tutorial-smoke
+cd Examples/MinimalMultiplayer
+python3 validate.py
 ```
 
 Исходники и ручной запуск описаны в
@@ -159,8 +163,8 @@ matrix игры остается в документации этой игры.
 
 Для library, SDK, framework или runtime payload, принадлежащего игровому
 репозиторию, следуйте [Project-Local Dependencies](../../../ProjectDependencies.md).
-Создайте project CMake target, подключите его через `AddProjectLibraries` к
-самой узкой consuming role и проверьте и compiled feature state, и packaged
+Создайте project CMake target, добавьте его в самый узкий потребляемый список
+`FO_*_LIBS`, поддерживаемый закреплённой ревизией, и проверьте и compiled feature state, и packaged
 runtime state.
 
 - [Обзор BuildTools](../../../../BuildTools/README.ru.md).
@@ -181,9 +185,11 @@ runtime state.
 Если меняются package declarations или payload behavior, обновите
 `BuildTools/PackageInterface.json`, перегенерируйте и проверьте model/pages,
 запустите `validate_package_interface.cmake` и `test_packaging_matrix.py`, затем
-выполните `win64-package-smoke`, `linux-package-smoke` или более узкий product
-package target. Engine fixture доказывает native raw/archive/config/updater
-mechanics, но не заменяет signing, install, deployment или rollback lane игры.
+соберите `RunPackagingChecks`, `RunTutorialPackageChecks` или более узкий product
+package target из владеющего примера или проекта. Эти example targets являются
+необязательными и не входят в обязательный реестр проверок Engine. Engine
+fixtures доказывают native raw/archive/config/updater mechanics, но не заменяют
+signing, install, deployment или rollback lane игры.
 
 - **Runtime C++:** соберите и запустите project unit-test target; выбрать
   focused suites и понять generated test targets поможет

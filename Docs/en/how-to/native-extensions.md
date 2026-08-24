@@ -194,7 +194,7 @@ Use the engine pointer vocabulary:
 
 ## Dependencies and platforms
 
-`AddEngineSources` does not infer dependencies. The embedding project must add libraries, include directories, compile definitions, generated headers, and platform frameworks before core libraries/applications are built. Keep third-party source in its own target and route it only to consuming roles with `AddProjectLibraries`; [Project-Local Dependencies](native-extensions/project-dependencies.md) owns the complete selection, provenance, CMake, ABI, package, and update workflow.
+`AddEngineSources` does not infer dependencies. The embedding project must add libraries, include directories, compile definitions, generated headers, and platform frameworks before core libraries/applications are built. Keep third-party source in its own target and route it only through the current revision's narrowest consumed `FO_*_LIBS` list; [Project-Local Dependencies](native-extensions/project-dependencies.md) owns the complete selection, provenance, CMake, ABI, package, and update workflow.
 
 Platform-specific extensions need an explicit availability contract:
 
@@ -212,13 +212,13 @@ Use the smallest route that proves the affected boundary:
 
 - CMake registration/role changes: `cmake -P BuildTools/tests/validate_native_extension_interface.cmake`.
 - Hook/metadata/codegen changes: regenerate and check the native-extension/API references, then run `BakeResources` in a real embedding project.
-- Reusable minimal server hook: `python BuildTools/buildtools.py validate win64-starter-smoke` or `linux-starter-smoke`.
-- Complete native lifecycle, role-link, script-export, and focused-test path: `python BuildTools/buildtools.py validate win64-native-extension-smoke` or `linux-native-extension-smoke`.
+- Reusable minimal server hook: run `python validate.py` from `Examples/MinimalProject`.
+- Complete native lifecycle, role-link, script-export, and focused-test path: run `python validate.py` from `Examples/NativeExtensionSample`.
 - Script export: add a script compile/bake assertion and a focused runtime test that calls the generated method on the correct side.
 - Client-visible extension: build/run a real standalone client path; a server-only or headless smoke cannot prove rendering, input, dynamic-library, or package behavior.
 - External SDK/platform bridge: exercise enabled, disabled, and packaged-runtime paths on the owning platform.
 
-The engine-owned minimal project is the normative starter. `Examples/NativeExtensionSample` is the focused complete native path: it keeps per-server state in `ServerEngine.UserData`, routes a small library through `AddProjectLibraries`, exports one server method, and runs both a native unit and runtime smoke check. A large game project is valuable integration evidence but does not define the reusable contract.
+The engine-owned minimal project is the normative starter. `Examples/NativeExtensionSample` is the focused complete native path: it keeps per-server state in `ServerEngine.UserData`, routes a small library through the current `FO_SERVER_LIBS` integration state, exports one server method, and runs both a native unit and runtime smoke check. A large game project is valuable integration evidence but does not define the reusable contract.
 
 ## Updating the engine revision
 

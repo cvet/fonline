@@ -25,12 +25,10 @@
         "interaction_steps": [
           "Build ForceBakeResources and FOMM_Mapper in Release configuration.",
           "Launch the MapperDocumentationCapture subconfig and do not modify the restored tool layout.",
-          "Convert MapperDocumentationCapture.tga to PNG without resizing, cropping, or color adjustment."
+          "After the preview settles, capture the visible 1280x800 application window with a platform screenshot tool and save as PNG without resizing, cropping, or color adjustment."
         ]
       },
       "source_paths": [
-        "Source/Frontend/Application.cpp",
-        "Source/Frontend/Application.h",
         "Source/Common/Settings.inc",
         "Source/Scripting/MapperGlobalScriptMethods.cpp",
         "Source/Tools/Mapper.cpp",
@@ -39,13 +37,12 @@
         "Examples/MinimalMultiplayer/CMakeLists.txt",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
         "Examples/MinimalMultiplayer/generate_config.py",
-        "Examples/MinimalMultiplayer/Particles/Documentation.spark",
-        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark"
       ],
       "recapture_triggers": [
         "Mapper menu, Workspace, Controls, or Particle Preview layout or labels change.",
-        "Mapper full-window screenshot composition or ImGui rendering changes.",
-        "The minimal example map, particle fixture, startup profile, renderer, viewport, or capture script changes."
+        "Mapper visible-window composition or ImGui rendering changes.",
+        "The minimal example map, particle fixture, startup profile, renderer, or viewport changes."
       ]
     },
     {
@@ -69,15 +66,14 @@
         "interaction_steps": [
           "Build ForceBakeResources and FOMM_Mapper in Release configuration.",
           "Launch the MapperDocumentationSparkEditorCapture subconfig; Mapper.SparkEditorSource opens Documentation.spark directly.",
-          "Wait for the source editor and preview to render, then let MapperCapture request the full-window TGA without interacting with the restored layout.",
-          "Convert MapperDocumentationCapture.tga to PNG without resizing, cropping, or color adjustment."
+          "Wait for the source editor and preview to render, then capture the visible 1280x800 application window with a platform screenshot tool without interacting with the restored layout.",
+          "Save as PNG without resizing, cropping, or color adjustment."
         ]
       },
       "source_paths": [
         "Source/Common/SpriteResource.cpp",
         "Source/Common/SpriteResource.h",
         "Source/Common/Settings.inc",
-        "Source/Frontend/Application.cpp",
         "Source/Scripting/MapperGlobalScriptMethods.cpp",
         "Source/Tools/Mapper.cpp",
         "Source/Tools/ParticleEditor.cpp",
@@ -85,13 +81,12 @@
         "Examples/MinimalMultiplayer/CMakeLists.txt",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
         "Examples/MinimalMultiplayer/generate_config.py",
-        "Examples/MinimalMultiplayer/Particles/Documentation.spark",
-        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark"
       ],
       "recapture_triggers": [
         "The SPARK source browser, editor modes, hierarchy, preview, or save workflow changes.",
         "The baked sprite resource format or SPARK editor texture-loading path changes.",
-        "The minimal example particle fixture, renderer, viewport, or capture script changes."
+        "The minimal example particle fixture, renderer, viewport, or startup profile changes."
       ]
     }
   ]

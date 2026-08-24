@@ -81,8 +81,8 @@ class BuildReleaseFoundationsDocumentationTests(unittest.TestCase):
         support = json.loads(self._read("BuildTools/SupportMatrix.json"))
         levels = [profile["level"] for profile in support["platforms"]]
         self.assertEqual(len(levels), 10)
-        self.assertEqual(levels.count("build_gated"), 5)
-        self.assertEqual(levels.count("smoke_gated"), 3)
+        self.assertEqual(levels.count("build_gated"), 8)
+        self.assertEqual(levels.count("smoke_gated"), 0)
         self.assertEqual(levels.count("source_capable"), 2)
 
         package = json.loads(self._read("BuildTools/PackageInterface.json"))

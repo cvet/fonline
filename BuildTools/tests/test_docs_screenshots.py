@@ -39,7 +39,7 @@ class DocumentationScreenshotTests(unittest.TestCase):
         for entry in self.manifest["screenshots"]:
             self.assertEqual((entry["width"], entry["height"]), (1280, 800))
             self.assertEqual(entry["license"], "MIT")
-            self.assertGreaterEqual(len(entry["source_paths"]), 10)
+            self.assertGreaterEqual(len(entry["source_paths"]), 9)
             self.assertGreaterEqual(len(entry["recapture_triggers"]), 3)
             self.assertGreaterEqual(
                 len(entry["capture"]["interaction_steps"]), 3
@@ -110,44 +110,49 @@ class DocumentationScreenshotTests(unittest.TestCase):
             self.assertIn(entry["alt"], text)
             self.assertIn(entry["caption"], text)
 
-    def test_mapper_full_window_capture_is_deferred_before_present(self) -> None:
-        application_h = (
-            ENGINE_ROOT / "Source/Frontend/Application.h"
-        ).read_text(encoding="utf-8")
-        application_cpp = (
-            ENGINE_ROOT / "Source/Frontend/Application.cpp"
-        ).read_text(encoding="utf-8")
-        mapper_cpp = (ENGINE_ROOT / "Source/Tools/Mapper.cpp").read_text(
-            encoding="utf-8"
+    def test_mapper_full_window_capture_uses_visible_application_profile(self) -> None:
+        manifest = json.loads(
+            (ENGINE_ROOT / docs_screenshots.DEFAULT_MANIFEST).read_text(
+                encoding="utf-8"
+            )
         )
+        entry = next(
+            value
+            for value in manifest["screenshots"]
+            if value["id"] == "mapper-particle-preview"
+        )
+        config = (
+            ENGINE_ROOT / "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain"
+        ).read_text(encoding="utf-8")
         mapper_methods = (
             ENGINE_ROOT / "Source/Scripting/MapperGlobalScriptMethods.cpp"
         ).read_text(encoding="utf-8")
-        capture_script = (
-            ENGINE_ROOT
-            / "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos"
-        ).read_text(encoding="utf-8")
 
-        self.assertIn("EventObserver<> OnBeforePresent", application_h)
-        self.assertLess(
-            application_cpp.index("_onBeforePresentDispatcher();"),
-            application_cpp.index("active_renderer->Present();"),
-        )
-        self.assertIn("RenderImGuiToTexture", mapper_cpp)
+        self.assertIn("Name = MapperDocumentationCapture", config)
+        self.assertIn("Render.HeadlessWindow = False", config)
+        self.assertIn("Mapper_Game_SaveMapperScreenshot", mapper_methods)
+        self.assertNotIn("RequestMapperWindowScreenshot", mapper_methods)
         self.assertIn(
-            "Mapper_Game_RequestMapperWindowScreenshot", mapper_methods
+            "platform screenshot tool",
+            " ".join(entry["capture"]["interaction_steps"]),
         )
-        self.assertIn("Game.RequestMapperWindowScreenshot", capture_script)
-        self.assertIn("QuitDelayFrames", capture_script)
 
     def test_spark_editor_uses_the_canonical_baked_sprite_parser(self) -> None:
-        source = (
+        editor = (
             ENGINE_ROOT / "Source/Tools/SparkParticleEditor.cpp"
         ).read_text(encoding="utf-8")
-        self.assertIn('#include "SpriteResource.h"', source)
-        self.assertIn("ReadSpriteResource(file.GetDataSpan())", source)
-        self.assertIn("ExtractSpriteResourceFrameImage", source)
-        self.assertNotIn("check_number == 42", source)
+        preview = (ENGINE_ROOT / "Source/Tools/ParticleEditor.cpp").read_text(
+            encoding="utf-8"
+        )
+        loader = (ENGINE_ROOT / "Source/Client/DefaultSprites.cpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("InvalidateSpriteResource", editor)
+        self.assertIn('change_file_extension("spk")', editor)
+        self.assertIn("SprMngr.LoadSprite", preview)
+        self.assertIn("ReadSpriteResource(file.GetDataSpan())", loader)
+        self.assertIn("ExtractSpriteResourceFrameImage", loader)
+        self.assertNotIn("check_number == 42", loader)
 
     def test_invalid_hash_dimensions_and_source_are_rejected(self) -> None:
         manifest = json.loads(

@@ -6,7 +6,7 @@ document_id: first-content-tutorial
 permalink: /Docs/ru/tutorials/first-content.html
 ---
 
-<!-- docs-translation: {"document_id":"first-content-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-content.md","source_sha256":"8da0c82371079add4a5dc05948b334fd2f56383caee460998674b118ee8e82dc"} -->
+<!-- docs-translation: {"document_id":"first-content-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-content.md","source_sha256":"a0a9fe220acacb221721f0bf121f77fad810f1b290dee6ffb7242fcaac04301d"} -->
 
 # Первое изменение контента
 
@@ -80,9 +80,8 @@ tutorial_server_supply_collected=1
 В строках вывода процессов вокруг маркеров могут присутствовать метки runner.
 Контрактом являются сами маркеры и итоговый статус `passed`.
 
-Для checkout движка используйте
-`python BuildTools/buildtools.py validate win64-tutorial-smoke` или эквивалент
-для Linux.
+Для checkout движка запустите `python validate.py` из
+`Examples/MinimalMultiplayer`; скрипт выберет поддерживаемый host preset.
 
 Чтобы визуально проверить русский текст, задайте переопределение
 `Client.Language` равным `russ` в `generate_config.py`, заново сгенерируйте

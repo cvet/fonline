@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 
 # Упаковка и выпуск
 
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"603c687bb0972641ff27a1cad16e77740a6c0f186784538db1b496d1dbb72061"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"9da1af0d23d70ad0d6015b0d5f93a5b4351b16bd93c732bbea32bdd3a6758e49"} -->
 
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
@@ -188,11 +188,13 @@ setting. Checked-in `FOnlinePackagingMatrix.fomain` детерминирован
 из `Source/Common/Settings.inc`; `generate_config.py --check` завершается
 ошибкой при расхождении settings и fixture.
 
-Запускайте host route через BuildTools:
+В отдельном checkout `Examples/PackagingMatrix` с инициализированным submodule
+`Engine` сконфигурируйте host build и соберите принадлежащую fixture цель
+`RunPackagingChecks`. Эта цель не зарегистрирована как обязательный lane
+Engine `BuildTools validate`.
 
 ```bash
-python BuildTools/buildtools.py validate win64-package-smoke
-python BuildTools/buildtools.py validate linux-package-smoke
+cmake --build <packaging-matrix-build-dir> --config Release --target RunPackagingChecks
 ```
 
 Каждый маршрут собирает client, headless client, server, headless server,
@@ -205,12 +207,12 @@ client против packaged server через реальный updater handshak
 
 Verifier записывает `FOPKG-PackageSmoke/packaging-manifest.json` с точной
 ревизией Engine, hashes и sizes архивов, полной инвентаризацией payload, наличием
-roles и runtime results. Обязательный workflow загружает manifest и archives
-как `packaging-evidence-<validation-target>-<commit-sha>`; отсутствие artifact
-завершает job ошибкой.
+roles и runtime results. Сохраняйте manifest и archives в release lane
+подключающего проекта, когда это evidence обязательно; текущий Engine workflow
+их не публикует.
 
-Fixture квалифицирует текущий Engine package path Windows x64 и Ubuntu/Linux
-x64 только после успешной соответствующей required job. Он не квалифицирует
+Fixture даёт необязательное evidence для Engine package path Windows x64 или
+Ubuntu/Linux x64 на host, где он был запущен. Он не квалифицирует
 package declaration другой игры, signing, installer, store, deployment host,
 database, renderer или rollback. Перенесите evidence pattern в release lane
 встраивающего проекта и храните конкретную acceptance там.
@@ -230,9 +232,11 @@ Checked-in `.fomain` генерируется из текущих defaults `Sett
 baking, поэтому новый или изменённый saved setting обнаруживает stale source,
 а не проявляется позднее как неполный packaged config.
 
-`win64-tutorial-package` и `linux-tutorial-package` являются обязательными
-workflow lanes и загружают commit-addressed archives, package manifest и
-runtime report. Эти evidence уже, чем product release: archives являются
+Presets `windows-package` и `linux-package` в `Examples/MinimalMultiplayer`
+по запросу собирают принадлежащую fixture цель `RunTutorialPackageChecks`.
+Сохраняйте archives, package manifest и runtime report в workflow проекта,
+когда они обязательны; текущий Engine workflow эти presets не запускает.
+Эти evidence уже, чем product release: archives являются
 unsigned, headless и audio-disabled fixtures без installer, store, public
 deployment, durable backend, upgrade или rollback claim.
 
@@ -276,11 +280,13 @@ manager игры.
 
 Payload Web client содержит JavaScript, patched Wasm, HTML shell, preloaded
 `Resources.data` / `Resources.js` и optional helper `WebServer`. Принадлежащий
-Engine маршрут BuildTools `web-showcase-runtime` доказывает baking на native-хосте,
+Engine-команда Content Showcase `python validate.py --web-runtime` может дать
+необязательное evidence для baking на native-хосте,
 точный состав raw/ZIP package, localhost HTTP delivery, подключение к native-серверу,
 обязательные lifecycle-маркеры, настоящий контекст WebGL 2 и пиксели композитора
 для одного детерминированного fixture Content Showcase в закреплённом Chromium.
-Он не доказывает публичный browser deployment подключающей игры.
+Она не входит в обязательный Engine workflow и не доказывает публичный browser
+deployment подключающей игры.
 
 Для local staging следуйте [сборке, упаковке и отладке в браузере](../platforms/web-debugging.md). Release
 lane должна дополнительно проверить HTTPS hosting, MIME types, cache policy,
@@ -372,20 +378,22 @@ policies.
 ## Границы подписи и секретов
 
 Windows signing является optional и по умолчанию отключён.
-`Packaging.CodeSigningHook` указывает на project-owned executable. Packager
-разрешает root и selected sub-config, а также packaging-host directives
-`$ENV`/`$FILE` или `$TARGET_ENV`/`$TARGET_FILE`, затем вызывает hook по одному
+`Packaging.CodeSigningHook` указывает на project-owned executable через
+непосредственно используемый несекретный path в project config; packager не
+разрешает для него target directives. Затем он вызывает hook по одному
 разу для каждого staged `.exe` и `.dll` после binary patching и до создания
 archive/MSI. Ненулевой exit hook завершает packaging ошибкой. Hook владеет
-signing provider, certificate, timestamp service, retry policy и verification.
+signing provider, certificate, timestamp service, retry policy, credential
+environment и verification.
 
-Android release credentials берутся из `Android.Keystore`,
-`Android.KeystorePassword`, `Android.KeyAlias` и `Android.KeyPassword`. Тот же
-authored root и selected sub-config разрешаются на packaging host; password
-values передаются Gradle через отдельные environment variables и не
-записываются в generated project. Для sensitive package inputs используйте
-target forms, чтобы baking сохранил directive, а не встроил конкретное
-значение.
+Android release fields берутся из `Android.Keystore`,
+`Android.KeystorePassword`, `Android.KeyAlias` и `Android.KeyPassword` в baked
+effective target config. Password strings передаются Gradle через отдельные
+environment variables и не записываются в generated project, но до этого уже
+проходят через baked config, а target directives не разрешаются. Поэтому текущий
+Engine не имеет host-only handoff Android signing secrets; не помещайте
+production credentials в Engine config и используйте защищённую project-owned
+стадию signing.
 
 Никогда не коммитьте private key, token, password, keystore password, signing
 session, production endpoint secret или decrypted credential в `.fomain`,
@@ -396,8 +404,8 @@ packaging job, редактируйте command output и проверяйте, 
 не secret values.
 
 [безопасность и секреты](security-and-secrets.md) владеет substitution
-timing, узкой границей masking `Common.SecretSettingTokens`, package-host
-handoff, CI isolation, rotation/revocation, incident routing и проверкой
+timing, узкой границей masking `Common.SecretSettingTokens`, текущими
+ограничениями package secrets, CI isolation, rotation/revocation, incident routing и проверкой
 artifact на отсутствие secrets.
 
 Signing доказывает integrity artifact и identity publisher. Он не доказывает

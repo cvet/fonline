@@ -6,7 +6,7 @@ document_id: tools
 permalink: /Docs/ru/reference/tools/
 ---
 
-<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"3e4aae068a33dd3e9e7c6166dbb7e8a321142a200b691972c05bfe766bc96f2f"} -->
+<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"ff678da2fd20c02eb8e92fba1f2cac86a1438f4077f3a13397a45b4f84531722"} -->
 
 # Инструменты
 
@@ -129,7 +129,7 @@ Video также полагается на внешние authoring tools. `RawC
 - обработка input и helpers cursor/hex;
 - ImGui panels для workspace, content, map list, map window, inspector, history, settings, console, script calls и backend-neutral particle-subeditor dispatch;
 - загрузка, показ и сохранение maps через `LoadMapFromText()`, `LoadMap()`, `ShowMap()`, `SaveCurrentMap()` и `SaveMap()`;
-- render-only capture через `SaveMapperScreenshot()` и отложенный full-window capture через `RequestMapperWindowScreenshot()`, который завершается непосредственно перед presentation и поэтому включает ImGui;
+- синхронный capture render карты через `SaveMapperScreenshot()`; окна ImGui уровня приложения требуют внешнего снимка видимого окна;
 - интеграция mapper script system через mapper metadata и `MapperGlobalScriptMethods.cpp`.
 
 Меню, windows, editing, history, save discipline и диагностика ошибок описаны в [интерактивном руководстве Mapper](../../how-to/tools/mapper-interactive.md). Lifecycle, extension points и automation/headless-render workflows описаны в [инструментах Mapper](../../how-to/tools/mapper.md).

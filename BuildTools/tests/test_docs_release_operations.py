@@ -54,15 +54,11 @@ class DocumentationReleaseOperationsTests(unittest.TestCase):
             self.assertIn(marker, server)
         self.assertIn("SERVICE_CONTROL_STOP", service)
         self.assertIn("SetFOServiceStatus(SERVICE_RUNNING)", service)
-        self.assertIn("GetApp()->RequestQuit(false)", service)
+        self.assertIn("GetApp()->RequestQuit()", service)
         self.assertIn("Data->ServerThread.join()", service)
-        self.assertIn('wstring path = ::GetCommandLineW();', service)
-        self.assertIn('path.append(L" --server-service-start")', service)
-        self.assertNotIn('append(L" --server-service")', service)
-        self.assertIn(
-            'FO_VERIFY_AND_THROW(Platform::ForkProcess(), "Failed to fork server daemon process")',
-            daemon,
-        )
+        self.assertIn('wstring path = wstring(L"\\\"").append(buf)', service)
+        self.assertIn('append(L" --server-service")', service)
+        self.assertIn("Platform::ForkProcess();", daemon)
         self.assertIn("std::signal(SIGTERM, SignalHandler)", signals)
 
     def test_manifest_registers_public_human_release_operations_guide(self) -> None:

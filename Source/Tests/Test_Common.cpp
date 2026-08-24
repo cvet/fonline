@@ -121,55 +121,6 @@ TEST_CASE("CommonEvents")
 
 TEST_CASE("CommonUtilities")
 {
-    SECTION("WriteSimpleTgaCreatesFileWithExpectedHeader")
-    {
-        auto temp_root = std::filesystem::temp_directory_path() / "lf_common_tests" / std::to_string(std::random_device {}());
-        auto file_path = temp_root / "nested" / "sample.tga";
-
-        isize32 image_size {2, 1};
-        vector<ucolor> pixels;
-        pixels.emplace_back(ucolor {1, 2, 3, 4});
-        pixels.emplace_back(ucolor {5, 6, 7, 8});
-
-        WriteSimpleTga(string(file_path.string()), image_size, pixels);
-
-        REQUIRE(std::filesystem::exists(file_path));
-        CHECK(std::filesystem::file_size(file_path) == 18 + pixels.size() * sizeof(uint32_t));
-
-        std::ifstream input(file_path, std::ios::binary);
-        REQUIRE(input);
-
-        std::array<uint8_t, 18> header {};
-        input.read(reinterpret_cast<char*>(header.data()), static_cast<std::streamsize>(header.size()));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(header.size()));
-
-        CHECK(header[2] == 2);
-        CHECK(header[12] == 2);
-        CHECK(header[13] == 0);
-        CHECK(header[14] == 1);
-        CHECK(header[15] == 0);
-        CHECK(header[16] == 32);
-        CHECK(header[17] == 0x20);
-
-        std::array<uint32_t, 2> stored_pixels {};
-        input.read(reinterpret_cast<char*>(stored_pixels.data()), static_cast<std::streamsize>(sizeof(stored_pixels)));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
-
-        // A TrueColor TGA stores pixels in B, G, R, A order, so the writer swaps red and blue
-        auto to_bgra = [](ucolor c) -> uint32_t {
-            std::swap(c.comp.r, c.comp.b);
-            return c.rgba;
-        };
-
-        CHECK(stored_pixels[0] == to_bgra(pixels[0]));
-        CHECK(stored_pixels[1] == to_bgra(pixels[1]));
-
-        input.close();
-
-        uintmax_t removed = std::filesystem::remove_all(temp_root);
-        CHECK(removed > 0);
-    }
-
     SECTION("SeededRandomGeneratorProducesValues")
     {
         auto generator = MakeSeededRandomGenerator();

@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/script-api/method-ownership.html
 
 # Карта методов скриптового API
 
-<!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"03bb1b75f25870d4ece7655aec7f31d3e87b397c975eaab3b58dc09232b9975b"} -->
+<!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"e240ac109744ff14e4f684625845644732bd4776bf61c6f13c221d7276e9bc36"} -->
 
 > Документация движка. Эта страница сопоставляет нативные файлы `///@ ExportMethod` в `Source/Scripting/` с их обязанностями в скриптовом интерфейсе. Она дополняет страницу [Скриптовый runtime](../../explanation/scripting-runtime/), но не является полным сгенерированным справочником API.
 
@@ -245,7 +245,7 @@ python BuildTools/docs_inventory.py --check
   - установка любого instance property сущности по имени и тексту (`SetEntityProperty` через путь применения inspector);
   - добавление tiles;
   - загрузка, выгрузка, сохранение и показ карт, включая sandboxed сохранение в подкаталог (`SaveMapToPath`);
-  - синхронное сохранение только render target карты через `SaveMapperScreenshot` либо запрос отложенного полного снимка окна с application ImGui composition через `RequestMapperWindowScreenshot`;
+  - синхронное сохранение только render target карты через `SaveMapperScreenshot`; окна ImGui уровня приложения не входят в этот script capture;
   - запрос файлов загруженных карт;
   - изменение размера карт;
   - управление вкладками Mapper и pid-фильтрами вкладок.

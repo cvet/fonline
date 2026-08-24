@@ -190,7 +190,6 @@
         "Content/StarterContent.fopro",
         "Maps/TutorialMap.fomap",
         "Particles/Documentation.spark",
-        "Scripts/MapperCapture.fos",
         "Scripts/Tutorial.fos",
         "assets/provenance.json",
         "package-smoke.json",

@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 
 # Конвейер BuildTools
 
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"1d914c192551c374065bbd7c23a5fbf6ead42368a7cd2279d8e7371c258bf895"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"d4d5a2c7a9690de0eb50cf5fca7c3b9c17c2436a999d9bd175a49ce213bf139c"} -->
 
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
@@ -347,7 +347,7 @@ AddStageHook(<StageName> Pre|Post <macro-name>)
 - Новая vendored dependency: `ThirdParty.cmake`.
 - Новая project-local dependency или role link:
   [ProjectDependencies.md](../../../ProjectDependencies.md),
-  `AddProjectLibraries` и target/package matrix встраивающего проекта.
+  потребляемый список `FO_*_LIBS` закреплённой ревизии и target/package matrix встраивающего проекта.
 - Новый engine source file: `EngineSources.cmake` и, возможно,
   `CoreLibs.cmake`.
 - Новое generated metadata/API behavior: `Codegen.cmake` и

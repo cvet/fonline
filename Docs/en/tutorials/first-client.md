@@ -30,10 +30,11 @@ Engine maintainers can exercise the checked-in source without materializing a
 separate repository:
 
 ```powershell
-python BuildTools/buildtools.py validate win64-tutorial-smoke
+cd Examples\MinimalMultiplayer
+python validate.py
 ```
 
-Use `linux-tutorial-smoke` on Linux.
+Use the same `python3 validate.py` entry point from `Examples/MinimalMultiplayer` on Linux.
 
 ## Start the visible client
 

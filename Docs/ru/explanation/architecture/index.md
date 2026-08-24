@@ -6,7 +6,7 @@ document_id: engine-architecture
 permalink: /Docs/ru/explanation/architecture/
 ---
 
-<!-- docs-translation: {"document_id":"engine-architecture","locale":"ru","source_path":"Docs/en/explanation/architecture/index.md","source_sha256":"10eaec1a4e85161cf90f8b13b997ea5495950d9bf6e99ed8faa6641a2c7e45f2"} -->
+<!-- docs-translation: {"document_id":"engine-architecture","locale":"ru","source_path":"Docs/en/explanation/architecture/index.md","source_sha256":"c029d979974afe0265f7b765970c086c3ce9c9f2355321fb74760dfc9ae2b6f4"} -->
 
 # Архитектура движка
 
@@ -100,6 +100,7 @@ FOnline состоит из переиспользуемого движка, в�
 - `Geometry.h`, `Movement.h`, `PathFinding.h`, `MapLoader.h` - переиспользуемые primitives карт и движения.
 - `NetBuffer.h`, `NetworkUdp.h` - общие networking primitives.
 - `ConfigFile.h`, `DataSource.h`, `FileSystem.h`, `CacheStorage.h` - поддержка config и data access.
+- `ImageWriter.h` - кодировщики TGA/PNG для диагностических изображений, которые записывает движок: screenshots, captures render target и dumps atlas.
 
 Этот слой должен оставаться переиспользуемым. Правила игры обычно выражаются через content/scripts или project-native extensions, а не через включение policy одного проекта в common engine code.
 

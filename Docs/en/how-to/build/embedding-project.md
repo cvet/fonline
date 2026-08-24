@@ -105,7 +105,7 @@ The game repository should drive the build. In practice this means:
 3. Let engine `BuildTools` provide reusable stages and helper functions.
 4. Keep generated files out of hand-authored docs unless the generation process is part of the topic.
 
-Use `Examples/MinimalProject/CMakeLists.txt` as the smallest current composition example. It also proves a server-only `INTERFACE` dependency through `AddProjectLibraries`; expand it by adding project-owned modules and targets without copying unrelated wiring from a large game.
+Use `Examples/MinimalProject/CMakeLists.txt` as the smallest current composition example. It also proves a server-only `INTERFACE` dependency through the revision-pinned `FO_SERVER_LIBS` list; expand it by adding project-owned modules and targets without copying unrelated wiring from a large game.
 
 ### Add a project-specific baking target
 
@@ -134,4 +134,4 @@ Use this routing:
 
 ## Validation principle
 
-Validate engine changes through a real embedding project whenever possible. The engine-owned minimal project provides the baseline `win64-starter-smoke` and `linux-starter-smoke` routes; larger projects remain necessary for client, content, packaging, and gameplay contracts. A reusable engine change may compile in isolation but still break generated APIs, project packaging, scripts, or content baking. Choose the narrowest project target that exercises the changed layer.
+Validate engine changes through a real embedding project whenever possible. The engine-owned minimal project provides the baseline host-aware `Examples/MinimalProject/validate.py` route; larger projects remain necessary for client, content, packaging, and gameplay contracts. The example validator is opt-in and is not a required Engine workflow lane. A reusable engine change may compile in isolation but still break generated APIs, project packaging, scripts, or content baking. Choose the narrowest project target that exercises the changed layer.

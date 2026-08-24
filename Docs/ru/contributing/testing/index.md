@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/testing/
 
 # Тестирование
 
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"76ef07baa74e611a6e3a24d83e0fb2f47c58d2d8da82bee8e2ca4e8887159497"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"8f2a1bc129a0c7bdd1c681b53b9c080734eea8d9d4b67b2bde0351ee756e9333"} -->
 
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
@@ -162,10 +162,10 @@ Coverage зависит от platform и environment. Sources, не скомпи
 - **Inbound remote calls:** entry покрывает calling player и controlled critter. Любая вторая entity требует явного `Game.Sync`; ожидаемый cover violation нельзя проверять под script `try/catch`, потому что session завершится до следующего probe.
 - **Crash reporting:** non-terminating crash stream проверяется через private log file с последующим возвратом на `NUL` или `/dev/null`. Terminating reporters запускаются вне процесса через `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit` и `main_failure_exit` различают ранний fatal report и raw status-only exit.
 - **Fonts без assets:** синтезируйте `.fofnt` text или BMFont blocks `BMF\3` в памяти, предоставьте sprite и bind scale из `(0..1]`. `SplitLines` выдаёт pages размером с rect, поэтому для нескольких outputs нужен короткий rectangle.
-- **Logged-in client/server:** login remote calls объявляются в обоих metadata blobs в противоположных направлениях с правильным subsystem/namespace. До login insertion добавьте хотя бы одно project-owned persistent `Player` property, затем создайте и переключите critter и перенесите его в location/map. Empty layouts server/client `.fomap-bin-*` различаются; client blob заканчивается после двух `uint32` counts.
+- **Logged-in client/server:** login remote calls объявляются в обоих metadata blobs в противоположных направлениях с правильным subsystem/namespace. До login insertion добавьте хотя бы одно project-owned persistent `Player` property, затем создайте и переключите critter и перенесите его в location/map. Оба `.fomap-bin-*` blob начинаются с `BAKED_MAP_FILE_MAGIC` и `BAKED_MAP_FILE_VERSION`; после header client layout заканчивается после counts hash table и static items.
 - **World reload:** используйте file-backed JSON, отметьте ожидаемые entities persistent, остановите один server и запустите второй на том же каталоге. Critter восстанавливается через owning map или global-map membership; off-map runtime critter не reload-ится.
 - **Headless 3D:** запеките недегенеративный triangle, создайте description настоящим `ModelInfoBaker`, предоставьте source и baked mesh, `Metadata.fometa-client` и `ModelAnimationInfo.foinfo`, затем создайте instance через null renderer. Fixture metadata создавайте через `BakerTests::MakeMetadataBlob` или `MakeEmptyMetadataBlob`: registration отклоняет blob без обязательной metadata version.
-- **Static maps и disk writes Mapper:** server map records содержат настоящий payload `Properties::StoreAllData()`; zero length недопустим. Mapper save tests требуют настоящий Maps root через `InputDirs` с reference `.fomap`; предпочитайте `SaveMapToDir`, потому что plain `SaveMap` иначе может записать в working directory процесса.
+- **Static maps и disk writes Mapper:** сначала запишите baked-map format header, затем настоящий payload `Properties::StoreAllData()` для server map records; zero length недопустим. Server payload продолжается hashes, critters и items, а более короткий client payload содержит hashes и static items. Mapper save tests требуют настоящий Maps root через `InputDirs` с reference `.fomap`; предпочитайте `SaveMapToDir`, потому что plain `SaveMap` иначе может записать в working directory процесса.
 
 ## Текущий набор тестов
 

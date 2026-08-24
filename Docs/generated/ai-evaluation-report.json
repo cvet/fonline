@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_ai_eval.py",
   "source_path": "Docs/ai-evaluation.json",
-  "source_sha256": "0bf7eda90b6b1d61871739a23cf813f797be827c9cf57a0e49e0fb10f6ba6b29",
+  "source_sha256": "5b93ffc54fc400b714dc39532881eeae8cabbbba232546b49bc6586c74924440",
   "source_ref": "master",
   "task_count": 27,
   "category_counts": {
@@ -17,9 +17,9 @@
     "query_count": 65,
     "pass_count": 65,
     "success_rate": 1.0,
-    "top_1_rate": 0.815385,
+    "top_1_rate": 0.846154,
     "top_3_rate": 1.0,
-    "mean_reciprocal_rank": 0.9,
+    "mean_reciprocal_rank": 0.915385,
     "minimum_success_rate": 1.0
   },
   "passed_task_count": 27,
@@ -331,19 +331,19 @@
       ],
       "retrieval_checks": [
         {
-          "query": "project local dependency AddProjectLibraries roles CMake target",
+          "query": "project local dependency FO_SERVER_LIBS role CMake target",
           "expected_document_ids": [
             "project-local-dependencies"
           ],
           "max_rank": 3,
-          "rank": 2,
+          "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "buildtools-pipeline",
             "project-local-dependencies",
-            "buildtools-readme",
             "native-extensions-guide",
-            "generated-api-metadata"
+            "embedding-project",
+            "minimal-project-readme",
+            "buildtools-pipeline"
           ]
         },
         {
@@ -395,14 +395,14 @@
         },
         {
           "id": "role-scoped-project-linking",
-          "description": "Use the public role-scoped helper before core libraries consume the dependency.",
+          "description": "Use the pinned revision's narrowest consumed library list before core libraries consume the dependency.",
           "document_id": "project-local-dependencies",
           "anchor": "integrate-at-the-project-boundary",
           "required_terms": [
-            "AddProjectLibraries",
-            "ROLES",
-            "LIBRARIES",
-            "BuildCoreLibraries"
+            "FO_CLIENT_LIBS",
+            "FO_BAKER_LIBS",
+            "BuildCoreLibraries",
+            "revision-pinned"
           ],
           "evidence_current": true
         },
@@ -923,10 +923,10 @@
           "passed": true,
           "top_document_ids": [
             "viewer-tools",
+            "tools",
             "model-format-guide",
-            "baking-pipeline",
             "client-runtime",
-            "mapper-tools"
+            "baking-pipeline"
           ]
         },
         {
@@ -1110,24 +1110,24 @@
           "evidence_current": true
         },
         {
-          "id": "full-window-capture",
-          "description": "Choose the deferred full-window API and wait before quitting.",
+          "id": "visible-ui-evidence",
+          "description": "Separate map-only script capture from visible Mapper UI evidence.",
           "document_id": "mapper-interactive-manual",
           "anchor": "screenshot-and-automation-contract",
           "required_terms": [
-            "Game.RequestMapperWindowScreenshot",
-            "Deferred",
-            "Full Mapper frame",
-            "one request may be pending",
-            "allow at least one more",
-            "Mapper loop"
+            "Game.SaveMapperScreenshot",
+            "map render target",
+            "excludes",
+            "application-level ImGui",
+            "platform screenshot tool",
+            "visible"
           ],
           "evidence_current": true
         }
       ],
       "forbidden_assumptions": [
         "Do not treat Mapper preview as runtime acceptance or hand-edit baked .spk/.efk output.",
-        "Do not omit that Game.RequestMapperWindowScreenshot is deferred, only one request may be pending, and the caller must allow one further loop before quitting."
+        "Do not claim that the Engine script API captures application-level ImGui windows; visible UI evidence uses a platform screenshot tool."
       ],
       "passed": true
     },
@@ -1200,14 +1200,14 @@
         },
         {
           "id": "mapper-screenshot-boundary",
-          "description": "Select map-only or full-window capture deliberately and validate visual output.",
+          "description": "Use the map-only script capture deliberately and validate visual output.",
           "document_id": "mapper-tools",
           "anchor": "screenshot-contract",
           "required_terms": [
             "SaveMapperScreenshot",
-            "RequestMapperWindowScreenshot",
+            "map-only",
             "TGA only",
-            "one further loop",
+            "platform screenshot tool",
             "non-uniform test map",
             "pixel inspection"
           ],
@@ -1229,7 +1229,7 @@
       ],
       "forbidden_assumptions": [
         "Do not use Render.NullRenderer for visual capture or treat file existence as pixel evidence.",
-        "Do not attach the one-further-loop rule to synchronous Game.SaveMapperScreenshot: it applies to deferred RequestMapperWindowScreenshot before quit, and only one full-window request may be pending."
+        "Do not claim that Game.SaveMapperScreenshot includes the application-level ImGui windows."
       ],
       "passed": true
     },
@@ -1257,7 +1257,7 @@
             "debugging",
             "testing",
             "web-debugging",
-            "mapper-tools"
+            "project-local-dependencies"
           ]
         },
         {
@@ -1360,9 +1360,9 @@
           "top_document_ids": [
             "generated-api-metadata",
             "debugging",
+            "android-debugging",
             "profiling",
-            "frontend-rendering",
-            "project-local-dependencies"
+            "frontend-rendering"
           ]
         }
       ],
@@ -1768,19 +1768,19 @@
           ]
         },
         {
-          "query": "support claim renderer package device runtime evidence",
+          "query": "Support vocabulary Project release matrix",
           "expected_document_ids": [
             "support-matrix"
           ],
           "max_rank": 3,
-          "rank": 3,
+          "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "frontend-rendering",
-            "generated-api-metadata",
             "support-matrix",
-            "packaging-and-release",
-            "repository-home"
+            "legacy-public-api-entry",
+            "documentation-maintenance",
+            "documentation-home",
+            "buildtools-pipeline"
           ]
         }
       ],
@@ -1871,14 +1871,14 @@
             "packaging-and-release"
           ],
           "max_rank": 3,
-          "rank": 2,
+          "rank": 3,
           "passed": true,
           "top_document_ids": [
+            "android-debugging",
             "client-updater",
             "packaging-and-release",
-            "android-debugging",
             "security-and-secrets",
-            "project-local-dependencies"
+            "web-debugging"
           ]
         }
       ],
@@ -1970,9 +1970,9 @@
           "top_document_ids": [
             "security-and-secrets",
             "android-debugging",
-            "packaging-and-release",
             "engine-upgrade-guide",
-            "generated-api-metadata"
+            "generated-api-metadata",
+            "backup-and-recovery"
           ]
         },
         {

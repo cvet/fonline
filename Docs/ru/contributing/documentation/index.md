@@ -6,7 +6,7 @@ document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
 
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"5cc2095af74b81c9fdddbf90316277fd9df9fb9b03bd5440911a1b88d0c55951"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"46b5925efb42b329b3d8d78989a5d7de5b60529273394d4466b0d7584466c2c7"} -->
 
 # Сопровождение документации
 
@@ -300,7 +300,7 @@ git diff --stat <old-engine-sha>..<new-engine-sha>
 | `.fofx`, `EffectBaker`, render state/resources, runtime bindings или `FO_EFFECT_*` | Обновить [Формат эффектов](../../how-to/content/effect-format.md), model/reference, tests, bake и каждый affected backend/profile. |
 | Image formats, FOFRM, `ImageBaker`, sprite records/factories, atlas или caches | Обновить [Форматы изображений и спрайтов](../../how-to/content/image-format.md), model/reference, tests, bake и визуальные dimensions/alpha/directions/cadence/hit masks. |
 | Particle macros, SPARK/Effekseer sources/baking/rendering, Mapper tools, caches или model links | Обновить [формат и исполнение частиц](../../how-to/content/particle-format.md), model/reference, tests, bake и все enabled backends/integration paths. |
-| `MapperEngine`, штатные меню/окна/controls/hotkeys/history/layout Mapper, mapper-side exports, headless view/capture, TGA/atlas readback или композиция полного окна | Обновить [интерактивное руководство по Mapper](../../how-to/tools/mapper-interactive.md) и [инструменты Mapper](../../how-to/tools/mapper.md), запустить `test_docs_mapper_tools.py` и проверить затронутый интерактивный или headless-путь на fixture движка. При изменении UI, захвата, fixture или recorded trigger заново снять точный screenshot, обновить provenance, собрать Jekyll и проверить desktop/mobile; изменения map format или particles также следуют их owning rows. |
+| `MapperEngine`, штатные меню/окна/controls/hotkeys/history/layout Mapper, mapper-side exports, headless capture карты, TGA/atlas readback или свидетельства видимого окна | Обновить [интерактивное руководство по Mapper](../../how-to/tools/mapper-interactive.md) и [инструменты Mapper](../../how-to/tools/mapper.md), запустить `test_docs_mapper_tools.py` и проверить затронутый интерактивный или headless-путь на fixture движка. При изменении UI, захвата, fixture или recorded trigger заново снять точный screenshot, обновить provenance, собрать Jekyll и проверить desktop/mobile; изменения map format или particles также следуют их owning rows. |
 | `AnimationViewer`, `ParticleViewer`, их hosts/targets/packages, Mapper embedding или settings | Обновить [руководство по просмотру анимации и частиц](../../how-to/tools/animation-particle-viewers.md), focused test, affected binaries и visible workflow; также выполнить model/particle routes. |
 | Font formats, raw-copy, `FontManager`, slots/flags, scale, measurement, wrapping или colors | Обновить [форматы шрифтов и компоновку текста](../../how-to/content/font-format.md), model/reference, tests, bake и visible text rendering. |
 | Sound indexing/decoding, playback methods, audio settings/mixing или raw-copy | Обновить [Audio.md](../../../Audio.md), model/reference, tests, bake и audible validation на каждой заявленной платформе. |

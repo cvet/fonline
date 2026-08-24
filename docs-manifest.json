@@ -133,8 +133,8 @@
         "BuildTools/docs-browser/audit.mjs",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "3f8780800df30e332c78b325c2ab575cdee17e7a675587ebe869e74954db68b6",
-      "byte_size": 6142
+      "content_sha256": "bf9e7605e8e044f83467f2c2ef16cb7ae0a2b48132b1f44a9a33dfcfbb6a62dc",
+      "byte_size": 6141
     },
     {
       "id": "adr-manifest-backed-ai-documentation-delivery",
@@ -545,8 +545,8 @@
         "BuildTools/tests/test_package_security.py",
         "BuildTools/tests/test_docs_android_debugging.py"
       ],
-      "content_sha256": "b270041c6a1d06f964954ed2682bea7869cb48fae0f190b4727837dfd04f9159",
-      "byte_size": 30361
+      "content_sha256": "0bf03c58c6aaee97beb3359b3cf58e2e1cbc5c78f9a84ea484df4821f535c81f",
+      "byte_size": 30845
     },
     {
       "id": "angelscript-style",
@@ -787,8 +787,8 @@
         "Docs/en/how-to/migration/engine-upgrade.md",
         "Docs/en/how-to/release/security-and-secrets.md"
       ],
-      "content_sha256": "ec245f3ae1b0ce75dd3b7116048ca07770e36b6ad3b156ea864dafe5fef26bc8",
-      "byte_size": 17039
+      "content_sha256": "713a72447d6b5557f13815104d957372dae7cdc87820b332ee8827f55ec4991b",
+      "byte_size": 17120
     },
     {
       "id": "baking-pipeline",
@@ -823,8 +823,8 @@
         "BuildTools/compile-mono-scripts.py",
         "Source/Tests/Test_BakerSetup.cpp"
       ],
-      "content_sha256": "222f747b0c5782a01c85bef560bec1c4fb38c8d5b0529194a0864719541e65bd",
-      "byte_size": 75446
+      "content_sha256": "29865d4b780b6d286adc46044b6dac5f4611f56885b749a3f9c0cd2dad49bbdd",
+      "byte_size": 76813
     },
     {
       "id": "build-workflow",
@@ -863,8 +863,8 @@
         "Docs/en/reference/buildtools/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "a2f1799dc0a10ed120c80d44d4b34a499b4ee8b8a4a872ee0d6eeb01def3d46b",
-      "byte_size": 11042
+      "content_sha256": "3c5210f482fd03630c1c3cd9ed6913f08b134cad1c069d4212a70703054ba15b",
+      "byte_size": 11131
     },
     {
       "id": "buildtools-pipeline",
@@ -914,8 +914,8 @@
         "Docs/en/reference/helper-cli/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "1d914c192551c374065bbd7c23a5fbf6ead42368a7cd2279d8e7371c258bf895",
-      "byte_size": 19680
+      "content_sha256": "d4d5a2c7a9690de0eb50cf5fca7c3b9c17c2436a999d9bd175a49ce213bf139c",
+      "byte_size": 19696
     },
     {
       "id": "buildtools-readme",
@@ -984,8 +984,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "9c3ca2e8c4d3bbd080832dfbf3332ff542c9c5428d0461cdf9a7c60a0467ed99",
-      "byte_size": 43330
+      "content_sha256": "192f85f99856636e14b88c94864d2a76916055eeac0d088747f0e215f9dd67fd",
+      "byte_size": 43318
     },
     {
       "id": "client-runtime",
@@ -1014,8 +1014,8 @@
         "Source/Client",
         "Source/Frontend"
       ],
-      "content_sha256": "b36d77a61958702d5617a22fae61c155b90ddfcb59840fff94b05ff426f578ce",
-      "byte_size": 42473
+      "content_sha256": "42ee513fbfe6cbf83b6064aa025c34cd43f5a75d9c47ab7c53a9763b0e25dbbc",
+      "byte_size": 43220
     },
     {
       "id": "client-updater",
@@ -1358,8 +1358,8 @@
         "Docs/_meta/DocumentationVerificationReport.md",
         "AGENTS.md"
       ],
-      "content_sha256": "5cc2095af74b81c9fdddbf90316277fd9df9fb9b03bd5440911a1b88d0c55951",
-      "byte_size": 53317
+      "content_sha256": "46b5925efb42b329b3d8d78989a5d7de5b60529273394d4466b0d7584466c2c7",
+      "byte_size": 53316
     },
     {
       "id": "documentation-site-publication",
@@ -1589,8 +1589,8 @@
         "Source/Applications",
         "Source/Tools"
       ],
-      "content_sha256": "ce02151c8179929c91e596e69f3e4e02042a60e4fb0e3939bdc5b3fa9394a270",
-      "byte_size": 7694
+      "content_sha256": "4dd2a2ba33ecd8927bb9c511b2bbbff89d1ef107e23a21f5f4ee326a8878e1ac",
+      "byte_size": 7790
     },
     {
       "id": "engine-architecture",
@@ -1623,8 +1623,8 @@
         "Docs/generated/diagrams.json",
         "Docs/assets/diagrams/engine-game-boundary.svg"
       ],
-      "content_sha256": "10eaec1a4e85161cf90f8b13b997ea5495950d9bf6e99ed8faa6641a2c7e45f2",
-      "byte_size": 9462
+      "content_sha256": "c029d979974afe0265f7b765970c086c3ce9c9f2355321fb74760dfc9ae2b6f4",
+      "byte_size": 9610
     },
     {
       "id": "engine-upgrade-guide",
@@ -1759,8 +1759,8 @@
         "Docs/en/explanation/runtime/client.md",
         "Docs/en/reference/settings/configuration-and-data-sources.md"
       ],
-      "content_sha256": "6fbc04d60c13d799ddf302d635197ce8f8c929953c6634a115b06d36545c4de6",
-      "byte_size": 4060
+      "content_sha256": "c96b9ffeaf641a1f2dc5af3b1d520d649740af3814044c84026f85cdde0f66c0",
+      "byte_size": 4103
     },
     {
       "id": "first-content-tutorial",
@@ -1798,8 +1798,8 @@
         "Docs/en/how-to/content/map-format.md",
         "Docs/TextAndLocalization.md"
       ],
-      "content_sha256": "8da0c82371079add4a5dc05948b334fd2f56383caee460998674b118ee8e82dc",
-      "byte_size": 4268
+      "content_sha256": "a0a9fe220acacb221721f0bf121f77fad810f1b290dee6ffb7242fcaac04301d",
+      "byte_size": 4282
     },
     {
       "id": "first-test-tutorial",
@@ -1834,8 +1834,8 @@
         ".github/workflows/validate.yml",
         "Docs/Testing.md"
       ],
-      "content_sha256": "95ef00518785a950f20afc17c619f36ba90736275e6109ac39eb202bdd1d773b",
-      "byte_size": 4048
+      "content_sha256": "a6a04fc38189630334396b16f1cc9e37436fbb7de3b9f8aa74e57a1c62a23f0d",
+      "byte_size": 4036
     },
     {
       "id": "font-format-guide",
@@ -1906,8 +1906,8 @@
         "Source/Common/Settings.inc",
         "BuildTools/cmake/stages/Init.cmake"
       ],
-      "content_sha256": "3e745199398353924e26b0b5c0bfa7832cddb86c55ef8d5581664b5be69c4393",
-      "byte_size": 101942
+      "content_sha256": "e69d9d067e53ec7791e635eda074072318026c0f0d170505346c4400e5c6726a",
+      "byte_size": 102589
     },
     {
       "id": "gameplay-testing",
@@ -2211,7 +2211,7 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "d245053e4d0d6b7d3473f36d876b5b0dc099f3115b06cb0e95e136b78cfc6f61",
+      "content_sha256": "ca0d21bbafb61b033ef9482404385e60516fbe4c88216524a75c80279d6f7e0b",
       "byte_size": 3505
     },
     {
@@ -2332,7 +2332,7 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "19cf64e046f37e9b4a498f1886220bdc4a40727e9ce6d8952cb410992a541be4",
+      "content_sha256": "7bc77c53636bfb3c24d30dd7811e8b6b89a2d2fd2d588a2cad895ed86c2061ed",
       "byte_size": 685048
     },
     {
@@ -2363,7 +2363,7 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "8d3bb3346973f6d01b5041033916cde2bc28cbe797f6d3f39523e258e2f90e54",
+      "content_sha256": "d51e52de8568f6b2c4b9623ea952a242a230d69ec9109318751bec2208e8c9d9",
       "byte_size": 17851
     },
     {
@@ -2424,8 +2424,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "f0f9ecad944cb3d69281eeb24f51380c44c341797c1aec3d83e788177515e51d",
-      "byte_size": 164716
+      "content_sha256": "e9865ed8f7172fd61027024525e1810ba68b56758d40cd07ae5963e4cb0366b2",
+      "byte_size": 166024
     },
     {
       "id": "generated-api-types",
@@ -2454,7 +2454,7 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "8965e9400ee79d5eaf02d7fe0cfea3dfa9143cf306340e1fdac441ce93eb5ae1",
+      "content_sha256": "f23614df01724e340e1f7c29953590adedc63ea0752a443ba01836a408de6d43",
       "byte_size": 583619
     },
     {
@@ -2756,8 +2756,8 @@
         "Docs/generated/cmake.json",
         "BuildTools/docs_cmake.py"
       ],
-      "content_sha256": "2edff110cddaa1b27d040c845d3ab50d9cfbe93565ab043b29ba871a27b2b275",
-      "byte_size": 3887
+      "content_sha256": "2d6459cc54c063e5b64891753406d8980abbbb3b8dba4d617454e68b09819aae",
+      "byte_size": 3279
     },
     {
       "id": "generated-cmake-index",
@@ -2789,7 +2789,7 @@
         "BuildTools/docs_cmake.py",
         "BuildTools/tests/validate_project_interface.cmake"
       ],
-      "content_sha256": "6beb1b29ae2077772d4490f9758c12eaf771faa8bdfff182b3ccc32605dca0ed",
+      "content_sha256": "b49fbf3acb9d7ee06b80fc2fb734f8c9eecdc944c05fe7c9f6edee18999150f9",
       "byte_size": 2325
     },
     {
@@ -3970,7 +3970,7 @@
         "Source/Server/MapManager.cpp",
         "Docs/generated/map-format.json"
       ],
-      "content_sha256": "ecab24ee3141c5ff080f696d28afadc269e97de11ac54332d1cb06f3628d65dc",
+      "content_sha256": "0f8bc7e92eca412554edd9ffe6de07b234b9461ca89087b29bd1aa8dfece192c",
       "byte_size": 2955
     },
     {
@@ -4002,7 +4002,7 @@
         "BuildTools/docs_map_format.py",
         "Docs/generated/map-format.json"
       ],
-      "content_sha256": "576e52570c2cd33258aea39b13a87118c4f1bd1687db94200e1acf3bc7268ecf",
+      "content_sha256": "fa5673640721963d342400349447fe5634d35c033e5766aac959d0bc8c32b3ea",
       "byte_size": 2371
     },
     {
@@ -5097,7 +5097,7 @@
         "BuildTools/tests/test_docs_examples.py",
         "Docs/generated/public-examples.json"
       ],
-      "content_sha256": "b57c2cbe9b742fb9d6347de9d3da5cfdd1364f381aa2220c6908330a8e2b42f5",
+      "content_sha256": "0a939c4cab0d9aa503b6b844df3a87521cda024272d3750b31d9ee0ba2109ea4",
       "byte_size": 7251
     },
     {
@@ -7348,8 +7348,8 @@
         "Docs/ru/reference/script-api/settings.md",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "432d0e7f11d4f540ce6f85eaaeb7b70f95f7e5ad21e91e31b61eec683c09c774",
-      "byte_size": 71494,
+      "content_sha256": "007eb732e9d07f7db7eb584fb9a6d99f0b3a9bf194dc68b109b074e28e486087",
+      "byte_size": 72025,
       "redirect_to": "generated-api-settings"
     },
     {
@@ -7679,8 +7679,8 @@
         "Docs/ru/reference/cmake/helpers.md",
         "BuildTools/docs_cmake.py"
       ],
-      "content_sha256": "4f570224a5df9f13b16bde666d8436fa2562653eb50b463802dc604680183aa1",
-      "byte_size": 1603,
+      "content_sha256": "7991666cef3fa998460ae1602dd1fab382ec0bf22c52d48638a7bf78bef35570",
+      "byte_size": 1396,
       "redirect_to": "generated-cmake-helpers"
     },
     {
@@ -11209,7 +11209,7 @@
         "Docs/generated/ai-control-protocol.json",
         "Docs/en/reference/ai-control-protocol/index.md"
       ],
-      "content_sha256": "6bb8fc411c79ba2c851b5b64b46a77550f542860fd332b5345db64f822307cae",
+      "content_sha256": "00167afddbb95e0a54fdf1966c654434191e06c2da66576d4db2884d58213357",
       "byte_size": 7511
     },
     {
@@ -11824,8 +11824,8 @@
         "Docs/en/tutorials/first-content.md",
         "Docs/en/tutorials/first-test.md"
       ],
-      "content_sha256": "87261924456d21b4ffceb6863aff3e972e43aecebe55d8f707bbacaec0dd2893",
-      "byte_size": 5593
+      "content_sha256": "b136193f90ed0307bac291d22ffd2e28c37645d533293a2df113015126567758",
+      "byte_size": 5493
     },
     {
       "id": "legacy-tutorial-route",
@@ -12064,11 +12064,10 @@
         "Source/Scripting/MapperGlobalScriptMethods.cpp",
         "Source/Common/Settings.inc",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
-        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos",
         "BuildTools/tests/test_docs_mapper_tools.py"
       ],
-      "content_sha256": "bcd9ff6c9b6aee35af2fb44a0e1b213368f54247f6cc9522ed95677091ae4251",
-      "byte_size": 15769
+      "content_sha256": "ee99c8ec0f80820d15a80ec3ef43832c6d1e1badc643f4bb8d66172e0135eab8",
+      "byte_size": 15574
     },
     {
       "id": "mapper-tools",
@@ -12112,11 +12111,10 @@
         "Source/Client/ParticleSprites.h",
         "Source/Client/VisualParticles.h",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
-        "Examples/MinimalMultiplayer/Scripts/MapperCapture.fos",
         "BuildTools/tests/test_docs_mapper_tools.py"
       ],
-      "content_sha256": "89b9687950a134ae6983ac0f7993037fcfe76258ee2e953acd614c44e35eadd6",
-      "byte_size": 20886
+      "content_sha256": "864b3d9b161bb9f46393f397223fdf2ee5cdb61ee83364a7c6e329f50d2db5bb",
+      "byte_size": 20302
     },
     {
       "id": "maps-movement-geometry",
@@ -12193,8 +12191,8 @@
         "Docs/en/tutorials/first-test.md",
         "Docs/en/how-to/release/packaging.md"
       ],
-      "content_sha256": "0020f520f46c8ba91d8217287b2f3241eb00dd2b50059cb3e08b527fee97f406",
-      "byte_size": 8099
+      "content_sha256": "ad90b82633801cdc08ce4ac47dcd8ca34b2497da81a3d371b7aa12c004d6258d",
+      "byte_size": 8016
     },
     {
       "id": "minimal-project-readme",
@@ -12229,8 +12227,8 @@
         "Examples/MinimalProject/run_starter_smoke.py",
         "BuildTools/buildtools.py"
       ],
-      "content_sha256": "92165d78de7674d593ba7eacc0e16f9c71114d4e2975fa7a4f4bad45e77f01dc",
-      "byte_size": 5624
+      "content_sha256": "799fea6770f5d2181da542f6fb7487ba088c594b8c22e9b636c4dbcce6e13631",
+      "byte_size": 5336
     },
     {
       "id": "model-animation",
@@ -12410,8 +12408,8 @@
         "Docs/en/how-to/native-extensions.md",
         "Docs/en/how-to/native-extensions/project-dependencies.md"
       ],
-      "content_sha256": "393210f4b00ca5b2051f62439563d96ca3347d60ca3f315b6d2db5f80c945f91",
-      "byte_size": 3299
+      "content_sha256": "2b20525120004086efe0011fdd84e8deba8279546849a9e4907a715309b335dc",
+      "byte_size": 3192
     },
     {
       "id": "native-extensions-guide",
@@ -12449,8 +12447,8 @@
         "Examples/MinimalProject/Scripts/Starter.fos",
         "Docs/en/reference/native-extension/index.md"
       ],
-      "content_sha256": "cd486f05a1ecb70a880faad5966c78274a8a661c5ec005b532be6f46b2b26d20",
-      "byte_size": 16979
+      "content_sha256": "a4cb0f008e005d026b18efddb9c0ac4966375e4fa2c6aeece7f265113c29310d",
+      "byte_size": 16950
     },
     {
       "id": "networking",
@@ -12563,8 +12561,8 @@
         "Docs/en/how-to/platforms/android-debugging.md",
         "Docs/en/explanation/runtime/client-updater.md"
       ],
-      "content_sha256": "603c687bb0972641ff27a1cad16e77740a6c0f186784538db1b496d1dbb72061",
-      "byte_size": 26035
+      "content_sha256": "9da1af0d23d70ad0d6015b0d5f93a5b4351b16bd93c732bbea32bdd3a6758e49",
+      "byte_size": 26571
     },
     {
       "id": "particle-authoring-tools",
@@ -12606,8 +12604,8 @@
         "Examples/MinimalMultiplayer/Particles/Documentation.spark",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain"
       ],
-      "content_sha256": "513858aebaf925f78503af99f07adf8747f7ebb8a38498d78f78b270ca85c5a1",
-      "byte_size": 15491
+      "content_sha256": "9dbc060c7f534201f014e8fe86db20133ec83a55bf01eda4a437a2401535dc8c",
+      "byte_size": 15482
     },
     {
       "id": "particle-format-guide",
@@ -12681,8 +12679,8 @@
         "Source/Common",
         "Source/Tests"
       ],
-      "content_sha256": "f9f0717abc97c87def8b53253b8b7731f6186f2980b20219939b43e9bfd7a924",
-      "byte_size": 9138
+      "content_sha256": "0cc2d410296794ff1b79efe7db64f834c30841f95e0d6c22f01ca02d5076308c",
+      "byte_size": 9081
     },
     {
       "id": "profiling",
@@ -12768,8 +12766,8 @@
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
         "Docs/en/reference/settings/configuration-and-data-sources.md"
       ],
-      "content_sha256": "ec43d0c6697e09ac74cd5b7c0db10f513d422f7396fcfc070af08c49cd42b655",
-      "byte_size": 9261
+      "content_sha256": "71a8c645980f4ceebf8256c8b9f3535173273e6e4495db94b1845e28b3fbf839",
+      "byte_size": 9318
     },
     {
       "id": "project-local-dependencies",
@@ -12809,8 +12807,8 @@
         "BuildTools/tests/validate_project_interface.cmake",
         "BuildTools/tests/test_docs_project_dependencies.py"
       ],
-      "content_sha256": "7558f67a0a35d482fca0c924d431feb879a6f46a0697db07b175c1659c46e25d",
-      "byte_size": 21613
+      "content_sha256": "2062a10908b13e067c7fb83accd407bcd6167a371556b32fe1be35c80c994d6b",
+      "byte_size": 21865
     },
     {
       "id": "prototype-format-guide",
@@ -12899,8 +12897,8 @@
         "Docs/en/explanation/runtime/client-updater.md",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "69a2ee63b27441f90ac8c9ba40d3a5a554f74c3d8c9a1d835cd3daedcb579c41",
-      "byte_size": 25914
+      "content_sha256": "faae854133e244465ed0758c64b7d03a90bbe342ca2a9eccf17247ffd699e1cc",
+      "byte_size": 25957
     },
     {
       "id": "release-operations",
@@ -12945,8 +12943,8 @@
         "Docs/en/explanation/persistence/index.md",
         "Docs/en/how-to/release/security-and-secrets.md"
       ],
-      "content_sha256": "99d8502fc5c3118782ad93976639a0aa47187434756a09093a44eabe36407cea",
-      "byte_size": 11017
+      "content_sha256": "181fa2dd286535bba9400214f037cf5163cfe4faa9f56f53fb358cf466e206c4",
+      "byte_size": 11286
     },
     {
       "id": "remote-calls",
@@ -13115,8 +13113,8 @@
         "Docs/generated/api/methods.md",
         "Docs/generated/source-inventory.json"
       ],
-      "content_sha256": "03bb1b75f25870d4ece7655aec7f31d3e87b397c975eaab3b58dc09232b9975b",
-      "byte_size": 13722
+      "content_sha256": "e240ac109744ff14e4f684625845644732bd4776bf61c6f13c221d7276e9bc36",
+      "byte_size": 13667
     },
     {
       "id": "scripting-runtime",
@@ -13189,8 +13187,8 @@
         "Docs/en/how-to/build/project-configuration.md",
         "Docs/en/how-to/release/packaging.md"
       ],
-      "content_sha256": "3ce9efeb7e6119f9f6a60ea60edf0b677bcc6b23202b749e857343328b5cb6b8",
-      "byte_size": 15366
+      "content_sha256": "1503b15539982e88ef71d5d2d559322d41f7bf5c390c4710ef20093c68e44be7",
+      "byte_size": 16606
     },
     {
       "id": "server-runtime",
@@ -13355,8 +13353,8 @@
         "Source/Tests/Test_Geometry.cpp",
         "BuildTools/tests/test_docs_sprite_root_motion.py"
       ],
-      "content_sha256": "a1b169c4348ff21d943000d405c7d4106cc28f6e1b79e18fb5ca9282b9e726da",
-      "byte_size": 20133
+      "content_sha256": "04ead23529b85d79eb2294313cd3aed667fc46b8facdd37859f67624cddd09a5",
+      "byte_size": 20162
     },
     {
       "id": "support-matrix",
@@ -13394,8 +13392,8 @@
         "Docs/generated/support-matrix.json",
         "Docs/generated/support-matrix/index.md"
       ],
-      "content_sha256": "2fad7f18d54e8119cf01a7c30670fcd42cfd2de67f44423bbdbb32f51d818334",
-      "byte_size": 7965
+      "content_sha256": "d356552b3da1aa91e0a16896da15f00e8113d95f2a259a0c730f454458d4efa4",
+      "byte_size": 7415
     },
     {
       "id": "testing",
@@ -13426,8 +13424,8 @@
         "Docs/generated/source-inventory.json",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "76ef07baa74e611a6e3a24d83e0fb2f47c58d2d8da82bee8e2ca4e8887159497",
-      "byte_size": 24412
+      "content_sha256": "8f2a1bc129a0c7bdd1c681b53b9c080734eea8d9d4b67b2bde0351ee756e9333",
+      "byte_size": 24661
     },
     {
       "id": "text-and-localization-guide",
@@ -13503,8 +13501,8 @@
         "BuildTools/cmake/stages/ThirdParty.cmake",
         "BuildTools/tests/test_angelscript_cmake.py"
       ],
-      "content_sha256": "a3bfe3d33386311e4cfb6fb2d1674c170cacfa1a88d81c94c69c1c0e0403b25f",
-      "byte_size": 9755
+      "content_sha256": "efdcd467d86463329b80824a4ad5626002839102dd6ab1473f4982147e931a13",
+      "byte_size": 9754
     },
     {
       "id": "thread-safety-analysis",
@@ -13563,8 +13561,8 @@
         "Source/Tools",
         "BuildTools"
       ],
-      "content_sha256": "3e4aae068a33dd3e9e7c6166dbb7e8a321142a200b691972c05bfe766bc96f2f",
-      "byte_size": 20463
+      "content_sha256": "ff678da2fd20c02eb8e92fba1f2cac86a1438f4077f3a13397a45b4f84531722",
+      "byte_size": 20414
     },
     {
       "id": "unit-tests-readme",
@@ -13591,8 +13589,8 @@
         "Source/Tests",
         "Docs/Testing.md"
       ],
-      "content_sha256": "d422323e6854355c954b25abb0c2c2418f5d5e72ffa9ede1e6386214e0551825",
-      "byte_size": 9525
+      "content_sha256": "03516dba46d095ef5b59fdcf84f9dfbd842c1561a943ce7ba11c7a8f6a74225c",
+      "byte_size": 9563
     },
     {
       "id": "video-guide",
@@ -13734,8 +13732,8 @@
         "BuildTools/tests/test_package_security.py",
         "BuildTools/tests/test_docs_web_debugging.py"
       ],
-      "content_sha256": "6660847be720c83549266fbcbe7d5b9fa2a6af7dadd6072adafc4045571586f2",
-      "byte_size": 30600
+      "content_sha256": "45a5732b66e4b5b7dacfa5979063f6c1a1748861dcc8241b05b400aa0071f0c7",
+      "byte_size": 30647
     }
   ],
   "artifacts": [
@@ -13750,8 +13748,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "49ed672b22664c72af879565d50d469ae9de1d875bef7fc9e7d7832333d6f16c",
-      "byte_size": 1915593
+      "content_sha256": "b333bc575aa5a377031f060d0caf04aadcd1cc700914a98e0e5dd8bd13adc1e8",
+      "byte_size": 1920070
     },
     {
       "id": "ai_control_protocol_reference",
@@ -13764,15 +13762,15 @@
       "id": "ai_evaluation",
       "path": "Docs/generated/ai-evaluation-report.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-evaluation-report.json",
-      "content_sha256": "2535a6206bf40f32844bde1f3342fabc0ecd6120ddd52a6e82651297c4d60371",
-      "byte_size": 108354
+      "content_sha256": "8ab85e8c77a630db512632ff62a8584b0f93a5eff35fa8a2ef6dfb463c5fae9e",
+      "byte_size": 108204
     },
     {
       "id": "api_model",
       "path": "Docs/generated/api.json",
       "canonical_url": "https://fonline.ru/Docs/generated/api.json",
-      "content_sha256": "8c3fb1f3f700cc8dde5f5960f1f9a3410586ae5f725d8ef6fa05b38606d7cc22",
-      "byte_size": 3039857
+      "content_sha256": "38144d6100d197f362a282e6367eafee6c08885c88fdaa654708c8956a0505ae",
+      "byte_size": 3042432
     },
     {
       "id": "audio_reference",
@@ -13792,15 +13790,15 @@
       "id": "cmake_reference",
       "path": "Docs/generated/cmake.json",
       "canonical_url": "https://fonline.ru/Docs/generated/cmake.json",
-      "content_sha256": "db1fa6a5ddbd8787a5b0f74512b23724bf90d182d8b1b544bef2d2e7ed0ec790",
-      "byte_size": 21858
+      "content_sha256": "7736c23c711f1ab4634b611ff3b435878090a9a990ec4a05f8d9605cc8b0b2f8",
+      "byte_size": 21299
     },
     {
       "id": "description_translation_status",
       "path": "Docs/generated/description-translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/description-translation-status.json",
-      "content_sha256": "19d481ee00ba3702712c771257b8ecf2d2195d2062b42e6eec702d9726988549",
-      "byte_size": 1716529
+      "content_sha256": "1a0cdc6ff0da95a5012787b300411c50f331333f83ec263899d46439b13f8590",
+      "byte_size": 1716896
     },
     {
       "id": "documentation_diagrams",
@@ -13855,7 +13853,7 @@
       "id": "map_format_reference",
       "path": "Docs/generated/map-format.json",
       "canonical_url": "https://fonline.ru/Docs/generated/map-format.json",
-      "content_sha256": "bb1267b6cf8efc5160df95e11e6a4f926d53db73bfc81a4b43cee0bc8c8a81f4",
+      "content_sha256": "7a5daed9333115ebbbb14b638327f0f0d1617bffcfc20f6835a995c8b0b24aa0",
       "byte_size": 97780
     },
     {
@@ -13897,29 +13895,29 @@
       "id": "public_examples_reference",
       "path": "Docs/generated/public-examples.json",
       "canonical_url": "https://fonline.ru/Docs/generated/public-examples.json",
-      "content_sha256": "d5be164215488f399fe0f01d6a6badbdf762bc50b51f855ca99581125deeb531",
-      "byte_size": 14398
+      "content_sha256": "929afafb554d3231bbd84f00a9a79ae909560f41d42657dbcf0fa8a300b34911",
+      "byte_size": 14361
     },
     {
       "id": "documentation_screenshots",
       "path": "Docs/generated/screenshots.json",
       "canonical_url": "https://fonline.ru/Docs/generated/screenshots.json",
-      "content_sha256": "ba71f36b844b3c5b48c77325968c003b3b2aa74a7a9ea3ce05460d2d8c7c8930",
-      "byte_size": 9025
+      "content_sha256": "31ee21f832f2341bd7c8c2970a8dab6b0531971751210bd26d64a808b3c08d77",
+      "byte_size": 8225
     },
     {
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "259910bf0abc4e4d05fde89b0595087e7337274a51661fa771ae2f22793de655",
-      "byte_size": 269046
+      "content_sha256": "36724ceeb0e9ca35e9c976838c09ac167f5beafd97272c942a82cb30288fe998",
+      "byte_size": 269043
     },
     {
       "id": "source_inventory",
       "path": "Docs/generated/source-inventory.json",
       "canonical_url": "https://fonline.ru/Docs/generated/source-inventory.json",
-      "content_sha256": "dfd03dccb022ee19064a3ea37a76cdb1d8d04c13342f346d655ca50ad36585f2",
-      "byte_size": 7085
+      "content_sha256": "d104b9481cdf0007f6244faa19b8cc4b7b32679ab0c9b25dfd01d909cac4c4f7",
+      "byte_size": 7128
     },
     {
       "id": "support_matrix",
@@ -13939,7 +13937,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "3824fca089843fa8ba977beb5aeee64e355b15e3c6c839b20422ddb5d2e886f4",
+      "content_sha256": "82fdd818d1c54dd7760eeace8bd931d94b5f6622b52d1deb610a62eb27938dd0",
       "byte_size": 107944
     },
     {
@@ -13960,15 +13958,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "957464fe9eed4073ded32bbf11c7b55a243d581c54ef1e4503f3fc93512b4210",
-      "byte_size": 1190321
+      "content_sha256": "a5f9633bb2a4a9f3c751630885df707561ce626082b5dcdc572f991ba6d75687",
+      "byte_size": 1190994
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "fc6cedd8a480796d0b4c3273c84da6bfafef34f3d95c59b117ca1a307f03e8ef",
-      "byte_size": 1673693
+      "content_sha256": "4f76cfbc091e9d85cc4f7e5ddd683ead67d466e7ef171621ed7972ce046e002e",
+      "byte_size": 1674480
     }
   ]
 }

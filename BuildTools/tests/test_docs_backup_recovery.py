@@ -63,8 +63,8 @@ class DocumentationBackupRecoveryTests(unittest.TestCase):
         for marker in (
             "InitializeOpLogs()",
             "RestorePendingChanges()",
-            "Oplog path must end with .oplog",
-            'replace(".oplog", "-committed.oplog")',
+            "Empty oplog path in settings",
+            'strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog")',
             "Pending database insert replay conflict",
             "StartPanic",
             "fsync(_fd)",

@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4947,
-    "current_count": 4947,
+    "entry_count": 4948,
+    "current_count": 4948,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2495,
-      "current_count": 2495,
+      "entry_count": 2497,
+      "current_count": 2497,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -14863,6 +14863,18 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.client.Render.ModelSpriteMaxTextureHeight/description",
+          "source": "Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped",
+          "source_sha256": "264221c4de7f16d6d6425d87b723ce16045c3a698790b3936509dd8988c23615",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Render.ModelSpriteMaxTextureWidth/description",
+          "source": "Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped",
+          "source_sha256": "ef3bad459fcfcae345e7ac790cc265108df5554a0faccf105acb3eb183fab223",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.client.Render.NullRenderer/description",
           "source": "If true, null renderer is used",
           "source_sha256": "5fa4323150c42ed136c2e451204ff83952651661633de8674dc03b16e5fbb922",
@@ -16859,8 +16871,8 @@
     },
     "cmake": {
       "source_model": "Docs/generated/cmake.json",
-      "entry_count": 65,
-      "current_count": 65,
+      "entry_count": 64,
+      "current_count": 64,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -16880,12 +16892,6 @@
           "locator": "/helpers/@id=cmake.helper.AddNativeIncludeDir/description",
           "source": "Add project-relative include directories when Native scripting is enabled.",
           "source_sha256": "6751e425fcaf582f1c1979374c79d8e5365beb5f78f13b81eb3961c3b0e7a206",
-          "status": "current"
-        },
-        {
-          "locator": "/helpers/@id=cmake.helper.AddProjectLibraries/description",
-          "source": "Link project-owned targets or explicit platform libraries only to their consuming engine roles before BuildCoreLibraries.",
-          "source_sha256": "663606d46a67746ca79de07481a9d1c9d8ffe294748649b51bdd23d13bfdf0c3",
           "status": "current"
         },
         {

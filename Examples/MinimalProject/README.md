@@ -6,10 +6,11 @@ document_id: minimal-project-readme
 
 # FOnline Minimal Project
 
-This is the engine-owned executable starter and CI validation project. It is intentionally small enough to explain completely:
+This is the engine-owned executable starter and opt-in validation project. It is intentionally small enough to explain completely:
 
 - `CMakeLists.txt` composes FOnline through the public stage helpers and routes
-  one server-only `INTERFACE` dependency through `AddProjectLibraries`;
+  one server-only `INTERFACE` dependency through the current revision-pinned
+  `FO_SERVER_LIBS` integration list;
 - `CMakePresets.json` provides standalone Windows x64 and Linux GCC configure/smoke presets;
 - `FOnlineStarter.fomain` defines one smoke sub-config and the minimum reusable resource packs;
 - `Scripts/Starter.fos` subscribes to the server start event and declares one remote call in each direction;
@@ -22,15 +23,14 @@ The project has no maps, critters, items, dialogs, GUI, authentication, or produ
 
 ## Automated smoke
 
-From the engine root:
+From the example root with `Engine/` initialized:
 
 ```bash
-python BuildTools/buildtools.py validate linux-starter-smoke
-# Windows:
-python BuildTools/buildtools.py validate win64-starter-smoke
+cd Examples/MinimalProject
+python validate.py
 ```
 
-BuildTools recreates `Workspace/validation-project`, copies this directory into it, links its `Engine/` child back to the current engine checkout, configures/builds the headless server and baker, bakes resources, then runs `RunStarterSmoke`.
+The local validator configures/builds the headless server and baker, bakes resources, then runs `RunStarterSmoke`. The current required Engine workflow does not execute this route.
 
 Success requires the server log to reach every marker and exit with code zero:
 
@@ -40,9 +40,9 @@ starter_server_started
 starter_smoke_passed
 ```
 
-The native marker proves that a `SERVER` source was compiled into `ServerLib`, its `ExportMethod` declaration entered codegen, and baked AngelScript called the generated `Game.NativeStarterValue()` binding at runtime. The same translation unit requires `FO_STARTER_PROJECT_DEPENDENCY=1`, so compilation also proves that the server-role `INTERFACE` target propagated through `AddProjectLibraries`. The visibility hook proves optional hook discovery and fallback suppression during code generation. The self-contained runner also rejects a process that hangs for more than 60 seconds, exits without every marker, or produces inconsistent `Metadata.fometa-server` / `Metadata.fometa-client` contracts. The baked outputs must contain `script.remote-call.server.StarterPing` and `script.remote-call.client.StarterNotice`; this exercises the same `MetadataBaker` format consumed by the richer Engine-side `BuildTools/docs_metadata.py` catalog generator without making the standalone example depend on that documentation tool. The Windows x64 route was run successfully on 2026-07-31. Both Windows and Linux routes are registered in `.github/workflows/validate.yml`; the Linux route must not be described as verified until its CI job is green.
+The native marker proves that a `SERVER` source was compiled into `ServerLib`, its `ExportMethod` declaration entered codegen, and baked AngelScript called the generated `Game.NativeStarterValue()` binding at runtime. The same translation unit requires `FO_STARTER_PROJECT_DEPENDENCY=1`, so compilation also proves that the server-role `INTERFACE` target propagated through `FO_SERVER_LIBS`. The visibility hook proves optional hook discovery and fallback suppression during code generation. The self-contained runner also rejects a process that hangs for more than 60 seconds, exits without every marker, or produces inconsistent `Metadata.fometa-server` / `Metadata.fometa-client` contracts. The baked outputs must contain `script.remote-call.server.StarterPing` and `script.remote-call.client.StarterNotice`; this exercises the same `MetadataBaker` format consumed by the richer Engine-side `BuildTools/docs_metadata.py` catalog generator without making the standalone example depend on that documentation tool. The Windows x64 route was run successfully on 2026-07-31. These standalone build routes are opt-in local evidence; the current Engine validation workflow does not execute them.
 
-The `CMakeLists.txt` compatibility branch appends the same target to `FO_SERVER_LIBS` only when an older Engine revision does not yet expose `AddProjectLibraries`. The pinned release lane exercises the public helper; the current-Engine lane keeps the starter buildable while the helper is moving from the documentation candidate into `master`.
+`FO_SERVER_LIBS` is current revision-pinned integration state, not a helper declared by `BuildTools/cmake/ProjectInterface.json`. Re-audit it whenever the Engine pin changes.
 
 ## Deliberate limits
 

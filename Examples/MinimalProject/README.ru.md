@@ -4,16 +4,16 @@ locale: ru
 document_id: minimal-project-readme
 ---
 
-<!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"92165d78de7674d593ba7eacc0e16f9c71114d4e2975fa7a4f4bad45e77f01dc"} -->
+<!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"799fea6770f5d2181da542f6fb7487ba088c594b8c22e9b636c4dbcce6e13631"} -->
 
 # Минимальный проект FOnline
 
-Это принадлежащий движку исполняемый starter и проект для проверки в CI. Он
+Это принадлежащий движку исполняемый starter и opt-in проект проверки. Он
 намеренно достаточно мал, чтобы описать его целиком:
 
-- `CMakeLists.txt` компонует FOnline через публичные вспомогательные функции
-  стадий и направляет одну серверную зависимость `INTERFACE` через
-  `AddProjectLibraries`;
+- `CMakeLists.txt` компонует FOnline через публичные helper-команды стадий и
+  направляет одну server-only dependency `INTERFACE` через текущий привязанный
+  к ревизии integration list `FO_SERVER_LIBS`;
 - `CMakePresets.json` предоставляет отдельные пресеты конфигурации и smoke-теста
   для Windows x64 и Linux GCC;
 - `FOnlineStarter.fomain` объявляет один smoke sub-config и минимальные
@@ -38,15 +38,13 @@ document_id: minimal-project-readme
 Из корня движка:
 
 ```bash
-python BuildTools/buildtools.py validate linux-starter-smoke
-# Windows:
-python BuildTools/buildtools.py validate win64-starter-smoke
+cd Examples/MinimalProject
+python validate.py
 ```
 
-BuildTools заново создаёт `Workspace/validation-project`, копирует туда этот
-каталог, связывает его дочерний `Engine/` с текущим checkout движка,
-конфигурирует и собирает headless-сервер и baker, запекает ресурсы, а затем
-запускает `RunStarterSmoke`.
+Локальный validator использует инициализированный `Engine/`, конфигурирует и
+собирает headless server и baker, запекает ресурсы, а затем запускает
+`RunStarterSmoke`. Текущий обязательный workflow Engine этот маршрут не запускает.
 
 Для успеха журнал сервера должен дойти до каждого маркера, а процесс —
 завершиться с нулевым кодом:
@@ -62,7 +60,7 @@ starter_smoke_passed
 AngelScript вызвал сгенерированную привязку `Game.NativeStarterValue()` во
 время выполнения. Та же единица трансляции требует
 `FO_STARTER_PROJECT_DEPENDENCY=1`, поэтому компиляция также доказывает передачу
-серверной цели `INTERFACE` через `AddProjectLibraries`. Visibility hook
+server target `INTERFACE` через `FO_SERVER_LIBS`. Visibility hook
 подтверждает обнаружение необязательного hook и подавление fallback при
 генерации кода. Самодостаточный runner отклоняет процесс, который работает
 дольше 60 секунд, завершается без любого маркера или создаёт несовместимые
@@ -72,15 +70,12 @@ AngelScript вызвал сгенерированную привязку `Game.N
 `MetadataBaker`, который потребляет более полный генератор каталога
 `BuildTools/docs_metadata.py` на стороне движка, не создавая зависимости
 отдельного примера от этого инструмента документации. Маршрут Windows x64 был
-успешно выполнен 31 июля 2026 года. Оба маршрута, Windows и Linux,
-зарегистрированы в `.github/workflows/validate.yml`; Linux нельзя описывать как
-проверенный, пока его задание CI не станет зелёным.
+успешно выполнен 31 июля 2026 года. Эти standalone build routes являются
+opt-in local evidence и не входят в текущий обязательный workflow Engine.
 
-Ветка совместимости в `CMakeLists.txt` добавляет ту же цель в `FO_SERVER_LIBS`
-только для старых ревизий Engine, в которых ещё нет `AddProjectLibraries`.
-Зафиксированный release-маршрут проверяет публичную вспомогательную функцию, а
-маршрут текущего Engine сохраняет собираемость starter на время переноса этой
-функции из кандидата документации в `master`.
+`FO_SERVER_LIBS` является текущим привязанным к ревизии integration state, а не
+helper-командой, объявленной в `BuildTools/cmake/ProjectInterface.json`.
+Проверяйте его заново при каждом изменении pin Engine.
 
 ## Намеренные ограничения
 

@@ -764,6 +764,9 @@ End
         vector<uint8_t> map_data;
         auto writer = DataWriter(map_data);
 
+        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
+
         vector<string> hashed_strings {string {critter_pid.as_str()}, string {item_pid.as_str()}};
         writer.Write<uint32_t>(numeric_cast<uint32_t>(hashed_strings.size()));
 
@@ -797,6 +800,8 @@ End
     {
         vector<uint8_t> map_data;
         auto writer = DataWriter(map_data);
+        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
         writer.Write<uint32_t>(uint32_t {0});
         writer.Write<uint32_t>(uint32_t {0});
         return map_data;

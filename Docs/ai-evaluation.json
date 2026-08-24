@@ -160,7 +160,7 @@
       "supporting_document_ids": ["native-extensions-guide", "third-party-maintenance", "packaging-and-release"],
       "retrieval_checks": [
         {
-          "query": "project local dependency AddProjectLibraries roles CMake target",
+          "query": "project local dependency FO_SERVER_LIBS role CMake target",
           "expected_document_ids": ["project-local-dependencies"],
           "max_rank": 3
         },
@@ -185,10 +185,10 @@
         },
         {
           "id": "role-scoped-project-linking",
-          "description": "Use the public role-scoped helper before core libraries consume the dependency.",
+          "description": "Use the pinned revision's narrowest consumed library list before core libraries consume the dependency.",
           "document_id": "project-local-dependencies",
           "anchor": "integrate-at-the-project-boundary",
-          "required_terms": ["AddProjectLibraries", "ROLES", "LIBRARIES", "BuildCoreLibraries"]
+          "required_terms": ["FO_CLIENT_LIBS", "FO_BAKER_LIBS", "BuildCoreLibraries", "revision-pinned"]
         },
         {
           "id": "dependency-runtime-delivery",
@@ -552,16 +552,16 @@
           "required_terms": ["Mapper.ParticlePreviewEffect", "Mapper.ParticlePreviewScale", "Mapper.ParticlePreviewSeed", "Mapper.ParticlePreviewPrewarm", "backend", "Play", "Restart"]
         },
         {
-          "id": "full-window-capture",
-          "description": "Choose the deferred full-window API and wait before quitting.",
+          "id": "visible-ui-evidence",
+          "description": "Separate map-only script capture from visible Mapper UI evidence.",
           "document_id": "mapper-interactive-manual",
           "anchor": "screenshot-and-automation-contract",
-          "required_terms": ["Game.RequestMapperWindowScreenshot", "Deferred", "Full Mapper frame", "one request may be pending", "allow at least one more", "Mapper loop"]
+          "required_terms": ["Game.SaveMapperScreenshot", "map render target", "excludes", "application-level ImGui", "platform screenshot tool", "visible"]
         }
       ],
       "forbidden_assumptions": [
         "Do not treat Mapper preview as runtime acceptance or hand-edit baked .spk/.efk output.",
-        "Do not omit that Game.RequestMapperWindowScreenshot is deferred, only one request may be pending, and the caller must allow one further loop before quitting."
+        "Do not claim that the Engine script API captures application-level ImGui windows; visible UI evidence uses a platform screenshot tool."
       ]
     },
     {
@@ -599,10 +599,10 @@
         },
         {
           "id": "mapper-screenshot-boundary",
-          "description": "Select map-only or full-window capture deliberately and validate visual output.",
+          "description": "Use the map-only script capture deliberately and validate visual output.",
           "document_id": "mapper-tools",
           "anchor": "screenshot-contract",
-          "required_terms": ["SaveMapperScreenshot", "RequestMapperWindowScreenshot", "TGA only", "one further loop", "non-uniform test map", "pixel inspection"]
+          "required_terms": ["SaveMapperScreenshot", "map-only", "TGA only", "platform screenshot tool", "non-uniform test map", "pixel inspection"]
         },
         {
           "id": "mapper-project-ownership",
@@ -614,7 +614,7 @@
       ],
       "forbidden_assumptions": [
         "Do not use Render.NullRenderer for visual capture or treat file existence as pixel evidence.",
-        "Do not attach the one-further-loop rule to synchronous Game.SaveMapperScreenshot: it applies to deferred RequestMapperWindowScreenshot before quit, and only one full-window request may be pending."
+        "Do not claim that Game.SaveMapperScreenshot includes the application-level ImGui windows."
       ]
     },
     {
@@ -895,7 +895,7 @@
           "max_rank": 3
         },
         {
-          "query": "support claim renderer package device runtime evidence",
+          "query": "Support vocabulary Project release matrix",
           "expected_document_ids": ["support-matrix"],
           "max_rank": 3
         }

@@ -18,9 +18,6 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-helper-addenginesources-8a1a5c856f"></a>
 - [`entry-cmake-helper-addenginesources-8a1a5c856f`](../../en/reference/cmake/helpers.md#entry-cmake-helper-addenginesources-8a1a5c856f)
 
-<a id="entry-cmake-helper-addprojectlibraries-917d80c201"></a>
-- [`entry-cmake-helper-addprojectlibraries-917d80c201`](../../en/reference/cmake/helpers.md#entry-cmake-helper-addprojectlibraries-917d80c201)
-
 <a id="entry-cmake-helper-addnativeincludedir-60a1b8f1db"></a>
 - [`entry-cmake-helper-addnativeincludedir-60a1b8f1db`](../../en/reference/cmake/helpers.md#entry-cmake-helper-addnativeincludedir-60a1b8f1db)
 
