@@ -21,3 +21,11 @@ def test_toolset_configure_respects_project_ascompiler_default() -> None:
     assert "-DFO_CODE_COVERAGE=0" in args
     assert "-DCMAKE_BUILD_TYPE=Release" in args
     assert not any(arg.startswith("-DFO_BUILD_ASCOMPILER=") for arg in args)
+
+
+def test_toolset_workspace_version_tracks_configure_flags(monkeypatch) -> None:
+    baseline = _buildtools.build_toolset_version()
+
+    monkeypatch.setitem(_buildtools.BUILD_TARGETS, "toolset", _buildtools.make_flag_map("FO_BUILD_BAKER", "FO_BUILD_SERVER"))
+
+    assert _buildtools.build_toolset_version() != baseline

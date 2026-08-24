@@ -110,3 +110,42 @@ AddCommandTarget(ForceCodeGeneration
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# The interop shim table is generated here rather than in ThirdParty because it needs the Python
+# interpreter this stage resolves, while the archives it reads come from the Managed runtime setup
+if(FO_MANAGED_SCRIPTING)
+    SetValue(FO_MANAGED_PINVOKE_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/generate_pinvoke_table.py")
+
+    # The archives carry target objects, so the reader must be the target toolchain's nm. Most toolchains
+    # set CMAKE_NM; the Emscripten one does not, and only its own llvm-nm understands wasm objects
+    if(CMAKE_NM)
+        SetValue(FO_MANAGED_NM "${CMAKE_NM}")
+    elseif(FO_WEB)
+        SetValue(FO_MANAGED_NM "$ENV{EMSDK}/upstream/bin/llvm-nm")
+    else()
+        find_program(FO_MANAGED_NM NAMES llvm-nm nm REQUIRED)
+    endif()
+
+    if(NOT EXISTS "${FO_MANAGED_NM}")
+        AbortMessage("Symbol reader for the Managed interop shim table not found: ${FO_MANAGED_NM}")
+    endif()
+
+    AddCustomCommand(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"
+        COMMAND ${Python3_EXECUTABLE}
+            "${FO_MANAGED_PINVOKE_SCRIPT}"
+            --nm "${FO_MANAGED_NM}"
+            --output "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"
+            ${FO_MANAGED_PINVOKE_ARGS}
+        DEPENDS "${FO_MANAGED_PINVOKE_SCRIPT}"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Generate Managed interop shim table")
+
+    AddCommandTarget(ManagedPInvokeTable
+        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+    # Ordered against the runtime setup as a target, not by depending on its marker file: a second
+    # DEPENDS on that output duplicates the rule and races two dotnet/runtime builds in one tree
+    AddDependencies(ManagedPInvokeTable SetupManagedRuntime)
+    AppendList(FO_GEN_DEPENDENCIES ManagedPInvokeTable)
+endif()

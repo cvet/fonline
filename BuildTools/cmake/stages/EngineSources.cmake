@@ -157,6 +157,9 @@ if(FO_MANAGED_SCRIPTING)
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.h"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedPInvokeTable.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedPInvokeTable.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs")
 endif()
 

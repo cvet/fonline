@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
 import shlex
@@ -799,7 +800,10 @@ def resolve_visual_studio_2022_dev_cmd() -> Path | None:
 
 def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
 	if os.name != 'nt':
-		run(['./build.sh', *build_args], cwd=runtime_root)
+		# The outer CMake build passes down a make jobserver its nested make cannot join, and the browser
+		# subset turns that into a hard error, so the inherited job-control flags are dropped here
+		build_env = {name: value for name, value in os.environ.items() if name not in ('MAKEFLAGS', 'MFLAGS')}
+		run(['./build.sh', *build_args], cwd=runtime_root, env=build_env)
 		return
 
 	wrapper = runtime_root / 'fo-build-runtime.cmd'
@@ -994,7 +998,10 @@ def run_in_emsdk_env(command: Sequence[str], workspace: Path, cwd: str | Path | 
 
 
 def build_toolset_version() -> str:
-	return f'v1-{os.name}'
+	# Derived from the configure flags so a tree prepared before a flag change is invalidated: a stale
+	# cache value the project no longer produces (FO_BUILD_ASCOMPILER before the managed switch) breaks configure
+	digest = hashlib.sha256('\n'.join(toolset_flag_args()).encode('utf-8')).hexdigest()[:8]
+	return f'v2-{os.name}-{digest}'
 
 
 def build_emscripten_version(env: Mapping[str, str]) -> str:
@@ -1203,12 +1210,15 @@ def make_output_path_cmake_args(output_path: str, binary_output_postfix: str = '
 	return args
 
 
-def make_toolset_cmake_args(output_path: str, config_name: str | None = None, binary_output_postfix: str = '') -> list[str]:
+def toolset_flag_args(config_name: str | None = None) -> list[str]:
 	# The baker belongs to every scripting backend, while ASCompiler only exists when the
 	# embedding project enables AngelScript. Leave FO_BUILD_ASCOMPILER to the project's
 	# SetOptionValues default instead of overriding managed-only projects with an invalid pair
-	toolset_args = [arg for arg in build_flag_args('toolset', config=config_name) if not arg.startswith('-DFO_BUILD_ASCOMPILER=')]
-	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *toolset_args]
+	return [arg for arg in build_flag_args('toolset', config=config_name) if not arg.startswith('-DFO_BUILD_ASCOMPILER=')]
+
+
+def make_toolset_cmake_args(output_path: str, config_name: str | None = None, binary_output_postfix: str = '') -> list[str]:
+	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *toolset_flag_args(config_name)]
 
 
 def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
@@ -2127,6 +2137,91 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
 
 
+# CoreLib reaches the OS through the interop shims on every non-Windows platform (Interop.Sys is
+# libSystem.Native), so the runtime alone is not a working runtime and libs.native must be built with it
+MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
+
+# Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
+# subset changes: an unchanged marker leaves an already-prepared host on a runtime built the old way
+MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native'
+MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
+
+
+def resolve_mono_runtime_subset(os_name: str) -> str:
+	# Passing an explicit subset overrides the dotnet default, which for browser carries mono.wasmruntime
+	# — the piece that builds the JavaScript glue Mono imports (scheduling, crypto, startup)
+	if os_name == 'browser':
+		return f'{MONO_RUNTIME_SUBSET}+mono.wasmruntime'
+
+	return MONO_RUNTIME_SUBSET
+
+
+def resolve_mono_marker_suffix(os_name: str) -> str:
+	return MONO_BROWSER_SUBSET_MARKER_SUFFIX if os_name == 'browser' else MONO_SUBSET_MARKER_SUFFIX
+
+
+def resolve_interop_shim_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
+	native_root = runtime_root / 'artifacts' / 'bin' / 'native'
+	candidates = sorted(native_root.glob(f'*-{os_name}-{config}-{arch}'))
+
+	if not candidates:
+		raise SystemExit(f'Interop shim libraries not found: {native_root}/*-{os_name}-{config}-{arch}')
+
+	return candidates[-1]
+
+
+def resolve_minipal_libraries(runtime_root: Path, os_name: str, arch: str, config: str) -> list[Path]:
+	# The shims call into minipal (SystemNative_GetTimestamp needs minipal_hires_ticks), and it is only
+	# ever produced under the intermediate obj tree, so it is picked up separately from the shims
+	obj_root = runtime_root / 'artifacts' / 'obj' / 'native'
+	return sorted(path for parent in obj_root.glob(f'*-{os_name}-{config}-{arch}') for path in (parent / 'minipal').glob('libminipal.*'))
+
+
+def copy_browser_runtime_glue(runtime_root: Path, output_lib_dir: Path, os_name: str, arch: str, config: str) -> None:
+	# Mono's browser runtime imports its scheduler, crypto and startup helpers from JavaScript, so the
+	# Emscripten link needs these next to the archives; the rsp files carry dotnet's own link options
+	native_dir = resolve_interop_shim_dir(runtime_root, os_name, arch, config)
+	glue_dir = native_dir / 'src' / 'es6'
+	glue_paths = sorted(glue_dir.glob('dotnet.es6.*.js'))
+
+	if not glue_paths:
+		raise SystemExit(f'Browser runtime glue not found: {glue_dir}')
+
+	target_dir = output_lib_dir / 'es6'
+	ensure_dir(target_dir)
+
+	for glue_path in glue_paths:
+		log('Copy browser runtime glue', glue_path.name)
+		shutil.copy2(glue_path, target_dir / glue_path.name)
+
+	for rsp_path in sorted((native_dir / 'src').glob('emcc-*.rsp')):
+		log('Copy browser link options', rsp_path.name)
+		shutil.copy2(rsp_path, output_lib_dir / rsp_path.name)
+
+
+def copy_interop_shim_libraries(runtime_root: Path, output_lib_dir: Path, os_name: str, arch: str, config: str) -> None:
+	shim_dir = resolve_interop_shim_dir(runtime_root, os_name, arch, config)
+	# Static archives only: the shims are linked into the host binary and reached through the engine's
+	# Mono dl fallback, because Windows and WebAssembly cannot resolve them as shared libraries
+	shim_paths = sorted(path for pattern in ('*.a', '*.lib') for path in shim_dir.glob(pattern))
+
+	if not shim_paths:
+		raise SystemExit(f'Interop shim libraries not found: {shim_dir}')
+
+	minipal_paths = resolve_minipal_libraries(runtime_root, os_name, arch, config)
+
+	if not minipal_paths:
+		raise SystemExit(f'Interop shim dependency minipal not found under: {runtime_root / "artifacts" / "obj" / "native"}')
+
+	shim_paths.extend(minipal_paths)
+
+	ensure_dir(output_lib_dir)
+
+	for shim_path in shim_paths:
+		log('Copy interop shim', shim_path.name)
+		shutil.copy2(shim_path, output_lib_dir / shim_path.name)
+
+
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
 	# dotnet/runtime build expects ARMv7 32-bit as 'arm', but our project-wide arch
 	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
@@ -2138,8 +2233,9 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	runtime_root = workspace / 'runtime'
 	runtime_version = env['FO_DOTNET_RUNTIME'].replace('/', '_').replace('\\', '_')
 	clone_marker = workspace / f'CLONED_{runtime_version}'
-	built_marker = workspace / f'BUILT_{runtime_triplet}_mono_runtime_corelib'
-	ready_marker = workspace / f'READY_{publish_triplet}_mono_runtime_corelib'
+	marker_suffix = resolve_mono_marker_suffix(os_name)
+	built_marker = workspace / f'BUILT_{runtime_triplet}{marker_suffix}'
+	ready_marker = workspace / f'READY_{publish_triplet}{marker_suffix}'
 
 	def clone_runtime() -> None:
 		if runtime_root.exists():
@@ -2156,7 +2252,7 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	run_marker_step(clone_marker, 'Prepare runtime source', clone_runtime)
 
 	def build_runtime() -> None:
-		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', 'mono.runtime+mono.corelib'], runtime_root)
+		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root)
 
 	run_marker_step(built_marker, 'Build runtime', build_runtime)
 
@@ -2185,6 +2281,11 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		for assembly_path in shared_framework_dir.glob('*.dll'):
 			shutil.copy2(assembly_path, netcoreapp_dir / assembly_path.name)
 		shutil.copy2(corelib_path, netcoreapp_dir / corelib_path.name)
+
+		copy_interop_shim_libraries(runtime_root, output_dir / 'lib', os_name, dotnet_runtime_arch, config)
+
+		if os_name == 'browser':
+			copy_browser_runtime_glue(runtime_root, output_dir / 'lib', os_name, dotnet_runtime_arch, config)
 
 	run_marker_step(ready_marker, f'Publish runtime {publish_triplet}', publish_runtime)
 

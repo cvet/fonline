@@ -745,7 +745,13 @@ if(FO_MANAGED_SCRIPTING)
 
     SetValue(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
     SetValue(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
-    SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib)
+    # Keep in sync with the marker suffixes in buildtools.py; only the browser subset carries the
+    # JavaScript glue, so only it is invalidated when that glue is added
+    if(FO_WEB)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_wasmglue)
+    else()
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native)
+    endif()
 
     SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
     SetValue(FO_MANAGED_RUNTIME_DIR ${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET})
@@ -760,8 +766,22 @@ if(FO_MANAGED_SCRIPTING)
         SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
     endif()
 
+    SetValue(FO_MONO_SETUP_ENV "FO_WORKSPACE=${FO_DOTNET_DIR}")
+
+    # dotnet/runtime's Android build reads both paths from the environment and fails outright without
+    # them (libs.native builds a Java part through the SDK), so they are handed over explicitly
+    if(FO_ANDROID)
+        if(ANDROID_NDK)
+            AppendList(FO_MONO_SETUP_ENV "ANDROID_NDK_ROOT=${ANDROID_NDK}")
+        else()
+            AppendList(FO_MONO_SETUP_ENV "ANDROID_NDK_ROOT=$ENV{FO_ANDROID_NDK_ROOT}")
+        endif()
+
+        AppendList(FO_MONO_SETUP_ENV "ANDROID_SDK_ROOT=$ENV{FO_ANDROID_SDK_ROOT}")
+    endif()
+
     AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
-        COMMAND ${CMAKE_COMMAND} -E env "FO_WORKSPACE=${FO_DOTNET_DIR}" ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
+        COMMAND ${CMAKE_COMMAND} -E env ${FO_MONO_SETUP_ENV} ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
         WORKING_DIRECTORY ${FO_DOTNET_DIR}
         COMMENT "Setup Managed runtime")
 
@@ -770,16 +790,67 @@ if(FO_MANAGED_SCRIPTING)
         WORKING_DIRECTORY ${FO_DOTNET_DIR})
     AppendList(FO_GEN_DEPENDENCIES SetupManagedRuntime)
 
+    # CoreLib reaches the OS through these shims, so they belong to the runtime rather than being an
+    # extra. They are linked statically everywhere: Windows and WebAssembly cannot dlopen them at all
+    if(FO_WEB)
+        # Elsewhere the shim resolves ICU at load time; statically it needs ICU present, and none ships
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native)
+    else()
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native)
+    endif()
+
+    # The entry-point prefix does not follow the module name (System.Globalization.Native exports
+    # GlobalizationNative_*), so each shim states its own instead of deriving one
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Native SystemNative_)
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Globalization.Native GlobalizationNative_)
+
+    foreach(shimLib ${FO_MANAGED_SHIM_LIBS})
+        AppendList(FO_MANAGED_PINVOKE_ARGS --library "${shimLib}=${FO_MANAGED_SHIM_PREFIX_${shimLib}}=${FO_MANAGED_RUNTIME_DIR}/lib/lib${shimLib}.a")
+    endforeach()
+
     AppendList(FO_COMMON_SYSTEM_LIBS
         monosgen-2.0
         mono-component-debugger-stub-static
         mono-component-diagnostics_tracing-stub-static
         mono-component-hot_reload-stub-static
-        mono-component-marshal-ilgen-stub-static)
+        mono-component-marshal-ilgen-stub-static
+        ${FO_MANAGED_SHIM_LIBS}
+        minipal)
 
     if(FO_WINDOWS)
         AppendList(FO_COMMON_SYSTEM_LIBS bcrypt)
     elseif(FO_WEB)
-        AppendList(FO_COMMON_SYSTEM_LIBS mono-wasm-eh-wasm mono-wasm-nosimd)
+        # The JS flavour, not the wasm one: the engine builds with -sDISABLE_EXCEPTION_CATCHING=0 rather
+        # than -fwasm-exceptions, and the wasm flavour then wants an unwinder the link does not have
+        AppendList(FO_COMMON_SYSTEM_LIBS mono-wasm-eh-js mono-wasm-nosimd)
+
+        # Mono's browser runtime imports its scheduler, entropy and startup helpers from JavaScript, so
+        # these are as much part of the runtime as the archives are
+        SetValue(FO_MANAGED_GLUE_DIR ${FO_MANAGED_RUNTIME_DIR}/lib/es6)
+        AddLinkOptionsList(
+            --pre-js ${FO_MANAGED_GLUE_DIR}/dotnet.es6.pre.js
+            --js-library ${FO_MANAGED_GLUE_DIR}/dotnet.es6.lib.js
+            --extern-post-js ${FO_MANAGED_GLUE_DIR}/dotnet.es6.extpost.js)
+
+        # The shim table takes the address of every entry point, dragging in System.Native objects for work
+        # a browser cannot do; naming them keeps the link strict rather than allowing undefined wholesale
+        SetValue(FO_MANAGED_WEB_ALLOWED_UNDEFINED
+            dlopen
+            endgrent
+            flock
+            getgrent
+            getgrgid_r
+            getpwnam_r
+            getpwuid_r
+            setgrent
+            waitid)
+        SetValue(FO_MANAGED_WEB_UNDEFINED_FILE ${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedWebAllowedUndefined.txt)
+        FileWrite(${FO_MANAGED_WEB_UNDEFINED_FILE} "")
+
+        foreach(allowedSymbol ${FO_MANAGED_WEB_ALLOWED_UNDEFINED})
+            FileAppend(${FO_MANAGED_WEB_UNDEFINED_FILE} "${allowedSymbol}\n")
+        endforeach()
+
+        AddLinkOptionsList(-Wl,--allow-undefined-file=${FO_MANAGED_WEB_UNDEFINED_FILE})
     endif()
 endif()

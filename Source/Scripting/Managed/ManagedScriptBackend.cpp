@@ -39,6 +39,7 @@
 #include "EngineBase.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
+#include "ManagedPInvokeTable.h"
 #include "Platform.h"
 #include "Properties.h"
 #include "RemoteCallWire.h"
@@ -5024,8 +5025,12 @@ static void ConfigureManagedRuntime()
     mono_set_signal_chaining(true);
     mono_set_crash_chaining(true);
 
-    // The embedded Mono runtime is published without System.Globalization.Native.
-    // Use invariant globalization by default; callers can override the env var
+    // CoreLib reaches the OS through the interop shims, and the very first managed call already needs
+    // one (GlobalizationMode reads its env var through Interop.Sys), so this precedes every other step
+    RegisterManagedInteropShims();
+
+    // The shims are linked in, but no ICU package is shipped with the game, so globalization stays
+    // invariant by default; callers can still opt into a system ICU through the env var
     SetEnvironmentVariableDefault("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
 
     // Force preemptive GC thread suspension. Under the multithreaded game-logic model the process hosts several
@@ -5034,10 +5039,9 @@ static void ConfigureManagedRuntime()
 
     const auto runtime_dir = FindManagedRuntimeDir();
 
-    if (!runtime_dir.has_value()) {
-        mono_config_parse(nullptr);
-        return;
-    }
+    // Continuing without it only defers the failure into Mono, which aborts on a bare `corlib' assertion
+    // once it cannot find System.Private.CoreLib; the directory is expected next to the binary or in cwd
+    FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", std::filesystem::current_path().string(), Platform::GetExePath().value_or(""));
 
     const auto lib_dir = *runtime_dir / "lib";
     const auto etc_dir = *runtime_dir / "etc";
