@@ -8986,7 +8986,7 @@ production game's visual policy.
 ===== BEGIN DOCUMENT mapper-interactive-manual =====
 Source: Docs/en/how-to/tools/mapper-interactive.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper-interactive.html
-Content SHA-256: ee99c8ec0f80820d15a80ec3ef43832c6d1e1badc643f4bb8d66172e0135eab8
+Content SHA-256: b021026bc629ff501477cc19a4a781f8943e669243cefffe365dc1ce0b0eabff
 
 ---
 layout: default
@@ -9267,7 +9267,7 @@ The mapper script API exposes one screenshot method:
 
 | Method | Frame contents | Completion |
 |---|---|---|
-| `Game.SaveMapperScreenshot(path)` | Current map render target and mapper script interface drawing; excludes the later application-level ImGui composition. | Synchronous TGA write. |
+| `Game.SaveMapperScreenshot(path)` | Current map render target and mapper script interface drawing; excludes the later application-level ImGui composition. | Synchronous PNG write. |
 
 There is no Engine script method for full-window UI capture. The minimal
 multiplayer example provides a reproducible visible profile; after its windows
@@ -22220,7 +22220,7 @@ owning model tests.
 ===== BEGIN DOCUMENT mapper-tools =====
 Source: Docs/en/how-to/tools/mapper.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper.html
-Content SHA-256: 864b3d9b161bb9f46393f397223fdf2ee5cdb61ee83364a7c6e329f50d2db5bb
+Content SHA-256: 7606963147a4cae58cca5cc8a5fa96be221b048b710ecb5a532a82e636f72dab
 
 ---
 layout: default
@@ -22249,7 +22249,7 @@ warmup loops from `Game.OnLoop`, calls `Game.SaveMapperScreenshot`, and exits
 through `Game.RequestQuit`.
 
 Choose the capture route deliberately. `SaveMapperScreenshot` synchronously
-writes the map render as TGA only; warm up a newly shown map before the call,
+writes the map render as PNG; warm up a newly shown map before the call,
 and expect non-uniform dimensions after resize or crop. It does not include the
 application-level ImGui windows. Capture the visible application window with a
 platform screenshot tool when review evidence must include Mapper UI.
@@ -22406,7 +22406,7 @@ placement, and gameplay validation.
 | `Game.SetMapperHiddenSpritesVisible(visible)` | Include or suppress sprites marked as hidden during normal client rendering. |
 | `Game.AddMapperIgnoredItemPids(pids)` | Add item prototype ids to the current map's mapper ignore list and rebuild it. |
 | `Game.SetMapperScrollCheckEnabled(enabled)` | Enable or disable camera clamping to authored scroll bounds. |
-| `Game.SaveMapperScreenshot(path)` | Redraw and synchronously save the map render target as TGA; application-level ImGui windows are not included. |
+| `Game.SaveMapperScreenshot(path)` | Redraw and synchronously save the map render target as PNG through the same engine encoder used by client screenshots; application-level ImGui windows are not included. |
 | `Game.DumpAtlases()` | Save diagnostic TGA copies of live texture atlases with allocation and sprite-mesh overlays. |
 
 `CalcMapperFitZoom` uses `ScrollAxialArea` when present and falls back to map bounds. A batch tool can apply an additional project-owned padding factor when tall sprites, shadows, or effects extend beyond the playable area.
@@ -22439,7 +22439,7 @@ A reusable batch driver follows this sequence:
 3. Load and show one map.
 4. Configure view size, overlays, ignored prototype ids, hidden-sprite visibility, scroll checking, center, and zoom.
 5. Wait enough loop iterations for map processing and drawing to settle.
-6. Optionally dump atlas diagnostics, then call `Game.SaveMapperScreenshot` with an output TGA path.
+6. Optionally dump atlas diagnostics, then call `Game.SaveMapperScreenshot` with an output PNG path.
 7. Unload the map and continue with the next batch item.
 8. Call the common `Game.RequestQuit()` after the batch completes.
 
@@ -22455,8 +22455,9 @@ Single-process batching is preferred when many maps share one resource set becau
 2. requires a current map;
 3. calls `DrawMapperFrame()` to refresh the intermediate main render target;
 4. reads RGBA pixels from that target;
-5. flips rows and swaps red/blue channels for TGA ordering;
-6. writes through the engine-shared `ImageWriter::WriteSimpleTga` helper.
+5. flips rows when the render texture reports inverted height;
+6. normalizes the output path and writes through the engine-shared
+   `ImageWriter::WriteSimplePng` helper.
 
 It captures mapper script-interface drawing that is already in the map target,
 but not the later application-level ImGui menu and tool windows.
@@ -22468,7 +22469,7 @@ application window with a platform screenshot tool. [Mapper Interactive
 Manual](mapper-interactive.md#screenshot-and-automation-contract) contains the
 minimal-example recipe.
 
-The script method produces TGA only. The Engine-owned documentation screenshot
+The script method produces PNG data directly. The Engine-owned documentation screenshot
 pipeline may record an external visible-window capture and pins the exact
 source, dimensions, image hash, environment, and recapture triggers in
 `BuildTools/DocumentationScreenshots.json`. Project screenshot conversion,

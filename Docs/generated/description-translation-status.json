@@ -10508,8 +10508,8 @@
         },
         {
           "locator": "/symbols/@id=script.method.mapper.Game.SaveMapperScreenshot/description",
-          "source": "Saves the current map rendering to a nonempty file path using the Mapper's map-only screenshot path.",
-          "source_sha256": "e2c259de3c51d66d96de0dce44e73fa8da869c8f31c14495bef48a202176db5e",
+          "source": "Saves the current map rendering as PNG to a nonempty file path using the Mapper's map-only screenshot path.",
+          "source_sha256": "aa65bc78e7a85f8ae800e36cdd49e13bf4603517de5f40dae7cb4e35d4c20308",
           "status": "current"
         },
         {

@@ -910,7 +910,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperZoom(ptr<MapperEngine> mapper, float32_t
     map->InstantZoom(zoom, fpos32(0.0f, 0.0f));
 }
 
-// Saves the current map rendering to a nonempty file path using the Mapper's map-only screenshot path.
+// Saves the current map rendering as PNG to a nonempty file path using the Mapper's map-only screenshot path.
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, string_view filePath)
 {
@@ -955,7 +955,8 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
         }
     }
 
-    ImageWriter::WriteSimpleTga(filePath, size, std::move(pixels));
+    string path = strex(filePath).format_path().str();
+    ImageWriter::WriteSimplePng(path, size, pixels);
 }
 
 FO_END_NAMESPACE

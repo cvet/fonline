@@ -277,7 +277,7 @@ The mapper script API exposes one screenshot method:
 
 | Method | Frame contents | Completion |
 |---|---|---|
-| `Game.SaveMapperScreenshot(path)` | Current map render target and mapper script interface drawing; excludes the later application-level ImGui composition. | Synchronous TGA write. |
+| `Game.SaveMapperScreenshot(path)` | Current map render target and mapper script interface drawing; excludes the later application-level ImGui composition. | Synchronous PNG write. |
 
 There is no Engine script method for full-window UI capture. The minimal
 multiplayer example provides a reproducible visible profile; after its windows

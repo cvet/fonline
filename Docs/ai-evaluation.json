@@ -602,7 +602,7 @@
           "description": "Use the map-only script capture deliberately and validate visual output.",
           "document_id": "mapper-tools",
           "anchor": "screenshot-contract",
-          "required_terms": ["SaveMapperScreenshot", "map-only", "TGA only", "platform screenshot tool", "non-uniform test map", "pixel inspection"]
+          "required_terms": ["SaveMapperScreenshot", "map-only", "PNG", "platform screenshot tool", "non-uniform test map", "pixel inspection"]
         },
         {
           "id": "mapper-project-ownership",

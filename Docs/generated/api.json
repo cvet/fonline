@@ -69188,7 +69188,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.SaveMapperScreenshot(string filePath)",
-      "description": "Saves the current map rendering to a nonempty file path using the Mapper's map-only screenshot path.",
+      "description": "Saves the current map rendering as PNG to a nonempty file path using the Mapper's map-only screenshot path.",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",

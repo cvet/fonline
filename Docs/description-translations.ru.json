@@ -14310,8 +14310,8 @@
           "translation": "Сохраняет карту ниже корневого каталога карт Mapper с подкаталогом и именем без разделителей; пустые имена и обход родительских каталогов отклоняются."
         },
         "/symbols/@id=script.method.mapper.Game.SaveMapperScreenshot/description": {
-          "source_sha256": "e2c259de3c51d66d96de0dce44e73fa8da869c8f31c14495bef48a202176db5e",
-          "translation": "Сохраняет рендер текущей карты по непустому пути через путь снимка Mapper только для карты."
+          "source_sha256": "aa65bc78e7a85f8ae800e36cdd49e13bf4603517de5f40dae7cb4e35d4c20308",
+          "translation": "Сохраняет рендер текущей карты как PNG по непустому пути через путь снимка Mapper только для карты."
         },
         "/symbols/@id=script.method.mapper.Game.SelectEntities/description": {
           "source_sha256": "e04e0931a6f5c2147ea88cefefa1f10c43cc4fd7bcc653369477ebc7635416dd",

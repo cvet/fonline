@@ -872,7 +872,7 @@
       "english_path": "Docs/en/how-to/tools/mapper-interactive.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/tools/mapper-interactive.md",
-      "source_sha256": "ee99c8ec0f80820d15a80ec3ef43832c6d1e1badc643f4bb8d66172e0135eab8",
+      "source_sha256": "b021026bc629ff501477cc19a4a781f8943e669243cefffe365dc1ce0b0eabff",
       "source_bytes": 15574,
       "status": "current"
     },
@@ -885,8 +885,8 @@
       "english_path": "Docs/en/how-to/tools/mapper.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/tools/mapper.md",
-      "source_sha256": "864b3d9b161bb9f46393f397223fdf2ee5cdb61ee83364a7c6e329f50d2db5bb",
-      "source_bytes": 20302,
+      "source_sha256": "7606963147a4cae58cca5cc8a5fa96be221b048b710ecb5a532a82e636f72dab",
+      "source_bytes": 20402,
       "status": "current"
     },
     {
@@ -2133,8 +2133,8 @@
       "english_path": "Docs/en/reference/script-api/methods.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/methods.md",
-      "source_sha256": "7bc77c53636bfb3c24d30dd7811e8b6b89a2d2fd2d588a2cad895ed86c2061ed",
-      "source_bytes": 685048,
+      "source_sha256": "cb1740df870f12f20efb884f6e9d647c9d240e33b2faebc791b756a052bf5bb9",
+      "source_bytes": 685055,
       "status": "current"
     },
     {

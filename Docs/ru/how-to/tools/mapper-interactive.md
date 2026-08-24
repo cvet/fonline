@@ -6,7 +6,7 @@ document_id: mapper-interactive-manual
 permalink: /Docs/ru/how-to/tools/mapper-interactive.html
 ---
 
-<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"ee99c8ec0f80820d15a80ec3ef43832c6d1e1badc643f4bb8d66172e0135eab8"} -->
+<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"b021026bc629ff501477cc19a4a781f8943e669243cefffe365dc1ce0b0eabff"} -->
 
 # Интерактивное руководство по Mapper
 
@@ -295,7 +295,7 @@ Mapper script API предоставляет один метод снимка:
 
 | Метод | Содержимое кадра | Завершение |
 |---|---|---|
-| `Game.SaveMapperScreenshot(path)` | Текущий render target карты и рисование скриптового интерфейса Mapper; без более поздней композиции ImGui уровня приложения. | Синхронная запись TGA. |
+| `Game.SaveMapperScreenshot(path)` | Текущий render target карты и рисование скриптового интерфейса Mapper; без более поздней композиции ImGui уровня приложения. | Синхронная запись PNG. |
 
 В Engine нет script method захвата полного окна UI. Минимальный
 многопользовательский пример предоставляет воспроизводимый видимый профиль;

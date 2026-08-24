@@ -162,7 +162,7 @@ class MapperToolsDocumentationTests(unittest.TestCase):
         self.assertIn("Client_Game_DumpAtlases", client_bindings)
         self.assertIn("Game.DumpAtlases()", guide)
 
-    def test_screenshot_lifecycle_and_tga_contract_match_source(self) -> None:
+    def test_screenshot_lifecycle_and_png_contract_match_source(self) -> None:
         source = self._read("Source/Scripting/MapperGlobalScriptMethods.cpp")
         manual = self._read(EN_MANUAL)
         guide = self._read(EN_TOOLS)
@@ -172,13 +172,14 @@ class MapperToolsDocumentationTests(unittest.TestCase):
             "mapper->DrawMapperFrame();",
             "main_rt->GetTexture()",
             "texture->GetTextureRegion",
-            "ImageWriter::WriteSimpleTga(filePath, size, std::move(pixels))",
+            "string path = strex(filePath).format_path().str();",
+            "ImageWriter::WriteSimplePng(path, size, pixels);",
         ):
             self.assertIn(marker, source)
 
         normalized_manual = " ".join(manual.split())
         for marker in (
-            "Synchronous TGA write",
+            "Synchronous PNG write",
             "platform screenshot tool",
             "application-level ImGui composition",
         ):

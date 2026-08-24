@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_ai_eval.py",
   "source_path": "Docs/ai-evaluation.json",
-  "source_sha256": "5b93ffc54fc400b714dc39532881eeae8cabbbba232546b49bc6586c74924440",
+  "source_sha256": "4f158131fd64e1594c4dc335d36f3223bec51925a3af28ea8177087aec6ec1e7",
   "source_ref": "master",
   "task_count": 27,
   "category_counts": {
@@ -1206,7 +1206,7 @@
           "required_terms": [
             "SaveMapperScreenshot",
             "map-only",
-            "TGA only",
+            "PNG",
             "platform screenshot tool",
             "non-uniform test map",
             "pixel inspection"

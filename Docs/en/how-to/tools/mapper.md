@@ -25,7 +25,7 @@ warmup loops from `Game.OnLoop`, calls `Game.SaveMapperScreenshot`, and exits
 through `Game.RequestQuit`.
 
 Choose the capture route deliberately. `SaveMapperScreenshot` synchronously
-writes the map render as TGA only; warm up a newly shown map before the call,
+writes the map render as PNG; warm up a newly shown map before the call,
 and expect non-uniform dimensions after resize or crop. It does not include the
 application-level ImGui windows. Capture the visible application window with a
 platform screenshot tool when review evidence must include Mapper UI.
@@ -182,7 +182,7 @@ placement, and gameplay validation.
 | `Game.SetMapperHiddenSpritesVisible(visible)` | Include or suppress sprites marked as hidden during normal client rendering. |
 | `Game.AddMapperIgnoredItemPids(pids)` | Add item prototype ids to the current map's mapper ignore list and rebuild it. |
 | `Game.SetMapperScrollCheckEnabled(enabled)` | Enable or disable camera clamping to authored scroll bounds. |
-| `Game.SaveMapperScreenshot(path)` | Redraw and synchronously save the map render target as TGA; application-level ImGui windows are not included. |
+| `Game.SaveMapperScreenshot(path)` | Redraw and synchronously save the map render target as PNG through the same engine encoder used by client screenshots; application-level ImGui windows are not included. |
 | `Game.DumpAtlases()` | Save diagnostic TGA copies of live texture atlases with allocation and sprite-mesh overlays. |
 
 `CalcMapperFitZoom` uses `ScrollAxialArea` when present and falls back to map bounds. A batch tool can apply an additional project-owned padding factor when tall sprites, shadows, or effects extend beyond the playable area.
@@ -215,7 +215,7 @@ A reusable batch driver follows this sequence:
 3. Load and show one map.
 4. Configure view size, overlays, ignored prototype ids, hidden-sprite visibility, scroll checking, center, and zoom.
 5. Wait enough loop iterations for map processing and drawing to settle.
-6. Optionally dump atlas diagnostics, then call `Game.SaveMapperScreenshot` with an output TGA path.
+6. Optionally dump atlas diagnostics, then call `Game.SaveMapperScreenshot` with an output PNG path.
 7. Unload the map and continue with the next batch item.
 8. Call the common `Game.RequestQuit()` after the batch completes.
 
@@ -231,8 +231,9 @@ Single-process batching is preferred when many maps share one resource set becau
 2. requires a current map;
 3. calls `DrawMapperFrame()` to refresh the intermediate main render target;
 4. reads RGBA pixels from that target;
-5. flips rows and swaps red/blue channels for TGA ordering;
-6. writes through the engine-shared `ImageWriter::WriteSimpleTga` helper.
+5. flips rows when the render texture reports inverted height;
+6. normalizes the output path and writes through the engine-shared
+   `ImageWriter::WriteSimplePng` helper.
 
 It captures mapper script-interface drawing that is already in the map target,
 but not the later application-level ImGui menu and tool windows.
@@ -244,7 +245,7 @@ application window with a platform screenshot tool. [Mapper Interactive
 Manual](mapper-interactive.md#screenshot-and-automation-contract) contains the
 minimal-example recipe.
 
-The script method produces TGA only. The Engine-owned documentation screenshot
+The script method produces PNG data directly. The Engine-owned documentation screenshot
 pipeline may record an external visible-window capture and pins the exact
 source, dimensions, image hash, environment, and recapture triggers in
 `BuildTools/DocumentationScreenshots.json`. Project screenshot conversion,
