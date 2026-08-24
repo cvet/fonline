@@ -91,7 +91,6 @@ static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_v
 static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const vector<string>& path_values) -> vector<string>;
 static auto CollectManagedDirSources(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>;
 static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string;
-static auto MakeProjectOutputPath(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view target_name) -> string;
 static auto MakeSolutionProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string;
 static auto EscapeSolutionString(string_view value) -> string;
 static auto HashManagedSolutionGuid(string_view value, uint64_t seed) noexcept -> uint64_t;
@@ -308,7 +307,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     GenerateManagedHostProjectFile(managed_generated_dir, settings->ManagedScriptTargetFramework, managed_host_source);
-    GenerateUnifiedProjectFile(managed_generated_dir, managed_assemblies_output_dir, managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, ResolveManagedPaths(managed_config_dir, settings->ManagedScriptAnalyzers));
+    GenerateUnifiedProjectFile(managed_generated_dir, managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, ResolveManagedPaths(managed_config_dir, settings->ManagedScriptAnalyzers));
     GenerateSolutionFile(managed_generated_dir, project_name, vector<string> {project_name, string(MANAGED_HOST_PROJECT_NAME)});
 
     for (const string_view target : targets) {
@@ -958,7 +957,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     WriteTextFileIfChanged(project_path, file.str(), "Can't create generated Managed host project file");
 }
 
-void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const vector<string>& analyzers)
+void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const vector<string>& analyzers)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -997,14 +996,13 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>\n";
     file << "  </PropertyGroup>\n";
 
+    // No OutputPath here on purpose: the bake passes it as an MSBuild global property, which a project
+    // one cannot override anyway, and writing the resolved path would tie this file to one output layout
     for (const string_view target : targets) {
-        const string output_path = MakeProjectOutputPath(project_dir, assemblies_output_dir, target);
-
         file << "  <PropertyGroup Condition=\" '$(Configuration)|$(Platform)' == '" << EscapeXml(target) << "|AnyCPU' \">\n";
         file << "    <DebugType>embedded</DebugType>\n";
         file << "    <Optimize>true</Optimize>\n";
         file << "    <AssemblyName>" << EscapeXml(pack_name) << "." << EscapeXml(target) << "</AssemblyName>\n";
-        file << "    <OutputPath>" << EscapeXml(output_path) << "</OutputPath>\n";
         file << "    <DefineConstants>TRACE;" << strex(target).upper().str() << "</DefineConstants>\n";
         file << "  </PropertyGroup>\n";
     }
@@ -1801,20 +1799,6 @@ static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, co
 
     const auto relative_path = absolute_path.lexically_relative(absolute_project_dir);
     return strex("{}", relative_path.empty() ? absolute_path.generic_string() : relative_path.generic_string()).str();
-}
-
-static auto MakeProjectOutputPath(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view target_name) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto output_path = assemblies_output_dir / strex("{}Assemblies", target_name).str();
-    string result = MakeRelativeProjectPath(project_dir, output_path);
-
-    if (result.empty() || result.back() != '/') {
-        result += '/';
-    }
-
-    return result;
 }
 
 static auto MakeSolutionProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string
