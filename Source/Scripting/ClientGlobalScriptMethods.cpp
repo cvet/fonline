@@ -35,6 +35,7 @@
 
 #include "Client.h"
 #include "ImGuiStuff.h"
+#include "ImageWriter.h"
 #include "ModelAnimation.h"
 #include "ModelInstance.h"
 #include "ModelManager.h"
@@ -1579,7 +1580,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
         }
     }
 
-    WriteSimpleTga(path, size, std::move(pixels));
+    ImageWriter::WriteSimplePng(path, size, pixels);
 }
 
 ///@ ExportMethod

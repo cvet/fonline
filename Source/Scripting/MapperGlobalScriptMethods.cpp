@@ -36,6 +36,7 @@
 #include "Application.h"
 #include "FileSystem.h"
 #include "Geometry.h"
+#include "ImageWriter.h"
 #include "Mapper.h"
 #include "Rendering.h"
 #include "ScriptSystem.h"
@@ -899,7 +900,8 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
         }
     }
 
-    WriteSimpleTga(filePath, size, std::move(pixels));
+    string path = strex(filePath).format_path().str();
+    ImageWriter::WriteSimplePng(path, size, pixels);
 }
 
 FO_END_NAMESPACE
