@@ -73,7 +73,12 @@ def _site_file(site_dir: Path, url_path: str) -> Path:
 def _candidate_site_files(site_dir: Path, url_path: str) -> list[Path]:
     direct = _site_file(site_dir, url_path)
     candidates = [direct]
-    if not url_path.endswith("/") and not PurePosixPath(url_path).suffix:
+    pure_path = PurePosixPath(url_path)
+    if pure_path.suffix.casefold() == ".md":
+        candidates.append(_site_file(site_dir, str(pure_path.with_suffix(".html"))))
+        if pure_path.name.casefold() == "readme.md":
+            candidates.append(_site_file(site_dir, str(pure_path.parent) + "/"))
+    elif not url_path.endswith("/") and not pure_path.suffix:
         candidates.append(_site_file(site_dir, url_path + ".html"))
         candidates.append(_site_file(site_dir, url_path + "/"))
     return candidates

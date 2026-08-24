@@ -142,6 +142,21 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         self.assertEqual(report["static_endpoint_count"], 12)
         self.assertGreater(report["checked_local_reference_count"], 0)
 
+    def test_markdown_link_resolves_to_rendered_html(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        (root / "_site/index.html").write_text(
+            self._page(
+                "https://fonline.ru/",
+                body='<a href="/Docs/Guide.md#heading">Guide</a>',
+            ),
+            encoding="utf-8",
+        )
+
+        report = docs_site_artifact.audit_site(root, root / "_site")
+
+        self.assertEqual(report["error_count"], 0)
+
     def test_missing_route_and_static_endpoint_fail(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
