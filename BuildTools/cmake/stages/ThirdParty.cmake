@@ -832,10 +832,12 @@ if(FO_MANAGED_SCRIPTING)
             --js-library ${FO_MANAGED_GLUE_DIR}/dotnet.es6.lib.js
             --extern-post-js ${FO_MANAGED_GLUE_DIR}/dotnet.es6.extpost.js)
 
-        # The shim table takes the address of every entry point, dragging in System.Native objects for work
-        # a browser cannot do; naming them keeps the link strict rather than allowing undefined wholesale
+        # The shim table takes the address of every entry point, which makes each owning object live and
+        # drags in System.Native work a browser cannot do. Naming the calls keeps ALLOW_UNIMPLEMENTED_SYSCALLS
+        # off, so the strict default still catches everything that is not on this reviewed list
         SetValue(FO_MANAGED_WEB_ALLOWED_UNDEFINED
             dlopen
+            dlsym
             endgrent
             flock
             getgrent
@@ -843,7 +845,20 @@ if(FO_MANAGED_SCRIPTING)
             getpwnam_r
             getpwuid_r
             setgrent
-            waitid)
+            waitid
+            __syscall_getegid32
+            __syscall_geteuid32
+            __syscall_getgroups32
+            __syscall_getpriority
+            __syscall_getrusage
+            __syscall_getsid
+            __syscall_madvise
+            __syscall_mprotect
+            __syscall_prlimit64
+            __syscall_setpriority
+            __syscall_sync
+            __syscall_uname
+            __syscall_wait4)
         SetValue(FO_MANAGED_WEB_UNDEFINED_FILE ${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedWebAllowedUndefined.txt)
         FileWrite(${FO_MANAGED_WEB_UNDEFINED_FILE} "")
 

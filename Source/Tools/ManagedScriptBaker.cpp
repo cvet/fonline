@@ -307,7 +307,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     GenerateManagedHostProjectFile(managed_generated_dir, settings->ManagedScriptTargetFramework, managed_host_source);
-    GenerateUnifiedProjectFile(managed_generated_dir, managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, ResolveManagedPaths(managed_config_dir, settings->ManagedScriptAnalyzers));
+    GenerateUnifiedProjectFile(managed_generated_dir, strex("{}/{}/Assemblies", settings->BakeOutput, managed_pack_name).str(), managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, ResolveManagedPaths(managed_config_dir, settings->ManagedScriptAnalyzers));
     GenerateSolutionFile(managed_generated_dir, project_name, vector<string> {project_name, string(MANAGED_HOST_PROJECT_NAME)});
 
     for (const string_view target : targets) {
@@ -957,7 +957,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     WriteTextFileIfChanged(project_path, file.str(), "Can't create generated Managed host project file");
 }
 
-void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const vector<string>& analyzers)
+void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, string_view assemblies_relative_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const vector<string>& analyzers)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -996,13 +996,18 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>\n";
     file << "  </PropertyGroup>\n";
 
-    // No OutputPath here on purpose: the bake passes it as an MSBuild global property, which a project
-    // one cannot override anyway, and writing the resolved path would tie this file to one output layout
+    // The bake passes OutputPath as an MSBuild global property and wins regardless; this default is for
+    // opening the project directly, and it points at the bake so an unpacked build picks the assemblies up
+    file << "  <PropertyGroup>\n";
+    file << "    <FOnlineBakeRoot Condition=\" '$(FOnlineBakeRoot)' == '' \">$(MSBuildThisFileDirectory)..</FOnlineBakeRoot>\n";
+    file << "  </PropertyGroup>\n";
+
     for (const string_view target : targets) {
         file << "  <PropertyGroup Condition=\" '$(Configuration)|$(Platform)' == '" << EscapeXml(target) << "|AnyCPU' \">\n";
         file << "    <DebugType>embedded</DebugType>\n";
         file << "    <Optimize>true</Optimize>\n";
         file << "    <AssemblyName>" << EscapeXml(pack_name) << "." << EscapeXml(target) << "</AssemblyName>\n";
+        file << "    <OutputPath>$(FOnlineBakeRoot)/" << EscapeXml(assemblies_relative_dir) << "/" << EscapeXml(target) << "Assemblies/</OutputPath>\n";
         file << "    <DefineConstants>TRACE;" << strex(target).upper().str() << "</DefineConstants>\n";
         file << "  </PropertyGroup>\n";
     }

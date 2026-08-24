@@ -13,6 +13,11 @@ if(NOT EXISTS "${INPUT_DIR}")
 endif()
 
 file(MAKE_DIRECTORY "${OUTPUT_DIR}")
+
+# Every application runs this as its own post-build step and the ones of a kind share an output
+# directory, so without the lock a parallel build deletes the tree while a sibling copies into it
+file(LOCK "${OUTPUT_DIR}/ManagedRuntime.lock" GUARD PROCESS TIMEOUT 600)
+
 file(REMOVE_RECURSE "${OUTPUT_DIR}/ManagedRuntime")
 file(COPY "${INPUT_DIR}/" DESTINATION "${OUTPUT_DIR}/ManagedRuntime")
 

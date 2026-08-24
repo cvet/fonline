@@ -39,6 +39,8 @@
 #include "FileSystem.h"
 #include "WebRelated.h"
 
+#include "SDL3/SDL_system.h"
+
 FO_BEGIN_NAMESPACE
 
 // File the installer drops next to the exe to mark an installed (non-portable) build. The portable
@@ -347,7 +349,14 @@ void ResolveUserWritablePath(GlobalSettings& settings)
     }
 
     if (root == "*") {
+        // Android keeps no usable HOME, and its writable root is only reachable through the JNI bridge
+        // that SDL owns, so it is asked there; everywhere else the Essentials lookup applies
+#if FO_ANDROID
+        const char* internal_storage = SDL_GetAndroidInternalStoragePath();
+        string base = internal_storage != nullptr ? string(internal_storage) : string();
+#else
         string base = Platform::GetUserDataBase();
+#endif
 
         if (base.empty()) {
             WriteLog(LogType::Warning, "Client user-writable path requested but no user data dir found; using portable layout");
