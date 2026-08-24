@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"29865d4b780b6d286adc46044b6dac5f4611f56885b749a3f9c0cd2dad49bbdd"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"5cd6955b3aeabfceacbc2ba75148caf51f2ac15a12ad6cacb3350a378db4e9bb"} -->
 
 # Конвейер запекания ресурсов
 
@@ -121,7 +121,7 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 
 ## Точки входа CMake
 
-`BuildTools/cmake/helpers/Build.cmake` экспортирует `AddBakingTarget` как проверяемый helper project interface. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` использует его для создания стандартных команд запекания после появления application targets.
+`BuildTools/cmake/stages/ScriptsAndBaking.cmake` определяет `AddBakingTarget` как проверяемый helper project interface и использует его для создания стандартных команд запекания после появления application targets.
 
 - `BakeResources` создаётся вызовом `AddBakingTarget(BakeResources)` и запускает baker с `-ForceBaking False`.
 - `ForceBakeResources` создаётся вызовом `AddBakingTarget(ForceBakeResources FORCE)` и запускает его с `-ForceBaking True`.

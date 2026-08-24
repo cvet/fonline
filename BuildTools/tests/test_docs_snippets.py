@@ -199,7 +199,7 @@ expected output
             """# Guide
 
 ```bash
-touch docs-snippet-must-not-exist
+(touch docs-snippet-must-not-exist)
 ```
 
 ```powershell

@@ -363,9 +363,8 @@ def _render_index(model: dict[str, object]) -> str:
     lines.extend(
         [
             "This reference describes the project-facing CMake surface consumed by an embedding game repository. "
-            "The source manifest is also read by CMake during configure, so the generated pages and runtime "
-            "declarations "
-            "share one versioned source of truth.",
+            "The manifest is a checked documentation model of the current CMake declarations; the implementation "
+            "in `BuildTools/Init.cmake` and the stage/helper files remains authoritative at configure time.",
             "",
             "## Contract status",
             "",
@@ -545,8 +544,8 @@ RUSSIAN_REPLACEMENTS = {
         "> Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/cmake/ProjectInterface.json`, затем выполните `python BuildTools/docs_cmake.py --write`.",
     "[Reference index](index.md) | [Canonical JSON model](../../../generated/cmake.json) | [Generation contract](../metadata/)":
         "[Индекс справочника](index.md) | [Каноническая JSON-модель](../../../generated/cmake.json) | [Контракт генерации](../metadata/)",
-    "This reference describes the project-facing CMake surface consumed by an embedding game repository. The source manifest is also read by CMake during configure, so the generated pages and runtime declarations share one versioned source of truth.":
-        "Этот справочник описывает доступную проекту поверхность CMake, которую использует подключающий игровой репозиторий. Исходный manifest также читается CMake во время настройки, поэтому сгенерированные страницы и исполняемые объявления используют один версионируемый источник истины.",
+    "This reference describes the project-facing CMake surface consumed by an embedding game repository. The manifest is a checked documentation model of the current CMake declarations; the implementation in `BuildTools/Init.cmake` and the stage/helper files remains authoritative at configure time.":
+        "Этот справочник описывает доступную проекту поверхность CMake, которую использует подключающий игровой репозиторий. Manifest является проверяемой документационной моделью текущих объявлений CMake; во время конфигурации авторитетной остаётся реализация в `BuildTools/Init.cmake` и файлах стадий и helper-команд.",
     "## Contract status": "## Статус контракта",
     "Stability": "Стабильность",
     "Since": "Начиная с версии",

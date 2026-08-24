@@ -2709,8 +2709,8 @@
           "passed": true,
           "top_document_ids": [
             "generated-package-index",
-            "buildtools-pipeline",
             "generated-api-metadata",
+            "buildtools-pipeline",
             "buildtools-readme",
             "web-debugging"
           ]

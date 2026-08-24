@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"192f85f99856636e14b88c94864d2a76916055eeac0d088747f0e215f9dd67fd"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"3f5e36d21a0813c27bb70b93eb87afcc1ae22bb4f799f4d48de8fa8aa27d0e49"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -41,17 +41,16 @@ parser владеют синтаксисом; `HelperCliInterface.json` влад
 явного разрешения и проверяется через [протокол AiControl](../Docs/ru/how-to/ai-control-protocol.md)
 и запускаемый [образец протокола](../Examples/AiControlSample/README.ru.md).
 
-Возможности деклараций пакетов и payload версионируются в
-`PackageInterface.json`, используются `package.py` и отображаются в
-[справочнике package interface](../Docs/ru/reference/packages/index.md). Конкретная
-матрица `DefinePackage(...)` встраивающего проекта остаётся собственностью
-проекта.
+Возможности деклараций пакетов и payload, реализованные в `package.py`,
+моделируются в `PackageInterface.json`, проверяются по реализации и отображаются
+в [справочнике package interface](../Docs/ru/reference/packages/index.md).
+Конкретная матрица `DefinePackage(...)` встраивающего проекта остаётся
+собственностью проекта.
 
-Роли и hooks нативных расширений версионируются в
-`NativeExtensionInterface.json`, используются CMake/codegen и отображаются в
-[справочнике нативных расширений](../Docs/ru/reference/native-extension/index.md).
-Рекомендации по authoring и совместимости находятся в
-[Нативные расширения](../Docs/ru/how-to/native-extensions.md).
+Роли и hooks нативных расширений моделируются в
+`NativeExtensionInterface.json`, проверяются по текущему поведению CMake/codegen
+и отображаются в [справочнике нативных расширений](../Docs/ru/reference/native-extension/index.md).
+Рекомендации по authoring и совместимости находятся в [Нативные расширения](../Docs/ru/how-to/native-extensions.md).
 
 Грамматика прототипов и правила валидации версионируются в
 `PrototypeFormatInterface.json`; `docs_prototype_format.py` проверяет живые
@@ -161,9 +160,11 @@ pytest -q Engine/BuildTools/tests
 Публичная точка входа `Init.cmake` сохранена в корне `Engine/BuildTools`;
 поэтапная реализация CMake находится в `Engine/BuildTools/cmake/stages/`, а
 helpers - в `Engine/BuildTools/cmake/helpers/`.
-`cmake/ProjectInterface.json` является версионированным источником истины,
-который configure читает для project options, порядка stages, entrypoints,
-hooks и выбранной поверхности helpers. Используйте сгенерированный
+`cmake/ProjectInterface.json` является версионированной документационной моделью
+project options, порядка stages, entrypoints, hooks и выбранной поверхности
+helpers. Configure-time authority остаётся у `Init.cmake` и файлов стадий и
+helper-команд; структурный тест отклоняет расхождения реализации с моделью.
+Используйте сгенерированный
 [справочник CMake project interface](../Docs/ru/reference/cmake/index.md) или его
 [каноническую JSON-модель](../Docs/generated/cmake.json), а не копируйте
 декларации из файлов реализации stages. Для принадлежащих проекту targets и
@@ -184,7 +185,7 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs_cmake.py` проверяет `cmake/ProjectInterface.json` и записывает/проверяет `Docs/generated/cmake.json`, английский справочник Markdown в `Docs/en/reference/cmake/` и устойчивые указатели маршрутов в `Docs/generated/cmake/`.
 - `docs_cli.py` загружает исполняемый parser `argparse` из `buildtools.py` и записывает/проверяет `Docs/generated/cli.json`, точный английский справочник Markdown на основе help в `Docs/en/reference/buildtools/` и устойчивые указатели маршрутов в `Docs/generated/cli/`.
 - `docs_helper_cli.py` проверяет `HelperCliInterface.json`, доказывает полное покрытие inventory `create_parser()` и записывает/проверяет `Docs/generated/helper-cli.json`, точный английский справочник Markdown на основе help в `Docs/en/reference/helper-cli/` и устойчивые указатели маршрутов в `Docs/generated/helper-cli/`.
-- `docs_native_extension.py` проверяет используемый runtime manifest native roles/hooks и записывает/проверяет `Docs/generated/native-extension.json` вместе со страницами roles, hooks и bindings.
+- `docs_native_extension.py` проверяет документационную модель native roles/hooks по текущим данным CMake/codegen и записывает/проверяет `Docs/generated/native-extension.json` вместе со страницами roles, hooks и bindings.
 - `docs_prototype_format.py` проверяет `PrototypeFormatInterface.json` по живым parser/baker sources, выводит применимость встроенных entity/property из metadata и записывает/проверяет `Docs/generated/prototype-format.json` вместе со страницами syntax, property и validation.
 - `docs_map_format.py` проверяет `MapFormatInterface.json` по живым loader/baker/mapper/runtime sources, выводит данные Map/Critter/Item property и ItemOwnership из metadata и записывает/проверяет `Docs/generated/map-format.json` вместе со страницами syntax, property, baking и validation.
 - `docs_model_format.py` проверяет `ModelFormatInterface.json` по живому model parser, mesh baker, client runtime, limits и tests, затем записывает/проверяет `Docs/generated/model-format.json` вместе со страницами syntax, token, composition, asset, animation и validation.
@@ -196,7 +197,7 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs_video.py` проверяет `VideoInterface.json` по raw-copy settings, декодированию Ogg/Theora, fullscreen queue/input/music/drawing, embedded script playback, renderer behavior, dependencies и native-test inventory, затем записывает/проверяет `Docs/generated/video.json` вместе со страницами format, delivery, decoding, fullscreen, embedded и validation.
 - `docs_gui_runtime.py` проверяет `GuiRuntimeInterface.json` по `Gui.fos`, `Input.fos`, native client dispatch, tutorial boundaries и test inventory, затем записывает/проверяет `Docs/generated/gui-runtime.json` вместе со страницами type, screen API, lifecycle, layout/rendering, input и integration/validation.
 - `docs_ai_control_protocol.py` проверяет `AiControlProtocol.json` по reference client и запускаемому sample, затем записывает/проверяет `Docs/generated/ai-control-protocol.json` вместе со страницами wire, method, command/event, security и integration/validation.
-- `docs_package.py` проверяет используемый runtime package manifest и исполняемый parser `package.py`, затем записывает/проверяет `Docs/generated/package.json` вместе со страницами package reference.
+- `docs_package.py` проверяет документационную модель package и исполняемый parser `package.py`, затем записывает/проверяет `Docs/generated/package.json` вместе со страницами package reference.
 - `docs_examples.py` проверяет `Examples/PublicRepositories.json` и governance overlay, записывает/проверяет `Docs/generated/public-examples.json` и его registry page, материализует source-ready example в новом чистом candidate directory и проверяет metadata внешнего repository, точные gitlink pins, обязательные файлы и байты provenance file.
 - `docs_reference.py` отображает каноническую модель API в совместимый с GitHub Pages Markdown в `Docs/generated/api/`.
 - `docs_metadata.py` строго декодирует project-baked `Metadata.fometa-server/client`, проверяет согласованность обеих сторон и записывает/проверяет принадлежащий проекту JSON/Markdown catalog remote calls.

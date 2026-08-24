@@ -76,7 +76,7 @@ class DocumentationCMakeTests(unittest.TestCase):
         )
         self.assertEqual(
             helpers["AddBakingTarget"]["source"],
-            "BuildTools/cmake/helpers/Build.cmake",
+            "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
         )
 
         identities = [

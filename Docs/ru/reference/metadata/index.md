@@ -6,7 +6,7 @@ document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"0ac5324ab16dc716df976b676143623948566937be8cdb77e678b9a9ae57a967"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"105372ba52d4711df75c4ddcf12a7bd04f2258351ef008858efbf9494252a3d9"} -->
 
 # Сгенерированный API и метаданные
 
@@ -346,7 +346,7 @@ python BuildTools/docs_reference.py --check
 
 ## Сгенерированный интерфейс проекта CMake
 
-[Русский справочник CMake](../../reference/cmake/index.md) является human entry point CMake surface для встраиваемых проектов; английский source-of-truth доступен через переключатель локали. Владельцем данных служит `BuildTools/cmake/ProjectInterface.json`, и это не documentation-only metadata: `BuildTools/Init.cmake` читает тот же manifest, чтобы загрузить канонический порядок stages, сгенерировать entrypoint macros, проверить опубликованные helpers и позволить стадии `Init` объявить public project options.
+[Русский справочник CMake](../../reference/cmake/index.md) является human entry point CMake surface для встраиваемых проектов; английский source-of-truth доступен через переключатель локали. `BuildTools/cmake/ProjectInterface.json` является документационной моделью, а configure-time authority остаётся у `BuildTools/Init.cmake` и файлов стадий/helper-команд. Структурный CMake-тест сопоставляет имена options, порядок stages, entrypoints, hooks, объявления helpers и пути к исходникам, чтобы сгенерированная документация не расходилась с реализацией.
 
 `BuildTools/docs_cmake.py` независимо проверяет manifest и создаёт [generated/cmake.json](../../../generated/cmake.json), канонические English pages для options, stages/hooks и выбранных helpers, а также durable pointers по прежним маршрутам `Docs/generated/cmake/*.md`. Каждая запись имеет стабильный ID `cmake.option.*`, `cmake.stage.*` или `cmake.helper.*`. Markdown output содержит defaults, required state, override precedence, signatures, допустимые roles, responsibilities и source links без повторного разбора синтаксиса CMake. Русские страницы являются reviewed translations с gates source hash и code-fence parity; английский generator их не перезаписывает.
 
@@ -401,7 +401,7 @@ Focused test вызывает каждый реальный helper и subcommand
 
 ## Сгенерированный интерфейс native extensions
 
-[Справочник native extensions](../../reference/native-extension/index.md) точно описывает roles project-native source, поддерживаемые hooks движка, generated fallbacks и правила native bindings. `BuildTools/NativeExtensionInterface.json` используют CMake и `BuildTools/codegen.py`; `BuildTools/docs_native_extension.py` проверяет этих runtime consumers и создаёт [generated/native-extension.json](../../../generated/native-extension.json) вместе со страницами roles, hooks и bindings.
+[Справочник native extensions](../../reference/native-extension/index.md) точно описывает roles project-native source, используемые текущими targets, поддерживаемые hooks движка, generated fallbacks и правила native bindings. `BuildTools/NativeExtensionInterface.json` является данными документации и проверки, а не runtime input; `BuildTools/docs_native_extension.py` и структурный CMake-тест сопоставляют его с текущим поведением CMake/codegen и создают [generated/native-extension.json](../../../generated/native-extension.json) вместе со страницами roles, hooks и bindings.
 
 Каждая role, hook и binding rule имеет стабильный ID `native-extension.*`. Модель записывает role libraries/consumers, hook signatures/call sites/defaults, presence в compatibility hash и правила registration/namespace/pointer/dependency. Scope равен `experimental` и revision-pinned: документируется source-compatible использование на зафиксированной ревизии движка, но binary compatibility независимо собранных ревизий не обещается. Project implementations, SDKs, settings, persistence и packaging остаются во владении проекта.
 
@@ -661,7 +661,7 @@ project hooks, границам authoring, diagnostics и end-to-end validation.
 
 ## Сгенерированный интерфейс пакетов
 
-[сгенерированный справочник пакетов](../packages/index.md) является human entry point для package declarations и payloads. `BuildTools/PackageInterface.json` используют `BuildTools/package.py` и `BuildTools/docs_package.py`; generator также вызывает executable `package.py::create_parser()` и создаёт [generated/package.json](../../../generated/package.json) вместе со страницами declaration, matrix, payload/artifact и CLI.
+[сгенерированный справочник пакетов](../packages/index.md) является human entry point для package declarations и payloads. `BuildTools/PackageInterface.json` моделирует текущие возможности `DefinePackage`/`package.py` для документации и проверки; packager этот manifest не читает. `BuildTools/docs_package.py` также вызывает executable `package.py::create_parser()` и создаёт [generated/package.json](../../../generated/package.json) вместе со страницами declaration, matrix, payload/artifact и CLI.
 
 Модель присваивает стабильные IDs `package.*` конструкции `DefinePackage`, двум её clauses, per-binary modifier `POSTFIX`, шести targets, шести platforms, девятнадцати pack tokens, шести platform payloads и тринадцати arguments packager. Набор targets включает standalone packages `AnimationViewer` и `ParticleViewer`. Реализованные platforms/packs отделяются от explicit unsupported и placeholders, а комментарии не выдаются за поддержку. Runtime validation до output staging отвергает неизвестные или повторные packs/architectures, unsupported platforms, несовместимые комбинации target/platform/pack, отсутствие обязательного `NoRes` и списки только из modifiers. Windows matrix включает selectors `win32-win7` и `win64-win7` и описывает их canonical architecture с explicit postfix.
 

@@ -27,8 +27,8 @@
       "english_path": "BuildTools/README.md",
       "english_path_state": "migrated",
       "russian_path": "BuildTools/README.ru.md",
-      "source_sha256": "192f85f99856636e14b88c94864d2a76916055eeac0d088747f0e215f9dd67fd",
-      "source_bytes": 43318,
+      "source_sha256": "3f5e36d21a0813c27bb70b93eb87afcc1ae22bb4f799f4d48de8fa8aa27d0e49",
+      "source_bytes": 43525,
       "status": "current"
     },
     {
@@ -131,8 +131,8 @@
       "english_path": "Docs/en/contributing/decisions/0002-public-api-stability-contract.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0002-public-api-stability-contract.md",
-      "source_sha256": "149e2ff583d1681105aeb934e506bffdd0bb65afa618dc38e6d392700cadfc57",
-      "source_bytes": 11804,
+      "source_sha256": "9156c64fbce8dc21a3b0470be96e18f2ec3b33b1f11dfa231aaa3bfb9018398d",
+      "source_bytes": 11911,
       "status": "current"
     },
     {
@@ -326,8 +326,8 @@
       "english_path": "Docs/en/explanation/content-pipeline/baking.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/content-pipeline/baking.md",
-      "source_sha256": "29865d4b780b6d286adc46044b6dac5f4611f56885b749a3f9c0cd2dad49bbdd",
-      "source_bytes": 76813,
+      "source_sha256": "5cd6955b3aeabfceacbc2ba75148caf51f2ac15a12ad6cacb3350a378db4e9bb",
+      "source_bytes": 76777,
       "status": "current"
     },
     {
@@ -690,8 +690,8 @@
       "english_path": "Docs/en/how-to/native-extensions.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/native-extensions.md",
-      "source_sha256": "a4cb0f008e005d026b18efddb9c0ac4966375e4fa2c6aeece7f265113c29310d",
-      "source_bytes": 16950,
+      "source_sha256": "6b964a987dc6d4be653e758ec1ce50e9bfc07583eb92592384d1e508c83e1d55",
+      "source_bytes": 17177,
       "status": "current"
     },
     {
@@ -1119,8 +1119,8 @@
       "english_path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake-and-buildtools/pipeline.md",
-      "source_sha256": "d4d5a2c7a9690de0eb50cf5fca7c3b9c17c2436a999d9bd175a49ce213bf139c",
-      "source_bytes": 19696,
+      "source_sha256": "e57908d1abe04b5e519ec1a569c344f518695f2df89eb6845b44858ff5b50e73",
+      "source_bytes": 19847,
       "status": "current"
     },
     {
@@ -1132,8 +1132,8 @@
       "english_path": "Docs/en/reference/cmake/helpers.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake/helpers.md",
-      "source_sha256": "2d6459cc54c063e5b64891753406d8980abbbb3b8dba4d617454e68b09819aae",
-      "source_bytes": 3279,
+      "source_sha256": "1b109ad6675a8bed5ed065c5432513316f2681ab7378a63784e5cc571af4779b",
+      "source_bytes": 3299,
       "status": "current"
     },
     {
@@ -1145,8 +1145,8 @@
       "english_path": "Docs/en/reference/cmake/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake/index.md",
-      "source_sha256": "b49fbf3acb9d7ee06b80fc2fb734f8c9eecdc944c05fe7c9f6edee18999150f9",
-      "source_bytes": 2325,
+      "source_sha256": "ba79a78cf6b596a4c0e4eac8660749c7c19e9c523abf2b91ac260bc65d3f4206",
+      "source_bytes": 2375,
       "status": "current"
     },
     {
@@ -1652,8 +1652,8 @@
       "english_path": "Docs/en/reference/metadata/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/metadata/index.md",
-      "source_sha256": "0ac5324ab16dc716df976b676143623948566937be8cdb77e678b9a9ae57a967",
-      "source_bytes": 77988,
+      "source_sha256": "105372ba52d4711df75c4ddcf12a7bd04f2258351ef008858efbf9494252a3d9",
+      "source_bytes": 78180,
       "status": "current"
     },
     {
@@ -1795,8 +1795,8 @@
       "english_path": "Docs/en/reference/native-extension/roles.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/native-extension/roles.md",
-      "source_sha256": "1f152dcd86b8fe3d9fa3cf65cfd330679c549cd0227f1a88c69b5f2ceef546b8",
-      "source_bytes": 3794,
+      "source_sha256": "9b60349f9f88a22fb2da3f0e9f60ebf4b394a37889cf0ae212f5705ef8e55d22",
+      "source_bytes": 3945,
       "status": "current"
     },
     {

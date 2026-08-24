@@ -34,7 +34,6 @@ ENGINE_HOOK_NAMES = (
     'CheckCritterVisibilityHook',
     'CheckItemVisibilityHook',
 )
-NATIVE_EXTENSION_INTERFACE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NativeExtensionInterface.json')
 IMGUI_HEADER_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ThirdParty', 'imgui', 'imgui.h'))
 APPLICATION_SOURCE_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Source', 'Frontend', 'Application.cpp'))
 

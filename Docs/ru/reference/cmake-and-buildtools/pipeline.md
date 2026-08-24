@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 
 # Конвейер BuildTools
 
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"d4d5a2c7a9690de0eb50cf5fca7c3b9c17c2436a999d9bd175a49ce213bf139c"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"e57908d1abe04b5e519ec1a569c344f518695f2df89eb6845b44858ff5b50e73"} -->
 
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
@@ -92,24 +92,23 @@ revision-pinned implementation interfaces: автоматизация обяза
 
 ## Файлы стадий
 
-Поэтапный конвейер находится в `BuildTools/cmake/stages/`. Канонические порядок
-стадий, имена entrypoints и hook points объявлены в
-`BuildTools/cmake/ProjectInterface.json`, загружаются через
-`BuildTools/Init.cmake` и выводятся в
-[справочнике стадий](../cmake/stages.md). Loader
-отклоняет дублирующиеся names/entrypoints, разрывы порядка и неподдерживаемые
-hook points до выполнения стадии встраивающим проектом.
+Поэтапный конвейер находится в `BuildTools/cmake/stages/`. Порядок стадий,
+имена entrypoints и проверки hooks во время конфигурации реализованы в
+`BuildTools/Init.cmake`. `BuildTools/cmake/ProjectInterface.json` отражает эту
+поверхность для сгенерированного [справочника стадий](../cmake/stages.md), а
+`validate_project_interface.cmake` отклоняет расхождения в порядке стадий,
+entrypoints, hook points и путях к исходникам.
 
 ### `Init.cmake`
 
-Устанавливает базовую конфигурацию. Стадия объявляет все публичные project
-options из `BuildTools/cmake/ProjectInterface.json`, затем проверяет
-обязательные значения и создаёт build hash и общий generation context. Точные
-required inputs, cache types, defaults, allowed values, categories и override
-precedence генерируются в
-[справочнике options](../cmake/options.md). При
-добавлении или изменении публичной option начинайте с manifest; если неверно
-configure-time поведение, начинайте с этой стадии.
+Устанавливает базовую конфигурацию. Стадия напрямую объявляет все публичные
+project options, затем проверяет обязательные значения и создаёт build hash и
+общий generation context. `BuildTools/cmake/ProjectInterface.json` фиксирует те
+же required inputs, cache types, defaults, allowed values, categories и
+override precedence для сгенерированного
+[справочника options](../cmake/options.md); структурный тест проверяет наличие
+каждой смоделированной option в этой стадии. При изменении публичной option
+обновляйте стадию и manifest вместе.
 
 Manifest содержит независимые backends `FO_SPARK_PARTICLES` и
 `FO_EFFEKSEER_PARTICLES`. Оба по умолчанию равны `OFF`; при миграции проект
@@ -233,12 +232,12 @@ input/output paths, platform/architecture/config data и optional output postfix
 
 Clauses декларации `DefinePackage`, допустимые runtime
 targets/platforms/architectures, pack tokens, support status и payload effects
-версионируются в `BuildTools/PackageInterface.json` и выводятся в
-[сгенерированном справочнике пакетов](../packages/index.md).
-`package.py` использует тот же manifest и до staging отклоняет unknown,
-duplicate, placeholder, unsupported-platform, target-incompatible,
-modifier-only и invalid-architecture requests. Встраивающий проект всё равно
-владеет выбором допустимых комбинаций.
+моделируются в `BuildTools/PackageInterface.json` и выводятся в
+[сгенерированном справочнике пакетов](../packages/index.md). Manifest является
+данными документации и проверки; runtime authority остаётся у `DefinePackage`,
+`Packages.cmake` и `package.py`. Focused и структурные тесты сопоставляют
+смоделированные grammar и dimensions с этими реализациями. Встраивающий проект
+всё равно владеет выбором допустимых комбинаций.
 
 `POSTFIX <value>` следует за одной clause `BINARY` и не наследуется соседними
 entries. Значение должно совпадать с `FO_BINARY_OUTPUT_POSTFIX`, использованным
@@ -337,13 +336,15 @@ AddStageHook(<StageName> Pre|Post <macro-name>)
 расширить поведение стадии без изменения её середины. Документируйте hook рядом
 с owning stage или в project docs, если он game-specific.
 
-Авторитетный список поддерживаемых stage names, entrypoints и hook positions
-находится в [сгенерированном справочнике стадий и hooks](../cmake/stages.md).
+Документированный inventory поддерживаемых stage names, entrypoints и hook
+positions находится в [сгенерированном справочнике стадий и hooks](../cmake/stages.md);
+configure-time authority остаётся у `BuildTools/Init.cmake`.
 
 ## Маршрутизация изменений
 
-- Новая project option: `BuildTools/cmake/ProjectInterface.json`; применение и
-  validation option: `Init.cmake` / `ProjectOptions.cmake`.
+- Новая project option: объявление в `Init.cmake`, проверка сочетаний в
+  `ProjectOptions.cmake` и соответствующие документационные данные в
+  `BuildTools/cmake/ProjectInterface.json`.
 - Новая vendored dependency: `ThirdParty.cmake`.
 - Новая project-local dependency или role link:
   [ProjectDependencies.md](../../../ProjectDependencies.md),

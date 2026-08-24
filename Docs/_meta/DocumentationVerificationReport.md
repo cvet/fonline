@@ -1,6 +1,52 @@
 # Documentation Verification Report
 
-This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain.
+This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
+
+## 2026-08-24 - docs-only contract and clean-checkout validation reconciliation
+
+Scope:
+
+- Audited documentation branch head `a2dc6cc427106d4d12e47f2db193c7bd91792962`
+  after its additive merge of `origin/master` through
+  `4a898d59e642fd437fe4b7b277db7d27d31e8e94`.
+- Reproduced the shared CI failure from clean-checkout logs: the branch deleted
+  `BuildTools/validation-project`, while `buildtools.py` still copies that
+  fixture for unit, sanitizer, coverage, and platform validation. The local
+  checkout had not exposed the deletion before publication.
+- Re-audited project CMake, package, and native-extension documentation after
+  the earlier removal of runtime changes from this documentation branch.
+
+Results:
+
+- Restored the three-file validation project exactly from current master, so
+  clean checkouts retain the source fixture required by all validation lanes.
+- Kept `ProjectInterface.json`, `PackageInterface.json`, and
+  `NativeExtensionInterface.json` as documentation/validation models. Current
+  CMake and packager/codegen implementations remain runtime authority; no
+  manifest loader or runtime role rejection was reintroduced.
+- Reworked the structural project/native-extension CMake tests to read the
+  models directly and compare them with current declarations, routing, source
+  paths, helper availability, role consumers, and odd-argument diagnostics.
+- Corrected generated and human EN/RU claims: `AddBakingTarget` is defined in
+  `ScriptsAndBaking.cmake`; arbitrary role tokens create an unconsumed
+  `FO_<ROLE>_SOURCE` list; package/project/native manifests are not runtime
+  inputs. Historical entries below now identify superseded intermediate
+  implementations explicitly.
+- Normalized Bash snippet-parser stdin to LF bytes on Windows and added a
+  subshell regression, eliminating the local CRLF-only false diagnostic.
+
+Validation:
+
+- All three structural CMake scripts passed.
+- Focused CMake/native-extension/package documentation tests passed 22/22.
+- Complete `BuildTools/tests` discovery passed 570/570 in 477 seconds before
+  the final snippet-transport-only correction; its focused six-test suite then
+  passed on the corrected implementation.
+- External parsing passed all 310 normative snippets, 159 evidence blocks, and
+  183 Bash/PowerShell checks. Standalone documentation validation passed all
+  397 maintained Markdown entries.
+- Replacement GitHub Actions evidence remains attached to the pull request and
+  must pass on the published reconciliation commit before merge.
 
 ## 2026-08-20 - documentation branch and master reconciliation through `b4bf39a42`
 
@@ -812,7 +858,7 @@ Follow-up:
 
 Scope:
 
-- `BuildTools/cmake/ProjectInterface.json` as the runtime-consumed project option, stage/entrypoint/hook, and selected-helper contract.
+- `BuildTools/cmake/ProjectInterface.json` as the then-runtime-consumed project option, stage/entrypoint/hook, and selected-helper contract. This intermediate implementation was superseded by the 2026-08-24 docs-only reconciliation.
 - `BuildTools/docs_cmake.py`, its focused tests, the structural CMake test, canonical JSON model, and four generated Markdown pages.
 - Documentation manifest/freshness validation, GitHub Actions commands, BuildTools/public/AI routes, backlog, and Phase 3 status.
 
@@ -896,7 +942,7 @@ Follow-up:
 Scope:
 
 - Root fast-forward `f40bc2104..4a0c0efc6` and Engine fast-forward `411fbf097..bd6f7316c`, including restoration of both documentation worktrees and resolution of the incoming `Docs/ExceptionSafety.md` overlap.
-- Runtime-consumed `BuildTools/PackageInterface.json`, `BuildTools/package.py`, `DefinePackage`, deterministic package JSON/Markdown generation, structural tests, standalone freshness validation, and documentation CI.
+- The then-runtime-consumed `BuildTools/PackageInterface.json`, `BuildTools/package.py`, `DefinePackage`, deterministic package JSON/Markdown generation, structural tests, standalone freshness validation, and documentation CI. Runtime manifest consumption was superseded by the 2026-08-24 docs-only reconciliation.
 - Package/public/AI/maintenance routes, project build and architecture links, backlog, production plan, and current package claims in the embedding project.
 
 Source areas checked:
@@ -1026,8 +1072,8 @@ Source areas checked:
 
 Results:
 
-- Added runtime-consumed `BuildTools/NativeExtensionInterface.json` with five roles, ten hooks, six binding rules, stable `native-extension.*` IDs, explicit `experimental` revision-pinned policy, and no cross-revision binary compatibility promise.
-- CMake loads the manifest, verifies exact role parity with `ProjectInterface.json`, and rejects unknown `AddEngineSources` roles. `codegen.py` now derives hook recognition, compatibility-hash participation, declarations, and fallback definitions from the same manifest.
+- Added the then-runtime-consumed `BuildTools/NativeExtensionInterface.json` with five roles, ten hooks, six binding rules, stable `native-extension.*` IDs, explicit `experimental` revision-pinned policy, and no cross-revision binary compatibility promise. Runtime manifest consumption was superseded by the 2026-08-24 docs-only reconciliation.
+- At this intermediate revision CMake loaded the manifest, verified exact role parity with `ProjectInterface.json`, and rejected unknown `AddEngineSources` roles; `codegen.py` derived hook recognition, compatibility-hash participation, declarations, and fallback definitions from the same manifest. The later docs-only reconciliation restored source-owned CMake/codegen behavior and changed these manifests to checked documentation models.
 - Added [NativeExtensions.md](../NativeExtensions.md), [generated/native-extension.json](../generated/native-extension.json), and four checked reference pages. The guide covers composition order, role selection, namespaces/exports, hook fallbacks/lifecycle, instance-owned state, dependencies/platform guards, secrets, update reconciliation, and validation.
 - Added native extensions as the sixth aggregate domain. Experimental role/hook/binding removals or shape changes require exact disposition; project implementations, SDKs, settings, persistence, packaging, and release policy remain outside the engine guarantee.
 - Expanded the minimal project with `Server_Game_NativeStarterValue`, a generated `Game.NativeStarterValue()` call, and required runtime marker `starter_native_extension_value=42`; the existing visibility hook still proves fallback suppression.
@@ -3348,7 +3394,8 @@ Results:
 Validation:
 
 - `cmake -P BuildTools/tests/validate_project_interface.cmake` passed its
-  positive routing checks and child-process unknown-role rejection.
+  then-current positive routing checks and child-process unknown-role rejection;
+  this rejection behavior was superseded by the 2026-08-24 docs-only reconciliation.
 - `test_docs_project_dependencies.py` passed 3/3; `test_docs_cmake.py` passed
   5/5; the complete isolated `test_docs_*.py` set passed 46/46 after updating
   the pinned corpus total for the new normative CMake fence.
@@ -4233,7 +4280,7 @@ Residual boundary:
   `b603d8fdbc2b`; no upstream commit was waiting in any audited range. Existing
   dirty worktrees were preserved.
 - Re-audited the executable `BuildTools/buildtools.py::create_parser()`, the
-  runtime-consumed `BuildTools/cmake/ProjectInterface.json`, every declared
+  then-runtime-consumed `BuildTools/cmake/ProjectInterface.json`, every declared
   stage/helper source, `BuildTools/HelperCliInterface.json`, and every helper
   `create_parser()` against current Last Frontier and TLA integration usage.
 - The exact current surfaces contain 44 CMake options, 10 ordered stages, 6
@@ -8224,9 +8271,9 @@ Scope and source revisions:
 Contract and documentation changes:
 
 - Promoted `AddBakingTarget` into the early-loaded BuildTools helper layer and
-  registered it as the seventh public CMake helper. This keeps project
-  interface validation, generated references, and actual configure-time
-  command availability aligned.
+  registered it as the seventh public CMake helper. This intermediate placement
+  was superseded by the later source reconciliation, which keeps the public
+  helper in `ScriptsAndBaking.cmake` and documents its post-stage availability.
 - Documented the exact target signature, `NONE` subconfig default, force mode,
   build-hash update, and required call order after `SetupScriptsAndBaking()` in
   canonical English and Russian baking, embedding, and pipeline owners.

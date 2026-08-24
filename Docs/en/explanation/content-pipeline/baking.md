@@ -119,7 +119,7 @@ Reconciliation runs once per bake over the outputs the bakers already produced. 
 
 ## CMake entry points
 
-`BuildTools/cmake/helpers/Build.cmake` exposes `AddBakingTarget` as a validated project-interface helper. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` uses it to create the standard baking commands after application targets are available.
+`BuildTools/cmake/stages/ScriptsAndBaking.cmake` defines `AddBakingTarget` as a validated project-interface helper and uses it to create the standard baking commands after application targets are available.
 
 Current target responsibilities:
 

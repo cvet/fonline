@@ -11,7 +11,7 @@ generated: true
 
 [Index](index.md) | [Roles](roles.md) | [Hooks](hooks.md) | [Bindings](bindings.md) | [Canonical JSON](../../../generated/native-extension.json) | [Guide](../../how-to/native-extensions.md)
 
-`AddEngineSources` accepts only these roles. Every resolved source also enters `FO_SOURCE_META_FILES` before code generation.
+These are the roles consumed by the current Engine targets. Every resolved source also enters `FO_SOURCE_META_FILES` before code generation.
 
 | Stable ID | Role | Source list | Library | Primary header | Consumers | Script targets | Purpose |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -32,4 +32,4 @@ AddEngineSources(
 RegisterEngineSources()
 ```
 
-Paths and globs are resolved relative to the embedding-project contribution root. Unknown roles are configure errors.
+Paths and globs are resolved relative to the embedding-project contribution root. The current helper does not reject an unknown role token: it creates an FO_<ROLE>_SOURCE list, but no Engine target consumes that list unless the role is documented above.

@@ -11,7 +11,7 @@ generated: true
 
 [Reference index](index.md) | [Canonical JSON model](../../../generated/cmake.json) | [Generation contract](../metadata/)
 
-This reference describes the project-facing CMake surface consumed by an embedding game repository. The source manifest is also read by CMake during configure, so the generated pages and runtime declarations share one versioned source of truth.
+This reference describes the project-facing CMake surface consumed by an embedding game repository. The manifest is a checked documentation model of the current CMake declarations; the implementation in `BuildTools/Init.cmake` and the stage/helper files remains authoritative at configure time.
 
 ## Contract status
 

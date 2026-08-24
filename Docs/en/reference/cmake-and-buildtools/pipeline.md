@@ -75,11 +75,11 @@ Important consequences:
 
 ## Stage files
 
-The staged pipeline lives in `BuildTools/cmake/stages/`. Canonical stage order, entrypoint names, and hook points are declared in `BuildTools/cmake/ProjectInterface.json`, loaded by `BuildTools/Init.cmake`, and rendered in the [stage reference](../cmake/stages.md). The loader rejects duplicate names/entrypoints, non-contiguous order, and unsupported hook points before an embedding project executes a stage.
+The staged pipeline lives in `BuildTools/cmake/stages/`. Configure-time stage order, entrypoint names, and hook checks are implemented in `BuildTools/Init.cmake`. `BuildTools/cmake/ProjectInterface.json` mirrors that surface for the generated [stage reference](../cmake/stages.md), and `validate_project_interface.cmake` rejects drift in stage order, entrypoints, hook points, and source paths.
 
 ### `Init.cmake`
 
-Establishes baseline configuration. It declares every public project option from `BuildTools/cmake/ProjectInterface.json`, then checks required values and establishes the build hash and common generation context. The exact required inputs, cache types, defaults, allowed values, categories, and override precedence are generated in the [options reference](../cmake/options.md). Start in the manifest when a public option is added or changed; start in this stage when its configure-time behavior is wrong.
+Establishes baseline configuration. It declares every public project option directly, then checks required values and establishes the build hash and common generation context. `BuildTools/cmake/ProjectInterface.json` records the same required inputs, cache types, defaults, allowed values, categories, and override precedence for the generated [options reference](../cmake/options.md); the structural test verifies that every modeled option is present in this stage. Update the stage and manifest together when a public option changes.
 
 The manifest includes the independent `FO_SPARK_PARTICLES` and `FO_EFFEKSEER_PARTICLES` backends. Both default to `OFF`; an embedding project can enable either or both during a migration. Backend source files remain in stable engine source lists and guard their implementations with the corresponding macro. A disabled backend contributes no third-party target, compiled runtime or Mapper implementation, runtime resource extensions, or baker implementation.
 
@@ -155,7 +155,7 @@ Related docs: [Baking Pipeline](../../explanation/content-pipeline/baking.md) an
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and the current `BINARY` entry's optional output postfix.
 
-`DefinePackage` declaration clauses, accepted runtime targets/platforms/architectures, pack tokens, support status, and payload effects are versioned in `BuildTools/PackageInterface.json` and rendered in the [generated package reference](../packages/index.md). `package.py` consumes the same manifest to reject unknown, duplicate, placeholder, unsupported-platform, target-incompatible, modifier-only, and invalid-architecture package requests before staging output. The embedding project still owns which valid combinations it declares.
+`DefinePackage` declaration clauses, accepted runtime targets/platforms/architectures, pack tokens, support status, and payload effects are modeled in `BuildTools/PackageInterface.json` and rendered in the [generated package reference](../packages/index.md). The manifest is documentation/validation data; `DefinePackage`, `Packages.cmake`, and `package.py` remain the runtime authorities. Focused and structural tests compare the modeled grammar and dimensions with those implementations. The embedding project still owns which valid combinations it declares.
 
 `POSTFIX <value>` follows a single `BINARY` clause and is never inherited by sibling entries. It must match the `FO_BINARY_OUTPUT_POSTFIX` used when that binary was built, because both sides participate in the input-directory name and packaged runtime identity. The `win32-win7` and `win64-win7` package architecture keys resolve to canonical `win32` and `win64` binary architectures; their legacy toolset choice comes from `buildtools.py`, while an explicit postfix such as `POSTFIX Win7` keeps the produced Raw/Zip/Wix names distinct. Run `BuildTools/check_windows7_imports.py` against every linked Win7 PE before packaging or publication.
 
@@ -216,11 +216,11 @@ AddStageHook(<StageName> Pre|Post <macro-name>)
 
 Use hooks when an embedding project or a later refactor needs to extend stage behavior without editing the middle of a stage body. Keep hook behavior documented near the owning stage or in the project docs if it is game-specific.
 
-The generated [stage and hook reference](../cmake/stages.md) is authoritative for supported stage names, entrypoints, and hook positions.
+The generated [stage and hook reference](../cmake/stages.md) is the documented inventory of supported stage names, entrypoints, and hook positions; `BuildTools/Init.cmake` remains configure-time authority.
 
 ## Change routing
 
-- New project option: `BuildTools/cmake/ProjectInterface.json`; option application/validation: `Init.cmake` / `ProjectOptions.cmake`.
+- New project option: declaration in `Init.cmake`, combination validation in `ProjectOptions.cmake`, and matching documentation data in `BuildTools/cmake/ProjectInterface.json`.
 - New vendored dependency: `ThirdParty.cmake`.
 - New project-local dependency or role link: [ProjectDependencies.md](../../../ProjectDependencies.md), the pinned revision's consumed `FO_*_LIBS` list, and the embedding-project target/package matrix.
 - New engine source file: `EngineSources.cmake` and maybe `CoreLibs.cmake`.

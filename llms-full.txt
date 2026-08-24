@@ -5087,7 +5087,7 @@ names, and QA policy in their owning projects.
 ===== BEGIN DOCUMENT native-extensions-guide =====
 Source: Docs/en/how-to/native-extensions.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/native-extensions.html
-Content SHA-256: a4cb0f008e005d026b18efddb9c0ac4966375e4fa2c6aeece7f265113c29310d
+Content SHA-256: 6b964a987dc6d4be653e758ec1ce50e9bfc07583eb92592384d1e508c83e1d55
 
 ---
 layout: default
@@ -5163,7 +5163,7 @@ RegisterEngineSources()
 SetupCodeGeneration()
 ```
 
-Paths and globs resolve against the embedding project's contribution root. Arguments are role/path pairs; an odd argument count or unknown role is a configure-time error. There are no separate `EDITOR`, `ANIMATION_VIEWER`, or `PARTICLE_VIEWER` source roles. Mapper, both focused viewers, Baker, and ASCompiler link `BakerLib`, so reusable authoring/baking support normally belongs in `BAKER`; code that is truly shared by all applications belongs in `COMMON`. Project-native Catch2 translation units belong in `TESTS`, which compiles them directly into enabled unit-test and coverage executables without adding them to runtime libraries.
+Paths and globs resolve against the embedding project's contribution root. Arguments are role/path pairs, and an odd argument count is a configure-time error. The current helper does not reject an unknown role token: it creates an `FO_<ROLE>_SOURCE` list and still adds the file to metadata inputs, but no Engine target consumes that source list unless the role is one of the six documented below. There are no consumed `EDITOR`, `ANIMATION_VIEWER`, or `PARTICLE_VIEWER` source roles. Mapper, both focused viewers, Baker, and ASCompiler link `BakerLib`, so reusable authoring/baking support normally belongs in `BAKER`; code that is truly shared by all applications belongs in `COMMON`. Project-native Catch2 translation units belong in `TESTS`, which compiles them directly into enabled unit-test and coverage executables without adding them to runtime libraries.
 
 Every resolved file is appended to both its role source list and `FO_SOURCE_META_FILES`. A header registered as `COMMON` is also added to generated common-header inputs. Register only files intended for codegen inspection: a vendored source tree belongs in a dedicated library target, not in a broad extension glob.
 
@@ -12763,7 +12763,7 @@ Introducing a separate site application would duplicate ownership and move the p
 ===== BEGIN DOCUMENT adr-public-api-stability-contract =====
 Source: Docs/en/contributing/decisions/0002-public-api-stability-contract.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0002-public-api-stability-contract.html
-Content SHA-256: 149e2ff583d1681105aeb934e506bffdd0bb65afa618dc38e6d392700cadfc57
+Content SHA-256: 9156c64fbce8dc21a3b0470be96e18f2ec3b33b1f11dfa231aaa3bfb9018398d
 
 ---
 layout: default
@@ -12856,7 +12856,7 @@ For an `experimental` surface, breaking changes still require an explicit change
 
 For helper scripts, each executable `create_parser()` remains the syntax source of truth while `BuildTools/HelperCliInterface.json` owns stable helper identity, purpose, audience, invocation owner, and explicit exclusions. AST inventory validation rejects a newly exposed helper parser that is neither modeled nor assigned to another canonical domain. The helper CLI domain is `internal` until an owner approves a versioned support policy.
 
-For project-native C++, `BuildTools/NativeExtensionInterface.json` is consumed by CMake/codegen and owns source roles, supported hook signatures/fallbacks/call sites, and binding rules. The domain is `experimental` and source-compatible only at a pinned engine revision; it does not promise a cross-revision binary ABI. Project implementations and external SDKs remain outside the engine contract.
+For project-native C++, `BuildTools/NativeExtensionInterface.json` models the source roles consumed by current targets, supported hook signatures/fallbacks/call sites, and binding rules. Structural and generator tests compare it with current CMake/codegen behavior; it is not a runtime input. The domain is `experimental` and source-compatible only at a pinned engine revision; it does not promise a cross-revision binary ABI. Project implementations and external SDKs remain outside the engine contract.
 
 A breaking `stable`, `experimental`, or `deprecated` declaration change requires an exact schema-v2 cumulative-ledger entry in `Docs/contract-change-dispositions.json`. The entry records the domain, owner classification, rationale, migration, release-note, and compatibility handling and is bound to the change ID plus that domain's baseline/current contract digests. Model-source, model-scope, and model-level contract changes also require disposition. Internal entry changes remain reportable but do not become compatibility promises.
 
@@ -15453,7 +15453,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 29865d4b780b6d286adc46044b6dac5f4611f56885b749a3f9c0cd2dad49bbdd
+Content SHA-256: 5cd6955b3aeabfceacbc2ba75148caf51f2ac15a12ad6cacb3350a378db4e9bb
 
 ---
 layout: default
@@ -15576,7 +15576,7 @@ Reconciliation runs once per bake over the outputs the bakers already produced. 
 
 ## CMake entry points
 
-`BuildTools/cmake/helpers/Build.cmake` exposes `AddBakingTarget` as a validated project-interface helper. `BuildTools/cmake/stages/ScriptsAndBaking.cmake` uses it to create the standard baking commands after application targets are available.
+`BuildTools/cmake/stages/ScriptsAndBaking.cmake` defines `AddBakingTarget` as a validated project-interface helper and uses it to create the standard baking commands after application targets are available.
 
 Current target responsibilities:
 
@@ -22884,7 +22884,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: d4d5a2c7a9690de0eb50cf5fca7c3b9c17c2436a999d9bd175a49ce213bf139c
+Content SHA-256: e57908d1abe04b5e519ec1a569c344f518695f2df89eb6845b44858ff5b50e73
 
 ---
 layout: default
@@ -22963,11 +22963,11 @@ Important consequences:
 
 ## Stage files
 
-The staged pipeline lives in `BuildTools/cmake/stages/`. Canonical stage order, entrypoint names, and hook points are declared in `BuildTools/cmake/ProjectInterface.json`, loaded by `BuildTools/Init.cmake`, and rendered in the [stage reference](../cmake/stages.md). The loader rejects duplicate names/entrypoints, non-contiguous order, and unsupported hook points before an embedding project executes a stage.
+The staged pipeline lives in `BuildTools/cmake/stages/`. Configure-time stage order, entrypoint names, and hook checks are implemented in `BuildTools/Init.cmake`. `BuildTools/cmake/ProjectInterface.json` mirrors that surface for the generated [stage reference](../cmake/stages.md), and `validate_project_interface.cmake` rejects drift in stage order, entrypoints, hook points, and source paths.
 
 ### `Init.cmake`
 
-Establishes baseline configuration. It declares every public project option from `BuildTools/cmake/ProjectInterface.json`, then checks required values and establishes the build hash and common generation context. The exact required inputs, cache types, defaults, allowed values, categories, and override precedence are generated in the [options reference](../cmake/options.md). Start in the manifest when a public option is added or changed; start in this stage when its configure-time behavior is wrong.
+Establishes baseline configuration. It declares every public project option directly, then checks required values and establishes the build hash and common generation context. `BuildTools/cmake/ProjectInterface.json` records the same required inputs, cache types, defaults, allowed values, categories, and override precedence for the generated [options reference](../cmake/options.md); the structural test verifies that every modeled option is present in this stage. Update the stage and manifest together when a public option changes.
 
 The manifest includes the independent `FO_SPARK_PARTICLES` and `FO_EFFEKSEER_PARTICLES` backends. Both default to `OFF`; an embedding project can enable either or both during a migration. Backend source files remain in stable engine source lists and guard their implementations with the corresponding macro. A disabled backend contributes no third-party target, compiled runtime or Mapper implementation, runtime resource extensions, or baker implementation.
 
@@ -23043,7 +23043,7 @@ Related docs: [Baking Pipeline](../../explanation/content-pipeline/baking.md) an
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and the current `BINARY` entry's optional output postfix.
 
-`DefinePackage` declaration clauses, accepted runtime targets/platforms/architectures, pack tokens, support status, and payload effects are versioned in `BuildTools/PackageInterface.json` and rendered in the [generated package reference](../packages/index.md). `package.py` consumes the same manifest to reject unknown, duplicate, placeholder, unsupported-platform, target-incompatible, modifier-only, and invalid-architecture package requests before staging output. The embedding project still owns which valid combinations it declares.
+`DefinePackage` declaration clauses, accepted runtime targets/platforms/architectures, pack tokens, support status, and payload effects are modeled in `BuildTools/PackageInterface.json` and rendered in the [generated package reference](../packages/index.md). The manifest is documentation/validation data; `DefinePackage`, `Packages.cmake`, and `package.py` remain the runtime authorities. Focused and structural tests compare the modeled grammar and dimensions with those implementations. The embedding project still owns which valid combinations it declares.
 
 `POSTFIX <value>` follows a single `BINARY` clause and is never inherited by sibling entries. It must match the `FO_BINARY_OUTPUT_POSTFIX` used when that binary was built, because both sides participate in the input-directory name and packaged runtime identity. The `win32-win7` and `win64-win7` package architecture keys resolve to canonical `win32` and `win64` binary architectures; their legacy toolset choice comes from `buildtools.py`, while an explicit postfix such as `POSTFIX Win7` keeps the produced Raw/Zip/Wix names distinct. Run `BuildTools/check_windows7_imports.py` against every linked Win7 PE before packaging or publication.
 
@@ -23104,11 +23104,11 @@ AddStageHook(<StageName> Pre|Post <macro-name>)
 
 Use hooks when an embedding project or a later refactor needs to extend stage behavior without editing the middle of a stage body. Keep hook behavior documented near the owning stage or in the project docs if it is game-specific.
 
-The generated [stage and hook reference](../cmake/stages.md) is authoritative for supported stage names, entrypoints, and hook positions.
+The generated [stage and hook reference](../cmake/stages.md) is the documented inventory of supported stage names, entrypoints, and hook positions; `BuildTools/Init.cmake` remains configure-time authority.
 
 ## Change routing
 
-- New project option: `BuildTools/cmake/ProjectInterface.json`; option application/validation: `Init.cmake` / `ProjectOptions.cmake`.
+- New project option: declaration in `Init.cmake`, combination validation in `ProjectOptions.cmake`, and matching documentation data in `BuildTools/cmake/ProjectInterface.json`.
 - New vendored dependency: `ThirdParty.cmake`.
 - New project-local dependency or role link: [ProjectDependencies.md](../../../ProjectDependencies.md), the pinned revision's consumed `FO_*_LIBS` list, and the embedding-project target/package matrix.
 - New engine source file: `EngineSources.cmake` and maybe `CoreLibs.cmake`.
@@ -23149,7 +23149,7 @@ For BuildTools changes:
 ===== BEGIN DOCUMENT generated-cmake-index =====
 Source: Docs/en/reference/cmake/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake/
-Content SHA-256: b49fbf3acb9d7ee06b80fc2fb734f8c9eecdc944c05fe7c9f6edee18999150f9
+Content SHA-256: ba79a78cf6b596a4c0e4eac8660749c7c19e9c523abf2b91ac260bc65d3f4206
 
 ---
 title: Generated CMake Project Interface
@@ -23164,7 +23164,7 @@ generated: true
 
 [Reference index](index.md) | [Canonical JSON model](../../../generated/cmake.json) | [Generation contract](../metadata/)
 
-This reference describes the project-facing CMake surface consumed by an embedding game repository. The source manifest is also read by CMake during configure, so the generated pages and runtime declarations share one versioned source of truth.
+This reference describes the project-facing CMake surface consumed by an embedding game repository. The manifest is a checked documentation model of the current CMake declarations; the implementation in `BuildTools/Init.cmake` and the stage/helper files remains authoritative at configure time.
 
 ## Contract status
 
@@ -23579,7 +23579,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: 0ac5324ab16dc716df976b676143623948566937be8cdb77e678b9a9ae57a967
+Content SHA-256: 105372ba52d4711df75c4ddcf12a7bd04f2258351ef008858efbf9494252a3d9
 
 ---
 layout: default
@@ -23927,7 +23927,7 @@ The page set and byte-for-byte output are declared in [documentation-manifest.js
 
 ## Generated CMake project interface
 
-[English CMake reference](../../reference/cmake/index.md) is the human entry point for the CMake surface intended for embedding projects; the maintained translation starts at the [Russian CMake reference](../../../ru/reference/cmake/index.md). Its source of truth is `BuildTools/cmake/ProjectInterface.json`, which is not documentation-only metadata: `BuildTools/Init.cmake` reads the same manifest to load the canonical stage order, generate stage entrypoint macros, validate published helpers, and let the `Init` stage declare public project options.
+[English CMake reference](../../reference/cmake/index.md) is the human entry point for the CMake surface intended for embedding projects; the maintained translation starts at the [Russian CMake reference](../../../ru/reference/cmake/index.md). `BuildTools/cmake/ProjectInterface.json` is the documentation model, while `BuildTools/Init.cmake` and the stage/helper files remain configure-time authority. The structural CMake test compares option names, stage order, entrypoints, hooks, helper declarations, and source paths so generated documentation cannot silently drift from the implementation.
 
 `BuildTools/docs_cmake.py` validates the manifest independently and emits [generated/cmake.json](../../../generated/cmake.json), canonical English pages for options, stages/hooks, and selected helpers, and durable pointers at the former `Docs/generated/cmake/*.md` routes. Every record has a stable `cmake.option.*`, `cmake.stage.*`, or `cmake.helper.*` ID. The Markdown output includes defaults, required state, override precedence, signatures, allowed roles, responsibilities, and source links without reparsing CMake syntax. The Russian pages are reviewed translations with source-hash and code-fence parity gates; they are not overwritten by the English generator.
 
@@ -23982,7 +23982,7 @@ The focused test invokes every real helper and subcommand with `--help`, checks 
 
 ## Generated native-extension interface
 
-[Native extension reference](../../reference/native-extension/index.md) is the exact reference for project-native source roles, supported engine hooks, generated fallbacks, and native binding rules. `BuildTools/NativeExtensionInterface.json` is consumed by CMake and `BuildTools/codegen.py`; `BuildTools/docs_native_extension.py` validates those runtime consumers and emits [generated/native-extension.json](../../../generated/native-extension.json) plus role, hook, and binding pages.
+[Native extension reference](../../reference/native-extension/index.md) is the exact reference for project-native source roles consumed by current targets, supported engine hooks, generated fallbacks, and native binding rules. `BuildTools/NativeExtensionInterface.json` is documentation/validation data rather than a runtime input; `BuildTools/docs_native_extension.py` and the structural CMake test compare it with current CMake/codegen behavior and emit [generated/native-extension.json](../../../generated/native-extension.json) plus role, hook, and binding pages.
 
 Every role, hook, and binding rule has a stable `native-extension.*` ID. The model records role libraries/consumers, hook signatures/call sites/defaults, compatibility-hashed presence, and registration/namespace/pointer/dependency rules. Its scope is `experimental` and revision-pinned: source-compatible use at a pinned engine revision is documented, but binary compatibility across independently built revisions is not promised. Project implementations, SDKs, settings, persistence, and packaging remain project-owned.
 
@@ -24251,7 +24251,7 @@ project hooks, authoring boundaries, diagnostics, and end-to-end validation.
 
 ## Generated package interface
 
-[the generated package reference](../packages/index.md) is the human entry point for package declarations and payloads. `BuildTools/PackageInterface.json` is consumed by `BuildTools/package.py` and by `BuildTools/docs_package.py`; the generator also calls the executable `package.py::create_parser()` and emits [generated/package.json](../../../generated/package.json) plus declaration, matrix, payload/artifact, and CLI pages.
+[the generated package reference](../packages/index.md) is the human entry point for package declarations and payloads. `BuildTools/PackageInterface.json` models the current `DefinePackage`/`package.py` capabilities for documentation and validation; it is not read by the packager. `BuildTools/docs_package.py` also calls the executable `package.py::create_parser()` and emits [generated/package.json](../../../generated/package.json) plus declaration, matrix, payload/artifact, and CLI pages.
 
 The model gives `DefinePackage`, its two clauses and per-binary `POSTFIX` modifier, six targets, six platforms, nineteen pack tokens, six platform payloads, and thirteen packager arguments stable `package.*` IDs. The target set includes standalone `AnimationViewer` and `ParticleViewer` packages. It distinguishes implemented platforms/packs from explicit unsupported and placeholder entries rather than presenting comments as support. Runtime validation rejects unknown or duplicate packs/architectures, unsupported platforms, incompatible target/platform/pack combinations, missing required `NoRes`, and modifier-only lists before output staging. The Windows matrix includes the `win32-win7` and `win64-win7` selectors and documents their canonical-architecture plus explicit-postfix behavior.
 

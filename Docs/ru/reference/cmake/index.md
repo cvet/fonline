@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-index","locale":"ru","source_path":"Docs/en/reference/cmake/index.md","source_sha256":"b49fbf3acb9d7ee06b80fc2fb734f8c9eecdc944c05fe7c9f6edee18999150f9"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-index","locale":"ru","source_path":"Docs/en/reference/cmake/index.md","source_sha256":"ba79a78cf6b596a4c0e4eac8660749c7c19e9c523abf2b91ac260bc65d3f4206"} -->
 
 # Сгенерированный интерфейс проекта CMake
 
@@ -13,7 +13,7 @@ generated: true
 
 [Индекс справочника](index.md) | [Каноническая JSON-модель](../../../generated/cmake.json) | [Контракт генерации](../metadata/)
 
-Этот справочник описывает доступную проекту поверхность CMake, которую использует подключающий игровой репозиторий. Исходный manifest также читается CMake во время настройки, поэтому сгенерированные страницы и исполняемые объявления используют один версионируемый источник истины.
+Этот справочник описывает доступную проекту поверхность CMake, которую использует подключающий игровой репозиторий. Manifest является проверяемой документационной моделью текущих объявлений CMake; во время конфигурации авторитетной остаётся реализация в `BuildTools/Init.cmake` и файлах стадий и helper-команд.
 
 ## Статус контракта
 

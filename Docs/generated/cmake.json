@@ -677,7 +677,7 @@
       "name": "AddBakingTarget",
       "kind": "function",
       "signature": "AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])",
-      "source": "BuildTools/cmake/helpers/Build.cmake",
+      "source": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
       "description": "Create a project baking target with an optional subconfig, force mode, and build-hash update after SetupScriptsAndBaking.",
       "id": "cmake.helper.AddBakingTarget"
     }

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-native-extension-roles","locale":"ru","source_path":"Docs/en/reference/native-extension/roles.md","source_sha256":"1f152dcd86b8fe3d9fa3cf65cfd330679c549cd0227f1a88c69b5f2ceef546b8"} -->
+<!-- docs-translation: {"document_id":"generated-native-extension-roles","locale":"ru","source_path":"Docs/en/reference/native-extension/roles.md","source_sha256":"9b60349f9f88a22fb2da3f0e9f60ebf4b394a37889cf0ae212f5705ef8e55d22"} -->
 
 # Роли нативных расширений
 
@@ -13,7 +13,7 @@ generated: true
 
 [Обзор](index.md) | [Роли](roles.md) | [Хуки](hooks.md) | [Биндинги](bindings.md) | [Канонический JSON](../../../generated/native-extension.json) | [Руководство](../../how-to/native-extensions.md)
 
-`AddEngineSources` принимает только перечисленные роли. Каждый найденный исходник также добавляется в `FO_SOURCE_META_FILES` до кодогенерации.
+Это роли, которые используются текущими целями Engine. Каждый найденный исходник также добавляется в `FO_SOURCE_META_FILES` до кодогенерации.
 
 | Стабильный ID | Роль | Список исходников | Библиотека | Основной заголовок | Потребители | Скриптовые цели | Назначение |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -34,4 +34,4 @@ AddEngineSources(
 RegisterEngineSources()
 ```
 
-Пути и шаблоны разрешаются относительно корня вклада подключающего проекта. Неизвестные роли приводят к ошибке конфигурации.
+Пути и шаблоны разрешаются относительно корня вклада подключающего проекта. Текущий helper не отклоняет неизвестный token роли: он создаёт список FO_<ROLE>_SOURCE, но ни одна цель Engine не использует этот список, если роль не описана выше.

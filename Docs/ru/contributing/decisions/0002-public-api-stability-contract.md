@@ -6,7 +6,7 @@ document_id: adr-public-api-stability-contract
 permalink: /Docs/ru/contributing/decisions/0002-public-api-stability-contract.html
 ---
 
-<!-- docs-translation: {"document_id":"adr-public-api-stability-contract","locale":"ru","source_path":"Docs/en/contributing/decisions/0002-public-api-stability-contract.md","source_sha256":"149e2ff583d1681105aeb934e506bffdd0bb65afa618dc38e6d392700cadfc57"} -->
+<!-- docs-translation: {"document_id":"adr-public-api-stability-contract","locale":"ru","source_path":"Docs/en/contributing/decisions/0002-public-api-stability-contract.md","source_sha256":"9156c64fbce8dc21a3b0470be96e18f2ec3b33b1f11dfa231aaa3bfb9018398d"} -->
 
 # ADR-0002: контракт стабильности публичного API
 
@@ -91,7 +91,7 @@ Contract tags не заменяют проверку владельцем. Те�
 
 Для вспомогательных скриптов каждый исполняемый `create_parser()` остаётся источником истины синтаксиса, а `BuildTools/HelperCliInterface.json` владеет стабильной идентичностью helper, назначением, аудиторией, владельцем вызова и явными исключениями. Проверка AST inventory отклоняет новый открытый helper parser, который не смоделирован и не отнесён к другому каноническому домену. Домен helper CLI остаётся `internal`, пока владелец не утвердит версионированную политику поддержки.
 
-Для нативного C++ проекта `BuildTools/NativeExtensionInterface.json` используется CMake и codegen и владеет ролями исходников, поддерживаемыми сигнатурами hooks, fallback, call sites и правилами bindings. Домен имеет статус `experimental` и совместим по исходному коду только на закреплённой ревизии движка; он не обещает бинарный ABI между ревизиями. Проектные реализации и внешние SDK остаются вне контракта движка.
+Для нативного C++ проекта `BuildTools/NativeExtensionInterface.json` моделирует роли исходников, используемые текущими targets, поддерживаемые сигнатуры hooks, fallback, call sites и правила bindings. Структурные тесты и тесты генератора сопоставляют его с текущим поведением CMake/codegen; runtime input он не является. Домен имеет статус `experimental` и совместим по исходному коду только на закреплённой ревизии движка; он не обещает бинарный ABI между ревизиями. Проектные реализации и внешние SDK остаются вне контракта движка.
 
 Breaking change объявления `stable`, `experimental` или `deprecated` требует точной записи схемы v2 в накопительном реестре `Docs/contract-change-dispositions.json`. Запись содержит домен, классификацию владельца, обоснование, миграцию, release note и обработку совместимости и привязана к change ID и baseline/current digest соответствующего домена. Изменения источника модели, области модели и контракта уровня модели также требуют решения. Изменения внутренних записей остаются видимыми в отчёте, но не становятся обещаниями совместимости.
 

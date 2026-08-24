@@ -376,11 +376,11 @@ RUSSIAN_REPLACEMENTS = {
         "Необязательные объявления, места вызова, значения по умолчанию и состояние совместимости.",
     "Registration, namespace, pointer, and dependency rules.":
         "Правила регистрации, пространства имён, указателей и зависимостей.",
-    "`AddEngineSources` accepts only these roles. Every resolved source also enters `FO_SOURCE_META_FILES` before code generation.":
-        "`AddEngineSources` принимает только перечисленные роли. Каждый найденный исходник также добавляется в `FO_SOURCE_META_FILES` до кодогенерации.",
+    "These are the roles consumed by the current Engine targets. Every resolved source also enters `FO_SOURCE_META_FILES` before code generation.":
+        "Это роли, которые используются текущими целями Engine. Каждый найденный исходник также добавляется в `FO_SOURCE_META_FILES` до кодогенерации.",
     "## Registration shape": "## Форма регистрации",
-    "Paths and globs are resolved relative to the embedding-project contribution root. Unknown roles are configure errors.":
-        "Пути и шаблоны разрешаются относительно корня вклада подключающего проекта. Неизвестные роли приводят к ошибке конфигурации.",
+    "Paths and globs are resolved relative to the embedding-project contribution root. The current helper does not reject an unknown role token: it creates an FO_<ROLE>_SOURCE list, but no Engine target consumes that list unless the role is documented above.":
+        "Пути и шаблоны разрешаются относительно корня вклада подключающего проекта. Текущий helper не отклоняет неизвестный token роли: он создаёт список FO_<ROLE>_SOURCE, но ни одна цель Engine не использует этот список, если роль не описана выше.",
     "A project implements a hook by declaring it as metadata in a source registered under the owning role. Codegen omits that hook's fallback when it sees the declaration.":
         "Проект реализует хук, объявляя его как метаданные в исходнике, зарегистрированном во владеющей роли. Обнаружив объявление, кодогенерация исключает реализацию этого хука по умолчанию.",
     "- Stable ID:": "- Стабильный ID:",
@@ -465,7 +465,7 @@ def _render_index(model: dict[str, object]) -> str:
 def _render_roles(model: dict[str, object]) -> str:
     lines = _header(*PAGE_DEFINITIONS[1][1:])
     lines.extend([
-        "`AddEngineSources` accepts only these roles. Every resolved source also enters `FO_SOURCE_META_FILES` "
+        "These are the roles consumed by the current Engine targets. Every resolved source also enters `FO_SOURCE_META_FILES` "
         "before code generation.",
         "",
     ])
@@ -495,7 +495,9 @@ def _render_roles(model: dict[str, object]) -> str:
         "RegisterEngineSources()",
         "```",
         "",
-        "Paths and globs are resolved relative to the embedding-project contribution root. Unknown roles are configure errors.",
+        "Paths and globs are resolved relative to the embedding-project contribution root. The current helper does not "
+        "reject an unknown role token: it creates an FO_<ROLE>_SOURCE list, but no Engine target consumes that list "
+        "unless the role is documented above.",
         "",
     ])
     return "\n".join(lines)

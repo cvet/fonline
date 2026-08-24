@@ -576,9 +576,9 @@ def _run_external(snippets: list[dict[str, object]]) -> list[str]:
         if harness == "bash-parse":
             result = subprocess.run(
                 [bash, "-n"],
-                input=body,
-                text=True,
-                encoding="utf-8",
+                # Send bytes so Windows does not translate normalized LF back
+                # to CRLF while writing the parser's stdin.
+                input=body.encode("utf-8"),
                 capture_output=True,
                 check=False,
             )
@@ -602,7 +602,10 @@ def _run_external(snippets: list[dict[str, object]]) -> list[str]:
                 check=False,
             )
         if result.returncode != 0:
-            detail = (result.stderr or result.stdout).strip().replace("\n", " | ")
+            detail_output = result.stderr or result.stdout
+            if isinstance(detail_output, bytes):
+                detail_output = detail_output.decode("utf-8", errors="replace")
+            detail = detail_output.strip().replace("\n", " | ")
             errors.append(
                 f"{entry['path']}:{entry['start_line']}: "
                 f"{harness} external parser failed: {detail}"
