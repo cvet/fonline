@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/runtime/server.html
 
 # Серверная среда выполнения
 
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"43d06a42bea3fd30160dee18e144081c77cd5af6c04156513689f7e2235a1961"} -->
+<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"e22beafa33f6bbea03ecdf301ddd8949965bc36aaf21659ce0e9e6b1fbab112e"} -->
 
 > Документация движка. Эта страница описывает переиспользуемое поведение серверной среды выполнения из `Source/Server/`; игровые правила, содержимое мира, конкретный баланс, задания и политика развёртывания отдельного проекта остаются в документации подключающего проекта.
 
@@ -106,11 +106,16 @@ permalink: /Docs/ru/explanation/runtime/server.html
 - `InitDoneJob()`
 - `SyncPointJob()`
 - `FrameTimeJob()`
-- `ScriptSystemJob()`
-- `NotLoggedInPlayersJob()`
-- `PlayersJob()`
-- `CrittersJob()`
-- `TimeEventsJob()`
+- `TimeEventJob()`
+- `NotLoggedInPlayerJob()`
+- `PlayerJob()`
+- `CritterMovingJob()`
+
+После запуска на основном worker циклически выполняются только
+`SyncPointJob()` и `FrameTimeJob()`. Time events, обработка соединений и
+движение криттеров используют keyed, self-rescheduling задания `WorkerPool`;
+callbacks поступления данных пробуждают ключ соответствующего соединения без
+возврата к aggregate per-frame polling.
 
 Запуск выполняется в рабочем потоке `_starter`, поэтому ошибка проявляется асинхронно. Если любое обязательное задание инициализации выбрасывает исключение, например `InitStorageJob()` при недоступной базе данных, обработчик исключения стартового потока устанавливает `IsStartingError()` и очищает оставшиеся задания до запуска глобального отчёта об исключении: `IsStarted()` так и не становится истинным, а пул рабочих потоков, соединение с базой данных и синхронизация времени не создаются. Такой порядок быстро делает флаг ошибки запуска видимым хосту даже при медленном сборе трассировки стека. Хост-приложения обязаны отслеживать его, а не ждать бесконечно: `ServerHeadlessApp`, `ServerDaemonApp` и `ServerServiceApp` ожидают `IsQuitRequested() || IsStartingError()` и превращают ошибку запуска в завершение с ненулевым результатом, вместо того чтобы оставлять процесс слушающим порт, но неработоспособным. Именно такое состояние ранее оставляло Staging-сервер наполовину инициализированным на несколько часов при недоступном MongoDB. `Shutdown()` соответственно безопасен и для частично инициализированного движка: очистка пула и сброс базы данных и синхронизации времени выполняются только при `reached_running_state`, то есть при наличии `_workerPool`, создаваемого последним в `InitMetadataJob` после подключения к БД и синхронизации времени. Поэтому сорванный запуск корректно освобождает ресурсы вместо разыменования нулевого пула (`WorkerPool::Clear` попытался бы заблокировать его mutex) или нарушения инвариантов подключения и синхронизации. Тест `ServerEngineShutdownIsSafeAfterStartupFailure` в `Source/Tests/Test_ServerEngine.cpp` закрепляет это поведение: задаёт неизвестный `DbStorage`, проверяет ошибку запуска и требует, чтобы `Shutdown()` завершился без сбоя.
 
