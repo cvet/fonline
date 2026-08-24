@@ -900,7 +900,8 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
         }
     }
 
-    ImageWriter::WriteSimpleTga(filePath, size, std::move(pixels));
+    string path = strex(filePath).format_path().str();
+    ImageWriter::WriteSimplePng(path, size, pixels);
 }
 
 FO_END_NAMESPACE
