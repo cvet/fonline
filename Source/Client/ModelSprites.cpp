@@ -419,10 +419,13 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
     model_spr->GetModel()->PrepareFrameLayout();
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->ModelSpriteMaxTextureWidth, _settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     isize32 render_frame_size = model_spr->_requestedFrameSize.value_or(model_spr->GetModel()->GetDrawSize());
+    ModelSpriteFramePlacement start_placement = ClampModelSpriteFramePlacement({.Size = render_frame_size, .Pivot = model_spr->GetModel()->GetFramePivot()}, max_logical_frame);
+    render_frame_size = start_placement.Size;
 
     if (model_spr->GetModel()->GetDrawSize() != render_frame_size) {
-        model_spr->GetModel()->SetupFrame(render_frame_size, model_spr->GetModel()->GetFramePivot());
+        model_spr->GetModel()->SetupFrame(render_frame_size, start_placement.Pivot);
     }
 
     // The frame size is known from the posed skeleton without any GPU read-back, so the model is posed and measured
@@ -441,6 +444,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
             ModelSpriteFramePlacement required_placement {.Size = bounds->RequiredFrameSize, .Pivot = bounds->Pivot};
             optional<ModelSpriteFramePlacement> settled_placement = MergeModelSpriteFramePlacements(current_placement, required_placement);
             FO_VERIFY_AND_THROW(settled_placement, "Model sprite frame placements could not be merged", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot);
+            *settled_placement = ClampModelSpriteFramePlacement(*settled_placement, max_logical_frame);
 
             // A full-frame particle crop may already have enough pixels but still need its root moved inside that frame
             if (settled_placement->Size != current_placement.Size || settled_placement->Pivot != current_placement.Pivot) {

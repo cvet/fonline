@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 37
+///@ MigrationRule Version 0 0 38
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -869,7 +869,6 @@ private:
 };
 
 extern auto MakeSeededRandomGenerator() -> std::mt19937;
-extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;

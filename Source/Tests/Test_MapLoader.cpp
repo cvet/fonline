@@ -345,6 +345,40 @@ TEST_CASE("MapLoader")
 
         CHECK(item_calls == 1);
     }
+
+    SECTION("RejectsBakedMapFileThatIsNotCurrentFormat")
+    {
+        auto make_baked_map_header = [](uint32_t magic, uint32_t version) {
+            vector<uint8_t> data;
+            auto writer = DataWriter(data);
+            writer.Write<uint32_t>(magic);
+            writer.Write<uint32_t>(version);
+            writer.Write<uint32_t>(uint32_t {7});
+            return data;
+        };
+
+        vector<uint8_t> current = make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION);
+        auto current_reader = DataReader {current};
+        CHECK_NOTHROW(MapLoader::ReadBakedFileHeader(current_reader, "TestMap"));
+        CHECK(current_reader.Read<uint32_t>() == 7);
+
+        vector<uint8_t> future = make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION + 1);
+        auto future_reader = DataReader {future};
+        CHECK_THROWS_AS(MapLoader::ReadBakedFileHeader(future_reader, "TestMap"), MapLoaderException);
+
+        // The pre-header layout opened with the hash count, so a stale resource file is caught by the magic
+        vector<uint8_t> headerless;
+        auto headerless_writer = DataWriter(headerless);
+        headerless_writer.Write<uint32_t>(uint32_t {2});
+        headerless_writer.Write<uint32_t>(uint32_t {4});
+        headerless_writer.WriteStringBytes("Item");
+        auto headerless_reader = DataReader {headerless};
+        CHECK_THROWS_AS(MapLoader::ReadBakedFileHeader(headerless_reader, "TestMap"), MapLoaderException);
+
+        vector<uint8_t> truncated;
+        auto truncated_reader = DataReader {truncated};
+        CHECK_THROWS(MapLoader::ReadBakedFileHeader(truncated_reader, "TestMap"));
+    }
 }
 
 FO_END_NAMESPACE

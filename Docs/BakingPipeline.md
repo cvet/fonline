@@ -679,6 +679,17 @@ that an existing image output was baked with the same mesh settings.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
+Both blobs open with a format header - `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION` from
+`Source/Common/MapLoader.h` - which `MapLoader::ReadBakedFileHeader` validates before
+`MapManager::LoadStaticMaps` and `MapView::LoadStaticData` read anything else. Without it a stale output
+would be read as element counts, because the rest of the layout is bare numbers. The hash table is written and read through the
+`DataWriter::WriteString` / `DataReader::ReadString` pair, whose length check cannot be skipped at a call
+site, and every remaining count and size is preflighted with `DataReader::VerifyPayloadCount` before it
+drives an allocation or a loop, so a damaged file raises `DataReadingException` instead of reserving
+whatever the bytes happened to say. When the
+layout changes, bump `BAKED_MAP_FILE_VERSION` and run `ForceBakeResources` in the same change: source-file
+timestamps alone cannot prove that an existing map output was baked with the current layout.
+
 `ParticleBaker` exposes only the formats whose backend is enabled at build time.
 `FO_SPARK_PARTICLES` enables text `.spark` input and generated `.spk` output;
 `FO_EFFEKSEER_PARTICLES` enables text `.efkproj` input and generated `.efk`
@@ -776,8 +787,21 @@ size its client sprite frame: a centimetre export asks for a frame two orders of
 magnitude too large, and `CalculateModelSpriteLayout` cannot build it at all.
 The bake fails when the model's static bounds leave the band
 `Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`, naming
-the file, the measured extent and the limit. A `.fo3d` model is exempt because
-its description can scale the mesh; a bare attachment has no such correction.
+the file, the measured extent and the limit.
+
+The same band also gates each `.fo3d` section's aggregate `ModelBounds` (the
+union of animation envelopes, or static geometry when the model has no
+mappings). That envelope sizes the client lighting frame independently of the
+current clip. A full bake checks it while writing `ModelAnimationInfo.foinfo`;
+a targeted `.fo3d` bake (which does not rebuild that companion) runs the same
+check before writing the description. A `.fo3d` `Scale` token does not change
+the baked envelope, so a centimetre-space root model is not exempt. Baker code
+does not read `AppRender::MAX_ATLAS_WIDTH` / `HEIGHT`: those are the bake
+host's GPU, not the game device. Portable layout math uses
+`AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` instead. Runtime preview zoom can
+still push a valid in-band envelope past `Render.ModelSpriteMaxTextureWidth` /
+`Height`; `RefreshFrameLayout` clamps that scratch texture and draws cropped
+instead of terminating.
 Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
 envelopes below, a future big-endian mesh consumer requires a converted wire

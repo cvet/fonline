@@ -284,13 +284,20 @@ alternate forever. The interval anchor is signed: a tight frame may legitimately
 lie completely on one side of the model root, leaving its pivot outside the frame;
 the bounded retry loop still rejects a genuinely unbounded layout.
 
-A settled frame is still only usable if the renderer can allocate it, so
-`ModelInstance::SetupFrame` rejects any frame whose `draw_size * FRAME_SCALE` exceeds
-`AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT` (the device texture limit the atlases
-already use), naming the model file and both sizes. The check belongs there because that
-is the last point where the model that produced the size is known; without it an
-impossible size reaches the graphics API and surfaces as an anonymous invalid-argument
-failure from the texture creation call.
+Layout helpers that size a frame without a live GPU
+(`CalculateModelSpriteFrameSize`, `CalculateModelSpriteLayout` with an empty
+cap) use `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE`
+(`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`). That is the portable floor every
+runtime atlas is required to meet; bake-host `MAX_ATLAS_WIDTH` / `HEIGHT` is
+not the game device. The scratch texture a model sprite then renders into is
+capped by `Render.ModelSpriteMaxTextureWidth` / `Height` and this machine's
+atlas. The logical frame is that texture divided by `FRAME_SCALE`. An envelope
+that would need more is clamped to that cap and drawn cropped; the bounded retry
+loop still rejects a layout that does not converge inside the cap.
+`ModelInstance::SetupFrame` still rejects a frame whose `draw_size * FRAME_SCALE`
+exceeds this machine's `AppRender::MAX_ATLAS_WIDTH` / `MAX_ATLAS_HEIGHT`, naming
+the model file and both sizes, so an impossible device allocation cannot reach
+the graphics API as an anonymous invalid-argument failure.
 
 A mesh a link disables contributes to neither. `DisableMesh` is honoured for the model's
 own default link exactly as it is for a layer value or a child attachment, so a model
@@ -506,6 +513,8 @@ Validate SDL_GPU changes with a client scene launch under `Render.ForceSDLGpu=Tr
 - dump render-target textures for debugging.
 
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
+
+When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
 
 Model-attached SPARK particle systems keep already spawned particles in their simulation space while the emitter follows the model attachment point. A non-identity root transform in the particle resource selects the position-plus-facing path instead of inheriting the full bone matrix; this keeps lingering particles world-stable during model movement while new particles spawn at the current attachment point. The model movement offset is subtracted in particle model space before camera rotation and projection so the setup-time positive offset and draw-time negative offset cancel for newly emitted particles.
 
@@ -739,7 +748,17 @@ The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDra
 
 `ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK and Effekseer particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth; Effekseer distortion attachments additionally pull the direct replay's scene-background snapshot on demand. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
 
-Cached model-sprite frames are bounded to `2048x2048` logical pixels (`4096x4096` for the supersampled intermediate render target). Dynamic model-bone particle bounds that exceed this budget are treated as unavailable bounds: the established model frame remains valid and only the runaway outlying geometry is clipped. This prevents long-lived or malformed particle motion from turning a headless/null-renderer update into an unbounded CPU allocation while preserving ordinary model, preview, crop, and hit-test behavior.
+Cached model-sprite frames are bounded to the resolved logical frame: `min` of
+`Render.ModelSpriteMaxTextureWidth` / `Height` and this machine's
+`AppRender::MAX_ATLAS_WIDTH` / `HEIGHT`, divided by `FRAME_SCALE` (the model
+renders at 2× into that physical texture). Dynamic model-bone particle bounds
+that exceed this budget are treated as unavailable bounds: the established model
+frame remains valid and only the runaway outlying geometry is clipped. This
+prevents long-lived or malformed particle motion from turning a
+headless/null-renderer update into an unbounded CPU allocation while preserving
+ordinary model, preview, crop, and hit-test behavior. `ModelInstance::SetupFrame`
+still rejects a frame whose `draw_size * FRAME_SCALE` exceeds this machine's
+atlas, naming the model file and both sizes.
 
 **World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit (= `32` = `MAP_HEX_WIDTH`), i.e. **1 world unit = 1 hex = 1 m** — the single metric shared by 3D models and in-scene particles. So a scene-type system that emits within a radius of N units spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale.
 

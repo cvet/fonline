@@ -102,7 +102,7 @@ The activity tracks an `.asset_revision` based on Android package metadata and r
 
 When Android launch behavior fails, isolate the failing layer before rebuilding the whole stack:
 
-- **workspace prepare fails before build** -> check `../ThirdParty/android-sdk`, `../ThirdParty/android-ndk`, and whether `Workspace/android-sdk` / `Workspace/android-ndk` were prepared by `prepare-workspace.sh`.
+- **workspace prepare fails before build** -> check `../ThirdParty/android-sdk`, `../ThirdParty/android-ndk`, and whether `Workspace/android-sdk` / `Workspace/android-ndk` were prepared by `prepare-workspace.sh`. Truncated Google CDN zips (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) are retried by `download_file` / `run_with_retry` in `../BuildTools/buildtools.py`; a persistent failure is a host/network problem, not a missing pin.
 - **Gradle project exists but APK build fails** -> inspect `Workspace/android-debug/LF-Client-*-Android/local.properties`; the VS Code tasks fall back to `Workspace/android-sdk` and then `/usr/lib/android-sdk` if needed.
 - **APK install is canceled on device** -> rerun `android_device.py install` after approving Android wireless debugging or unknown-app-install prompts on the device.
 - **device is not found** -> run `android_device.py discover` / `connect`; the helper uses `adb mdns services`, caches `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` input.

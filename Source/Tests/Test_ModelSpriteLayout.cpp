@@ -164,6 +164,92 @@ TEST_CASE("ModelSpriteFramePlacementMergeStaysOnTheFrameGrid", "[model][particle
     CHECK(remerged->Pivot == merged->Pivot);
 }
 
+TEST_CASE("ModelSpriteLightingLayoutRejectsACentimetreScaleEnvelopeWhileAPoseFits", "[model]")
+{
+    // Draw layout uses the current clip; lighting uses the aggregate model envelope. A centimetre-space rest pose
+    // exceeds MIN_ATLAS_SIZE/FRAME_SCALE while the posed clip still fits; without clamp that must stay a rejected layout
+    ModelBounds3D pose_bounds = {.Min = {-0.2f, -0.05f, -0.35f}, .Max = {0.22f, 0.20f, 0.19f}};
+    ModelBounds3D centimetre_bounds = {.Min = pose_bounds.Min * 100.0f, .Max = pose_bounds.Max * 100.0f};
+    mat44 identity {1.0f};
+    constexpr float32_t projection_factor = 32.0f;
+
+    optional<ModelSpriteLayout> pose_layout = CalculateModelSpriteLayout(pose_bounds, identity, identity, projection_factor, false);
+    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(centimetre_bounds, identity, identity, projection_factor, false);
+
+    REQUIRE(pose_layout);
+    CHECK_FALSE(lighting_layout.has_value());
+}
+
+TEST_CASE("ModelSpriteMaxLogicalFrameFollowsTextureSettingsAndTheDeviceAtlas", "[model]")
+{
+    isize32 default_cap = ResolveModelSpriteMaxLogicalFrame(4096, 4096, 8192, 8192);
+
+    CHECK(default_cap.width == 4096 / MODEL_SPRITE_FRAME_SCALE);
+    CHECK(default_cap.height == 4096 / MODEL_SPRITE_FRAME_SCALE);
+
+    isize32 device_limited = ResolveModelSpriteMaxLogicalFrame(4096, 4096, 2048, 2048);
+
+    CHECK(device_limited.width == 2048 / MODEL_SPRITE_FRAME_SCALE);
+    CHECK(device_limited.height == 2048 / MODEL_SPRITE_FRAME_SCALE);
+
+    isize32 independent = ResolveModelSpriteMaxLogicalFrame(256, 4096, 8192, 8192);
+
+    CHECK(independent.width == 256 / MODEL_SPRITE_FRAME_SCALE);
+    CHECK(independent.height == 4096 / MODEL_SPRITE_FRAME_SCALE);
+}
+
+TEST_CASE("ModelSpriteLayoutClampsAPreviewScaledEnvelopeToTheTextureCap", "[model]")
+{
+    // A small in-band model authored at Scale 3.6 and zoomed to 24 by a GUI preview: the yaw-union lighting envelope
+    // misses the texture cap while the shorter clip can still fit, so clamping must keep both frames
+    ModelBounds3D model_envelope = {.Min = {-0.20386614f, -0.056669444f, -0.35195586f}, .Max = {0.2201885f, 0.20369606f, 0.19110201f}};
+    ModelBounds3D clip_envelope = {.Min = {-0.20386614f, -0.056669444f, -0.35195586f}, .Max = {0.2201885f, 0.1736367f, 0.14640921f}};
+    mat44 post_direction = glm::rotate(mat44 {1.0f}, 25.6589f * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    mat44 pre_direction = glm::scale(mat44 {1.0f}, vec3 {3.6f * 24.0f});
+    constexpr float32_t projection_factor = 32.0f;
+    isize32 max_logical = ResolveModelSpriteMaxLogicalFrame(4096, 4096, 4096, 4096);
+
+    optional<ModelSpriteLayout> lighting = CalculateModelSpriteLayout(model_envelope, post_direction, pre_direction, projection_factor, false, false, max_logical);
+
+    CHECK_FALSE(lighting.has_value());
+
+    optional<ModelSpriteLayout> clip_clamped = CalculateModelSpriteLayout(clip_envelope, post_direction, pre_direction, projection_factor, false, true, max_logical);
+    optional<ModelSpriteLayout> lighting_clamped = CalculateModelSpriteLayout(model_envelope, post_direction, pre_direction, projection_factor, false, true, max_logical);
+
+    REQUIRE(clip_clamped);
+    REQUIRE(lighting_clamped);
+    CHECK(clip_clamped->DrawSize.width <= max_logical.width);
+    CHECK(clip_clamped->DrawSize.height <= max_logical.height);
+    CHECK(lighting_clamped->DrawSize.width <= max_logical.width);
+    CHECK(lighting_clamped->DrawSize.height <= max_logical.height);
+}
+
+TEST_CASE("ModelSpriteLayoutClampsEachAxisToAnAuthoredTextureCap", "[model]")
+{
+    ModelBounds3D huge = {.Min = {-40.0f, 0.0f, -40.0f}, .Max = {40.0f, 20.0f, 40.0f}};
+    mat44 identity {1.0f};
+    isize32 max_logical = {64, 128};
+
+    optional<ModelSpriteLayout> rejected = CalculateModelSpriteLayout(huge, identity, identity, 32.0f, false, false, max_logical);
+    optional<ModelSpriteLayout> clamped = CalculateModelSpriteLayout(huge, identity, identity, 32.0f, false, true, max_logical);
+
+    CHECK_FALSE(rejected.has_value());
+    REQUIRE(clamped);
+    CHECK(clamped->DrawSize.width <= max_logical.width);
+    CHECK(clamped->DrawSize.height <= max_logical.height);
+}
+
+TEST_CASE("ModelSpriteFramePlacementClampCropsWithoutMovingAFittingPivot", "[model]")
+{
+    ModelSpriteFramePlacement oversize {.Size = {4096, 64}, .Pivot = {16, 32}};
+    ModelSpriteFramePlacement cropped = ClampModelSpriteFramePlacement(oversize, {256, 256});
+
+    CHECK(cropped.Size.width == 256);
+    CHECK(cropped.Size.height == 64);
+    CHECK(cropped.Pivot.x == 16);
+    CHECK(cropped.Pivot.y == 32);
+}
+
 TEST_CASE("ModelSpriteViewRectStaysInsideTheDrawRectOfWiderBounds", "[model]")
 {
     // The view rect anchors the critter name, so it must stay the idle-pose subset of the model bounds; a box grown

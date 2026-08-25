@@ -33,6 +33,7 @@
 
 #include "RenderTarget.h"
 #include "Application.h"
+#include "ImageWriter.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -259,7 +260,7 @@ void RenderTargetManager::DumpTextures() const
     auto write_rt = [&dir](string_view name, ptr<const RenderTarget> rt) {
         string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
         auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
-        WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
+        ImageWriter::WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
     };
 
     size_t num = 1;

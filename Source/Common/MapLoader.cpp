@@ -245,4 +245,22 @@ auto MapLoader::EnumerateMaps(string_view file_name, const string& buf) -> vecto
     return map_names;
 }
 
+void MapLoader::ReadBakedFileHeader(DataReader& reader, string_view map_name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    uint32_t magic = reader.Read<uint32_t>();
+
+    if (magic != BAKED_MAP_FILE_MAGIC) {
+        throw MapLoaderException("Baked map file is not a map binary", map_name, magic, BAKED_MAP_FILE_MAGIC);
+    }
+
+    uint32_t version = reader.Read<uint32_t>();
+
+    // A version mismatch means the baked resources were produced by another layout, so they have to be rebaked
+    if (version != BAKED_MAP_FILE_VERSION) {
+        throw MapLoaderException("Baked map file version is unsupported, rebake resources", map_name, version, BAKED_MAP_FILE_VERSION);
+    }
+}
+
 FO_END_NAMESPACE

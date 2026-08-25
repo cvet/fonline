@@ -36,6 +36,7 @@
 #include "EntityManager.h"
 #include "ItemManager.h"
 #include "LineTracer.h"
+#include "MapLoader.h"
 #include "Player.h"
 #include "ProtoManager.h"
 #include "Server.h"
@@ -72,6 +73,8 @@ void MapManager::LoadFromResources()
             auto map_file = File::Load(map_file_header_copy);
             auto reader = DataReader(map_file.GetDataSpan());
 
+            MapLoader::ReadBakedFileHeader(reader, map_proto->GetName());
+
             auto map_size = map_proto->GetSize();
             auto static_map = SafeAlloc::MakeUnique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
 
@@ -79,12 +82,12 @@ void MapManager::LoadFromResources()
             {
                 auto hashes_count = reader.Read<uint32_t>();
 
-                string str;
+                // Counts and sizes come from a resource file that may be stale or damaged, so every one of them
+                // is preflighted against the buffer before it drives an allocation or a loop
+                reader.VerifyPayloadCount(hashes_count, sizeof(uint32_t));
 
                 for (uint32_t i = 0; i < hashes_count; i++) {
-                    auto str_len = reader.Read<uint32_t>();
-                    str.resize(str_len);
-                    reader.ReadStringBytes(str);
+                    string str = reader.ReadString();
                     hstring hstr = _engine->Hashes.ToHashedString(str);
                     ignore_unused(hstr);
                 }
@@ -97,6 +100,8 @@ void MapManager::LoadFromResources()
                 // Read critters
                 {
                     auto cr_count = reader.Read<uint32_t>();
+
+                    reader.VerifyPayloadCount(cr_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
                     static_map->CritterBillets.reserve(cr_count);
 
@@ -113,6 +118,7 @@ void MapManager::LoadFromResources()
 
                         auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrar());
                         auto props_data_size = reader.Read<uint32_t>();
+                        reader.VerifyPayloadCount(props_data_size, sizeof(uint8_t));
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
                         reader.ReadBytes(props_data_span);
@@ -135,6 +141,8 @@ void MapManager::LoadFromResources()
                 {
                     auto item_count = reader.Read<uint32_t>();
 
+                    reader.VerifyPayloadCount(item_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
+
                     static_map->ItemBillets.reserve(item_count);
                     static_map->HexItemBillets.reserve(item_count);
                     static_map->ChildItemBillets.reserve(item_count);
@@ -154,6 +162,7 @@ void MapManager::LoadFromResources()
 
                         auto item_props = Properties(item_proto->GetProperties()->GetRegistrar());
                         auto props_data_size = reader.Read<uint32_t>();
+                        reader.VerifyPayloadCount(props_data_size, sizeof(uint8_t));
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
                         reader.ReadBytes(props_data_span);
