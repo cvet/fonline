@@ -2,7 +2,7 @@
 // impl/src.hpp
 // ~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -28,9 +28,7 @@
 #include "asio/impl/error.ipp"
 #include "asio/impl/error_code.ipp"
 #include "asio/impl/execution_context.ipp"
-#include "asio/impl/executor.ipp"
 #include "asio/impl/io_context.ipp"
-#include "asio/impl/multiple_exceptions.ipp"
 #include "asio/impl/serial_port_base.ipp"
 #include "asio/impl/system_context.ipp"
 #include "asio/impl/thread_pool.ipp"
@@ -73,7 +71,7 @@
 #include "asio/detail/impl/win_iocp_serial_port_service.ipp"
 #include "asio/detail/impl/win_iocp_socket_service_base.ipp"
 #include "asio/detail/impl/win_event.ipp"
-#include "asio/detail/impl/win_mutex.ipp"
+#include "asio/detail/impl/win_critsec_mutex.ipp"
 #include "asio/detail/impl/win_object_handle_service.ipp"
 #include "asio/detail/impl/win_static_mutex.ipp"
 #include "asio/detail/impl/win_thread.ipp"
@@ -81,7 +79,6 @@
 #include "asio/detail/impl/winrt_ssocket_service_base.ipp"
 #include "asio/detail/impl/winrt_timer_scheduler.ipp"
 #include "asio/detail/impl/winsock_init.ipp"
-#include "asio/execution/impl/bad_executor.ipp"
 #include "asio/experimental/impl/channel_error.ipp"
 #include "asio/generic/detail/impl/endpoint.ipp"
 #include "asio/ip/impl/address.ipp"

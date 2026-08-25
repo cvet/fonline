@@ -218,16 +218,18 @@ AddCompileDefinitionsList(
 	$<$<NOT:${expr_DebugBuild}>:FO_DEBUG=0>)
 
 # AngelScript's hand-written native calling-convention trampolines (as_callfunc_x64_gcc.cpp, ...) are
-# incompatible with sanitizer instrumentation: AddressSanitizer cannot unwind a C++ exception thrown by a
-# registered function back through the asm to AngelScript's catch (the call terminates instead of being
-# translated to a script exception), and MemorySanitizer cannot track initialization through the asm (it
-# reports false use-of-uninitialized). The engine already uses AngelScript's portable generic calling
-# convention where native support is absent (e.g. wasm), and 32-bit ARM disables exceptions for the same
-# trampoline reason. Force the portable path under ASan/MSan so the sanitizers exercise the same engine and
-# game logic over pure C++ marshalling. TSan keeps the native path (unaffected, and green there); UBSan keeps
-# it too (its value-type misalignment is stack-layout-driven, not calling-convention-driven).
-SetValue(expr_PortableScriptCallConfigs $<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Address_Undefined>)
-AddCompileDefinitionsList($<${expr_PortableScriptCallConfigs}:AS_MAX_PORTABILITY>)
+# incompatible with sanitizer and coverage instrumentation: AddressSanitizer and GCC coverage cannot unwind
+# a C++ exception thrown by a registered function back through the asm to AngelScript's catch (the call
+# terminates instead of being translated to a script exception), and MemorySanitizer cannot track
+# initialization through the asm (it reports false use-of-uninitialized). The engine already uses
+# AngelScript's portable generic calling convention where native support is absent (e.g. wasm), and 32-bit
+# ARM disables exceptions for the same trampoline reason. Force the portable path under ASan/MSan/coverage
+# so those builds exercise the same engine and game logic over pure C++ marshalling. TSan keeps the native
+# path (unaffected, and green there); UBSan keeps it too (its value-type misalignment is stack-layout-driven,
+# not calling-convention-driven).
+SetValue(expr_PortableScriptCalls
+	$<OR:$<BOOL:${FO_CODE_COVERAGE}>,$<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Address_Undefined>>)
+AddCompileDefinitionsList($<${expr_PortableScriptCalls}:AS_MAX_PORTABILITY>)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	AddCompileOptionsList(
@@ -596,7 +598,6 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-sEXIT_RUNTIME=0
 		-sEXPORTED_RUNTIME_METHODS=${webRuntimeMethods}
 		-sDISABLE_EXCEPTION_CATCHING=0
-		-sWASM_BIGINT=1
 		-sALLOW_TABLE_GROWTH=1
 		-sSTRICT=0
 		-sSTRICT_JS=1

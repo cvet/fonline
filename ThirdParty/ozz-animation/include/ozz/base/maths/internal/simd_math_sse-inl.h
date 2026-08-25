@@ -511,11 +511,13 @@ OZZ_INLINE SimdFloat4 Dot4(_SimdFloat4 _a, _SimdFloat4 _b) {
 
 OZZ_INLINE SimdFloat4 Cross3(_SimdFloat4 _a, _SimdFloat4 _b) {
   // Implementation with 3 shuffles only is based on:
-  // https://geometrian.com/programming/tutorials/cross-product
-  const __m128 shufa = OZZ_SHUFFLE_PS1(_a, _MM_SHUFFLE(3, 0, 2, 1));
-  const __m128 shufb = OZZ_SHUFFLE_PS1(_b, _MM_SHUFFLE(3, 0, 2, 1));
-  const __m128 shufc = OZZ_MSUB(_a, shufb, _mm_mul_ps(_b, shufa));
-  return OZZ_SHUFFLE_PS1(shufc, _MM_SHUFFLE(3, 0, 2, 1));
+  // https://geometrian.com/resources/cross_product/
+  const __m128 tmp0 = OZZ_SHUFFLE_PS1(_a, _MM_SHUFFLE(3, 0, 2, 1));
+  const __m128 tmp1 = OZZ_SHUFFLE_PS1(_b, _MM_SHUFFLE(3, 1, 0, 2));
+  const __m128 tmp2 = _mm_mul_ps(tmp0, _b);
+  const __m128 tmp3 = _mm_mul_ps(tmp0, tmp1);
+  const __m128 tmp4 = OZZ_SHUFFLE_PS1(tmp2, _MM_SHUFFLE(3, 0, 2, 1));
+  return _mm_sub_ps(tmp3, tmp4);
 }
 
 OZZ_INLINE SimdFloat4 RcpEst(_SimdFloat4 _v) { return _mm_rcp_ps(_v); }

@@ -13,6 +13,10 @@ def ndkPathOverride = '$NDK_PATH$'
 android {
     namespace = "$PACKAGE$"
     compileSdk = $COMPILE_SDK$
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     if (ndkVersionOverride) {
         ndkVersion = ndkVersionOverride
     }
@@ -46,7 +50,7 @@ android {
         release {
             signingConfig = hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
             minifyEnabled = false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 

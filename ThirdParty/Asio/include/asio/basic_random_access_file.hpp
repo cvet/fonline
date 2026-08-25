@@ -2,7 +2,7 @@
 // basic_random_access_file.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -31,6 +31,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 
 #if !defined(ASIO_BASIC_RANDOM_ACCESS_FILE_FWD_DECL)
 #define ASIO_BASIC_RANDOM_ACCESS_FILE_FWD_DECL
@@ -55,6 +56,8 @@ class basic_random_access_file;
  * also thread safe. This means that it is permitted to perform concurrent
  * calls to these synchronous operations on a single file object. Other
  * synchronous operations, such as @c open or @c close, are not thread safe.
+ *
+ * @sa @ref overview_files "Files"
  */
 template <typename Executor>
 class basic_random_access_file
@@ -679,6 +682,7 @@ private:
   };
 };
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

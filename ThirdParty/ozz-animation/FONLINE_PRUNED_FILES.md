@@ -1,7 +1,7 @@
 FOnline ThirdParty pruning notes
 
-This vendored copy is based on the upstream ozz-animation 0.16.0 release tag
-(commit 6cbdc790123aa4731d82e255df187b3a8a808256) and is intentionally trimmed
+This vendored copy is based on the upstream ozz-animation 0.17.0 release tag
+(commit 744eb9d99f606eda849acb0b1204f7a3dc20bca1) and is intentionally trimmed
 for the engine build. When updating from upstream, remove these paths again
 after copying the new version.
 
@@ -16,6 +16,8 @@ Removed paths:
 - test/
 - include/ozz/animation/offline/fbx/
 - include/ozz/animation/offline/tools/
+- include/ozz/geometry/
+- include/ozz/options/
 - src/animation/offline/fbx/
 - src/animation/offline/gltf/
 - src/animation/offline/tools/

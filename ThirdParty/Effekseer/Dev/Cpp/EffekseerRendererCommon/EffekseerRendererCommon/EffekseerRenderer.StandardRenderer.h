@@ -443,8 +443,6 @@ public:
 
 			for (int32_t passInd = 0; passInd < passNum; passInd++)
 			{
-				int32_t offset = 0;
-
 				// only sprite
 				int32_t renderBufferSize = info.size;
 

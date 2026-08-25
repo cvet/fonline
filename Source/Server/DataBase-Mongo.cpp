@@ -45,6 +45,7 @@ FO_BEGIN_NAMESPACE
 
 #if FO_HAVE_MONGO
 FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
+FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 class DbMongo final : public DataBaseImpl
 {
@@ -536,6 +537,7 @@ auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, str
     return SafeAlloc::MakeUnique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
 }
 
+FO_GCC_IGNORE_WARNINGS_POP()
 FO_CLANG_IGNORE_WARNINGS_POP()
 #endif
 

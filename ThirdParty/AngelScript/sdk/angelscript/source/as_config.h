@@ -453,6 +453,14 @@
 	#define THISCALL_RETURN_SIMPLE_IN_MEMORY
 	#define THISCALL_PASS_OBJECT_POINTER_IN_ECX
 
+	// Enable use of computed gotos by default
+	#ifndef AS_USE_COMPUTED_GOTOS
+		// When compiling with clang-cl we can use computed gotos, but not when using the MSVC native compiler
+		#if defined(__clang__)
+			#define AS_USE_COMPUTED_GOTOS 1
+		#endif
+	#endif
+
 	// http://www.madewithmarmalade.com/
 	#if defined(__S3E__)
 		#ifndef AS_MARMALADE

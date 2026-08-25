@@ -281,8 +281,8 @@ LINUX_PACKAGE_GROUPS = {
 
 ANDROID_REQUIRED_SDK_PACKAGES = (
 	'platform-tools',
-	'build-tools;34.0.0',
-	'platforms;android-35',
+	'build-tools/36.0.0',
+	'platforms/android-35',
 )
 
 
@@ -1232,17 +1232,19 @@ def prepare_android_sdk_workspace(env: Mapping[str, str]) -> None:
 	remove_path_if_exists(extract_root)
 	remove_path_if_exists(archive_path)
 
-	sdkmanager = resolve_android_sdkmanager(cmdline_tools_latest)
+	android_cli = resolve_android_cli(cmdline_tools_latest)
 
 	sdk_env = os.environ.copy()
 	sdk_env['ANDROID_HOME'] = str(android_sdk_root)
 	sdk_env['ANDROID_SDK_ROOT'] = str(android_sdk_root)
 
-	run_with_input([sdkmanager, f'--sdk_root={android_sdk_root}', '--licenses'], 'y\n' * 256, env=sdk_env)
 	run_with_retry(
 		[
-			sdkmanager,
-			f'--sdk_root={android_sdk_root}',
+			android_cli,
+			'--no-metrics',
+			f'--sdk={android_sdk_root}',
+			'sdk',
+			'install',
 			*ANDROID_REQUIRED_SDK_PACKAGES,
 		],
 		env=sdk_env,
@@ -1251,15 +1253,15 @@ def prepare_android_sdk_workspace(env: Mapping[str, str]) -> None:
 	)
 
 
-def resolve_android_sdkmanager(cmdline_tools_latest: Path) -> Path:
+def resolve_android_cli(cmdline_tools_latest: Path) -> Path:
 	bin_dir = cmdline_tools_latest / 'bin'
-	candidates = [bin_dir / 'sdkmanager']
+	candidates = [bin_dir / 'android']
 	if os.name == 'nt':
-		candidates.insert(0, bin_dir / 'sdkmanager.bat')
+		candidates.insert(0, bin_dir / 'android.exe')
 	for candidate in candidates:
 		if candidate.is_file():
 			return candidate
-	raise SystemExit('sdkmanager not found after extraction: ' + ', '.join(str(candidate) for candidate in candidates))
+	raise SystemExit('Android CLI not found after extraction: ' + ', '.join(str(candidate) for candidate in candidates))
 
 
 def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
