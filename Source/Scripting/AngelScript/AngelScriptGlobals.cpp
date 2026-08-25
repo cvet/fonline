@@ -73,9 +73,16 @@ static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
     obj_infos.reserve(ArgsCount);
 
     for (AngelScript::asUINT i = 1; i < numeric_cast<AngelScript::asUINT>(generic->GetArgCount()); i++) {
-        auto obj = NativeDataProvider::ReadHandleSlot(GetGenericAddressArg(generic, i));
         int32_t obj_type_id = generic->GetArgTypeId(i);
-        obj_infos.emplace_back(obj ? GetScriptObjectInfo(obj, obj_type_id) : string {"null"});
+        bool is_handle = (obj_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0;
+        int32_t base_type_id = obj_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
+        auto obj = NativeDataProvider::ReadHandleSlot(GetGenericAddressArg(generic, i));
+
+        if (is_handle && obj) {
+            obj = NativeDataProvider::ReadHandleSlot(obj);
+        }
+
+        obj_infos.emplace_back(obj ? GetScriptObjectInfo(obj, base_type_id) : string {"null"});
     }
 
     ThrowWithArgs(*message, obj_infos, std::make_index_sequence<ArgsCount> {});

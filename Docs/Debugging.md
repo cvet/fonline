@@ -26,10 +26,13 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 - `../Source/Essentials/FatalError.cpp`
 - `../Source/Essentials/ExceptionHandling.h`
 - `../Source/Essentials/ExceptionHandling.cpp`
+- `../Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
+- `../Source/Scripting/AngelScript/AngelScriptHelpers.cpp`
 - `../Source/Scripting/AngelScript/AngelScriptContext.cpp`
 - `../Source/Frontend/ApplicationInit.cpp`
 - `../Source/Tests/Test_StackTrace.cpp`
 - `../Source/Tests/Test_ExceptionHandling.cpp`
+- `../Source/Tests/Test_ScriptBuiltins.cpp`
 - `../../.vscode/launch.json`
 - `../../.vscode/tasks.json`
 
@@ -92,6 +95,8 @@ The unified ordering produced by `ResolveStackTrace` and `FormatStackTrace` is, 
 The reporters (`ReportExceptionAndExit`, `ReportExceptionAndContinue`) create a `CatchedStackTraceData` value with `MakeErrorStackTrace()`. That value contains the origin trace from `BaseEngineException::stack_trace()` when the exception type carries one, plus a fresh catch-site trace from `GetStackTrace()`. `FormatStackTrace(const CatchedStackTraceData&)` formats the origin trace when present, otherwise it prefixes the catch-site trace with `Catched at:`.
 
 The exception callback receives the already-captured `CatchedStackTraceData` and the fatal flag directly. There is no separate context object in the current source; if callback behavior changes, update `ExceptionCallback` in [../Source/Essentials/ExceptionHandling.h](../Source/Essentials/ExceptionHandling.h), `ReportExceptionAndExit` / `ReportExceptionAndContinue` in [../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp), and the default callback in [../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp) together.
+
+AngelScript `throw(...)` / `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, name, runtime id, and proto id (or `<none>` when the entity has no proto), so a production exception identifies the involved objects instead of reporting only `Critter` or `AbstractItem`. Primitive, enum, string, and null context formatting keeps its existing compact form. `Test_ScriptBuiltins.cpp` pins the entity-context representation through the real global `throw` binding.
 
 ### Logging and crash-path primitives
 
