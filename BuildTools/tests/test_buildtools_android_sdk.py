@@ -44,6 +44,6 @@ def test_android_sdk_workspace_uses_android_cli(tmp_path: Path, monkeypatch: pyt
                 "build-tools/36.0.0",
                 "platforms/android-35",
             ],
-            {"env": ANY},
+            {"cwd": None, "env": ANY},
         )
     ]

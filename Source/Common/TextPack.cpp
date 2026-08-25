@@ -418,19 +418,47 @@ void TextPack::Clear()
     _strData.clear();
 }
 
-void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
+auto TextPack::ParseBakeLanguages(const_span<string> declarations) -> BakeLanguageConfig
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!bake_languages.empty(), "Text pack normalization cannot choose a base language because BakeLanguages is empty", lang_packs.size());
+    FO_VERIFY_AND_THROW(!declarations.empty(), "BakeLanguages must contain at least one language declaration");
+
+    BakeLanguageConfig result;
+
+    for (const string& declaration : declarations) {
+        size_t separator = declaration.find(':');
+        bool has_fallback = separator != string::npos;
+        FO_VERIFY_AND_THROW(!declaration.empty() && (!has_fallback || (separator != 0 && separator + 1 < declaration.size() && declaration.find(':', separator + 1) == string::npos)), "Bake language declaration must use language or language:parent format", declaration);
+
+        string language = has_fallback ? declaration.substr(0, separator) : declaration;
+        FO_VERIFY_AND_THROW(std::ranges::find(result.Languages, language) == result.Languages.end(), "Bake language is declared more than once", language);
+
+        if (has_fallback) {
+            string parent_language = declaration.substr(separator + 1);
+            FO_VERIFY_AND_THROW(std::ranges::find(result.Languages, parent_language) != result.Languages.end(), "Bake language fallback parent must be declared before its child", language, parent_language);
+            result.Fallbacks.emplace(language, parent_language);
+        }
+
+        result.Languages.emplace_back(language);
+    }
+
+    return result;
+}
+
+void TextPack::FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!bake_languages.Languages.empty(), "Text pack normalization cannot choose a base language because BakeLanguages is empty", lang_packs.size());
 
     // Add default language
-    if (lang_packs.empty() || lang_packs.front().first != bake_languages.front()) {
-        lang_packs.emplace(lang_packs.begin(), bake_languages.front(), map<string, TextPack>());
+    if (lang_packs.empty() || lang_packs.front().first != bake_languages.Languages.front()) {
+        lang_packs.emplace(lang_packs.begin(), bake_languages.Languages.front(), map<string, TextPack>());
     }
 
     // Add missed languages
-    for (const auto& lang : bake_languages) {
+    for (const auto& lang : bake_languages.Languages) {
         if (std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == lang; }) == lang_packs.end()) {
             lang_packs.emplace_back(lang, map<string, TextPack>());
         }
@@ -438,7 +466,7 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
 
     // Remove unsupported languages
     for (auto it = lang_packs.begin(); it != lang_packs.end();) {
-        if (std::ranges::find_if(bake_languages, [&](auto&& l) { return l == it->first; }) == bake_languages.end()) {
+        if (std::ranges::find_if(bake_languages.Languages, [&](auto&& l) { return l == it->first; }) == bake_languages.Languages.end()) {
             it = lang_packs.erase(it);
         }
         else {
@@ -447,15 +475,23 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
     }
 
     // Normalize language packs
-    const auto& base_lang_pack = lang_packs.front().second;
+    auto find_language_pack = [&](string_view language) -> ptr<map<string, TextPack>> {
+        auto lang_it = std::ranges::find_if(lang_packs, [&](const auto& lang_pack) { return lang_pack.first == language; });
+        FO_VERIFY_AND_THROW(lang_it != lang_packs.end(), "Bake language pack is missing during normalization", language);
+        return make_ptr(&lang_it->second);
+    };
 
-    for (size_t i = 1; i < lang_packs.size(); i++) {
-        auto& lang_pack = lang_packs[i].second;
+    for (size_t i = 1; i < bake_languages.Languages.size(); i++) {
+        const string& language = bake_languages.Languages[i];
+        auto fallback_it = bake_languages.Fallbacks.find(language);
+        const string& fallback_language = fallback_it != bake_languages.Fallbacks.end() ? fallback_it->second : bake_languages.Languages.front();
+        auto fallback_lang_pack = find_language_pack(fallback_language);
+        auto lang_pack = find_language_pack(language);
 
         // Remove packs that are not in the base language pack
-        for (auto it = lang_pack.begin(); it != lang_pack.end();) {
-            if (base_lang_pack.count(it->first) == 0) {
-                it = lang_pack.erase(it);
+        for (auto it = lang_pack->begin(); it != lang_pack->end();) {
+            if (fallback_lang_pack->count(it->first) == 0) {
+                it = lang_pack->erase(it);
             }
             else {
                 ++it;
@@ -463,18 +499,18 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
         }
 
         // Add packs that are in the base language pack but not in this pack
-        for (auto&& [pack_name, text_pack] : base_lang_pack) {
-            if (lang_pack.count(pack_name) == 0) {
-                lang_pack.emplace(pack_name, text_pack);
+        for (auto&& [pack_name, text_pack] : *fallback_lang_pack) {
+            if (lang_pack->count(pack_name) == 0) {
+                lang_pack->emplace(pack_name, text_pack);
             }
         }
 
-        FO_VERIFY_AND_THROW(lang_pack.size() == base_lang_pack.size(), "Normalized language pack set does not match the base language pack set", lang_packs[i].first, lang_pack.size(), base_lang_pack.size());
+        FO_VERIFY_AND_THROW(lang_pack->size() == fallback_lang_pack->size(), "Normalized language pack set does not match the fallback language pack set", language, fallback_language, lang_pack->size(), fallback_lang_pack->size());
 
         // Normalize texts to the base language
-        for (auto&& [pack_name, text_pack] : lang_pack) {
-            auto it = base_lang_pack.find(pack_name);
-            FO_VERIFY_AND_THROW(it != base_lang_pack.end(), "Lookup failed in base lang pack");
+        for (auto&& [pack_name, text_pack] : *lang_pack) {
+            auto it = fallback_lang_pack->find(pack_name);
+            FO_VERIFY_AND_THROW(it != fallback_lang_pack->end(), "Lookup failed in fallback lang pack");
             text_pack.FixStr(it->second);
         }
     }

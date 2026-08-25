@@ -87,11 +87,13 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         throw ProtoTextBakerException("Prototype text baker cannot choose a default language because BakeLanguages is empty", _context->PackName);
     }
 
+    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->BakeLanguages);
+
     // Process files
     if (_context->BakeChecker) {
         bool check_result = false;
 
-        for (const auto& lang_name : _context->Settings->BakeLanguages) {
+        for (const auto& lang_name : bake_languages.Languages) {
             check_result |= _context->BakeChecker(strex("{}.Protos.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
             check_result |= _context->BakeChecker(strex("{}.Items.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
             check_result |= _context->BakeChecker(strex("{}.Critters.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
@@ -218,7 +220,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             fill_parent_recursive(base_name, file_kv);
             insert_map_values(file_kv, proto_kv);
 
-            const string& default_lang = _context->Settings->BakeLanguages.front();
+            const string& default_lang = bake_languages.Languages.front();
 
             all_proto_texts[type_name][pid] = {};
 
@@ -261,7 +263,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     size_t errors = 0;
     vector<pair<string, map<string, TextPack>>> lang_packs;
 
-    for (const auto& lang : _context->Settings->BakeLanguages) {
+    for (const auto& lang : bake_languages.Languages) {
         auto empty_lang_pack = map<string, TextPack>();
         empty_lang_pack.try_emplace("Items", &engine.Hashes);
         empty_lang_pack.try_emplace("Critters", &engine.Hashes);
@@ -304,7 +306,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     }
 
-    TextPack::FixPacks(_context->Settings->BakeLanguages, lang_packs);
+    TextPack::FixPacks(bake_languages, lang_packs);
 
     if (errors != 0) {
         throw ProtoTextBakerException("Errors during proto texts parsing");

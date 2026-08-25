@@ -395,6 +395,12 @@ The particle/model/prototype/map stages intentionally form a strict dependency c
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
+### Text-language fallback overlays
+
+`TextPack::ParseBakeLanguages(...)` accepts `Baking.BakeLanguages` declarations in either `language` or `child:parent` form. It validates uniqueness and requires each parent to precede its child, then exposes bare language ids to filenames, output packs, and runtime consumers. `TextPack::FixPacks(...)` uses the first declaration to define the legal pack and key domain. A plain later language inherits missing packs and keys from that first language; an inline parent selects another family. For example, `russ engl ru18:russ en18:engl` supports sparse derived editions without forcing adult English to inherit Russian text.
+
+An authored child key replaces the parent's complete variant set for that key; an omitted key inherits it. Extra child-only packs or keys remain invalid and are removed during normalization. `TextBaker`, `ProtoTextBaker`, and external dialog-text bakers parse the same declaration list, so `.fotxt`, prototype `$Text`, and dialog `[Text]` sources obey one contract. The generic behavior and invalid configurations are pinned in `Source/Tests/Test_TextPack.cpp`.
+
 Shared animation metadata uses `AnimationInfo` as the aggregate record. The generic
 record contains a `SpriteInfo` payload for 2D frame count, duration, directions,
 and resolved per-frame bounds, plus a `ModelAnimationInfo` payload in
