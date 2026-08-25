@@ -281,6 +281,8 @@ the pack before this loader runs.
 
 Map light source intensity is authored as a percentage magnitude (`0..100`, with negative values keeping the same magnitude but opting into constant/personal capacity semantics). `MapView` clamps the current animated percentage, converts it to an internal raw falloff scale (`0..10000`), and then scales light-map RGB to the engine light range (`0..200`) and primitive alpha to `0..255` through the source's day-light capacity percentage. `SetDayColors()` must invalidate applied light fans when either the day color or the light-capacity percentage changes, because both feed cached per-hex lighting.
 
+`GetHexOffset(from, to)` is `GetHexPos(to) - GetHexPos(from)`, so scrolling the view origin (`RebuildMapOffset`) moves every light vertex by the same pixel delta. `MapView` translates cached `_lightPoints` by that delta instead of calling `LightFanToPrimitves` on every hex-scroll. A light that leaves the view (last visible hex hidden in `HideHex`) still forces a primitive rebuild so leftover triangles are not drawn. New lights entering the view reapply their fans and rebuild as before. The uniform-delta identity is pinned by `Test_Geometry` (`GetHexOffset view-origin shift is a uniform pixel translation`).
+
 The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
 ## Resources, sprites, effects, and render targets

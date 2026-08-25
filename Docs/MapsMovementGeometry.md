@@ -84,7 +84,7 @@ near, far) * MakeMapCameraView`), so sprites, 3D models, and particles share one
 sprites write per-vertex world depth and test it with `DepthFunc = LessEqual` — the CPU painter sort still
 orders blended layers — so the shared depth buffer resolves occlusion across all three.
 
-`Test_Geometry.cpp` pins both forms against each other and against `GetHexPos`.
+`Test_Geometry.cpp` pins both forms against each other and against `GetHexPos`. `GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`, so changing the view origin translates every hex by one pixel delta; `MapView` relies on that identity when it shifts cached light primitives on scroll.
 
 ## Geometry helper responsibilities
 

@@ -746,6 +746,7 @@ class Object
 
     void Move(ipos deltaPos)
     {
+        InvalidateHitCache();
         _Move(deltaPos, true, true);
     }
 
@@ -1169,6 +1170,8 @@ class Object
 
     void _RefreshPosition()
     {
+        InvalidateHitCache();
+
         // Base data
         _Size = _BaseSize;
         Object? parent = _Parent;
@@ -1253,6 +1256,7 @@ class Object
             _ActiveSelf = active;
             Object? parent = _Parent;
             _Active = _ActiveSelf && (parent == null || parent._Active);
+            InvalidateHitCache();
             _ActiveChanged();
         }
     }
@@ -1274,6 +1278,7 @@ class Object
             return;
         }
         _Active = newActive;
+        InvalidateHitCache();
         for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._RefreshActive();
         }
@@ -1342,7 +1347,12 @@ class Object
 
     void SetNotHittable(bool enabled)
     {
+        if (_IsNotHittable == enabled) {
+            return;
+        }
+
         _IsNotHittable = enabled;
+        InvalidateHitCache();
     }
 
     void SetNotCatchable(bool enabled)
@@ -1352,7 +1362,12 @@ class Object
 
     void SetCheckTransparentOnHit(bool enabled)
     {
+        if (_CheckTransparentOnHit == enabled) {
+            return;
+        }
+
         _CheckTransparentOnHit = enabled;
+        InvalidateHitCache();
     }
 
     void SetFocusGroup(bool enabled)
@@ -1685,6 +1700,7 @@ class Panel : Object
             }
         }
 
+        InvalidateHitCache();
         _RefreshNeedDraw();
     }
 
@@ -1740,6 +1756,7 @@ class Panel : Object
             SetSize(curImage.Size);
         }
 
+        InvalidateHitCache();
         _RefreshNeedDraw();
     }
 
@@ -1950,6 +1967,7 @@ class Panel : Object
                 for (int i = 0; i < _Children.length(); i++) {
                     _Children[i]._Move(ipos(-(curHor - oldHor), -(curVer - oldVer)), true, false);
                 }
+                InvalidateHitCache();
             }
 
             return true;
@@ -2020,7 +2038,12 @@ class Panel : Object
 
     void SetCropContent(bool enabled)
     {
+        if (_CropContent == enabled) {
+            return;
+        }
+
         _CropContent = enabled;
+        InvalidateHitCache();
     }
 
     void SetAutoScroll(bool ver, bool hor)
@@ -2747,6 +2770,7 @@ class Screen : Panel
                 if (lastPos != newPos) {
                     ipos deltaPos = newPos - lastPos;
                     _Move(deltaPos, true, true);
+                    InvalidateHitCache();
                 }
             }
         }
@@ -2964,6 +2988,7 @@ class Grid : Panel
         int shiftY = 0;
         int baseX = _Cells[0]._BasePos.x;
         int baseY = _Cells[0]._BasePos.y;
+        bool moved = false;
 
         for (int i = 0; i < _Cells.length(); i++) {
             int ox = shiftX - _Cells[i]._BasePos.x + baseX;
@@ -2971,6 +2996,7 @@ class Grid : Panel
 
             if (ox != 0 || oy != 0) {
                 _Cells[i]._Move(ipos(ox, oy), false, true);
+                moved = true;
             }
 
             shiftX += _Cells[i]._Size.width + _Padding.x;
@@ -2986,6 +3012,10 @@ class Grid : Panel
                 shiftY += rowHeight;
                 rowHeight = 0;
             }
+        }
+
+        if (moved) {
+            InvalidateHitCache();
         }
 
         _ModifyScroll(0, 0);
@@ -3956,6 +3986,7 @@ void BringToFront(Screen screen)
             Screens.removeAt(i);
             Screens.insertLast(screen);
 
+            InvalidateHitCache();
             topmost._Disappear();
             screen._Appear();
             break;
@@ -4238,14 +4269,38 @@ void SetDropMenu(IDropMenu dropMenu)
     DropMenu = dropMenu;
 }
 
+// Cursor draw, zoom and movement all hit-test the same point in one frame, while FindHit walks every
+// screen tree, so the answer is kept until the frame advances, the point moves or the GUI changes
+bool HitCacheValid = false;
+nanotime HitCacheTime = ZERO_NANOTIME;
+ipos HitCachePos;
+bool HitCacheHit;
+
+void InvalidateHitCache()
+{
+    HitCacheValid = false;
+}
+
 bool CheckHit(ipos pos)
 {
+    if (HitCacheValid && HitCacheTime == Game.FrameTime && HitCachePos == pos) {
+        return HitCacheHit;
+    }
+
+    bool hit = false;
+
     for (int i = 0; i < Screens.length(); i++) {
         if (Screens[i].Active && Screens[i].FindHit(pos) != null) {
-            return true;
+            hit = true;
+            break;
         }
     }
-    return false;
+
+    HitCacheValid = true;
+    HitCacheTime = Game.FrameTime;
+    HitCachePos = pos;
+    HitCacheHit = hit;
+    return hit;
 }
 
 bool IsModalScreenActive()
@@ -4672,6 +4727,8 @@ void UnregisterScreen(GuiScreen screenNum)
 
 void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
 {
+    InvalidateHitCache();
+
     // Clean hovered/focused/pressed objects
     Object? hoveredObject = HoveredObject;
     if (hoveredObject != null) {
