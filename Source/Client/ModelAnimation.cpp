@@ -35,6 +35,10 @@
 
 #if FO_ENABLE_3D
 
+// Ozz's SimdFloat4 is an attributed GCC vector type. GCC warns that the attribute is ignored when the
+// type is named as a span/vector template argument even though its intrinsic vector alignment is retained
+FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
+
 #include "ModelAnimationData.h"
 #include "ModelBakedData.h"
 
@@ -1703,5 +1707,7 @@ static auto ConvertModelAnimationRuntimeMatrix(const ozz::math::Float4x4& matrix
 }
 
 FO_END_NAMESPACE
+
+FO_GCC_IGNORE_WARNINGS_POP()
 
 #endif

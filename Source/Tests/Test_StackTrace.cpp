@@ -321,7 +321,7 @@ TEST_CASE("StackTrace")
         CaptureNativeStackFrames(frames, count, truncated, 0);
 
         CHECK_FALSE(truncated);
-#if FO_MEMORY_SANITIZER
+#if FO_MEMORY_SANITIZER || FO_THREAD_SANITIZER
         CHECK(count == 0);
 #else
         CHECK(count > 0);
