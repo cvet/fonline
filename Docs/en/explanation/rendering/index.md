@@ -605,6 +605,8 @@ acceptance claim is driver-specific.
 
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
 
+`Gui::CheckHit` caches its boolean result for the current `Game.FrameTime` and query position because cursor drawing, zoom, and movement can ask for the same point in one frame while `FindHit` walks every screen tree. GUI activation, geometry, ordering, scroll, crop, transparent-hit image, and hittability changes invalidate the cache. Resolution and language refresh invalidate through `_RefreshPositionRecursive`; setters that receive an unchanged value return without invalidating. The internal `_Move` helper deliberately does not invalidate by itself because `Draw` uses a temporary `_Move` pair every frame, so direct callers that change persistent layout invalidate explicitly.
+
 Model-attached SPARK particle systems keep already spawned particles in their simulation space while the emitter follows the model attachment point. A non-identity root transform in the particle resource selects the position-plus-facing path instead of inheriting the full bone matrix; this keeps lingering particles world-stable during model movement while new particles spawn at the current attachment point. The model movement offset is subtracted in particle model space before camera rotation and projection so the setup-time positive offset and draw-time negative offset cancel for newly emitted particles.
 
 ## Screen size, resolution, and letterboxing

@@ -1659,6 +1659,20 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
         return strex("synctime: {}", *script_obj.reinterpret_as<synctime>());
     }
 
+    if (meta->IsValidBaseType(type_name) && meta->GetBaseType(type_name).IsEntity) {
+        auto entity = script_obj.reinterpret_as<const Entity>();
+        string proto_id = "<none>";
+
+        if (auto proto = entity.dyn_cast<const ProtoEntity>()) {
+            proto_id = proto->GetProtoId().as_str();
+        }
+        else if (auto entity_with_proto = entity.dyn_cast<const EntityWithProto>()) {
+            proto_id = entity_with_proto->GetProtoId().as_str();
+        }
+
+        return strex("{}: {} ({} {})", type_name, entity->GetName(), entity->GetId(), proto_id);
+    }
+
     if (auto enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
         int32_t enum_value = 0;
 

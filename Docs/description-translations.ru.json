@@ -8151,6 +8151,18 @@
           "source_sha256": "47952edfe05f5d1ac6699ed600e98b72c09cd5da491fee96a6cbcfb54cee214f",
           "translation": "Передавайте глобальный ввод активным экранам сверху вниз, затем активной консоли, затем focused-объектам, когда консоль отсутствует или неактивна."
         },
+        "/input_rules/@id=gui-runtime.input.hit-cache/name": {
+          "source_sha256": "38b4023e11a886d52d4e8132e604efdf3ff82666e0a85b518f4dc45ea66eaf86",
+          "translation": "Покадровый кэш hit-test"
+        },
+        "/input_rules/@id=gui-runtime.input.hit-cache/rationale": {
+          "source_sha256": "7bd8c996171b5d1ab104974e11a1d0d97e4f11dae5a7de0527344c95ae99ff47",
+          "translation": "Отрисовка курсора, масштабирование и перемещение повторяют один и тот же запрос в пределах кадра, тогда как FindHit обходит деревья всех активных экранов."
+        },
+        "/input_rules/@id=gui-runtime.input.hit-cache/requirement": {
+          "source_sha256": "8436cbd4d1315d890ad62cbf321aaa16bb057fceb94550293e266c033be92c5e",
+          "translation": "Кэшируйте CheckHit на один Game.FrameTime и позицию запроса; сбрасывайте кэш при любом изменении active-state, постоянной геометрии, порядка экранов, scroll, crop, изображений с transparent-hit или hittability, способном изменить результат."
+        },
         "/input_rules/@id=gui-runtime.input.loss-reset/name": {
           "source_sha256": "78889c1400c05f324a29742dd1a1493b6788961affcefc0a7dc2cbf0e8af3c96",
           "translation": "Сброс при потере ввода"
@@ -8606,6 +8618,10 @@
         "/screen_api/@id=gui-runtime.screen-api.hide-screen.screen/requirement": {
           "source_sha256": "80769fcf1c5635b9ab690cedd97dc07984a17a3c3cf2c1eb0834feed1e8be5e0",
           "translation": "Скрывает один активный экран, выбранный по вершине стека, id или прямому handle."
+        },
+        "/screen_api/@id=gui-runtime.screen-api.invalidate-hit-cache.no-args/requirement": {
+          "source_sha256": "2937e4099c316c3aefae58f8e5df81992351b0a76598a74be1297eb11a666451",
+          "translation": "Сбрасывает кэшированный результат CheckHit после постоянного изменения GUI, не охваченного встроенными setters."
         },
         "/screen_api/@id=gui-runtime.screen-api.is-console-active.no-args/rationale": {
           "source_sha256": "a60ce15903c74cadaed9dce4d7c387f1b727ee532b6f80536d248d0cc7125e00",
@@ -18638,8 +18654,8 @@
           "translation": "Только для InputFloat(), InputInt(), InputScalar() и подобных функций: не отображает нулевое значение; обычно используется вместе с ImGuiInputTextFlags_ParseEmptyRefVal."
         },
         "/symbols/@id=script.enum-value.ImGui_InputTextFlags.EnterReturnsTrue/description": {
-          "source_sha256": "6d8677c919820a72d3023b7372c1dbc16ae9285a216a012ba2885356ecc8c898",
-          "translation": "Возвращает true при нажатии Enter, а не при каждом изменении значения. В качестве альтернативы рассмотрите IsItemDeactivatedAfterEdit()."
+          "source_sha256": "a2a4545291a20f86d94ded4e4764412876b42a0059cbe13b52648ad9ec654c8e",
+          "translation": "Возвращает true при нажатии Enter, а не при каждом изменении значения. Рассмотрите отключение LiveEdit! или использование IsItemDeactivatedAfterEdit()."
         },
         "/symbols/@id=script.enum-value.ImGui_InputTextFlags.None/description": {
           "source_sha256": "ba7b620d4939832155a4a293f22014f7d9ff7d604dc6507716fb2cad1b6f1e02",

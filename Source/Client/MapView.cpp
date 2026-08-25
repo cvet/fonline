@@ -1100,6 +1100,7 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
 
     int32_t ox = axial_hex_offset.x;
     int32_t oy = axial_hex_offset.y;
+    ipos32 old_screen_raw_hex = _screenRawHex;
 
     // Hide opposite lines
     HideHexLines(-ox, -oy);
@@ -1162,7 +1163,23 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
         _critters[i]->RefreshOffs();
     }
 
-    _needRebuildLightPrimitives = true;
+    // GetHexOffset(from, to) is GetHexPos(to) - GetHexPos(from), so a view-origin shift is a uniform pixel translation.
+    // HideHex rebuilds when a light leaves the view
+    if (!_needRebuildLightPrimitives) {
+        ipos32 primitive_shift = GeometryHelper::GetHexOffset(_screenRawHex, old_screen_raw_hex);
+
+        if (primitive_shift.x != 0 || primitive_shift.y != 0) {
+            fpos32 tex_shift = {-numeric_cast<float32_t>(primitive_shift.x), -numeric_cast<float32_t>(primitive_shift.y)};
+
+            for (auto& points : _lightPoints) {
+                for (auto& point : points) {
+                    point.PointPos += primitive_shift;
+                    point.TexUV += tex_shift;
+                }
+            }
+        }
+    }
+
     _engine->OnRenderMap_Rebuild.Fire(this);
 }
 
@@ -1365,7 +1382,9 @@ void MapView::HideHex(const ViewField& vf)
                 it->second--;
             }
             else {
+                // Last visible hex of this light; leftover triangles would still draw
                 _visibleLightSources.erase(it);
+                _needRebuildLightPrimitives = true;
             }
         }
     }

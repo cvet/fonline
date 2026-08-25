@@ -52,6 +52,7 @@ FO_DISABLE_WARNINGS_POP()
 #include "WinApiUndef.inc"
 
 FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
+FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 FO_BEGIN_NAMESPACE
 
@@ -2099,4 +2100,5 @@ static auto DecodeHexDigit(char ch) -> uint8_t
 
 FO_END_NAMESPACE
 
+FO_GCC_IGNORE_WARNINGS_POP()
 FO_CLANG_IGNORE_WARNINGS_POP()

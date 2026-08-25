@@ -66,7 +66,7 @@ When system packages already exist, prepare only the workspace-local SDK and NDK
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-sdk android-ndk
 ```
 
-`prepare-workspace.sh android-arm64` is the equivalent host wrapper for the second route. The current descriptors select Android SDK command-line tools `14742923`, NDK `r29`, and native API level `23`. SDK preparation accepts licenses and installs `platform-tools`, build-tools `34.0.0`, and platform `android-35` under `Workspace/android-sdk`; NDK preparation installs under `Workspace/android-ndk`.
+`prepare-workspace.sh android-arm64` is the equivalent host wrapper for the second route. The current descriptors select Android SDK command-line tools `15859902`, NDK `r29`, and native API level `23`. SDK preparation calls the pinned package's `android sdk install` interface with metrics disabled and installs `platform-tools`, build-tools `36.0.0`, and platform `android-35` under `Workspace/android-sdk`; the deprecated `sdkmanager` path is not used. NDK preparation installs under `Workspace/android-ndk`.
 
 BuildTools resolves SDK/NDK locations in this order:
 
@@ -128,7 +128,7 @@ cd Workspace/android-debug/<ProjectDevName>-Client-<Config>-Android
 ./gradlew --no-daemon assembleDebug
 ```
 
-The normal result is `app/build/outputs/apk/debug/app-debug.apk`. The current template uses Gradle 8.12 and Android Gradle Plugin 8.7.3, filters native libraries to the packaged ABI list, leaves ZIP assets uncompressed, and uses legacy JNI library packaging. The manifest requires OpenGL ES 3.0 and declares Internet, network-state, and vibration permissions; touchscreen, gamepad, Bluetooth, USB-host, and PC-style pointer features are optional.
+The normal result is `app/build/outputs/apk/debug/app-debug.apk`. The current template uses Gradle 9.5.0, Android Gradle Plugin 9.3.0, and Java language level 17; it filters native libraries to the packaged ABI list, leaves ZIP assets uncompressed, and uses legacy JNI library packaging. The manifest requires OpenGL ES 3.0 and declares Internet, network-state, and vibration permissions; touchscreen, gamepad, Bluetooth, USB-host, and PC-style pointer features are optional.
 
 The template sets `lint.abortOnError = false`. APK assembly is therefore not a lint, policy, privacy, vulnerability, or store-readiness gate. Add project-owned lint and release checks instead of interpreting `assembleDebug` as production acceptance.
 

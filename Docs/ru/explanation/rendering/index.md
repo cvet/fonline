@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"e69d9d067e53ec7791e635eda074072318026c0f0d170505346c4400e5c6726a"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"bcaf0c91c58e4ac20913371e384c5cebe3dc3587591e2d2f4d31930f2e93d957"} -->
 
 # Frontend и рендеринг
 
@@ -622,6 +622,16 @@ hit testing и offscreen composition.
 render targets карты, освещения и indoor mask как логический размер экрана,
 умноженный на этот коэффициент. Движок ограничивает размер пределом текстуры
 renderer; вид, превышающий получившийся target, разбивается на несколько chunks.
+
+`Gui::CheckHit` кеширует boolean result для текущих `Game.FrameTime` и query
+position, поскольку cursor drawing, zoom и movement могут проверять одну точку
+несколько раз за frame, тогда как `FindHit` обходит все screen trees. Изменения
+GUI activation, geometry, ordering, scroll, crop, изображения для transparent
+hit и hittability инвалидируют cache. Refresh resolution и language проходит
+через `_RefreshPositionRecursive`; setters с неизменившимся значением не
+инвалидируют cache. Внутренний `_Move` намеренно не инвалидирует сам по себе,
+поскольку `Draw` использует временную пару `_Move` каждый frame, поэтому direct
+callers, меняющие persistent layout, инвалидируют явно.
 
 Model-attached SPARK systems сохраняют уже spawned particles в simulation space,
 пока emitter следует attachment point модели. Non-identity root transform

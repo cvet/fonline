@@ -4141,7 +4141,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: 8f2a1bc129a0c7bdd1c681b53b9c080734eea8d9d4b67b2bde0351ee756e9333
+Content SHA-256: 2f2acd565f0502fc6195c5377a53eef81e08e4888be28bafd98b835547f4935e
 
 ---
 layout: default
@@ -4230,7 +4230,9 @@ with MSan instrumentation, then configures `San_Memory` with `FO_MSAN_LIBCXX_ROO
 The runtime build applies a narrow libunwind ignorelist so C++ exception and
 sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
 native stack capture and the backward-cpp signal handler are disabled under
-`FO_MEMORY_SANITIZER` so MSan owns fatal reports. `unit-tests-san-memory-with-origins`
+MSan and TSan so the sanitizer runtimes own their reports;
+backward-cpp/libbfd symbolization under TSan also produces prohibitive
+shadow-memory growth. `unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
@@ -10399,7 +10401,7 @@ not a substitute for a compatibility policy or production media tests.
 ===== BEGIN DOCUMENT gui-runtime-guide =====
 Source: Docs/en/how-to/runtime/gui.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/runtime/gui.html
-Content SHA-256: 3f9384fbc9cad4dec19735aac4a96dda66a8aa956ab5c7e28e93e10680998183
+Content SHA-256: 253f434180315b1fc1221e466e0b7c1d089c52abfa3f5b5c68b60d052b879c88
 
 ---
 layout: default
@@ -10728,6 +10730,15 @@ registration order until one handles the target.
 
 `CheckTransparentOnHit` uses sprite alpha for panel self-hit testing. It does
 not make arbitrary child geometry transparent.
+
+`CheckHit` caches its boolean result for one `Game.FrameTime` and query point,
+because cursor drawing, zoom, and movement can ask for the same point while
+`FindHit` walks every screen tree. Changes to active state, persistent geometry,
+screen order, scroll, crop, transparent-hit images, or hittability invalidate
+the cache. Resolution and language refresh invalidate through
+`_RefreshPositionRecursive`. `_Move` itself remains non-invalidating because
+`Draw` temporarily moves objects each frame; direct persistent-layout callers
+invalidate explicitly.
 
 ## Keyboard and focus
 
@@ -14894,7 +14905,7 @@ The tests are the executable knowledge base for many engine subsystems. File nam
 ===== BEGIN DOCUMENT third-party-maintenance =====
 Source: Docs/en/contributing/third-party/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/third-party/
-Content SHA-256: efdcd467d86463329b80824a4ad5626002839102dd6ab1473f4982147e931a13
+Content SHA-256: db4c8102cc99a6608ccb8966f46d8ae483e11a00c8da4f4df55093fc368a8403
 
 ---
 layout: default
@@ -15019,6 +15030,10 @@ mechanical copy-then-prune workflow above. Re-vendoring it means reconciling
 every patched region against the new upstream — treat that as a dedicated task
 with its own plan and full script/VM regression validation, and skip such
 dependencies during a routine refresh sweep.
+
+For a branch-tracked or WIP fork, record the exact upstream commit alongside
+the snapshot date in `ThirdParty/README.md`; the upstream version string alone
+does not identify a reproducible source tree.
 
 ## Adding A New Engine Dependency
 
@@ -16823,7 +16838,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 59c07b6a2d970391f17b7ae945c9eae17e90e2c618444ae92740a3e64c35d0bd
+Content SHA-256: d0a6f64e0315f67f863d0563387857be6a71574b4ed913320ef46af3b9b84c3a
 
 ---
 layout: default
@@ -16905,7 +16920,7 @@ The map camera uses a world frame of `+X` right, `+Y` up, and `+Z` map-south, wi
 
 `ProjectWorldToMap` is the reference form without scroll or zoom. It returns map-space pixels in `.x/.y` and view depth in `.z`; larger depth is nearer the camera. Its `(.y, .z)` result is an orthonormal rotation of world `(Z, Y)`, not a shear.
 
-`MakeMapCameraView` is the GPU form with scroll, zoom, and a `yaw_deg` orbit around the vertical axis. At zero yaw it reproduces `(ProjectWorldToMap(world).xy - scroll) * zoom` with unchanged depth. The backend ortho composes over this matrix, so sprites, 3D models, and particles share one world-to-clip transform. Map sprites also write world depth with `DepthFunc = LessEqual`; CPU painter order still handles blended layers while the shared depth buffer resolves cross-type occlusion. `Test_Geometry.cpp` pins both projection forms against each other and against `GetHexPos`.
+`MakeMapCameraView` is the GPU form with scroll, zoom, and a `yaw_deg` orbit around the vertical axis. At zero yaw it reproduces `(ProjectWorldToMap(world).xy - scroll) * zoom` with unchanged depth. The backend ortho composes over this matrix, so sprites, 3D models, and particles share one world-to-clip transform. Map sprites also write world depth with `DepthFunc = LessEqual`; CPU painter order still handles blended layers while the shared depth buffer resolves cross-type occlusion. `Test_Geometry.cpp` pins both projection forms against each other and against `GetHexPos`. It also pins `GetHexOffset(from, to) == GetHexPos(to) - GetHexPos(from)`, which makes a view-origin change a uniform pixel translation; `MapView` relies on that identity when shifting cached light primitives during scroll.
 
 ## Geometry helper responsibilities
 
@@ -17316,7 +17331,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: e69d9d067e53ec7791e635eda074072318026c0f0d170505346c4400e5c6726a
+Content SHA-256: bcaf0c91c58e4ac20913371e384c5cebe3dc3587591e2d2f4d31930f2e93d957
 
 ---
 layout: default
@@ -17924,6 +17939,8 @@ acceptance claim is driver-specific.
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
 
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
+
+`Gui::CheckHit` caches its boolean result for the current `Game.FrameTime` and query position because cursor drawing, zoom, and movement can ask for the same point in one frame while `FindHit` walks every screen tree. GUI activation, geometry, ordering, scroll, crop, transparent-hit image, and hittability changes invalidate the cache. Resolution and language refresh invalidate through `_RefreshPositionRecursive`; setters that receive an unchanged value return without invalidating. The internal `_Move` helper deliberately does not invalidate by itself because `Draw` uses a temporary `_Move` pair every frame, so direct callers that change persistent layout invalidate explicitly.
 
 Model-attached SPARK particle systems keep already spawned particles in their simulation space while the emitter follows the model attachment point. A non-identity root transform in the particle resource selects the position-plus-facing path instead of inheriting the full bone matrix; this keeps lingering particles world-stable during model movement while new particles spawn at the current attachment point. The model movement offset is subtracted in particle model space before camera rotation and projection so the setup-time positive offset and draw-time negative offset cancel for newly emitted particles.
 
@@ -18879,7 +18896,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 42ee513fbfe6cbf83b6064aa025c34cd43f5a75d9c47ab7c53a9763b0e25dbbc
+Content SHA-256: 2583189c592086aeae8fdc736f1f7f9a847bfecef67739802de698d8762df6de
 
 ---
 layout: default
@@ -19193,6 +19210,8 @@ Moving 2D critters keep logical path/hex progress in `MovingContext` while `Crit
 `MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [Maps, Movement, and Geometry](../maps-and-movement.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [Frontend and Rendering](../rendering/).
 
 Map light source intensity is authored as a percentage magnitude (`0..100`, with negative values keeping the same magnitude but opting into constant/personal capacity semantics). `MapView` clamps the current animated percentage, converts it to an internal raw falloff scale (`0..10000`), and then scales light-map RGB to the engine light range (`0..200`) and primitive alpha to `0..255` through the source's day-light capacity percentage. `SetDayColors()` must invalidate applied light fans when either the day color or the light-capacity percentage changes, because both feed cached per-hex lighting.
+
+`GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`, so `RebuildMapOffset()` moves every light vertex by the same pixel delta when the view origin scrolls. `MapView` translates cached `_lightPoints` by that delta instead of rebuilding every fan. Hiding the last visible hex of a light still forces a primitive rebuild to remove leftover triangles, while lights entering the view reapply their fans and rebuild normally. `Test_Geometry.cpp` pins the uniform-translation identity.
 
 The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
@@ -20623,7 +20642,7 @@ The current native suite does not expose a focused `CritterHexView` root-motion 
 ===== BEGIN DOCUMENT android-debugging =====
 Source: Docs/en/how-to/platforms/android-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/android-debugging.html
-Content SHA-256: 0bf03c58c6aaee97beb3359b3cf58e2e1cbc5c78f9a84ea484df4821f535c81f
+Content SHA-256: a69b76f9905b4d5e5b9182e6adcaa1d4915ccb4fc92a600aa280814721c29020
 
 ---
 layout: default
@@ -20693,7 +20712,7 @@ When system packages already exist, prepare only the workspace-local SDK and NDK
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-sdk android-ndk
 ```
 
-`prepare-workspace.sh android-arm64` is the equivalent host wrapper for the second route. The current descriptors select Android SDK command-line tools `14742923`, NDK `r29`, and native API level `23`. SDK preparation accepts licenses and installs `platform-tools`, build-tools `34.0.0`, and platform `android-35` under `Workspace/android-sdk`; NDK preparation installs under `Workspace/android-ndk`.
+`prepare-workspace.sh android-arm64` is the equivalent host wrapper for the second route. The current descriptors select Android SDK command-line tools `15859902`, NDK `r29`, and native API level `23`. SDK preparation calls the pinned package's `android sdk install` interface with metrics disabled and installs `platform-tools`, build-tools `36.0.0`, and platform `android-35` under `Workspace/android-sdk`; the deprecated `sdkmanager` path is not used. NDK preparation installs under `Workspace/android-ndk`.
 
 BuildTools resolves SDK/NDK locations in this order:
 
@@ -20755,7 +20774,7 @@ cd Workspace/android-debug/<ProjectDevName>-Client-<Config>-Android
 ./gradlew --no-daemon assembleDebug
 ```
 
-The normal result is `app/build/outputs/apk/debug/app-debug.apk`. The current template uses Gradle 8.12 and Android Gradle Plugin 8.7.3, filters native libraries to the packaged ABI list, leaves ZIP assets uncompressed, and uses legacy JNI library packaging. The manifest requires OpenGL ES 3.0 and declares Internet, network-state, and vibration permissions; touchscreen, gamepad, Bluetooth, USB-host, and PC-style pointer features are optional.
+The normal result is `app/build/outputs/apk/debug/app-debug.apk`. The current template uses Gradle 9.5.0, Android Gradle Plugin 9.3.0, and Java language level 17; it filters native libraries to the packaged ABI list, leaves ZIP assets uncompressed, and uses legacy JNI library packaging. The manifest requires OpenGL ES 3.0 and declares Internet, network-state, and vibration permissions; touchscreen, gamepad, Bluetooth, USB-host, and PC-style pointer features are optional.
 
 The template sets `lint.abortOnError = false`. APK assembly is therefore not a lint, policy, privacy, vulnerability, or store-readiness gate. Add project-owned lint and release checks instead of interpreting `assembleDebug` as production acceptance.
 
@@ -21023,7 +21042,7 @@ For an Android change, also run the narrowest affected native validation target 
 ===== BEGIN DOCUMENT web-debugging =====
 Source: Docs/en/how-to/platforms/web-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/web-debugging.html
-Content SHA-256: 45a5732b66e4b5b7dacfa5979063f6c1a1748861dcc8241b05b400aa0071f0c7
+Content SHA-256: 2343681bdb6a8074345a94d32a7306599e16dbc10433659caf331fad4eefa63a
 
 ---
 layout: default
@@ -21071,7 +21090,7 @@ An embedding project owns the `.fomain`, resource bake, selected config, server,
 
 | Layer | Current Engine evidence | What it proves | What remains project-owned |
 |---|---|---|---|
-| Toolchain | Emscripten `6.0.3` pin and workspace preparer | Reproducible selected SDK input | Host image, cache, mirrors, and outage recovery |
+| Toolchain | Emscripten `6.0.8` pin and workspace preparer | Reproducible selected SDK input | Host image, cache, mirrors, and outage recovery |
 | Build | required `web-client` CI lane on Ubuntu 24.04 | Browser client compiles and links to `Web-wasm` | Game bake, package, server, and browser behavior |
 | Renderer | WebGL exactly 2; Vulkan and SDL_GPU excluded | Compiled graphics contract | Browser/GPU/driver matrix and visible correctness |
 | Package | Web `Client` + `wasm`, resources required | Stock shell, patched wasm, and preloaded resources can be emitted | Public hosting and immutable release artifact |
@@ -21082,7 +21101,7 @@ The supported Engine application is the browser client. Do not infer support for
 
 ## Prepare the host and workspace
 
-`ThirdParty/emscripten` pins `6.0.3`. The preparer removes and reclones `Workspace/emsdk`, installs and activates that exact version with `--build=Release --shallow`, and BuildTools runs configure/build inside its `emsdk_env` script. It does not use an arbitrary system `emcc`.
+`ThirdParty/emscripten` pins `6.0.8`. The preparer removes and reclones `Workspace/emsdk`, installs and activates that exact version with `--build=Release --shallow`, and BuildTools runs configure/build inside its `emsdk_env` script. It does not use an arbitrary system `emcc`.
 
 On a fresh Linux host, provision Node.js, Java, common build packages, and the SDK:
 
@@ -21288,7 +21307,7 @@ The Engine build lane intentionally does not supply this browser/release evidenc
 
 | Symptom | Inspect first |
 |---|---|
-| Workspace prepare fails | host Node/Java/common packages, network, disk, exact `6.0.3` pin, `Workspace/emsdk`, and activation logs |
+| Workspace prepare fails | host Node/Java/common packages, network, disk, exact `6.0.8` pin, `Workspace/emsdk`, and activation logs |
 | Configure uses the wrong compiler | BuildTools `web` platform, workspace toolchain path, `emsdk_env`, and stale build directory |
 | Link fails only for Web | strict undefined/unimplemented syscall output, unsupported native dependency, Web platform guards, and exception flags |
 | Package is absent | successful bake/build, exact dev name/config, project git revision, `FO_OUTPUT`, and `package-web-debug` log |
@@ -23342,7 +23361,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-gui-runtime-index =====
 Source: Docs/en/reference/gui-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/gui-runtime/
-Content SHA-256: 8dceb921acae8a5841ea33b7b2560f066c0fd54bf5dfbae899ea0c6599a8e253
+Content SHA-256: 06add128779c10be55ea4a6a4a18b58c28f3b8ac0c5823a7ab25ee9531cb41bf
 
 ---
 title: Generated GUI Runtime Reference
@@ -23366,22 +23385,22 @@ This reference describes the Engine-owned AngelScript GUI runtime. It is not a d
 | Stability | <code>experimental</code> |
 | Support policy | The CoreScripts GUI runtime is production-used but remains experimental until it has a standalone client example, focused runtime fixtures, and an explicit compatibility policy. |
 | Source manifest | [BuildTools/GuiRuntimeInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/GuiRuntimeInterface.json) |
-| Contract digest | <code>437603ed47bec7614b368acf6b424a9c27d3d7e9fce56c5211c0fa4a30d1fdbd</code> |
+| Contract digest | <code>65d0e75c8b42abb333ff716cc4e1538e4cecf1beb129d9e535177b0d46ddad5e</code> |
 | Runtime side | <code>client</code> |
 | Runtime types | 12 |
 | Documented type members | 160 |
 | Callback signatures | 39 |
-| Top-level API overloads | 31 |
+| Top-level API overloads | 32 |
 | Engine declarative GUI formats | 0 |
 | Focused native runtime tests | 0 |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Types](types.md) | 12 | Object hierarchy, documented members, and callbacks. |
-| [Screen API](screen-api.md) | 31 | Registration, stack, focus, lookup, and drag/drop callables. |
+| [Screen API](screen-api.md) | 32 | Registration, stack, focus, lookup, and drag/drop callables. |
 | [Lifecycle](lifecycle.md) | 6 | Creation, show/hide, cursor, and refresh behavior. |
 | [Layout](layout-rendering.md) | 7 | Coordinates, docking, anchors, crop, frames, scroll, and grids. |
-| [Input](input.md) | 7 | Subscriptions, hit order, focus, repeat, drag, and loss. |
+| [Input](input.md) | 8 | Subscriptions, hit order, focus, repeat, drag, and loss. |
 | [Integration](integration-validation.md) | 11 | Embedding-project ownership and validation gates. |
 
 ## Boundary
@@ -26110,7 +26129,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: ab5e1f73cc0d819ccc02735973f03ec126f8a3a3e2632c97aa742003a7474c10
+Content SHA-256: fabe945cfe3b98fa2a9f6a6d42c4e8be250c09015481c1916d82b2ad2b299e99
 
 ---
 layout: default
@@ -26183,9 +26202,9 @@ The current contract was re-derived from:
 - the GLM, ImGui, small-vector, and ufbx visualizers under `ThirdParty/`;
 - `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `ExceptionHandling.*`, and `Logging.cpp`;
 - `Source/Common/DiagnosticSelfTest.cpp` and `Source/Frontend/ApplicationInit.cpp`;
-- `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, and `AngelScriptDebugger.*`;
+- `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, `AngelScriptGlobals.cpp`, `AngelScriptHelpers.cpp`, and `AngelScriptDebugger.*`;
 - `Source/Common/Settings.inc`;
-- `Source/Tests/Test_StackTrace.cpp` and `Test_ExceptionHandling.cpp`;
+- `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp`, and `Test_ScriptBuiltins.cpp`;
 - `BuildTools/angelscript-debugger/package.json` and its TypeScript sources;
 - exact project snapshots in `BuildTools/ExternalProjectEvidence.json`.
 
@@ -26197,7 +26216,7 @@ The current contract was re-derived from:
 | Linux native | Debug information outside `MinSizeRel`, `-rdynamic`, GDB/LLDB-compatible binaries, `/proc/self/status` debugger detection, signal/terminate diagnostics | Core-dump enablement, collection, symbol storage, container permissions, and retention are host/project policy. |
 | macOS native | Debug information outside `MinSizeRel`, `-rdynamic`, `sysctl(P_TRACED)` detection, debug trap, backward-cpp signal diagnostics | No checked Engine LLDB launch profile, crash-report archive, or release qualification is supplied. |
 | AngelScript runtime | Loopback-by-default TCP endpoint, UDP discovery, line breakpoints, pause/continue/step, script stack, read-only local values, stop/abort/error events | No authentication, encryption, published VSIX, pinned adapter dependency lock, live endpoint CI, global-value inspection, expression evaluation, or state mutation contract. |
-| Mixed stack in logs | Script layers plus native frames, origin/catch distinction, safe crash-path output and process-local resolution cache | Native symbol quality depends on the exact binary, libraries, debug data, platform unwinder, and execution mode. MemorySanitizer disables native stack capture. |
+| Mixed stack in logs | Script layers plus native frames, origin/catch distinction, safe crash-path output and process-local resolution cache | Native symbol quality depends on the exact binary, libraries, debug data, platform unwinder, and execution mode. MemorySanitizer and ThreadSanitizer disable native stack capture. |
 
 `Source/Tests` validates stack and exception primitives. It does not currently exercise a real TCP/UDP AngelScript attach session. Project static checks and launch profiles prove integration shape, not the live protocol end to end.
 
@@ -26259,7 +26278,7 @@ Use [Testing](../contributing/testing/) for the exact sanitizer matrix. The main
 - MSVC supplies `San_Address` and `Debug_San_Address`;
 - native Clang supplies Address, Memory, Memory-with-origins, Undefined, Thread, DataFlow, and Address+Undefined configurations where the toolchain supports them;
 - AddressSanitizer, MemorySanitizer, and code-coverage builds switch AngelScript to `AS_MAX_PORTABILITY` so native call trampolines do not defeat instrumentation or terminate while an instrumented frame unwinds a registered-function exception;
-- MemorySanitizer builds compile the stack/exception layer with `HAS_NATIVE_TRACE=0`; expect sanitizer diagnostics, not the normal native mixed-stack contract;
+- MemorySanitizer and ThreadSanitizer builds compile the stack/exception layer with `HAS_NATIVE_TRACE=0`; expect sanitizer diagnostics, not the normal native mixed-stack contract;
 - sanitizer timing, allocation, stack size, and calling-convention behavior differ from a release build, so reproduce the original configuration as well.
 
 ## Native debugging
@@ -26277,6 +26296,8 @@ Use [Testing](../contributing/testing/) for the exact sanitizer matrix. The main
 ### Exceptions, assertions, and memory failures
 
 `ReportExceptionAndContinue` records a non-fatal caught exception. `ReportExceptionAndExit` and strong assertions record diagnostics and terminate or break according to their contract. The exception-safety tier model and entity-lifecycle throw-as-signal rules live in [Exception Safety](../contributing/coding-contracts/exception-safety.md).
+
+AngelScript `throw(...)` and `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, entity name, runtime id, and proto id, or `<none>` when no proto exists, so production exceptions identify the involved objects instead of reporting only a base type such as `Critter` or `AbstractItem`. Primitive, enum, string, and null context values keep their compact representation. `Test_ScriptBuiltins.cpp` pins this entity context through the real global `throw` binding.
 
 Use break-on-throw carefully. AngelScript bindings and engine lifecycle code can throw as part of an intentional reporting path. Start from the log's fixed message and context parameters, then place a focused breakpoint at the owning invariant or reporter. For memory corruption, prioritize ASan/MSan/UBSan/TSan evidence and the first invalid access over a later secondary assertion.
 

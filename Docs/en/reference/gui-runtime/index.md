@@ -20,22 +20,22 @@ This reference describes the Engine-owned AngelScript GUI runtime. It is not a d
 | Stability | <code>experimental</code> |
 | Support policy | The CoreScripts GUI runtime is production-used but remains experimental until it has a standalone client example, focused runtime fixtures, and an explicit compatibility policy. |
 | Source manifest | [BuildTools/GuiRuntimeInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/GuiRuntimeInterface.json) |
-| Contract digest | <code>437603ed47bec7614b368acf6b424a9c27d3d7e9fce56c5211c0fa4a30d1fdbd</code> |
+| Contract digest | <code>65d0e75c8b42abb333ff716cc4e1538e4cecf1beb129d9e535177b0d46ddad5e</code> |
 | Runtime side | <code>client</code> |
 | Runtime types | 12 |
 | Documented type members | 160 |
 | Callback signatures | 39 |
-| Top-level API overloads | 31 |
+| Top-level API overloads | 32 |
 | Engine declarative GUI formats | 0 |
 | Focused native runtime tests | 0 |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Types](types.md) | 12 | Object hierarchy, documented members, and callbacks. |
-| [Screen API](screen-api.md) | 31 | Registration, stack, focus, lookup, and drag/drop callables. |
+| [Screen API](screen-api.md) | 32 | Registration, stack, focus, lookup, and drag/drop callables. |
 | [Lifecycle](lifecycle.md) | 6 | Creation, show/hide, cursor, and refresh behavior. |
 | [Layout](layout-rendering.md) | 7 | Coordinates, docking, anchors, crop, frames, scroll, and grids. |
-| [Input](input.md) | 7 | Subscriptions, hit order, focus, repeat, drag, and loss. |
+| [Input](input.md) | 8 | Subscriptions, hit order, focus, repeat, drag, and loss. |
 | [Integration](integration-validation.md) | 11 | Embedding-project ownership and validation gates. |
 
 ## Boundary

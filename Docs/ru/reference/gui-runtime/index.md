@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-gui-runtime-index","locale":"ru","source_path":"Docs/en/reference/gui-runtime/index.md","source_sha256":"8dceb921acae8a5841ea33b7b2560f066c0fd54bf5dfbae899ea0c6599a8e253"} -->
+<!-- docs-translation: {"document_id":"generated-gui-runtime-index","locale":"ru","source_path":"Docs/en/reference/gui-runtime/index.md","source_sha256":"06add128779c10be55ea4a6a4a18b58c28f3b8ac0c5823a7ab25ee9531cb41bf"} -->
 
 # Сгенерированный справочник GUI Runtime
 
@@ -22,22 +22,22 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Переиспользуемый GUI runtime поддерживает клиентские интеграции, но остаётся экспериментальным; подключаемые проекты владеют каталогами экранов, генераторами, визуальным оформлением и привязкой hooks. |
 | Исходный манифест | [BuildTools/GuiRuntimeInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/GuiRuntimeInterface.json) |
-| Дайджест контракта | <code>437603ed47bec7614b368acf6b424a9c27d3d7e9fce56c5211c0fa4a30d1fdbd</code> |
+| Дайджест контракта | <code>65d0e75c8b42abb333ff716cc4e1538e4cecf1beb129d9e535177b0d46ddad5e</code> |
 | Сторона runtime | <code>client</code> |
 | Типы runtime | 12 |
 | Документированные члены типов | 160 |
 | Сигнатуры callback-функций | 39 |
-| Перегрузки верхнеуровневого API | 31 |
+| Перегрузки верхнеуровневого API | 32 |
 | Декларативные GUI-форматы Engine | 0 |
 | Целевые нативные тесты runtime | 0 |
 
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
 | [Types](types.md) | 12 | Иерархия объектов, документированные члены и callbacks. |
-| [Screen API](screen-api.md) | 31 | Функции регистрации, стека, фокуса, поиска и drag/drop. |
+| [Screen API](screen-api.md) | 32 | Функции регистрации, стека, фокуса, поиска и drag/drop. |
 | [Lifecycle](lifecycle.md) | 6 | Создание, show/hide, курсор и поведение обновления. |
 | [Layout](layout-rendering.md) | 7 | Координаты, docking, anchors, crop, рамки, прокрутка и grids. |
-| [Input](input.md) | 7 | Подписки, порядок hit, фокус, repeat, drag и потеря ввода. |
+| [Input](input.md) | 8 | Подписки, порядок hit, фокус, repeat, drag и потеря ввода. |
 | [Integration](integration-validation.md) | 11 | Ответственность подключаемого проекта и gate проверки. |
 
 ## Граница ответственности

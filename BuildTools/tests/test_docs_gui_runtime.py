@@ -35,7 +35,7 @@ class GuiRuntimeDocumentationTests(unittest.TestCase):
         self.assertEqual(outputs["type_count"], 12)
         self.assertEqual(outputs["api_member_count"], 160)
         self.assertEqual(outputs["callback_signature_count"], 39)
-        self.assertEqual(outputs["screen_api_overload_count"], 31)
+        self.assertEqual(outputs["screen_api_overload_count"], 32)
         self.assertEqual(outputs["annotation_count"], 8)
         self.assertEqual(outputs["panel_scroll_animation_ms"], 120)
         self.assertEqual(outputs["password_reveal_ms"], 1000)
@@ -43,7 +43,7 @@ class GuiRuntimeDocumentationTests(unittest.TestCase):
         self.assertEqual(outputs["press_repeat_interval_ms"], 40)
         self.assertEqual(outputs["engine_authored_file_formats"], [])
         self.assertEqual(outputs["focused_native_test_files"], [])
-        self.assertEqual(self.model["summary"]["entry_count"], 82)
+        self.assertEqual(self.model["summary"]["entry_count"], 84)
 
     def test_type_hierarchy_members_and_callbacks_are_complete(self) -> None:
         types = {

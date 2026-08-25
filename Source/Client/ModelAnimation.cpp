@@ -35,6 +35,10 @@
 
 #if FO_ENABLE_3D
 
+// Ozz's SimdFloat4 is an attributed GCC vector type. GCC warns that the attribute is ignored when the
+// type is named as a span/vector template argument even though its intrinsic vector alignment is retained
+FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
+
 #include "ModelAnimationData.h"
 #include "ModelBakedData.h"
 
@@ -1158,7 +1162,7 @@ static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton
             throw ModelAnimationRuntimeException("Ozz skeleton has an invalid name for joint", context, joint);
         }
 
-        ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, joint), numeric_cast<size_t>(joint), context);
+        ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointRestPoseLocalSpace(skeleton, joint), numeric_cast<size_t>(joint), context);
     }
 }
 
@@ -1200,7 +1204,7 @@ static void ValidateModelAnimationRuntimeRestPose(const ModelAnimationRuntimeJoi
 {
     FO_STACK_TRACE_ENTRY();
 
-    mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, numeric_cast<int>(canonical_index)));
+    mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointRestPoseLocalSpace(skeleton, numeric_cast<int>(canonical_index)));
 
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
@@ -1703,5 +1707,7 @@ static auto ConvertModelAnimationRuntimeMatrix(const ozz::math::Float4x4& matrix
 }
 
 FO_END_NAMESPACE
+
+FO_GCC_IGNORE_WARNINGS_POP()
 
 #endif

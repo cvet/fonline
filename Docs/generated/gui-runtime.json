@@ -51,7 +51,7 @@
     "type_count": 12,
     "api_member_count": 160,
     "callback_signature_count": 39,
-    "screen_api_overload_count": 31,
+    "screen_api_overload_count": 32,
     "annotation_count": 8,
     "enum_values": {
       "GuiScreen": {
@@ -1120,6 +1120,24 @@
       ]
     },
     {
+      "id": "gui-runtime.screen-api.invalidate-hit-cache.no-args",
+      "name": "InvalidateHitCache",
+      "signature": "void InvalidateHitCache()",
+      "return_type": "void",
+      "parameters": [],
+      "stability": "experimental",
+      "requirement": "Invalidate the cached CheckHit result after a persistent GUI mutation not covered by the built-in setters.",
+      "rationale": "This callable is declared in the Gui.fos Public API section and implemented by the reusable screen runtime.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": [
+            "void InvalidateHitCache()"
+          ]
+        }
+      ]
+    },
+    {
       "id": "gui-runtime.screen-api.check-hit.ipos",
       "name": "CheckHit",
       "signature": "bool CheckHit(ipos pos)",
@@ -1605,6 +1623,23 @@
       ]
     },
     {
+      "id": "gui-runtime.input.hit-cache",
+      "name": "Per-frame hit-test cache",
+      "stability": "experimental",
+      "requirement": "Cache CheckHit for one Game.FrameTime and query position; invalidate it whenever active state, persistent geometry, screen order, scroll, crop, transparent-hit images, or hittability can change the result.",
+      "rationale": "Cursor drawing, zoom, and movement repeat the same query in one frame, while FindHit walks every active screen tree.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": [
+            "bool HitCacheValid = false;",
+            "void InvalidateHitCache()",
+            "if (HitCacheValid && HitCacheTime == Game.FrameTime && HitCachePos == pos)"
+          ]
+        }
+      ]
+    },
+    {
       "id": "gui-runtime.input.modal-and-close-on-miss",
       "name": "Modal and close-on-miss behavior",
       "stability": "experimental",
@@ -1905,18 +1940,18 @@
     }
   ],
   "summary": {
-    "entry_count": 82,
+    "entry_count": 84,
     "type_count": 12,
-    "screen_api_count": 31,
+    "screen_api_count": 32,
     "annotation_count": 8,
     "lifecycle_rule_count": 6,
     "layout_rule_count": 7,
-    "input_rule_count": 7,
+    "input_rule_count": 8,
     "integration_rule_count": 6,
     "validation_rule_count": 5,
     "entries_by_stability": {
-      "experimental": 82
+      "experimental": 84
     }
   },
-  "contract_digest": "437603ed47bec7614b368acf6b424a9c27d3d7e9fce56c5211c0fa4a30d1fdbd"
+  "contract_digest": "65d0e75c8b42abb333ff716cc4e1538e4cecf1beb129d9e535177b0d46ddad5e"
 }

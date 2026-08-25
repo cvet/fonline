@@ -61,7 +61,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         support = json.loads(self._read("BuildTools/SupportMatrix.json"))
         workflow = self._read(".github/workflows/validate.yml")
 
-        self.assertEqual(self._read("ThirdParty/emscripten").strip(), "6.0.3")
+        self.assertEqual(self._read("ThirdParty/emscripten").strip(), "6.0.8")
         self.assertIn("'web-packages': (\n\t\t'2',\n\t\t['nodejs', 'default-jre']", buildtools)
         self.assertIn("'web': ['emscripten']", buildtools)
         self.assertIn("return 'emsdk' if platform_name == 'web' else 'direct'", buildtools)

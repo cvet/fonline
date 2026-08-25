@@ -717,6 +717,9 @@ int asCContext::Prepare(asIScriptFunction *func)
 	// Release the returned object (if any)
 	CleanReturnObject();
 
+	// Make sure the engine is prepared. It may be that additional interface has been registered after the context was created
+	m_engine->PrepareEngine();
+
 	// Check if there has been a previous function prepared
 	if (m_initialFunction)
 	{
@@ -2282,6 +2285,11 @@ void asCContext::CallInterfaceMethod(asCScriptFunction *func)
 
 void asCContext::ExecuteNext()
 {
+#if defined(_MSC_VER) && defined(__clang__)
+// Disable the warning about use of HUGE_VAL
+#pragma GCC diagnostic ignored "-Wnan-infinity-disabled"
+#endif
+
 #if AS_USE_COMPUTED_GOTOS
 static const void *const dispatch_table[256] = {
 &&INSTRUCTION(asBC_PopPtr),		&&INSTRUCTION(asBC_PshGPtr),	&&INSTRUCTION(asBC_PshC4),		&&INSTRUCTION(asBC_PshV4),

@@ -519,7 +519,7 @@ float3 calcDirectionalLightDiffuseColor(float3 lightColor, float3 diffuseColor, 
 
 #endif
 
-fragment ShaderOutput2 main0 (ShaderInput2 i [[stage_in]], bool isFrontFace [[front_facing]], constant ShaderUniform2& u [[buffer(1)]]
+fragment ShaderOutput2 main0 (ShaderInput2 i [[stage_in]], bool metalFrontFace [[front_facing]], constant ShaderUniform2& u [[buffer(1)]]
 //$IN_TEX$
 )
 {
@@ -534,6 +534,8 @@ fragment ShaderOutput2 main0 (ShaderInput2 i [[stage_in]], bool isFrontFace [[fr
     float4 vcolor = i.v_VColor;
     float2 particleTime = i.v_ParticleTime;
     float3 objectScale = float3(1.0, 1.0, 1.0);
+    // Metal's front_facing result is opposite to DirectX for these material shaders.
+    bool isFrontFace = !metalFrontFace;
     float2 screenUV = i.v_PosP.xy / i.v_PosP.w;
 	float meshZ =  i.v_PosP.z / i.v_PosP.w;
     screenUV.xy = float2(screenUV.x + 1.0, screenUV.y + 1.0) * 0.5;
@@ -678,56 +680,9 @@ std::string GetElement(int32_t i)
 	return "";
 }
 
-bool IsVectorType(const std::string& type)
-{
-	return type == "float2" || type == "float3" || type == "float4";
-}
-
-std::unordered_map<std::string, std::string> CollectVariableTypes(const std::string& code)
-{
-	std::unordered_map<std::string, std::string> variableTypes;
-	const std::regex declarationPattern(R"(\b(float|float2|float3|float4)\s+([A-Za-z_]\w*)\s*=)");
-
-	for (auto it = std::sregex_iterator(code.begin(), code.end(), declarationPattern); it != std::sregex_iterator(); ++it)
-	{
-		variableTypes[(*it)[2].str()] = (*it)[1].str();
-	}
-
-	return variableTypes;
-}
-
 std::string AdaptBoolExpressions(std::string code)
 {
-	const auto variableTypes = CollectVariableTypes(code);
-	const std::regex boolComparePattern(R"(bool\s+([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*(<=|>=|<|>)\s*float\(([^,\(\)]*)\)\s*;)");
-
-	std::string result;
-	size_t last = 0;
-	for (auto it = std::sregex_iterator(code.begin(), code.end(), boolComparePattern); it != std::sregex_iterator(); ++it)
-	{
-		const auto match = *it;
-		const auto variable = match[2].str();
-		const auto variableType = variableTypes.find(variable);
-		if (variableType == variableTypes.end() || !IsVectorType(variableType->second))
-		{
-			continue;
-		}
-
-		result.append(code, last, match.position() - last);
-		result.append("bool ");
-		result.append(match[1].str());
-		result.append("=");
-		result.append(variable);
-		result.append(".x");
-		result.append(match[3].str());
-		result.append("float(");
-		result.append(match[4].str());
-		result.append(");");
-		last = match.position() + match.length();
-	}
-
-	result.append(code, last, std::string::npos);
-	return result;
+	return Effekseer::Shader::AdaptBoolCompareExpressions(code, {"float2", "float3", "float4"});
 }
 
 std::string GetUVReplacement(const std::string& varName, int stage)
@@ -745,6 +700,11 @@ std::string GetUVBackReplacement(const std::string& varName, int stage)
 void ExportUniform(std::ostringstream& maincode, int32_t type, const char* name)
 {
 	maincode << "  " << GetType(type) << " " << name << ";" << std::endl;
+}
+
+void ExportUniformArray(std::ostringstream& maincode, int32_t type, const char* name, int32_t count)
+{
+	maincode << "  " << GetType(type) << " " << name << "[" << count << "];" << std::endl;
 }
 
 void ExportTexture(std::ostringstream& maincode, const char* name, int& index)
@@ -871,14 +831,14 @@ void ExportMain(
 		if (materialFile->GetCustomData1Count() > 0)
 		{
 			maincode << GetType(materialFile->GetCustomData1Count()) + " customData1 = ";
-			maincode << (isSprite ? "i.atCustomData1" : "u.customData1") + GetElement(materialFile->GetCustomData1Count()) + ";\n";
+			maincode << (isSprite ? "i.atCustomData1" : "u.customData1[instanceIndex]") + GetElement(materialFile->GetCustomData1Count()) + ";\n";
 			maincode << "o.v_CustomData1 = customData1" + GetElement(materialFile->GetCustomData1Count()) + ";\n";
 		}
 
 		if (materialFile->GetCustomData2Count() > 0)
 		{
 			maincode << GetType(materialFile->GetCustomData2Count()) + " customData2 = ";
-			maincode << (isSprite ? "i.atCustomData2" : "u.customData2") + GetElement(materialFile->GetCustomData2Count()) + ";\n";
+			maincode << (isSprite ? "i.atCustomData2" : "u.customData2[instanceIndex]") + GetElement(materialFile->GetCustomData2Count()) + ";\n";
 			maincode << "o.v_CustomData2 = customData2" + GetElement(materialFile->GetCustomData2Count()) + ";\n";
 		}
 
@@ -951,11 +911,11 @@ ShaderData GenerateShader(MaterialFile* materialFile, MaterialShaderType shaderT
 		{
 			if (materialFile->GetCustomData1Count() > 0)
 			{
-				ExportUniform(userUniforms, 4, "customData1");
+				ExportUniformArray(userUniforms, 4, "customData1", 40);
 			}
 			if (materialFile->GetCustomData2Count() > 0)
 			{
-				ExportUniform(userUniforms, 4, "customData2");
+				ExportUniformArray(userUniforms, 4, "customData2", 40);
 			}
 		}
 

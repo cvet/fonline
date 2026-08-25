@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-gui-runtime-screen-api","locale":"ru","source_path":"Docs/en/reference/gui-runtime/screen-api.md","source_sha256":"a5e93e4aaa2ecdc9c81bf9ad230362186e9a327e8095636c0f041d7860199981"} -->
+<!-- docs-translation: {"document_id":"generated-gui-runtime-screen-api","locale":"ru","source_path":"Docs/en/reference/gui-runtime/screen-api.md","source_sha256":"0ae1662073c793c717af1eef5e25e11c19f9b94f4912049c765430b453b11e67"} -->
 
 # API экранов GUI
 
@@ -44,6 +44,7 @@ generated: true
 | <a id="entry-gui-runtime-screen-api-is-console-active-object-3681191cb1"></a><code>gui-runtime.screen-api.is-console-active.object</code> | <code>bool IsConsoleActive(Object obj)</code> | Сообщает, существует ли активная Console глобально или в одном поддереве. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
 | <a id="entry-gui-runtime-screen-api-add-drag-and-drop-handler-drag-and-drop-handler-07c647b4ea"></a><code>gui-runtime.screen-api.add-drag-and-drop-handler.drag-and-drop-handler</code> | <code>void AddDragAndDropHandler(DragAndDropHandler handler)</code> | Добавляет handler, проверяемый в порядке регистрации после mouse release перетаскиваемого объекта. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
 | <a id="entry-gui-runtime-screen-api-set-drop-menu-idrop-menu-7a6845d0e2"></a><code>gui-runtime.screen-api.set-drop-menu.idrop-menu</code> | <code>void SetDropMenu(IDropMenu dropMenu)</code> | Устанавливает необязательный внешний адаптер ввода и отрисовки drop-menu. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
+| <a id="entry-gui-runtime-screen-api-invalidate-hit-cache-no-args-3171f5f751"></a><code>gui-runtime.screen-api.invalidate-hit-cache.no-args</code> | <code>void InvalidateHitCache()</code> | Сбрасывает кэшированный результат CheckHit после постоянного изменения GUI, не охваченного встроенными setters. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
 | <a id="entry-gui-runtime-screen-api-check-hit-ipos-857d618c0c"></a><code>gui-runtime.screen-api.check-hit.ipos</code> | <code>bool CheckHit(ipos pos)</code> | Сообщает, содержит ли дерево любого активного экрана hittable-узел в указанной позиции. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
 | <a id="entry-gui-runtime-screen-api-is-modal-screen-active-no-args-1c91cd931a"></a><code>gui-runtime.screen-api.is-modal-screen-active.no-args</code> | <code>bool IsModalScreenActive()</code> | Сообщает, является ли какой-либо активный экран модальным. | [Source/Scripting/AngelScript/CoreScripts/Gui.fos](https://github.com/cvet/fonline/blob/master/Source/Scripting/AngelScript/CoreScripts/Gui.fos) |
 

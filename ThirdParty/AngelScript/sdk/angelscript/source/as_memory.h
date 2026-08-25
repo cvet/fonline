@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2025 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -84,7 +84,7 @@ bool isAligned(const void* const pointer, asUINT alignment);
 
 #else
 
-	#ifdef __GNUC__
+	#if defined(__GNUC__) || defined(__clang__)
 	// Disable the warning about casting to incompatible function type
 	// This is a bit of a hack, but it works perfectly because we're just passing
 	// a couple of primitives extra, and the called function can safely ignore them if not needed

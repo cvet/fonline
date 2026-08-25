@@ -326,6 +326,15 @@ registration order until one handles the target.
 `CheckTransparentOnHit` uses sprite alpha for panel self-hit testing. It does
 not make arbitrary child geometry transparent.
 
+`CheckHit` caches its boolean result for one `Game.FrameTime` and query point,
+because cursor drawing, zoom, and movement can ask for the same point while
+`FindHit` walks every screen tree. Changes to active state, persistent geometry,
+screen order, scroll, crop, transparent-hit images, or hittability invalidate
+the cache. Resolution and language refresh invalidate through
+`_RefreshPositionRecursive`. `_Move` itself remains non-invalidating because
+`Draw` temporarily moves objects each frame; direct persistent-layout callers
+invalidate explicitly.
+
 ## Keyboard and focus
 
 Key down dispatch order is:

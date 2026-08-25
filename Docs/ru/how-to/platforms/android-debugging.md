@@ -6,7 +6,7 @@ document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"0bf03c58c6aaee97beb3359b3cf58e2e1cbc5c78f9a84ea484df4821f535c81f"} -->
+<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"a69b76f9905b4d5e5b9182e6adcaa1d4915ccb4fc92a600aa280814721c29020"} -->
 
 # Сборка, упаковка и отладка FOnline на Android
 
@@ -68,7 +68,7 @@ bash Engine/BuildTools/prepare-workspace.sh android-packages android-arm64
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-sdk android-ndk
 ```
 
-`prepare-workspace.sh android-arm64` является эквивалентным host wrapper для второго маршрута. Текущие descriptors выбирают Android SDK command-line tools `14742923`, NDK `r29` и native API level `23`. Подготовка SDK принимает лицензии и устанавливает `platform-tools`, build-tools `34.0.0` и platform `android-35` в `Workspace/android-sdk`; NDK устанавливается в `Workspace/android-ndk`.
+`prepare-workspace.sh android-arm64` является эквивалентным host wrapper для второго маршрута. Текущие descriptors выбирают Android SDK command-line tools `15859902`, NDK `r29` и native API level `23`. Подготовка SDK вызывает интерфейс `android sdk install` закреплённого пакета с отключёнными metrics и устанавливает `platform-tools`, build-tools `36.0.0` и platform `android-35` в `Workspace/android-sdk`; устаревший путь `sdkmanager` не используется. NDK устанавливается в `Workspace/android-ndk`.
 
 BuildTools разрешает расположение SDK/NDK в таком порядке:
 
@@ -130,7 +130,7 @@ cd Workspace/android-debug/<ProjectDevName>-Client-<Config>-Android
 ./gradlew --no-daemon assembleDebug
 ```
 
-Обычный результат находится в `app/build/outputs/apk/debug/app-debug.apk`. Текущий шаблон использует Gradle 8.12 и Android Gradle Plugin 8.7.3, фильтрует native libraries по списку упакованных ABI, не сжимает ZIP assets и использует legacy JNI library packaging. Manifest требует OpenGL ES 3.0 и объявляет permissions для Internet, network state и vibration; touchscreen, gamepad, Bluetooth, USB host и pointer features уровня PC опциональны.
+Обычный результат находится в `app/build/outputs/apk/debug/app-debug.apk`. Текущий шаблон использует Gradle 9.5.0, Android Gradle Plugin 9.3.0 и Java language level 17, фильтрует native libraries по списку упакованных ABI, не сжимает ZIP assets и использует legacy JNI library packaging. Manifest требует OpenGL ES 3.0 и объявляет permissions для Internet, network state и vibration; touchscreen, gamepad, Bluetooth, USB host и pointer features уровня PC опциональны.
 
 В шаблоне задано `lint.abortOnError = false`. Поэтому сборка APK не является gate для lint, policy, privacy, vulnerabilities или готовности к магазину. Добавляйте project-owned lint и release checks и не считайте `assembleDebug` production-приёмкой.
 

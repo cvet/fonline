@@ -58,9 +58,9 @@ class AndroidDebuggingDocumentationTests(unittest.TestCase):
         self.assertIn("'android-arm32': 'armeabi-v7a'", buildtools)
         self.assertIn("'android-arm64': 'arm64-v8a'", buildtools)
         self.assertIn("'android-x86': 'x86'", buildtools)
-        self.assertIn("'build-tools;34.0.0'", buildtools)
-        self.assertIn("'platforms;android-35'", buildtools)
-        self.assertEqual(self._read("ThirdParty/android-sdk").strip(), "14742923")
+        self.assertIn("'build-tools/36.0.0'", buildtools)
+        self.assertIn("'platforms/android-35'", buildtools)
+        self.assertEqual(self._read("ThirdParty/android-sdk").strip(), "15859902")
         self.assertEqual(self._read("ThirdParty/android-ndk").strip(), "android-ndk-r29")
         self.assertEqual(self._read("ThirdParty/android-api").strip(), "23")
 

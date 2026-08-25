@@ -69,9 +69,9 @@ The current contract was re-derived from:
 - the GLM, ImGui, small-vector, and ufbx visualizers under `ThirdParty/`;
 - `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `ExceptionHandling.*`, and `Logging.cpp`;
 - `Source/Common/DiagnosticSelfTest.cpp` and `Source/Frontend/ApplicationInit.cpp`;
-- `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, and `AngelScriptDebugger.*`;
+- `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, `AngelScriptGlobals.cpp`, `AngelScriptHelpers.cpp`, and `AngelScriptDebugger.*`;
 - `Source/Common/Settings.inc`;
-- `Source/Tests/Test_StackTrace.cpp` and `Test_ExceptionHandling.cpp`;
+- `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp`, and `Test_ScriptBuiltins.cpp`;
 - `BuildTools/angelscript-debugger/package.json` and its TypeScript sources;
 - exact project snapshots in `BuildTools/ExternalProjectEvidence.json`.
 
@@ -83,7 +83,7 @@ The current contract was re-derived from:
 | Linux native | Debug information outside `MinSizeRel`, `-rdynamic`, GDB/LLDB-compatible binaries, `/proc/self/status` debugger detection, signal/terminate diagnostics | Core-dump enablement, collection, symbol storage, container permissions, and retention are host/project policy. |
 | macOS native | Debug information outside `MinSizeRel`, `-rdynamic`, `sysctl(P_TRACED)` detection, debug trap, backward-cpp signal diagnostics | No checked Engine LLDB launch profile, crash-report archive, or release qualification is supplied. |
 | AngelScript runtime | Loopback-by-default TCP endpoint, UDP discovery, line breakpoints, pause/continue/step, script stack, read-only local values, stop/abort/error events | No authentication, encryption, published VSIX, pinned adapter dependency lock, live endpoint CI, global-value inspection, expression evaluation, or state mutation contract. |
-| Mixed stack in logs | Script layers plus native frames, origin/catch distinction, safe crash-path output and process-local resolution cache | Native symbol quality depends on the exact binary, libraries, debug data, platform unwinder, and execution mode. MemorySanitizer disables native stack capture. |
+| Mixed stack in logs | Script layers plus native frames, origin/catch distinction, safe crash-path output and process-local resolution cache | Native symbol quality depends on the exact binary, libraries, debug data, platform unwinder, and execution mode. MemorySanitizer and ThreadSanitizer disable native stack capture. |
 
 `Source/Tests` validates stack and exception primitives. It does not currently exercise a real TCP/UDP AngelScript attach session. Project static checks and launch profiles prove integration shape, not the live protocol end to end.
 
@@ -145,7 +145,7 @@ Use [Testing](../contributing/testing/) for the exact sanitizer matrix. The main
 - MSVC supplies `San_Address` and `Debug_San_Address`;
 - native Clang supplies Address, Memory, Memory-with-origins, Undefined, Thread, DataFlow, and Address+Undefined configurations where the toolchain supports them;
 - AddressSanitizer, MemorySanitizer, and code-coverage builds switch AngelScript to `AS_MAX_PORTABILITY` so native call trampolines do not defeat instrumentation or terminate while an instrumented frame unwinds a registered-function exception;
-- MemorySanitizer builds compile the stack/exception layer with `HAS_NATIVE_TRACE=0`; expect sanitizer diagnostics, not the normal native mixed-stack contract;
+- MemorySanitizer and ThreadSanitizer builds compile the stack/exception layer with `HAS_NATIVE_TRACE=0`; expect sanitizer diagnostics, not the normal native mixed-stack contract;
 - sanitizer timing, allocation, stack size, and calling-convention behavior differ from a release build, so reproduce the original configuration as well.
 
 ## Native debugging
@@ -163,6 +163,8 @@ Use [Testing](../contributing/testing/) for the exact sanitizer matrix. The main
 ### Exceptions, assertions, and memory failures
 
 `ReportExceptionAndContinue` records a non-fatal caught exception. `ReportExceptionAndExit` and strong assertions record diagnostics and terminate or break according to their contract. The exception-safety tier model and entity-lifecycle throw-as-signal rules live in [Exception Safety](../contributing/coding-contracts/exception-safety.md).
+
+AngelScript `throw(...)` and `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, entity name, runtime id, and proto id, or `<none>` when no proto exists, so production exceptions identify the involved objects instead of reporting only a base type such as `Critter` or `AbstractItem`. Primitive, enum, string, and null context values keep their compact representation. `Test_ScriptBuiltins.cpp` pins this entity context through the real global `throw` binding.
 
 Use break-on-throw carefully. AngelScript bindings and engine lifecycle code can throw as part of an intentional reporting path. Start from the log's fixed message and context parameters, then place a focused breakpoint at the owning invariant or reporter. For memory corruption, prioritize ASan/MSan/UBSan/TSan evidence and the first invalid access over a later secondary assertion.
 

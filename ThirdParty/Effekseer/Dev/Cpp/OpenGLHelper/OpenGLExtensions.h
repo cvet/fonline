@@ -51,6 +51,10 @@ typedef char GLchar;
 #define GL_DEBUG_TYPE_PORTABILITY 0x824F
 #endif
 
+#ifndef GL_DEBUG_TYPE_ERROR
+#define GL_DEBUG_TYPE_ERROR 0x824C
+#endif
+
 #ifndef GL_DEBUG_TYPE_OTHER
 #define GL_DEBUG_TYPE_OTHER 0x8251
 #endif

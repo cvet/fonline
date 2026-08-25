@@ -93,6 +93,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-gui-runtime-screen-api-set-drop-menu-idrop-menu-7a6845d0e2"></a>
 - [`entry-gui-runtime-screen-api-set-drop-menu-idrop-menu-7a6845d0e2`](../../en/reference/gui-runtime/screen-api.md#entry-gui-runtime-screen-api-set-drop-menu-idrop-menu-7a6845d0e2)
 
+<a id="entry-gui-runtime-screen-api-invalidate-hit-cache-no-args-3171f5f751"></a>
+- [`entry-gui-runtime-screen-api-invalidate-hit-cache-no-args-3171f5f751`](../../en/reference/gui-runtime/screen-api.md#entry-gui-runtime-screen-api-invalidate-hit-cache-no-args-3171f5f751)
+
 <a id="entry-gui-runtime-screen-api-check-hit-ipos-857d618c0c"></a>
 - [`entry-gui-runtime-screen-api-check-hit-ipos-857d618c0c`](../../en/reference/gui-runtime/screen-api.md#entry-gui-runtime-screen-api-check-hit-ipos-857d618c0c)
 

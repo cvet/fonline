@@ -75,9 +75,19 @@ bool GpuParticleSystem::InitSystem(const Settings& settings)
 	shaders.RsParticleRender = graphics->CreateShaderFromBinary(
 		ShaderData(VS_ParticleRender), ShaderSize(VS_ParticleRender), ShaderData(PS_ParticleRender), ShaderSize(PS_ParticleRender));
 
-	SetShaders(shaders);
+	if (shaders.CsParticleClear == nullptr || shaders.CsParticleSpawn == nullptr || shaders.CsParticleUpdate == nullptr ||
+		shaders.RsParticleRender == nullptr)
+	{
+		return false;
+	}
 
-	return true;
+	if (!SetShaders(shaders))
+	{
+		return false;
+	}
+
+	EffekseerRenderer::GpuParticles::PipelineStateKey renderKey{};
+	return GetOrCreatePipelineState(renderKey) != nullptr;
 }
 
 } // namespace EffekseerRendererDX11

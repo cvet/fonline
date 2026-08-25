@@ -47,7 +47,7 @@
     "type_count": 12,
     "api_member_count": 160,
     "callback_signature_count": 39,
-    "screen_api_overload_count": 31,
+    "screen_api_overload_count": 32,
     "annotation_count": 8,
     "enum_values": {
       "GuiScreen": {
@@ -161,6 +161,7 @@
     "IsConsoleActive": "Report whether any active Console exists globally or under one subtree.",
     "AddDragAndDropHandler": "Append a handler evaluated in registration order after a dragged mouse release.",
     "SetDropMenu": "Install the optional external drop-menu input and drawing adapter.",
+    "InvalidateHitCache": "Invalidate the cached CheckHit result after a persistent GUI mutation not covered by the built-in setters.",
     "CheckHit": "Report whether any active screen tree contains a hittable node at a position.",
     "IsModalScreenActive": "Report whether any active screen is modal."
   },
@@ -375,6 +376,19 @@
         {
           "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
           "anchors": ["Screen? screen = GetActiveScreen();", "for (int i = _Children.length() - 1; i >= 0; i--)", "FindMouseHit"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.input.hit-cache",
+      "name": "Per-frame hit-test cache",
+      "stability": "experimental",
+      "requirement": "Cache CheckHit for one Game.FrameTime and query position; invalidate it whenever active state, persistent geometry, screen order, scroll, crop, transparent-hit images, or hittability can change the result.",
+      "rationale": "Cursor drawing, zoom, and movement repeat the same query in one frame, while FindHit walks every active screen tree.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["bool HitCacheValid = false;", "void InvalidateHitCache()", "if (HitCacheValid && HitCacheTime == Game.FrameTime && HitCachePos == pos)"]
         }
       ]
     },

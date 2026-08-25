@@ -1056,6 +1056,78 @@
       "release_note": "Document Panel.CropContent and retain SetCropContent examples for imperative clipping changes.",
       "compatibility": "This is an additive script member but changes strict generated contract identity. GUI sources, generated bindings, and Engine binaries should be distributed as one revision.",
       "owner": "runtime-gui"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0273a08a253b7e10",
+      "baseline_contract_sha256": "63c81e3102fc86fbcbbd376d21ddcf951a7eb6f5cd2c189f5396d5bd931a8137",
+      "current_contract_sha256": "1c5e27ee3da7ee12fe517bade01def61a5f7de468843dab1f59a4b8ca7e1b845",
+      "classification": "breaking",
+      "rationale": "The ImGui 1.92.9b update renumbers DefaultOptions from 177209344 to 311427072 while preserving its symbolic color-editor meaning. The generated script enum intentionally follows the bundled ImGui ABI.",
+      "migration": "Use ImGui_ColorEditFlags.DefaultOptions instead of a copied integer. Rebuild generated bindings and replace persisted or externally supplied numeric flag masks with values produced by the updated symbolic enum.",
+      "release_note": "Record the ImGui enum renumbering and regenerated script API with the third-party update for this Engine revision.",
+      "compatibility": "Symbolic script source remains valid after recompilation. Raw, persisted, or cross-revision numeric flag masks are not compatible and must not be exchanged between revisions.",
+      "owner": "runtime-gui"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.a56ec35aa2f4ae87",
+      "baseline_contract_sha256": "63c81e3102fc86fbcbbd376d21ddcf951a7eb6f5cd2c189f5396d5bd931a8137",
+      "current_contract_sha256": "1c5e27ee3da7ee12fe517bade01def61a5f7de468843dab1f59a4b8ca7e1b845",
+      "classification": "breaking",
+      "rationale": "The ImGui 1.92.9b update renumbers InputHSV from 268435456 to 536870912 while preserving its symbolic color-input meaning. The generated script enum intentionally follows the bundled ImGui ABI.",
+      "migration": "Use ImGui_ColorEditFlags.InputHSV instead of a copied integer. Rebuild generated bindings and replace persisted or externally supplied numeric flag masks with values produced by the updated symbolic enum.",
+      "release_note": "Record the ImGui enum renumbering and regenerated script API with the third-party update for this Engine revision.",
+      "compatibility": "Symbolic script source remains valid after recompilation. Raw, persisted, or cross-revision numeric flag masks are not compatible and must not be exchanged between revisions.",
+      "owner": "runtime-gui"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.9f30cb5434c623c3",
+      "baseline_contract_sha256": "63c81e3102fc86fbcbbd376d21ddcf951a7eb6f5cd2c189f5396d5bd931a8137",
+      "current_contract_sha256": "1c5e27ee3da7ee12fe517bade01def61a5f7de468843dab1f59a4b8ca7e1b845",
+      "classification": "breaking",
+      "rationale": "The ImGui 1.92.9b update renumbers InputRGB from 134217728 to 268435456 while preserving its symbolic color-input meaning. The generated script enum intentionally follows the bundled ImGui ABI.",
+      "migration": "Use ImGui_ColorEditFlags.InputRGB instead of a copied integer. Rebuild generated bindings and replace persisted or externally supplied numeric flag masks with values produced by the updated symbolic enum.",
+      "release_note": "Record the ImGui enum renumbering and regenerated script API with the third-party update for this Engine revision.",
+      "compatibility": "Symbolic script source remains valid after recompilation. Raw, persisted, or cross-revision numeric flag masks are not compatible and must not be exchanged between revisions.",
+      "owner": "runtime-gui"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.3665e7926b7cf3bc",
+      "baseline_contract_sha256": "63c81e3102fc86fbcbbd376d21ddcf951a7eb6f5cd2c189f5396d5bd931a8137",
+      "current_contract_sha256": "1c5e27ee3da7ee12fe517bade01def61a5f7de468843dab1f59a4b8ca7e1b845",
+      "classification": "breaking",
+      "rationale": "The ImGui 1.92.9b update inserts new style variables and moves ButtonTextAlign from ordinal 36 to 38 while preserving the symbolic style selector. The generated script enum intentionally follows the bundled ImGui ABI.",
+      "migration": "Use ImGui_StyleVar.ButtonTextAlign instead of a copied ordinal. Rebuild generated bindings and replace persisted or externally supplied numeric style-variable identifiers with values from the updated symbolic enum.",
+      "release_note": "Record the ImGui style-variable renumbering and regenerated script API with the third-party update for this Engine revision.",
+      "compatibility": "Symbolic script source remains valid after recompilation. Raw, persisted, or cross-revision numeric style-variable identifiers are not compatible and must not be exchanged between revisions.",
+      "owner": "runtime-gui"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.e02d07ab52b1988a",
+      "baseline_contract_sha256": "63c81e3102fc86fbcbbd376d21ddcf951a7eb6f5cd2c189f5396d5bd931a8137",
+      "current_contract_sha256": "1c5e27ee3da7ee12fe517bade01def61a5f7de468843dab1f59a4b8ca7e1b845",
+      "classification": "breaking",
+      "rationale": "The ImGui 1.92.9b update inserts new style variables and moves SelectableTextAlign from ordinal 37 to 39 while preserving the symbolic style selector. The generated script enum intentionally follows the bundled ImGui ABI.",
+      "migration": "Use ImGui_StyleVar.SelectableTextAlign instead of a copied ordinal. Rebuild generated bindings and replace persisted or externally supplied numeric style-variable identifiers with values from the updated symbolic enum.",
+      "release_note": "Record the ImGui style-variable renumbering and regenerated script API with the third-party update for this Engine revision.",
+      "compatibility": "Symbolic script source remains valid after recompilation. Raw, persisted, or cross-revision numeric style-variable identifiers are not compatible and must not be exchanged between revisions.",
+      "owner": "runtime-gui"
+    },
+    {
+      "domain": "gui-runtime",
+      "change_id": "gui-runtime-change.model-contract.32f0e2952bfd74b5",
+      "baseline_contract_sha256": "3c4b92207b174f307d0d3a1f138b6203995bf1ec09dcc380cc7714af2cda011a",
+      "current_contract_sha256": "31159541c770ec76a935e1d1e1b9d58a3cab5383678e0a3863f135c363fe87a6",
+      "classification": "breaking",
+      "rationale": "The GUI runtime contract now includes InvalidateHitCache, increasing the modeled screen API overload count from 31 to 32. It accompanies the new per-frame CheckHit cache and exposes the explicit invalidation path for persistent mutations outside built-in setters.",
+      "migration": "Regenerate GUI contract artifacts. Existing GUI sources require no rewrite; code that directly mutates persistent hit-test inputs outside the built-in setters must call InvalidateHitCache after the mutation.",
+      "release_note": "Document the per-frame CheckHit cache, its automatic invalidation boundaries, and the InvalidateHitCache escape hatch in the GUI runtime guide and generated reference.",
+      "compatibility": "The callable is additive at runtime, but strict model consumers see a contract digest and overload-count change. GUI sources, generated bindings, and Engine binaries should be distributed as one revision.",
+      "owner": "runtime-gui"
     }
   ]
 }

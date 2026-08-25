@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/testing/
 
 # Тестирование
 
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"8f2a1bc129a0c7bdd1c681b53b9c080734eea8d9d4b67b2bde0351ee756e9333"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"2f2acd565f0502fc6195c5377a53eef81e08e4888be28bafd98b835547f4935e"} -->
 
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
@@ -110,8 +110,10 @@ Workflow `validate.yml` выполняет их матрицей `unit-tests-san
 инструментированных `libc++`, `libc++abi`, `libunwind` и передает
 `FO_MSAN_LIBCXX_ROOT`. Узкий libunwind ignorelist не дает unwinding-у исключений
 самому срабатывать на ABI snapshots. Native stack capture и backward-cpp signal
-handler отключаются под `FO_MEMORY_SANITIZER`, чтобы fatal reports принадлежали
-MSan. Более медленный `unit-tests-san-memory-with-origins` предназначен для
+handler отключаются под MSan и TSan, чтобы reports принадлежали runtimes
+sanitizer; кроме того, symbolization backward-cpp/libbfd под TSan приводит к
+неприемлемому росту shadow memory. Более медленный
+`unit-tests-san-memory-with-origins` предназначен для
 локальной диагностики. `San_DataFlow` не подключен: DataFlowSanitizer является
 taint framework, а не общим defect detector.
 

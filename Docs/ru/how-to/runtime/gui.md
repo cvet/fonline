@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/runtime/gui.html
 
 # Среда выполнения GUI
 
-<!-- docs-translation: {"document_id":"gui-runtime-guide","locale":"ru","source_path":"Docs/en/how-to/runtime/gui.md","source_sha256":"3f9384fbc9cad4dec19735aac4a96dda66a8aa956ab5c7e28e93e10680998183"} -->
+<!-- docs-translation: {"document_id":"gui-runtime-guide","locale":"ru","source_path":"Docs/en/how-to/runtime/gui.md","source_sha256":"253f434180315b1fc1221e466e0b7c1d089c52abfa3f5b5c68b60d052b879c88"} -->
 
 > Документация, принадлежащая движку. Эта страница описывает переиспользуемую
 > клиентскую среду выполнения GUI на AngelScript в
@@ -341,6 +341,15 @@ drag/drop handlers в порядке регистрации, пока один �
 
 `CheckTransparentOnHit` использует alpha спрайта для self-hit testing панели.
 Он не делает произвольную геометрию потомков прозрачной.
+
+`CheckHit` кеширует boolean result для одного `Game.FrameTime` и query point,
+поскольку cursor drawing, zoom и movement могут обращаться к одной точке, пока
+`FindHit` обходит все screen trees. Изменения active state, persistent geometry,
+screen order, scroll, crop, transparent-hit images и hittability инвалидируют
+cache. Refresh resolution и language инвалидирует через
+`_RefreshPositionRecursive`. Сам `_Move` не инвалидирует, поскольку `Draw`
+временно перемещает объекты каждый frame; direct callers для persistent layout
+инвалидируют явно.
 
 ## Клавиатура и фокус
 

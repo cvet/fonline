@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"3f5e36d21a0813c27bb70b93eb87afcc1ae22bb4f799f4d48de8fa8aa27d0e49"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"f3cda22e699c6e4ef15b1a20fe51e6c422749adc5f7aef1040f07851ad7151b3"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -555,12 +555,16 @@ directory при первом запуске после установки ил�
 
 Версия Android SDK command-line tools фиксируется
 `Engine/ThirdParty/android-sdk` и устанавливается в `Workspace/android-sdk`.
+BuildTools использует интерфейс `android sdk install` этого пакета с отключённой
+метрикой; устаревший путь через `sdkmanager` не используется.
 
 Версия Android NDK фиксируется `Engine/ThirdParty/android-ndk` и
 устанавливается в `Workspace/android-ndk`.
 
-Шаблон Gradle project находится в `Engine/BuildTools/android-project/` и
-использует tokens `$PLACEHOLDER$`, которые `package.py` заменяет при packaging.
+Шаблон Gradle project находится в `Engine/BuildTools/android-project/`, фиксирует
+Android Gradle Plugin 9.3.0 с Gradle 9.5.0, компилирует исходники Java на уровне
+языка 17 и использует tokens `$PLACEHOLDER$`, которые `package.py` заменяет при
+packaging.
 Значения Android configuration поступают из authored root и выбранного
 `SubConfig`; build-host directives `$ENV`/`$FILE` и
 `$TARGET_ENV`/`$TARGET_FILE` разрешаются только при packaging, поэтому overrides

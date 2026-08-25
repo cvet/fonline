@@ -311,6 +311,8 @@ Moving 2D critters keep logical path/hex progress in `MovingContext` while `Crit
 
 Map light source intensity is authored as a percentage magnitude (`0..100`, with negative values keeping the same magnitude but opting into constant/personal capacity semantics). `MapView` clamps the current animated percentage, converts it to an internal raw falloff scale (`0..10000`), and then scales light-map RGB to the engine light range (`0..200`) and primitive alpha to `0..255` through the source's day-light capacity percentage. `SetDayColors()` must invalidate applied light fans when either the day color or the light-capacity percentage changes, because both feed cached per-hex lighting.
 
+`GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`, so `RebuildMapOffset()` moves every light vertex by the same pixel delta when the view origin scrolls. `MapView` translates cached `_lightPoints` by that delta instead of rebuilding every fan. Hiding the last visible hex of a light still forces a primitive rebuild to remove leftover triangles, while lights entering the view reapply their fans and rebuild normally. `Test_Geometry.cpp` pins the uniform-translation identity.
+
 The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
 ## Resources, sprites, effects, and render targets

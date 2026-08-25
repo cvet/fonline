@@ -4,6 +4,7 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- .agents/
 - .evergreen/
 - .github/
 - build/.gitignore
@@ -42,6 +43,8 @@ Removed paths:
 - .lsan-suppressions
 - .tsan-suppressions
 - .ubsan-suppressions
+- AGENTS.md
+- CLAUDE.md
 - CONTRIBUTING.md
 - cyclonedx.sbom.json
 - Earthfile

@@ -2,6 +2,66 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-08-25 - master reconciliation through `5440adeeec`
+
+Scope:
+
+- Reconciled documentation branch head
+  `04cf9f9c8b616e6e2cd5fd915a7efdb017c39be1` with Engine `origin/master`
+  through `5440adeeec07eb16d5cb0e2ed6eb1f32e71c482b`.
+- Audited the complete three-commit incoming range: the third-party/toolchain
+  refresh, richer AngelScript entity error context, and client map-light plus
+  GUI hit-test caching optimizations.
+- Reviewed all incoming non-vendored BuildTools, source, test, and legacy-doc
+  changes. Vendored dependency revisions remain owned by their upstream
+  snapshots and the canonical third-party inventory.
+
+Documentation and contract reconciliation:
+
+- Updated the bilingual Android workflow for command-line tools `15859902`,
+  `android sdk install`, build-tools 36.0.0, Gradle 9.5.0, Android Gradle
+  Plugin 9.3.0, and Java 17; updated the Web workflow for Emscripten 6.0.8.
+- Documented sanitizer stack-reporting limits, expanded entity exception
+  context, map-light translation during scrolling, exact hex-offset geometry,
+  and the per-frame GUI `CheckHit` cache with its explicit
+  `InvalidateHitCache` escape hatch.
+- Recorded the exact third-party snapshot revision/date for the AngelScript WIP
+  fork and reconciled the BuildTools English/Russian entry point.
+- Regenerated the native API and 21 API reference pages. The aggregate contract
+  comparison against the pre-merge documentation head records nine changes
+  across eighteen domains: five ImGui enum-value renumberings, one description
+  update, the GUI model digest/count change, and two additive GUI cache entries.
+  All six required dispositions are owner-reviewed with zero missing.
+- Completed all 4,953 generated-description translations and refreshed the
+  bilingual localization, snippets, site/search, route, deterministic AI, and
+  AI-delivery artifacts in dependency order.
+
+Validation:
+
+- The first focused pass exposed five stale upstream expectations; after
+  reconciling Android retry arguments, Android pins, GUI counts, and translation
+  counts, the focused documentation set passed 113 tests and 37 subtests.
+- The first complete discovery passed 606 tests with one skip and 129 subtests,
+  and exposed three additional stale expectations: the description total, the
+  renamed portable-script CMake expression, and the Emscripten pin. Their
+  corrected focused set passes 10/10.
+- The final complete discovery on the regenerated tree passes 609 tests with
+  one skip and 129 subtests in 892 seconds.
+- External snippet parsing passes 310/310 normative snippets, 159 evidence
+  blocks, and 183 Bash/PowerShell checks. Deterministic AI evaluation passes 27
+  tasks and 65 retrieval checks at 100 percent success and 0.915 MRR.
+
+Disposition:
+
+- The incoming source behavior is documented without introducing a new Engine
+  runtime feature on the documentation branch. The only post-merge BuildTools
+  source edit corrects an obsolete `sdkmanager` comment; the remaining
+  reconciliation changes are documentation models, generated artifacts, and
+  regression expectations.
+- Native compilation and platform packaging are left to the current-head CI
+  matrix because this checkout reconciliation does not modify the incoming C++
+  implementation or vendored payloads.
+
 ## 2026-08-24 - docs-only contract and clean-checkout validation reconciliation
 
 Scope:

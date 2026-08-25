@@ -6,7 +6,7 @@ document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"45a5732b66e4b5b7dacfa5979063f6c1a1748861dcc8241b05b400aa0071f0c7"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"2343681bdb6a8074345a94d32a7306599e16dbc10433659caf331fad4eefa63a"} -->
 
 # Сборка, упаковка и отладка FOnline в браузере
 
@@ -46,7 +46,7 @@ Web-доставка имеет четыре отдельных слоя evidenc
 
 | Слой | Текущие evidence Engine | Что доказано | Что остаётся проекту |
 |---|---|---|---|
-| Toolchain | pin Emscripten `6.0.3` и workspace preparer | Воспроизводимый выбранный SDK input | Host image, cache, mirrors и восстановление после сбоев |
+| Toolchain | pin Emscripten `6.0.8` и workspace preparer | Воспроизводимый выбранный SDK input | Host image, cache, mirrors и восстановление после сбоев |
 | Build | обязательный CI lane `web-client` на Ubuntu 24.04 | Браузерный клиент компилируется и линкуется в `Web-wasm` | Game bake, пакет, сервер и поведение браузера |
 | Renderer | строго WebGL 2; Vulkan и SDL_GPU исключены | Скомпилированный графический контракт | Матрица браузер/GPU/driver и видимая корректность |
 | Package | Web `Client` + `wasm`, ресурсы обязательны | Можно выпустить штатный shell, patched wasm и preloaded resources | Публичный хостинг и неизменяемый release artifact |
@@ -57,7 +57,7 @@ Web-доставка имеет четыре отдельных слоя evidenc
 
 ## Подготовка host и workspace
 
-`ThirdParty/emscripten` закрепляет `6.0.3`. Preparer удаляет и заново клонирует `Workspace/emsdk`, устанавливает и активирует именно эту версию с `--build=Release --shallow`, а BuildTools запускает configure/build внутри её `emsdk_env`. Произвольный системный `emcc` не используется.
+`ThirdParty/emscripten` закрепляет `6.0.8`. Preparer удаляет и заново клонирует `Workspace/emsdk`, устанавливает и активирует именно эту версию с `--build=Release --shallow`, а BuildTools запускает configure/build внутри её `emsdk_env`. Произвольный системный `emcc` не используется.
 
 На свежем Linux host установите Node.js, Java, общие build packages и SDK:
 
@@ -263,7 +263,7 @@ Engine build lane намеренно не предоставляет эти brow
 
 | Симптом | Что проверять сначала |
 |---|---|
-| Workspace prepare падает | host Node/Java/common packages, network, disk, точный pin `6.0.3`, `Workspace/emsdk` и activation logs |
+| Workspace prepare падает | host Node/Java/common packages, network, disk, точный pin `6.0.8`, `Workspace/emsdk` и activation logs |
 | Configure выбирает не тот compiler | BuildTools platform `web`, путь workspace toolchain, `emsdk_env` и stale build directory |
 | Link падает только на Web | strict undefined/unimplemented syscall output, unsupported native dependency, Web platform guards и exception flags |
 | Package отсутствует | успешные bake/build, точные dev name/config, project git revision, `FO_OUTPUT` и log `package-web-debug` |

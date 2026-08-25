@@ -6,7 +6,7 @@ document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"ab5e1f73cc0d819ccc02735973f03ec126f8a3a3e2632c97aa742003a7474c10"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"fabe945cfe3b98fa2a9f6a6d42c4e8be250c09015481c1916d82b2ad2b299e99"} -->
 
 # Нативная отладка и отладка AngelScript
 
@@ -71,9 +71,9 @@ Engine отвечает за:
 - визуализаторов GLM, ImGui, small-vector и ufbx в `ThirdParty/`;
 - `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `ExceptionHandling.*` и `Logging.cpp`;
 - `Source/Common/DiagnosticSelfTest.cpp` и `Source/Frontend/ApplicationInit.cpp`;
-- `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp` и `AngelScriptDebugger.*`;
+- `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, `AngelScriptGlobals.cpp`, `AngelScriptHelpers.cpp` и `AngelScriptDebugger.*`;
 - `Source/Common/Settings.inc`;
-- `Source/Tests/Test_StackTrace.cpp` и `Test_ExceptionHandling.cpp`;
+- `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp` и `Test_ScriptBuiltins.cpp`;
 - `BuildTools/angelscript-debugger/package.json` и его TypeScript-исходников;
 - точных снимков проектов в `BuildTools/ExternalProjectEvidence.json`.
 
@@ -85,7 +85,7 @@ Engine отвечает за:
 | Linux native | Debug information во всех конфигурациях кроме `MinSizeRel`, `-rdynamic`, бинарные файлы для GDB/LLDB, обнаружение отладчика через `/proc/self/status`, диагностика signals/terminate | Включение и сбор core dump, хранение символов, container permissions и retention относятся к политике host/project. |
 | macOS native | Debug information во всех конфигурациях кроме `MinSizeRel`, `-rdynamic`, обнаружение через `sysctl(P_TRACED)`, debug trap, signal-диагностика backward-cpp | Репозиторий не поставляет проверенный Engine-профиль LLDB, архив crash reports или release-квалификацию. |
 | AngelScript runtime | TCP endpoint с loopback по умолчанию, UDP discovery, line breakpoints, pause/continue/step, скриптовый стек, read-only locals, события stop/abort/error | Нет контракта authentication, encryption, опубликованного VSIX, закреплённого dependency lock, CI живого endpoint, просмотра globals, evaluation выражений или изменения состояния. |
-| Смешанный стек в логах | Скриптовые слои и нативные кадры, различение origin/catch, безопасный crash output и локальный для процесса cache разрешения | Качество нативных символов зависит от точных binary, libraries, debug data, platform unwinder и режима выполнения. MemorySanitizer отключает захват нативного стека. |
+| Смешанный стек в логах | Скриптовые слои и нативные кадры, различение origin/catch, безопасный crash output и локальный для процесса cache разрешения | Качество нативных символов зависит от точных binary, libraries, debug data, platform unwinder и режима выполнения. MemorySanitizer и ThreadSanitizer отключают захват нативного стека. |
 
 `Source/Tests` проверяет примитивы стека и исключений. Сейчас он не выполняет реальную TCP/UDP-сессию подключения AngelScript. Статические проверки и launch-профили проекта доказывают форму интеграции, но не живой протокол end to end.
 
@@ -147,7 +147,7 @@ Engine отвечает за:
 - MSVC предоставляет `San_Address` и `Debug_San_Address`;
 - native Clang предоставляет Address, Memory, Memory-with-origins, Undefined, Thread, DataFlow и Address+Undefined там, где это поддерживает toolchain;
 - AddressSanitizer, MemorySanitizer и сборки code coverage переключают AngelScript на `AS_MAX_PORTABILITY`, чтобы native call trampolines не обходили instrumentation и не вызывали `terminate` при раскрутке instrumented frame после исключения из зарегистрированной функции;
-- сборки MemorySanitizer компилируют слой stack/exception с `HAS_NATIVE_TRACE=0`; ожидайте diagnostics sanitizer, а не обычный нативный mixed-stack контракт;
+- сборки MemorySanitizer и ThreadSanitizer компилируют слой stack/exception с `HAS_NATIVE_TRACE=0`; ожидайте diagnostics sanitizer, а не обычный нативный mixed-stack контракт;
 - timing, allocation, размер stack и calling convention sanitizer отличаются от release-сборки, поэтому воспроизводите также исходную конфигурацию.
 
 ## Нативная отладка
@@ -165,6 +165,8 @@ Engine отвечает за:
 ### Исключения, assertions и ошибки памяти
 
 `ReportExceptionAndContinue` записывает пойманное нефатальное исключение. `ReportExceptionAndExit` и strong assertions записывают диагностику и завершают процесс или передают управление отладчику согласно контракту. Модель уровней exception safety и правила entity-lifecycle throw-as-signal описаны в [Exception Safety](../contributing/coding-contracts/exception-safety.md).
+
+Контекстные аргументы AngelScript `throw(...)` и `verify(...)` форматируются через `GetScriptObjectInfo()`. Entity handles содержат объявленный script type, имя entity, runtime id и proto id либо `<none>`, если proto отсутствует, поэтому production exception указывает участвующие объекты, а не только базовый тип вроде `Critter` или `AbstractItem`. Primitive, enum, string и null сохраняют компактное представление. `Test_ScriptBuiltins.cpp` закрепляет этот entity context через настоящий global binding `throw`.
 
 Используйте break-on-throw осмотрительно. AngelScript bindings и lifecycle-код движка могут бросать исключения как часть намеренного reporting path. Начинайте с фиксированного сообщения и context parameters из лога, затем ставьте сфокусированный breakpoint в owning invariant или reporter. Для повреждения памяти приоритетны evidence ASan/MSan/UBSan/TSan и первый некорректный доступ, а не более поздний вторичный assertion.
 

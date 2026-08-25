@@ -117,9 +117,9 @@ bool MotionExtractor::operator()(const RawAnimation& _input,
   auto& output_track = _output->tracks[root_joint];
 
   // Compute extraction reference
-  auto ref =
-      BuildReference(position_settings.reference, rotation_settings.reference,
-                     GetJointLocalRestPose(_skeleton, root_joint), input_track);
+  auto ref = BuildReference(
+      position_settings.reference, rotation_settings.reference,
+      GetJointRestPoseLocalSpace(_skeleton, root_joint), input_track);
 
   // Extract root motion
   // -----------------------------------------------------------------------------

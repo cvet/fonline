@@ -69,10 +69,11 @@ class TestingFoundationsDocumentationTests(unittest.TestCase):
         self.assertIn("unit-tests-sanitizers", workflow)
         self.assertIn("FO_MSAN_LIBCXX_ROOT", guide)
 
-        portable_calls_start = init.index("SetValue(expr_PortableScriptCallConfigs")
+        portable_calls_start = init.index("SetValue(expr_PortableScriptCalls")
         portable_calls_end = init.index("if(MSVC", portable_calls_start)
         portable_calls = init[portable_calls_start:portable_calls_end]
         self.assertIn("San_Address,San_Memory,San_MemoryWithOrigins", portable_calls)
+        self.assertIn("FO_CODE_COVERAGE", portable_calls)
         self.assertIn("AS_MAX_PORTABILITY", portable_calls)
 
     def test_canonical_and_legacy_routes_are_explicit(self) -> None:

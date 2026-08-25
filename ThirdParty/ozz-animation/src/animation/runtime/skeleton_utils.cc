@@ -31,6 +31,7 @@
 
 #include <cstring>
 
+#include "ozz/animation/runtime/local_to_model_job.h"
 #include "ozz/base/maths/soa_transform.h"
 
 namespace ozz {
@@ -47,8 +48,8 @@ int FindJoint(const Skeleton& _skeleton, const char* _name) {
 }
 
 // Unpacks skeleton rest pose stored in soa format by the skeleton.
-ozz::math::Transform GetJointLocalRestPose(const Skeleton& _skeleton,
-                                           int _joint) {
+ozz::math::Transform GetJointRestPoseLocalSpace(const Skeleton& _skeleton,
+                                                int _joint) {
   assert(_joint >= 0 && _joint < _skeleton.num_joints() &&
          "Joint index out of range.");
 
@@ -71,6 +72,20 @@ ozz::math::Transform GetJointLocalRestPose(const Skeleton& _skeleton,
   ozz::math::Store3PtrU(scales[offset], &rest_pose.scale.x);
 
   return rest_pose;
+}
+
+ozz::vector<ozz::math::Float4x4> GetRestPoseModelSpace(
+    const Skeleton& _skeleton) {
+  ozz::vector<ozz::math::Float4x4> models(_skeleton.num_joints());
+  ozz::animation::LocalToModelJob ltm_job;
+  ltm_job.skeleton = &_skeleton;
+  ltm_job.input = _skeleton.joint_rest_poses();
+  ltm_job.output = make_span(models);
+
+  [[maybe_unused]] bool valid = ltm_job.Run();
+  assert(valid && "LocalToModelJob with rest pose should be valid.");
+
+  return models;
 }
 }  // namespace animation
 }  // namespace ozz

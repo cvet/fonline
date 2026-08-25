@@ -6,7 +6,7 @@ document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
 
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"42ee513fbfe6cbf83b6064aa025c34cd43f5a75d9c47ab7c53a9763b0e25dbbc"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"2583189c592086aeae8fdc736f1f7f9a847bfecef67739802de698d8762df6de"} -->
 
 # Клиентская среда выполнения
 
@@ -235,6 +235,8 @@ Particle resources идут через отдельный backend-neutral factor
 `MapView` остаётся клиентским view общей модели карты. Переиспользуемые правила координат и поиска пути принадлежат [картам, движению и геометрии](../maps-and-movement.md); presentation details render targets, light textures, transparent eggs, map scrolling и hit testing принадлежат этой странице и [Frontend и рендеринг](../rendering/).
 
 Интенсивность map light source задаётся percentage magnitude (`0..100`; отрицательные значения сохраняют magnitude, но включают constant/personal capacity semantics). `MapView` ограничивает текущий animated percentage, преобразует его во внутреннюю raw falloff scale (`0..10000`), а затем масштабирует RGB light map к диапазону света движка (`0..200`) и primitive alpha к `0..255` через percentage day-light capacity source. `SetDayColors()` обязан инвалидировать применённые light fans при изменении day color или percentage light capacity, поскольку оба значения входят в cached per-hex lighting.
+
+`GetHexOffset(from, to)` равен `GetHexPos(to) - GetHexPos(from)`, поэтому при прокрутке view origin `RebuildMapOffset()` перемещает каждую light vertex на одинаковую pixel delta. `MapView` сдвигает cached `_lightPoints` на эту delta вместо перестроения каждого fan. Скрытие последнего видимого hex источника света по-прежнему заставляет перестроить primitives, чтобы убрать оставшиеся triangles, а вошедшие в view источники заново применяют fans и выполняют обычное перестроение. `Test_Geometry.cpp` закрепляет инвариант uniform translation.
 
 Переиспользуемый API представления карты включает `SetExtraScrollOffset()` для transient camera offsets, которыми владеют скрипты. Движок применяет offset к map view, но game-specific screen effects вроде quake/shake timing и fade overlays принадлежат скриптам встраиваемого проекта.
 

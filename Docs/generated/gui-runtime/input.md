@@ -12,6 +12,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-gui-runtime-input-active-screen-hit-order-595bde49cb"></a>
 - [`entry-gui-runtime-input-active-screen-hit-order-595bde49cb`](../../en/reference/gui-runtime/input.md#entry-gui-runtime-input-active-screen-hit-order-595bde49cb)
 
+<a id="entry-gui-runtime-input-hit-cache-19c323c272"></a>
+- [`entry-gui-runtime-input-hit-cache-19c323c272`](../../en/reference/gui-runtime/input.md#entry-gui-runtime-input-hit-cache-19c323c272)
+
 <a id="entry-gui-runtime-input-modal-and-close-on-miss-a6e1667324"></a>
 - [`entry-gui-runtime-input-modal-and-close-on-miss-a6e1667324`](../../en/reference/gui-runtime/input.md#entry-gui-runtime-input-modal-and-close-on-miss-a6e1667324)
 

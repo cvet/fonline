@@ -36,7 +36,7 @@
 #include "GlobalData.h"
 #include "StringUtils.h"
 
-#if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER
+#if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER && !FO_THREAD_SANITIZER
 
 #if !FO_WINDOWS
 

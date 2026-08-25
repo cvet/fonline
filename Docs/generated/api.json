@@ -9513,7 +9513,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1875
+        "line": 1896
       },
       "contract": {
         "explicit": true,
@@ -9549,7 +9549,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1871
+        "line": 1892
       },
       "contract": {
         "explicit": true,
@@ -9585,7 +9585,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1873
+        "line": 1894
       },
       "contract": {
         "explicit": true,
@@ -9621,7 +9621,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1872
+        "line": 1893
       },
       "contract": {
         "explicit": true,
@@ -10197,7 +10197,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1758
+        "line": 1777
       },
       "contract": {
         "explicit": true,
@@ -10233,7 +10233,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1743
+        "line": 1762
       },
       "contract": {
         "explicit": true,
@@ -10269,7 +10269,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1747
+        "line": 1766
       },
       "contract": {
         "explicit": true,
@@ -10377,7 +10377,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1765
+        "line": 1784
       },
       "contract": {
         "explicit": true,
@@ -10521,7 +10521,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1744
+        "line": 1763
       },
       "contract": {
         "explicit": true,
@@ -10557,7 +10557,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1771
+        "line": 1790
       },
       "contract": {
         "explicit": true,
@@ -10917,7 +10917,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1776
+        "line": 1795
       },
       "contract": {
         "explicit": true,
@@ -10953,7 +10953,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1779
+        "line": 1798
       },
       "contract": {
         "explicit": true,
@@ -10989,7 +10989,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1780
+        "line": 1799
       },
       "contract": {
         "explicit": true,
@@ -11025,7 +11025,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1775
+        "line": 1794
       },
       "contract": {
         "explicit": true,
@@ -11061,7 +11061,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1777
+        "line": 1796
       },
       "contract": {
         "explicit": true,
@@ -11097,7 +11097,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1786
+        "line": 1805
       },
       "contract": {
         "explicit": true,
@@ -11133,7 +11133,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1789
+        "line": 1808
       },
       "contract": {
         "explicit": true,
@@ -11169,7 +11169,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1790
+        "line": 1809
       },
       "contract": {
         "explicit": true,
@@ -11277,7 +11277,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1750
+        "line": 1769
       },
       "contract": {
         "explicit": true,
@@ -11313,7 +11313,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1751
+        "line": 1770
       },
       "contract": {
         "explicit": true,
@@ -11349,7 +11349,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1742
+        "line": 1761
       },
       "contract": {
         "explicit": true,
@@ -11385,7 +11385,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1904
+        "line": 1926
       },
       "contract": {
         "explicit": true,
@@ -11421,7 +11421,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1900
+        "line": 1921
       },
       "contract": {
         "explicit": true,
@@ -11493,7 +11493,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1901
+        "line": 1922
       },
       "contract": {
         "explicit": true,
@@ -11520,7 +11520,7 @@
         "mapper"
       ],
       "receiver": "ImGui_ColorEditFlags",
-      "signature": "ImGui_ColorEditFlags.DefaultOptions = 177209344",
+      "signature": "ImGui_ColorEditFlags.DefaultOptions = 311427072",
       "description": "Selects 8-bit RGB display and input with the hue-bar picker as the default color-editor options.",
       "flags": [],
       "stability": "experimental",
@@ -11541,8 +11541,8 @@
         "notes": ""
       },
       "parent_id": "script.enum.ImGui_ColorEditFlags",
-      "value": "177209344",
-      "evaluated_value": 177209344,
+      "value": "311427072",
+      "evaluated_value": 311427072,
       "generated": false
     },
     {
@@ -11637,7 +11637,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1906
+        "line": 1928
       },
       "contract": {
         "explicit": true,
@@ -11673,7 +11673,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1910
+        "line": 1932
       },
       "contract": {
         "explicit": true,
@@ -11709,7 +11709,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1905
+        "line": 1927
       },
       "contract": {
         "explicit": true,
@@ -11736,7 +11736,7 @@
         "mapper"
       ],
       "receiver": "ImGui_ColorEditFlags",
-      "signature": "ImGui_ColorEditFlags.InputHSV = 268435456",
+      "signature": "ImGui_ColorEditFlags.InputHSV = 536870912",
       "description": "ColorEdit, ColorPicker: input and output data in HSV format.",
       "flags": [],
       "stability": "experimental",
@@ -11745,7 +11745,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1914
+        "line": 1937
       },
       "contract": {
         "explicit": true,
@@ -11757,8 +11757,8 @@
         "notes": ""
       },
       "parent_id": "script.enum.ImGui_ColorEditFlags",
-      "value": "268435456",
-      "evaluated_value": 268435456,
+      "value": "536870912",
+      "evaluated_value": 536870912,
       "generated": false
     },
     {
@@ -11772,7 +11772,7 @@
         "mapper"
       ],
       "receiver": "ImGui_ColorEditFlags",
-      "signature": "ImGui_ColorEditFlags.InputRGB = 134217728",
+      "signature": "ImGui_ColorEditFlags.InputRGB = 268435456",
       "description": "ColorEdit, ColorPicker: input and output data in RGB format.",
       "flags": [],
       "stability": "experimental",
@@ -11781,7 +11781,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1913
+        "line": 1936
       },
       "contract": {
         "explicit": true,
@@ -11793,8 +11793,8 @@
         "notes": ""
       },
       "parent_id": "script.enum.ImGui_ColorEditFlags",
-      "value": "134217728",
-      "evaluated_value": 134217728,
+      "value": "268435456",
+      "evaluated_value": 268435456,
       "generated": false
     },
     {
@@ -11817,7 +11817,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1883
+        "line": 1904
       },
       "contract": {
         "explicit": true,
@@ -11853,7 +11853,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1892
+        "line": 1913
       },
       "contract": {
         "explicit": true,
@@ -11889,7 +11889,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1891
+        "line": 1912
       },
       "contract": {
         "explicit": true,
@@ -11925,7 +11925,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1887
+        "line": 1908
       },
       "contract": {
         "explicit": true,
@@ -11961,7 +11961,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1889
+        "line": 1910
       },
       "contract": {
         "explicit": true,
@@ -11997,7 +11997,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1885
+        "line": 1906
       },
       "contract": {
         "explicit": true,
@@ -12033,7 +12033,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1884
+        "line": 1905
       },
       "contract": {
         "explicit": true,
@@ -12069,7 +12069,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1890
+        "line": 1911
       },
       "contract": {
         "explicit": true,
@@ -12105,7 +12105,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1886
+        "line": 1907
       },
       "contract": {
         "explicit": true,
@@ -12141,7 +12141,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1888
+        "line": 1909
       },
       "contract": {
         "explicit": true,
@@ -12213,7 +12213,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1911
+        "line": 1933
       },
       "contract": {
         "explicit": true,
@@ -12249,7 +12249,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1912
+        "line": 1934
       },
       "contract": {
         "explicit": true,
@@ -12285,7 +12285,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1909
+        "line": 1931
       },
       "contract": {
         "explicit": true,
@@ -12321,7 +12321,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1384
+        "line": 1403
       },
       "contract": {
         "explicit": true,
@@ -12357,7 +12357,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1385
+        "line": 1404
       },
       "contract": {
         "explicit": true,
@@ -12393,7 +12393,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1383
+        "line": 1402
       },
       "contract": {
         "explicit": true,
@@ -12429,7 +12429,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1382
+        "line": 1401
       },
       "contract": {
         "explicit": true,
@@ -12465,7 +12465,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1386
+        "line": 1405
       },
       "contract": {
         "explicit": true,
@@ -12501,7 +12501,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1387
+        "line": 1406
       },
       "contract": {
         "explicit": true,
@@ -12573,7 +12573,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1381
+        "line": 1400
       },
       "contract": {
         "explicit": true,
@@ -12609,7 +12609,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1388
+        "line": 1407
       },
       "contract": {
         "explicit": true,
@@ -12645,7 +12645,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1999
+        "line": 2025
       },
       "contract": {
         "explicit": true,
@@ -12681,7 +12681,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2002
+        "line": 2028
       },
       "contract": {
         "explicit": true,
@@ -12717,7 +12717,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2001
+        "line": 2027
       },
       "contract": {
         "explicit": true,
@@ -12753,7 +12753,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1998
+        "line": 2024
       },
       "contract": {
         "explicit": true,
@@ -12789,7 +12789,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2000
+        "line": 2026
       },
       "contract": {
         "explicit": true,
@@ -13005,7 +13005,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1437
+        "line": 1456
       },
       "contract": {
         "explicit": true,
@@ -13041,7 +13041,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1435
+        "line": 1454
       },
       "contract": {
         "explicit": true,
@@ -13077,7 +13077,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1438
+        "line": 1457
       },
       "contract": {
         "explicit": true,
@@ -13185,7 +13185,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1436
+        "line": 1455
       },
       "contract": {
         "explicit": true,
@@ -13221,7 +13221,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1456
+        "line": 1475
       },
       "contract": {
         "explicit": true,
@@ -13257,7 +13257,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1454
+        "line": 1473
       },
       "contract": {
         "explicit": true,
@@ -13293,7 +13293,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1459
+        "line": 1478
       },
       "contract": {
         "explicit": true,
@@ -13365,7 +13365,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1457
+        "line": 1476
       },
       "contract": {
         "explicit": true,
@@ -13401,7 +13401,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1458
+        "line": 1477
       },
       "contract": {
         "explicit": true,
@@ -13437,7 +13437,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1451
+        "line": 1470
       },
       "contract": {
         "explicit": true,
@@ -13473,7 +13473,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1449
+        "line": 1468
       },
       "contract": {
         "explicit": true,
@@ -13509,7 +13509,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1471
+        "line": 1490
       },
       "contract": {
         "explicit": true,
@@ -13545,7 +13545,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1460
+        "line": 1479
       },
       "contract": {
         "explicit": true,
@@ -13581,7 +13581,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1452
+        "line": 1471
       },
       "contract": {
         "explicit": true,
@@ -13617,7 +13617,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1448
+        "line": 1467
       },
       "contract": {
         "explicit": true,
@@ -13689,7 +13689,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1450
+        "line": 1469
       },
       "contract": {
         "explicit": true,
@@ -13725,7 +13725,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1271
+        "line": 1289
       },
       "contract": {
         "explicit": true,
@@ -13761,7 +13761,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1255
+        "line": 1273
       },
       "contract": {
         "explicit": true,
@@ -13797,7 +13797,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1256
+        "line": 1274
       },
       "contract": {
         "explicit": true,
@@ -13833,7 +13833,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1259
+        "line": 1277
       },
       "contract": {
         "explicit": true,
@@ -13869,7 +13869,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1257
+        "line": 1275
       },
       "contract": {
         "explicit": true,
@@ -13905,7 +13905,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1258
+        "line": 1276
       },
       "contract": {
         "explicit": true,
@@ -13941,7 +13941,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1273
+        "line": 1291
       },
       "contract": {
         "explicit": true,
@@ -13969,7 +13969,7 @@
       ],
       "receiver": "ImGui_InputTextFlags",
       "signature": "ImGui_InputTextFlags.EnterReturnsTrue = 64",
-      "description": "Return 'true' when Enter is pressed (as opposed to every time the value was modified). Consider using IsItemDeactivatedAfterEdit() instead!",
+      "description": "Return 'true' when Enter is pressed (as opposed to every time the value was modified). Consider disabling LiveEdit! or using IsItemDeactivatedAfterEdit() instead!",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -13977,7 +13977,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1263
+        "line": 1281
       },
       "contract": {
         "explicit": true,
@@ -14049,7 +14049,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1272
+        "line": 1290
       },
       "contract": {
         "explicit": true,
@@ -14085,7 +14085,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1268
+        "line": 1286
       },
       "contract": {
         "explicit": true,
@@ -14265,7 +14265,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1351
+        "line": 1370
       },
       "contract": {
         "explicit": true,
@@ -14301,7 +14301,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1352
+        "line": 1371
       },
       "contract": {
         "explicit": true,
@@ -14337,7 +14337,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1344
+        "line": 1363
       },
       "contract": {
         "explicit": true,
@@ -14373,7 +14373,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1346
+        "line": 1365
       },
       "contract": {
         "explicit": true,
@@ -14409,7 +14409,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1345
+        "line": 1364
       },
       "contract": {
         "explicit": true,
@@ -14445,7 +14445,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1349
+        "line": 1368
       },
       "contract": {
         "explicit": true,
@@ -14481,7 +14481,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1350
+        "line": 1369
       },
       "contract": {
         "explicit": true,
@@ -14517,7 +14517,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1347
+        "line": 1366
       },
       "contract": {
         "explicit": true,
@@ -14589,7 +14589,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1365
+        "line": 1384
       },
       "contract": {
         "explicit": true,
@@ -14625,7 +14625,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1367
+        "line": 1386
       },
       "contract": {
         "explicit": true,
@@ -14661,7 +14661,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1366
+        "line": 1385
       },
       "contract": {
         "explicit": true,
@@ -14697,7 +14697,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1363
+        "line": 1382
       },
       "contract": {
         "explicit": true,
@@ -14769,7 +14769,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1364
+        "line": 1383
       },
       "contract": {
         "explicit": true,
@@ -14841,7 +14841,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1944
+        "line": 1968
       },
       "contract": {
         "explicit": true,
@@ -14877,7 +14877,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1945
+        "line": 1969
       },
       "contract": {
         "explicit": true,
@@ -14913,7 +14913,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1940
+        "line": 1964
       },
       "contract": {
         "explicit": true,
@@ -14949,7 +14949,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1942
+        "line": 1966
       },
       "contract": {
         "explicit": true,
@@ -14985,7 +14985,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1941
+        "line": 1965
       },
       "contract": {
         "explicit": true,
@@ -15021,7 +15021,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1946
+        "line": 1970
       },
       "contract": {
         "explicit": true,
@@ -15093,7 +15093,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1943
+        "line": 1967
       },
       "contract": {
         "explicit": true,
@@ -15129,7 +15129,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2291
+        "line": 2317
       },
       "contract": {
         "explicit": true,
@@ -15156,7 +15156,7 @@
         "mapper"
       ],
       "receiver": "ImGui_StyleVar",
-      "signature": "ImGui_StyleVar.ButtonTextAlign = 36",
+      "signature": "ImGui_StyleVar.ButtonTextAlign = 38",
       "description": "Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).",
       "flags": [],
       "stability": "experimental",
@@ -15165,7 +15165,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2339
+        "line": 2367
       },
       "contract": {
         "explicit": true,
@@ -15177,8 +15177,8 @@
         "notes": ""
       },
       "parent_id": "script.enum.ImGui_StyleVar",
-      "value": "36",
-      "evaluated_value": 36,
+      "value": "38",
+      "evaluated_value": 38,
       "generated": false
     },
     {
@@ -15201,7 +15201,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2309
+        "line": 2335
       },
       "contract": {
         "explicit": true,
@@ -15237,7 +15237,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2292
+        "line": 2318
       },
       "contract": {
         "explicit": true,
@@ -15273,7 +15273,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2306
+        "line": 2332
       },
       "contract": {
         "explicit": true,
@@ -15309,7 +15309,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2304
+        "line": 2330
       },
       "contract": {
         "explicit": true,
@@ -15345,7 +15345,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2305
+        "line": 2331
       },
       "contract": {
         "explicit": true,
@@ -15381,7 +15381,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2316
+        "line": 2342
       },
       "contract": {
         "explicit": true,
@@ -15417,7 +15417,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2317
+        "line": 2343
       },
       "contract": {
         "explicit": true,
@@ -15453,7 +15453,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2311
+        "line": 2337
       },
       "contract": {
         "explicit": true,
@@ -15489,7 +15489,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2308
+        "line": 2334
       },
       "contract": {
         "explicit": true,
@@ -15525,7 +15525,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2307
+        "line": 2333
       },
       "contract": {
         "explicit": true,
@@ -15561,7 +15561,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2314
+        "line": 2340
       },
       "contract": {
         "explicit": true,
@@ -15597,7 +15597,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2313
+        "line": 2339
       },
       "contract": {
         "explicit": true,
@@ -15624,7 +15624,7 @@
         "mapper"
       ],
       "receiver": "ImGui_StyleVar",
-      "signature": "ImGui_StyleVar.SelectableTextAlign = 37",
+      "signature": "ImGui_StyleVar.SelectableTextAlign = 39",
       "description": "Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.",
       "flags": [],
       "stability": "experimental",
@@ -15633,7 +15633,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2340
+        "line": 2368
       },
       "contract": {
         "explicit": true,
@@ -15645,8 +15645,8 @@
         "notes": ""
       },
       "parent_id": "script.enum.ImGui_StyleVar",
-      "value": "37",
-      "evaluated_value": 37,
+      "value": "39",
+      "evaluated_value": 39,
       "generated": false
     },
     {
@@ -15669,7 +15669,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2321
+        "line": 2347
       },
       "contract": {
         "explicit": true,
@@ -15705,7 +15705,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2295
+        "line": 2321
       },
       "contract": {
         "explicit": true,
@@ -15741,7 +15741,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2293
+        "line": 2319
       },
       "contract": {
         "explicit": true,
@@ -15777,7 +15777,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2294
+        "line": 2320
       },
       "contract": {
         "explicit": true,
@@ -15813,7 +15813,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1397
+        "line": 1416
       },
       "contract": {
         "explicit": true,
@@ -15849,7 +15849,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1402
+        "line": 1421
       },
       "contract": {
         "explicit": true,
@@ -15885,7 +15885,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1405
+        "line": 1424
       },
       "contract": {
         "explicit": true,
@@ -15921,7 +15921,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1407
+        "line": 1426
       },
       "contract": {
         "explicit": true,
@@ -15957,7 +15957,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1406
+        "line": 1425
       },
       "contract": {
         "explicit": true,
@@ -15993,7 +15993,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1399
+        "line": 1418
       },
       "contract": {
         "explicit": true,
@@ -16029,7 +16029,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1400
+        "line": 1419
       },
       "contract": {
         "explicit": true,
@@ -16065,7 +16065,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1401
+        "line": 1420
       },
       "contract": {
         "explicit": true,
@@ -16137,7 +16137,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1396
+        "line": 1415
       },
       "contract": {
         "explicit": true,
@@ -16209,7 +16209,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1426
+        "line": 1445
       },
       "contract": {
         "explicit": true,
@@ -16245,7 +16245,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1428
+        "line": 1447
       },
       "contract": {
         "explicit": true,
@@ -16281,7 +16281,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1422
+        "line": 1441
       },
       "contract": {
         "explicit": true,
@@ -16317,7 +16317,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1423
+        "line": 1442
       },
       "contract": {
         "explicit": true,
@@ -16353,7 +16353,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1425
+        "line": 1444
       },
       "contract": {
         "explicit": true,
@@ -16389,7 +16389,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1424
+        "line": 1443
       },
       "contract": {
         "explicit": true,
@@ -16461,7 +16461,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1421
+        "line": 1440
       },
       "contract": {
         "explicit": true,
@@ -16497,7 +16497,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1427
+        "line": 1446
       },
       "contract": {
         "explicit": true,
@@ -16533,7 +16533,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1420
+        "line": 1439
       },
       "contract": {
         "explicit": true,
@@ -16569,7 +16569,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2142
+        "line": 2168
       },
       "contract": {
         "explicit": true,
@@ -16641,7 +16641,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2140
+        "line": 2166
       },
       "contract": {
         "explicit": true,
@@ -16677,7 +16677,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2141
+        "line": 2167
       },
       "contract": {
         "explicit": true,
@@ -16713,7 +16713,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2106
+        "line": 2132
       },
       "contract": {
         "explicit": true,
@@ -16749,7 +16749,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2089
+        "line": 2115
       },
       "contract": {
         "explicit": true,
@@ -16785,7 +16785,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2090
+        "line": 2116
       },
       "contract": {
         "explicit": true,
@@ -16821,7 +16821,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2088
+        "line": 2114
       },
       "contract": {
         "explicit": true,
@@ -16857,7 +16857,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2105
+        "line": 2131
       },
       "contract": {
         "explicit": true,
@@ -16893,7 +16893,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2104
+        "line": 2130
       },
       "contract": {
         "explicit": true,
@@ -16929,7 +16929,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2109
+        "line": 2135
       },
       "contract": {
         "explicit": true,
@@ -16965,7 +16965,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2112
+        "line": 2138
       },
       "contract": {
         "explicit": true,
@@ -17001,7 +17001,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2111
+        "line": 2137
       },
       "contract": {
         "explicit": true,
@@ -17037,7 +17037,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2110
+        "line": 2136
       },
       "contract": {
         "explicit": true,
@@ -17073,7 +17073,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2096
+        "line": 2122
       },
       "contract": {
         "explicit": true,
@@ -17109,7 +17109,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2100
+        "line": 2126
       },
       "contract": {
         "explicit": true,
@@ -17145,7 +17145,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2101
+        "line": 2127
       },
       "contract": {
         "explicit": true,
@@ -17181,7 +17181,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2095
+        "line": 2121
       },
       "contract": {
         "explicit": true,
@@ -17217,7 +17217,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2094
+        "line": 2120
       },
       "contract": {
         "explicit": true,
@@ -17253,7 +17253,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2093
+        "line": 2119
       },
       "contract": {
         "explicit": true,
@@ -17289,7 +17289,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2097
+        "line": 2123
       },
       "contract": {
         "explicit": true,
@@ -17325,7 +17325,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2098
+        "line": 2124
       },
       "contract": {
         "explicit": true,
@@ -17361,7 +17361,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2099
+        "line": 2125
       },
       "contract": {
         "explicit": true,
@@ -17433,7 +17433,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2102
+        "line": 2128
       },
       "contract": {
         "explicit": true,
@@ -17469,7 +17469,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2103
+        "line": 2129
       },
       "contract": {
         "explicit": true,
@@ -17505,7 +17505,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2092
+        "line": 2118
       },
       "contract": {
         "explicit": true,
@@ -17541,7 +17541,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2091
+        "line": 2117
       },
       "contract": {
         "explicit": true,
@@ -17577,7 +17577,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2051
+        "line": 2077
       },
       "contract": {
         "explicit": true,
@@ -17613,7 +17613,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2047
+        "line": 2073
       },
       "contract": {
         "explicit": true,
@@ -17649,7 +17649,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2049
+        "line": 2075
       },
       "contract": {
         "explicit": true,
@@ -17685,7 +17685,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2043
+        "line": 2069
       },
       "contract": {
         "explicit": true,
@@ -17721,7 +17721,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2045
+        "line": 2071
       },
       "contract": {
         "explicit": true,
@@ -17757,7 +17757,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2050
+        "line": 2076
       },
       "contract": {
         "explicit": true,
@@ -17793,7 +17793,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2044
+        "line": 2070
       },
       "contract": {
         "explicit": true,
@@ -17829,7 +17829,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2046
+        "line": 2072
       },
       "contract": {
         "explicit": true,
@@ -17865,7 +17865,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2048
+        "line": 2074
       },
       "contract": {
         "explicit": true,
@@ -17901,7 +17901,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2040
+        "line": 2066
       },
       "contract": {
         "explicit": true,
@@ -17937,7 +17937,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2037
+        "line": 2063
       },
       "contract": {
         "explicit": true,
@@ -17973,7 +17973,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2077
+        "line": 2103
       },
       "contract": {
         "explicit": true,
@@ -18009,7 +18009,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2052
+        "line": 2078
       },
       "contract": {
         "explicit": true,
@@ -18045,7 +18045,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2053
+        "line": 2079
       },
       "contract": {
         "explicit": true,
@@ -18081,7 +18081,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2065
+        "line": 2091
       },
       "contract": {
         "explicit": true,
@@ -18117,7 +18117,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2060
+        "line": 2086
       },
       "contract": {
         "explicit": true,
@@ -18153,7 +18153,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2061
+        "line": 2087
       },
       "contract": {
         "explicit": true,
@@ -18189,7 +18189,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2062
+        "line": 2088
       },
       "contract": {
         "explicit": true,
@@ -18225,7 +18225,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2069
+        "line": 2095
       },
       "contract": {
         "explicit": true,
@@ -18261,7 +18261,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2068
+        "line": 2094
       },
       "contract": {
         "explicit": true,
@@ -18297,7 +18297,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2039
+        "line": 2065
       },
       "contract": {
         "explicit": true,
@@ -18369,7 +18369,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2067
+        "line": 2093
       },
       "contract": {
         "explicit": true,
@@ -18405,7 +18405,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2063
+        "line": 2089
       },
       "contract": {
         "explicit": true,
@@ -18441,7 +18441,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2036
+        "line": 2062
       },
       "contract": {
         "explicit": true,
@@ -18477,7 +18477,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2035
+        "line": 2061
       },
       "contract": {
         "explicit": true,
@@ -18513,7 +18513,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2042
+        "line": 2068
       },
       "contract": {
         "explicit": true,
@@ -18549,7 +18549,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2071
+        "line": 2097
       },
       "contract": {
         "explicit": true,
@@ -18585,7 +18585,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2072
+        "line": 2098
       },
       "contract": {
         "explicit": true,
@@ -18621,7 +18621,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2055
+        "line": 2081
       },
       "contract": {
         "explicit": true,
@@ -18657,7 +18657,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2056
+        "line": 2082
       },
       "contract": {
         "explicit": true,
@@ -18693,7 +18693,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2057
+        "line": 2083
       },
       "contract": {
         "explicit": true,
@@ -18729,7 +18729,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2058
+        "line": 2084
       },
       "contract": {
         "explicit": true,
@@ -18765,7 +18765,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2074
+        "line": 2100
       },
       "contract": {
         "explicit": true,
@@ -18801,7 +18801,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2075
+        "line": 2101
       },
       "contract": {
         "explicit": true,
@@ -18837,7 +18837,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2038
+        "line": 2064
       },
       "contract": {
         "explicit": true,
@@ -18873,7 +18873,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 2125
+        "line": 2151
       },
       "contract": {
         "explicit": true,
@@ -18945,7 +18945,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1307
+        "line": 1326
       },
       "contract": {
         "explicit": true,
@@ -18981,7 +18981,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1314
+        "line": 1333
       },
       "contract": {
         "explicit": true,
@@ -19053,7 +19053,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1310
+        "line": 1329
       },
       "contract": {
         "explicit": true,
@@ -19089,7 +19089,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1315
+        "line": 1334
       },
       "contract": {
         "explicit": true,
@@ -19125,7 +19125,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1306
+        "line": 1325
       },
       "contract": {
         "explicit": true,
@@ -19161,7 +19161,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1313
+        "line": 1332
       },
       "contract": {
         "explicit": true,
@@ -19197,7 +19197,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1309
+        "line": 1328
       },
       "contract": {
         "explicit": true,
@@ -19233,7 +19233,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1308
+        "line": 1327
       },
       "contract": {
         "explicit": true,
@@ -19305,7 +19305,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1312
+        "line": 1331
       },
       "contract": {
         "explicit": true,
@@ -19341,7 +19341,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1311
+        "line": 1330
       },
       "contract": {
         "explicit": true,
@@ -19377,7 +19377,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1305
+        "line": 1324
       },
       "contract": {
         "explicit": true,
@@ -19413,7 +19413,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1319
+        "line": 1338
       },
       "contract": {
         "explicit": true,
@@ -19449,7 +19449,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1316
+        "line": 1335
       },
       "contract": {
         "explicit": true,
@@ -19485,7 +19485,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1317
+        "line": 1336
       },
       "contract": {
         "explicit": true,
@@ -19521,7 +19521,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1318
+        "line": 1337
       },
       "contract": {
         "explicit": true,
@@ -19557,7 +19557,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1176
+        "line": 1181
       },
       "contract": {
         "explicit": true,
@@ -19593,7 +19593,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1185
+        "line": 1190
       },
       "contract": {
         "explicit": true,
@@ -19629,7 +19629,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1184
+        "line": 1189
       },
       "contract": {
         "explicit": true,
@@ -19665,7 +19665,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1181
+        "line": 1186
       },
       "contract": {
         "explicit": true,
@@ -19701,7 +19701,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1180
+        "line": 1185
       },
       "contract": {
         "explicit": true,
@@ -19737,7 +19737,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1177
+        "line": 1182
       },
       "contract": {
         "explicit": true,
@@ -19773,7 +19773,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1183
+        "line": 1188
       },
       "contract": {
         "explicit": true,
@@ -19809,7 +19809,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1175
+        "line": 1180
       },
       "contract": {
         "explicit": true,
@@ -19881,7 +19881,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1182
+        "line": 1187
       },
       "contract": {
         "explicit": true,
@@ -19953,7 +19953,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1179
+        "line": 1184
       },
       "contract": {
         "explicit": true,
@@ -19989,7 +19989,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1172
+        "line": 1177
       },
       "contract": {
         "explicit": true,
@@ -20061,7 +20061,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1187
+        "line": 1192
       },
       "contract": {
         "explicit": true,
@@ -20097,7 +20097,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1186
+        "line": 1191
       },
       "contract": {
         "explicit": true,
@@ -20133,7 +20133,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1171
+        "line": 1176
       },
       "contract": {
         "explicit": true,
@@ -20169,7 +20169,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1178
+        "line": 1183
       },
       "contract": {
         "explicit": true,
@@ -20205,7 +20205,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1174
+        "line": 1179
       },
       "contract": {
         "explicit": true,
@@ -20241,7 +20241,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1173
+        "line": 1178
       },
       "contract": {
         "explicit": true,
@@ -20277,7 +20277,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1170
+        "line": 1175
       },
       "contract": {
         "explicit": true,
@@ -20349,7 +20349,7 @@
       "examples": [],
       "source": {
         "path": "ThirdParty/imgui/imgui.h",
-        "line": 1188
+        "line": 1193
       },
       "contract": {
         "explicit": true,
@@ -55225,7 +55225,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2324
+        "line": 2339
       },
       "contract": {
         "explicit": true,
@@ -58007,7 +58007,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2331
+        "line": 2346
       },
       "contract": {
         "explicit": true,
@@ -58458,7 +58458,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2338
+        "line": 2353
       },
       "contract": {
         "explicit": true,
@@ -59629,7 +59629,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2188
+        "line": 2203
       },
       "contract": {
         "explicit": true,
@@ -59706,7 +59706,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2199
+        "line": 2214
       },
       "contract": {
         "explicit": true,
@@ -59776,7 +59776,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2218
+        "line": 2233
       },
       "contract": {
         "explicit": true,
@@ -59853,7 +59853,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2238
+        "line": 2253
       },
       "contract": {
         "explicit": true,
@@ -60245,7 +60245,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2259
+        "line": 2274
       },
       "contract": {
         "explicit": true,
@@ -60315,7 +60315,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2280
+        "line": 2295
       },
       "contract": {
         "explicit": true,
@@ -60392,7 +60392,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2301
+        "line": 2316
       },
       "contract": {
         "explicit": true,
@@ -61655,7 +61655,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2353
+        "line": 2368
       },
       "contract": {
         "explicit": true,
@@ -61704,7 +61704,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2375
+        "line": 2390
       },
       "contract": {
         "explicit": true,
@@ -63385,7 +63385,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2364
+        "line": 2379
       },
       "contract": {
         "explicit": true,
@@ -63434,7 +63434,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2382
+        "line": 2397
       },
       "contract": {
         "explicit": true,
@@ -63628,7 +63628,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
-        "line": 2346
+        "line": 2361
       },
       "contract": {
         "explicit": true,

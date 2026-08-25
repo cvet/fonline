@@ -44,7 +44,7 @@ An embedding project owns the `.fomain`, resource bake, selected config, server,
 
 | Layer | Current Engine evidence | What it proves | What remains project-owned |
 |---|---|---|---|
-| Toolchain | Emscripten `6.0.3` pin and workspace preparer | Reproducible selected SDK input | Host image, cache, mirrors, and outage recovery |
+| Toolchain | Emscripten `6.0.8` pin and workspace preparer | Reproducible selected SDK input | Host image, cache, mirrors, and outage recovery |
 | Build | required `web-client` CI lane on Ubuntu 24.04 | Browser client compiles and links to `Web-wasm` | Game bake, package, server, and browser behavior |
 | Renderer | WebGL exactly 2; Vulkan and SDL_GPU excluded | Compiled graphics contract | Browser/GPU/driver matrix and visible correctness |
 | Package | Web `Client` + `wasm`, resources required | Stock shell, patched wasm, and preloaded resources can be emitted | Public hosting and immutable release artifact |
@@ -55,7 +55,7 @@ The supported Engine application is the browser client. Do not infer support for
 
 ## Prepare the host and workspace
 
-`ThirdParty/emscripten` pins `6.0.3`. The preparer removes and reclones `Workspace/emsdk`, installs and activates that exact version with `--build=Release --shallow`, and BuildTools runs configure/build inside its `emsdk_env` script. It does not use an arbitrary system `emcc`.
+`ThirdParty/emscripten` pins `6.0.8`. The preparer removes and reclones `Workspace/emsdk`, installs and activates that exact version with `--build=Release --shallow`, and BuildTools runs configure/build inside its `emsdk_env` script. It does not use an arbitrary system `emcc`.
 
 On a fresh Linux host, provision Node.js, Java, common build packages, and the SDK:
 
@@ -261,7 +261,7 @@ The Engine build lane intentionally does not supply this browser/release evidenc
 
 | Symptom | Inspect first |
 |---|---|
-| Workspace prepare fails | host Node/Java/common packages, network, disk, exact `6.0.3` pin, `Workspace/emsdk`, and activation logs |
+| Workspace prepare fails | host Node/Java/common packages, network, disk, exact `6.0.8` pin, `Workspace/emsdk`, and activation logs |
 | Configure uses the wrong compiler | BuildTools `web` platform, workspace toolchain path, `emsdk_env`, and stale build directory |
 | Link fails only for Web | strict undefined/unimplemented syscall output, unsupported native dependency, Web platform guards, and exception flags |
 | Package is absent | successful bake/build, exact dev name/config, project git revision, `FO_OUTPUT`, and `package-web-debug` log |
