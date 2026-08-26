@@ -2204,6 +2204,129 @@ TEST_CASE("PlayerRegistrationCppApi")
         cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(cr);
     }
+
+    SECTION("StopMoveKeepsPassableHexWhenOffsetRoundsIntoBlockedNeighbour")
+    {
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "StopMoveBlockedOffset");
+
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (!loc->IsDestroyed()) {
+                    server->RequireCurrentSyncContext()->SyncEntity(loc);
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        mpos server_hex {20, 20};
+        mpos blocked_neighbour = server_hex;
+        REQUIRE(GeometryHelper::MoveHexByDir(blocked_neighbour, hdir::NorthWest, map->GetSize()));
+
+        ipos32 full_offset = GeometryHelper::GetHexPos(blocked_neighbour) - GeometryHelper::GetHexPos(server_hex);
+        ipos16 client_offset {numeric_cast<int16_t>(full_offset.x), numeric_cast<int16_t>(full_offset.y)};
+        ipos16 expected_offset {numeric_cast<int16_t>(std::clamp(client_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2))), numeric_cast<int16_t>(std::clamp(client_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2)))};
+        REQUIRE(expected_offset != ipos16 {});
+
+        server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+        REQUIRE(cr->GetPlayer() == player);
+
+        map->SetHexManualBlock(blocked_neighbour, true, true);
+
+        vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
+        vector<uint16_t> control_steps {3};
+        server->StartCritterMoving(cr, uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
+        REQUIRE(cr->IsMoving());
+
+        test_connection->ResetSentPacketCount();
+        SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), server_hex, client_offset, mdir {});
+
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->SyncEntity(cr);
+            return !cr->IsMoving();
+        }));
+
+        auto ctx = server->RequireCurrentSyncContext();
+        small_vector<ptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        ctx->SyncEntities(sync_entities);
+
+        CHECK(cr->GetHex() == server_hex);
+        CHECK(cr->GetHexOffset() == expected_offset);
+        CHECK(test_connection->GetSentPacketCount() == 0);
+
+        server->SwitchPlayerCritter(player, nullptr);
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
+    }
+
+    // Counterpart of the blocked case above: the guard must decline only a blocked rounding, so a rounding
+    // into a passable neighbour still has to advance the logical hex instead of piling up as a sub-hex offset
+    SECTION("StopMoveNormalizesOffsetIntoPassableNeighbour")
+    {
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "StopMovePassableOffset");
+
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (!loc->IsDestroyed()) {
+                    server->RequireCurrentSyncContext()->SyncEntity(loc);
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        mpos server_hex {20, 20};
+        mpos passable_neighbour = server_hex;
+        REQUIRE(GeometryHelper::MoveHexByDir(passable_neighbour, hdir::East, map->GetSize()));
+
+        server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+        REQUIRE(cr->GetPlayer() == player);
+        REQUIRE(map->IsHexMovable(passable_neighbour));
+
+        ipos32 full_offset = GeometryHelper::GetHexPos(passable_neighbour) - GeometryHelper::GetHexPos(server_hex);
+        ipos16 client_offset {numeric_cast<int16_t>(full_offset.x), numeric_cast<int16_t>(full_offset.y)};
+
+        vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
+        vector<uint16_t> control_steps {3};
+        server->StartCritterMoving(cr, uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
+        REQUIRE(cr->IsMoving());
+
+        test_connection->ResetSentPacketCount();
+        SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), server_hex, client_offset, mdir {});
+
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->SyncEntity(cr);
+            return !cr->IsMoving();
+        }));
+
+        auto ctx = server->RequireCurrentSyncContext();
+        small_vector<ptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        ctx->SyncEntities(sync_entities);
+
+        CHECK(cr->GetHex() == passable_neighbour);
+        CHECK(cr->GetHexOffset() == ipos16 {});
+        CHECK(test_connection->GetSentPacketCount() == 0);
+
+        server->SwitchPlayerCritter(player, nullptr);
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
+    }
 }
 
 // ========== NPC Manager C++ API Tests ==========

@@ -120,7 +120,10 @@ Important `FindPathInput` fields:
 - `FromHex` / `ToHex` — requested route endpoints.
 - `ToHexOffset` — the target's real sub-hex offset within `ToHex` (the continuous target position is `ToHex` center + `ToHexOffset`). Used only by the `FreeMovement` end-offset computation.
 - `MapSize` — bounds for all checks.
-- `MaxLength` — maximum BFS depth, normally derived from engine settings.
+- `MaxLength` — maximum BFS depth, normally derived from engine settings. It bounds the search depth
+  only: the visited grid is sized by `min(MaxLength + 1, max(map width, map height))` per axis,
+  because the search never steps off the map and never travels further than the depth limit. Raising
+  the setting therefore costs nothing on maps smaller than the new limit.
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).

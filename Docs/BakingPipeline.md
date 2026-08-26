@@ -393,6 +393,41 @@ During output discovery it visits resource packs in configured order so a later 
 
 The particle/model/prototype/map stages intentionally form a strict dependency chain: particle outputs at order `5` are visible to model-info validation at order `6`, model descriptions are visible to prototype validation at order `7`, and baked prototypes are visible to map baking at order `8`. Bakers at the same order may run concurrently across resource packs and therefore must not consume one another's outputs.
 
+### Prototype inheritance merge order
+
+`ProtoBaker` and `ProtoTextBaker` resolve `$Parent` over the same algorithm, differing only in which
+keys they merge: `ProtoBaker` takes every key that does not start with `$`, `ProtoTextBaker` takes
+every `$Text*` key, and neither inherits `$Name` or `$Parent`. `$Parent` holds a space-separated list,
+looked up across all prototypes of that entity type rather than per file, with each name passed
+through the `Proto` migration rules first.
+
+The walk applies each parent's own ancestors before the parent itself, left to right, and the
+prototype's own fields last. So the **rightmost** parent wins a contested field, a parent beats its
+own ancestors, and the prototype beats everything. Values are whole strings, so a list-valued field is
+replaced rather than merged.
+
+Reaching one ancestor through two parents is the one case where that order would become surprising, so
+a repeated ancestor contributes its fields **only where it is first reached**. Walking it again would
+override whatever the earlier parent had customized, with nothing in the source to hint at it.
+
+`Baking.AllowRepeatedProtoParents` (default `true`) decides whether such a prototype is allowed at
+all: when `false` it fails baking with `Proto reaches the same parent through several inheritance
+paths`, so a game that wants each facet stated once gets the diagnostic rather than a merge to reason
+about.
+
+A `$Parent` cycle is rejected regardless of both settings (`Proto parent chain contains a cycle`);
+without that guard the walk recurses until the stack is exhausted.
+
+The setting, the first-reach merge and the cycle guard are pinned for each baker by the
+`RejectsRepeatedProtoParent*`, `AppliesRepeatedProtoParentOnce` and `RejectsProtoParentCycle*`
+sections of `Source/Tests/Test_ProtoBaker.cpp` and `Source/Tests/Test_ProtoTextBaker.cpp`.
+
+Prototype output follows the resolved prototype set alone: types and ids are collected into ordered
+maps, so which file carries a proto and the order the files arrive in do not reach the bytes. That
+makes `Protos.fopro-bin-server` / `-client` / `-mapper` byte-comparable across bakes to prove a content
+refactor changed nothing, including one that moves prototypes between files. Pinned by the
+`BakesIdenticalBytesWhateverFileCarriesEachProto` section of `Source/Tests/Test_ProtoBaker.cpp`.
+
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
 ### Text-language fallback overlays

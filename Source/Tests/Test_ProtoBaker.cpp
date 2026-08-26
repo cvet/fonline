@@ -143,6 +143,241 @@ $Parent = ParentItem
         CHECK(local_rig.Outputs.size() == 2);
     }
 
+    // Variant overrides Base and Other reaches Base again, the shape Baking.AllowRepeatedProtoParents
+    // governs. Baking the same set with a single-parent Child makes blob equality pin which parent won
+    auto make_diamond_source = [](string_view child_parents) {
+        return string(R"([ProtoItem]
+$Name = DiamondBase
+Count = 1
+
+[ProtoItem]
+$Name = DiamondVariant
+$Parent = DiamondBase
+Count = 2
+
+[ProtoItem]
+$Name = DiamondOther
+$Parent = DiamondBase
+
+[ProtoItem]
+$Name = DiamondChild
+$Parent = )")
+            .append(child_parents);
+    };
+
+    auto bake_diamond = [&](string_view child_parents, bool allow_repeated) {
+        TestRig local_rig;
+        OverrideSetting(local_rig.Settings.AllowRepeatedProtoParents, allow_repeated);
+        local_rig.AddSourceFile("Items/Diamond.fopro", make_diamond_source(child_parents));
+
+        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
+        local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
+
+        ProtoBaker baker(local_rig.MakeContext("ProtoPackDiamond", client_mapper_bake));
+        baker.BakeFiles(local_rig.GetAllSourceFiles(), "");
+        return local_rig.Outputs.at("ProtoPackDiamond.fopro-bin-client");
+    };
+
+    SECTION("RepeatedProtoParentDefaultIsPermissive")
+    {
+        TestRig local_rig;
+        CHECK(local_rig.Settings.AllowRepeatedProtoParents);
+    }
+
+    SECTION("RejectsRepeatedProtoParentWhenNotAllowed")
+    {
+        CHECK_THROWS_AS(bake_diamond("DiamondVariant DiamondOther", false), ProtoBakerException);
+    }
+
+    SECTION("AcceptsUnrelatedParentsAndPlainChainsWhenRepetitionIsForbidden")
+    {
+        // The rule must fire on a repeated ancestor, not on inheritance depth
+        CHECK_NOTHROW(bake_diamond("DiamondVariant", false));
+        CHECK_NOTHROW(bake_diamond("DiamondOther", false));
+    }
+
+    SECTION("AppliesRepeatedProtoParentOnce")
+    {
+        auto diamond = bake_diamond("DiamondVariant DiamondOther", true);
+
+        // First reach keeps its position, so Variant's override of Base survives Other's walk
+        CHECK(diamond == bake_diamond("DiamondVariant", true));
+        CHECK(diamond != bake_diamond("DiamondOther", true));
+    }
+
+    SECTION("RejectsProtoParentCycleUnderEverySetting")
+    {
+        auto bake_cycle = [&](string_view content, bool allow_repeated) {
+            TestRig local_rig;
+            OverrideSetting(local_rig.Settings.AllowRepeatedProtoParents, allow_repeated);
+            local_rig.AddSourceFile("Items/Cycle.fopro", content);
+
+            auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+            local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
+            local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
+
+            ProtoBaker baker(local_rig.MakeContext("ProtoPackCycle", client_mapper_bake));
+            baker.BakeFiles(local_rig.GetAllSourceFiles(), "");
+        };
+
+        string_view self_cycle = R"([ProtoItem]
+$Name = SelfCycle
+$Parent = SelfCycle
+)";
+        string_view pair_cycle = R"([ProtoItem]
+$Name = CycleA
+$Parent = CycleB
+
+[ProtoItem]
+$Name = CycleB
+$Parent = CycleA
+)";
+        string_view long_cycle = R"([ProtoItem]
+$Name = LongA
+$Parent = LongC
+
+[ProtoItem]
+$Name = LongB
+$Parent = LongA
+
+[ProtoItem]
+$Name = LongC
+$Parent = LongB
+)";
+
+        // A cycle is never valid input, so the setting may not make it bakeable either way
+        for (bool allow_repeated : {true, false}) {
+            CHECK_THROWS_AS(bake_cycle(self_cycle, allow_repeated), ProtoBakerException);
+            CHECK_THROWS_AS(bake_cycle(pair_cycle, allow_repeated), ProtoBakerException);
+            CHECK_THROWS_AS(bake_cycle(long_cycle, allow_repeated), ProtoBakerException);
+        }
+    }
+
+    // Baked bytes must follow the prototype set alone. Iterating an unordered map would chain
+    // same-bucket entries in insertion order, so moving a proto between files rewrote output that did not change
+    auto bake_arrangement = [&](const vector<pair<string_view, string_view>>& files) {
+        TestRig local_rig;
+
+        for (const auto& [path, content] : files) {
+            local_rig.AddSourceFile(path, content);
+        }
+
+        add_client_mapper_metadata(local_rig);
+
+        ProtoBaker baker(local_rig.MakeContext("ProtoPackOrder", client_mapper_bake));
+        baker.BakeFiles(local_rig.GetAllSourceFiles(), "");
+        return local_rig.Outputs.at("ProtoPackOrder.fopro-bin-client");
+    };
+
+    SECTION("BakesIdenticalBytesWhateverFileCarriesEachProto")
+    {
+        constexpr string_view items_abc = R"([ProtoItem]
+$Name = OrderItemA
+Count = 1
+
+[ProtoItem]
+$Name = OrderItemB
+Count = 2
+
+[ProtoItem]
+$Name = OrderItemC
+Count = 3
+)";
+        constexpr string_view items_de_critter_p = R"([ProtoItem]
+$Name = OrderItemD
+Count = 4
+
+[ProtoItem]
+$Name = OrderItemE
+Count = 5
+
+[ProtoCritter]
+$Name = OrderCritterP
+)";
+        constexpr string_view items_fgh_critter_q = R"([ProtoItem]
+$Name = OrderItemF
+Count = 6
+
+[ProtoItem]
+$Name = OrderItemG
+Count = 7
+
+[ProtoItem]
+$Name = OrderItemH
+Count = 8
+
+[ProtoCritter]
+$Name = OrderCritterQ
+)";
+
+        // The same protos, redistributed and renamed so neither the file order nor the order within a
+        // file survives, while the resolved set stays identical
+        constexpr string_view mixed_hg = R"([ProtoItem]
+$Name = OrderItemH
+Count = 8
+
+[ProtoItem]
+$Name = OrderItemG
+Count = 7
+)";
+        constexpr string_view mixed_fed_critter_q = R"([ProtoCritter]
+$Name = OrderCritterQ
+
+[ProtoItem]
+$Name = OrderItemF
+Count = 6
+
+[ProtoItem]
+$Name = OrderItemE
+Count = 5
+
+[ProtoItem]
+$Name = OrderItemD
+Count = 4
+)";
+        constexpr string_view mixed_cba_critter_p = R"([ProtoItem]
+$Name = OrderItemC
+Count = 3
+
+[ProtoCritter]
+$Name = OrderCritterP
+
+[ProtoItem]
+$Name = OrderItemB
+Count = 2
+
+[ProtoItem]
+$Name = OrderItemA
+Count = 1
+)";
+
+        auto grouped = bake_arrangement({{"Items/Alpha.fopro", items_abc}, {"Items/Beta.fopro", items_de_critter_p}, {"Items/Gamma.fopro", items_fgh_critter_q}});
+        auto shuffled = bake_arrangement({{"Protos/Zulu.fopro", mixed_hg}, {"Protos/Yankee.fopro", mixed_fed_critter_q}, {"Protos/Xray.fopro", mixed_cba_critter_p}});
+
+        CHECK_FALSE(grouped.empty());
+        CHECK(grouped == shuffled);
+
+        // Guard against the comparison passing because the payload never reached the blob
+        auto changed = bake_arrangement({{"Items/Alpha.fopro", items_abc}, {"Items/Beta.fopro", items_de_critter_p}, {"Items/Gamma.fopro", R"([ProtoItem]
+$Name = OrderItemF
+Count = 6
+
+[ProtoItem]
+$Name = OrderItemG
+Count = 7
+
+[ProtoItem]
+$Name = OrderItemH
+Count = 9
+
+[ProtoCritter]
+$Name = OrderCritterQ
+)"}});
+
+        CHECK(grouped != changed);
+    }
+
     SECTION("BakesDynamicCustomEntityProtos")
     {
         TestRig local_rig;

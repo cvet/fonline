@@ -185,6 +185,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     };
 
+    bool allow_repeated_parents = _context->Settings->AllowRepeatedProtoParents;
+
     for (const auto& file_protos : all_file_protos) {
         const auto& type_name = file_protos.first;
         const auto& file_proto_pids = file_protos.second;
@@ -194,6 +196,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             FO_VERIFY_AND_THROW(all_proto_texts[type_name].count(pid) == 0, "Prototype text is registered more than once for the same entity type", type_name, pid);
 
             map<string, string> proto_kv;
+            unordered_set<hstring> reached_parents;
+            vector<hstring> parent_path;
 
             function<void(string_view, const map<string, string>&)> fill_parent_recursive = [&](string_view name, const map<string, string>& cur_kv) {
                 auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
@@ -212,7 +216,25 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                         throw ProtoTextBakerException("Proto fail to load parent for another proto", base_name, parent_name, name);
                     }
 
+                    // The path guard is what keeps the walk finite: a cycle would otherwise recurse until the stack is gone
+                    if (std::ranges::find(parent_path, parent_pid) != parent_path.end()) {
+                        throw ProtoTextBakerException("Proto parent chain contains a cycle", base_name, parent_name, name);
+                    }
+
+                    // A repeated ancestor contributes only where it is first reached: applying it again would
+                    // undo whatever the earlier parent overrode, which the source gives no hint of
+                    if (!reached_parents.insert(parent_pid).second) {
+                        if (!allow_repeated_parents) {
+                            throw ProtoTextBakerException("Proto reaches the same parent through several inheritance paths", base_name, parent_name, name);
+                        }
+
+                        continue;
+                    }
+
+                    parent_path.emplace_back(parent_pid);
                     fill_parent_recursive(parent_name, it_parent->second);
+                    parent_path.pop_back();
+
                     insert_map_values(it_parent->second, proto_kv);
                 }
             };
