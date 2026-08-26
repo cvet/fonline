@@ -236,8 +236,6 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
         }
     };
 
-    const bool allow_repeated_parents = _context->Settings->AllowRepeatedProtoParents;
-
     for (const auto& file_protos : all_file_protos) {
         const auto& type_name = file_protos.first;
         const auto& file_proto_pids = file_protos.second;
@@ -274,7 +272,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
                     // A repeated ancestor contributes only where it is first reached: applying it again would
                     // undo whatever the earlier parent overrode, which the source gives no hint of
                     if (!reached_parents.insert(parent_pid).second) {
-                        if (!allow_repeated_parents) {
+                        if (!_context->Settings->AllowRepeatedProtoParents) {
                             throw ProtoBakerException("Proto reaches the same parent through several inheritance paths", base_name, parent_name, name);
                         }
 

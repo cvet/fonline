@@ -415,7 +415,7 @@ all: when `false` it fails baking with `Proto reaches the same parent through se
 paths`, so a game that wants each facet stated once gets the diagnostic rather than a merge to reason
 about.
 
-A `$Parent` cycle is rejected regardless of both settings (`Proto parent chain contains a cycle`);
+A `$Parent` cycle is rejected regardless of that setting (`Proto parent chain contains a cycle`);
 without that guard the walk recurses until the stack is exhausted.
 
 The setting, the first-reach merge and the cycle guard are pinned for each baker by the
