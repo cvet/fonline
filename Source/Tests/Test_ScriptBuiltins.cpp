@@ -4640,7 +4640,7 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
     run_throwing_func("ScriptBuiltins::GlobalThrowOneArgThrows", "Global throw with one context");
     run_throwing_func("ScriptBuiltins::GlobalThrowThreeArgsThrows", "Global throw with three contexts");
     run_throwing_func("ScriptBuiltins::GlobalThrowTenArgsThrows", "Global throw with ten contexts");
-    auto entity_throw_message = run_throwing_func("ScriptBuiltins::GlobalThrowEntityArgThrows", "Critter: name UnitTestCr id ");
+    string entity_throw_message = run_throwing_func("ScriptBuiltins::GlobalThrowEntityArgThrows", "Critter: name UnitTestCr id ");
     CHECK(entity_throw_message.find(" proto UnitTestCr") != string::npos);
     run_throwing_func("ScriptBuiltins::GlobalNameOfNonFunctionThrows", "argument must be a function reference");
     run_throwing_func("ScriptBuiltins::GlobalNameOfNullThrows", "function reference is null");
