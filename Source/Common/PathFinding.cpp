@@ -171,7 +171,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     // The search never steps off the map, so a half-extent wider than the map buys nothing: sizing the grid
     // from MaxLength alone cost (2*MaxLength+2)^2 cells however small the map was
     int32_t grid_half = std::min(max_len + 1, std::max(numeric_cast<int32_t>(map_size.width), numeric_cast<int32_t>(map_size.height)));
-    auto grid_side = numeric_cast<size_t>(grid_half) * 2;
+    size_t grid_side = numeric_cast<size_t>(grid_half) * 2;
     grid_buffer.assign(grid_side * grid_side, 0);
     next_hexes.reserve(1024);
     gag_hexes.reserve(128);
