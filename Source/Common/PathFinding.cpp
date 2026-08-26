@@ -164,18 +164,21 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     // Prepare grid
     int32_t max_len = input.MaxLength;
-    auto grid_side = numeric_cast<size_t>(max_len * 2 + 2);
     vector<int16_t> grid_buffer;
     vector<mpos> next_hexes;
     vector<mpos> gag_hexes;
     vector<mpos> cr_hexes;
+    // The search never steps off the map, so a half-extent wider than the map buys nothing: sizing the grid
+    // from MaxLength alone cost (2*MaxLength+2)^2 cells however small the map was
+    int32_t grid_half = std::min(max_len + 1, std::max(numeric_cast<int32_t>(map_size.width), numeric_cast<int32_t>(map_size.height)));
+    auto grid_side = numeric_cast<size_t>(grid_half) * 2;
     grid_buffer.assign(grid_side * grid_side, 0);
     next_hexes.reserve(1024);
     gag_hexes.reserve(128);
     cr_hexes.reserve(128);
 
     mpos grid_offset = input.FromHex;
-    auto grid_at = [&](mpos hex) -> ptr<int16_t> { return make_ptr(&grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]); };
+    auto grid_at = [&](mpos hex) -> ptr<int16_t> { return make_ptr(&grid_buffer[(grid_half + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + (grid_half + hex.x - grid_offset.x)]); };
 
     size_t next_hexes_read = 0;
     size_t gag_hexes_read = 0;
