@@ -808,6 +808,33 @@ if(FO_MANAGED_SCRIPTING)
         AppendList(FO_MANAGED_PINVOKE_ARGS --library "${shimLib}=${FO_MANAGED_SHIM_PREFIX_${shimLib}}=${FO_MANAGED_RUNTIME_DIR}/lib/lib${shimLib}.a")
     endforeach()
 
+    # Taking an entry point's address keeps its whole object alive, so naming one a browser cannot honour
+    # drags in a POSIX call Emscripten does not implement - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    if(FO_WEB)
+        SetValue(FO_MANAGED_WEB_EXCLUDED_ENTRY_POINTS
+            SystemNative_FreeLibrary SystemNative_GetDefaultSearchOrderPseudoHandle SystemNative_GetLoadLibraryError
+            SystemNative_GetProcAddress SystemNative_LoadLibrary
+            SystemNative_ForkAndExecProcess SystemNative_GetPriority SystemNative_GetRLimit SystemNative_GetSid
+            SystemNative_Kill SystemNative_SchedGetAffinity SystemNative_SchedSetAffinity SystemNative_SetPriority
+            SystemNative_SetRLimit SystemNative_SysLog SystemNative_WaitIdAnyExitedNoHangNoWait SystemNative_WaitPidExitedNoHang
+            SystemNative_GetEGid SystemNative_GetEUid SystemNative_GetGroupList SystemNative_GetGroupName
+            SystemNative_GetGroups SystemNative_GetPwNamR SystemNative_GetPwUidR SystemNative_SetEUid
+            SystemNative_GetOSArchitecture SystemNative_GetUnixRelease SystemNative_GetUnixVersion
+            SystemNative_GetCpuUtilization
+            SystemNative_FLock SystemNative_LockFileRegion SystemNative_MAdvise SystemNative_MMap SystemNative_MProtect
+            SystemNative_MSync SystemNative_MUnmap SystemNative_ShmOpen SystemNative_ShmUnlink SystemNative_Sync)
+
+        foreach(excludedEntryPoint ${FO_MANAGED_WEB_EXCLUDED_ENTRY_POINTS})
+            AppendList(FO_MANAGED_PINVOKE_ARGS --exclude "${excludedEntryPoint}")
+        endforeach()
+    endif()
+
+    # WebAssembly has no JIT, so the interpreter is mandatory - and it is built as its own archive that has
+    # to precede monosgen, whose own interp-stubs.c would otherwise answer and abort on first managed call
+    if(FO_WEB)
+        AppendList(FO_COMMON_SYSTEM_LIBS mono-ee-interp)
+    endif()
+
     AppendList(FO_COMMON_SYSTEM_LIBS
         monosgen-2.0
         mono-component-debugger-stub-static
@@ -821,51 +848,14 @@ if(FO_MANAGED_SCRIPTING)
         AppendList(FO_COMMON_SYSTEM_LIBS bcrypt)
     elseif(FO_WEB)
         # The JS flavour, not the wasm one: the engine builds with -sDISABLE_EXCEPTION_CATCHING=0 rather
-        # than -fwasm-exceptions, and the wasm flavour then wants an unwinder the link does not have
-        AppendList(FO_COMMON_SYSTEM_LIBS mono-wasm-eh-js mono-wasm-nosimd)
+        # than -fwasm-exceptions, and the wasm flavour then wants an unwinder the link does not have.
+        # The interpreter's SIMD tables are their own archive and must match the runtime build, which
+        # enables SIMD - taking the nosimd tables leaves their entries empty for opcodes it still runs
+        AppendList(FO_COMMON_SYSTEM_LIBS mono-icall-table mono-wasm-eh-js mono-wasm-simd)
 
-        # Mono's browser runtime imports its scheduler, entropy and startup helpers from JavaScript, so
-        # these are as much part of the runtime as the archives are
-        SetValue(FO_MANAGED_GLUE_DIR ${FO_MANAGED_RUNTIME_DIR}/lib/es6)
-        AddLinkOptionsList(
-            --pre-js ${FO_MANAGED_GLUE_DIR}/dotnet.es6.pre.js
-            --js-library ${FO_MANAGED_GLUE_DIR}/dotnet.es6.lib.js
-            --extern-post-js ${FO_MANAGED_GLUE_DIR}/dotnet.es6.extpost.js)
-
-        # The shim table takes the address of every entry point, which makes each owning object live and
-        # drags in System.Native work a browser cannot do. Naming the calls keeps ALLOW_UNIMPLEMENTED_SYSCALLS
-        # off, so the strict default still catches everything that is not on this reviewed list
-        SetValue(FO_MANAGED_WEB_ALLOWED_UNDEFINED
-            dlopen
-            dlsym
-            endgrent
-            flock
-            getgrent
-            getgrgid_r
-            getpwnam_r
-            getpwuid_r
-            setgrent
-            waitid
-            __syscall_getegid32
-            __syscall_geteuid32
-            __syscall_getgroups32
-            __syscall_getpriority
-            __syscall_getrusage
-            __syscall_getsid
-            __syscall_madvise
-            __syscall_mprotect
-            __syscall_prlimit64
-            __syscall_setpriority
-            __syscall_sync
-            __syscall_uname
-            __syscall_wait4)
-        SetValue(FO_MANAGED_WEB_UNDEFINED_FILE ${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedWebAllowedUndefined.txt)
-        FileWrite(${FO_MANAGED_WEB_UNDEFINED_FILE} "")
-
-        foreach(allowedSymbol ${FO_MANAGED_WEB_ALLOWED_UNDEFINED})
-            FileAppend(${FO_MANAGED_WEB_UNDEFINED_FILE} "${allowedSymbol}\n")
-        endforeach()
-
-        AddLinkOptionsList(-Wl,--allow-undefined-file=${FO_MANAGED_WEB_UNDEFINED_FILE})
+        # Mono's browser runtime imports its scheduler and entropy from JavaScript. dotnet's own glue only
+        # links stubs there and fills them from its JS host, which the engine does not run - so it supplies
+        # the implementations itself, see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+        AddLinkOptionsList(--js-library ${FO_BUILDTOOLS_DIR}/web/managed-runtime.lib.js)
     endif()
 endif()

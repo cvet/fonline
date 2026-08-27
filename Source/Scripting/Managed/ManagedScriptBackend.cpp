@@ -65,6 +65,18 @@ FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef.inc"
 
+#if FO_WEB
+// No public Mono header declares these: with the interpreter built as its own archive, mini carries only
+// stubs and the embedder installs the real callbacks itself, exactly as dotnet's own browser host does
+extern "C" void mono_ee_interp_init(const char* opts);
+extern "C" void mono_icall_table_init();
+extern "C" void* mono_wasm_interp_to_native_callback(char* cookie);
+extern "C" void mono_wasm_install_interp_to_native_callback(void* (*cb)(char*));
+extern "C" void mono_marshal_ilgen_init();
+extern "C" void mono_method_builder_ilgen_init();
+extern "C" void mono_sgen_mono_ilgen_init();
+#endif
+
 FO_BEGIN_NAMESPACE
 
 #if FO_WINDOWS
@@ -4949,6 +4961,12 @@ static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>
 
     vector<std::filesystem::path> candidates;
 
+    // Platforms that ship the runtime somewhere the process cannot guess name it outright. Android is the
+    // case today: its assets live inside the package, so the launcher unpacks them and points here
+    if (const char* explicit_dir = std::getenv("FO_MANAGED_RUNTIME"); explicit_dir != nullptr && explicit_dir[0] != '\0') {
+        candidates.emplace_back(explicit_dir);
+    }
+
     candidates.emplace_back(std::filesystem::current_path() / "ManagedRuntime");
 
     if (const auto exe_path = Platform::GetExePath()) {
@@ -5035,7 +5053,9 @@ static void ConfigureManagedRuntime()
 
     // Force preemptive GC thread suspension. Under the multithreaded game-logic model the process hosts several
     // in-process engines (e.g
+#if !FO_WEB
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
+#endif
 
     const auto runtime_dir = FindManagedRuntimeDir();
 
@@ -5063,6 +5083,24 @@ static void ConfigureManagedRuntime()
     else {
         mono_config_parse(nullptr);
     }
+
+#if FO_WEB
+    // WebAssembly has no JIT, so IL runs through the interpreter, and both halves are needed before the
+    // domain exists - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP_ONLY);
+
+    // The runtime is built with DISABLE_ICALL_TABLES, so mono_icall_init skips the table and every icall
+    // resolves to a niladic no_icall_table stub - which a four-argument call site cannot invoke on wasm
+    mono_icall_table_init();
+    mono_wasm_install_interp_to_native_callback(mono_wasm_interp_to_native_callback);
+    mono_ee_interp_init("");
+
+    // The interpreter reaches native code through generated marshalling wrappers, so the IL generators
+    // have to be installed before the domain exists - mini_init does not do it for this build
+    mono_marshal_ilgen_init();
+    mono_method_builder_ilgen_init();
+    mono_sgen_mono_ilgen_init();
+#endif
 
     WriteLog("Managed runtime directory: {}", runtime_dir->string());
 }

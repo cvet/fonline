@@ -58,6 +58,7 @@
 #include <bit>
 #include <cassert>
 #include <cctype>
+#include <cerrno>
 #include <cfloat>
 #include <charconv>
 #include <chrono>

@@ -103,16 +103,34 @@ def main() -> None:
     parser.add_argument('--nm', required=True, help='nm tool of the target toolchain')
     parser.add_argument('--output', required=True, type=Path, help='generated source file')
     parser.add_argument('--library', required=True, action='append', type=parse_library_argument, help='<library>=<prefix>=<archive>, repeatable')
+    parser.add_argument('--exclude', action='append', default=[], help='entry point the target cannot support, repeatable')
     args = parser.parse_args()
 
     libraries: dict[str, list[str]] = {}
+    excluded = set(args.exclude)
+    seen: set[str] = set()
 
     for library_name, prefix, archive_path in args.library:
         if not archive_path.is_file():
             raise SystemExit(f'Interop shim archive not found: {archive_path}')
 
-        libraries[library_name] = collect_archive_symbols(args.nm, archive_path, prefix)
-        print(f'{library_name}: {len(libraries[library_name])} entry points', file=sys.stderr)
+        symbols = collect_archive_symbols(args.nm, archive_path, prefix)
+        seen.update(symbols)
+        kept = [name for name in symbols if name not in excluded]
+        dropped = len(symbols) - len(kept)
+        libraries[library_name] = kept
+
+        if dropped != 0:
+            print(f'{library_name}: {len(kept)} entry points ({dropped} excluded)', file=sys.stderr)
+        else:
+            print(f'{library_name}: {len(kept)} entry points', file=sys.stderr)
+
+    # An exclusion that matches nothing is a typo or a renamed entry point, and it fails silently: the
+    # object it was meant to drop stays live and only surfaces as an undefined symbol at link time
+    unmatched = sorted(excluded - seen)
+
+    if unmatched:
+        raise SystemExit(f'Excluded entry points not found in any archive: {", ".join(unmatched)}')
 
     emit_table(args.output, libraries)
 

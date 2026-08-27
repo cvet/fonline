@@ -173,20 +173,4 @@ auto MakeSeededRandomGenerator() -> std::mt19937
     return std::mt19937 {random_device()};
 }
 
-// Dummy symbols for web build to avoid linker errors
-#if FO_WEB
-
-FO_END_NAMESPACE
-
-void emscripten_sleep(unsigned int ms)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_UNREACHABLE_PLACE();
-}
-
-FO_BEGIN_NAMESPACE
-
-#endif
-
 FO_END_NAMESPACE
