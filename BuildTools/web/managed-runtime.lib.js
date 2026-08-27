@@ -80,7 +80,7 @@ addToLibrary({
     // A WebAssembly indirect call must match the target's signature exactly, so the interpreter cannot call
     // a native function by address - it asks here for a wrapper matching one signature cookie at a time
     mono_wasm_interp_to_native_callback__deps: [
-        '$UTF8ToString', '$addFunction', '$getWasmTableEntry',
+        '$UTF8ToString', '$addFunction', '$wasmTable',
         'mono_wasm_interp_method_args_get_iarg', 'mono_wasm_interp_method_args_get_larg',
         'mono_wasm_interp_method_args_get_farg', 'mono_wasm_interp_method_args_get_darg',
         'mono_wasm_interp_method_args_get_retval'],
@@ -123,6 +123,10 @@ addToLibrary({
 
         var returnKind = cookie[0];
 
+        // Emscripten's getWasmTableEntry is an internal symbol a user library may not depend on, so the
+        // table is read here directly and mirrored the same way, since every managed call comes through
+        var entries = [];
+
         var wrapper = function (targetFunc, margs) {
             var args = new Array(plan.length);
 
@@ -141,7 +145,13 @@ addToLibrary({
                 }
             }
 
-            var result = getWasmTableEntry(targetFunc).apply(null, args);
+            var entry = entries[targetFunc];
+
+            if (entry === undefined) {
+                entry = entries[targetFunc] = wasmTable.get(targetFunc);
+            }
+
+            var result = entry.apply(null, args);
 
             if (returnKind === 'V') {
                 return;
