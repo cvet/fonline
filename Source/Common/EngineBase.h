@@ -88,6 +88,7 @@ public:
     [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_inboundRemoteCalls; }
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
     [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
+    [[nodiscard]] auto GetGameSettingsInitialValues() const noexcept -> const auto& { return _gameSettingsInitialValues; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
     [[nodiscard]] auto GetAllProtos() const noexcept -> const auto& { return _protoMngr.GetAllProtos(); }
     [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _protoMngr.GetProtoItems(); }
@@ -121,7 +122,7 @@ public:
     void RegisterEntityEvent(string_view entity_name, EntityEventDesc&& event);
     void RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call);
     void RegisterInboundRemoteCall(RemoteCallDesc&& remote_call);
-    void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
+    void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
     void RegisterProtos(const FileSystem& resources);
@@ -156,6 +157,7 @@ private:
     unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
     unordered_map<hstring, RemoteCallDesc> _inboundRemoteCalls {};
     unordered_map<string, ptr<const BaseTypeDesc>> _gameSettings {};
+    map<string, string> _gameSettingsInitialValues {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };
