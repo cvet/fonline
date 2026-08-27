@@ -1194,12 +1194,20 @@ class Packager:
 		file_packager_path = os.path.join(emsdk_root, 'upstream', 'emscripten', 'tools', 'file_packager.py')
 		assert os.path.isfile(file_packager_path), 'No emscripten tools/file_packager.py found'
 
+		# The wasm module carries the Mono runtime itself, but its class library is data the client reads at
+		# startup, so it is preloaded into the same virtual filesystem the resources land in. Assemblies
+		# only: the native part is already linked in, and the headers beside them are build-time artifacts
+		managed_runtime_lib_path = os.path.join(bin_path, 'ManagedRuntime', 'lib', 'netcoreapp')
+		assert os.path.isdir(managed_runtime_lib_path), f'Managed runtime assemblies not found: {managed_runtime_lib_path}'
+
 		packager_args = [
 			sys.executable if sys.executable else 'python3',
 			file_packager_path,
 			os.path.join(self.target_output_path, 'Resources.data').replace('\\', '/'),
 			'--preload',
 			os.path.join(self.target_output_path, self.client_res_dir).replace('\\', '/') + '@' + self.client_res_dir,
+			'--preload',
+			managed_runtime_lib_path.replace('\\', '/') + '@ManagedRuntime/lib/netcoreapp',
 			'--js-output=' + os.path.join(self.target_output_path, 'Resources.js').replace('\\', '/'),
 			'--lz4',
 		]
@@ -1332,6 +1340,21 @@ class Packager:
 			assets_res_dir = os.path.join(assets_dir, self.client_res_dir)
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
+
+		# The Managed runtime travels in the package like the resources do: Mono needs a real filesystem
+		# path for it, so the launcher unpacks assets to app storage and names the result to the engine.
+		# Only the managed assemblies go in - Mono itself is linked into the native library, so the
+		# runtime's own shared objects and headers would be dead weight, and the assemblies carry no
+		# architecture, which keeps one copy correct for every ABI in the package
+		for entry_name in RUNTIME_COMPANION_DIRECTORIES:
+			assemblies_source = os.path.join(bin_path, entry_name, 'lib', 'netcoreapp')
+			if not os.path.isdir(assemblies_source):
+				continue
+
+			assets_runtime_dir = os.path.join(assets_dir, entry_name, 'lib', 'netcoreapp')
+			shutil.rmtree(os.path.join(assets_dir, entry_name), ignore_errors=True)
+			shutil.copytree(assemblies_source, assets_runtime_dir)
+			log('Managed runtime assemblies packaged', assets_runtime_dir)
 
 		# Read Android config from the baked target config so SubConfig overrides affect APK metadata
 		android_config = self.get_effective_config_section()
