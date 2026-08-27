@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
 
 namespace FOnline.ManagedHost
@@ -85,7 +87,18 @@ namespace FOnline.ManagedHost
 
                     try
                     {
-                        assemblyName = AssemblyName.GetAssemblyName(path).Name;
+                        // Read through a stream rather than AssemblyName.GetAssemblyName, which memory-maps the
+                        // file: WebAssembly has no mmap, and only the simple name is needed here
+                        using FileStream stream = File.OpenRead(path);
+                        using PEReader peReader = new PEReader(stream, PEStreamOptions.PrefetchMetadata);
+
+                        if (!peReader.HasMetadata)
+                        {
+                            continue;
+                        }
+
+                        MetadataReader metadataReader = peReader.GetMetadataReader();
+                        assemblyName = metadataReader.GetString(metadataReader.GetAssemblyDefinition().Name);
                     }
                     catch (BadImageFormatException)
                     {
