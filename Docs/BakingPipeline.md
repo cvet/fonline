@@ -475,7 +475,12 @@ required root-space contracts to every model section:
 The baker samples animation keys, their midpoints, and a uniform timeline to
 build deterministic envelopes independent of camera angle, projection factor,
 model-sprite resolution, and renderer backend. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract. In
+animation bounds are baking errors in the version 2 contract. Each binary link
+contains an explicit `hasGeometry` discriminator before the optional geometry
+payload. The discriminator must match the link type: a non-empty `ChildName`
+with `IsParticles == false` writes `1` followed by the required min/max AABB;
+the default link and particle links write `0` and no geometry AABB. Readers
+reject discriminator values outside `0` and `1`. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds
@@ -487,9 +492,11 @@ neither group; a present companion with no model sections is malformed.
 Enabled animation bounds size
 the logical scratch frame, the dedicated view bound seeds the stable body/name
 rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
-layer/child-model envelopes extend both contracts, while exact weighted
-current-pose geometry selects the atlas crop and expands/rerenders the scratch
-frame when sampled bounds are insufficient.
+layer/child-model envelopes extend both contracts. Each selected geometry link
+contributes its baked absolute AABB; runtime projects only envelope corners and
+does not read or skin mesh vertices to determine dimensions. Live particles can
+still expand and rerender the scratch frame when their measured bounds exceed the
+baked geometry envelope.
 
 `Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
 root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,
@@ -1016,7 +1023,7 @@ animation-only tracks are identity, while a separate presence byte remains
 zero.
 
 The baked `.fo3d` contract is now explicitly versioned. Every description starts
-with `LFMODINF`, schema `1`, and zero flags, followed by the existing positional
+with `LFMODINF`, schema `2`, and zero flags, followed by the existing positional
 description and one required length-prefixed `LFOZZRIG` schema-1 payload. The rig
 payload stores the canonical rig/cache signatures, canonical skeleton, base
 remap, each unique resolved animation/remap pair, and a sorted
@@ -1024,6 +1031,18 @@ remap, each unique resolved animation/remap pair, and a sorted
 the actual baker-resolved source/name, so `Base`, case-insensitive authored
 names, relative paths, and multiple animation pairs sharing one clip do not need
 to be resolved again by the client.
+
+Schema 2 appends an optional AABB to every serialized link. A non-particle link
+with a child model must carry a finite, non-degenerate bound; default/root-edit and
+particle links must not. For an empty `Link` bone, `ModelInfoBaker` skins the child
+mesh with the parent description's static pose and every unique mapped animation.
+For a named bone, it sweeps the child aggregate AABB through that parent's bone in
+the static pose and every unique mapped animation. The child-default plus outer-link
+T/R/S and both child-default and outer-link `DisableMesh` selections are included. These
+calculations are submitted as bounded nested jobs from the ordinary per-description
+bake task. They reuse the bake pool and fall back to inline execution when it is
+full, so changing one attachment invalidates and recalculates its owning `.fo3d` without serially
+rebuilding a global equipment-configuration table.
 
 Each rig archive manifest repeats the caller-owned source signature and
 source/object identity before its nested `LFOZZARC`. The reader constructs its

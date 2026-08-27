@@ -46,6 +46,8 @@ FO_DECLARE_EXCEPTION(ModelBoundsException);
 
 auto CalculateModelStaticBounds(const ModelMeshData& model_data, const vector<string>& disabled_meshes = {}) -> optional<ModelBounds3D>;
 auto CalculateModelAnimationBounds(const ModelMeshData& model_data, const ModelAnimationSource& animation, bool reversed, const vector<string>& disabled_meshes = {}) -> optional<ModelBounds3D>;
+auto CalculateRigidModelAttachmentStaticBounds(const ModelMeshData& parent_model_data, string_view link_bone, const ModelBounds3D& attachment_bounds, const mat44& attachment_transform) -> optional<ModelBounds3D>;
+auto CalculateRigidModelAttachmentAnimationBounds(const ModelMeshData& parent_model_data, const ModelAnimationSource& animation, bool reversed, string_view link_bone, const ModelBounds3D& attachment_bounds, const mat44& attachment_transform) -> optional<ModelBounds3D>;
 
 FO_END_NAMESPACE
 

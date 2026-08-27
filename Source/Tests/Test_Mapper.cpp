@@ -2690,6 +2690,48 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
     }
 }
 
+TEST_CASE("MapViewItemHitTestingUsesActiveItemSprites")
+{
+    GlobalSettings settings = MakeMapperTestSettings();
+    refcount_ptr<MapperEngine> mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    mapper->InitIface();
+
+    nptr<MapView> map = mapper->LoadMapFromText("ItemHitMap", "ItemHitMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 8, 8)));
+    REQUIRE(map);
+    mapper->ShowMap(map.as_ptr());
+
+    ptr<MapView> map_ptr = map.as_ptr();
+    map_ptr->InstantScrollTo(mpos {8, 8});
+    map_ptr->RebuildMap();
+
+    span<refcount_ptr<ItemHexView>> items = map_ptr->GetItems();
+    REQUIRE(items.size() == 1);
+    ptr<ItemHexView> item = items.front().as_ptr();
+    REQUIRE(item->IsMapSpriteVisible());
+
+    irect32 first_rect = item->GetMapSprite()->GetDrawRect();
+    ipos32 first_pos = map_ptr->MapToScreenPos({first_rect.x + first_rect.width / 2, first_rect.y + first_rect.height / 2});
+    bool item_egg = false;
+    pair<nptr<ItemHexView>, nptr<const MapSprite>> first_hit = map_ptr->GetItemAtScreen(first_pos, item_egg, 0, false);
+    CHECK(first_hit.first == item);
+    CHECK_FALSE(item_egg);
+
+    map_ptr->MoveItem(item, mpos {9, 8});
+    REQUIRE(item->IsMapSpriteVisible());
+
+    irect32 moved_rect = item->GetMapSprite()->GetDrawRect();
+    ipos32 moved_pos = map_ptr->MapToScreenPos({moved_rect.x + moved_rect.width / 2, moved_rect.y + moved_rect.height / 2});
+    pair<nptr<ItemHexView>, nptr<const MapSprite>> moved_hit = map_ptr->GetItemAtScreen(moved_pos, item_egg, 0, false);
+    CHECK(moved_hit.first == item);
+
+    map_ptr->DestroyItem(item);
+    pair<nptr<ItemHexView>, nptr<const MapSprite>> removed_hit = map_ptr->GetItemAtScreen(moved_pos, item_egg, 0, false);
+    CHECK_FALSE(removed_hit.first);
+}
+
 TEST_CASE("MapViewLightingAndViewportOperations")
 {
     auto settings = MakeMapperTestSettings();
