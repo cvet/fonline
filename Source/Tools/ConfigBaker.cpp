@@ -79,6 +79,8 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
     if (!configs_to_bake.empty()) {
         auto server_engine = BakerServerEngine(*_context->BakedFiles);
         auto client_engine = BakerClientEngine(*_context->BakedFiles);
+        const auto& server_game_settings = server_engine.GetGameSettings();
+        const auto& client_game_settings = client_engine.GetGameSettings();
 
         auto resolve_config_settings = [&](string_view sub_config) -> map<string, string> {
             FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
@@ -100,13 +102,20 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
         // has to carry only what that baseline cannot express: a sub-config value that differs from it
         auto root_config_settings = resolve_config_settings("");
 
+        // Bootstrap settings are the exception: their consumer runs before the engine applies the metadata
+        // baseline, so the delta form would leave them unreadable at the moment they are needed
+        unordered_set<string> bootstrap_settings;
+
+        for (const auto& name : _context->Settings->BootstrapGameSettings) {
+            FO_VERIFY_AND_THROW(server_game_settings.contains(name) || client_game_settings.contains(name), "Bootstrap game setting is not a declared game setting", name);
+            bootstrap_settings.emplace(name);
+        }
+
         auto bake_config = [&](string_view sub_config) -> bool {
             auto config_settings = resolve_config_settings(sub_config);
 
             auto server_settings = GetServerSettings();
             auto client_settings = GetClientSettings();
-            const auto& server_game_settings = server_engine.GetGameSettings();
-            const auto& client_game_settings = client_engine.GetGameSettings();
 
             string server_config_content;
             server_config_content.reserve(0x4000);
@@ -121,8 +130,10 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 bool is_server_game_setting = server_game_settings.contains(key);
                 bool is_client_game_setting = client_game_settings.contains(key);
                 bool is_game_setting = is_server_game_setting || is_client_game_setting;
-                bool is_game_only_setting = is_game_setting && !is_server_setting && !is_client_setting;
+                bool is_bootstrap_setting = bootstrap_settings.contains(key);
+                bool is_game_only_setting = is_game_setting && !is_server_setting && !is_client_setting && !is_bootstrap_setting;
                 bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
+                bool write_to_client = is_client_setting || is_client_game_setting;
                 auto shortened_value = strvex(value).is_explicit_bool() ? (strvex(value).to_bool() ? "1" : "0") : value;
 
                 if (is_game_only_setting) {
@@ -142,7 +153,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                     if (!skip_write) {
                         server_config_content += strex("{}={}\n", key, shortened_value);
 
-                        if (is_client_setting) {
+                        if (write_to_client) {
                             client_config_content += strex("{}={}\n", key, shortened_value);
                         }
                     }
