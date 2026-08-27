@@ -1468,7 +1468,7 @@ static void ValidateModelAnimationSkeletonRoundTrip(const ozz::animation::Skelet
             throw ModelAnimationConverterException("Canonical ozz skeleton parent mismatch at joint", context, i, canonical_rig.Parents[i], parents[i]);
         }
 
-        ozz::math::Transform actual_rest = ozz::animation::GetJointLocalRestPose(skeleton, numeric_cast<int>(i));
+        ozz::math::Transform actual_rest = ozz::animation::GetJointRestPoseLocalSpace(skeleton, numeric_cast<int>(i));
         const ozz::math::Transform& expected_rest = canonical_rig.RestTransforms[i];
         float32_t rotation_dot = actual_rest.rotation.x * expected_rest.rotation.x + actual_rest.rotation.y * expected_rest.rotation.y + actual_rest.rotation.z * expected_rest.rotation.z + actual_rest.rotation.w * expected_rest.rotation.w;
 

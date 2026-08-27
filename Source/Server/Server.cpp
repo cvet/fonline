@@ -4135,10 +4135,19 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
         return false;
     }
 
-    if (!GeometryHelper::NormalizeHexOffset(client_hex, client_hex_offset, map->GetSize())) {
+    mpos on_map_hex = client_hex;
+    ipos16 on_map_hex_offset = client_hex_offset;
+
+    // The guarded normalization below cannot report which of its two rules declined, so the off-map one is taken first
+    if (!GeometryHelper::NormalizeHexOffset(on_map_hex, on_map_hex_offset, map->GetSize())) {
         WriteLog("Process_StopMove: client stop position is outside map after normalization, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), offset ({},{})", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y, client_hex_offset.x, client_hex_offset.y);
         return false;
     }
+
+    // Reconciliation paths to the reported hex, so rounding into a blocked neighbour would answer a stop with a
+    // correction toward the blocker - the shared guard declines that, keeping the rule identical to the client's
+    auto is_movable = [map](mpos check_hex) { return map->IsHexMovable(check_hex); };
+    (void)GeometryHelper::NormalizeHexOffset(client_hex, client_hex_offset, map->GetSize(), is_movable);
 
     vector<mpos> path_hexes = moving->EvaluatePathHexes(moving->GetStartHex());
     auto client_hex_it = std::ranges::find(path_hexes, client_hex);

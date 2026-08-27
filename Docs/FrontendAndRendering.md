@@ -206,6 +206,10 @@ automatic. `.fo3d` no longer accepts `DrawSize` or `ViewSize`, and the
 corresponding default render settings no longer provide fallback dimensions.
 `ModelAnimationInfo.foinfo` bounds schema version 2 supplies an aggregate root-space
 model AABB, a dedicated idle-priority view AABB, and individual animation AABBs.
+The version-2 binary `.fo3d` description also stores one conservative root-space
+AABB beside every selectable geometry link. It is part of that exact link record,
+so an unselected weapon or armour variant contributes neither runtime work nor frame
+space.
 In `FO_ENABLE_3D` builds, the common `EngineMetadata` loader parses and validates
 the complete companion once; rendering requests immutable model records from that registry rather than
 maintaining a second client-side config parser or bounds cache.
@@ -227,12 +231,12 @@ coarse picking, transparent eggs, and flying-text placement do not jitter when
 the model turns or changes animation.
 
 The view rectangle may never *grow* past that baked view bound. The live pose and
-attached child models are excluded on purpose. A pose-derived box would have to be
+attached child models cannot independently grow it upward. A pose-derived box would have to be
 accumulated (a frame layout may not shrink mid-animation), and accumulation makes it
 grow frame after frame — root motion alone sweeps it across a whole clip — until the
-name floats far above the critter. An attachment cannot contribute either: for a
-child linked by matching bone names, its own bound is an unposed extent that says
-nothing about where its skinned geometry lands. A critter whose silhouette needs the
+name floats far above the critter. The combined active baked envelope is considered
+only by the same downward-pose rule described below; a raised or wide attachment does
+not lift the name. A critter whose silhouette needs the
 name higher is served by the prototype's authored `NameOffset`. The drawing frame,
 in contrast, *does* take attachments and *does* grow monotonically — it has to cover
 whatever is actually rasterized. So the view rectangle stays inside the frame by
@@ -251,15 +255,22 @@ inputs are baked per clip, so the result is constant for a given animation and c
 drift within it.
 
 The automatic logical frame owns the reusable 2x scratch render target. After
-the pose is evaluated, the client combines its per-animation prediction with an
-exact weighted envelope of the referenced vertices in the generated, currently active skinned meshes and
-their projected shadow. This mesh envelope is taken **across all facings**, not just the
-current one: each vertex's projected coordinate traces a sinusoid as the model turns, so
-sampling it at the current facing, +90 and +180 and keeping the harmonic (continuous)
-range yields a facing-independent extent. Runtime layer/equipment meshes (a backpack, a
-held weapon) are not in the baked animation bounds, so this is what keeps the frame a
-**fixed size while the critter turns** instead of resizing each time a facing pushes the
-gear wider. Only currently-emitting particle systems extend this envelope;
+the pose is evaluated, every model sprite unions the active clip's baked root-model
+envelope with the baked envelopes of the currently selected geometry links. A root/skinned
+link is baked by posing its mesh through every animation mapped by the parent `.fo3d`.
+A rigid named-bone link is baked by moving the eight corners of its child aggregate through
+that bone's static pose and every mapped animation. Both paths include the child description's
+default transform, the outer link's authored translation/rotation/scale, and disabled meshes.
+Nested links reuse the same records and
+only transform an already-baked eight-corner envelope through their selected parent.
+
+The client then projects the resulting eight corners over the continuous facing range.
+It neither reads model vertices nor builds skin matrices to determine sprite dimensions.
+This applies equally to map and interface/preview sprites and keeps the frame a **fixed size
+while the critter turns** instead of resizing each time a facing pushes the gear wider.
+The bake is deliberately conservative across a selected link's parent animations; changing
+the selected layer starts a new configuration envelope, so inactive gear reserves no atlas
+space. Only currently-emitting particle systems extend this envelope;
 a dormant effect (for example furnace smoke that is not puffing) reserves no frame
 space and is absorbed by the expansion pass if and when it starts emitting.
 
@@ -515,6 +526,8 @@ Validate SDL_GPU changes with a client scene launch under `Render.ForceSDLGpu=Tr
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
 
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
+
+`Gui::CheckHit` caches its boolean answer for the current `Game.FrameTime` and query position, because cursor drawing, zoom, and movement all ask for the same point in one frame while `FindHit` walks every screen tree. The cache is dropped wherever the answer could change: `_RefreshActive` (every `Active` flip that bypasses `SetActive` — screen `_Show`/`_Hide`, object init/remove, grid cell prototypes), `_RefreshPosition` (every position/size/anchor/dock change), public `Object::Move`, the direct `_Move` paths that skip `_RefreshPosition` (`Screen::_GlobalMouseMove`, `Panel::_SetScrollValue`, `Grid::RefreshContentPositions`), `SetActive`, `SetNotHittable`, `SetCheckTransparentOnHit`, `SetFrameImage`/`SetBackgroundImage` (the sprite alpha mask participates in transparent hit-testing), `SetCropContent`, and the screen-order paths `ShowHideScreen` and `BringToFront`. Resolution and language refresh are covered through `_RefreshPositionRecursive`. The layout setters all return early when nothing changed, so an idle screen never invalidates. `_Move` itself does not drop the cache: `Draw` uses a temporary `_Move` pair every frame, and invalidating there would defeat the cache.
 
 Model-attached SPARK particle systems keep already spawned particles in their simulation space while the emitter follows the model attachment point. A non-identity root transform in the particle resource selects the position-plus-facing path instead of inheriting the full bone matrix; this keeps lingering particles world-stable during model movement while new particles spawn at the current attachment point. The model movement offset is subtracted in particle model space before camera rotation and projection so the setup-time positive offset and draw-time negative offset cancel for newly emitted particles.
 

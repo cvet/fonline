@@ -43,6 +43,7 @@ constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
 
 class RenderEffect;
 class Sprite;
+class ItemHexView;
 class MapSpriteList;
 
 ///@ ExportEnum
@@ -129,6 +130,8 @@ public:
     [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect ? *_drawEffect : nullptr; }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
     [[nodiscard]] auto GetMapProjected() const noexcept -> bool { return _mapProjected; }
+    [[nodiscard]] auto GetItemOwner() const noexcept -> nptr<ItemHexView> { return _itemOwner; }
+    [[nodiscard]] auto IsItemHitTestWhenHidden() const noexcept -> bool { return _itemHitTestWhenHidden; }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
@@ -140,6 +143,7 @@ public:
     void SetElevation(int16_t elevation) noexcept;
     void SetAngle(int16_t angle) noexcept;
     void SetMapProjected(bool map_projected) noexcept;
+    void SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept;
     void CreateExtraChain(ptr<MapSprite*> mspr);
     void AddToExtraChain(ptr<MapSprite> mspr);
 
@@ -175,6 +179,8 @@ private:
     nptr<MapSprite*> _extraChainRoot {};
     nptr<MapSprite> _extraChainParent {};
     nptr<MapSprite> _extraChainChild {};
+    nptr<ItemHexView> _itemOwner {};
+    bool _itemHitTestWhenHidden {};
 };
 
 class MapSpriteList final

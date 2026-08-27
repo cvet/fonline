@@ -206,6 +206,28 @@ namespace TestManagedMetadata
         CHECK(std::ranges::count(enum_it->second, vector<string> {"CoverageSide", "uint8", "First", "1", "Second", "2"}) == 1);
     }
 
+    SECTION("uses the applied config write time for setting values")
+    {
+        string temp_dir = fs_path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+        REQUIRE(fs_create_directories(temp_dir));
+        string config_path = strex(temp_dir).combine_path("Test.fomain").str();
+        REQUIRE(fs_write_file(config_path, "Coverage.Enabled = true\n"));
+
+        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
+
+        vector<uint64_t> checked_write_times;
+        MetadataBaker baker(rig.MakeContext("MetaPack", [&checked_write_times](string_view, uint64_t write_time) {
+            checked_write_times.emplace_back(write_time);
+            return false;
+        }));
+
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(checked_write_times.size() == 3);
+        CHECK(std::ranges::all_of(checked_write_times, [&](uint64_t write_time) { return write_time == fs_last_write_time(config_path); }));
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
     SECTION("returns without output when bake checker rejects every side")
     {
         rig.AddSourceFile("Scripts/TestEnum.fos", "///@ Enum CoverageDisabled Value = 1", 7);
@@ -622,8 +644,10 @@ namespace TestOffTargetMetadataStubs
         REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during preparing of metadata"));
     }
 
-    SECTION("resolves optional setting groups")
+    SECTION("resolves setting groups and serializes their configured values")
     {
+        ConfigFile config {"Common.DebugBuild = true\nDebugFlag = false\n"};
+        rig.Settings.ApplyConfigFile(config, "");
         rig.AddSourceFile("Scripts/TestSettings.fos", R"(
 namespace TestSettings
 {
@@ -676,8 +700,73 @@ namespace TestSettings
 
         reader.VerifyEnd();
 
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool"}) == 3);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"DebugFlag", "bool"}) == 1);
+        auto debug_build_value = rig.Settings.FindSettingValue("Common.DebugBuild");
+        auto debug_flag_value = rig.Settings.FindSettingValue("DebugFlag");
+        REQUIRE(debug_build_value);
+        REQUIRE(debug_flag_value);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool", *debug_build_value}) == 3);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"DebugFlag", "bool", *debug_flag_value}) == 1);
+    }
+
+    SECTION("rejects setting declarations without a configured value")
+    {
+        ExpectMetadataBakerError("///@ Setting Client bool Missing.Value", "setting has no configured value");
+    }
+
+    SECTION("serializes and applies initial game setting values")
+    {
+        ConfigFile bake_config {"Common.GameName = MetadataGame\n"};
+        rig.Settings.ApplyConfigFile(bake_config, "");
+        rig.Settings.SetCustomSetting("Daylight.SunriseMinute", any_t(string("540")));
+        rig.AddSourceFile("Scripts/TestSettingValue.fos", "///@ Setting Common string Common.GameName\n///@ Setting Client int32 Daylight.SunriseMinute");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+
+        const auto& output = rig.Outputs.at("TestPack.fometa-client");
+        auto tags = read_baked_tags(output);
+        auto setting_it = tags.find("Setting");
+
+        REQUIRE(setting_it != tags.end());
+        CHECK(std::ranges::count(setting_it->second, vector<string> {"Common.GameName", "string", "MetadataGame"}) == 1);
+        CHECK(std::ranges::count(setting_it->second, vector<string> {"Daylight.SunriseMinute", "int32", "540"}) == 1);
+
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ClientSide);
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        // Mirrors what BaseEngine does with the registered values
+        auto apply_metadata_settings = [&](GlobalSettings& settings) {
+            for (const auto& [name, value] : meta.GetGameSettingsInitialValues()) {
+                if (!settings.FindSettingValue(name)) {
+                    settings.SetSettingValue(name, value);
+                }
+            }
+        };
+
+        GlobalSettings unconfigured_runtime_settings {false};
+        unconfigured_runtime_settings.ApplyDefaultSettings();
+        apply_metadata_settings(unconfigured_runtime_settings);
+        CHECK(unconfigured_runtime_settings.GameName == "MetadataGame");
+        CHECK_FALSE(unconfigured_runtime_settings.FindCustomSetting("Common.GameName"));
+        REQUIRE(unconfigured_runtime_settings.FindCustomSetting("Daylight.SunriseMinute"));
+        CHECK(unconfigured_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "540");
+
+        // The applied configuration is the operator's explicit override, so a sub-config, local config or
+        // command-line value survives the metadata baseline
+        GlobalSettings overridden_runtime_settings {false};
+        overridden_runtime_settings.ApplyDefaultSettings();
+        ConfigFile runtime_config {"Common.GameName = LocalGame\n"};
+        overridden_runtime_settings.ApplyConfigFile(runtime_config, "");
+        overridden_runtime_settings.SetCustomSetting("Daylight.SunriseMinute", any_t(string("600")));
+        apply_metadata_settings(overridden_runtime_settings);
+        CHECK(overridden_runtime_settings.GameName == "LocalGame");
+        CHECK(overridden_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "600");
+
+        auto missing_value_output = MakeMetadataBlob({{"Setting", {{"Invalid.WithoutValue", "bool"}}}});
+        EngineMetadata invalid_meta {[] { }};
+        invalid_meta.RegisterSide(EngineSideKind::ClientSide);
+        REQUIRE_THROWS_WITH(RegisterDynamicMetadata(&invalid_meta, missing_value_output), Catch::Matchers::ContainsSubstring("Setting metadata record must contain setting name, value type, and initial value"));
     }
 
     SECTION("serializes events and remote calls")

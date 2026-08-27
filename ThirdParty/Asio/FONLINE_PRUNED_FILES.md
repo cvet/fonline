@@ -4,6 +4,7 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- doc/
 - src/
 - aclocal.m4
 - asio.pc.in
@@ -18,4 +19,3 @@ Removed paths:
 - Makefile.in
 - missing
 - test-driver
-

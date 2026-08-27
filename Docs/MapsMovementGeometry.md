@@ -84,7 +84,7 @@ near, far) * MakeMapCameraView`), so sprites, 3D models, and particles share one
 sprites write per-vertex world depth and test it with `DepthFunc = LessEqual` — the CPU painter sort still
 orders blended layers — so the shared depth buffer resolves occlusion across all three.
 
-`Test_Geometry.cpp` pins both forms against each other and against `GetHexPos`.
+`Test_Geometry.cpp` pins both forms against each other and against `GetHexPos`. `GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`, so changing the view origin translates every hex by one pixel delta; `MapView` relies on that identity when it shifts cached light primitives on scroll.
 
 ## Geometry helper responsibilities
 
@@ -120,7 +120,10 @@ Important `FindPathInput` fields:
 - `FromHex` / `ToHex` — requested route endpoints.
 - `ToHexOffset` — the target's real sub-hex offset within `ToHex` (the continuous target position is `ToHex` center + `ToHexOffset`). Used only by the `FreeMovement` end-offset computation.
 - `MapSize` — bounds for all checks.
-- `MaxLength` — maximum BFS depth, normally derived from engine settings.
+- `MaxLength` — maximum BFS depth, normally derived from engine settings. It bounds the search depth
+  only: the visited grid is sized by `min(MaxLength + 1, max(map width, map height))` per axis,
+  because the search never steps off the map and never travels further than the depth limit. Raising
+  the setting therefore costs nothing on maps smaller than the new limit.
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).

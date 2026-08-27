@@ -155,6 +155,84 @@ $Text engl Name = Custom gizmo name
         CHECK(protos_russ.GetStr(MakeTextKey(hashes, "Protos", "TextGizmo", "Name"), 0) == "Custom gizmo name");
     }
 
+    // The text baker walks parents through its own implementation, so it is pinned separately: otherwise
+    // a display name can silently disagree with the properties beside it
+    auto bake_text_diamond = [](string_view child_parents, bool allow_repeated) {
+        auto local_rig = SafeAlloc::MakeUnique<TestRig>();
+        OverrideSetting(local_rig->Settings.BakeLanguages, vector<string> {"engl"});
+        OverrideSetting(local_rig->Settings.AllowRepeatedProtoParents, allow_repeated);
+        local_rig->AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+        local_rig->AddSourceFile("Items/TextDiamond.fopro",
+            string(R"([ProtoItem]
+$Name = TextBase
+$Text engl Name = base
+
+[ProtoItem]
+$Name = TextVariant
+$Parent = TextBase
+$Text engl Name = variant
+
+[ProtoItem]
+$Name = TextOther
+$Parent = TextBase
+
+[ProtoItem]
+$Name = TextChild
+$Parent = )")
+                .append(child_parents));
+
+        ProtoTextBaker baker(local_rig->MakeContext("ProtoTextDiamond"));
+        baker.BakeFiles(local_rig->GetAllSourceFiles(), "");
+        return local_rig;
+    };
+
+    auto resolved_child_name = [&](string_view child_parents, bool allow_repeated) {
+        auto local_rig = bake_text_diamond(child_parents, allow_repeated);
+        HashStorage hashes;
+        auto pack = LoadOutputTextPack(*local_rig, "ProtoTextDiamond.Items.engl.fotxt-bin", hashes);
+        return string(pack.GetStr(MakeTextKey(hashes, "Items", "TextChild", "Name"), 0));
+    };
+
+    SECTION("RejectsRepeatedProtoParentWhenNotAllowed")
+    {
+        CHECK_THROWS_AS(bake_text_diamond("TextVariant TextOther", false), ProtoTextBakerException);
+        CHECK_NOTHROW(bake_text_diamond("TextVariant", false));
+    }
+
+    SECTION("AppliesRepeatedProtoParentOnce")
+    {
+        // First reach keeps its position, so the variant's own name survives the second walk of the base
+        CHECK(resolved_child_name("TextVariant TextOther", true) == "variant");
+        CHECK(resolved_child_name("TextVariant", true) == "variant");
+        CHECK(resolved_child_name("TextOther", true) == "base");
+    }
+
+    SECTION("RejectsProtoTextParentCycle")
+    {
+        auto bake_cycle = [](bool allow_repeated) {
+            TestRig local_rig;
+            OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl"});
+            OverrideSetting(local_rig.Settings.AllowRepeatedProtoParents, allow_repeated);
+            local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+            local_rig.AddSourceFile("Items/TextCycle.fopro", R"([ProtoItem]
+$Name = TextCycleA
+$Parent = TextCycleB
+$Text engl Name = a
+
+[ProtoItem]
+$Name = TextCycleB
+$Parent = TextCycleA
+)");
+
+            ProtoTextBaker baker(local_rig.MakeContext("ProtoTextCycle"));
+            baker.BakeFiles(local_rig.GetAllSourceFiles(), "");
+        };
+
+        for (bool allow_repeated : {true, false}) {
+            CHECK_THROWS_AS(bake_cycle(allow_repeated), ProtoTextBakerException);
+        }
+    }
+
     SECTION("AcceptsFixedTypeSections")
     {
         TestRig local_rig;

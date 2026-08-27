@@ -41,8 +41,10 @@ Important command arguments include:
 - `-genoutput` — generated output directory, currently `GeneratedSource` under the CMake binary dir.
 - `-devname` / `-nicename` — project identity values.
 - `-embedded` — embedded data capacity (`FO_EMBEDDED_DATA_CAPACITY`).
-- `-internalcfg` — internal config capacity (`FO_INTERNAL_CONFIG_CAPACITY`).
-- `-meta` — metadata source entries from `FO_SOURCE_META_FILES` and managed C# source files tracked through `FO_MANAGED_SOURCE_FILES`. C# script files may also contain script-level `///@` tags such as `Enum`, `Property`, `RefType`, and `Setting`; build-time codegen accepts those tags so `MetadataBaker` can process them during resource baking.
+- `-meta` — metadata source entries from `FO_SOURCE_META_FILES`, which the build helpers fill with the
+  engine's own `///@`-tagged headers and with the managed C# sources registered through
+  `AddEngineSources`. C# files carry script-level tags such as `Enum`, `Property`, `RefType` and
+  `Setting`, and codegen accepts them so `MetadataBaker` can process them during resource baking.
 - `-commonheader` — extra common headers from `FO_ADDED_COMMON_HEADERS`.
 - `-enginedefine` — repeatable `NAME=VALUE` engine value/shape configuration macro (`FO_GEOMETRY`, `FO_MAP_*`, `FO_EFFECT_*`, `FO_MODEL_*`, `FO_USE_NAMESPACE`, `FO_NO_*`, `FO_MAIN_CONFIG`, ...), resolved to a literal at configure time and emitted into `EngineConfig.gen.h` instead of being passed as a `-D` compiler define. Feature/backend toggles (`FO_ENABLE_3D`, `FO_*_SCRIPTING`, `FO_*_PARTICLES`) and per-config `FO_DEBUG` stay compiler-side — they gate whole files/headers before any engine header is included.
 
@@ -65,6 +67,8 @@ The stage creates normal and forced code-generation command targets and appends 
 - `GenericCode-Common.gen.cpp`
 
 These file names are useful for understanding build flow, but changes should usually be made in templates, annotations, metadata sources, or generator scripts rather than in generated output.
+
+`InternalConfig.gen.inc` reserves an engine-owned fixed 10000-byte patch area. Embedding projects cannot resize it; project-only script settings are shipped through metadata instead of this bootstrap config.
 
 ## Metadata registration entry points
 

@@ -84,6 +84,10 @@ every patched region against the new upstream — treat that as a dedicated task
 with its own plan and full script/VM regression validation, and skip such
 dependencies during a routine refresh sweep.
 
+For a branch-tracked or WIP fork, record the exact upstream commit alongside
+the snapshot date in `ThirdParty/README.md`; the upstream version string alone
+does not identify a reproducible source tree.
+
 ## Adding A New Engine Dependency
 
 Add reusable dependencies to the engine only when they are genuinely engine
@@ -148,4 +152,3 @@ option(ZLIB_BUILD_SHARED "Enable zlib shared library" OFF) # (FOnline Patch) eng
 
 Avoid reformatting large upstream files just to add the marker. Keep the local
 delta small enough that the next update can reapply it by inspection.
-

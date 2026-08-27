@@ -393,7 +393,48 @@ During output discovery it visits resource packs in configured order so a later 
 
 The particle/model/prototype/map stages intentionally form a strict dependency chain: particle outputs at order `5` are visible to model-info validation at order `6`, model descriptions are visible to prototype validation at order `7`, and baked prototypes are visible to map baking at order `8`. Bakers at the same order may run concurrently across resource packs and therefore must not consume one another's outputs.
 
+### Prototype inheritance merge order
+
+`ProtoBaker` and `ProtoTextBaker` resolve `$Parent` over the same algorithm, differing only in which
+keys they merge: `ProtoBaker` takes every key that does not start with `$`, `ProtoTextBaker` takes
+every `$Text*` key, and neither inherits `$Name` or `$Parent`. `$Parent` holds a space-separated list,
+looked up across all prototypes of that entity type rather than per file, with each name passed
+through the `Proto` migration rules first.
+
+The walk applies each parent's own ancestors before the parent itself, left to right, and the
+prototype's own fields last. So the **rightmost** parent wins a contested field, a parent beats its
+own ancestors, and the prototype beats everything. Values are whole strings, so a list-valued field is
+replaced rather than merged.
+
+Reaching one ancestor through two parents is the one case where that order would become surprising, so
+a repeated ancestor contributes its fields **only where it is first reached**. Walking it again would
+override whatever the earlier parent had customized, with nothing in the source to hint at it.
+
+`Baking.AllowRepeatedProtoParents` (default `true`) decides whether such a prototype is allowed at
+all: when `false` it fails baking with `Proto reaches the same parent through several inheritance
+paths`, so a game that wants each facet stated once gets the diagnostic rather than a merge to reason
+about.
+
+A `$Parent` cycle is rejected regardless of that setting (`Proto parent chain contains a cycle`);
+without that guard the walk recurses until the stack is exhausted.
+
+The setting, the first-reach merge and the cycle guard are pinned for each baker by the
+`RejectsRepeatedProtoParent*`, `AppliesRepeatedProtoParentOnce` and `RejectsProtoParentCycle*`
+sections of `Source/Tests/Test_ProtoBaker.cpp` and `Source/Tests/Test_ProtoTextBaker.cpp`.
+
+Prototype output follows the resolved prototype set alone: types and ids are collected into ordered
+maps, so which file carries a proto and the order the files arrive in do not reach the bytes. That
+makes `Protos.fopro-bin-server` / `-client` / `-mapper` byte-comparable across bakes to prove a content
+refactor changed nothing, including one that moves prototypes between files. Pinned by the
+`BakesIdenticalBytesWhateverFileCarriesEachProto` section of `Source/Tests/Test_ProtoBaker.cpp`.
+
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
+
+### Text-language fallback overlays
+
+`TextPack::ParseBakeLanguages(...)` accepts `Baking.BakeLanguages` declarations in either `language` or `child:parent` form. It validates uniqueness and requires each parent to precede its child, then exposes bare language ids to filenames, output packs, and runtime consumers. `TextPack::FixPacks(...)` uses the first declaration to define the legal pack and key domain. A plain later language inherits missing packs and keys from that first language; an inline parent selects another family. For example, `russ engl ru18:russ en18:engl` supports sparse derived editions without forcing adult English to inherit Russian text.
+
+An authored child key replaces the parent's complete variant set for that key; an omitted key inherits it. Extra child-only packs or keys remain invalid and are removed during normalization. `TextBaker`, `ProtoTextBaker`, and external dialog-text bakers parse the same declaration list, so `.fotxt`, prototype `$Text`, and dialog `[Text]` sources obey one contract. The generic behavior and invalid configurations are pinned in `Source/Tests/Test_TextPack.cpp`.
 
 Shared animation metadata uses `AnimationInfo` as the aggregate record. The generic
 record contains a `SpriteInfo` payload for 2D frame count, duration, directions,
@@ -434,7 +475,12 @@ required root-space contracts to every model section:
 The baker samples animation keys, their midpoints, and a uniform timeline to
 build deterministic envelopes independent of camera angle, projection factor,
 model-sprite resolution, and renderer backend. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract. In
+animation bounds are baking errors in the version 2 contract. Each binary link
+contains an explicit `hasGeometry` discriminator before the optional geometry
+payload. The discriminator must match the link type: a non-empty `ChildName`
+with `IsParticles == false` writes `1` followed by the required min/max AABB;
+the default link and particle links write `0` and no geometry AABB. Readers
+reject discriminator values outside `0` and `1`. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds
@@ -446,9 +492,11 @@ neither group; a present companion with no model sections is malformed.
 Enabled animation bounds size
 the logical scratch frame, the dedicated view bound seeds the stable body/name
 rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
-layer/child-model envelopes extend both contracts, while exact weighted
-current-pose geometry selects the atlas crop and expands/rerenders the scratch
-frame when sampled bounds are insufficient.
+layer/child-model envelopes extend both contracts. Each selected geometry link
+contributes its baked absolute AABB; runtime projects only envelope corners and
+does not read or skin mesh vertices to determine dimensions. Live particles can
+still expand and rerender the scratch frame when their measured bounds exceed the
+baked geometry envelope.
 
 `Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
 root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,
@@ -975,7 +1023,7 @@ animation-only tracks are identity, while a separate presence byte remains
 zero.
 
 The baked `.fo3d` contract is now explicitly versioned. Every description starts
-with `LFMODINF`, schema `1`, and zero flags, followed by the existing positional
+with `LFMODINF`, schema `2`, and zero flags, followed by the existing positional
 description and one required length-prefixed `LFOZZRIG` schema-1 payload. The rig
 payload stores the canonical rig/cache signatures, canonical skeleton, base
 remap, each unique resolved animation/remap pair, and a sorted
@@ -983,6 +1031,18 @@ remap, each unique resolved animation/remap pair, and a sorted
 the actual baker-resolved source/name, so `Base`, case-insensitive authored
 names, relative paths, and multiple animation pairs sharing one clip do not need
 to be resolved again by the client.
+
+Schema 2 appends an optional AABB to every serialized link. A non-particle link
+with a child model must carry a finite, non-degenerate bound; default/root-edit and
+particle links must not. For an empty `Link` bone, `ModelInfoBaker` skins the child
+mesh with the parent description's static pose and every unique mapped animation.
+For a named bone, it sweeps the child aggregate AABB through that parent's bone in
+the static pose and every unique mapped animation. The child-default plus outer-link
+T/R/S and both child-default and outer-link `DisableMesh` selections are included. These
+calculations are submitted as bounded nested jobs from the ordinary per-description
+bake task. They reuse the bake pool and fall back to inline execution when it is
+full, so changing one attachment invalidates and recalculates its owning `.fo3d` without serially
+rebuilding a global equipment-configuration table.
 
 Each rig archive manifest repeats the caller-owned source signature and
 source/object identity before its nested `LFOZZARC`. The reader constructs its

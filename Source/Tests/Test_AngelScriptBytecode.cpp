@@ -263,6 +263,92 @@ namespace
         return a.Value == b.Value;
     }
 
+    struct VariadicProbeValue
+    {
+        int32_t Value {};
+    };
+
+    struct VariadicProbeSource
+    {
+        int32_t Value {};
+    };
+
+    static void VariadicProbeConstructDefault(asIScriptGeneric* gen)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        ptr<asIScriptGeneric> generic = gen;
+        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        new (self.get()) VariadicProbeValue();
+    }
+
+    static void VariadicProbeConstructCopy(asIScriptGeneric* gen)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        ptr<asIScriptGeneric> generic = gen;
+        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
+        new (self.get()) VariadicProbeValue {.Value = other->Value};
+    }
+
+    static void VariadicProbeConstructVariadic(asIScriptGeneric* gen)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        ptr<asIScriptGeneric> generic = gen;
+        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        new (self.get()) VariadicProbeValue {.Value = numeric_cast<int32_t>(generic->GetArgCount())};
+    }
+
+    static void VariadicProbeDestruct(asIScriptGeneric* gen)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        ptr<asIScriptGeneric> generic = gen;
+        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        self->~VariadicProbeValue();
+    }
+
+    static void VariadicProbeAssign(asIScriptGeneric* gen)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        ptr<asIScriptGeneric> generic = gen;
+        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
+        self->Value = other->Value;
+        generic->SetReturnAddress(self.get());
+    }
+
+    static void VariadicProbeEquals(asIScriptGeneric* gen)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        ptr<asIScriptGeneric> generic = gen;
+        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
+        generic->SetReturnByte(self->Value == other->Value ? 1 : 0);
+    }
+
+    static void VariadicProbeGetValue(asIScriptGeneric* gen)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        ptr<asIScriptGeneric> generic = gen;
+        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        generic->SetReturnDWord(numeric_cast<asDWORD>(self->Value));
+    }
+
+    static void ReturnVariadicProbe(asIScriptGeneric* gen)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        ptr<asIScriptGeneric> generic = gen;
+        VariadicProbeValue value {.Value = 123};
+        FO_VERIFY_AND_THROW(generic->SetReturnObject(&value) >= 0, "Failed to return variadic probe value");
+    }
+
     static int GlobalInt = 0;
 
     static void SetGlobalInt(int v)
@@ -360,6 +446,24 @@ namespace
         CHECK(engine->RegisterGlobalFunction("void SetGlobalInt(int)", FO_SCRIPT_FUNC(SetGlobalInt), FO_SCRIPT_FUNC_CONV) >= 0);
         CHECK(engine->RegisterGlobalFunction("int GetGlobalInt()", FO_SCRIPT_FUNC(GetGlobalInt), FO_SCRIPT_FUNC_CONV) >= 0);
         CHECK(engine->RegisterGlobalFunction("void IncrementGlobalCounter()", FO_SCRIPT_FUNC(IncrementGlobalCounter), FO_SCRIPT_FUNC_CONV) >= 0);
+    }
+
+    static void RegisterVariadicProbeApi(ptr<asIScriptEngine> engine)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        REQUIRE(engine->RegisterObjectType("VariadicProbeValue", sizeof(VariadicProbeValue), asOBJ_VALUE | asOBJ_APP_CLASS_CDAK) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("VariadicProbeValue", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(VariadicProbeConstructDefault), asCALL_GENERIC) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("VariadicProbeValue", asBEHAVE_CONSTRUCT, "void f(const VariadicProbeValue &in)", asFUNCTION(VariadicProbeConstructCopy), asCALL_GENERIC) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("VariadicProbeValue", asBEHAVE_CONSTRUCT, "void f(const ?&in ...)", asFUNCTION(VariadicProbeConstructVariadic), asCALL_GENERIC) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("VariadicProbeValue", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(VariadicProbeDestruct), asCALL_GENERIC) >= 0);
+        REQUIRE(engine->RegisterObjectMethod("VariadicProbeValue", "VariadicProbeValue &opAssign(const VariadicProbeValue &in)", asFUNCTION(VariadicProbeAssign), asCALL_GENERIC) >= 0);
+        REQUIRE(engine->RegisterObjectMethod("VariadicProbeValue", "bool opEquals(const VariadicProbeValue &in) const", asFUNCTION(VariadicProbeEquals), asCALL_GENERIC) >= 0);
+        REQUIRE(engine->RegisterObjectMethod("VariadicProbeValue", "int get_Value() const property", asFUNCTION(VariadicProbeGetValue), asCALL_GENERIC) >= 0);
+
+        REQUIRE(engine->RegisterObjectType("VariadicProbeSource", sizeof(VariadicProbeSource), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS | asOBJ_APP_CLASS_ALLINTS) >= 0);
+        REQUIRE(engine->RegisterObjectProperty("VariadicProbeSource", "int Value", asOFFSET(VariadicProbeSource, Value)) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("VariadicProbeValue ReturnVariadicProbe(const ?&in ...)", asFUNCTION(ReturnVariadicProbe), asCALL_GENERIC) >= 0);
     }
 
     static auto RunScenario(ptr<asIScriptModule> module, ResourceTrackerState& state) -> ScenarioMetrics
@@ -583,6 +687,28 @@ void RunScenario()
     PtrSizedVal key5 = CreatePtrSizedVal(100);
     int chained = lk.Get(key5, lk.Get(key1, 0));
     ObserveResource(chained);  // key5==Fallback Ã¢â€ â€™ defVal = lk.Get(key1, 0) = 42+0 = 42
+}
+)";
+
+    static constexpr string_view VariadicAbiTestScript = R"(
+bool PrimitiveConstructorUsesAlignedCount()
+{
+    VariadicProbeValue value = 3.14;
+    return value == 1;
+}
+
+bool ObjectConstructorUsesAlignedCount()
+{
+    VariadicProbeSource source;
+    source.Value = 7;
+    VariadicProbeValue converted = source;
+    return converted.Value == 1;
+}
+
+bool ReturnByValueUsesAlignedCount()
+{
+    VariadicProbeValue value = ReturnVariadicProbe(42);
+    return value.Value == 123;
 }
 )";
 
@@ -2606,6 +2732,53 @@ void CallCalleeNullableWithNull()
         CHECK(load_metrics.LastObservedId == build_metrics.LastObservedId);
         CHECK(load_metrics.DoubleFreeCount == build_metrics.DoubleFreeCount);
         CHECK(load_metrics.LeakedCount == build_metrics.LeakedCount);
+    }
+
+    SECTION("VariadicConstructorsAndReturnByValueUsePlatformUniformSlots")
+    {
+        auto run = [](ptr<asIScriptModule> module, const char* declaration) -> asBYTE {
+            nptr<asIScriptEngine> engine = module->GetEngine();
+            REQUIRE(engine != nullptr);
+
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(declaration);
+            REQUIRE(func != nullptr);
+
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx != nullptr);
+            REQUIRE(ctx->Prepare(func.get()) >= 0);
+            REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);
+            asBYTE result = ctx->GetReturnByte();
+            ctx->Release();
+            return result;
+        };
+
+        auto build_engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {build_engine});
+        RegisterTestApi(build_engine.get());
+        RegisterVariadicProbeApi(build_engine.get());
+
+        auto build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", VariadicAbiTestScript);
+        CHECK(run(build_module, "bool PrimitiveConstructorUsesAlignedCount()") == 1);
+        CHECK(run(build_module, "bool ObjectConstructorUsesAlignedCount()") == 1);
+        CHECK(run(build_module, "bool ReturnByValueUsesAlignedCount()") == 1);
+
+        vector<asBYTE> bytecode {};
+        BytecodeStream writer {bytecode};
+        REQUIRE(build_module->SaveByteCode(&writer) >= 0);
+        REQUIRE_FALSE(bytecode.empty());
+
+        auto load_engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {load_engine});
+        RegisterTestApi(load_engine.get());
+        RegisterVariadicProbeApi(load_engine.get());
+
+        nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
+        REQUIRE(load_module != nullptr);
+        BytecodeStream reader {bytecode};
+        REQUIRE(load_module->LoadByteCode(&reader) >= 0);
+        CHECK(run(load_module, "bool PrimitiveConstructorUsesAlignedCount()") == 1);
+        CHECK(run(load_module, "bool ObjectConstructorUsesAlignedCount()") == 1);
+        CHECK(run(load_module, "bool ReturnByValueUsesAlignedCount()") == 1);
     }
 }
 

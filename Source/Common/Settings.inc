@@ -287,6 +287,7 @@ FIXED_SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest w
 FIXED_SETTING(float32_t, Baking, ModelAttachmentMaxExtent, 50.0f); // Largest world extent a directly attached model may reach; above it the export sits in a larger unit space and the client cannot build its sprite frame
 FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
 FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions
+FIXED_SETTING(bool, Baking, AllowRepeatedProtoParents, true); // If false, a prototype reaching one ancestor through several $Parent entries fails baking; when allowed, a repeated ancestor contributes its fields only where it is first reached
 FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 FIXED_SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
 FIXED_SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
@@ -297,6 +298,7 @@ FIXED_SETTING(vector<string>, Baking, ServerResourceEntries); // Server resource
 FIXED_SETTING(vector<string>, Baking, ClientResourceEntries); // Client resource entries (read only)
 FIXED_SETTING(vector<string>, Baking, MapperResourceEntries); // Mapper resource entries (read only)
 FIXED_SETTING(int32_t, Baking, ZipCompressLevel, 1); // Zip deflate level (0-9)
+FIXED_SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

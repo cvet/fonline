@@ -36,13 +36,6 @@ namespace math {
 // Defines a rectangle by the integer coordinates of its lower-left and
 // width-height.
 struct OZZ_BASE_DLL RectInt {
-  // Constructs a uninitialized rectangle.
-  RectInt() {}
-
-  // Constructs a rectangle with the specified arguments.
-  RectInt(int _left, int _bottom, int _width, int _height)
-      : left(_left), bottom(_bottom), width(_width), height(_height) {}
-
   // Tests whether _x and _y coordinates are within rectangle bounds.
   bool is_inside(int _x, int _y) const {
     return _x >= left && _x < left + width && _y >= bottom &&
@@ -56,25 +49,18 @@ struct OZZ_BASE_DLL RectInt {
   int top() const { return bottom + height; }
 
   // Specifies the x-coordinate of the lower side.
-  int left;
+  int left = 0;
   // Specifies the x-coordinate of the left side.
-  int bottom;
+  int bottom = 0;
   // Specifies the width of the rectangle.
-  int width;
+  int width = 0;
   // Specifies the height of the rectangle..
-  int height;
+  int height = 0;
 };
 
 // Defines a rectangle by the floating point coordinates of its lower-left
 // and width-height.
 struct OZZ_BASE_DLL RectFloat {
-  // Constructs a uninitialized rectangle.
-  RectFloat() {}
-
-  // Constructs a rectangle with the specified arguments.
-  RectFloat(float _left, float _bottom, float _width, float _height)
-      : left(_left), bottom(_bottom), width(_width), height(_height) {}
-
   // Tests whether _x and _y coordinates are within rectangle bounds
   bool is_inside(float _x, float _y) const {
     return _x >= left && _x < left + width && _y >= bottom &&
@@ -88,13 +74,13 @@ struct OZZ_BASE_DLL RectFloat {
   float top() const { return bottom + height; }
 
   // Specifies the x-coordinate of the lower side.
-  float left;
+  float left = 0.f;
   // Specifies the x-coordinate of the left side.
-  float bottom;
+  float bottom = 0.f;
   // Specifies the width of the rectangle.
-  float width;
+  float width = 0.f;
   // Specifies the height of the rectangle.
-  float height;
+  float height = 0.f;
 };
 }  // namespace math
 }  // namespace ozz

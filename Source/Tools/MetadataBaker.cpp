@@ -73,6 +73,10 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
         filtered_files.emplace_back(File::Load(file_header));
     }
 
+    for (const auto& config_path : _context->Settings->GetAppliedConfigs()) {
+        max_write_time = std::max(max_write_time, fs_last_write_time(config_path));
+    }
+
     if (filtered_files.empty()) {
         return;
     }
@@ -1504,6 +1508,14 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
         vector<string> tag_tokens;
         tag_tokens.emplace_back(std::move(name));
         tag_tokens.emplace_back(type_str);
+
+        auto setting_value = _context->Settings->FindSettingValue(tag_tokens.front());
+
+        if (!setting_value) {
+            throw MetadataBakerException("Invalid Setting codegen tag: setting has no configured value", tag_desc.SourceFile, tag_desc.LineNumber, tag_tokens.front());
+        }
+
+        tag_tokens.emplace_back(*setting_value);
         result_tag_setting.emplace_back(std::move(tag_tokens));
     }
 

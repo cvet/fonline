@@ -13,6 +13,19 @@ sys.path.insert(0, str(BUILDTOOLS_DIR))
 import codegen as _codegen  # noqa: E402
 
 
+def test_internal_config_capacity_is_fixed_by_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output = _codegen.GeneratedOutput()
+    monkeypatch.setattr(_codegen, "args", Namespace(genoutput=str(tmp_path)))
+    monkeypatch.setattr(_codegen, "generated_output", output)
+
+    _codegen.write_internal_config()
+
+    [declaration] = output.files[str(tmp_path / "InternalConfig.gen.inc")]
+    assert f"char INTERNAL_CONFIG[{_codegen.INTERNAL_CONFIG_CAPACITY}]" in declaration
+    assert _codegen.INTERNAL_CONFIG_CAPACITY == 10000
+    assert "-internalcfg" not in _codegen.create_parser()._option_string_actions
+
+
 def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     class CompatibilityHasher:
         @staticmethod

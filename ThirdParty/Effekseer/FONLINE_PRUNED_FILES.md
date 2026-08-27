@@ -1,7 +1,7 @@
 # FOnline ThirdParty pruning notes
 
-Upstream: Effekseer 1.80.5, tag `1805`, commit
-`332525b2086e4c97f0cdbdd6c2f2b07e26f754d2`.
+Upstream: Effekseer 1.80.6, tag `1806`, commit
+`93dd29c7b4e353fcef6186fe4ac74c9757243550`.
 
 This is a source-only vendor slice for two independent consumers:
 
@@ -92,7 +92,7 @@ areas above and their actual source/resource dependencies, remove generated
   `Localization.cs`, `GUI/Manager.cs`, `Config.cpp`, and
   `effekseerMaterialEditor.cpp`.
 - The subset is derived from face 0 of upstream `SourceHanSans-Normal.ttc` at
-  commit `332525b2086e4c97f0cdbdd6c2f2b07e26f754d2` (source SHA-256
+  commit `93dd29c7b4e353fcef6186fe4ac74c9757243550` (source SHA-256
   `6990AD2B950CEB017CE29EA377415FC7FB79BC5B3152B9BBFF9202AD774A6972`)
   with FontTools 4.63.0. Preserve only `U+0020-007E`, the English name records
   and SIL OFL metadata, and rename both OpenType and CFF family

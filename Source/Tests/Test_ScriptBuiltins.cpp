@@ -98,7 +98,7 @@ namespace
         new (obj) ArrayNoDefaultValue(value);
     }
 
-    static void ArrayNoDefaultValueDestruct(void* obj) noexcept
+    static void ArrayNoDefaultValueDestruct(void* obj)
     {
         cast_from_void<ArrayNoDefaultValue*>(obj)->~ArrayNoDefaultValue();
     }
@@ -2630,6 +2630,12 @@ namespace ScriptBuiltins
         throw("Global throw with ten contexts", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
     }
 
+    void GlobalThrowEntityArgThrows()
+    {
+        Critter critter = Game.CreateCritter("UnitTestCr".hstr(), false);
+        throw("Global throw with entity context", critter);
+    }
+
     void GlobalNameOfNonFunctionThrows()
     {
         int value = 0;
@@ -3241,7 +3247,7 @@ namespace ScriptBuiltins
         settings.reserve(GAME_SETTING_TYPES.size());
 
         for (const auto& [setting_name, setting_type] : GAME_SETTING_TYPES) {
-            settings.emplace_back(vector<string_view> {setting_name, setting_type});
+            settings.emplace_back(vector<string_view> {setting_name, setting_type, "0"});
         }
 
         vector<vector<string_view>> properties;
@@ -4582,7 +4588,7 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
         INFO(func_name);
         CHECK(func.GetResult() == 1);
     };
-    auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
+    auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) -> string {
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
@@ -4595,6 +4601,7 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
         INFO(func_name);
         INFO(message);
         CHECK(message.find(expected_message) != string::npos);
+        return message;
     };
 
     run_success_func("ScriptBuiltins::PropertyScalarConversionOps");
@@ -4633,9 +4640,45 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
     run_throwing_func("ScriptBuiltins::GlobalThrowOneArgThrows", "Global throw with one context");
     run_throwing_func("ScriptBuiltins::GlobalThrowThreeArgsThrows", "Global throw with three contexts");
     run_throwing_func("ScriptBuiltins::GlobalThrowTenArgsThrows", "Global throw with ten contexts");
+    string entity_throw_message = run_throwing_func("ScriptBuiltins::GlobalThrowEntityArgThrows", "Critter: name UnitTestCr id ");
+    CHECK(entity_throw_message.find(" proto UnitTestCr") != string::npos);
     run_throwing_func("ScriptBuiltins::GlobalNameOfNonFunctionThrows", "argument must be a function reference");
     run_throwing_func("ScriptBuiltins::GlobalNameOfNullThrows", "function reference is null");
     run_throwing_func("ScriptBuiltins::GlobalInvokeMissingFuncThrows", "Script function not found");
+}
+
+// Lives here because this rig is the one that declares game settings in its metadata blob. Pins
+// BaseEngine's own precedence rule, so dropping the guard in its constructor fails a test
+TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
+{
+    auto settings = MakeSettings();
+
+    ConfigFile runtime_config {"TestSettings.Int32Value = 7\nUngroupedTestSetting = 9\n"};
+    settings.ApplyConfigFile(runtime_config, "");
+
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    // The configuration named these before the engine existed, so the metadata baseline of "0" must not
+    // have replaced them; the ungrouped one proves the bare spelling matches the same way
+    CHECK(settings.GetCustomSetting("TestSettings.Int32Value") == "7");
+    CHECK(settings.GetCustomSetting("UngroupedTestSetting") == "9");
+
+    // The configuration never named these, so they arrive from the metadata baseline
+    CHECK(settings.GetCustomSetting("TestSettings.Int64Value") == "0");
+    CHECK(settings.GetCustomSetting("TestSettings.StringValue") == "0");
+    CHECK(settings.GetCustomSetting("TestSettings.BoolValue") == "0");
 }
 
 TEST_CASE("ScriptBuiltinsReflectionOperations")

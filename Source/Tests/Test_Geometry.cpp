@@ -363,6 +363,34 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
         }
     }
 
+    SECTION("GetHexOffset view-origin shift is a uniform pixel translation")
+    {
+        // MapView translates cached light primitives on scroll instead of rebuilding the fans
+        ipos32 shifts[] = {ipos32 {1, 0}, ipos32 {-1, 0}, ipos32 {0, 2}, ipos32 {0, -2}, ipos32 {1, 2}, ipos32 {-1, -2}, ipos32 {2, 0}, ipos32 {-3, 4}};
+        ipos32 origins[] = {ipos32 {0, 0}, ipos32 {1, 0}, ipos32 {0, 1}, ipos32 {7, 9}, ipos32 {-2, 3}};
+
+        for (ipos32 origin : origins) {
+            for (ipos32 shift : shifts) {
+                ipos32 new_origin = origin + shift;
+                ipos32 expected = GeometryHelper::GetHexOffset(new_origin, origin);
+
+                // The light TexUV anchor is GetHexOffset({0, 0}, origin), which MapView shifts by the negated delta
+                ipos32 anchor_delta = GeometryHelper::GetHexOffset(ipos32 {0, 0}, new_origin) - GeometryHelper::GetHexOffset(ipos32 {0, 0}, origin);
+                CHECK(anchor_delta.x == -expected.x);
+                CHECK(anchor_delta.y == -expected.y);
+
+                for (int32_t hx = -3; hx < 8; hx++) {
+                    for (int32_t hy = -3; hy < 8; hy++) {
+                        ipos32 hex {hx, hy};
+                        ipos32 delta = GeometryHelper::GetHexOffset(new_origin, hex) - GeometryHelper::GetHexOffset(origin, hex);
+                        CHECK(delta.x == expected.x);
+                        CHECK(delta.y == expected.y);
+                    }
+                }
+            }
+        }
+    }
+
     SECTION("GetHexOffset mpos overload matches ipos32 overload")
     {
         for (int16_t ax = 0; ax < 5; ax++) {

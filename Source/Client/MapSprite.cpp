@@ -81,6 +81,8 @@ void MapSprite::Reset() noexcept
     _extraChainRoot = nullptr;
     _extraChainParent = nullptr;
     _extraChainChild = nullptr;
+    _itemOwner = nullptr;
+    _itemHitTestWhenHidden = false;
 }
 
 auto MapSprite::GetDrawRect() const noexcept -> irect32
@@ -270,6 +272,14 @@ void MapSprite::SetMapProjected(bool map_projected) noexcept
     _mapProjected = map_projected;
 }
 
+void MapSprite::SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _itemOwner = item;
+    _itemHitTestWhenHidden = hit_test_when_hidden;
+}
+
 void MapSprite::CreateExtraChain(ptr<MapSprite*> mspr)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -352,6 +362,8 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_mapProjected = false;
     mspr->_drawEffect = effect;
     mspr->_validCallback = callback;
+    mspr->_itemOwner = nullptr;
+    mspr->_itemHitTestWhenHidden = false;
 
     if (callback) [[likely]] {
         *callback = true;

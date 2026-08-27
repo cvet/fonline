@@ -214,6 +214,114 @@ auto CalculateModelAnimationBounds(const ModelMeshData& model_data, const ModelA
     }
 }
 
+auto CalculateRigidModelAttachmentStaticBounds(const ModelMeshData& parent_model_data, string_view link_bone, const ModelBounds3D& attachment_bounds, const mat44& attachment_transform) -> optional<ModelBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        if (!IsValidModelBounds(attachment_bounds) || !IsFinite(attachment_transform)) {
+            return std::nullopt;
+        }
+
+        BoundsModel parent_model = BuildBoundsModel(parent_model_data);
+        optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(parent_model);
+
+        if (!bone_index) {
+            return std::nullopt;
+        }
+
+        auto link_bone_it = bone_index->find(string(link_bone));
+
+        if (link_bone_it == bone_index->end()) {
+            return std::nullopt;
+        }
+
+        vector<mat44> combined_transforms(parent_model.Bones.size());
+
+        for (size_t i = 0; i < parent_model.Bones.size(); i++) {
+            if (parent_model.Bones[i].Parent) {
+                size_t parent = *parent_model.Bones[i].Parent;
+                FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
+                combined_transforms[i] = combined_transforms[parent] * parent_model.Bones[i].BindTransform;
+            }
+            else {
+                combined_transforms[i] = parent_model.Bones[i].BindTransform;
+            }
+
+            if (!IsFinite(combined_transforms[i])) {
+                return std::nullopt;
+            }
+        }
+
+        optional<ModelBounds3D> result;
+
+        if (!IncludeTransformedModelBounds(result, attachment_bounds, combined_transforms[link_bone_it->second] * attachment_transform)) {
+            return std::nullopt;
+        }
+
+        return result;
+    }
+    catch (const ModelBoundsException&) {
+        throw;
+    }
+    catch (const std::exception& ex) {
+        throw ModelBoundsException(strex("Invalid baked model data while calculating a rigid static attachment bound: {}", ex.what()));
+    }
+}
+
+auto CalculateRigidModelAttachmentAnimationBounds(const ModelMeshData& parent_model_data, const ModelAnimationSource& animation_source, bool reversed, string_view link_bone, const ModelBounds3D& attachment_bounds, const mat44& attachment_transform) -> optional<ModelBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        if (!IsValidModelBounds(attachment_bounds) || !IsFinite(attachment_transform)) {
+            return std::nullopt;
+        }
+
+        BoundsModel parent_model = BuildBoundsModel(parent_model_data);
+        BoundsAnimation animation = BuildBoundsAnimation(animation_source);
+        optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(parent_model);
+        optional<unordered_map<string, size_t>> output_index = BuildAnimationOutputIndex(animation);
+
+        if (!bone_index || !output_index) {
+            return std::nullopt;
+        }
+
+        auto link_bone_it = bone_index->find(string(link_bone));
+
+        if (link_bone_it == bone_index->end()) {
+            return std::nullopt;
+        }
+
+        vector<nptr<const BoundsAnimationOutput>> outputs = BuildBoneAnimationOutputs(parent_model, animation, *output_index);
+        optional<vector<float32_t>> sample_times = BuildAnimationSampleTimes(animation, outputs, reversed);
+
+        if (!sample_times) {
+            return std::nullopt;
+        }
+
+        vector<mat44> combined_transforms(parent_model.Bones.size());
+        optional<ModelBounds3D> result;
+
+        for (float32_t sample_time : *sample_times) {
+            if (!BuildCombinedTransforms(parent_model, outputs, sample_time, animation.Duration, reversed, combined_transforms)) {
+                return std::nullopt;
+            }
+            if (!IncludeTransformedModelBounds(result, attachment_bounds, combined_transforms[link_bone_it->second] * attachment_transform)) {
+                return std::nullopt;
+            }
+        }
+
+        return result;
+    }
+    catch (const ModelBoundsException&) {
+        throw;
+    }
+    catch (const std::exception& ex) {
+        throw ModelBoundsException(strex("Invalid baked model data while calculating a rigid animated attachment bound: {}", ex.what()));
+    }
+}
+
 static auto BuildBoundsModel(const ModelMeshData& data) -> BoundsModel
 {
     FO_STACK_TRACE_ENTRY();

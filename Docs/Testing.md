@@ -85,8 +85,9 @@ ASan/MSan/UBSan/TSan are blocking legs. The `unit-tests-san-memory` validator pr
 with MSan instrumentation, then configures `San_Memory` with `FO_MSAN_LIBCXX_ROOT`.
 The runtime build applies a narrow libunwind ignorelist so C++ exception and
 sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
-native stack capture and the backward-cpp signal handler are disabled under
-`FO_MEMORY_SANITIZER` so MSan owns fatal reports. `unit-tests-san-memory-with-origins`
+native stack capture and the backward-cpp signal handler are disabled under MSan and
+TSan so the sanitizer runtimes own their reports; backward-cpp/libbfd symbolization
+under TSan also produces prohibitive shadow-memory growth. `unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a

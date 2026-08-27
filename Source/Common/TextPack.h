@@ -41,6 +41,12 @@ FO_DECLARE_EXCEPTION(TextPackException);
 
 class FileSystem;
 
+struct BakeLanguageConfig final
+{
+    vector<string> Languages {};
+    map<string, string> Fallbacks {};
+};
+
 ///@ ExportValueType Layout = hstring-Name
 using TextPackName = strong_type<hstring, struct TextPackName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
@@ -137,7 +143,8 @@ public:
     void FixStr(const TextPack& base_pack);
     void Clear();
 
-    static void FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
+    static auto ParseBakeLanguages(const_span<string> declarations) -> BakeLanguageConfig;
+    static void FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
 
     friend struct TextPackKey;
 

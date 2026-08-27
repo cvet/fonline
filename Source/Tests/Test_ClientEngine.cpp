@@ -1780,6 +1780,7 @@ void main(void)
         writer.Write<uint32_t>(uint32_t {0});
         writer.Write<uint32_t>(uint32_t {0});
         writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint8_t>(uint8_t {0});
     }
 
     // The runtime requires the baked animation-info document: a plain config keyed by the model resource
@@ -1822,7 +1823,7 @@ BoundsMaxZ = 1 1 1 1
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
     // source asset directly through the loader callback, so no source-file format has to be reproduced
-    static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}) -> vector<uint8_t>
+    static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -1867,14 +1868,25 @@ BoundsMaxZ = 1 1 1 1
         // The info baker resolves the mesh through the source loader as well as the baked output
         rig.AddSourceFile(mesh_path, string {"model source fixture"}, 1);
         rig.AddBakedFile(mesh_path, mesh_blob, 1);
+
+        if (!attached_mesh_path.empty()) {
+            FO_VERIFY_AND_THROW(attached_mesh_blob, "Runtime model description attachment has no mesh blob", attached_mesh_path);
+            rig.AddSourceFile(attached_mesh_path, string {"attached model source fixture"}, 1);
+            rig.AddBakedFile(attached_mesh_path, *attached_mesh_blob, 1);
+        }
+
         rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
 
-        ModelInfoBaker info_baker(rig.MakeContext(), [](string_view path, const File& file) -> ModelSourceAsset {
+        ModelInfoBaker info_baker(rig.MakeContext(), [mesh_path, use_two_bone_rig](string_view path, const File& file) -> ModelSourceAsset {
             ModelSourceAsset asset;
             asset.FileName = path;
             asset.WriteTime = file.GetWriteTime();
             asset.Skeleton.FileName = path;
             asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Root", .Hierarchy = {"Root"}, .RestLocalTransform = mat44 {1.0f}});
+
+            if (use_two_bone_rig) {
+                asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Limb", .Hierarchy = {"Root", "Limb"}, .RestLocalTransform = mat44 {1.0f}});
+            }
 
             // One real clip, so the runtime rig carries a timeline the instance can actually play
             ModelAnimationSource animation;
@@ -1893,7 +1905,23 @@ BoundsMaxZ = 1 1 1 1
             joint.Scale.Values = {vec3 {1.0f, 1.0f, 1.0f}, vec3 {1.0f, 1.0f, 1.0f}};
             animation.Joints.emplace_back(std::move(joint));
 
-            asset.Animations.emplace_back(std::move(animation));
+            if (use_two_bone_rig) {
+                ModelAnimationJointSource limb_joint;
+                limb_joint.OutputName = "Limb";
+                limb_joint.Hierarchy = {"Root", "Limb"};
+                limb_joint.Translation.Times = {0.0f, 1.0f};
+                limb_joint.Translation.Values = {vec3 {}, vec3 {}};
+                limb_joint.Rotation.Times = {0.0f, 1.0f};
+                limb_joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
+                limb_joint.Scale.Times = {0.0f, 1.0f};
+                limb_joint.Scale.Values = {vec3 {1.0f}, vec3 {1.0f}};
+                animation.Joints.emplace_back(std::move(limb_joint));
+            }
+
+            if (path == mesh_path) {
+                asset.Animations.emplace_back(std::move(animation));
+            }
+
             return asset;
         });
 
@@ -2053,7 +2081,33 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         malformed_resources.emplace_back("Models/DescriptionNestedCountBomb.fo3d", std::move(data));
     }
 
-    array<pair<string_view, string_view>, 16> expected_failures {{
+    {
+        vector<uint8_t> data;
+        DataWriter writer {data};
+        WriteRuntimeModelDescriptionPrefix(writer);
+        WriteRuntimeModelDescriptionLinkPrefix(writer);
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint8_t>(uint8_t {1});
+        malformed_resources.emplace_back("Models/DescriptionGeometryFlagMismatch.fo3d", std::move(data));
+    }
+
+    {
+        vector<uint8_t> data;
+        DataWriter writer {data};
+        WriteRuntimeModelDescriptionPrefix(writer);
+        WriteRuntimeModelDescriptionLinkPrefix(writer);
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint8_t>(uint8_t {2});
+        malformed_resources.emplace_back("Models/DescriptionGeometryFlagOutOfRange.fo3d", std::move(data));
+    }
+
+    array<pair<string_view, string_view>, 18> expected_failures {{
         {"Models/VertexCountBomb.fbx", "vertex count exceeds maximum addressable count"},
         {"Models/IndexCountBomb.fbx", "mesh indices"},
         {"Models/IndexOutOfBounds.fbx", "outside vertex count"},
@@ -2070,6 +2124,8 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         {"Models/DescriptionStringBomb.fo3d", "String length exceeds remaining buffer"},
         {"Models/DescriptionLinksBomb.fo3d", "links"},
         {"Models/DescriptionNestedCountBomb.fo3d", "disabled meshes"},
+        {"Models/DescriptionGeometryFlagMismatch.fo3d", "geometry flag does not match"},
+        {"Models/DescriptionGeometryFlagOutOfRange.fo3d", "geometry flag is not 0 or 1"},
     }};
 
     auto settings = MakeClientTestSettings();
@@ -2183,12 +2239,12 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 #if FO_ENABLE_3D
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
-    // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so a
-    // runtime that left them enabled would sweep geometry the baked layout never budgeted for
+    // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so the
+    // runtime model state must agree with the geometry the bake budgeted for
     constexpr string_view MESH_PATH = "Models/DefaultLinkDisabled.fbx";
     constexpr string_view MODEL_PATH = "Models/DefaultLinkDisabled.fo3d";
 
-    // Far outside the declared bounds, so a mesh that still reached the sweep could not hide inside the layout frame
+    // Far outside the declared bounds; the test is about applying the authored disable state, not measuring vertices
     vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh(vec3 {12.0f, 12.0f, 0.0f});
 
     vector<pair<string, vector<uint8_t>>> model_resources;
@@ -2215,8 +2271,6 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
     // attachment laid out as a root measures the joint it hangs from plus its shadow, past any frame it can hold
     CHECK(model->GetDrawSize() == isize32 {4, 4});
 
-    // The sweep only measures generated combined meshes, so without this the frame would stay at the layout size
-    // no matter what the default link did
     model->StartMeshGeneration();
     model->PrepareFrameLayout();
 
@@ -2233,6 +2287,50 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
     auto bounds = model->GetSpriteBounds();
     REQUIRE(bounds);
     CHECK(bounds->RequiredFrameSize == layout_size);
+}
+
+TEST_CASE("ModelSpriteBoundsUseBakedBoundsForTheActiveGeometryLink")
+{
+    constexpr string_view BASE_MESH_PATH = "Models/BakedLinkBase.fbx";
+    constexpr string_view LINK_MESH_PATH = "Models/BakedLinkEquipment.fbx";
+    constexpr string_view MODEL_PATH = "Models/BakedLink.fo3d";
+    vector<uint8_t> base_mesh_blob = MakeSkinnedRuntimeModelMesh();
+    vector<uint8_t> link_mesh_blob = MakeSkinnedRuntimeModelMesh();
+    vector<uint8_t> model_blob = MakeRuntimeModelDescription(MODEL_PATH, BASE_MESH_PATH, base_mesh_blob, "Layer 3\n Value 1 Attach BakedLinkEquipment.fbx MoveX 3\n", LINK_MESH_PATH, &link_mesh_blob, true);
+    vector<pair<string, vector<uint8_t>>> model_resources;
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {BASE_MESH_PATH}, base_mesh_blob);
+    model_resources.emplace_back(string {LINK_MESH_PATH}, link_mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, std::move(model_blob));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model = factory->GetModelMngr()->CreateModel(MODEL_PATH);
+    REQUIRE(static_cast<bool>(model));
+
+    model->StartMeshGeneration();
+    model->PrepareFrameLayout();
+    isize32 base_size = model->GetDrawSize();
+    array<int32_t, MODEL_LAYERS_COUNT> layers {};
+    layers[3] = 1;
+    REQUIRE(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::None));
+    isize32 equipped_size = model->GetDrawSize();
+    CHECK(equipped_size.width > base_size.width);
+
+    model->SetupFrame(equipped_size, model->GetFramePivot());
+    model->PoseSpriteFrame(true);
+    optional<ModelSpriteBounds> bounds = model->GetSpriteBounds();
+    REQUIRE(bounds);
+    CHECK(bounds->RequiredFrameSize == equipped_size);
+
+    layers[3] = 0;
+    REQUIRE(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::None));
+    isize32 unequipped_size = model->GetDrawSize();
+    CHECK(unequipped_size.width < equipped_size.width);
+    CHECK(unequipped_size.height < equipped_size.height);
 }
 
 TEST_CASE("ModelManagerInstantiatesABakedModel")

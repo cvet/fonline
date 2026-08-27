@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2024 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -104,7 +104,7 @@ protected:
 
 template <class KEY, class VAL> struct asSMapNode
 {
-	asSMapNode() {parent = 0; left = 0; right = 0; isRed = true;}
+	asSMapNode() : parent(0), left(0), right(0), isRed(true), key(), value() {}
 	void Init(KEY k, VAL v) {key = k; value = v; parent = 0; left = 0; right = 0; isRed = true;}
 
 	asSMapNode *parent;
@@ -117,10 +117,8 @@ template <class KEY, class VAL> struct asSMapNode
 };
 
 template <class KEY, class VAL>
-asCMap<KEY, VAL>::asCMap()
+asCMap<KEY, VAL>::asCMap() : root(0), count(0)
 {
-	root = 0;
-	count = 0;
 }
 
 template <class KEY, class VAL>
@@ -130,10 +128,8 @@ asCMap<KEY, VAL>::~asCMap()
 }
 
 template <class KEY, class VAL>
-asCMap<KEY, VAL>::asCMap(const asCMap<KEY, VAL>& other)
+asCMap<KEY, VAL>::asCMap(const asCMap<KEY, VAL>& other) : root(0), count(0)
 {
-	root = 0;
-	count = 0;
 	*this = other;
 }
 
