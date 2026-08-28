@@ -875,7 +875,12 @@ public:
     // and the allocator the caller named was quietly dropped.
     segmented_vector(segmented_vector&& other, Allocator alloc) noexcept(allocators_always_equal)
         : m_blocks(vec_alloc(alloc)) {
-        if (allocators_always_equal || alloc == other.get_allocator()) {
+        // (FOnline Patch) Split the compile-time trait from the runtime comparison to keep MSVC warning-free.
+        if constexpr (allocators_always_equal) {
+            // Nothing to move element by element, the blocks just change hands.
+            m_blocks = std::move(other.m_blocks);
+            m_size = std::exchange(other.m_size, {});
+        } else if (alloc == other.get_allocator()) {
             // Nothing to move element by element, the blocks just change hands.
             m_blocks = std::move(other.m_blocks);
             m_size = std::exchange(other.m_size, {});
@@ -930,7 +935,12 @@ public:
         // Either the allocator comes along with the blocks or it is already the same one, and
         // either way the blocks can be taken over; std::vector's own move assignment does the
         // propagating in the first case.
-        if (propagates_on_move_assign || m_blocks.get_allocator() == other.m_blocks.get_allocator()) {
+        // (FOnline Patch) Split the compile-time trait from the runtime comparison to keep MSVC warning-free.
+        if constexpr (propagates_on_move_assign) {
+            dealloc();
+            m_blocks = std::move(other.m_blocks);
+            m_size = std::exchange(other.m_size, {});
+        } else if (m_blocks.get_allocator() == other.m_blocks.get_allocator()) {
             dealloc();
             m_blocks = std::move(other.m_blocks);
             m_size = std::exchange(other.m_size, {});
