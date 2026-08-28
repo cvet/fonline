@@ -147,12 +147,17 @@ Every `Metadata.fometa-*` therefore opens with a fixed header, ahead of the sect
 | file version | `uint16` | `METADATA_FILE_VERSION` — bumped when this file layout changes; a mismatch means "rebake" |
 | metadata version | `uint16` length + bytes | the value above |
 
-`MakeMetadataHeader()` writes it and `ReadMetadataHeader()` reads it, both in `MetadataRegistration.cpp`, so the
-format lives in one place. `RegisterDynamicMetadata()` reads the header before any section and hands the version to
-`EngineMetadata::RegisterMetadataVersion()`; `ReadMetadataVersion()` reads *only* the header, which is
-what the updater and the server startup check use — neither walks the sections to answer "which bake is this". The
-value is read back through `EngineMetadata::GetMetadataVersion()` — it is computed, not configured, so it is
-deliberately **not** a setting (`Network.ForceMetadataVersion` exists only to simulate a divergence in tests).
+**A change to the token layout of any section is a change to this file layout, so it bumps the file version.** The
+metadata version cannot stand in for it: that hash is derived from the codegen tags, which do not move when the
+baker starts writing another token, so an unbumped pack from the previous engine passes the header and is then read
+record by record under the new layout — the failure surfaces as a section-level `VerificationException` deep inside
+registration instead of the "rebake" verdict. `MakeMetadataHeader()` writes the header and `ReadMetadataHeader()`
+reads it, both in `MetadataRegistration.cpp`, so the format lives in one place. `RegisterDynamicMetadata()` reads
+the header before any section and hands the version to `EngineMetadata::RegisterMetadataVersion()`;
+`ReadMetadataVersion()` reads *only* the header, which is what the updater and the server startup check use —
+neither walks the sections to answer "which bake is this". The value is read back through
+`EngineMetadata::GetMetadataVersion()` — it is computed, not configured, so it is deliberately **not** a setting
+(`Network.ForceMetadataVersion` exists only to simulate a divergence in tests).
 
 Four layers keep the invariant, in the order they apply:
 
@@ -177,7 +182,8 @@ server prints `Metadata version:` at startup and names both versions when it rej
 the local version, the server version, and the resource directory it read. From there the question is always the
 same: which of the two resource directories came from a different bake, and why.
 
-Tests: `Test_MetadataBaker.cpp` (one version shared by every target, changed by a property insertion),
+Tests: `Test_MetadataBaker.cpp` (one version shared by every target, changed by a property insertion; a pack
+written in an older file layout is refused),
 `Test_Properties.cpp` (`PropertiesRestoreRejectsForeignMetadata`),
 `Test_ClientServerIntegration.cpp` (`ServerReportsMetadataMismatchInHandshake`).
 
