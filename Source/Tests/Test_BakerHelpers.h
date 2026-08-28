@@ -274,6 +274,8 @@ namespace BakerTests
                 writer.Write<uint8_t>(uint8_t {255});
             }
 
+            writer.Write<uint8_t>(uint8_t {0}); // No surface plane
+
             // The mesh descriptor belongs to the frame, so it is written per frame rather than once
             writer.Write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
         }
@@ -312,6 +314,7 @@ namespace BakerTests
             writer.Write<uint8_t>(uint8_t {255}); // A
         }
 
+        writer.Write<uint8_t>(uint8_t {0}); // No surface plane
         writer.Write<uint8_t>(static_cast<uint8_t>(mesh_kind));
 
         if (mesh_kind == SpriteMeshKind::Mesh) {

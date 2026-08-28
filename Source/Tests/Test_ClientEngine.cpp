@@ -3327,7 +3327,10 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     cropped_mesh.SourceOffset = {1, -1};
     cropped_mesh.Vertices = {{0, 0}, {3, 0}, {0, 3}};
     cropped_mesh.Indices = {0, 1, 2};
-    constexpr size_t mesh_kind_offset = 20 + 2 * 2 * sizeof(ucolor);
+    // Header and frame fields, then the pixels, then the surface-plane presence flag - absent
+    // here, so a single byte - and only then the mesh descriptor.
+    constexpr size_t surface_flag_size = 1;
+    constexpr size_t mesh_kind_offset = 20 + 2 * 2 * sizeof(ucolor) + surface_flag_size;
     constexpr size_t mesh_vertex_count_offset = mesh_kind_offset + 1;
     constexpr size_t mesh_index_count_offset = mesh_vertex_count_offset + sizeof(uint16_t);
     constexpr size_t mesh_source_size_offset = mesh_index_count_offset + sizeof(uint32_t);

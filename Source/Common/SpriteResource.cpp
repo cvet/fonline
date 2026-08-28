@@ -107,6 +107,22 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
             frame_info.Size = frame.Size;
             frame_info.NextOffset = frame.NextOffset;
             frame.Pixels = read_sprite_pixels(frame.Size);
+
+            uint8_t has_surface = reader.GetUInt8();
+            FO_VERIFY_AND_THROW(has_surface <= 1, "Sprite frame surface flag is invalid", has_surface);
+
+            if (has_surface == 1) {
+                size_t surface_count = numeric_cast<size_t>(frame.Size.width) * frame.Size.height;
+                size_t remaining_size = reader.GetSize() - reader.GetCurPos();
+                FO_VERIFY_AND_THROW(surface_count * sizeof(ucolor) <= remaining_size, "Sprite frame surface data is truncated", surface_count, remaining_size, frame.Size);
+
+                frame.DepthNear = std::bit_cast<float32_t>(reader.GetLEUInt32());
+                frame.DepthFar = std::bit_cast<float32_t>(reader.GetLEUInt32());
+                FO_VERIFY_AND_THROW(frame.DepthFar > frame.DepthNear, "Sprite frame depth range is not increasing", frame.DepthNear, frame.DepthFar);
+                frame.Surface.resize(surface_count);
+                reader.ReadObjectArray(span<ucolor> {frame.Surface});
+            }
+
             frame.Mesh = ReadSpriteFrameMesh(reader, frame.Size);
         }
     }

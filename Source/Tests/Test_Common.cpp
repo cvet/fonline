@@ -293,6 +293,7 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     writer.Write<int16_t>(int16_t {5});
     writer.Write<int16_t>(int16_t {-6});
     writer.WriteObjectVector(pixels);
+    writer.Write<uint8_t>(uint8_t {0}); // No surface plane
     writer.Write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
     writer.Write<uint16_t>(uint16_t {3});
     writer.Write<uint32_t>(uint32_t {3});
