@@ -102,6 +102,16 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 
 `ApplicationShutdownHook` is a native lifecycle hook for project-owned process integrations that must be stopped before a client runtime DLL is unloaded. It is intentionally not part of the compatibility hash because it does not change script metadata, saved data, or the network contract.
 
+## Script Entity promotion
+
+The AngelScript `Entity` type has no single native counterpart. `get_entity_from_target` in `BuildTools/codegen.py` promotes every position that spells a script `Entity` — receiver, argument, array element and return — to the entity class of the target: `ServerEntity*` on the server, `ClientEntity*` on client and mapper, and the base `Entity*` elsewhere. That is why an export writes `ptr<ServerEntity> self` and still registers as a method on the script `Entity`.
+
+The promotion is a claim about the caller, not something AngelScript checked. `register_entity_protos` and `register_entity_abstract` in `Source/Scripting/AngelScript/AngelScriptEntity.cpp` register an implicit cast from every `Proto*` and `Abstract*` type to `Entity`, so a prototype is an `Entity` to a script — but `ProtoEntity` and `ServerEntity` are siblings under a single `Entity` base, so the promotion is false for one. Under single inheritance the pointer value survives it, which means an unchecked promotion does not fail at the call; it fails later, inside the callee, on a member the object does not have.
+
+`NativeDataCaller::ConvertArg` in `Source/Common/ScriptSystem.h` therefore reads every entity slot as the base and narrows it to the declared type, for scalar arguments and array elements alike, throwing `ThrowScriptEntityTypeMismatch` with the type and name that were actually passed. Array elements deliberately keep no destroyed-entity check: an array argument may carry entities that died since the caller built it, and its callees drop them.
+
+A dict value carrying an entity handle is narrowed the same way. Two `static_assert`s bound what is not: an entity handle as a dict *key*, because a key is a script value type rather than a handle slot, and an array of handles nested inside a dict value, because that slot holds a whole array object.
+
 ## Dynamic metadata
 
 `Source/Common/MetadataRegistration.cpp` implements `RegisterDynamicMetadata()`. It reads binary metadata sections and dispatches them into typed registration steps such as:
