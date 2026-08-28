@@ -230,7 +230,14 @@ madvise(caddr_t, size_t, int);
 #define LARGE_PAGE_SIZE (1 << LARGE_PAGE_SIZE_SHIFT)
 #define LARGE_PAGE_MASK (~((uintptr_t)LARGE_PAGE_SIZE - 1))
 
+#if ARCH_64BIT
 #define SPAN_SIZE (256 * 1024 * 1024)
+#else
+// (FOnline Patch) A 256 MiB aligned span requires up to 512 MiB of contiguous
+// address space on pre-VirtualAlloc2 Windows. Keep x86 spans at the largest page
+// size so the allocator can start reliably within a 2 GiB process address space.
+#define SPAN_SIZE LARGE_PAGE_SIZE
+#endif
 #define SPAN_MASK (~((uintptr_t)(SPAN_SIZE - 1)))
 
 #if ENABLE_VALIDATE_ARGS

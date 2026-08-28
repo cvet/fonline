@@ -109,6 +109,8 @@ The raw tier exists because third-party allocator hooks are C-shaped: they deman
 
 The underlying `rpmalloc` primitives are deliberately **not** exported from `MemorySystem.h`. They return null on failure and would be a second, equally reachable entry point that skips the contract; they live as file-local statics in `MemorySystem.cpp`. The `MemCopy` / `MemMove` / `MemFill` / `MemCompare` / `MemReadUnaligned` / `MemWriteUnaligned` block operations are unrelated to allocation and remain public.
 
+The vendored rpmalloc keeps its upstream 256 MiB spans on 64-bit targets. On 32-bit targets it uses one `LARGE_PAGE_SIZE` (16 MiB) per span: pre-`VirtualAlloc2` Windows has to reserve `size + alignment`, so an upstream 256 MiB aligned span can require a contiguous 512 MiB reservation inside the process's 2 GiB address space and make even the first tiny allocation fail. The smaller x86 span preserves every built-in page class while avoiding that startup dependency on a single huge address-space hole.
+
 Three distinct things are at stake when code bypasses this vocabulary, and they are not equally severe:
 
 | | What actually happens |
