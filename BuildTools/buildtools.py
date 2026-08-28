@@ -545,6 +545,7 @@ def resolve_env() -> EnvMap:
 	dotnet_runtime_root = workspace / 'dotnet' / 'runtime'
 	env['FO_ANDROID_NDK_ROOT'] = str(ndk_root) if ndk_root.is_dir() else os.environ.get('FO_ANDROID_NDK_ROOT', '')
 	env['FO_DOTNET_RUNTIME_ROOT'] = os.environ.get('FO_DOTNET_RUNTIME_ROOT') or (str(dotnet_runtime_root) if dotnet_runtime_root.is_dir() else '')
+	env['FO_MANAGED_RUNTIME_PREBUILT'] = os.environ.get('FO_MANAGED_RUNTIME_PREBUILT', '')
 	return env
 
 
@@ -579,6 +580,7 @@ def print_env_summary(env: Mapping[str, str]) -> None:
 		'FO_ANDROID_NDK_ROOT',
 		'FO_DOTNET_RUNTIME',
 		'FO_DOTNET_RUNTIME_ROOT',
+		'FO_MANAGED_RUNTIME_PREBUILT',
 		'FO_IOS_SDK',
 		'FO_XWIN_VERSION',
 		'FO_XWIN_ROOT',
@@ -2239,6 +2241,21 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	built_marker = workspace / f'BUILT_{runtime_triplet}{marker_suffix}'
 	ready_marker = workspace / f'READY_{publish_triplet}{marker_suffix}'
 
+	# A published runtime tree stands in for the source build. It is what makes a Windows target
+	# reachable from a Linux host at all: dotnet/runtime builds with the host's own toolchain and has
+	# no Windows cross-target, so that combination has to be produced on Windows and carried over
+	prebuilt_root = env.get('FO_MANAGED_RUNTIME_PREBUILT', '')
+
+	if prebuilt_root:
+		adopt_prebuilt_mono(Path(prebuilt_root), workspace, publish_triplet, ready_marker)
+		log(f'Runtime {publish_triplet} is ready (prebuilt)!')
+		return
+
+	if os_name == 'windows' and os.name != 'nt':
+		raise SystemExit(
+			f'Managed runtime for {publish_triplet} cannot be built on this host: dotnet/runtime has no Windows cross-target. '
+			'Build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree')
+
 	def clone_runtime() -> None:
 		if runtime_root.exists():
 			log('Remove previous repository')
@@ -2293,6 +2310,19 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	log(f'Runtime {publish_triplet} is ready!')
 
+
+def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: str, ready_marker: Path) -> None:
+	# The tree is named by its triplet so one published archive can hold several; a caller that points
+	# straight at a single triplet's directory is accepted as well
+	source_dir = prebuilt_root / publish_triplet if (prebuilt_root / publish_triplet).is_dir() else prebuilt_root
+
+	if not (source_dir / 'lib').is_dir() or not (source_dir / 'include').is_dir():
+		raise SystemExit(f'Prebuilt managed runtime for {publish_triplet} is not a published runtime tree: {source_dir}')
+
+	output_dir = workspace / 'output' / 'mono' / publish_triplet
+	log('Copy prebuilt runtime from', source_dir, 'to', output_dir)
+	copy_directory(source_dir, output_dir, dirs_exist_ok=True)
+	ready_marker.touch()
 
 
 def discover_clang_format() -> str:

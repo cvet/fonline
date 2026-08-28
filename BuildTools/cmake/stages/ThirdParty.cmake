@@ -760,7 +760,15 @@ if(FO_MANAGED_SCRIPTING)
     AddIncludeDirectories(${FO_MANAGED_RUNTIME_DIR}/include/mono-2.0)
     AddLinkDirectories(${FO_MANAGED_RUNTIME_DIR}/lib)
 
-    if(FO_WINDOWS)
+    # dotnet/runtime builds the managed runtime with the host's own toolchain and has no Windows
+    # cross-target, so a Windows target reachable by clang-cl still leaves the runtime out of reach.
+    # The way across is a tree built on Windows and handed over through FO_MANAGED_RUNTIME_PREBUILT
+    if(FO_WINDOWS AND NOT CMAKE_HOST_WIN32 AND "$ENV{FO_MANAGED_RUNTIME_PREBUILT}" STREQUAL "")
+        AbortMessage("Managed runtime for Windows cannot be built on a non-Windows host (dotnet/runtime has no such cross-target); build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree")
+    endif()
+
+    # The setup script runs on the build host, not on the target, so it follows the host
+    if(CMAKE_HOST_WIN32)
         SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
     else()
         SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)

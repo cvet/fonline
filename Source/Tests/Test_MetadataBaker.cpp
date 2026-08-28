@@ -122,6 +122,8 @@ TEST_CASE("MetadataBaker")
 
     SECTION("serializes metadata tags from managed scripts")
     {
+        ConfigFile config {"ManagedMetadata.ServerFlag = true\nManagedMetadata.ClientFlag = false\n"};
+        rig.Settings.ApplyConfigFile(config, "");
         rig.AddSourceFile("Scripts/TestManagedMetadata.cs", R"(
 namespace TestManagedMetadata
 {
@@ -147,8 +149,13 @@ namespace TestManagedMetadata
 
         REQUIRE(server_tags.contains("Setting"));
         REQUIRE(client_tags.contains("Setting"));
-        CHECK(std::ranges::count(server_tags.at("Setting"), vector<string> {"ManagedMetadata.ServerFlag", "bool"}) == 1);
-        CHECK(std::ranges::count(client_tags.at("Setting"), vector<string> {"ManagedMetadata.ClientFlag", "bool"}) == 1);
+
+        auto server_flag_value = rig.Settings.FindSettingValue("ManagedMetadata.ServerFlag");
+        auto client_flag_value = rig.Settings.FindSettingValue("ManagedMetadata.ClientFlag");
+        REQUIRE(server_flag_value);
+        REQUIRE(client_flag_value);
+        CHECK(std::ranges::count(server_tags.at("Setting"), vector<string> {"ManagedMetadata.ServerFlag", "bool", *server_flag_value}) == 1);
+        CHECK(std::ranges::count(client_tags.at("Setting"), vector<string> {"ManagedMetadata.ClientFlag", "bool", *client_flag_value}) == 1);
         CHECK((!mapper_tags.contains("Setting") || mapper_tags.at("Setting").empty()));
 
         REQUIRE(server_tags.contains("Enum"));
