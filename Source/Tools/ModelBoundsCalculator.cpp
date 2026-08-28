@@ -233,7 +233,8 @@ void ModelBoundsSampler::AppendBone(const ModelMeshBoneData& bone, optional<size
 
     if (bone.AttachedMesh) {
         const ModelMeshGeometryData& source = *bone.AttachedMesh;
-        Mesh& mesh = target.AttachedMesh.emplace();
+        target.AttachedMesh = Mesh {};
+        Mesh& mesh = *target.AttachedMesh;
         mesh.Vertices.reserve(source.Vertices.size());
 
         for (const ModelMeshVertexData& source_vertex : source.Vertices) {
