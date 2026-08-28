@@ -43,6 +43,28 @@ FO_BEGIN_NAMESPACE
 class EntityLock;
 class ServerEngine;
 
+// Serializes the short raw-link load-plus-AddRef / replace-plus-Release critical sections without introducing
+// an OS-resource failure into noexcept entity accessors
+class FO_TSA_CAPABILITY("server_entity_link") ServerEntityLinkLock final
+{
+public:
+    void lock() noexcept FO_TSA_ACQUIRE()
+    {
+        while (_locked.test_and_set(std::memory_order_acquire)) {
+            _locked.wait(true, std::memory_order_relaxed);
+        }
+    }
+
+    void unlock() noexcept FO_TSA_RELEASE()
+    {
+        _locked.clear(std::memory_order_release);
+        _locked.notify_one();
+    }
+
+private:
+    std::atomic_flag _locked {};
+};
+
 class ServerEntity : public Entity
 {
     friend class EntityManager;
@@ -72,22 +94,22 @@ public:
     [[nodiscard]] auto GetParent() -> refcount_nptr<T>
     {
         FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-        return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<T>().try_hold_ref();
+        return GetParentRaw().dyn_cast<T>();
     }
     template<typename T>
     [[nodiscard]] auto GetParent() const -> refcount_nptr<const T>
     {
         FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-        return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<const T>().try_hold_ref();
+        return GetParentRaw().dyn_cast<const T>();
     }
 
     // Unchecked parent accessor — for the lock machinery only
     [[nodiscard]] auto GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>;
 
-    // Return the entity that should be auto-widened into the SyncContext alongside this one,
-    // outside of the parent-chain
-    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity>;
-    [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>;
+    // Return an owning handle to the entity that should be auto-widened into the SyncContext alongside this
+    // one, outside of the parent-chain
+    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>;
+    [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>;
 
     void SetInitCalled() noexcept;
     void SetEntityLock(nptr<EntityLock> lock) noexcept;
@@ -109,6 +131,7 @@ private:
     bool _initCalled {};
     bool _isPersistent {};
     mutable nptr<EntityLock> _entityLock {};
+    mutable ServerEntityLinkLock _parentLinkLocker {};
     std::atomic<ServerEntity*> _parent {};
 };
 

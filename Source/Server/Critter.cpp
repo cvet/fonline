@@ -239,27 +239,27 @@ auto Critter::GetName() const noexcept -> string_view
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player = GetPlayerForSend()) {
         return player->GetName();
     }
 
     return _proto->GetName();
 }
 
-auto Critter::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
+auto Critter::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return nptr<ServerEntity>(_player.load(std::memory_order_acquire));
+    return GetPlayerForSend();
 }
 
-auto Critter::GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
+auto Critter::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return nptr<const ServerEntity>(_player.load(std::memory_order_acquire));
+    return GetPlayerForSend();
 }
 
 auto Critter::GetPlayerForSend() const noexcept -> refcount_nptr<Player>
@@ -267,6 +267,7 @@ auto Critter::GetPlayerForSend() const noexcept -> refcount_nptr<Player>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
+    scoped_lock locker {_playerLinkLocker};
     return nptr<Player>(_player.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -275,7 +276,7 @@ auto Critter::GetOfflineTime() const -> timespan
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    return GetControlledByPlayer() && _player.load(std::memory_order_acquire) == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
+    return GetControlledByPlayer() && !GetPlayerForSend() ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
 }
 
 auto Critter::IsAlive() const noexcept -> bool
@@ -356,7 +357,7 @@ void Critter::UnmarkIsForPlayer()
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
-    FO_VERIFY_AND_THROW(!_player.load(std::memory_order_acquire), "Player is already set");
+    FO_VERIFY_AND_THROW(!GetPlayerForSend(), "Player is already set");
 
     refcount_nptr<Map> map;
 
@@ -381,13 +382,16 @@ void Critter::AttachPlayer(ptr<Player> player)
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
     ValidateEntityAccess(player);
     FO_VERIFY_AND_THROW(!player->GetControlledCritterId(), "Player already controls a critter");
-    FO_VERIFY_AND_THROW(!_player.load(std::memory_order_acquire), "Player is already set");
+    FO_VERIFY_AND_THROW(!GetPlayerForSend(), "Player is already set");
     FO_VERIFY_AND_THROW(!player->GetViewMap(), "Player still has an active view map");
 
-    // Owning publication (mirrors ServerEntity::SetParent): AddRef the new owner, then publish atomically so a
-    // concurrent lock-free GetPlayerForSend reader sees either the old or the new pointer, never a torn value
+    // Owning publication (mirrors ServerEntity::SetParent): AddRef the new owner, then publish under the link
+    // mutex so GetPlayerForSend can pin it before the detach path releases this link's ownership
     player->AddRef();
-    _player.store(player.get(), std::memory_order_release);
+    {
+        scoped_lock locker {_playerLinkLocker};
+        _player.store(player.get(), std::memory_order_release);
+    }
 
     player->SetControlledCritterId(GetId());
     player->SetLastControlledCritterId(GetId());
@@ -400,7 +404,7 @@ void Critter::DetachPlayer()
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
-    nptr<Player> player = _player.load(std::memory_order_acquire);
+    refcount_nptr<Player> player = GetPlayerForSend();
     FO_VERIFY_AND_THROW(player, "Missing required player");
     ValidateEntityAccess(player);
     FO_VERIFY_AND_THROW(player->GetControlledCritterId() == GetId(), "Player controlled critter id does not match this critter");
@@ -408,7 +412,10 @@ void Critter::DetachPlayer()
     player->SetControlledCritterId({});
     player->SetControlledCritter(nullptr);
 
-    _player.store(nullptr, std::memory_order_release);
+    {
+        scoped_lock locker {_playerLinkLocker};
+        _player.store(nullptr, std::memory_order_release);
+    }
     player->Release();
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 }

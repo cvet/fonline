@@ -66,11 +66,11 @@ public:
     [[nodiscard]] auto HasPlayer() const noexcept -> bool;
     [[nodiscard]] auto GetPlayer() const noexcept -> nptr<const Player>;
     [[nodiscard]] auto GetPlayer() noexcept -> nptr<Player>;
-    // Lock-free, refcount-pinned controlling-player lookup for broadcast snapshots.
+    // Refcount-pinned controlling-player lookup for broadcast snapshots.
     // Do not expose it as a script accessor
     [[nodiscard]] auto GetPlayerForSend() const noexcept -> refcount_nptr<Player>;
-    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
-    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] auto GetOfflineTime() const -> timespan;
     [[nodiscard]] auto IsAlive() const noexcept -> bool;
     [[nodiscard]] auto IsDead() const noexcept -> bool;
@@ -209,6 +209,7 @@ private:
     uint32_t _movingUid {};
     refcount_nptr<MovingContext> _moving {};
     refcount_nptr<MovingContext> _lastMoving {};
+    mutable ServerEntityLinkLock _playerLinkLocker {};
     std::atomic<Player*> _player {};
     nanotime _playerDetachTime {};
     vector<ptr<Critter>> _attachedCritters {};
