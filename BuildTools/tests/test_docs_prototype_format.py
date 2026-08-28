@@ -47,7 +47,7 @@ class PrototypeFormatDocumentationTests(unittest.TestCase):
             "prototype-format.rule.identifier-characters",
             {entry["id"] for entry in self.model["rules"]},
         )
-        self.assertEqual(self.model["summary"]["rule_count"], 13)
+        self.assertEqual(self.model["summary"]["rule_count"], 14)
 
         identities = [
             entry["id"]

@@ -447,9 +447,9 @@ change. Patched regions, all transparent identity/config **text** (never code):
 
 - `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, a 128-byte array. The package/build identity string;
   each runtime variant patches its own so `IsPackaged()` and the build name reflect the package.
-- `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, capacity
-  `FO_INTERNAL_CONFIG_CAPACITY` (40000). The baked internal config blob.
-- Embedded resources - capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
+- `INTERNAL_CONFIG` — markers `###InternalConfig###…` / `###InternalConfigEnd###`, capacity
+  fixed by the engine at 10000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
+- Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` also rewrites the PE PDB path (`patch_pe_pdb_path`) and the Android Gradle `$PLACEHOLDER$` tokens.
 

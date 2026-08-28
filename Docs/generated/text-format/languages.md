@@ -19,6 +19,9 @@ Continue with the [canonical reference](../../en/reference/text-format/languages
 <a id="entry-text-format-language-base-c0360baaa0"></a>
 - [`entry-text-format-language-base-c0360baaa0`](../../en/reference/text-format/languages.md#entry-text-format-language-base-c0360baaa0)
 
+<a id="entry-text-format-language-fallback-declaration-48971fa338"></a>
+- [`entry-text-format-language-fallback-declaration-48971fa338`](../../en/reference/text-format/languages.md#entry-text-format-language-fallback-declaration-48971fa338)
+
 <a id="entry-text-format-language-default-source-required-002dd0909e"></a>
 - [`entry-text-format-language-default-source-required-002dd0909e`](../../en/reference/text-format/languages.md#entry-text-format-language-default-source-required-002dd0909e)
 

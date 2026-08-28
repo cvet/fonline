@@ -42,9 +42,6 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-embedded-data-capacity-f6517a6c8a"></a>
 - [`entry-cmake-option-fo-embedded-data-capacity-f6517a6c8a`](../../en/reference/cmake/options.md#entry-cmake-option-fo-embedded-data-capacity-f6517a6c8a)
 
-<a id="entry-cmake-option-fo-internal-config-capacity-235c8d699f"></a>
-- [`entry-cmake-option-fo-internal-config-capacity-235c8d699f`](../../en/reference/cmake/options.md#entry-cmake-option-fo-internal-config-capacity-235c8d699f)
-
 <a id="entry-cmake-option-fo-effect-script-values-cadf138ea4"></a>
 - [`entry-cmake-option-fo-effect-script-values-cadf138ea4`](../../en/reference/cmake/options.md#entry-cmake-option-fo-effect-script-values-cadf138ea4)
 

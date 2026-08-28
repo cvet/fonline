@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 
 # Карты, движение и геометрия
 
-<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"d0a6f64e0315f67f863d0563387857be6a71574b4ed913320ef46af3b9b84c3a"} -->
+<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"9f957593c0936b000fedad6034f434bda1b5e7bbcc43e643deedeabfd1591560"} -->
 
 Этот документ описывает переиспользуемые примитивы координат карты, движения, поиска пути, трассировки линий и загрузки карт, которыми пользуются клиентская и серверная среды выполнения и инструменты.
 
@@ -102,7 +102,10 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 - `FromHex` / `ToHex` — запрошенные начало и конец маршрута;
 - `ToHexOffset` — настоящее смещение цели внутри `ToHex`; непрерывная позиция цели равна центру `ToHex` плюс `ToHexOffset`. Используется только при расчёте конечного смещения `FreeMovement`;
 - `MapSize` — границы всех проверок;
-- `MaxLength` — максимальная глубина BFS, обычно получаемая из настроек движка;
+- `MaxLength` — максимальная глубина BFS, обычно получаемая из настроек движка.
+  Half-extent временного search grid ограничивается размерами карты, поэтому
+  очень большой limit на маленькой карте не выделяет buffer
+  `(2 * MaxLength)^2` и не меняет выбранный маршрут;
 - `Cut` — остановка при достижении заданного расстояния до цели; `0` требует точного достижения;
 - `Multihex` — радиус multihex-сущности;
 - `FreeMovement` — включает оптимизацию контрольных шагов через line tracer и непрерывное конечное смещение;

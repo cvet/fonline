@@ -443,11 +443,16 @@ aggregate, idle-priority view/name, and per-animation bounds to
 each direction, extends them with enabled child models and layers, and derives the
 offscreen frame, visual anchor, lighting envelope, and interaction/view rectangle.
 
-The initial frame covers every enabled animation bound. Exact weighted current-pose
-skinning supplies a tighter atlas crop; a bounded expansion and rerender path handles a
-pose that exceeds the current allocation. Authors therefore tune source transforms,
-animation reach, attachments, and `Render.ModelProjFactor`, not fixed pixel rectangles
-inside `.fo3d`.
+Every non-particle child link serializes a validated root-space AABB; the
+default link and particle links carry no geometry payload. The baker includes
+disabled meshes, nested descriptions, link transforms, and the parent's sampled
+animations when calculating that envelope. Runtime framing unions the active
+animation bounds with the selected link envelopes and projects only their
+corners—there is no per-frame weighted-vertex sweep. Live particles can still
+force bounded expansion and rerender when they exceed the baked geometry
+envelope. Authors therefore tune source transforms, animation reach,
+attachments, and `Render.ModelProjFactor`, not fixed pixel rectangles inside
+`.fo3d`.
 
 Validate every direction and representative animation in a visible client. Use
 `Game.DumpAtlases()` or the mapper's **Dump atlases** command when diagnosing clipping,

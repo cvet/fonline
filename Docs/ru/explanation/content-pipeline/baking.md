@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"5cd6955b3aeabfceacbc2ba75148caf51f2ac15a12ad6cacb3350a378db4e9bb"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"0fa5b884fb24b5b4c5a4783062660355bd2101ec410de7253566200767dcb48f"} -->
 
 # Конвейер запекания ресурсов
 
@@ -293,7 +293,19 @@ Index является aggregate output. Обычный scan merge-ит изме
 - deterministic `ViewBoundsMin*`/`ViewBoundsMax*`: сначала `Unarmed + Idle`, затем любой Idle, первая валидная animation или static fallback;
 - `BoundsStateAnimations`/`BoundsActionAnimations` и parallel min/max arrays для отдельных animation AABB.
 
-Bounds строятся по keys, midpoints и uniform timeline независимо от camera/backend. Missing/invalid aggregate или animation bounds являются bake error. Loader строго проверяет version, required bounds и parallel arrays. Duration и bounds groups независимы: aliases могут создать duration-only keys, а raw `.fo3d` — bounds-only keys. Static section может не иметь обеих групп, но companion без model sections malformed.
+Bounds строятся по keys, midpoints и uniform timeline независимо от
+camera/backend. Каждый binary description link также содержит явный geometry
+discriminator: non-particle child links несут обязательный root-space AABB, а
+default link и particle links не имеют geometry payload. Invalid flags, missing
+child bounds и degenerate AABB отклоняются. Missing/invalid aggregate или
+animation bounds являются bake error. Loader строго проверяет version, required
+bounds и parallel arrays. Duration и bounds groups независимы: aliases могут
+создать duration-only keys, а raw `.fo3d` — bounds-only keys. Static section
+может не иметь обеих групп, но companion без model sections malformed.
+
+Runtime объединяет active-animation bounds с envelopes выбранных links и
+проецирует только их corners вместо обхода и skinning combined-mesh vertices.
+Live particle bounds всё ещё могут расширить scratch frame и вызвать rerender.
 
 `ModelBounds` владеет finite/ordered AABB, point/bounds accumulation, transformed eight corners и guard `max(0.01, maxAbs * 0.001)`. `ModelBoundsCalculator` только читает baked data и sampling geometry. При отключении всех base meshes baker повторяет расчёт на unfiltered model; реально пустая/invalid geometry остаётся ошибкой.
 

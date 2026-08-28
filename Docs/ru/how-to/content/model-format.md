@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
 
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"fc37e6b93377f46c1df7590958158ea743cb12155ebdd79a25ed6d7ea6eeb16f"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"343e310f1338b96c00857c939bb3b7581a8ca31a066ed278c6ad5e766de74a6e"} -->
 
 # Формат моделей и 3D-композиция
 
@@ -365,7 +365,15 @@ Runtime классифицирует cut shape по числу запечённ�
 
 `DrawSize` и `ViewSize` удалены. `ModelInfoBaker` пишет aggregate bounds, idle-priority view/name bounds и per-animation bounds в `ModelAnimationInfo.foinfo` версии 2. Клиент проецирует их для каждого направления, расширяет с учётом children и layers и вычисляет offscreen frame, visual anchor, lighting envelope и interaction/view rectangle.
 
-Начальный frame покрывает bounds всех включённых animations. Точное weighted skinning текущей позы даёт более тесный atlas crop; ограниченный expansion/rerender обрабатывает выход позы за allocation. Авторы настраивают source transforms, animation reach, attachments и `Render.ModelProjFactor`, а не фиксированные пиксельные прямоугольники в `.fo3d`.
+Каждый non-particle child link сериализует проверенный root-space AABB; default
+link и particle links не содержат geometry payload. При расчёте envelope baker
+учитывает disabled meshes, nested descriptions, link transforms и sampled
+animations родителя. Runtime framing объединяет bounds активных animations с
+envelopes выбранных links и проецирует только их corners без per-frame
+weighted-vertex sweep. Live particles всё ещё могут вызвать ограниченный
+expansion/rerender при выходе за baked geometry envelope. Авторы настраивают
+source transforms, animation reach, attachments и `Render.ModelProjFactor`, а
+не фиксированные пиксельные прямоугольники в `.fo3d`.
 
 Проверяйте все направления и типичные animations в видимом клиенте. Для диагностики clipping, пустого пространства, polygon edges и crop placement используйте `Game.DumpAtlases()` или **Dump atlases** в Mapper. Бинарный и runtime-контракты описаны в [Baking Pipeline](../../explanation/content-pipeline/baking.md#общие-metadata-анимации) и [Frontend и рендеринг](../../explanation/rendering/#геометрия-atlas-спрайтов-и-моделей).
 

@@ -20,7 +20,7 @@ This reference describes the reusable Engine-owned text-pack, language, prototyp
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own language policy, pack catalogs, translation workflow, semantic key conventions, and any game-specific lexem or argument formatter. |
 | Source manifest | [BuildTools/TextFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/TextFormatInterface.json) |
-| Contract digest | <code>b0ac74065cbb6993abc6b0660dd51370665ac810b749a1e507a54203cf97ad07</code> |
+| Contract digest | <code>4d0aaae7e15a9d3b07ae158a69c3d73976fd3829db9fd8d45c1356a279c52e45</code> |
 | Source filename | <code>&lt;TextPack&gt;.&lt;Language&gt;.fotxt</code> |
 | Baked filename | <code>&lt;ResourcePack&gt;.&lt;TextPack&gt;.&lt;Language&gt;.fotxt-bin</code> |
 | Raw entry | <code>&#123;Key1&#125;&#123;Key2&#125;&#123;Text&#125;</code> |
@@ -28,7 +28,7 @@ This reference describes the reusable Engine-owned text-pack, language, prototyp
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Syntax](syntax.md) | 7 | Raw brace fields, key identity, multiline text, and variants. |
-| [Languages](languages.md) | 9 | Filename selection, defaults, rebakes, and normalization. |
+| [Languages](languages.md) | 10 | Filename selection, defaults, rebakes, and normalization. |
 | [Prototype text](proto-text.md) | 8 | $Text grammar, inheritance, pack routing, and decoding. |
 | [Runtime](runtime.md) | 8 methods / 2 rendering rules | Script lookup, language switching, server boundary, and color tags. |
 

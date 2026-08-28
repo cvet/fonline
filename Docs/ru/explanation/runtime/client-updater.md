@@ -6,7 +6,7 @@ document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
 
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"d15b7f757e1c8ed959b47781ca95e7635234b0f24d147188ae85ff0f4435f334"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"07f15667fdd152af07e2a5bab53ad53fb58dec976c2c0cbe32dedfbd8b5f6699"} -->
 
 # Разделение клиентской среды выполнения и обновление
 
@@ -537,9 +537,9 @@ Incremental baker может touch неизменившийся output, но con
 заново. Это закрепляет
 [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py).
 
-Размер internal config patch area берётся из CMake
-`FO_INTERNAL_CONFIG_CAPACITY` рядом с `FO_EMBEDDED_DATA_CAPACITY`; packager читает
-реальный reserved marker из binary перед записью.
+Internal config patch area имеет фиксированную движком ёмкость 10000 bytes;
+подключаемые проекты не могут менять её размер. Перед записью bootstrap config
+`package.py` читает реальный reserved marker из binary.
 
 `build_runtime_update_target_name` образует `Windows-win64`, `Linux-x64`,
 `Linux-arm64`, `macOS-arm64`, `Android-arm64` и другие targets. Profiling получает

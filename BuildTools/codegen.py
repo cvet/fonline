@@ -36,6 +36,7 @@ ENGINE_HOOK_NAMES = (
 )
 IMGUI_HEADER_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ThirdParty', 'imgui', 'imgui.h'))
 APPLICATION_SOURCE_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Source', 'Frontend', 'Application.cpp'))
+INTERNAL_CONFIG_CAPACITY = 10000
 
 
 @dataclass(slots=True)
@@ -333,7 +334,6 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
     parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
     parser.add_argument('-embedded', dest='embedded', required=True, help='embedded buffer capacity')
-    parser.add_argument('-internalcfg', dest='internalcfg', required=True, help='internal config buffer capacity')
     parser.add_argument('-enginedefine', dest='enginedefine', action='append', default=[], help='engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h')
     parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
     parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
@@ -2795,7 +2795,7 @@ def write_internal_config() -> None:
     def write_internal_config_impl() -> None:
         start_marker = b'###InternalConfig###1234'
         end_marker = b'###InternalConfigEnd###'
-        capacity = int(args.internalcfg)
+        capacity = INTERNAL_CONFIG_CAPACITY
         assert capacity >= len(start_marker) + len(end_marker), 'Internal config capacity must fit patch markers'
         data = [ord('0') + i % 10 for i in range(capacity)]
         data[:len(start_marker)] = start_marker

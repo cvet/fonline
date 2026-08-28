@@ -46,6 +46,9 @@ Continue with the [canonical reference](../../en/reference/model-format/validati
 <a id="entry-model-format-rule-runtime-composition-582952d10d"></a>
 - [`entry-model-format-rule-runtime-composition-582952d10d`](../../en/reference/model-format/validation.md#entry-model-format-rule-runtime-composition-582952d10d)
 
+<a id="entry-model-format-rule-baked-link-bounds-b41d53030a"></a>
+- [`entry-model-format-rule-baked-link-bounds-b41d53030a`](../../en/reference/model-format/validation.md#entry-model-format-rule-baked-link-bounds-b41d53030a)
+
 <a id="entry-model-format-rule-source-units-and-mirroring-1e8f6bb970"></a>
 - [`entry-model-format-rule-source-units-and-mirroring-1e8f6bb970`](../../en/reference/model-format/validation.md#entry-model-format-rule-source-units-and-mirroring-1e8f6bb970)
 

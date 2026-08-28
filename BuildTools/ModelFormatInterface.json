@@ -1009,6 +1009,26 @@
       ]
     },
     {
+      "id": "model-format.rule.baked-link-bounds",
+      "name": "Baked geometry-link bounds",
+      "requirement": "Every non-particle child link carries a validated baked root-space AABB; default and particle links carry no geometry payload.",
+      "rationale": "Runtime framing projects selected-link envelope corners instead of walking and skinning combined-mesh vertices.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": ["CalculateModelDescriptionLinkBounds", "Model description link geometry and bounds do not match", "writer.Write<uint8_t>(has_geometry"]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": ["Baked model geometry link has no bounds", "Baked model link geometry flag does not match its child type"]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": ["CollectActiveAnimationBounds", "Active model link bounds are invalid"]
+        }
+      ]
+    },
+    {
       "id": "model-format.rule.source-units-and-mirroring",
       "name": "Positive scale and Engine world units",
       "requirement": "Freeze mirrored mesh nodes to a positive transform before export, and author direct FBX/OBJ attachments within Baking.ModelAttachmentMinExtent and Baking.ModelAttachmentMaxExtent. Use a child .fo3d when an explicit description-level scale is required.",

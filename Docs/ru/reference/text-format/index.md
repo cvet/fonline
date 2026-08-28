@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-text-format-index","locale":"ru","source_path":"Docs/en/reference/text-format/index.md","source_sha256":"24747bf5bfa44bb86a0167929229e48dc78c73b86e7af8ed1c30be815cfdd77d"} -->
+<!-- docs-translation: {"document_id":"generated-text-format-index","locale":"ru","source_path":"Docs/en/reference/text-format/index.md","source_sha256":"5e490edfeb0d83ee76963e20a6cc02b0e5128aacf64ccf968d1a299f8160498a"} -->
 
 # Справочник текста и локализации
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт генерируется для закреплённой ревизии движка. Проекты владеют языковой политикой, каталогами пакетов, процессом перевода, семантическими соглашениями о ключах и любым игровым formatter-ом lexem или аргументов. |
 | Исходный manifest | [BuildTools/TextFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/TextFormatInterface.json) |
-| Дайджест контракта | <code>b0ac74065cbb6993abc6b0660dd51370665ac810b749a1e507a54203cf97ad07</code> |
+| Дайджест контракта | <code>4d0aaae7e15a9d3b07ae158a69c3d73976fd3829db9fd8d45c1356a279c52e45</code> |
 | Имя исходного файла | <code>&lt;TextPack&gt;.&lt;Language&gt;.fotxt</code> |
 | Имя запечённого файла | <code>&lt;ResourcePack&gt;.&lt;TextPack&gt;.&lt;Language&gt;.fotxt-bin</code> |
 | Исходная запись | <code>&#123;Key1&#125;&#123;Key2&#125;&#123;Text&#125;</code> |
@@ -30,7 +30,7 @@ generated: true
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
 | [Синтаксис](syntax.md) | 7 | Исходные поля в фигурных скобках, идентичность ключей, многострочный текст и варианты. |
-| [Языки](languages.md) | 9 | Выбор имени файла, значения по умолчанию, повторное запекание и нормализация. |
+| [Языки](languages.md) | 10 | Выбор имени файла, значения по умолчанию, повторное запекание и нормализация. |
 | [Текст прототипов](proto-text.md) | 8 | Грамматика `$Text`, наследование, маршрутизация пакетов и декодирование. |
 | [Runtime](runtime.md) | 8 методов / 2 правил рендеринга | Script lookup, переключение языка, граница сервера и цветовые теги. |
 

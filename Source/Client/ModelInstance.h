@@ -162,18 +162,6 @@ private:
         mat44 InverseBindMatrix {1.0f};
     };
 
-    // Prepared once per mesh generation, since SpriteBoundsValid already records the proven blend data; keeping
-    // only the positive influences also turns a scattered Vertex3D read into a sequential one
-    struct SpriteSweepVertex
-    {
-        vec3 Position {};
-        float32_t Weights[MODEL_BONES_PER_VERTEX] {};
-        uint8_t BoneIndices[MODEL_BONES_PER_VERTEX] {};
-        uint8_t InfluenceCount {};
-    };
-
-    static_assert(MODEL_MAX_BONES <= std::numeric_limits<uint8_t>::max());
-
     struct CombinedMesh
     {
         nptr<RenderEffect> DrawEffect {};
@@ -185,9 +173,6 @@ private:
         vector<int32_t> MeshAnimLayers {};
         size_t CurBoneMatrix {};
         vector<SkinBinding> SkinBindings {};
-        vector<SpriteSweepVertex> SpriteSweepVertices {};
-        bool SpriteBoundsValid {};
-        bool HasSpriteGeometry {};
         nptr<const MeshTexture> Textures[MODEL_MAX_TEXTURES] {};
     };
 
@@ -197,7 +182,7 @@ private:
     auto ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
     auto ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ipos32>;
     void CollectAttachPoints(ptr<const ModelInstance> projector, int32_t parent_index, vector<ModelAttachPoint>& points) const;
-    auto CollectActiveAnimationBounds() const -> optional<ModelBounds3D>;
+    auto CollectActiveAnimationBounds() const -> ModelBounds3D;
     auto UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
     auto GetSpeed() const -> float32_t;
     auto GetMovementSpeed() const -> float32_t;

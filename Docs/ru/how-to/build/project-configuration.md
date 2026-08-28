@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 
 # Конфигурация игрового проекта
 
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"71a8c645980f4ceebf8256c8b9f3535173273e6e4495db94b1845e28b3fbf839"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"dd28d99764fc92f1f6ef8a3e9ad53bda8262bdd7b3c6013e4dc8728eae2b0b97"} -->
 
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
@@ -62,8 +62,11 @@ SetOption(FO_NICE_NAME "My Game")
 6. platform/build auto-settings.
 
 В packaged applications внешний `.fomain` заменяется generated internal
-config. Command line все равно применяется после local config. Более поздние
-слои переопределяют ранние scalar settings.
+config с фиксированной движком patch area размером 10000 bytes. Root-значения
+game settings также передаются в metadata, а internal config содержит только
+deltas выбранного sub-config, включая явные false или empty overrides. Command
+line всё равно применяется после local config. Более поздние слои
+переопределяют ранние scalar settings.
 
 В authored files и operational commands используйте fully qualified names,
 например `Server.DbStorage`. Parser принимает короткие имена встроенных

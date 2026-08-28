@@ -296,18 +296,14 @@ the shadow and remains independent from the changing atlas crop, so names,
 coarse picking, transparent eggs, and flying-text placement do not jitter when
 the model turns or changes animation.
 
-The view rectangle may never *grow* past that baked view bound. The live pose and
-attached child models are excluded on purpose. A pose-derived box would have to be
-accumulated (a frame layout may not shrink mid-animation), and accumulation makes it
-grow frame after frame — root motion alone sweeps it across a whole clip — until the
-name floats far above the critter. An attachment cannot contribute either: for a
-child linked by matching bone names, its own bound is an unposed extent that says
-nothing about where its skinned geometry lands. A critter whose silhouette needs the
-name higher is served by the prototype's authored `NameOffset`. The drawing frame,
-in contrast, *does* take attachments and *does* grow monotonically — it has to cover
-whatever is actually rasterized. So the view rectangle stays inside the frame by
-construction: the baked view bound is the idle subset of the model bound the frame
-starts from.
+The view rectangle starts from the baked idle-priority bound. The live weighted
+pose never contributes: accumulating per-frame vertices would make root motion
+grow the name rectangle across a whole clip. Selected child models do contribute
+through their baked link envelopes. `SelectModelViewBounds` substitutes the
+complete current animation-plus-link envelope only when its projected top is
+lower than the idle view, so prone/corpse configurations can lower the name while
+raised weapons do not lift it. A project can still apply an authored
+`NameOffset` for presentation policy.
 
 It does follow the animation **downwards**, which `SelectModelViewBounds` decides: when
 the active clip's baked box tops out lower than the idle box after the same model-base
@@ -320,20 +316,22 @@ overhead swing tops out *higher* and is ignored, so names never rise with a swin
 inputs are baked per clip, so the result is constant for a given animation and cannot
 drift within it.
 
-The automatic logical frame owns the reusable 2x scratch render target. After
-the pose is evaluated, the client combines its per-animation prediction with an
-exact weighted envelope of the referenced vertices in the generated, currently active skinned meshes and
-their projected shadow. This mesh envelope is taken **across all facings**, not just the
-current one: each vertex's projected coordinate traces a sinusoid as the model turns, so
-sampling it at the current facing, +90 and +180 and keeping the harmonic (continuous)
-range yields a facing-independent extent. Runtime layer/equipment meshes (a backpack, a
-held weapon) are not in the baked animation bounds, so this is what keeps the frame a
-**fixed size while the critter turns** instead of resizing each time a facing pushes the
-gear wider. Only currently-emitting particle systems extend this envelope;
-a dormant effect (for example furnace smoke that is not puffing) reserves no frame
-space and is absorbed by the expansion pass if and when it starts emitting.
+The automatic logical frame owns the reusable 2x scratch render target. The
+client unions baked active-animation bounds with the AABBs serialized on every
+selected non-particle child link, then projects the eight envelope corners across
+the facing sweep. This keeps layer/equipment geometry in a facing-independent
+fixed frame without a per-frame weighted-vertex walk. Only currently-emitting
+particle systems extend this envelope; a dormant effect reserves no frame and is
+absorbed by the bounded expansion pass if it starts emitting.
 
-The measured result contains two rectangles. `ModelSpriteBounds::Rect` is the full drawn extent — mesh, shadow, live particles, and any effect-forced full frame — and sizes the frame and atlas crop. `ModelSpriteBounds::PoseRect` is the posed model alone, captured before particles, and is returned by `ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` for fit-to-area calculations. Already emitted world-space particles do not scale with the model, so including them in a fit creates a feedback loop that can shrink the model toward zero. Effects belong in the frame, not in the fit.
+The measured result contains two rectangles. `ModelSpriteBounds::Rect` is the
+full baked geometry envelope plus shadow, live particles, and any
+effect-forced full frame; it sizes the frame and atlas crop.
+`ModelSpriteBounds::PoseRect` is captured before particles and is returned by
+`ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` for fit-to-area
+calculations. Already emitted world-space particles do not scale with the model,
+so including them in a fit would create a feedback loop. Effects belong in the
+frame, not in the fit.
 
 If that
 exact envelope needs a larger logical frame,

@@ -210,13 +210,13 @@
       "id": "text-format.language.identifier",
       "name": "Language identifier",
       "requirement": "The Engine treats the filename suffix as an opaque configured string and imposes no fixed character count.",
-      "rationale": "Acceptance is equality against Baking.BakeLanguages; no length or locale-shape validator exists in TextBaker.",
+      "rationale": "Acceptance is equality against the language names parsed from Baking.BakeLanguages; no length or locale-shape validator exists.",
       "stability": "experimental",
       "source": [
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "std::ranges::find(_context->Settings->BakeLanguages, lang_name)"
+            "std::ranges::find(bake_languages.Languages, lang_name)"
           ]
         }
       ]
@@ -224,21 +224,45 @@
     {
       "id": "text-format.language.base",
       "name": "Base language",
-      "requirement": "Baking.BakeLanguages must be non-empty and its first entry is the base language used for normalization.",
-      "rationale": "Both text bakers reject an empty list and TextPack::FixPacks normalizes every later language against the first pack set.",
+      "requirement": "Baking.BakeLanguages must be non-empty and its first bare language is the default normalization base.",
+      "rationale": "TextPack::ParseBakeLanguages validates the ordered declarations before either text baker consumes them.",
       "stability": "experimental",
       "source": [
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "if (_context->Settings->BakeLanguages.empty())",
-            "const auto& default_lang = _context->Settings->BakeLanguages.front();"
+            "BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->BakeLanguages);",
+            "const string& default_lang = bake_languages.Languages.front();"
           ]
         },
         {
           "path": "Source/Common/TextPack.cpp",
           "anchors": [
-            "const auto& base_lang_pack = lang_packs.front().second;"
+            "BakeLanguages must contain at least one language declaration"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.language.fallback-declaration",
+      "name": "Fallback declaration",
+      "requirement": "Each BakeLanguages entry is language or child:parent; names are unique and a parent must appear before its child.",
+      "rationale": "An explicit parent forms an ordered bake-time fallback chain, while a bare non-first language falls back to the first language.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "Bake language declaration must use language or language:parent format",
+            "Bake language is declared more than once",
+            "Bake language fallback parent must be declared before its child"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_TextPack.cpp",
+          "anchors": [
+            "ParseBakeLanguagesNormalizesInlineFallbacks",
+            "ParseBakeLanguagesRejectsInvalidDeclarations"
           ]
         }
       ]
@@ -299,16 +323,15 @@
     {
       "id": "text-format.language.bake-time-fallback",
       "name": "Bake-time fallback",
-      "requirement": "Missing language packs and missing keys are copied from the base language during baking; packs and keys absent from the base are removed from non-base languages.",
+      "requirement": "Missing packs and keys are copied from each language's configured fallback during baking; packs and keys absent from that fallback are removed.",
       "rationale": "Runtime lookup loads already-normalized binary packs and does not perform fallback.",
       "stability": "experimental",
       "source": [
         {
           "path": "Source/Common/TextPack.cpp",
           "anchors": [
-            "// Remove packs that are not in the base language pack",
+            "const string& fallback_language",
             "// Add packs that are in the base language pack but not in this pack",
-            "// Normalize texts to the base language",
             "text_pack.FixStr(it->second);"
           ]
         }
@@ -855,16 +878,16 @@
     }
   ],
   "summary": {
-    "entry_count": 39,
+    "entry_count": 40,
     "syntax_rule_count": 7,
-    "language_rule_count": 9,
+    "language_rule_count": 10,
     "proto_text_rule_count": 8,
     "runtime_method_count": 8,
     "rendering_rule_count": 2,
     "validation_rule_count": 5,
     "entries_by_stability": {
-      "experimental": 39
+      "experimental": 40
     }
   },
-  "contract_digest": "b0ac74065cbb6993abc6b0660dd51370665ac810b749a1e507a54203cf97ad07"
+  "contract_digest": "4d0aaae7e15a9d3b07ae158a69c3d73976fd3829db9fd8d45c1356a279c52e45"
 }

@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"f3cda22e699c6e4ef15b1a20fe51e6c422749adc5f7aef1040f07851ad7151b3"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"5891748a94d0fc9053212ca210ceea3092f3626806289d8b855e3e8a59934ac0"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -622,7 +622,7 @@ layout файла до и после одинаков, меняются толь
 Изменяемые области содержат прозрачный **текст** identity/config, а не code:
 
 - `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, array на 128 bytes. Строка identity package/build; каждый runtime variant изменяет собственную, чтобы `IsPackaged()` и build name отражали package.
-- `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, ёмкость `FO_INTERNAL_CONFIG_CAPACITY` (40000). Baked internal config blob.
+- `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, фиксированная движком ёмкость 10000 bytes. Подключаемые проекты не могут менять размер baked bootstrap config blob.
 - Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` также переписывает PE PDB path (`patch_pe_pdb_path`) и tokens

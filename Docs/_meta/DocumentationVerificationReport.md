@@ -2,6 +2,64 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-08-28 - master reconciliation through `8235f89d62`
+
+Scope:
+
+- Reconciled documentation branch head
+  `e0d3fb7543915302d2c298afe358a48961a10e47` with Engine `origin/master`
+  through `8235f89d62d7ce1de66ba82491b274c5a47b27a1`.
+- Audited the complete thirteen-commit incoming range, including configured
+  language fallbacks, deterministic prototype inheritance, metadata-backed
+  setting updates, blocked-hex and pathfinding corrections, model bounds and
+  link geometry, map-item hit testing, and the compatibility migration through
+  `0.0.40`.
+
+Documentation and contract reconciliation:
+
+- Documented `Baking.BakeLanguages` entries as either `language` or
+  `child:parent`, with unique identifiers, parent-before-child ordering, and
+  explicit fallback lookup. Documented deterministic left-to-right prototype
+  parent merging, cycle rejection, and
+  `Baking.AllowRepeatedProtoParents`.
+- Reconciled configuration documentation with the fixed 10,000-entry internal
+  store, removal of `FO_INTERNAL_CONFIG_CAPACITY`, root-config baselines versus
+  subconfig deltas, and correct false/empty setting propagation. Removed the
+  obsolete `-internalcfg` helper-CLI surface from generated references.
+- Updated the reusable movement, rendering, model-format, metadata, server, and
+  migration references for blocked-hex correction, grid-size clamping,
+  root-space model bounds, geometry links, active-sprite item hit testing, and
+  the current compatibility rules.
+- Regenerated 2,496 API entries, 43 CMake entries, 14 prototype-format entries,
+  and all dependent bilingual reference/site/route/AI artifacts. All 4,961
+  generated descriptions and 197 English/Russian page pairs are current; the
+  route model contains 386 routes.
+- The strict contract comparison records thirteen changes across eighteen
+  domains. All six required dispositions are owner-reviewed, with zero missing.
+
+Validation:
+
+- `docs_validate.py` passed all 397 Markdown entries. Focused documentation
+  unittests passed 65 tests; the focused pytest set passed 19 tests and 48
+  subtests.
+- External snippet validation passed 310 normative snippets, 159 evidence
+  blocks, and 183 external-parser checks. Deterministic AI evaluation passed 27
+  tasks and 65 retrieval checks at 100 percent success and 0.915 MRR.
+- Last Frontier integration configured successfully, built `LF_UnitTests`, and
+  passed the complete native suite: 566 test cases and 445,437 assertions.
+  `BakeResources` then completed all project packages in 8 minutes 57 seconds;
+  dialog composition reported zero errors.
+
+Disposition:
+
+- The complete incoming behavior is reflected in reusable Engine documentation
+  and the generated contract surfaces. No project-specific implementation was
+  added to the Engine documentation branch.
+- Live visual inspection of model framing and sprite hit testing was not
+  performed in this reconciliation. Native tests and full project baking are
+  green; platform CI and a visible-client pass remain the visual acceptance
+  boundary.
+
 ## 2026-08-25 - master reconciliation through `5440adeeec`
 
 Scope:

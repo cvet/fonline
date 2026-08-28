@@ -182,10 +182,21 @@
       "name": "Acyclic inheritance",
       "requirement": "Prototype parent graphs must be acyclic.",
       "stability": "experimental",
-      "description": "The current baker expands parents recursively and has no dedicated cycle diagnostic; validate this in project tooling and keep chains shallow.",
+      "description": "ProtoBaker and ProtoTextBaker track the active parent path and reject self, pair, and longer cycles under every repeated-parent policy.",
       "source": {
         "path": "Source/Tools/ProtoBaker.cpp",
-        "anchors": ["function<void(string_view", "fill_parent_recursive(parent_name"]
+        "anchors": ["Proto parent chain contains a cycle", "parent_path.emplace_back", "parent_path.pop_back"]
+      }
+    },
+    {
+      "id": "prototype-format.rule.repeated-ancestors",
+      "name": "Repeated ancestors",
+      "requirement": "A parent reached through several inheritance paths contributes only where it is first reached; Baking.AllowRepeatedProtoParents decides whether the later reach is skipped or rejected.",
+      "stability": "experimental",
+      "description": "The default is permissive; set the option false when a project wants every inheritance diamond to fail baking. ProtoBaker and ProtoTextBaker apply the same rule.",
+      "source": {
+        "path": "Source/Tools/ProtoBaker.cpp",
+        "anchors": ["reached_parents.insert", "AllowRepeatedProtoParents", "Proto reaches the same parent through several inheritance paths"]
       }
     },
     {

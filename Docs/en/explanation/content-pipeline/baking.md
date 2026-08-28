@@ -461,8 +461,12 @@ required root-space contracts to every model section:
 
 The baker samples animation keys, their midpoints, and a uniform timeline to
 build deterministic envelopes independent of camera angle, projection factor,
-model-sprite resolution, and renderer backend. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract. In
+model-sprite resolution, and renderer backend. Each binary description link
+also writes an explicit geometry discriminator: non-particle child links carry
+a required root-space AABB, while the default link and particle links carry no
+geometry payload. Invalid flags, missing child bounds, and degenerate AABBs are
+rejected. Missing or invalid aggregate or animation bounds are baking errors in
+the version 2 contract. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds
@@ -474,9 +478,10 @@ neither group; a present companion with no model sections is malformed.
 Enabled animation bounds size
 the logical scratch frame, the dedicated view bound seeds the stable body/name
 rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
-layer/child-model envelopes extend both contracts, while exact weighted
-current-pose geometry selects the atlas crop and expands/rerenders the scratch
-frame when sampled bounds are insufficient.
+layer/child-model envelopes extend both contracts. The client projects baked
+active-animation and selected-link envelope corners instead of walking or
+skinning combined-mesh vertices; live particle bounds can still expand and
+rerender the scratch frame.
 
 `Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
 root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,

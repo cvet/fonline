@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"d3291a632418848347bd8d3ea396f511fb64d7df07b4229fb9e4fc762c07573a"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"0f9291908cbbb22181e63daeddb0b30762449130b096bcf8578ccdda542807d5"} -->
 
 # Команды вспомогательных CLI
 
@@ -36,7 +36,6 @@ generated: true
 | <a id="entry-helper-cli-codegen-argument-devname-47485557c0"></a><code>helper-cli.codegen.argument.devname</code> | <code>-devname</code> | <code>option</code> | да | <code>1</code> | - | - | Краткое имя игры для разработки. |
 | <a id="entry-helper-cli-codegen-argument-nicename-161cc8093d"></a><code>helper-cli.codegen.argument.nicename</code> | <code>-nicename</code> | <code>option</code> | да | <code>1</code> | - | - | Читаемое имя игры. |
 | <a id="entry-helper-cli-codegen-argument-embedded-f936b1a395"></a><code>helper-cli.codegen.argument.embedded</code> | <code>-embedded</code> | <code>option</code> | да | <code>1</code> | - | - | Ёмкость буфера встроенных данных. |
-| <a id="entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8"></a><code>helper-cli.codegen.argument.internalcfg</code> | <code>-internalcfg</code> | <code>option</code> | да | <code>1</code> | - | - | Ёмкость буфера внутренней конфигурации. |
 | <a id="entry-helper-cli-codegen-argument-enginedefine-8961bb73cd"></a><code>helper-cli.codegen.argument.enginedefine</code> | <code>-enginedefine</code> | <code>option</code> | нет | <code>1</code> | - | - | Define конфигурации движка NAME=VALUE, создаваемый как макрос в EngineConfig.gen.h. |
 | <a id="entry-helper-cli-codegen-argument-meta-467f731eb8"></a><code>helper-cli.codegen.argument.meta</code> | <code>-meta</code> | <code>option</code> | да | <code>1</code> | - | - | Путь к метаданным Script API, то есть тегам ///@. |
 | <a id="entry-helper-cli-codegen-argument-commonheader-888570e588"></a><code>helper-cli.codegen.argument.commonheader</code> | <code>-commonheader</code> | <code>option</code> | нет | <code>1</code> | - | - | Путь к общему header-файлу. |
@@ -46,8 +45,7 @@ generated: true
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT
-                  [-verbose]
+usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT [-verbose]
 
 FOnline code generator
 
@@ -58,8 +56,6 @@ options:
   -devname DEVNAME      dev game name
   -nicename NICENAME    nice game name
   -embedded EMBEDDED    embedded buffer capacity
-  -internalcfg INTERNALCFG
-                        internal config buffer capacity
   -enginedefine ENGINEDEFINE
                         engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h
   -meta META            path to script api metadata (///@ tags)

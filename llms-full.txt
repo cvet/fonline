@@ -360,7 +360,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 00167afddbb95e0a54fdf1966c654434191e06c2da66576d4db2884d58213357
+Content SHA-256: d03942ca44415d7f024e553984631e9f95f130e474c465978c3ca0be95fe2e62
 
 ---
 title: FOnline Public Contract Index
@@ -408,10 +408,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2495**
-- Symbols with source-backed descriptions: **2495**
+- Discovered symbols: **2496**
+- Symbols with source-backed descriptions: **2496**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2495**
+- Explicitly classified symbols: **2496**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -2343,7 +2343,7 @@ Use [Release Operations](operations.md) for target-host preflight, staged rollou
 ===== BEGIN DOCUMENT project-configuration =====
 Source: Docs/en/how-to/build/project-configuration.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/project-configuration.html
-Content SHA-256: 71a8c645980f4ceebf8256c8b9f3535173273e6e4495db94b1845e28b3fbf839
+Content SHA-256: dd28d99764fc92f1f6ef8a3e9ad53bda8262bdd7b3c6013e4dc8728eae2b0b97
 
 ---
 layout: default
@@ -2395,7 +2395,12 @@ For an unpackaged application, settings are applied in this order:
 5. ordinary command-line setting overrides;
 6. platform/build auto-settings.
 
-Packaged applications use the generated internal config in place of the external `.fomain`. The command line still applies after local config. Later layers override earlier scalar settings.
+Packaged applications use the generated internal config in place of the external
+`.fomain`. Its patch area is fixed by the Engine at 10000 bytes. Game-setting
+root values also travel in metadata; the internal config carries only selected
+sub-config deltas for them, including explicit false or empty overrides. The
+command line still applies after local config. Later layers override earlier
+scalar settings.
 
 Use fully qualified names such as `Server.DbStorage` in authored files and operational commands. The parser accepts short built-in names, but qualified names make ownership and review unambiguous.
 
@@ -5763,7 +5768,7 @@ fixture.
 ===== BEGIN DOCUMENT prototype-format-guide =====
 Source: Docs/en/how-to/content/prototype-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/prototype-format.html
-Content SHA-256: 2f4f2f2056d5ac10a748a0b5b5aa17c3bbdaba430465a66130845fb8c14fd587
+Content SHA-256: 2ae02b21d2cd4df7a923757a830f3064b48cc91f86650f24040863e2690cc321
 
 ---
 layout: default
@@ -5884,11 +5889,20 @@ The baker merges:
 2. direct parents from left to right;
 3. the child last.
 
-Later values replace earlier values. Control keys beginning with `$` are not copied as properties. With multiple parents, the rightmost parent wins where both contribute the same key, and the child wins over all parents.
+Later values replace earlier values. Control keys beginning with `$` are not
+copied as properties. Among direct parents, the rightmost parent wins where both
+contribute the same key, and the child wins over all parents. An ancestor reached
+through several paths contributes only at its first reach;
+`Baking.AllowRepeatedProtoParents` (default `true`) skips later reaches, while
+`false` rejects the inheritance diamond. `ProtoBaker` and `ProtoTextBaker` use
+the same walk, so properties and `$Text` cannot diverge.
 
 Keep inheritance shallow and capability-oriented. Prefer a small base that represents a stable authored concept over long visual or balance chains. Multiple inheritance is useful for orthogonal defaults, but overlapping parent fields make the result order-sensitive and should be made explicit in the child.
 
-Parent graphs must be acyclic. The current baker recursively expands parents and does not provide a dedicated cycle diagnostic. Project validation should detect cycles before baking; the missing diagnostic is tracked as an engine documentation/implementation limitation.
+Parent graphs must be acyclic. Both prototype bakers track the active parent
+path and reject self-cycles, two-node cycles, and longer cycles regardless of
+the repeated-parent setting. Keep project-side structural validation for faster
+author feedback, but baking is the authoritative rejection boundary.
 
 ## Property applicability
 
@@ -6286,7 +6300,7 @@ When these files change, regenerate the [canonical model](../../../generated/map
 ===== BEGIN DOCUMENT model-format-guide =====
 Source: Docs/en/how-to/content/model-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/model-format.html
-Content SHA-256: fc37e6b93377f46c1df7590958158ea743cb12155ebdd79a25ed6d7ea6eeb16f
+Content SHA-256: 343e310f1338b96c00857c939bb3b7581a8ca31a066ed278c6ad5e766de74a6e
 
 ---
 layout: default
@@ -6733,11 +6747,16 @@ aggregate, idle-priority view/name, and per-animation bounds to
 each direction, extends them with enabled child models and layers, and derives the
 offscreen frame, visual anchor, lighting envelope, and interaction/view rectangle.
 
-The initial frame covers every enabled animation bound. Exact weighted current-pose
-skinning supplies a tighter atlas crop; a bounded expansion and rerender path handles a
-pose that exceeds the current allocation. Authors therefore tune source transforms,
-animation reach, attachments, and `Render.ModelProjFactor`, not fixed pixel rectangles
-inside `.fo3d`.
+Every non-particle child link serializes a validated root-space AABB; the
+default link and particle links carry no geometry payload. The baker includes
+disabled meshes, nested descriptions, link transforms, and the parent's sampled
+animations when calculating that envelope. Runtime framing unions the active
+animation bounds with the selected link envelopes and projects only their
+corners—there is no per-frame weighted-vertex sweep. Live particles can still
+force bounded expansion and rerender when they exceed the baked geometry
+envelope. Authors therefore tune source transforms, animation reach,
+attachments, and `Render.ModelProjFactor`, not fixed pixel rectangles inside
+`.fo3d`.
 
 Validate every direction and representative animation in a visible client. Use
 `Game.DumpAtlases()` or the mapper's **Dump atlases** command when diagnosing clipping,
@@ -6923,7 +6942,7 @@ When changing:
 ===== BEGIN DOCUMENT text-and-localization-guide =====
 Source: Docs/en/how-to/content/text-and-localization.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/text-and-localization.html
-Content SHA-256: 277c0e2436801c8c10d3fe920a8cb8e4934dfae7b3c96588d627c7512d233cc7
+Content SHA-256: 99df4185c6e0dfa3012820590924a125468f0d5a20c7386db212e652b9818682
 
 ---
 layout: default
@@ -7033,22 +7052,27 @@ Language normalization aligns key presence, not duplicate cardinality.
 
 ## Language normalization
 
-`Baking.BakeLanguages` is ordered and must not be empty. Its first entry is the
-base language. The Engine default is `engl`; embedding projects normally
-override this in their `.fomain`.
+`Baking.BakeLanguages` is ordered and must not be empty. Each entry is either a
+bare `language` or `child:parent`. The first entry is the default base language;
+an explicit parent must appear earlier, and language names must be unique. A
+bare later language falls back to the first language. For example,
+`russ engl ru18:russ en18:engl` creates two adult-overlay fallback chains. The
+Engine default is `engl`; embedding projects normally override it in their
+`.fomain`.
 
 For a changed raw pack, `TextBaker` gathers all configured language files for
 that pack. The base-language source must be present. Unsupported filename
 suffixes are warned and skipped.
 
-`TextPack::FixPacks` then normalizes every non-base language:
+`TextPack::FixPacks` then normalizes every non-base language against its explicit
+parent, or against the first language when no parent is declared:
 
 1. remove languages not listed in `Baking.BakeLanguages`;
 2. add missing configured languages;
-3. remove packs that do not exist in the base language;
-4. copy packs missing from a non-base language;
-5. add keys missing from a non-base pack using base-language values;
-6. remove keys that are absent from the base pack.
+3. remove packs that do not exist in the selected fallback language;
+4. copy packs missing from the child language;
+5. add keys missing from a child pack using fallback-language values;
+6. remove keys that are absent from the fallback pack.
 
 This fallback is completed during baking. Runtime lookup does not consult the
 base language after a binary pack is loaded.
@@ -15468,7 +15492,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 5cd6955b3aeabfceacbc2ba75148caf51f2ac15a12ad6cacb3350a378db4e9bb
+Content SHA-256: 0fa5b884fb24b5b4c5a4783062660355bd2101ec410de7253566200767dcb48f
 
 ---
 layout: default
@@ -15933,8 +15957,12 @@ required root-space contracts to every model section:
 
 The baker samples animation keys, their midpoints, and a uniform timeline to
 build deterministic envelopes independent of camera angle, projection factor,
-model-sprite resolution, and renderer backend. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract. In
+model-sprite resolution, and renderer backend. Each binary description link
+also writes an explicit geometry discriminator: non-particle child links carry
+a required root-space AABB, while the default link and particle links carry no
+geometry payload. Invalid flags, missing child bounds, and degenerate AABBs are
+rejected. Missing or invalid aggregate or animation bounds are baking errors in
+the version 2 contract. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds
@@ -15946,9 +15974,10 @@ neither group; a present companion with no model sections is malformed.
 Enabled animation bounds size
 the logical scratch frame, the dedicated view bound seeds the stable body/name
 rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
-layer/child-model envelopes extend both contracts, while exact weighted
-current-pose geometry selects the atlas crop and expands/rerenders the scratch
-frame when sampled bounds are insufficient.
+layer/child-model envelopes extend both contracts. The client projects baked
+active-animation and selected-link envelope corners instead of walking or
+skinning combined-mesh vertices; live particle bounds can still expand and
+rerender the scratch frame.
 
 `Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
 root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,
@@ -16838,7 +16867,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: d0a6f64e0315f67f863d0563387857be6a71574b4ed913320ef46af3b9b84c3a
+Content SHA-256: 9f957593c0936b000fedad6034f434bda1b5e7bbcc43e643deedeabfd1591560
 
 ---
 layout: default
@@ -16956,7 +16985,10 @@ Important `FindPathInput` fields:
 - `FromHex` / `ToHex` — requested route endpoints.
 - `ToHexOffset` — the target's real sub-hex offset within `ToHex` (the continuous target position is `ToHex` center + `ToHexOffset`). Used only by the `FreeMovement` end-offset computation.
 - `MapSize` — bounds for all checks.
-- `MaxLength` — maximum BFS depth, normally derived from engine settings.
+- `MaxLength` — maximum BFS depth, normally derived from engine settings. The
+  temporary search grid clamps its half-extent to the map dimensions, so a very
+  large limit on a small map does not allocate a `(2 * MaxLength)^2` buffer or
+  change the selected route.
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
@@ -17331,7 +17363,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: bcaf0c91c58e4ac20913371e384c5cebe3dc3587591e2d2f4d31930f2e93d957
+Content SHA-256: 48ccb6ee99b8d8504872039017c4b7e6417a78f460dfc43a40e12c097a30c291
 
 ---
 layout: default
@@ -17631,18 +17663,14 @@ the shadow and remains independent from the changing atlas crop, so names,
 coarse picking, transparent eggs, and flying-text placement do not jitter when
 the model turns or changes animation.
 
-The view rectangle may never *grow* past that baked view bound. The live pose and
-attached child models are excluded on purpose. A pose-derived box would have to be
-accumulated (a frame layout may not shrink mid-animation), and accumulation makes it
-grow frame after frame — root motion alone sweeps it across a whole clip — until the
-name floats far above the critter. An attachment cannot contribute either: for a
-child linked by matching bone names, its own bound is an unposed extent that says
-nothing about where its skinned geometry lands. A critter whose silhouette needs the
-name higher is served by the prototype's authored `NameOffset`. The drawing frame,
-in contrast, *does* take attachments and *does* grow monotonically — it has to cover
-whatever is actually rasterized. So the view rectangle stays inside the frame by
-construction: the baked view bound is the idle subset of the model bound the frame
-starts from.
+The view rectangle starts from the baked idle-priority bound. The live weighted
+pose never contributes: accumulating per-frame vertices would make root motion
+grow the name rectangle across a whole clip. Selected child models do contribute
+through their baked link envelopes. `SelectModelViewBounds` substitutes the
+complete current animation-plus-link envelope only when its projected top is
+lower than the idle view, so prone/corpse configurations can lower the name while
+raised weapons do not lift it. A project can still apply an authored
+`NameOffset` for presentation policy.
 
 It does follow the animation **downwards**, which `SelectModelViewBounds` decides: when
 the active clip's baked box tops out lower than the idle box after the same model-base
@@ -17655,20 +17683,22 @@ overhead swing tops out *higher* and is ignored, so names never rise with a swin
 inputs are baked per clip, so the result is constant for a given animation and cannot
 drift within it.
 
-The automatic logical frame owns the reusable 2x scratch render target. After
-the pose is evaluated, the client combines its per-animation prediction with an
-exact weighted envelope of the referenced vertices in the generated, currently active skinned meshes and
-their projected shadow. This mesh envelope is taken **across all facings**, not just the
-current one: each vertex's projected coordinate traces a sinusoid as the model turns, so
-sampling it at the current facing, +90 and +180 and keeping the harmonic (continuous)
-range yields a facing-independent extent. Runtime layer/equipment meshes (a backpack, a
-held weapon) are not in the baked animation bounds, so this is what keeps the frame a
-**fixed size while the critter turns** instead of resizing each time a facing pushes the
-gear wider. Only currently-emitting particle systems extend this envelope;
-a dormant effect (for example furnace smoke that is not puffing) reserves no frame
-space and is absorbed by the expansion pass if and when it starts emitting.
+The automatic logical frame owns the reusable 2x scratch render target. The
+client unions baked active-animation bounds with the AABBs serialized on every
+selected non-particle child link, then projects the eight envelope corners across
+the facing sweep. This keeps layer/equipment geometry in a facing-independent
+fixed frame without a per-frame weighted-vertex walk. Only currently-emitting
+particle systems extend this envelope; a dormant effect reserves no frame and is
+absorbed by the bounded expansion pass if it starts emitting.
 
-The measured result contains two rectangles. `ModelSpriteBounds::Rect` is the full drawn extent — mesh, shadow, live particles, and any effect-forced full frame — and sizes the frame and atlas crop. `ModelSpriteBounds::PoseRect` is the posed model alone, captured before particles, and is returned by `ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` for fit-to-area calculations. Already emitted world-space particles do not scale with the model, so including them in a fit creates a feedback loop that can shrink the model toward zero. Effects belong in the frame, not in the fit.
+The measured result contains two rectangles. `ModelSpriteBounds::Rect` is the
+full baked geometry envelope plus shadow, live particles, and any
+effect-forced full frame; it sizes the frame and atlas crop.
+`ModelSpriteBounds::PoseRect` is captured before particles and is returned by
+`ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` for fit-to-area
+calculations. Already emitted world-space particles do not scale with the model,
+so including them in a fit would create a feedback loop. Effects belong in the
+frame, not in the fit.
 
 If that
 exact envelope needs a larger logical frame,
@@ -18275,7 +18305,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: d15b7f757e1c8ed959b47781ca95e7635234b0f24d147188ae85ff0f4435f334
+Content SHA-256: 07f15667fdd152af07e2a5bab53ad53fb58dec976c2c0cbe32dedfbd8b5f6699
 
 ---
 layout: default
@@ -18730,7 +18760,9 @@ Both the bundled runtime library in client packages and the runtime libraries st
 
 Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py) covers the mtime/order invariant.
 
-The internal config patch area is generated from the CMake `FO_INTERNAL_CONFIG_CAPACITY` option, next to `FO_EMBEDDED_DATA_CAPACITY`; `package.py` discovers the actual reserved size from the generated binary markers before writing config data.
+The internal config patch area has a fixed Engine-owned capacity of 10000 bytes;
+embedding projects cannot resize it. `package.py` discovers the reserved size
+from the generated binary markers before writing bootstrap config data.
 
 Naming convention from `build_runtime_update_target_name` in `BuildTools/package.py`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
@@ -18896,7 +18928,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 2583189c592086aeae8fdc736f1f7f9a847bfecef67739802de698d8762df6de
+Content SHA-256: 71c90f097393a1f47c932747332dc30629ddce4b50aa6fbf2a9717094d00fa79
 
 ---
 layout: default
@@ -19200,6 +19232,10 @@ Moving 2D critters keep logical path/hex progress in `MovingContext` while `Crit
 - map processing through `Process()`;
 - map rendering through `DrawMap()` and staged render events on `ClientEngine`;
 - field indexes for items and critters;
+- item hit testing over active map and indoor-mask sprites: each drawable keeps
+  its `ItemHexView` owner, hidden primary sprites are skipped, and eligible
+  extra/multihex sprites remain selectable. Moving or destroying an item changes
+  the active-sprite set directly, so stale padded viewport cells cannot win;
 - coordinate conversion, zoom, scrolling, screen-to-map and map-to-screen transformations;
 - path finding and cut-path helpers built on `PathFinding::FindPath()`;
 - line tracing for bullets and light fans; `MapView::ApplyLightFan` traces every light source out to its full `Distance` in hexes (kept at >= 1) and forwards per-light falloff metadata to primitive shaders via `PrimitivePoint::EggData` → vertex attribute slot 3 (`InTexEggCoord`): `LightFanToPrimitves` writes the traced radius (hexes) and the normalized center alpha so a shader can reconstruct each fragment's hex-distance-from-edge and fade over a fixed hex band independent of the light's total length. A critter's light fan follows the critter's sprite offset (`HexView::GetSpriteOffsetPtr()`) so the light stays exactly under the sprite — the two must never diverge. The offset is kept bounded at the source: `MovingContext::EvaluateRawProgress`'s `current_hex` can lag the smooth lerp, and client prediction reconciliation in `ReceiveCritterMoving` can fold an inter-hex delta into the offset during rapid step taps, but `CritterHexView::StopMoving` cashes any accumulated offset back into the hex (snapping to the hex the sprite actually reached and keeping only the sub-hex remainder, with `hex + offset` invariant so the sprite never jumps). Normalization refuses a different target hex when that field is movement-blocked and retains the original offset, preventing client reconciliation from reporting a hex the server cannot path to. The offset therefore cannot run away and drag the fan off the critter. Items use the same `GetSpriteOffsetPtr()`;
@@ -19262,8 +19298,9 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   moves the name and flying-text anchor for equipped critters.
 
   The model is rendered into a reusable 2x scratch target for the automatic
-  frame. Per-animation prediction and exact weighted skinning of referenced
-  combined-mesh vertices choose the atlas crop. If the evaluated pose requires a larger scratch frame,
+  frame. Per-animation prediction is united with the baked AABBs of selected
+  geometry links; runtime projects envelope corners instead of skinning
+  combined-mesh vertices for sizing. If live particle bounds require a larger scratch frame,
   the factory merges the current and required placements as signed root-relative
   intervals before expanding and rerendering. This absorbs adjacent pixel-rounded
   pivot alternation and allows a tight frame to sit wholly on one side of the
@@ -19438,7 +19475,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: e22beafa33f6bbea03ecdf301ddd8949965bc36aaf21659ce0e9e6b1fbab112e
+Content SHA-256: 0427251902c0e8c78620eb0f829bd32f670d68125dc590bda69d0ce04fca0574
 
 ---
 layout: default
@@ -19780,7 +19817,7 @@ Do not duplicate the Common entity taxonomy here; [Entity Model](../entity-and-p
 
 ## Movement and authoritative state
 
-Client movement requests enter through `Process_Move()`, `Process_StopMove()`, and `Process_Dir()`. The server validates the request, applies script events such as `OnPlayerMoveCritter` and `OnPlayerDirCritter`, then updates the authoritative `Critter` and broadcasts the resulting state. Stop-move packets include the client's current hex and hex offset; the server normalizes that pair to a canonical in-bounds hex/offset, reconciles positions that lie on the critter's current authoritative `MovingContext` path, and allows a small pathfinding-validated correction for rapid start/stop input that stopped between path centers. This lets client and server converge without accepting arbitrary stop teleports. If the reported stop position cannot be reconciled, the server stops at its authoritative position and sends that final position back to the controlling player; only a successfully reconciled stop may omit the redundant self-update.
+Client movement requests enter through `Process_Move()`, `Process_StopMove()`, and `Process_Dir()`. The server validates the request, applies script events such as `OnPlayerMoveCritter` and `OnPlayerDirCritter`, then updates the authoritative `Critter` and broadcasts the resulting state. Stop-move packets include the client's current hex and hex offset; the server normalizes that pair to a canonical in-bounds hex/offset, reconciles positions that lie on the critter's current authoritative `MovingContext` path, and allows a small pathfinding-validated correction for rapid start/stop input that stopped between path centers. Normalization uses the same passability predicate as client movement: if rounding a sub-hex offset would cross into a blocked neighbor, it retains the reported logical hex and clamps the offset instead of snapping toward the blocker. This lets client and server converge without accepting arbitrary stop teleports. If the reported stop position cannot be reconciled, the server stops at its authoritative position and sends that final position back to the controlling player; only a successfully reconciled stop may omit the redundant self-update.
 
 `Process_StopMove()` also fires `OnPlayerDirCritter` during stop reconciliation, before it can stop the active `MovingContext`. Scripts may hard-disconnect the connection, detach or switch the player's controlled critter, or move the critter to another map; the native continuation revalidates those possible outcomes before applying the final stop to avoid completing a stale client command.
 
@@ -23173,7 +23210,7 @@ For BuildTools changes:
 ===== BEGIN DOCUMENT generated-cmake-index =====
 Source: Docs/en/reference/cmake/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake/
-Content SHA-256: ba79a78cf6b596a4c0e4eac8660749c7c19e9c523abf2b91ac260bc65d3f4206
+Content SHA-256: 1899bd5eb432438ecfb443d8fb90cb18134a4da79e01a06d6bc4c0b72ccb021f
 
 ---
 title: Generated CMake Project Interface
@@ -23203,7 +23240,7 @@ This reference describes the project-facing CMake surface consumed by an embeddi
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
-| [Project options](options.md) | 44 | Required inputs, defaults, and override precedence. |
+| [Project options](options.md) | 43 | Required inputs, defaults, and override precedence. |
 | [Stages and hooks](stages.md) | 10 | Strict project-generation order and extension boundaries. |
 | [Project helpers](helpers.md) | 6 | Selected commands intended for embedding projects. |
 
@@ -23426,7 +23463,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-helper-cli-index =====
 Source: Docs/en/reference/helper-cli/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/helper-cli/
-Content SHA-256: 4973a0760cebd212c323e4806ddafd49e6d2d49162d2d3afdaec296c716bc00c
+Content SHA-256: 6852b27db49b945332a07e596b27ea8ce5008da50774fb5bfb6f7d6bbb200f70
 
 ---
 title: Generated Helper CLI Reference
@@ -23451,13 +23488,13 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>7cf80c42248ebcdee6ab1f35240efe6a4e0a4bafcdc76a62b72d9a08985cd22c</code> |
+| Contract digest | <code>33d714862bafae33a078ff305ea13ea6b5dfca2a9a9cc223d04ce5c2d561a764</code> |
 
 ## Inventory
 
 | Stable ID | Helper | Owner | Invocation owner | Parser source | Commands / global args |
 | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codegen-60abdf415d"></a><code>helper-cli.codegen</code> | [Code generation](commands.md#entry-helper-cli-codegen-60abdf415d) | <code>build-release</code> | BuildTools/cmake/stages/Codegen.cmake | [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py) | 0 / 11 |
+| <a id="entry-helper-cli-codegen-60abdf415d"></a><code>helper-cli.codegen</code> | [Code generation](commands.md#entry-helper-cli-codegen-60abdf415d) | <code>build-release</code> | BuildTools/cmake/stages/Codegen.cmake | [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py) | 0 / 10 |
 | <a id="entry-helper-cli-compile-mono-scripts-ad6011a439"></a><code>helper-cli.compile-mono-scripts</code> | [Mono script compilation](commands.md#entry-helper-cli-compile-mono-scripts-ad6011a439) | <code>scripting</code> | BuildTools/cmake/stages/ScriptsAndBaking.cmake | [BuildTools/compile-mono-scripts.py](https://github.com/cvet/fonline/blob/master/BuildTools/compile-mono-scripts.py) | 0 / 2 |
 | <a id="entry-helper-cli-codecoverage-b014400e5e"></a><code>helper-cli.codecoverage</code> | [Code coverage](commands.md#entry-helper-cli-codecoverage-b014400e5e) | <code>quality</code> | BuildTools/cmake/stages/Applications.cmake | [BuildTools/codecoverage.py](https://github.com/cvet/fonline/blob/master/BuildTools/codecoverage.py) | 4 / 0 |
 | <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a><code>helper-cli.gameplay-test-runner</code> | [Gameplay test runner](commands.md#entry-helper-cli-gameplay-test-runner-b34ed8deb4) | <code>quality</code> | embedding-project CMake targets and CI gameplay smoke jobs | [BuildTools/gameplay_test_runner.py](https://github.com/cvet/fonline/blob/master/BuildTools/gameplay_test_runner.py) | 0 / 3 |
@@ -23469,7 +23506,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 
 ## Coverage
 
-The model contains 9 helpers, 16 subcommands, 26 global arguments, and 48 subcommand arguments.
+The model contains 9 helpers, 16 subcommands, 25 global arguments, and 48 subcommand arguments.
 
 Included:
 
@@ -23603,7 +23640,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: 105372ba52d4711df75c4ddcf12a7bd04f2258351ef008858efbf9494252a3d9
+Content SHA-256: df50df0820344f27c0d0b40a8734459e6a6276d8b8a3091d2ad271b5ff919deb
 
 ---
 layout: default
@@ -23820,12 +23857,15 @@ Important command arguments include:
 - `-genoutput` — generated output directory, currently `GeneratedSource` under the CMake binary dir.
 - `-devname` / `-nicename` — project identity values.
 - `-embedded` — embedded data capacity (`FO_EMBEDDED_DATA_CAPACITY`).
-- `-internalcfg` — internal config capacity (`FO_INTERNAL_CONFIG_CAPACITY`).
 - `-meta` — metadata source entries from `FO_SOURCE_META_FILES` and `FO_MONO_SOURCE`.
 - `-commonheader` — extra common headers from `FO_ADDED_COMMON_HEADERS`.
 - `-enginedefine` — repeatable `NAME=VALUE` engine value/shape configuration macro (`FO_GEOMETRY`, `FO_MAP_*`, `FO_EFFECT_*`, `FO_MODEL_*`, `FO_USE_NAMESPACE`, `FO_NO_*`, `FO_MAIN_CONFIG`, ...), resolved to a literal at configure time and emitted into `EngineConfig.gen.h` instead of being passed as a `-D` compiler define. Feature/backend toggles (`FO_ENABLE_3D`, `FO_*_SCRIPTING`, `FO_*_PARTICLES`) and per-config `FO_DEBUG` stay compiler-side — they gate whole files/headers before any engine header is included.
 
 The stage creates normal and forced code-generation command targets and appends `CodeGeneration` to `FO_GEN_DEPENDENCIES`.
+
+`InternalConfig.gen.inc` reserves a fixed Engine-owned 10000-byte patch area. The
+embedding project cannot resize it; `package.py` discovers that exact capacity
+from the generated binary markers before writing the bootstrap config.
 
 ## Generated outputs
 
@@ -24699,7 +24739,7 @@ If a generated script API change is involved, inspect AngelScript-related tests 
 ===== BEGIN DOCUMENT generated-model-format-index =====
 Source: Docs/en/reference/model-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/model-format/
-Content SHA-256: 02c16d1e18e3c8c7e563b7dcf0a4670e0a738b5691f146588ecdee8412557832
+Content SHA-256: 2d5341150d6879a75410b13184d59af77b119113f8d975ed2cdd3b48efe05653
 
 ---
 title: Generated Model Format Reference
@@ -24723,7 +24763,7 @@ This reference describes the reusable Engine-owned `.fo3d` language and the mode
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own model catalogs, layer meanings, animation enums, visual policy, and concrete assets. |
 | Source manifest | [BuildTools/ModelFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ModelFormatInterface.json) |
-| Contract digest | <code>f185b1e41f9b14fae37b009f28aabe9a1230483dc706f3960d24a4622fc8f23a</code> |
+| Contract digest | <code>c6a3ec054d2d0df5013725e5383d4287d45387a0ed150e562f8c17983449a7b0</code> |
 | Source extension | <code>.fo3d</code> |
 | Mesh inputs | <code>.fbx</code>, <code>.obj</code> |
 | Runtime side | <code>client</code> |
@@ -24732,7 +24772,7 @@ This reference describes the reusable Engine-owned `.fo3d` language and the mode
 | --- | --- | --- |
 | [Tokens](tokens.md) | 32 groups / 59 spellings | Every accepted current parser token. |
 | [Assets](assets.md) | 6 | Mesh, description, texture, effect, and particle inputs. |
-| [Validation](validation.md) | 14 | Authoring, baking, runtime, and legacy rules. |
+| [Validation](validation.md) | 15 | Authoring, baking, runtime, and legacy rules. |
 
 ## Boundary
 
@@ -25227,7 +25267,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-prototype-format-index =====
 Source: Docs/en/reference/prototype-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/prototype-format/
-Content SHA-256: 46f51d6123e430fef16cf141d6923860833ebe7ac24942626c42135f18103308
+Content SHA-256: 1d48ed36944b5c90f7867dcf0b9712d6058dc0c76d9e8bdcf7e0bc8a675d3536
 
 ---
 title: Generated Prototype Format Reference
@@ -25251,13 +25291,13 @@ This reference describes the engine-owned prototype grammar and the built-in met
 | Stability | <code>experimental</code> |
 | Support policy | The grammar is documented for a pinned engine revision. Concrete project entity types, properties, file extensions, ids, and gameplay semantics remain project-owned. |
 | Source manifest | [BuildTools/PrototypeFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PrototypeFormatInterface.json) |
-| Contract digest | <code>38b76342c3494988f8fa27a2715cbe09b9e02937d9d71e9309f2e90eae23c4f5</code> |
+| Contract digest | <code>d3442585ca19b63d98f6232626dcf99ee4dc840fda2c0c058f8887ac63975804</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Syntax](syntax.md) | 5 | Discovery, sections, identity, and inheritance. |
 | [Properties](properties.md) | 113 | Built-in HasProtos types and engine-owned property keys. |
-| [Validation](validation.md) | 13 | Source-backed bake and migration requirements. |
+| [Validation](validation.md) | 14 | Source-backed bake and migration requirements. |
 
 ## Boundary
 
@@ -25464,7 +25504,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: ca0d21bbafb61b033ef9482404385e60516fbe4c88216524a75c80279d6f7e0b
+Content SHA-256: 77c3f229d959e7d4d7785c9e27971d3cf8d2a70056166363819fca97040640a3
 
 ---
 title: Generated API Reference
@@ -25485,32 +25525,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 133 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 978 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 278 | Fixed and runtime-variable engine settings. |
+| [Engine settings](settings.md) | 279 | Fixed and runtime-variable engine settings. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2495 |
-| Symbols with descriptions | 2495 |
+| Addressable symbols | 2496 |
+| Symbols with descriptions | 2496 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2495 |
+| Explicitly classified symbols | 2496 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2494 |
+| <code>experimental</code> | 2495 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2495 stable IDs with SHA-256 <code>cb63d1b009a81b8a971431851d0a93b7b89f4f0cd40b1763c339cea7f506c05e</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2496 stable IDs with SHA-256 <code>691f739ae0c92af5ed79c2a49b0e2d7c916b0172d4439a59fec43fa7b9e30e86</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 
@@ -25783,7 +25823,7 @@ The engine-owned [minimal project](../../../../Examples/MinimalProject/README.md
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: 135df07ca1fa4ab224310d84998b9838fbf16e70185d924ca6c3723b255e261d
+Content SHA-256: 43d53c6a8f5ac3fdd9c00281efdc8ea59297402e83898e3a6d3f02f201965883
 
 ---
 layout: default
@@ -25899,7 +25939,24 @@ an omitted setting receives its declared Engine default rather than a
 zero-initialized value. `Source/Tests/Test_Settings.cpp` protects both the
 default baseline and the fact that a project override still wins.
 
-`ConfigBaker` (`Source/Tools/ConfigBaker.cpp`) bakes the config by re-deriving each sub-config from the root and saving every registered setting; a setting that `GlobalSettings::Save()` does not emit is reported as `Uninitialized server/client setting <name>` and fails the bake. `Save()` only emits settings present in `_appliedSettings`, which is populated from the keys of every applied config plus a fixed **auto-settings** allow-list seeded in the baking-mode `GlobalSettings` constructor. Author-tunable settings reach `_appliedSettings` by being enumerated in the embedding project's config; settings that are resolved at runtime and never authored in any config (platform/build flags, monitor size, command-line/git/compatibility values, and `Client.UserWritablePath`) must be added to that auto-settings allow-list, or baking fails. When adding such a runtime-only engine setting to `Settings.inc`, register it in the auto-settings list in the same change. Settings consumed only by `BuildTools/package.py` (the `AndroidSettings` and `PackagingSettings` groups in `Settings.inc`, e.g. `Android.Keystore`, `Packaging.AppIcon`, `Packaging.MsiUpgradeCode`, `Packaging.CodeSigningHook`) are registered as ordinary settings like everything else — the config baker validates them uniformly and has no packaging-specific allow-list, so an unregistered key in a config is always reported as `Unknown setting`. Note that setting lookup accepts both the dotted (`Group.Name`) and bare (`Name`) spellings, so the bare part of every setting name must stay globally unique across all groups (e.g. `Android.Icon` already claims `Icon`, which is why the packaging icon lives under its own `Packaging.AppIcon` name).
+`ConfigBaker` (`Source/Tools/ConfigBaker.cpp`) re-derives every sub-config from
+the root. Metadata stores each game setting's configured root value and is the
+runtime baseline: `BaseEngine` applies it only when config, sub-config, local
+config, or command line did not set that name. The side-specific internal config
+therefore carries only game-setting sub-config deltas; false and empty deltas are
+written too, because they must override a non-empty metadata baseline. Built-in
+server/client settings retain the existing non-empty compact-config rules.
+`MetadataBaker` includes applied config timestamps in freshness and rejects a
+game-setting declaration that has no configured value.
+
+`GlobalSettings::Save()` still emits only settings present in `_appliedSettings`,
+which is populated from applied config keys plus the baking-mode
+**auto-settings** allow-list. Runtime-only settings (platform/build flags,
+monitor size, command-line/git/compatibility values, and
+`Client.UserWritablePath`) must remain in that allow-list. Settings consumed only
+by `BuildTools/package.py` are validated as ordinary settings. Setting lookup
+accepts dotted (`Group.Name`) and bare (`Name`) spellings, so every bare name must
+stay globally unique.
 
 Custom settings have two read shapes. Use `FindCustomSetting()` when missing keys are normal and should stay in the nullable pointer vocabulary. Use `GetCustomSetting()` only for compatibility with the historical non-null sentinel behavior: it returns the stored value when present and `_emptySetting` when absent.
 
@@ -26008,7 +26065,7 @@ Related consumers are covered by resource, client, server, script, and baker tes
 ===== BEGIN DOCUMENT generated-text-format-index =====
 Source: Docs/en/reference/text-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/text-format/
-Content SHA-256: 24747bf5bfa44bb86a0167929229e48dc78c73b86e7af8ed1c30be815cfdd77d
+Content SHA-256: 5e490edfeb0d83ee76963e20a6cc02b0e5128aacf64ccf968d1a299f8160498a
 
 ---
 title: Generated Text And Localization Reference
@@ -26032,7 +26089,7 @@ This reference describes the reusable Engine-owned text-pack, language, prototyp
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own language policy, pack catalogs, translation workflow, semantic key conventions, and any game-specific lexem or argument formatter. |
 | Source manifest | [BuildTools/TextFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/TextFormatInterface.json) |
-| Contract digest | <code>b0ac74065cbb6993abc6b0660dd51370665ac810b749a1e507a54203cf97ad07</code> |
+| Contract digest | <code>4d0aaae7e15a9d3b07ae158a69c3d73976fd3829db9fd8d45c1356a279c52e45</code> |
 | Source filename | <code>&lt;TextPack&gt;.&lt;Language&gt;.fotxt</code> |
 | Baked filename | <code>&lt;ResourcePack&gt;.&lt;TextPack&gt;.&lt;Language&gt;.fotxt-bin</code> |
 | Raw entry | <code>&#123;Key1&#125;&#123;Key2&#125;&#123;Text&#125;</code> |
@@ -26040,7 +26097,7 @@ This reference describes the reusable Engine-owned text-pack, language, prototyp
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Syntax](syntax.md) | 7 | Raw brace fields, key identity, multiline text, and variants. |
-| [Languages](languages.md) | 9 | Filename selection, defaults, rebakes, and normalization. |
+| [Languages](languages.md) | 10 | Filename selection, defaults, rebakes, and normalization. |
 | [Prototype text](proto-text.md) | 8 | $Text grammar, inheritance, pack routing, and decoding. |
 | [Runtime](runtime.md) | 8 methods / 2 rendering rules | Script lookup, language switching, server boundary, and color tags. |
 

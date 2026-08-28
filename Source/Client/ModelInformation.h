@@ -84,6 +84,7 @@ struct ModelAnimationData
     vector<tuple<string, hstring, int32_t>> TextureInfo {}; // Name, mesh, num
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ptr<ModelCutData>> CutInfo {};
+    optional<ModelBounds3D> Bounds {};
 };
 
 struct MeshData;

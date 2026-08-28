@@ -300,6 +300,10 @@ Moving 2D critters keep logical path/hex progress in `MovingContext` while `Crit
 - map processing through `Process()`;
 - map rendering through `DrawMap()` and staged render events on `ClientEngine`;
 - field indexes for items and critters;
+- item hit testing over active map and indoor-mask sprites: each drawable keeps
+  its `ItemHexView` owner, hidden primary sprites are skipped, and eligible
+  extra/multihex sprites remain selectable. Moving or destroying an item changes
+  the active-sprite set directly, so stale padded viewport cells cannot win;
 - coordinate conversion, zoom, scrolling, screen-to-map and map-to-screen transformations;
 - path finding and cut-path helpers built on `PathFinding::FindPath()`;
 - line tracing for bullets and light fans; `MapView::ApplyLightFan` traces every light source out to its full `Distance` in hexes (kept at >= 1) and forwards per-light falloff metadata to primitive shaders via `PrimitivePoint::EggData` → vertex attribute slot 3 (`InTexEggCoord`): `LightFanToPrimitves` writes the traced radius (hexes) and the normalized center alpha so a shader can reconstruct each fragment's hex-distance-from-edge and fade over a fixed hex band independent of the light's total length. A critter's light fan follows the critter's sprite offset (`HexView::GetSpriteOffsetPtr()`) so the light stays exactly under the sprite — the two must never diverge. The offset is kept bounded at the source: `MovingContext::EvaluateRawProgress`'s `current_hex` can lag the smooth lerp, and client prediction reconciliation in `ReceiveCritterMoving` can fold an inter-hex delta into the offset during rapid step taps, but `CritterHexView::StopMoving` cashes any accumulated offset back into the hex (snapping to the hex the sprite actually reached and keeping only the sub-hex remainder, with `hex + offset` invariant so the sprite never jumps). Normalization refuses a different target hex when that field is movement-blocked and retains the original offset, preventing client reconciliation from reporting a hex the server cannot path to. The offset therefore cannot run away and drag the fan off the critter. Items use the same `GetSpriteOffsetPtr()`;
@@ -362,8 +366,9 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   moves the name and flying-text anchor for equipped critters.
 
   The model is rendered into a reusable 2x scratch target for the automatic
-  frame. Per-animation prediction and exact weighted skinning of referenced
-  combined-mesh vertices choose the atlas crop. If the evaluated pose requires a larger scratch frame,
+  frame. Per-animation prediction is united with the baked AABBs of selected
+  geometry links; runtime projects envelope corners instead of skinning
+  combined-mesh vertices for sizing. If live particle bounds require a larger scratch frame,
   the factory merges the current and required placements as signed root-relative
   intervals before expanding and rerendering. This absorbs adjacent pixel-rounded
   pivot alternation and allows a tight frame to sit wholly on one side of the

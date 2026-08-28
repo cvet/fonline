@@ -344,11 +344,11 @@ class DocumentationApiModelTests(unittest.TestCase):
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
         self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 2)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2495)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2496)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2494, "internal": 1},
+            {"experimental": 2495, "internal": 1},
         )
         debugger_symbol = next(
             symbol for symbol in model["symbols"] if symbol["id"] == "script.method.common.Game.BreakIntoDebugger"

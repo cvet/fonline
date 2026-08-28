@@ -41,6 +41,12 @@ FO_DECLARE_EXCEPTION(TextPackException);
 
 class FileSystem;
 
+struct BakeLanguageConfig final
+{
+    vector<string> Languages {};
+    map<string, string> Fallbacks {};
+};
+
 // Hashed name that identifies a text-pack collection.
 ///@ ExportValueType Layout = hstring-Name
 ///@ ValueFieldDoc TextPackName Name // Hashed text-pack collection name.
@@ -146,7 +152,8 @@ public:
     void FixStr(const TextPack& base_pack);
     void Clear();
 
-    static void FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
+    static auto ParseBakeLanguages(const_span<string> declarations) -> BakeLanguageConfig;
+    static void FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
 
     friend struct TextPackKey;
 

@@ -28,15 +28,15 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 44,
+    "option_count": 43,
     "required_option_count": 9,
-    "optional_option_count": 35,
+    "optional_option_count": 34,
     "options_by_cache_type": {
       "BOOL": 22,
-      "STRING": 22
+      "STRING": 21
     },
     "options_by_category": {
-      "capacity": 2,
+      "capacity": 1,
       "dependency": 5,
       "diagnostics": 1,
       "feature": 3,
@@ -180,16 +180,6 @@
       "category": "capacity",
       "description": "Capacity reserved for embedded data in generated binaries.",
       "id": "cmake.option.FO_EMBEDDED_DATA_CAPACITY"
-    },
-    {
-      "name": "FO_INTERNAL_CONFIG_CAPACITY",
-      "cache_type": "STRING",
-      "value_kind": "integer",
-      "required": false,
-      "default": "10000",
-      "category": "capacity",
-      "description": "Capacity reserved for embedded internal configuration data.",
-      "id": "cmake.option.FO_INTERNAL_CONFIG_CAPACITY"
     },
     {
       "name": "FO_EFFECT_SCRIPT_VALUES",

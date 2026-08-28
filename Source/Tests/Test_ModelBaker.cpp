@@ -474,6 +474,7 @@ struct SavedModelInfoLink
     uint32_t TextureInfoCount {};
     uint32_t EffectInfoCount {};
     uint32_t CutInfoCount {};
+    optional<ModelBounds3D> Bounds {};
 };
 
 static auto ReadSavedModelInfoString(DataReader& reader) -> string
@@ -560,6 +561,19 @@ static auto ReadSavedModelInfoLink(DataReader& reader) -> SavedModelInfoLink
     link.CutInfoCount = reader.Read<uint32_t>();
     for (uint32_t i = 0; i < link.CutInfoCount; i++) {
         SkipSavedModelInfoCut(reader);
+    }
+
+    uint8_t has_geometry_value = reader.Read<uint8_t>();
+    CHECK(has_geometry_value <= uint8_t {1});
+    bool has_geometry = has_geometry_value != 0;
+    bool expected_geometry = !link.ChildName.empty() && !link.IsParticles;
+    CHECK(has_geometry == expected_geometry);
+
+    if (has_geometry) {
+        link.Bounds = ModelBounds3D {
+            .Min = reader.Read<vec3>(),
+            .Max = reader.Read<vec3>(),
+        };
     }
 
     return link;
@@ -1442,6 +1456,46 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
     }
 
+    SECTION("BakesSelectableModelLinkBoundsIntoDescription")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\nLayer 1 Value 2 Attach Equipment.fo3d Link Hand MoveX 3\n", 7);
+        rig.AddSourceFile("Critters/Equipment.fo3d", "Model Equipment.fbx\nMoveX 2\n", 6);
+        AddTestModelSource(rig, MakeTestModelSourceWithChild("Critters/Body.fbx", "Body", "Hand", 3.0f, {"Idle"}));
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModelWithChildBone("Body", "Hand"));
+        AddTestModel(rig, "Critters/Equipment.fbx", "Body", true, {}, {}, {"Body"});
+
+        ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"), LoadTestModelSourceFixture);
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
+        auto reader = DataReader({output.data(), output.size()});
+        ReadSavedModelInfoHeader(reader);
+        CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
+        (void)reader.Read<uint8_t>(); // DisableAnimationInterpolation
+        (void)reader.Read<uint8_t>(); // DisableBackwardAnim
+        (void)reader.Read<uint8_t>(); // ShadowDisabled
+        (void)reader.Read<int32_t>(); // DrawWidth
+        (void)reader.Read<int32_t>(); // DrawHeight
+        (void)reader.Read<int32_t>(); // ViewWidth
+        (void)reader.Read<int32_t>(); // ViewHeight
+        (void)ReadSavedModelInfoString(reader); // RotationBone
+        CHECK_FALSE(ReadSavedModelInfoLink(reader).Bounds);
+
+        REQUIRE(reader.Read<uint32_t>() == 1);
+        SavedModelInfoLink equipment_link = ReadSavedModelInfoLink(reader);
+        CHECK(equipment_link.LinkBone == "Hand");
+        REQUIRE(equipment_link.Bounds);
+        CHECK(IsValidModelBounds(*equipment_link.Bounds));
+        CHECK(HasModelBoundsExtent(*equipment_link.Bounds));
+        CHECK(equipment_link.Bounds->Max.x > 5.0f);
+
+        string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
+        CHECK(config.find("BoundsVersion = 2\n") != string::npos);
+        CHECK(config.find("LinkBounds") == string::npos);
+    }
+
     SECTION("Materializes model animation aliases with client lookup semantics")
     {
         TestRig rig;
@@ -1714,6 +1768,7 @@ TEST_CASE("ModelInfoBakerValidations")
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nLayer 1\nValue 2\nAttach Child.fo3d Link Hand\n", 1);
         rig.AddSourceFile("Critters/Child.fo3d", "Model Child.fbx\n", 2);
         AddTestModel(rig, "Critters/Body.fbx", "Hand", true);
+        AddTestModel(rig, "Critters/Child.fbx", "Child", true);
 
         ModelInfoBaker baker(rig.MakeContext(), LoadTestModelSourceFixture);
         CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Critters/Test.fo3d"));
@@ -1722,11 +1777,19 @@ TEST_CASE("ModelInfoBakerValidations")
 
     SECTION("Accepts baked-only attached model descriptions")
     {
+        TestRig child_rig;
+        AddModelInfoMetadata(child_rig);
+        child_rig.AddSourceFile("Critters/Child.fo3d", "Model Child.fbx\n", 1);
+        AddTestModel(child_rig, "Critters/Child.fbx", "Child", true);
+        REQUIRE_NOTHROW(BakeModelInfoFiles(child_rig, "Critters/Child.fo3d"));
+        REQUIRE(child_rig.Outputs.count("Critters/Child.fo3d") == 1);
+
         TestRig rig;
         AddModelInfoMetadata(rig);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nLayer 1\nValue 2\nAttach Child.fo3d Link Hand\n", 1);
         AddTestModel(rig, "Critters/Body.fbx", "Hand", true);
-        rig.AddBakedFile("Critters/Child.fo3d", "stub");
+        rig.AddBakedFile("Critters/Child.fo3d", child_rig.Outputs.at("Critters/Child.fo3d"));
+        rig.AddBakedFile("Critters/Child.fbx", MakeTestBakedModel("Child", true));
 
         CHECK_NOTHROW(BakeModelInfoFiles(rig));
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);

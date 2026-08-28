@@ -1128,6 +1128,78 @@
       "release_note": "Document the per-frame CheckHit cache, its automatic invalidation boundaries, and the InvalidateHitCache escape hatch in the GUI runtime guide and generated reference.",
       "compatibility": "The callable is additive at runtime, but strict model consumers see a contract digest and overload-count change. GUI sources, generated bindings, and Engine binaries should be distributed as one revision.",
       "owner": "runtime-gui"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.3f828b14fb33b428",
+      "baseline_contract_sha256": "1c5e27ee3da7ee12fe517bade01def61a5f7de468843dab1f59a4b8ca7e1b845",
+      "current_contract_sha256": "780dea931aaf9ed3b4545f9f916a95f5c53eeebe5efedf81c1f48a0e2b5faa75",
+      "classification": "breaking",
+      "rationale": "The native-codegen API contract now includes Baking.AllowRepeatedProtoParents, increasing the strict symbol inventory from 2495 to 2496. The setting exposes the new prototype-baker compatibility policy and the contract digest intentionally changes with that public configuration surface.",
+      "migration": "Regenerate script/API artifacts and review the project prototype-inheritance policy. Existing projects retain repeated-parent compatibility by default; set Baking.AllowRepeatedProtoParents to False only after removing repeated ancestors from authored inheritance graphs.",
+      "release_note": "Document the new setting and repeated-ancestor behavior in the generated settings reference and the prototype-format guide for this Engine revision.",
+      "compatibility": "The runtime setting is additive, but strict API-model consumers must adopt the regenerated inventory. Engine binaries, generated metadata, and embedding-project configuration should update together.",
+      "owner": "content-data"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.eb9904127e515932",
+      "baseline_contract_sha256": "1c5e27ee3da7ee12fe517bade01def61a5f7de468843dab1f59a4b8ca7e1b845",
+      "current_contract_sha256": "780dea931aaf9ed3b4545f9f916a95f5c53eeebe5efedf81c1f48a0e2b5faa75",
+      "classification": "breaking",
+      "rationale": "The compatibility marker advances from 0.0.38 to 0.0.40 for the coordinated metadata/configuration and baked model-link-bounds changes. Older binaries and newly baked resources must not be mixed across these revision-pinned contracts.",
+      "migration": "Update Engine and embedding project together, regenerate metadata and documentation artifacts, perform a full resource bake, and rebuild all runtime roles before distribution. Do not reuse baked model or bootstrap-config outputs from compatibility version 0.0.38.",
+      "release_note": "Record the 0.0.40 compatibility cutover with the configuration-metadata, internal-config, prototype inheritance, language fallback, and model-link-bounds updates in the documentation verification record.",
+      "compatibility": "This is an intentional compatibility boundary. Engine binaries, generated sources, packaged bootstrap configuration, and baked resources require one coordinated release.",
+      "owner": "runtime-core"
+    },
+    {
+      "domain": "cmake",
+      "change_id": "cmake-change.removed.2f72eb9b8ac23051",
+      "baseline_contract_sha256": "f85f78c3f10fc1bcee439a8ff8471c185b3ff7d8707247bb262a268bd2554268",
+      "current_contract_sha256": "17e0d9d90f84001e0c5696252429cb57d223e9e3c303f4a88303f73b559907bc",
+      "classification": "breaking",
+      "rationale": "FO_INTERNAL_CONFIG_CAPACITY no longer represents a supported project choice. The generated binary layout and package patcher now share one Engine-owned 10000-byte internal-config capacity, preventing a project option from creating incompatible marker regions.",
+      "migration": "Remove FO_INTERNAL_CONFIG_CAPACITY from project CMake declarations, presets, caches, and automation. Reconfigure and rebuild so InternalConfig.gen.inc uses the Engine-owned 10000-byte capacity; reduce the authored bootstrap config if packaging reports that it exceeds this limit.",
+      "release_note": "Document the removed option and fixed Engine-owned capacity in the project-configuration, metadata, updater, and BuildTools packaging references.",
+      "compatibility": "Embedding-project build configuration must remove the option when adopting this Engine revision. Existing packaged binaries are not rewritten in place; rebuild and repackage all affected runtime roles.",
+      "owner": "build-release"
+    },
+    {
+      "domain": "text-format",
+      "change_id": "text-format-change.modified.d6b49b7cecab5cec",
+      "baseline_contract_sha256": "544a27afd7b4883d426cc7f98017b8062df5581a9527d5b8ba2d63cf1f4baf79",
+      "current_contract_sha256": "0247dd776477609adcc72926475c775d86454ac48cb4ed9e2cfc13d03ce929f2",
+      "classification": "breaking",
+      "rationale": "Bake-time normalization now copies and prunes packs and keys against each language's configured parent instead of always comparing every language with the first language. This enables explicit multi-level language fallback while keeping runtime lookup fallback-free.",
+      "migration": "Review Baking.BakeLanguages and express variants as child:parent after their declared parent. Re-run the text and prototype-text bakers, inspect missing/extra-key diagnostics for every chain level, and distribute all normalized language packs together.",
+      "release_note": "Document per-language bake-time fallback chains and their copy/prune behavior in the text-format and baking references.",
+      "compatibility": "Bare language lists preserve the previous first-language fallback behavior. Projects adopting explicit parents must rebake text resources; runtime binaries and normalized packs should be released as one revision.",
+      "owner": "localization"
+    },
+    {
+      "domain": "text-format",
+      "change_id": "text-format-change.modified.4d6dae2d428a47ed",
+      "baseline_contract_sha256": "544a27afd7b4883d426cc7f98017b8062df5581a9527d5b8ba2d63cf1f4baf79",
+      "current_contract_sha256": "0247dd776477609adcc72926475c775d86454ac48cb4ed9e2cfc13d03ce929f2",
+      "classification": "breaking",
+      "rationale": "The first declaration remains the normalization base, but it must now be a bare language because the ordered declaration parser validates parent relationships before either text baker runs. This makes the root of every fallback chain explicit and unambiguous.",
+      "migration": "Keep the first Baking.BakeLanguages entry bare, declare every parent before its children, remove duplicate language names, then rebake both ordinary and prototype text packs. Existing ordered bare lists require no textual change.",
+      "release_note": "Document the bare first-language requirement and ordered parent-before-child validation in the text-format configuration guidance.",
+      "compatibility": "Previously valid bare lists remain compatible. Invalid, duplicate, child-before-parent, or parented-first declarations now fail early and must be corrected before the Engine update is accepted.",
+      "owner": "localization"
+    },
+    {
+      "domain": "text-format",
+      "change_id": "text-format-change.modified.beed328380cd9ea6",
+      "baseline_contract_sha256": "544a27afd7b4883d426cc7f98017b8062df5581a9527d5b8ba2d63cf1f4baf79",
+      "current_contract_sha256": "0247dd776477609adcc72926475c775d86454ac48cb4ed9e2cfc13d03ce929f2",
+      "classification": "breaking",
+      "rationale": "Text-file suffix acceptance now compares against parsed language names rather than raw Baking.BakeLanguages declarations. This preserves opaque language identifiers while allowing configuration entries to carry a separate :parent fallback suffix.",
+      "migration": "Do not include :parent in text filenames. Keep files named with the child language identifier alone, for example pack.ru18.fotxt for ru18:russ, then rebake and resolve any filename whose language is absent from the parsed declarations.",
+      "release_note": "Document that language identifiers remain opaque filename suffixes while fallback parents exist only in Baking.BakeLanguages declarations.",
+      "compatibility": "Existing filenames remain valid when their bare language names are declared. Tooling that compared filenames to raw configuration tokens must parse language:parent declarations before validation.",
+      "owner": "localization"
     }
   ]
 }

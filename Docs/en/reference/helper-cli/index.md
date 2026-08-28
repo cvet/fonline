@@ -21,13 +21,13 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>7cf80c42248ebcdee6ab1f35240efe6a4e0a4bafcdc76a62b72d9a08985cd22c</code> |
+| Contract digest | <code>33d714862bafae33a078ff305ea13ea6b5dfca2a9a9cc223d04ce5c2d561a764</code> |
 
 ## Inventory
 
 | Stable ID | Helper | Owner | Invocation owner | Parser source | Commands / global args |
 | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codegen-60abdf415d"></a><code>helper-cli.codegen</code> | [Code generation](commands.md#entry-helper-cli-codegen-60abdf415d) | <code>build-release</code> | BuildTools/cmake/stages/Codegen.cmake | [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py) | 0 / 11 |
+| <a id="entry-helper-cli-codegen-60abdf415d"></a><code>helper-cli.codegen</code> | [Code generation](commands.md#entry-helper-cli-codegen-60abdf415d) | <code>build-release</code> | BuildTools/cmake/stages/Codegen.cmake | [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py) | 0 / 10 |
 | <a id="entry-helper-cli-compile-mono-scripts-ad6011a439"></a><code>helper-cli.compile-mono-scripts</code> | [Mono script compilation](commands.md#entry-helper-cli-compile-mono-scripts-ad6011a439) | <code>scripting</code> | BuildTools/cmake/stages/ScriptsAndBaking.cmake | [BuildTools/compile-mono-scripts.py](https://github.com/cvet/fonline/blob/master/BuildTools/compile-mono-scripts.py) | 0 / 2 |
 | <a id="entry-helper-cli-codecoverage-b014400e5e"></a><code>helper-cli.codecoverage</code> | [Code coverage](commands.md#entry-helper-cli-codecoverage-b014400e5e) | <code>quality</code> | BuildTools/cmake/stages/Applications.cmake | [BuildTools/codecoverage.py](https://github.com/cvet/fonline/blob/master/BuildTools/codecoverage.py) | 4 / 0 |
 | <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a><code>helper-cli.gameplay-test-runner</code> | [Gameplay test runner](commands.md#entry-helper-cli-gameplay-test-runner-b34ed8deb4) | <code>quality</code> | embedding-project CMake targets and CI gameplay smoke jobs | [BuildTools/gameplay_test_runner.py](https://github.com/cvet/fonline/blob/master/BuildTools/gameplay_test_runner.py) | 0 / 3 |
@@ -39,7 +39,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 
 ## Coverage
 
-The model contains 9 helpers, 16 subcommands, 26 global arguments, and 48 subcommand arguments.
+The model contains 9 helpers, 16 subcommands, 25 global arguments, and 48 subcommand arguments.
 
 Included:
 

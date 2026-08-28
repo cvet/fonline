@@ -34,7 +34,6 @@ Generate engine configuration, metadata registration, script bindings, and embed
 | <a id="entry-helper-cli-codegen-argument-devname-47485557c0"></a><code>helper-cli.codegen.argument.devname</code> | <code>-devname</code> | <code>option</code> | yes | <code>1</code> | - | - | dev game name |
 | <a id="entry-helper-cli-codegen-argument-nicename-161cc8093d"></a><code>helper-cli.codegen.argument.nicename</code> | <code>-nicename</code> | <code>option</code> | yes | <code>1</code> | - | - | nice game name |
 | <a id="entry-helper-cli-codegen-argument-embedded-f936b1a395"></a><code>helper-cli.codegen.argument.embedded</code> | <code>-embedded</code> | <code>option</code> | yes | <code>1</code> | - | - | embedded buffer capacity |
-| <a id="entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8"></a><code>helper-cli.codegen.argument.internalcfg</code> | <code>-internalcfg</code> | <code>option</code> | yes | <code>1</code> | - | - | internal config buffer capacity |
 | <a id="entry-helper-cli-codegen-argument-enginedefine-8961bb73cd"></a><code>helper-cli.codegen.argument.enginedefine</code> | <code>-enginedefine</code> | <code>option</code> | no | <code>1</code> | - | - | engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h |
 | <a id="entry-helper-cli-codegen-argument-meta-467f731eb8"></a><code>helper-cli.codegen.argument.meta</code> | <code>-meta</code> | <code>option</code> | yes | <code>1</code> | - | - | path to script api metadata (///@ tags) |
 | <a id="entry-helper-cli-codegen-argument-commonheader-888570e588"></a><code>helper-cli.codegen.argument.commonheader</code> | <code>-commonheader</code> | <code>option</code> | no | <code>1</code> | - | - | path to common header file |
@@ -44,8 +43,7 @@ Generate engine configuration, metadata registration, script bindings, and embed
 ### Exact top-level `--help` output
 
 ```text
-usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT
-                  [-verbose]
+usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT [-verbose]
 
 FOnline code generator
 
@@ -56,8 +54,6 @@ options:
   -devname DEVNAME      dev game name
   -nicename NICENAME    nice game name
   -embedded EMBEDDED    embedded buffer capacity
-  -internalcfg INTERNALCFG
-                        internal config buffer capacity
   -enginedefine ENGINEDEFINE
                         engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h
   -meta META            path to script api metadata (///@ tags)

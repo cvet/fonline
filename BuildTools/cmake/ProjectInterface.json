@@ -134,15 +134,6 @@
       "description": "Capacity reserved for embedded data in generated binaries."
     },
     {
-      "name": "FO_INTERNAL_CONFIG_CAPACITY",
-      "cache_type": "STRING",
-      "value_kind": "integer",
-      "required": false,
-      "default": "10000",
-      "category": "capacity",
-      "description": "Capacity reserved for embedded internal configuration data."
-    },
-    {
       "name": "FO_EFFECT_SCRIPT_VALUES",
       "cache_type": "STRING",
       "value_kind": "integer",

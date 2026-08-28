@@ -117,11 +117,20 @@ The baker merges:
 2. direct parents from left to right;
 3. the child last.
 
-Later values replace earlier values. Control keys beginning with `$` are not copied as properties. With multiple parents, the rightmost parent wins where both contribute the same key, and the child wins over all parents.
+Later values replace earlier values. Control keys beginning with `$` are not
+copied as properties. Among direct parents, the rightmost parent wins where both
+contribute the same key, and the child wins over all parents. An ancestor reached
+through several paths contributes only at its first reach;
+`Baking.AllowRepeatedProtoParents` (default `true`) skips later reaches, while
+`false` rejects the inheritance diamond. `ProtoBaker` and `ProtoTextBaker` use
+the same walk, so properties and `$Text` cannot diverge.
 
 Keep inheritance shallow and capability-oriented. Prefer a small base that represents a stable authored concept over long visual or balance chains. Multiple inheritance is useful for orthogonal defaults, but overlapping parent fields make the result order-sensitive and should be made explicit in the child.
 
-Parent graphs must be acyclic. The current baker recursively expands parents and does not provide a dedicated cycle diagnostic. Project validation should detect cycles before baking; the missing diagnostic is tracked as an engine documentation/implementation limitation.
+Parent graphs must be acyclic. Both prototype bakers track the active parent
+path and reject self-cycles, two-node cycles, and longer cycles regardless of
+the repeated-parent setting. Keep project-side structural validation for faster
+author feedback, but baking is the authoritative rejection boundary.
 
 ## Property applicability
 

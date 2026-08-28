@@ -32,9 +32,6 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 <a id="entry-helper-cli-codegen-argument-embedded-f936b1a395"></a>
 - [`entry-helper-cli-codegen-argument-embedded-f936b1a395`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-embedded-f936b1a395)
 
-<a id="entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8"></a>
-- [`entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-internalcfg-9f8ef3aef8)
-
 <a id="entry-helper-cli-codegen-argument-enginedefine-8961bb73cd"></a>
 - [`entry-helper-cli-codegen-argument-enginedefine-8961bb73cd`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-enginedefine-8961bb73cd)
 

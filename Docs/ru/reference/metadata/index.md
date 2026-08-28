@@ -6,7 +6,7 @@ document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"105372ba52d4711df75c4ddcf12a7bd04f2258351ef008858efbf9494252a3d9"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"df50df0820344f27c0d0b40a8734459e6a6276d8b8a3091d2ad271b5ff919deb"} -->
 
 # Сгенерированный API и метаданные
 
@@ -215,12 +215,16 @@ Generated files являются build artifacts. Документируйте �
 - `-genoutput` — каталог generated output, сейчас `GeneratedSource` внутри CMake binary dir.
 - `-devname` / `-nicename` — значения идентичности проекта.
 - `-embedded` — ёмкость embedded data (`FO_EMBEDDED_DATA_CAPACITY`).
-- `-internalcfg` — ёмкость internal config (`FO_INTERNAL_CONFIG_CAPACITY`).
 - `-meta` — записи источников metadata из `FO_SOURCE_META_FILES` и `FO_MONO_SOURCE`.
 - `-commonheader` — дополнительные общие headers из `FO_ADDED_COMMON_HEADERS`.
 - `-enginedefine` — повторяемый конфигурационный макрос значения/формы движка `NAME=VALUE` (`FO_GEOMETRY`, `FO_MAP_*`, `FO_EFFECT_*`, `FO_MODEL_*`, `FO_USE_NAMESPACE`, `FO_NO_*`, `FO_MAIN_CONFIG`, ...). На этапе configure он разрешается в literal и записывается в `EngineConfig.gen.h`, а не передаётся компилятору как `-D`. Feature/backend toggles (`FO_ENABLE_3D`, `FO_*_SCRIPTING`, `FO_*_PARTICLES`) и per-config `FO_DEBUG` остаются на стороне компилятора: они исключают целые files/headers до подключения любого engine header.
 
 Стадия создаёт обычный и принудительный command target генерации кода и добавляет `CodeGeneration` в `FO_GEN_DEPENDENCIES`.
+
+`InternalConfig.gen.inc` резервирует фиксированную движком patch area размером
+10000 bytes. Подключаемый проект не может менять её размер; перед записью
+bootstrap config `package.py` определяет точную ёмкость по markers в generated
+binary.
 
 ## Результаты генерации
 

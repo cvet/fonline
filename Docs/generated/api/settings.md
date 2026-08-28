@@ -485,6 +485,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 Continue with the [canonical reference](../../en/reference/script-api/settings.md).
 
+<a id="symbol-setting-common-baking-allowrepeatedprotoparents-97cd61d621"></a>
+- [`symbol-setting-common-baking-allowrepeatedprotoparents-97cd61d621`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-allowrepeatedprotoparents-97cd61d621)
+
 <a id="symbol-setting-common-baking-bakelanguages-a90a38931a"></a>
 - [`symbol-setting-common-baking-bakelanguages-a90a38931a`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-bakelanguages-a90a38931a)
 

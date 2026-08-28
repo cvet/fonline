@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"bcaf0c91c58e4ac20913371e384c5cebe3dc3587591e2d2f4d31930f2e93d957"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"48ccb6ee99b8d8504872039017c4b7e6417a78f460dfc43a40e12c097a30c291"} -->
 
 # Frontend и рендеринг
 
@@ -340,14 +340,13 @@ low/center-origin creature не резервирует пустую высоту
 shadow и не зависит от меняющегося atlas crop, чтобы name, coarse picking,
 transparent eggs и flying text не дёргались при turn/animation.
 
-View rectangle не может расти за baked view bound. Live pose и attached child
-models намеренно исключены: pose-derived box пришлось бы накапливать, а root
-motion быстро растянул бы его на весь clip и поднял name. Непоставленный child
-bound также не показывает, где окажется skinned geometry после bone binding.
-Высоту имени конкретного critter проект задаёт через authored `NameOffset`.
-Drawing frame, напротив, учитывает attachments и монотонно расширяется, потому
-что должен покрывать реально rasterized geometry. Idle view bound является
-подмножеством начального model bound, поэтому view остаётся внутри frame.
+View rectangle начинается с baked idle-priority bound. Live weighted pose не
+участвует: накопление per-frame vertices растянуло бы name rectangle по всему
+root motion clip. Selected child models учитываются через baked link envelopes.
+`SelectModelViewBounds` заменяет idle view полным текущим
+animation-plus-link envelope только тогда, когда его projected top ниже, поэтому
+prone/corpse configuration опускает name, а поднятое оружие не поднимает его.
+Presentation policy проекта по-прежнему может задаваться authored `NameOffset`.
 
 `SelectModelViewBounds` позволяет view целиком следовать **вниз** за active
 animation: если после тех же base transform/projection baked box clip имеет
@@ -358,16 +357,20 @@ name на standing height; при этом более широкий lying pose 
 время удара. Оба input baked per clip, и результат не дрейфует внутри animation.
 
 Automatic logical frame владеет переиспользуемым scratch render target 2x.
-После pose evaluation клиент соединяет prediction per animation с точным
-weighted envelope используемых vertices текущих generated skinned meshes и их
-shadow. Mesh envelope вычисляется **по всем facings**: projected coordinate
-каждой вершины образует sinusoid, поэтому samples current, +90 и +180 позволяют
-получить continuous harmonic range. Runtime layers/equipment отсутствуют в
-baked bounds; такой envelope удерживает fixed frame size во время turns даже
-для backpack/weapon. Его расширяют только emitting particle systems: dormant
-effect ничего не резервирует.
+Клиент объединяет baked active-animation bounds с AABB каждого выбранного
+non-particle child link, затем проецирует восемь corners envelope по facing
+sweep. Это удерживает layer/equipment geometry в facing-independent fixed frame
+без per-frame weighted-vertex walk. Envelope расширяют только emitting particle
+systems; dormant effect ничего не резервирует и попадает в bounded expansion
+pass, если начинает emission.
 
-Измерение содержит два rectangle. `ModelSpriteBounds::Rect` — полный drawn extent: mesh, shadow, live particles и full frame, принудительно выбранный effect; он задаёт frame и atlas crop. `ModelSpriteBounds::PoseRect` — только posed model, захваченная до particles и возвращаемая `ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` для fit-to-area. Уже emitted world-space particles не масштабируются вместе с model, поэтому их включение в fit создаёт feedback loop, способный уменьшить model почти до нуля. Effects входят во frame, но не в fit.
+Измерение содержит два rectangle. `ModelSpriteBounds::Rect` — полный baked
+geometry envelope вместе с shadow, live particles и full frame, принудительно
+выбранным effect; он задаёт frame и atlas crop.
+`ModelSpriteBounds::PoseRect` захватывается до particles и возвращается через
+`ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` для fit-to-area. Уже
+emitted world-space particles не масштабируются вместе с model, поэтому их
+включение в fit создало бы feedback loop. Effects входят во frame, но не в fit.
 
 Если exact envelope больше, frame расширяется и
 перерисовывается. Последовательные frame placements объединяются как

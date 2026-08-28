@@ -106,22 +106,27 @@ Language normalization aligns key presence, not duplicate cardinality.
 
 ## Language normalization
 
-`Baking.BakeLanguages` is ordered and must not be empty. Its first entry is the
-base language. The Engine default is `engl`; embedding projects normally
-override this in their `.fomain`.
+`Baking.BakeLanguages` is ordered and must not be empty. Each entry is either a
+bare `language` or `child:parent`. The first entry is the default base language;
+an explicit parent must appear earlier, and language names must be unique. A
+bare later language falls back to the first language. For example,
+`russ engl ru18:russ en18:engl` creates two adult-overlay fallback chains. The
+Engine default is `engl`; embedding projects normally override it in their
+`.fomain`.
 
 For a changed raw pack, `TextBaker` gathers all configured language files for
 that pack. The base-language source must be present. Unsupported filename
 suffixes are warned and skipped.
 
-`TextPack::FixPacks` then normalizes every non-base language:
+`TextPack::FixPacks` then normalizes every non-base language against its explicit
+parent, or against the first language when no parent is declared:
 
 1. remove languages not listed in `Baking.BakeLanguages`;
 2. add missing configured languages;
-3. remove packs that do not exist in the base language;
-4. copy packs missing from a non-base language;
-5. add keys missing from a non-base pack using base-language values;
-6. remove keys that are absent from the base pack.
+3. remove packs that do not exist in the selected fallback language;
+4. copy packs missing from the child language;
+5. add keys missing from a child pack using fallback-language values;
+6. remove keys that are absent from the fallback pack.
 
 This fallback is completed during baking. Runtime lookup does not consult the
 base language after a binary pack is loaded.

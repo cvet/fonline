@@ -1445,6 +1445,36 @@
       ]
     },
     {
+      "id": "model-format.rule.baked-link-bounds",
+      "name": "Baked geometry-link bounds",
+      "requirement": "Every non-particle child link carries a validated baked root-space AABB; default and particle links carry no geometry payload.",
+      "rationale": "Runtime framing projects selected-link envelope corners instead of walking and skinning combined-mesh vertices.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "CalculateModelDescriptionLinkBounds",
+            "Model description link geometry and bounds do not match",
+            "writer.Write<uint8_t>(has_geometry"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "Baked model geometry link has no bounds",
+            "Baked model link geometry flag does not match its child type"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "CollectActiveAnimationBounds",
+            "Active model link bounds are invalid"
+          ]
+        }
+      ]
+    },
+    {
       "id": "model-format.rule.source-units-and-mirroring",
       "name": "Positive scale and Engine world units",
       "requirement": "Freeze mirrored mesh nodes to a positive transform before export, and author direct FBX/OBJ attachments within Baking.ModelAttachmentMinExtent and Baking.ModelAttachmentMaxExtent. Use a child .fo3d when an explicit description-level scale is required.",
@@ -1519,7 +1549,7 @@
     "parser_token_count": 59,
     "asset_count": 6,
     "limit_count": 4,
-    "rule_count": 14,
+    "rule_count": 15,
     "removed_legacy_count": 6,
     "tokens_by_category": {
       "animation": 10,
@@ -1536,5 +1566,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "f185b1e41f9b14fae37b009f28aabe9a1230483dc706f3960d24a4622fc8f23a"
+  "contract_digest": "c6a3ec054d2d0df5013725e5383d4287d45387a0ed150e562f8c17983449a7b0"
 }

@@ -362,6 +362,7 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
     _subConfigs = other._subConfigs;
     _appliedConfigs = other._appliedConfigs;
     _appliedSettings = other._appliedSettings;
+    _settingValues = other._settingValues;
     _bakingMode = other._bakingMode;
     _customSettings = other._customSettings;
     _emptySetting = other._emptySetting;
@@ -387,6 +388,19 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
     for (auto&& [key, value] : it->Settings) {
         SetValue(key, value, it->ConfigDir);
     }
+}
+
+auto BaseSettings::FindSettingValue(string_view name) const -> nptr<const string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto it = _settingValues.find(name);
+
+    if (it == _settingValues.end()) {
+        return nullptr;
+    }
+
+    return &it->second;
 }
 
 auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
@@ -419,7 +433,15 @@ void GlobalSettings::SetCustomSetting(string_view name, any_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
+    _settingValues[string(name)] = value;
     _customSettings[string(name)] = std::move(value);
+}
+
+void GlobalSettings::SetSettingValue(string_view name, string_view value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SetValue(string(name), string(value));
 }
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value, string_view config_dir)
@@ -494,17 +516,18 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
         value = resolved_value;
     }
 
-#define SET_SETTING(sett) \
+#define SET_SETTING(sett, full_name) \
     SetEntry(sett, value, append); \
+    _settingValues[full_name] = strex("{}", sett).str(); \
     break
 #define FIXED_SETTING(type, group, name, ...) \
     case const_hash(#name): \
     case const_hash(#group "." #name): \
-        SET_SETTING(*FixedSettingForEdit(name))
+        SET_SETTING(*FixedSettingForEdit(name), #group "." #name)
 #define VARIABLE_SETTING(type, group, name, ...) \
     case const_hash(#name): \
     case const_hash(#group "." #name): \
-        SET_SETTING(name)
+        SET_SETTING(name, #group "." #name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 
@@ -512,6 +535,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 #include "Settings.inc"
     default:
         _customSettings[setting_name] = any_t(string(value));
+        _settingValues[setting_name] = string(value);
         break;
     }
 

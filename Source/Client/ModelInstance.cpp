@@ -1068,7 +1068,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     mat44 identity {1.0f};
     // The model matrix is the identity here, so the clip matrix is the frame projection itself. Combining once
-    // keeps the per-vertex sweep below to a single matrix-vector product each
+    // keeps each baked-envelope corner projection below to a single matrix-vector product
     mat44 frame_clip_matrix = _frameProj * identity;
     float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
 
@@ -1168,8 +1168,8 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return true;
     };
 
-    // The sprite frame must stay fixed while the model turns, and runtime equipment meshes are absent from the baked
-    // bounds, so each vertex is projected at the current facing plus +90/+180/+270 and the union kept
+    // The sprite frame must stay fixed while the model turns. The bake has already reduced both the root mesh and
+    // every selectable model link to conservative 3D envelopes, so only their corners need the facing sweep here
     mat44 facing_prefix = glm::translate(mat44 {1.0f}, Convert2dTo3d(_framePivot)) * _matTransBase * _matRot;
     mat44 facing_prefix_inverse = glm::inverse(facing_prefix);
     auto facing_delta_matrix = [&](float32_t degrees) -> mat44 { //
@@ -1201,7 +1201,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t all_facings_max_x {};
     float32_t all_facings_max_y {};
     // Takes the facing-0 projection from the caller: include_world_point already projected this exact point
-    // through the same clip matrix, so recomputing it doubled one of the three per-vertex projections
+    // through the same clip matrix, so recomputing it doubled one of the three corner projections
     auto include_mesh_all_facings = [&](vec3 world_pos, fpos32 projected_0, float32_t padding) {
         fpos32 projected_90 = project_affine(world_pos, clip_matrix_facing_90);
         fpos32 projected_180 = project_affine(world_pos, clip_matrix_facing_180);
@@ -1233,92 +1233,27 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         }
     };
 
-    bool has_geometry = false;
-
     if (_spriteBoundsPoseReady) {
         for (size_t mesh_index = 0; mesh_index < _actualCombinedMeshesCount; mesh_index++) {
-            auto combined_mesh = _combinedMeshes[mesh_index].as_ptr();
-
-            if (!combined_mesh->SpriteBoundsValid) {
-                return std::nullopt;
-            }
-            if (!combined_mesh->HasSpriteGeometry) {
-                continue;
-            }
-
-            force_full_frame = force_full_frame || combined_mesh->DrawEffect;
-            has_geometry = true;
-            array<mat44, MODEL_MAX_BONES> skin_matrices {};
-
-            for (size_t bone_index = 0; bone_index < combined_mesh->CurBoneMatrix; bone_index++) {
-                const SkinBinding& binding = combined_mesh->SkinBindings[bone_index];
-
-                if (!binding.Owner || !binding.SourceBone) {
-                    return std::nullopt;
-                }
-
-                skin_matrices[bone_index] = binding.Owner->GetWorldMatrix(binding.JointIndex) * binding.InverseBindMatrix;
-            }
-
-            // SpriteBoundsValid above stands for the index, rounding and bone-range checks; finiteness is still
-            // checked because it depends on runtime skinning matrices generation cannot see
-            for (const SpriteSweepVertex& sweep_vertex : combined_mesh->SpriteSweepVertices) {
-                glm::vec4 local_pos {sweep_vertex.Position, 1.0f};
-                glm::vec4 transformed_pos {};
-
-                for (uint8_t influence = 0; influence < sweep_vertex.InfluenceCount; influence++) {
-                    transformed_pos += skin_matrices[sweep_vertex.BoneIndices[influence]] * local_pos * sweep_vertex.Weights[influence];
-                }
-
-                if (!std::isfinite(transformed_pos.x) || !std::isfinite(transformed_pos.y) || !std::isfinite(transformed_pos.z) || !is_float_equal(transformed_pos.w, 1.0f) || !include_world_point(vec3 {transformed_pos})) {
-                    return std::nullopt;
-                }
-
-                include_mesh_all_facings(vec3 {transformed_pos}, world_point_projection, 0.0f);
-            }
+            force_full_frame = force_full_frame || _combinedMeshes[mesh_index]->DrawEffect;
         }
     }
 
-    auto include_track_bounds = [&](const ModelAnimationController& controller) -> bool {
-        for (int32_t track = 0; track < 2; track++) {
-            ModelAnimationController::TrackState state = controller.GetTrackState(track);
+    ModelBounds3D baked_bounds = CollectActiveAnimationBounds();
 
-            if (!state.Enabled) {
-                continue;
-            }
+    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+        vec3 root_pos_3d {
+            (corner_index & 1U) != 0 ? baked_bounds.Max.x : baked_bounds.Min.x,
+            (corner_index & 2U) != 0 ? baked_bounds.Max.y : baked_bounds.Min.y,
+            (corner_index & 4U) != 0 ? baked_bounds.Max.z : baked_bounds.Min.z,
+        };
+        glm::vec4 transformed_pos = root_transformation * glm::vec4 {root_pos_3d, 1.0f};
 
-            bool has_baked_bounds = state.ClipIndex >= 0 && numeric_cast<size_t>(state.ClipIndex) < _modelInfo->_animationBounds.size() && _modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)].has_value();
-
-            if (!has_baked_bounds) {
-                if (!_spriteBoundsPoseReady) {
-                    return false;
-                }
-
-                continue;
-            }
-
-            const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)];
-            has_geometry = true;
-
-            for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-                vec3 root_pos_3d {
-                    (corner_index & 1U) != 0 ? bounds.Max.x : bounds.Min.x,
-                    (corner_index & 2U) != 0 ? bounds.Max.y : bounds.Min.y,
-                    (corner_index & 4U) != 0 ? bounds.Max.z : bounds.Min.z,
-                };
-                glm::vec4 transformed_pos = root_transformation * glm::vec4 {root_pos_3d, 1.0f};
-
-                if (!std::isfinite(transformed_pos.x) || !std::isfinite(transformed_pos.y) || !std::isfinite(transformed_pos.z) || !is_float_equal(transformed_pos.w, 1.0f) || !include_world_point(vec3 {transformed_pos})) {
-                    return false;
-                }
-            }
+        if (!std::isfinite(transformed_pos.x) || !std::isfinite(transformed_pos.y) || !std::isfinite(transformed_pos.z) || !is_float_equal(transformed_pos.w, 1.0f) || !include_world_point(vec3 {transformed_pos})) {
+            return std::nullopt;
         }
 
-        return true;
-    };
-
-    if ((_bodyAnimController && !include_track_bounds(*_bodyAnimController)) || (_moveAnimController && !include_track_bounds(*_moveAnimController))) {
-        return std::nullopt;
+        include_mesh_all_facings(vec3 {transformed_pos}, world_point_projection, 0.0f);
     }
 
     // The posed model alone, taken before the particle pass joins live effects to the envelope: a fit converges only
@@ -1363,7 +1298,6 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                 include_mesh_all_facings(corner, last_projected_point, *billboard_padding);
             }
 
-            has_geometry = true;
             force_full_frame = true;
         }
 
@@ -1376,7 +1310,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return true;
     };
 
-    if (!include_particle_bounds(this, include_particle_bounds) || !has_geometry || !has_projected_point) {
+    if (!include_particle_bounds(this, include_particle_bounds) || !has_projected_point) {
         return std::nullopt;
     }
 
@@ -1839,9 +1773,6 @@ void ModelInstance::GenerateCombinedMeshes()
         combined_mesh->MeshBuf->Indices.clear();
         combined_mesh->MeshBuf->IndCount = 0;
         std::ranges::fill(combined_mesh->SkinBindings, SkinBinding {});
-        combined_mesh->SpriteSweepVertices.clear();
-        combined_mesh->SpriteBoundsValid = false;
-        combined_mesh->HasSpriteGeometry = false;
     }
 
     _actualCombinedMeshesCount = 0;
@@ -1856,103 +1787,6 @@ void ModelInstance::GenerateCombinedMeshes()
     // Finalize meshes
     for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
         auto combined_mesh = _combinedMeshes[i].as_ptr();
-        const auto& vertices = combined_mesh->MeshBuf->Vertices3D;
-        const auto& indices = combined_mesh->MeshBuf->Indices;
-
-        combined_mesh->SpriteBoundsValid = true;
-        vector<bool> included_vertices(vertices.size());
-        // By skinned identity, because meshes split vertices at UV and normal seams that project identically; the
-        // key includes blend data, since equal positions with different weights move apart once posed
-        constexpr size_t SPRITE_VERTEX_KEY_POSITION_SIZE = 3;
-        using SpriteVertexKey = array<float32_t, SPRITE_VERTEX_KEY_POSITION_SIZE + 2 * MODEL_BONES_PER_VERTEX>;
-        auto key_hash = [](const SpriteVertexKey& key) noexcept -> size_t {
-            size_t hash = 0;
-
-            for (size_t component = 0; component < key.size(); component++) {
-                hash ^= std::hash<float32_t> {}(key[component]) << component;
-            }
-
-            return hash;
-        };
-        unordered_set<SpriteVertexKey, decltype(key_hash)> unique_sprite_vertices;
-
-        for (vindex_t vertex_index : indices) {
-            if (numeric_cast<size_t>(vertex_index) >= vertices.size()) {
-                combined_mesh->SpriteBoundsValid = false;
-                break;
-            }
-
-            const Vertex3D& vertex = vertices[vertex_index];
-
-            if (!std::isfinite(vertex.Position.x) || !std::isfinite(vertex.Position.y) || !std::isfinite(vertex.Position.z)) {
-                combined_mesh->SpriteBoundsValid = false;
-                break;
-            }
-
-            // Same validation as before, but its result is kept rather than thrown away: positive influences land
-            // in slot order, so the per-frame sweep accumulates in exactly the order this loop accepts them
-            SpriteSweepVertex sweep_vertex {};
-            sweep_vertex.Position = vertex.Position;
-            float32_t total_weight = 0.0f;
-
-            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                float32_t weight = vertex.BlendWeights[influence];
-
-                if (!std::isfinite(weight)) {
-                    combined_mesh->SpriteBoundsValid = false;
-                    break;
-                }
-                if (weight <= 0.0f) {
-                    continue;
-                }
-
-                float32_t bone_index_value = vertex.BlendIndices[influence];
-
-                if (!std::isfinite(bone_index_value) || bone_index_value < 0.0f || bone_index_value >= numeric_cast<float32_t>(combined_mesh->CurBoneMatrix)) {
-                    combined_mesh->SpriteBoundsValid = false;
-                    break;
-                }
-
-                size_t bone_index = numeric_cast<size_t>(iround<int32_t>(bone_index_value));
-
-                if (numeric_cast<float32_t>(bone_index) != bone_index_value) {
-                    combined_mesh->SpriteBoundsValid = false;
-                    break;
-                }
-
-                sweep_vertex.BoneIndices[sweep_vertex.InfluenceCount] = numeric_cast<uint8_t>(bone_index);
-                sweep_vertex.Weights[sweep_vertex.InfluenceCount] = weight;
-                sweep_vertex.InfluenceCount++;
-                total_weight += weight;
-            }
-
-            if (!combined_mesh->SpriteBoundsValid) {
-                break;
-            }
-            if (!is_float_equal(total_weight, 1.0f)) {
-                combined_mesh->SpriteBoundsValid = false;
-                break;
-            }
-
-            // Collected after validation, so a prepared vertex is only ever stored once its blend data is proved
-            if (!included_vertices[vertex_index]) {
-                included_vertices[vertex_index] = true;
-
-                SpriteVertexKey key {vertex.Position.x, vertex.Position.y, vertex.Position.z};
-
-                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                    key[SPRITE_VERTEX_KEY_POSITION_SIZE + influence] = vertex.BlendIndices[influence];
-                    key[SPRITE_VERTEX_KEY_POSITION_SIZE + MODEL_BONES_PER_VERTEX + influence] = vertex.BlendWeights[influence];
-                }
-
-                if (unique_sprite_vertices.insert(key).second) {
-                    combined_mesh->SpriteSweepVertices.emplace_back(sweep_vertex);
-                }
-            }
-
-            combined_mesh->HasSpriteGeometry = true;
-        }
-
         combined_mesh->MeshBuf->StaticDataChanged = true;
     }
 
@@ -2545,8 +2379,7 @@ void ModelInstance::RefreshFrameLayout()
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
     isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->ModelSpriteMaxTextureWidth, _modelMngr->_settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
-    optional<ModelBounds3D> active_bounds = CollectActiveAnimationBounds();
-    const ModelBounds3D& draw_bounds = active_bounds ? *active_bounds : _modelInfo->_modelBounds;
+    ModelBounds3D draw_bounds = CollectActiveAnimationBounds();
     optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled, true, max_logical_frame);
     FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
     _layoutDrawSize = draw_layout->DrawSize;
@@ -2585,59 +2418,15 @@ void ModelInstance::RefreshConfigurationLayout()
         return;
     }
 
-    auto is_finite_matrix = [](const mat44& matrix) noexcept -> bool {
-        ptr<const float32_t> values = glm::value_ptr(matrix);
-
-        for (size_t i = 0; i < 16; i++) {
-            if (!std::isfinite(values[i])) {
-                return false;
-            }
-        }
-
-        return true;
-    };
-    mat44 root_inverse = glm::inverse(_parentMatrix);
-
-    if (!is_finite_matrix(root_inverse)) {
-        return;
-    }
-
-    optional<ModelBounds3D> current_model_bounds;
-    auto include_model_tree = [&](ptr<const ModelInstance> model, const auto& recurse) noexcept -> bool {
-        bool has_visible_mesh = std::ranges::any_of(model->_allMeshes, [](const auto& mesh) noexcept { return !mesh->Disabled; });
-
-        if (has_visible_mesh) {
-            mat44 relative_transform = root_inverse * model->_parentMatrix;
-
-            if (!IncludeTransformedModelBounds(current_model_bounds, model->_modelInfo->_modelBounds, relative_transform)) {
-                return false;
-            }
-        }
-
-        for (const auto& child : model->_children) {
-            if (!recurse(child.as_ptr(), recurse)) {
-                return false;
-            }
-        }
-
-        return true;
-    };
-
-    if (!include_model_tree(this, include_model_tree)) {
-        return;
-    }
-
-    if (!current_model_bounds) {
-        current_model_bounds = _modelInfo->_modelBounds;
-    }
+    ModelBounds3D current_model_bounds = CollectActiveAnimationBounds();
 
     // The drawing frame must cover everything the configuration rasterizes, attachments included, and must not shrink
     // mid-animation - the frame-sizing pass would then chase a moving target - so it grows until the meshes change
     if (_configurationLayoutRevision != _combinedMeshGenerationRevision || !_configurationModelBounds) {
-        _configurationModelBounds = *current_model_bounds;
+        _configurationModelBounds = current_model_bounds;
         _configurationLayoutRevision = _combinedMeshGenerationRevision;
     }
-    else if (!IncludeModelBounds(_configurationModelBounds, *current_model_bounds)) {
+    else if (!IncludeModelBounds(_configurationModelBounds, current_model_bounds)) {
         return;
     }
 
@@ -2645,7 +2434,7 @@ void ModelInstance::RefreshConfigurationLayout()
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
     isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->ModelSpriteMaxTextureWidth, _modelMngr->_settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(*_configurationModelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false, true, max_logical_frame);
-    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, CollectActiveAnimationBounds(), post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, max_logical_frame);
+    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, current_model_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, max_logical_frame);
     optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(view_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false, true, max_logical_frame);
 
     if (!lighting_layout || !view_layout) {
@@ -2709,7 +2498,7 @@ auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const 
 }
 
 // Combining once is exact, so this matches the two-matrix overload while sparing the 4x4 product per point for
-// callers like the bounds sweep, which projects three per mesh vertex
+// callers like the bounds projection, which projects each envelope corner through several facings
 auto ModelInstance::ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -3026,7 +2815,7 @@ void ModelInstance::CollectAttachPoints(ptr<const ModelInstance> projector, int3
     }
 }
 
-auto ModelInstance::CollectActiveAnimationBounds() const -> optional<ModelBounds3D>
+auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3039,9 +2828,11 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> optional<ModelBounds
         for (int32_t track = 0; track < 2; track++) {
             ModelAnimationController::TrackState state = controller->GetTrackState(track);
 
-            if (!state.Enabled || state.ClipIndex < 0 || numeric_cast<size_t>(state.ClipIndex) >= _modelInfo->_animationBounds.size() || !_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)]) {
+            if (!state.Enabled) {
                 continue;
             }
+
+            FO_STRONG_ASSERT(state.ClipIndex >= 0 && numeric_cast<size_t>(state.ClipIndex) < _modelInfo->_animationBounds.size() && _modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)], "Active animation has no baked bounds", _modelInfo->_fileName, state.ClipIndex);
 
             const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)];
             FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, bounds), "Active animation bounds are invalid", _modelInfo->_fileName, state.ClipIndex);
@@ -3051,7 +2842,60 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> optional<ModelBounds
     include_active_tracks(_bodyAnimController);
     include_active_tracks(_moveAnimController);
 
-    return active_bounds;
+    if (!active_bounds) {
+        FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, _modelInfo->_modelBounds), "Aggregate model bounds are invalid", _modelInfo->_fileName);
+    }
+
+    optional<mat44> root_inverse;
+
+    if (_spriteBoundsPoseReady) {
+        mat44 inverse = glm::inverse(_parentMatrix);
+        ptr<const float32_t> values = glm::value_ptr(inverse);
+        bool finite = true;
+
+        for (size_t i = 0; i < 16; i++) {
+            finite = finite && std::isfinite(values[i]);
+        }
+
+        if (finite) {
+            root_inverse = inverse;
+        }
+    }
+
+    auto include_active_links = [this, &active_bounds, &root_inverse](ptr<const ModelInstance> parent, const auto& recurse) -> bool {
+        for (const auto& child : parent->_children) {
+            if (child->_animLink.Bounds) {
+                bool included = false;
+
+                if (parent.get() == this) {
+                    included = IncludeModelBounds(active_bounds, *child->_animLink.Bounds);
+                }
+                else if (root_inverse) {
+                    mat44 relative_transform = *root_inverse * parent->_parentMatrix;
+                    included = IncludeTransformedModelBounds(active_bounds, *child->_animLink.Bounds, relative_transform);
+                }
+                else {
+                    // Before the first pose only direct links have a resolved parent transform. The rendered bounds
+                    // pass runs after posing and will add a transformed nested link before any pixels are cropped
+                    included = IncludeModelBounds(active_bounds, *child->_animLink.Bounds);
+                }
+
+                if (!included) {
+                    return false;
+                }
+            }
+
+            if (!recurse(child.as_ptr(), recurse)) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    FO_STRONG_ASSERT(include_active_links(this, include_active_links), "Active model link bounds are invalid", _modelInfo->_fileName);
+
+    return *active_bounds;
 }
 
 auto ModelInstance::ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ipos32>

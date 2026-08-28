@@ -1670,7 +1670,7 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
             proto_id = entity_with_proto->GetProtoId().as_str();
         }
 
-        return strex("{}: {} ({} {})", type_name, entity->GetName(), entity->GetId(), proto_id);
+        return strex("{}: name {} id {} proto {}", type_name, entity->GetName(), entity->GetId(), proto_id);
     }
 
     if (auto enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {

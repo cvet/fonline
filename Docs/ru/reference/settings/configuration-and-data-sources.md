@@ -6,7 +6,7 @@ document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
 
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"135df07ca1fa4ab224310d84998b9838fbf16e70185d924ca6c3723b255e261d"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"43d53c6a8f5ac3fdd9c00281efdc8ea59297402e83898e3a6d3f02f201965883"} -->
 
 # Конфигурация и источники данных
 
@@ -99,7 +99,24 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 
 При обычном запуске приложения создается non-baking `GlobalSettings`, а defaults движка применяются до чтения входов проекта. Итоговый runtime order таков: defaults, конфигурация проекта или упакованный internal config, выбранные sub-configs, writable local-config cache, переопределения командной строки, затем производные auto settings. Поэтому проектный `.fomain` фиксирует намеренно заданные значения, а пропущенный setting получает объявленный Engine default, а не нулевое инициализированное значение. `Source/Tests/Test_Settings.cpp` защищает как default baseline, так и приоритет project override.
 
-`ConfigBaker` из `Source/Tools/ConfigBaker.cpp` выпекает конфигурацию, заново выводя каждый sub-config из root и сохраняя каждый зарегистрированный setting. Setting, который `GlobalSettings::Save()` не выводит, регистрируется как `Uninitialized server/client setting <name>` и приводит к ошибке baking. `Save()` выводит только settings из `_appliedSettings`; этот набор заполняется ключами всех примененных config и фиксированным allow-list **auto-settings**, который создается конструктором `GlobalSettings` в baking mode. Настраиваемые автором settings попадают в `_appliedSettings`, когда перечислены в конфигурации встраивающего проекта. Runtime-only settings, которые никогда не задаются в config (platform/build flags, размер монитора, command-line/git/compatibility values и `Client.UserWritablePath`), необходимо добавить в allow-list auto-settings, иначе baking завершится ошибкой. Добавляя такой runtime-only Engine setting в `Settings.inc`, регистрируйте его в списке auto-settings тем же изменением. Settings, используемые только `BuildTools/package.py` (группы `AndroidSettings` и `PackagingSettings` из `Settings.inc`, например `Android.Keystore`, `Packaging.AppIcon`, `Packaging.MsiUpgradeCode`, `Packaging.CodeSigningHook`), регистрируются как обычные settings. Config baker проверяет их единообразно и не имеет отдельного packaging allow-list, поэтому незарегистрированный ключ всегда дает `Unknown setting`. Поиск setting принимает dotted (`Group.Name`) и bare (`Name`) формы, поэтому bare-часть каждого имени должна оставаться глобально уникальной среди всех групп. Например, `Android.Icon` уже занимает `Icon`, поэтому packaging icon использует отдельное имя `Packaging.AppIcon`.
+`ConfigBaker` из `Source/Tools/ConfigBaker.cpp` заново выводит каждый sub-config
+из root. Metadata хранит настроенное root-значение каждого game setting и служит
+runtime baseline: `BaseEngine` применяет его, только если config, sub-config,
+local config или command line не задавали это имя. Поэтому side-specific internal
+config содержит лишь sub-config deltas game settings; false и empty deltas тоже
+записываются, поскольку обязаны перекрыть непустой metadata baseline. Built-in
+server/client settings сохраняют прежние правила компактной записи непустых
+значений. `MetadataBaker` включает timestamps применённых configs в freshness и
+отклоняет game-setting declaration без настроенного значения.
+
+`GlobalSettings::Save()` по-прежнему выводит только settings из
+`_appliedSettings`, который заполняется keys применённых configs и baking-mode
+allow-list **auto-settings**. Runtime-only settings (platform/build flags, размер
+монитора, command-line/git/compatibility values и `Client.UserWritablePath`)
+должны оставаться в этом allow-list. Settings, используемые только
+`BuildTools/package.py`, проверяются как обычные settings. Поиск setting
+принимает dotted (`Group.Name`) и bare (`Name`) формы, поэтому каждое bare-имя
+должно оставаться глобально уникальным.
 
 У custom settings есть две формы чтения. Используйте `FindCustomSetting()`, когда отсутствие ключа нормально и должно оставаться в nullable pointer vocabulary. Используйте `GetCustomSetting()` только для совместимости с историческим non-null sentinel behavior: при наличии ключа он возвращает сохраненное значение, иначе `_emptySetting`.
 

@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4953,
-    "current_count": 4953,
+    "entry_count": 4961,
+    "current_count": 4961,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2497,
-      "current_count": 2497,
+      "entry_count": 2498,
+      "current_count": 2498,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15097,6 +15097,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.Baking.AllowRepeatedProtoParents/description",
+          "source": "If false, a prototype reaching one ancestor through several $Parent entries fails baking; when allowed, a repeated ancestor contributes its fields only where it is first reached",
+          "source_sha256": "bc93f96eda5667f24ca75c3b5450b23d990f2480d850bdedbc330ef483cdf114",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.Baking.BakeLanguages/description",
           "source": "Bake languages",
           "source_sha256": "2f356d66742cfc44e45d055b0260213838e3157f35c7724f27ada03007e2efee",
@@ -16871,8 +16877,8 @@
     },
     "cmake": {
       "source_model": "Docs/generated/cmake.json",
-      "entry_count": 64,
-      "current_count": 64,
+      "entry_count": 63,
+      "current_count": 63,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -17071,12 +17077,6 @@
           "locator": "/options/@id=cmake.option.FO_GEOMETRY/description",
           "source": "World-grid geometry mode.",
           "source_sha256": "47d7d183ce4d04c2c823c62d73ab9d0d356bad09e5773d8b81e076cbf05adebc",
-          "status": "current"
-        },
-        {
-          "locator": "/options/@id=cmake.option.FO_INTERNAL_CONFIG_CAPACITY/description",
-          "source": "Capacity reserved for embedded internal configuration data.",
-          "source_sha256": "ad3e8216b468dd5cd8fe792fae9fec22a13ae1aeb3b866a07570f59e6a3ad76f",
           "status": "current"
         },
         {
@@ -20631,8 +20631,8 @@
     },
     "helper-cli": {
       "source_model": "Docs/generated/helper-cli.json",
-      "entry_count": 125,
-      "current_count": 125,
+      "entry_count": 124,
+      "current_count": 124,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -21180,12 +21180,6 @@
           "locator": "/helpers/@id=helper-cli.codegen/global_arguments/@id=helper-cli.codegen.argument.genoutput/description",
           "source": "generated code output dir",
           "source_sha256": "605a80a7cec4c00ae907bc28b7b487316b06dce0b471a20a06ba12f53985ae54",
-          "status": "current"
-        },
-        {
-          "locator": "/helpers/@id=helper-cli.codegen/global_arguments/@id=helper-cli.codegen.argument.internalcfg/description",
-          "source": "internal config buffer capacity",
-          "source_sha256": "c99beca0aa493e430b03a47c037a249652b3b39ff60eac0f061779399005dac0",
           "status": "current"
         },
         {
@@ -23602,8 +23596,8 @@
     },
     "model-format": {
       "source_model": "Docs/generated/model-format.json",
-      "entry_count": 138,
-      "current_count": 138,
+      "entry_count": 141,
+      "current_count": 141,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -23800,6 +23794,24 @@
           "locator": "/removed_legacy/@name=ViewSize/description",
           "source": "The client projects baked model bounds and active child layers instead of accepting an authored interaction rectangle.",
           "source_sha256": "a414e452981ef0107d530bb11ad71bfa11a44158e6ce76838d4eb834fe472d88",
+          "status": "current"
+        },
+        {
+          "locator": "/rules/@id=model-format.rule.baked-link-bounds/name",
+          "source": "Baked geometry-link bounds",
+          "source_sha256": "1aaf518bc8b33fa23cfcb9d27fc9d65b0a54333fbead663c7700c1a936e7127a",
+          "status": "current"
+        },
+        {
+          "locator": "/rules/@id=model-format.rule.baked-link-bounds/rationale",
+          "source": "Runtime framing projects selected-link envelope corners instead of walking and skinning combined-mesh vertices.",
+          "source_sha256": "69c22e6cf205189207709964213cc04ce1e4846199a807235671706f5e01778d",
+          "status": "current"
+        },
+        {
+          "locator": "/rules/@id=model-format.rule.baked-link-bounds/requirement",
+          "source": "Every non-particle child link carries a validated baked root-space AABB; default and particle links carry no geometry payload.",
+          "source_sha256": "596e68b9b759316552db736920198fe4dc2ce37979ace92fa55b87910b858a4e",
           "status": "current"
         },
         {
@@ -27190,8 +27202,8 @@
     },
     "prototype-format": {
       "source_model": "Docs/generated/prototype-format.json",
-      "entry_count": 188,
-      "current_count": 188,
+      "entry_count": 191,
+      "current_count": 191,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -28037,8 +28049,8 @@
         },
         {
           "locator": "/rules/@id=prototype-format.rule.acyclic-inheritance/description",
-          "source": "The current baker expands parents recursively and has no dedicated cycle diagnostic; validate this in project tooling and keep chains shallow.",
-          "source_sha256": "66b9d59e4a91dc30c47695c7d0f8f1987b1f040528945588118763cbfc903507",
+          "source": "ProtoBaker and ProtoTextBaker track the active parent path and reject self, pair, and longer cycles under every repeated-parent policy.",
+          "source_sha256": "8b0be70e60b03f23809ef262b76fb9287eb9d54b85994acab23828774eec3bbc",
           "status": "current"
         },
         {
@@ -28231,6 +28243,24 @@
           "locator": "/rules/@id=prototype-format.rule.proto-reference/requirement",
           "source": "FixedType and Proto entity property references must resolve after migration unless the property is nullable and the authored value is empty.",
           "source_sha256": "d5c08397b2e94007068881bd23f42d4df47a0a538b13c12ddae387a051e1372d",
+          "status": "current"
+        },
+        {
+          "locator": "/rules/@id=prototype-format.rule.repeated-ancestors/description",
+          "source": "The default is permissive; set the option false when a project wants every inheritance diamond to fail baking. ProtoBaker and ProtoTextBaker apply the same rule.",
+          "source_sha256": "49fc1cc07ea1b731fbd9045d6e4393b2c1437894cda80fba5fe3a383e2d8363b",
+          "status": "current"
+        },
+        {
+          "locator": "/rules/@id=prototype-format.rule.repeated-ancestors/name",
+          "source": "Repeated ancestors",
+          "source_sha256": "3b7e486bfe39fde3fe810e8fa50b87ec0bf15e4a030b54bf4ec0023a96bcae86",
+          "status": "current"
+        },
+        {
+          "locator": "/rules/@id=prototype-format.rule.repeated-ancestors/requirement",
+          "source": "A parent reached through several inheritance paths contributes only where it is first reached; Baking.AllowRepeatedProtoParents decides whether the later reach is skipped or rejected.",
+          "source_sha256": "ad9bcd40019167e91db1c5f6b54182cf5bb66797cd85c1072ecd4fd3197cc387",
           "status": "current"
         },
         {
@@ -28925,8 +28955,8 @@
     },
     "text-format": {
       "source_model": "Docs/generated/text-format.json",
-      "entry_count": 113,
-      "current_count": 113,
+      "entry_count": 116,
+      "current_count": 116,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -28950,8 +28980,8 @@
         },
         {
           "locator": "/language_rules/@id=text-format.language.bake-time-fallback/requirement",
-          "source": "Missing language packs and missing keys are copied from the base language during baking; packs and keys absent from the base are removed from non-base languages.",
-          "source_sha256": "0e62f8be3fc425d415f88bd801ecb9c975859f482d9f0138b54d7a185a66354f",
+          "source": "Missing packs and keys are copied from each language's configured fallback during baking; packs and keys absent from that fallback are removed.",
+          "source_sha256": "9f36f08eaea6bc2187071ced41edc9f5bca7a56517f575bff021ba2c76c65050",
           "status": "current"
         },
         {
@@ -28962,14 +28992,14 @@
         },
         {
           "locator": "/language_rules/@id=text-format.language.base/rationale",
-          "source": "Both text bakers reject an empty list and TextPack::FixPacks normalizes every later language against the first pack set.",
-          "source_sha256": "5da92474c4feac2371bcd5a680a643a014c31e15925863a54b7cd835794529b8",
+          "source": "TextPack::ParseBakeLanguages validates the ordered declarations before either text baker consumes them.",
+          "source_sha256": "abddc37ae75651efa53fa3214066556cdcbac7f422ee35c7dfbca9530abd3043",
           "status": "current"
         },
         {
           "locator": "/language_rules/@id=text-format.language.base/requirement",
-          "source": "Baking.BakeLanguages must be non-empty and its first entry is the base language used for normalization.",
-          "source_sha256": "62c2145c7393c5e455f3f832494d80b4f1f8cd8304b40ad39e52ef73d6e80478",
+          "source": "Baking.BakeLanguages must be non-empty and its first bare language is the default normalization base.",
+          "source_sha256": "bee84be6fbcd68bc4bb0f9cc61ce1ad7cb41d4102a0b4200629527abbaa4ee3b",
           "status": "current"
         },
         {
@@ -29009,6 +29039,24 @@
           "status": "current"
         },
         {
+          "locator": "/language_rules/@id=text-format.language.fallback-declaration/name",
+          "source": "Fallback declaration",
+          "source_sha256": "f6efe1b291c9204040dd870ce92a59c971c363a3a8d0c6897b4e551a3802c2c2",
+          "status": "current"
+        },
+        {
+          "locator": "/language_rules/@id=text-format.language.fallback-declaration/rationale",
+          "source": "An explicit parent forms an ordered bake-time fallback chain, while a bare non-first language falls back to the first language.",
+          "source_sha256": "2f7a2d3b15cf95bc65b19e430c5ac1a5d985d9d78b8de76f4b9a0cc4ccba8ea4",
+          "status": "current"
+        },
+        {
+          "locator": "/language_rules/@id=text-format.language.fallback-declaration/requirement",
+          "source": "Each BakeLanguages entry is language or child:parent; names are unique and a parent must appear before its child.",
+          "source_sha256": "976bab4149eed65aa614e5792dd9ce9a006453e0fe21947accc6d2344e58683d",
+          "status": "current"
+        },
+        {
           "locator": "/language_rules/@id=text-format.language.filename/name",
           "source": "Source filename",
           "source_sha256": "3fc6620c9672ff2eb08b49fac810300f7bf7ae5fa1cf7d1c7e707ca486f40ce2",
@@ -29034,8 +29082,8 @@
         },
         {
           "locator": "/language_rules/@id=text-format.language.identifier/rationale",
-          "source": "Acceptance is equality against Baking.BakeLanguages; no length or locale-shape validator exists in TextBaker.",
-          "source_sha256": "2aaa5cd83d56402672923a9514547be7d0dab70b10b0251b539ed82f88a5bb4f",
+          "source": "Acceptance is equality against the language names parsed from Baking.BakeLanguages; no length or locale-shape validator exists.",
+          "source_sha256": "c9e58987e8bf0f60648d241c3c61fc45834d4ff91cb383b72940aa529d8ffe7f",
           "status": "current"
         },
         {

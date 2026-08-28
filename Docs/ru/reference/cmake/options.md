@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"dac250c1b9b7bb0ec94e90afc3920a7ab5f05642427032d2c7e7396fd4777112"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"9c36af08e8235244f5d0960b0fd49874d866d38d758751b66cd7214bf39a66c9"} -->
 
 # Параметры проекта CMake
 
@@ -31,7 +31,6 @@ generated: true
 | <a id="entry-cmake-option-fo-cxx-standard-04de8a4993"></a><code>cmake.option.FO_CXX_STANDARD</code> | <code>FO_CXX_STANDARD</code> | <code>STRING</code> / <code>integer</code> | Нет | <code>20</code> | - | <code>toolchain</code> | Стандарт языка C++ для компиляции проекта; значения ниже 20 не поддерживаются. |
 | <a id="entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9"></a><code>cmake.option.FO_BINARY_OUTPUT_POSTFIX</code> | <code>FO_BINARY_OUTPUT_POSTFIX</code> | <code>STRING</code> / <code>string</code> | Нет | <code></code> | - | <code>output</code> | Необязательный суффикс имён каталогов сгенерированных бинарных файлов. |
 | <a id="entry-cmake-option-fo-embedded-data-capacity-f6517a6c8a"></a><code>cmake.option.FO_EMBEDDED_DATA_CAPACITY</code> | <code>FO_EMBEDDED_DATA_CAPACITY</code> | <code>STRING</code> / <code>integer</code> | Нет | <code>200000</code> | - | <code>capacity</code> | Ёмкость, зарезервированная для встроенных данных в сгенерированных бинарных файлах. |
-| <a id="entry-cmake-option-fo-internal-config-capacity-235c8d699f"></a><code>cmake.option.FO_INTERNAL_CONFIG_CAPACITY</code> | <code>FO_INTERNAL_CONFIG_CAPACITY</code> | <code>STRING</code> / <code>integer</code> | Нет | <code>10000</code> | - | <code>capacity</code> | Ёмкость, зарезервированная для встроенных данных внутренней конфигурации. |
 | <a id="entry-cmake-option-fo-effect-script-values-cadf138ea4"></a><code>cmake.option.FO_EFFECT_SCRIPT_VALUES</code> | <code>FO_EFFECT_SCRIPT_VALUES</code> | <code>STRING</code> / <code>integer</code> | Нет | <code>16</code> | - | <code>rendering-shape</code> | Количество float-слотов в ScriptValueBuf; значение должно быть кратно четырём. |
 | <a id="entry-cmake-option-fo-effect-max-passes-d68a1bfe38"></a><code>cmake.option.FO_EFFECT_MAX_PASSES</code> | <code>FO_EFFECT_MAX_PASSES</code> | <code>STRING</code> / <code>integer</code> | Нет | <code>6</code> | - | <code>rendering-shape</code> | Максимальное количество проходов одного эффекта. |
 | <a id="entry-cmake-option-fo-model-layers-count-d705d0dc6e"></a><code>cmake.option.FO_MODEL_LAYERS_COUNT</code> | <code>FO_MODEL_LAYERS_COUNT</code> | <code>STRING</code> / <code>integer</code> | Нет | <code>30</code> | - | <code>model-shape</code> | Количество слоёв рендеринга модели, скомпилированных в shape-контракт движка. |

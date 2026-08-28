@@ -278,7 +278,7 @@ TEST_CASE("TextPack")
 
     SECTION("FixPacksAddsMissingLanguagesAndNormalizesAgainstBase")
     {
-        vector<string> bake_languages {"engl", "russ", "germ"};
+        BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(vector<string> {"engl", "russ", "germ"});
         vector<pair<string, map<string, TextPack>>> lang_packs;
 
         TextPack engl_dialogs(&TestHashes);
@@ -330,7 +330,7 @@ TEST_CASE("TextPack")
 
     SECTION("FixPacksBootstrapsDefaultLanguageWhenInputIsEmpty")
     {
-        vector<string> bake_languages {"engl", "russ"};
+        BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(vector<string> {"engl", "russ"});
         vector<pair<string, map<string, TextPack>>> lang_packs;
 
         TextPack::FixPacks(bake_languages, lang_packs);
@@ -340,6 +340,63 @@ TEST_CASE("TextPack")
         CHECK(lang_packs[1].first == "russ");
         CHECK(lang_packs[0].second.empty());
         CHECK(lang_packs[1].second.empty());
+    }
+
+    SECTION("FixPacksInheritsMissingTextFromConfiguredLanguageParent")
+    {
+        BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(vector<string> {"russ", "engl", "ru18:russ", "en18:engl"});
+        vector<pair<string, map<string, TextPack>>> lang_packs;
+
+        TextPack russ_dialogs(&TestHashes);
+        russ_dialogs.AddStr(MakeKey("Dialogs", "1"), string_view {"Базовая реплика"});
+        russ_dialogs.AddStr(MakeKey("Dialogs", "2"), string_view {"Базовый ответ"});
+
+        TextPack engl_dialogs(&TestHashes);
+        engl_dialogs.AddStr(MakeKey("Dialogs", "1"), string_view {"Base line"});
+        engl_dialogs.AddStr(MakeKey("Dialogs", "2"), string_view {"Base answer"});
+
+        TextPack en18_dialogs(&TestHashes);
+        en18_dialogs.AddStr(MakeKey("Dialogs", "2"), string_view {"Adult answer"});
+
+        lang_packs.emplace_back("russ", map<string, TextPack> {});
+        lang_packs[0].second.emplace("Dialogs", russ_dialogs);
+        lang_packs.emplace_back("engl", map<string, TextPack> {});
+        lang_packs[1].second.emplace("Dialogs", engl_dialogs);
+        lang_packs.emplace_back("en18", map<string, TextPack> {});
+        lang_packs[2].second.emplace("Dialogs", en18_dialogs);
+
+        TextPack::FixPacks(bake_languages, lang_packs);
+
+        auto en18_it = std::ranges::find_if(lang_packs, [](const auto& lang_pack) { return lang_pack.first == "en18"; });
+        REQUIRE(en18_it != lang_packs.end());
+        const auto& en18_pack = en18_it->second.at("Dialogs");
+        CHECK(en18_pack.GetStr(MakeKey("Dialogs", "1"), 0) == "Base line");
+        CHECK(en18_pack.GetStr(MakeKey("Dialogs", "2"), 0) == "Adult answer");
+
+        auto ru18_it = std::ranges::find_if(lang_packs, [](const auto& lang_pack) { return lang_pack.first == "ru18"; });
+        REQUIRE(ru18_it != lang_packs.end());
+        const auto& ru18_pack = ru18_it->second.at("Dialogs");
+        CHECK(ru18_pack.GetStr(MakeKey("Dialogs", "1"), 0) == "Базовая реплика");
+        CHECK(ru18_pack.GetStr(MakeKey("Dialogs", "2"), 0) == "Базовый ответ");
+    }
+
+    SECTION("ParseBakeLanguagesNormalizesInlineFallbacks")
+    {
+        BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(vector<string> {"russ", "engl", "ru18:russ", "en18:engl"});
+
+        CHECK(bake_languages.Languages == vector<string> {"russ", "engl", "ru18", "en18"});
+        CHECK(bake_languages.Fallbacks == map<string, string> {{"en18", "engl"}, {"ru18", "russ"}});
+    }
+
+    SECTION("ParseBakeLanguagesRejectsInvalidDeclarations")
+    {
+        CHECK_THROWS(TextPack::ParseBakeLanguages(vector<string> {}));
+        CHECK_THROWS(TextPack::ParseBakeLanguages(vector<string> {"russ", "en18:"}));
+        CHECK_THROWS(TextPack::ParseBakeLanguages(vector<string> {"russ", ":russ"}));
+        CHECK_THROWS(TextPack::ParseBakeLanguages(vector<string> {"russ", "en18:engl:extra"}));
+        CHECK_THROWS(TextPack::ParseBakeLanguages(vector<string> {"russ", "en18:engl"}));
+        CHECK_THROWS(TextPack::ParseBakeLanguages(vector<string> {"russ", "engl:en18", "en18"}));
+        CHECK_THROWS(TextPack::ParseBakeLanguages(vector<string> {"russ", "engl", "en18:engl", "en18:russ"}));
     }
 }
 

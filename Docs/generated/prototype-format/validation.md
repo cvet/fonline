@@ -27,6 +27,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-prototype-format-rule-acyclic-inheritance-ab9523a972"></a>
 - [`entry-prototype-format-rule-acyclic-inheritance-ab9523a972`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-acyclic-inheritance-ab9523a972)
 
+<a id="entry-prototype-format-rule-repeated-ancestors-ccb6741967"></a>
+- [`entry-prototype-format-rule-repeated-ancestors-ccb6741967`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-repeated-ancestors-ccb6741967)
+
 <a id="entry-prototype-format-rule-property-resolution-b9881b40e7"></a>
 - [`entry-prototype-format-rule-property-resolution-b9881b40e7`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-property-resolution-b9881b40e7)
 

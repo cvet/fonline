@@ -79,6 +79,7 @@ struct BakerModelDescriptionLink
     vector<tuple<string, string, int32_t>> TextureInfo {};
     vector<pair<string, string>> EffectInfo {};
     vector<BakerModelDescriptionCut> CutInfo {};
+    optional<ModelBounds3D> Bounds {};
 };
 
 struct BakerModelDescriptionAnimationEntry
@@ -204,8 +205,11 @@ static void ValidateModelWorldExtent(const BakingSettings& settings, const Model
 static auto GetModelBoundsMaxAbsExtent(const ModelBounds3D& bounds) -> float32_t;
 static auto CalculateFo3dAggregateModelBounds(const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ModelBounds3D;
 static auto ReadBakedModelMeshForBounds(const FileSystem& baked_files, const BakerModelDescription& description, string_view fname) -> ModelMeshData;
+static auto ReadBakedModelDescriptionForBounds(const FileSystem& baked_files, string_view fname) -> BakerModelDescription;
 static auto CalculateModelAnimationBoundsForDescription(const ModelMeshData& model_mesh, const ModelSourceAsset& anim_source, string_view anim_name, bool reversed, const BakerModelDescription& description, int32_t state_anim, int32_t action_anim, string_view fname, uint64_t& disabled_mesh_retries) -> optional<ModelBounds3D>;
 static auto CalculateModelStaticBoundsForDescription(const ModelMeshData& model_mesh, const BakerModelDescription& description, string_view fname) -> ModelBounds3D;
+static auto MakeModelDescriptionLinkTransform(const BakerModelDescriptionLink& child_default_link, const BakerModelDescriptionLink& outer_link) -> mat44;
+static auto CalculateModelDescriptionLinkBounds(const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const ModelMeshData& parent_model_mesh, const BakerModelDescription& parent_description, const BakerModelDescriptionLink& link, string_view fname) -> optional<ModelBounds3D>;
 static void ValidateModelDescriptionLinkData(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateModelDescriptionCut(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakerModelDescriptionCut& cut, string_view fname);
 static void ValidateModelDescriptionTexture(const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname);
@@ -334,6 +338,51 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             ignore_unused(max_write_time);
 
             ValidatedModelDescription validated = ValidateModelDescription(*_context->Settings, files, *_context->BakedFiles, client_engine, model_sources, description, file.GetPath());
+
+            ModelMeshData model_mesh = ReadBakedModelMeshForBounds(*_context->BakedFiles, description, file.GetPath());
+
+            vector<std::future<void>> link_bound_bakings;
+
+            // Each task owns one link slot, so the shared description is written without further synchronization
+            for (size_t link_index = 0; link_index < description.Links.size(); link_index++) {
+                const BakerModelDescriptionLink& link = description.Links[link_index];
+
+                if (link.ChildName.empty() || link.IsParticles) {
+                    continue;
+                }
+
+                string task_name = strex("BakeModelInfoBounds-{}-{}", file.GetPath(), link_index);
+                link_bound_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &model_sources, &model_mesh, &description, link_index, file_path = file.GetPath()]() FO_DEFERRED {
+                    BakerClientEngine link_engine(*_context->BakedFiles);
+                    BakerModelDescriptionLink& baked_link = description.Links[link_index];
+                    baked_link.Bounds = CalculateModelDescriptionLinkBounds(files, *_context->BakedFiles, link_engine, model_sources, model_mesh, description, baked_link, file_path);
+
+                    if (!baked_link.Bounds) {
+                        throw ModelInfoBakerException("Model geometry link bounds could not be calculated", baked_link.ChildName, file_path);
+                    }
+                }));
+            }
+
+            // Every task is awaited before the first failure is rethrown, so no link keeps running past this scope
+            std::exception_ptr link_bound_error;
+
+            for (std::future<void>& link_bound_baking : link_bound_bakings) {
+                try {
+                    link_bound_baking.get();
+                }
+                catch (const std::exception&) {
+                    if (!link_bound_error) {
+                        link_bound_error = std::current_exception();
+                    }
+                }
+                catch (...) {
+                    FO_UNKNOWN_EXCEPTION();
+                }
+            }
+
+            if (link_bound_error) {
+                std::rethrow_exception(link_bound_error);
+            }
 
             // A targeted .fo3d bake does not run BakeModelAnimationInfo, so the lighting envelope is checked here
             if (validate_aggregate_bounds) {
@@ -1201,6 +1250,315 @@ static auto CalculateModelStaticBoundsForDescription(const ModelMeshData& model_
     return *model_bounds;
 }
 
+static auto ReadBakedModelDescriptionCutForBounds(DataReader& reader) -> BakerModelDescriptionCut
+{
+    FO_STACK_TRACE_ENTRY();
+
+    BakerModelDescriptionCut cut;
+    cut.FileName = reader.ReadString();
+    cut.Layers = reader.ReadSizedObjectVector<int32_t>();
+    cut.Shapes = reader.ReadStringVector();
+    cut.UnskinBone1 = reader.ReadString();
+    cut.UnskinBone2 = reader.ReadString();
+    cut.UnskinShape = reader.ReadString();
+    cut.RevertUnskinShape = reader.Read<uint8_t>() != 0;
+    return cut;
+}
+
+static auto ReadBakedModelDescriptionLinkForBounds(DataReader& reader) -> BakerModelDescriptionLink
+{
+    FO_STACK_TRACE_ENTRY();
+
+    BakerModelDescriptionLink link;
+    link.Layer = reader.Read<int32_t>();
+    link.LayerValue = reader.Read<int32_t>();
+    link.LinkBone = reader.ReadString();
+    link.ChildName = reader.ReadString();
+    link.IsParticles = reader.Read<uint8_t>() != 0;
+    link.RotX = reader.Read<float32_t>();
+    link.RotY = reader.Read<float32_t>();
+    link.RotZ = reader.Read<float32_t>();
+    link.MoveX = reader.Read<float32_t>();
+    link.MoveY = reader.Read<float32_t>();
+    link.MoveZ = reader.Read<float32_t>();
+    link.ScaleX = reader.Read<float32_t>();
+    link.ScaleY = reader.Read<float32_t>();
+    link.ScaleZ = reader.Read<float32_t>();
+    link.SpeedAjust = reader.Read<float32_t>();
+    link.DisabledLayer = reader.ReadSizedObjectVector<int32_t>();
+    link.DisabledMesh = reader.ReadStringVector();
+
+    uint32_t texture_count = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < texture_count; i++) {
+        string texture_name = reader.ReadString();
+        string mesh_name = reader.ReadString();
+        int32_t texture_index = reader.Read<int32_t>();
+        link.TextureInfo.emplace_back(std::move(texture_name), std::move(mesh_name), texture_index);
+    }
+
+    uint32_t effect_count = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < effect_count; i++) {
+        string effect_name = reader.ReadString();
+        string mesh_name = reader.ReadString();
+        link.EffectInfo.emplace_back(std::move(effect_name), std::move(mesh_name));
+    }
+
+    uint32_t cut_count = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < cut_count; i++) {
+        link.CutInfo.emplace_back(ReadBakedModelDescriptionCutForBounds(reader));
+    }
+
+    uint8_t has_geometry_value = reader.Read<uint8_t>();
+    FO_VERIFY_AND_THROW(has_geometry_value <= uint8_t {1}, "Baked model link geometry flag is not 0 or 1", link.ChildName, has_geometry_value);
+    bool has_geometry = has_geometry_value != 0;
+    bool expected_geometry = !link.ChildName.empty() && !link.IsParticles;
+    FO_VERIFY_AND_THROW(has_geometry == expected_geometry, "Baked model link geometry flag does not match its child type", link.ChildName, link.IsParticles, has_geometry);
+
+    if (has_geometry) {
+        link.Bounds = ModelBounds3D {
+            .Min = reader.Read<vec3>(),
+            .Max = reader.Read<vec3>(),
+        };
+    }
+
+    return link;
+}
+
+static auto ReadBakedModelDescriptionForBounds(const FileSystem& baked_files, string_view fname) -> BakerModelDescription
+{
+    FO_STACK_TRACE_ENTRY();
+
+    File file = baked_files.ReadFile(fname);
+
+    if (!file) {
+        throw ModelInfoBakerException("Baked model description for bounds is not readable", fname);
+    }
+
+    try {
+        DataReader reader {file.GetDataSpan()};
+        const_span<uint8_t> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
+
+        if (!std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin())) {
+            throw ModelInfoBakerException("Invalid baked model description magic while calculating bounds", fname);
+        }
+
+        uint16_t schema = reader.Read<uint16_t>();
+        uint16_t flags = reader.Read<uint16_t>();
+
+        if (schema != MODEL_DESCRIPTION_SCHEMA_VERSION || (flags & ~MODEL_DESCRIPTION_SUPPORTED_FLAGS) != 0) {
+            throw ModelInfoBakerException("Unsupported baked model description while calculating bounds", fname, schema, flags);
+        }
+
+        BakerModelDescription description;
+        description.Model = reader.ReadString();
+        description.DisableAnimationInterpolation = reader.Read<uint8_t>() != 0;
+        description.DisableBackwardAnim = reader.Read<uint8_t>() != 0;
+        description.ShadowDisabled = reader.Read<uint8_t>() != 0;
+        (void)reader.Read<int32_t>();
+        (void)reader.Read<int32_t>();
+        (void)reader.Read<int32_t>();
+        (void)reader.Read<int32_t>();
+        description.RotationBone = reader.ReadString();
+        description.DefaultLink = ReadBakedModelDescriptionLinkForBounds(reader);
+
+        uint32_t link_count = reader.Read<uint32_t>();
+
+        for (uint32_t i = 0; i < link_count; i++) {
+            description.Links.emplace_back(ReadBakedModelDescriptionLinkForBounds(reader));
+        }
+
+        uint32_t animation_count = reader.Read<uint32_t>();
+
+        for (uint32_t i = 0; i < animation_count; i++) {
+            description.AnimationEntries.emplace_back(BakerModelDescriptionAnimationEntry {
+                .StateAnim = reader.Read<int32_t>(),
+                .ActionAnim = reader.Read<int32_t>(),
+                .FileName = reader.ReadString(),
+                .Name = reader.ReadString(),
+            });
+        }
+
+        return description;
+    }
+    catch (const DataReadingException& ex) {
+        throw ModelInfoBakerException("Invalid baked model description while calculating bounds", fname, ex.what());
+    }
+}
+
+static auto MakeModelDescriptionLinkTransform(const BakerModelDescriptionLink& child_default_link, const BakerModelDescriptionLink& outer_link) -> mat44
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mat44 scale {1.0f};
+    mat44 rotation {1.0f};
+    mat44 translation {1.0f};
+
+    auto apply_link = [&scale, &rotation, &translation](const BakerModelDescriptionLink& link) {
+        if (link.ScaleX != 0.0f) {
+            scale *= glm::scale(mat44 {1.0f}, vec3 {link.ScaleX, 1.0f, 1.0f});
+        }
+        if (link.ScaleY != 0.0f) {
+            scale *= glm::scale(mat44 {1.0f}, vec3 {1.0f, link.ScaleY, 1.0f});
+        }
+        if (link.ScaleZ != 0.0f) {
+            scale *= glm::scale(mat44 {1.0f}, vec3 {1.0f, 1.0f, link.ScaleZ});
+        }
+        if (link.RotX != 0.0f) {
+            rotation *= glm::rotate(mat44 {1.0f}, -link.RotX * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+        }
+        if (link.RotY != 0.0f) {
+            rotation *= glm::rotate(mat44 {1.0f}, link.RotY * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        }
+        if (link.RotZ != 0.0f) {
+            rotation *= glm::rotate(mat44 {1.0f}, link.RotZ * DEG_TO_RAD_FLOAT, vec3 {0.0f, 0.0f, 1.0f});
+        }
+        if (link.MoveX != 0.0f) {
+            translation *= glm::translate(mat44 {1.0f}, vec3 {link.MoveX, 0.0f, 0.0f});
+        }
+        if (link.MoveY != 0.0f) {
+            translation *= glm::translate(mat44 {1.0f}, vec3 {0.0f, link.MoveY, 0.0f});
+        }
+        if (link.MoveZ != 0.0f) {
+            translation *= glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, -link.MoveZ});
+        }
+    };
+
+    // Runtime applies the child description's default link first and then the outer attachment link, while keeping
+    // translation, rotation, and scale in their separate accumulators. Reproduce that component order exactly
+    apply_link(child_default_link);
+    apply_link(outer_link);
+
+    return translation * rotation * scale;
+}
+
+static auto CalculateModelDescriptionLinkBounds(const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const ModelMeshData& parent_model_mesh, const BakerModelDescription& parent_description, const BakerModelDescriptionLink& link, string_view fname) -> optional<ModelBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (link.ChildName.empty() || link.IsParticles) {
+        return std::nullopt;
+    }
+
+    BakerModelDescription child_description;
+    bool child_is_description = strex(link.ChildName).get_file_extension() == "fo3d";
+
+    if (child_is_description) {
+        if (source_files.FindFileByPath(link.ChildName)) {
+            ModelDescriptionParser parser(&source_files, &name_resolver);
+            auto [parsed_description, parsed_write_time] = parser.Parse(link.ChildName);
+            ignore_unused(parsed_write_time);
+            child_description = std::move(parsed_description);
+        }
+        else {
+            child_description = ReadBakedModelDescriptionForBounds(baked_files, link.ChildName);
+        }
+    }
+    else {
+        child_description.Model = link.ChildName;
+    }
+
+    ModelMeshData child_model_mesh = ReadBakedModelMeshForBounds(baked_files, child_description, link.ChildName);
+    vector<string> disabled_meshes = child_description.DefaultLink.DisabledMesh;
+    disabled_meshes.insert(disabled_meshes.end(), link.DisabledMesh.begin(), link.DisabledMesh.end());
+    child_description.DefaultLink.DisabledMesh = disabled_meshes;
+    mat44 link_transform = MakeModelDescriptionLinkTransform(child_description.DefaultLink, link);
+    optional<ModelBounds3D> result;
+
+    auto include_transformed_bounds = [&result, &link_transform](const ModelBounds3D& bounds) -> bool { return IncludeTransformedModelBounds(result, bounds, link_transform); };
+
+    // Both link kinds measure the same deduplicated parent animations and differ only in how a sampled clip
+    // becomes bounds, so the enumeration is shared and the caller supplies that step
+    auto sample_parent_animations = [&parent_description, &model_sources, fname](const auto& include_animation_bounds) -> bool {
+        set<pair<int32_t, int32_t>> selected_pairs;
+        unordered_set<string> sampled_animations;
+
+        for (const BakerModelDescriptionAnimationEntry& anim_entry : parent_description.AnimationEntries) {
+            if (!selected_pairs.emplace(anim_entry.StateAnim, anim_entry.ActionAnim).second) {
+                continue;
+            }
+
+            string anim_file = anim_entry.FileName == "ModelFile" ? parent_description.Model : strex(fname).extract_dir().combine_path(anim_entry.FileName).str();
+            string anim_name = anim_entry.Name;
+            bool reversed = !anim_name.empty() && anim_name.front() == '~';
+
+            if (reversed) {
+                anim_name.erase(anim_name.begin());
+            }
+
+            string animation_key = strex("{}\n{}\n{}", anim_file, anim_name, reversed ? 1 : 0);
+
+            if (!sampled_animations.emplace(animation_key).second) {
+                continue;
+            }
+
+            shared_ptr<const ModelSourceAsset> anim_source = GetModelSourceAsset(model_sources, anim_file, fname);
+            const ModelAnimationSource& animation = GetModelSourceAnimation(*anim_source, anim_name);
+
+            if (!include_animation_bounds(animation, reversed)) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    try {
+        if (link.LinkBone.empty()) {
+            optional<ModelBounds3D> static_bounds = CalculateModelStaticBounds(child_model_mesh, disabled_meshes);
+
+            if (static_bounds && !include_transformed_bounds(*static_bounds)) {
+                return std::nullopt;
+            }
+
+            if (!sample_parent_animations([&](const ModelAnimationSource& animation, bool reversed) -> bool {
+                    optional<ModelBounds3D> animation_bounds = CalculateModelAnimationBounds(child_model_mesh, animation, reversed, disabled_meshes);
+                    return animation_bounds && include_transformed_bounds(*animation_bounds);
+                })) {
+                return std::nullopt;
+            }
+        }
+        else {
+            optional<ModelBounds3D> child_bounds;
+
+            if (child_is_description) {
+                child_bounds = CalculateFo3dAggregateModelBounds(baked_files, model_sources, child_description, link.ChildName);
+            }
+            else {
+                child_bounds = CalculateModelStaticBounds(child_model_mesh, disabled_meshes);
+            }
+
+            if (!child_bounds) {
+                return std::nullopt;
+            }
+
+            optional<ModelBounds3D> static_bounds = CalculateRigidModelAttachmentStaticBounds(parent_model_mesh, link.LinkBone, *child_bounds, link_transform);
+
+            if (!static_bounds || !IncludeModelBounds(result, *static_bounds)) {
+                return std::nullopt;
+            }
+
+            if (!sample_parent_animations([&](const ModelAnimationSource& animation, bool reversed) -> bool {
+                    optional<ModelBounds3D> animation_bounds = CalculateRigidModelAttachmentAnimationBounds(parent_model_mesh, animation, reversed, link.LinkBone, *child_bounds, link_transform);
+                    return animation_bounds && IncludeModelBounds(result, *animation_bounds);
+                })) {
+                return std::nullopt;
+            }
+        }
+    }
+    catch (const ModelBoundsException& ex) {
+        throw ModelInfoBakerException("Failed to calculate model link bounds", link.ChildName, fname, ex.what());
+    }
+
+    if (!result) {
+        throw ModelInfoBakerException("Model link bounds could not be calculated", link.ChildName, fname);
+    }
+
+    return CalculateGuardedModelBounds(*result);
+}
+
 static auto CalculateFo3dAggregateModelBounds(const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ModelBounds3D
 {
     FO_STACK_TRACE_ENTRY();
@@ -1996,6 +2354,14 @@ void BakerModelDescriptionLink::Save(DataWriter& writer) const
     writer.Write<uint32_t>(numeric_cast<uint32_t>(CutInfo.size()));
     for (const BakerModelDescriptionCut& cut : CutInfo) {
         cut.Save(writer);
+    }
+    bool has_geometry = !ChildName.empty() && !IsParticles;
+    FO_VERIFY_AND_THROW(Bounds.has_value() == has_geometry, "Model description link geometry and bounds do not match", ChildName, IsParticles, Bounds.has_value());
+    writer.Write<uint8_t>(has_geometry ? uint8_t {1} : uint8_t {0});
+
+    if (has_geometry) {
+        writer.Write<vec3>(Bounds->Min);
+        writer.Write<vec3>(Bounds->Max);
     }
 }
 

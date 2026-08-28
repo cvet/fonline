@@ -54,8 +54,8 @@
       "invocation_owner": "BuildTools/cmake/stages/Codegen.cmake",
       "description": "Generate engine configuration, metadata registration, script bindings, and embedded-resource source files.",
       "parser_description": "FOnline code generator",
-      "usage": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-verbose]",
-      "help_output": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED -internalcfg INTERNALCFG [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-verbose]\n\nFOnline code generator\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      main config file\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      dev game name\n  -nicename NICENAME    nice game name\n  -embedded EMBEDDED    embedded buffer capacity\n  -internalcfg INTERNALCFG\n                        internal config buffer capacity\n  -enginedefine ENGINEDEFINE\n                        engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h\n  -meta META            path to script api metadata (///@ tags)\n  -commonheader COMMONHEADER\n                        path to common header file\n  -genoutput GENOUTPUT  generated code output dir\n  -verbose              verbose mode\n",
+      "usage": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT [-verbose]",
+      "help_output": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT [-verbose]\n\nFOnline code generator\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      main config file\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      dev game name\n  -nicename NICENAME    nice game name\n  -embedded EMBEDDED    embedded buffer capacity\n  -enginedefine ENGINEDEFINE\n                        engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h\n  -meta META            path to script api metadata (///@ tags)\n  -commonheader COMMONHEADER\n                        path to common header file\n  -genoutput GENOUTPUT  generated code output dir\n  -verbose              verbose mode\n",
       "global_arguments": [
         {
           "id": "helper-cli.codegen.argument.maincfg",
@@ -136,22 +136,6 @@
           "default": null,
           "type": null,
           "description": "embedded buffer capacity"
-        },
-        {
-          "id": "helper-cli.codegen.argument.internalcfg",
-          "destination": "internalcfg",
-          "kind": "option",
-          "action": "store",
-          "option_strings": [
-            "-internalcfg"
-          ],
-          "metavar": null,
-          "required": true,
-          "nargs": 1,
-          "choices": null,
-          "default": null,
-          "type": null,
-          "description": "internal config buffer capacity"
         },
         {
           "id": "helper-cli.codegen.argument.enginedefine",
@@ -1575,8 +1559,8 @@
   "summary": {
     "helper_count": 9,
     "command_count": 16,
-    "global_argument_count": 26,
+    "global_argument_count": 25,
     "command_argument_count": 48
   },
-  "contract_digest": "7cf80c42248ebcdee6ab1f35240efe6a4e0a4bafcdc76a62b72d9a08985cd22c"
+  "contract_digest": "33d714862bafae33a078ff305ea13ea6b5dfca2a9a9cc223d04ce5c2d561a764"
 }

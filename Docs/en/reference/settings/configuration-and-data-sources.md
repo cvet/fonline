@@ -112,7 +112,24 @@ an omitted setting receives its declared Engine default rather than a
 zero-initialized value. `Source/Tests/Test_Settings.cpp` protects both the
 default baseline and the fact that a project override still wins.
 
-`ConfigBaker` (`Source/Tools/ConfigBaker.cpp`) bakes the config by re-deriving each sub-config from the root and saving every registered setting; a setting that `GlobalSettings::Save()` does not emit is reported as `Uninitialized server/client setting <name>` and fails the bake. `Save()` only emits settings present in `_appliedSettings`, which is populated from the keys of every applied config plus a fixed **auto-settings** allow-list seeded in the baking-mode `GlobalSettings` constructor. Author-tunable settings reach `_appliedSettings` by being enumerated in the embedding project's config; settings that are resolved at runtime and never authored in any config (platform/build flags, monitor size, command-line/git/compatibility values, and `Client.UserWritablePath`) must be added to that auto-settings allow-list, or baking fails. When adding such a runtime-only engine setting to `Settings.inc`, register it in the auto-settings list in the same change. Settings consumed only by `BuildTools/package.py` (the `AndroidSettings` and `PackagingSettings` groups in `Settings.inc`, e.g. `Android.Keystore`, `Packaging.AppIcon`, `Packaging.MsiUpgradeCode`, `Packaging.CodeSigningHook`) are registered as ordinary settings like everything else — the config baker validates them uniformly and has no packaging-specific allow-list, so an unregistered key in a config is always reported as `Unknown setting`. Note that setting lookup accepts both the dotted (`Group.Name`) and bare (`Name`) spellings, so the bare part of every setting name must stay globally unique across all groups (e.g. `Android.Icon` already claims `Icon`, which is why the packaging icon lives under its own `Packaging.AppIcon` name).
+`ConfigBaker` (`Source/Tools/ConfigBaker.cpp`) re-derives every sub-config from
+the root. Metadata stores each game setting's configured root value and is the
+runtime baseline: `BaseEngine` applies it only when config, sub-config, local
+config, or command line did not set that name. The side-specific internal config
+therefore carries only game-setting sub-config deltas; false and empty deltas are
+written too, because they must override a non-empty metadata baseline. Built-in
+server/client settings retain the existing non-empty compact-config rules.
+`MetadataBaker` includes applied config timestamps in freshness and rejects a
+game-setting declaration that has no configured value.
+
+`GlobalSettings::Save()` still emits only settings present in `_appliedSettings`,
+which is populated from applied config keys plus the baking-mode
+**auto-settings** allow-list. Runtime-only settings (platform/build flags,
+monitor size, command-line/git/compatibility values, and
+`Client.UserWritablePath`) must remain in that allow-list. Settings consumed only
+by `BuildTools/package.py` are validated as ordinary settings. Setting lookup
+accepts dotted (`Group.Name`) and bare (`Name`) spellings, so every bare name must
+stay globally unique.
 
 Custom settings have two read shapes. Use `FindCustomSetting()` when missing keys are normal and should stay in the nullable pointer vocabulary. Use `GetCustomSetting()` only for compatibility with the historical non-null sentinel behavior: it returns the stored value when present and `_emptySetting` when absent.
 

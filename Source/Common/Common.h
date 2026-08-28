@@ -45,10 +45,10 @@ FO_BEGIN_NAMESPACE
 // The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-
 // pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,
 // removal, or stable-ID change instead of silently extending this experimental promise.
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2495 InventorySha256=cb63d1b009a81b8a971431851d0a93b7b89f4f0cd40b1763c339cea7f506c05e
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2496 InventorySha256=691f739ae0c92af5ed79c2a49b0e2d7c916b0172d4439a59fec43fa7b9e30e86
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 38
+///@ MigrationRule Version 0 0 40
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;

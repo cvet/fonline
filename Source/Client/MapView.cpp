@@ -688,6 +688,7 @@ void MapView::DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, boo
 
     mpos draw_hex = _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY());
     auto mspr = !extra_draw ? item->AddSprite(target_sprites, draw_order, draw_hex, &field->Offset) : item->AddExtraSprite(target_sprites, draw_order, draw_hex, &field->Offset);
+    mspr->SetItemOwner(item, extra_draw);
 
     AddSpriteToChain(field, mspr);
 
@@ -3718,39 +3719,21 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
         }
     };
 
-    for (const auto& vf : _viewField) {
-        if (!_mapSize.is_valid_pos(vf.RawHex)) {
-            continue;
-        }
+    auto process_sprite_list = [&](const MapSpriteList& sprite_list) {
+        for (const auto& mspr_owner : sprite_list.GetActiveSprites()) {
+            ptr<const MapSprite> mspr = mspr_owner.as_ptr();
+            nptr<ItemHexView> item = mspr->GetItemOwner();
 
-        mpos hex = _mapSize.from_raw_pos(vf.RawHex);
-        const auto& field = _hexField->GetCellForReading(hex);
-
-        if (field.Items.empty()) {
-            continue;
-        }
-
-        auto field2 = _hexField->GetCellForWriting(hex);
-
-        for (auto& item : field2->OriginItems) {
-            if (item->IsMapSpriteVisible()) {
-                process_sprite(item, item->GetMapSprite());
+            if (!item || (mspr->IsHidden() && !mspr->IsItemHitTestWhenHidden())) {
+                continue;
             }
-        }
 
-        for (auto&& [item, drawable] : field2->MultihexItems) {
-            if (drawable && item->HasExtraMapSprites()) {
-                auto extra_map_sprites = item->GetExtraMapSprites();
-                FO_VERIFY_AND_THROW(extra_map_sprites, "Extra map sprites collection is null");
-
-                for (const auto& extra_mspr_entry : *extra_map_sprites) {
-                    if (extra_mspr_entry.second && extra_mspr_entry.first && extra_mspr_entry.first->GetHex() == hex) {
-                        process_sprite(item, extra_mspr_entry.first);
-                    }
-                }
-            }
+            process_sprite(item.as_ptr(), mspr);
         }
-    }
+    };
+
+    process_sprite_list(_mapSprites);
+    process_sprite_list(_indoorMaskSprites);
 
     if (best.first) {
         item_egg = false;
