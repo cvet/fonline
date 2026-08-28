@@ -216,7 +216,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     uint64_t animation_rig_data_size = reader.Read<uint64_t>();
     FO_VERIFY_AND_THROW(animation_rig_data_size != 0 && animation_rig_data_size <= std::numeric_limits<size_t>::max(), "Baked model description contains invalid animation rig-data size", name, animation_rig_data_size);
-    VerifyModelBakedCountFitsData(reader, animation_rig_data_size, sizeof(uint8_t), "animation rig data", name);
+    VerifyModelBakedCountFitsData(reader, static_cast<size_t>(animation_rig_data_size), sizeof(uint8_t), "animation rig data", name);
     unique_ptr<ModelAnimationRuntimeRig> animation_runtime_rig = LoadModelAnimationRuntimeRig(reader.ReadBytes(static_cast<size_t>(animation_rig_data_size)), name, model, disable_animation_interpolation);
 
     reader.VerifyEnd();
