@@ -39,6 +39,7 @@
 
 #include "ModelAnimation.h"
 #include "ModelAnimationData.h"
+#include "ModelBoundsCalculator.h"
 #include "ModelHierarchy.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
@@ -2388,6 +2389,171 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
     }
 #endif
 }
+
+#if FO_ENABLE_3D
+
+// Two bones sharing one blended vertex: the exact envelope follows the blended path, while the per-bone
+// envelope plan measures each bone's box separately and must stay a superset of it
+static auto MakeBoundsPlanTestModel() -> ModelMeshData
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ModelMeshData data;
+    data.RootBone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+    data.RootBone->Name = "Root";
+    data.RootBone->TransformationMatrix = mat44 {1.0f};
+    data.RootBone->GlobalTransformationMatrix = mat44 {1.0f};
+
+    ModelMeshGeometryData& mesh = data.RootBone->AttachedMesh.emplace();
+    mesh.SkinBoneNames = {"Root", "Arm"};
+    mesh.SkinBoneOffsets = {mat44 {1.0f}, mat44 {1.0f}};
+
+    ModelMeshVertexData& blended = mesh.Vertices.emplace_back();
+    blended.Position = vec3 {2.0f, 0.0f, 0.0f};
+    blended.BlendWeights[0] = 0.5f;
+    blended.BlendWeights[1] = 0.5f;
+    blended.BlendIndices[0] = 0.0f;
+    blended.BlendIndices[1] = 1.0f;
+
+    ModelMeshVertexData& anchor = mesh.Vertices.emplace_back();
+    anchor.Position = vec3 {0.0f, 0.0f, 0.0f};
+    anchor.BlendWeights[0] = 1.0f;
+    anchor.BlendIndices[0] = 0.0f;
+
+    mesh.Indices = {0, 1, 0};
+
+    auto arm = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+    arm->Name = "Arm";
+    arm->TransformationMatrix = mat44 {1.0f};
+    arm->GlobalTransformationMatrix = mat44 {1.0f};
+    data.RootBone->Children.emplace_back(std::move(arm));
+
+    return data;
+}
+
+// Quarter turn about Z across the clip, so the posed geometry sweeps an arc rather than sitting still
+static auto MakeBoundsPlanTestAnimation() -> ModelAnimationSource
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ModelAnimationSource animation;
+    animation.FileName = "Critters/Body.fbx";
+    animation.Name = "Turn";
+    animation.Duration = 1.0f;
+
+    ModelAnimationJointSource& arm = animation.Joints.emplace_back();
+    arm.OutputName = "Arm";
+    arm.Hierarchy = {"Root", "Arm"};
+    arm.Translation = ModelAnimationVec3Track {{0.0f, 1.0f}, {vec3 {0.0f}, vec3 {0.0f}}};
+    arm.Rotation = ModelAnimationQuaternionTrack {{0.0f, 1.0f}, {glm::angleAxis(0.0f, vec3 {0.0f, 0.0f, 1.0f}), glm::angleAxis(glm::radians(90.0f), vec3 {0.0f, 0.0f, 1.0f})}};
+    arm.Scale = ModelAnimationVec3Track {{0.0f, 1.0f}, {vec3 {1.0f}, vec3 {1.0f}}};
+    return animation;
+}
+
+static auto ContainsModelBounds(const ModelBounds3D& outer, const ModelBounds3D& inner) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return outer.Min.x <= inner.Min.x && outer.Min.y <= inner.Min.y && outer.Min.z <= inner.Min.z && outer.Max.x >= inner.Max.x && outer.Max.y >= inner.Max.y && outer.Max.z >= inner.Max.z;
+}
+
+TEST_CASE("ModelBoundsMeasurementModes")
+{
+    SECTION("Per-bone envelopes cover the exact posed geometry")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+
+        optional<ModelBounds3D> precise = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerVertex}.CalculateAnimationBounds(animation, false);
+        optional<ModelBounds3D> fast = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerBoneEnvelope}.CalculateAnimationBounds(animation, false);
+
+        REQUIRE(precise);
+        REQUIRE(fast);
+        CHECK(ContainsModelBounds(*fast, *precise));
+
+        // The blended vertex reaches only the midpoint of the two bones while the rotated bone's envelope
+        // reaches its own corner, so a collapsed difference means the boxes are no longer measured at all
+        CHECK(fast->Max.y > precise->Max.y + 0.5f);
+    }
+
+    SECTION("Per-bone envelopes cover the exact geometry of a reversed clip")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+
+        optional<ModelBounds3D> precise = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerVertex}.CalculateAnimationBounds(animation, true);
+        optional<ModelBounds3D> fast = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerBoneEnvelope}.CalculateAnimationBounds(animation, true);
+
+        REQUIRE(precise);
+        REQUIRE(fast);
+        CHECK(ContainsModelBounds(*fast, *precise));
+    }
+
+    SECTION("Per-vertex measurement follows the swept arc of a blended vertex")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+
+        optional<ModelBounds3D> precise = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerVertex}.CalculateAnimationBounds(animation, false);
+
+        REQUIRE(precise);
+
+        // Blend of the resting vertex with its rotated self: x runs from 2 down to 1, y up to 1
+        CHECK(precise->Max.x == Catch::Approx(2.0f).margin(0.05));
+        CHECK(precise->Max.y == Catch::Approx(1.0f).margin(0.05));
+        CHECK(precise->Min.x == Catch::Approx(0.0f).margin(0.05));
+        CHECK(precise->Min.z == Catch::Approx(0.0f).margin(0.05));
+    }
+
+    SECTION("A sampled bone track folds an attachment like the bone transform it carries")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+        ModelBoundsSampler sampler {data, {}, ModelBoundsMeasurement::PerVertex};
+
+        optional<vector<mat44>> track = sampler.SampleBoneTransforms(animation, false, "Arm");
+
+        REQUIRE(track);
+        REQUIRE(!track->empty());
+
+        constexpr ModelBounds3D attachment {.Min = vec3 {1.0f, 0.0f, 0.0f}, .Max = vec3 {1.0f, 0.0f, 0.0f}};
+        optional<ModelBounds3D> folded = CalculateRigidAttachmentBounds(*track, attachment, mat44 {1.0f});
+
+        REQUIRE(folded);
+
+        // The same track answers every attachment on the bone, so a second box must land on the same sweep
+        // scaled by its own offset rather than on a re-walked hierarchy
+        constexpr ModelBounds3D far_attachment {.Min = vec3 {2.0f, 0.0f, 0.0f}, .Max = vec3 {2.0f, 0.0f, 0.0f}};
+        optional<ModelBounds3D> far_folded = CalculateRigidAttachmentBounds(*track, far_attachment, mat44 {1.0f});
+
+        REQUIRE(far_folded);
+        CHECK(folded->Max.x == Catch::Approx(1.0f).margin(0.01));
+        CHECK(folded->Max.y == Catch::Approx(1.0f).margin(0.01));
+        CHECK(far_folded->Max.x == Catch::Approx(2.0f).margin(0.01));
+        CHECK(far_folded->Max.y == Catch::Approx(2.0f).margin(0.01));
+    }
+
+    SECTION("Missing bones and unmeasurable selections stay absent rather than guessed")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+        ModelBoundsSampler sampler {data, {}, ModelBoundsMeasurement::PerVertex};
+
+        CHECK_FALSE(sampler.SampleBoneTransforms(animation, false, "NoSuchBone"));
+        CHECK_FALSE(sampler.GetBindPoseBoneTransform("NoSuchBone"));
+        REQUIRE(sampler.GetBindPoseBoneTransform("Arm"));
+
+        ModelBoundsSampler disabled {data, vector<string> {"Root"}, ModelBoundsMeasurement::PerVertex};
+        CHECK_FALSE(disabled.IsMeasurable());
+        CHECK_FALSE(disabled.CalculateStaticBounds());
+        CHECK_FALSE(disabled.CalculateAnimationBounds(animation, false));
+
+        // The hierarchy still answers a link bone, which is what a rigid attachment on a hidden mesh needs
+        CHECK(disabled.SampleBoneTransforms(animation, false, "Arm"));
+    }
+}
+
+#endif
 
 FO_END_NAMESPACE
 

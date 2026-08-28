@@ -32,170 +32,88 @@
 //
 
 #include "ModelBoundsCalculator.h"
-#include "Rendering.h"
 
 #if FO_ENABLE_3D
 
 FO_BEGIN_NAMESPACE
 
-struct BoundsMesh
-{
-    size_t OwnerBone {};
-    vector<Vertex3D> Vertices {};
-    vector<vindex_t> Indices {};
-    vector<string> SkinBoneNames {};
-    vector<mat44> SkinBoneOffsets {};
-};
-
-struct BoundsDrawableMesh
-{
-    nptr<const BoundsMesh> Mesh {};
-    vector<size_t> VertexIndices {};
-    vector<size_t> SkinBones {};
-};
-
-struct BoundsBone
-{
-    string Name {};
-    mat44 BindTransform {};
-    optional<size_t> Parent {};
-    optional<BoundsMesh> Mesh {};
-};
-
-struct BoundsAnimationOutput
-{
-    string BoneName {};
-    vector<float32_t> ScaleTimes {};
-    vector<vec3> ScaleValues {};
-    vector<float32_t> RotationTimes {};
-    vector<quaternion> RotationValues {};
-    vector<float32_t> TranslationTimes {};
-    vector<vec3> TranslationValues {};
-};
-
-struct BoundsAnimation
-{
-    string Name {};
-    float32_t Duration {};
-    vector<BoundsAnimationOutput> Outputs {};
-};
-
-struct BoundsModel
-{
-    vector<BoundsBone> Bones {};
-};
-
-static auto BuildBoundsModel(const ModelMeshData& data) -> BoundsModel;
-static void AppendBoundsBone(const ModelMeshBoneData& bone, BoundsModel& model, optional<size_t> parent);
-static auto BuildBoundsMesh(const ModelMeshGeometryData& data, size_t owner_bone) -> BoundsMesh;
-static auto BuildBoundsAnimation(const ModelAnimationSource& animation) -> BoundsAnimation;
-static auto BuildBoneIndex(const BoundsModel& model) -> optional<unordered_map<string, size_t>>;
-static auto BuildAnimationOutputIndex(const BoundsAnimation& animation) -> optional<unordered_map<string, size_t>>;
-static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<string, size_t>& bone_index, const vector<string>& disabled_meshes) -> optional<vector<BoundsDrawableMesh>>;
-static auto BuildBoneAnimationOutputs(const BoundsModel& model, const BoundsAnimation& animation, const unordered_map<string, size_t>& output_index) -> vector<nptr<const BoundsAnimationOutput>>;
-static auto BuildAnimationSampleTimes(const BoundsAnimation& animation, const vector<nptr<const BoundsAnimationOutput>>& outputs, bool reversed) -> optional<vector<float32_t>>;
-static auto ValidateAnimationOutput(const BoundsAnimationOutput& output) -> bool;
+static auto SampleJointTransform(const ModelAnimationJointSource& joint, float32_t time, float32_t duration, bool reversed) -> mat44;
+static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed, const ModelAnimationVec3Track& track) -> vec3;
+static auto SampleRotationTrack(float32_t time, float32_t duration, bool reversed, const ModelAnimationQuaternionTrack& track) -> quaternion;
+static auto FindForwardKeySpan(const vector<float32_t>& times, float32_t time) -> optional<size_t>;
+static auto FindReversedKeySpan(const vector<float32_t>& times, float32_t time) -> optional<size_t>;
+static auto ValidateJointTracks(const ModelAnimationJointSource& joint) -> bool;
 static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t duration, bool reversed, vector<float32_t>& sample_times);
-static auto SampleAnimationOutput(const BoundsAnimationOutput& output, float32_t time, float32_t duration, bool reversed) -> mat44;
-static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed, const vector<float32_t>& times, const vector<vec3>& values) -> vec3;
-static auto SampleRotationTrack(float32_t time, float32_t duration, bool reversed, const vector<float32_t>& times, const vector<quaternion>& values) -> quaternion;
-static auto BuildCombinedTransforms(const BoundsModel& model, const vector<nptr<const BoundsAnimationOutput>>& outputs, float32_t time, float32_t duration, bool reversed, vector<mat44>& combined_transforms) -> bool;
-static auto IncludeTransformedGeometry(const vector<BoundsDrawableMesh>& drawable_meshes, const vector<mat44>& combined_transforms, optional<ModelBounds3D>& bounds) -> bool;
 static auto IsFinite(const vec3& value) -> bool;
 static auto IsFinite(const quaternion& value) -> bool;
 static auto IsFinite(const mat44& value) -> bool;
 
-auto CalculateModelStaticBounds(const ModelMeshData& model_data, const vector<string>& disabled_meshes) -> optional<ModelBounds3D>
+ModelBoundsSampler::ModelBoundsSampler(const ModelMeshData& model_data, const vector<string>& disabled_meshes, ModelBoundsMeasurement measurement) :
+    _measurement {measurement}
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        BoundsModel model = BuildBoundsModel(model_data);
-        optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(model);
+        FO_VERIFY_AND_THROW(model_data.RootBone, "Baked model has no root bone");
+        AppendBone(*model_data.RootBone, std::nullopt);
 
-        if (!bone_index) {
-            return std::nullopt;
-        }
-
-        optional<vector<BoundsDrawableMesh>> drawable_meshes = BuildDrawableMeshes(model, *bone_index, disabled_meshes);
-
-        if (!drawable_meshes) {
-            return std::nullopt;
-        }
-
-        vector<mat44> combined_transforms(model.Bones.size());
-        optional<ModelBounds3D> result;
-
-        for (size_t i = 0; i < model.Bones.size(); i++) {
-            if (model.Bones[i].Parent) {
-                size_t parent = *model.Bones[i].Parent;
-                FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
-                combined_transforms[i] = combined_transforms[parent] * model.Bones[i].BindTransform;
-            }
-            else {
-                combined_transforms[i] = model.Bones[i].BindTransform;
-            }
-
-            if (!IsFinite(combined_transforms[i])) {
-                return std::nullopt;
-            }
-        }
-
-        if (!IncludeTransformedGeometry(*drawable_meshes, combined_transforms, result)) {
-            return std::nullopt;
-        }
-
-        if (!result) {
-            return std::nullopt;
-        }
-
-        return CalculateGuardedModelBounds(*result);
+        _hierarchyUsable = BuildBoneIndex() && BuildBindPoseTransforms();
+        _measurable = _hierarchyUsable && BuildDrawableMeshes(disabled_meshes);
     }
     catch (const ModelBoundsException&) {
         throw;
     }
     catch (const std::exception& ex) {
-        throw ModelBoundsException(strex("Invalid baked model data while calculating static bounds: {}", ex.what()));
+        throw ModelBoundsException(strex("Invalid baked model data while preparing bounds: {}", ex.what()));
     }
 }
 
-auto CalculateModelAnimationBounds(const ModelMeshData& model_data, const ModelAnimationSource& animation_source, bool reversed, const vector<string>& disabled_meshes) -> optional<ModelBounds3D>
+auto ModelBoundsSampler::CalculateStaticBounds() const -> optional<ModelBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_measurable) {
+        return std::nullopt;
+    }
+
+    optional<ModelBounds3D> result;
+
+    if (!IncludePosedGeometry(_bindPoseTransforms, result) || !result) {
+        return std::nullopt;
+    }
+
+    return CalculateGuardedModelBounds(*result);
+}
+
+auto ModelBoundsSampler::CalculateAnimationBounds(const ModelAnimationSource& animation, bool reversed) const -> optional<ModelBounds3D>
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        BoundsModel model = BuildBoundsModel(model_data);
-        BoundsAnimation animation = BuildBoundsAnimation(animation_source);
-
-        optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(model);
-        optional<unordered_map<string, size_t>> output_index = BuildAnimationOutputIndex(animation);
-
-        if (!bone_index || !output_index) {
+        if (!_measurable) {
             return std::nullopt;
         }
 
-        optional<vector<BoundsDrawableMesh>> drawable_meshes = BuildDrawableMeshes(model, *bone_index, disabled_meshes);
+        optional<vector<nptr<const ModelAnimationJointSource>>> outputs = BuildBoneOutputs(animation);
 
-        if (!drawable_meshes) {
+        if (!outputs) {
             return std::nullopt;
         }
 
-        vector<nptr<const BoundsAnimationOutput>> outputs = BuildBoneAnimationOutputs(model, animation, *output_index);
-        optional<vector<float32_t>> sample_times = BuildAnimationSampleTimes(animation, outputs, reversed);
+        optional<vector<float32_t>> sample_times = BuildSampleTimes(animation, *outputs, reversed);
 
         if (!sample_times) {
             return std::nullopt;
         }
 
-        vector<mat44> combined_transforms(model.Bones.size());
+        vector<mat44> combined_transforms(_bones.size());
         optional<ModelBounds3D> result;
 
         for (float32_t sample_time : *sample_times) {
-            if (!BuildCombinedTransforms(model, outputs, sample_time, animation.Duration, reversed, combined_transforms)) {
+            if (!BuildCombinedTransforms(*outputs, sample_time, animation.Duration, reversed, combined_transforms)) {
                 return std::nullopt;
             }
-
-            if (!IncludeTransformedGeometry(*drawable_meshes, combined_transforms, result)) {
+            if (!IncludePosedGeometry(combined_transforms, result)) {
                 return std::nullopt;
             }
         }
@@ -214,102 +132,60 @@ auto CalculateModelAnimationBounds(const ModelMeshData& model_data, const ModelA
     }
 }
 
-auto CalculateRigidModelAttachmentStaticBounds(const ModelMeshData& parent_model_data, string_view link_bone, const ModelBounds3D& attachment_bounds, const mat44& attachment_transform) -> optional<ModelBounds3D>
+auto ModelBoundsSampler::GetBindPoseBoneTransform(string_view bone) const -> optional<mat44>
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        if (!IsValidModelBounds(attachment_bounds) || !IsFinite(attachment_transform)) {
-            return std::nullopt;
-        }
-
-        BoundsModel parent_model = BuildBoundsModel(parent_model_data);
-        optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(parent_model);
-
-        if (!bone_index) {
-            return std::nullopt;
-        }
-
-        auto link_bone_it = bone_index->find(string(link_bone));
-
-        if (link_bone_it == bone_index->end()) {
-            return std::nullopt;
-        }
-
-        vector<mat44> combined_transforms(parent_model.Bones.size());
-
-        for (size_t i = 0; i < parent_model.Bones.size(); i++) {
-            if (parent_model.Bones[i].Parent) {
-                size_t parent = *parent_model.Bones[i].Parent;
-                FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
-                combined_transforms[i] = combined_transforms[parent] * parent_model.Bones[i].BindTransform;
-            }
-            else {
-                combined_transforms[i] = parent_model.Bones[i].BindTransform;
-            }
-
-            if (!IsFinite(combined_transforms[i])) {
-                return std::nullopt;
-            }
-        }
-
-        optional<ModelBounds3D> result;
-
-        if (!IncludeTransformedModelBounds(result, attachment_bounds, combined_transforms[link_bone_it->second] * attachment_transform)) {
-            return std::nullopt;
-        }
-
-        return result;
+    if (!_hierarchyUsable) {
+        return std::nullopt;
     }
-    catch (const ModelBoundsException&) {
-        throw;
+
+    auto it = _boneIndex.find(string(bone));
+
+    if (it == _boneIndex.end()) {
+        return std::nullopt;
     }
-    catch (const std::exception& ex) {
-        throw ModelBoundsException(strex("Invalid baked model data while calculating a rigid static attachment bound: {}", ex.what()));
-    }
+
+    return _bindPoseTransforms[it->second];
 }
 
-auto CalculateRigidModelAttachmentAnimationBounds(const ModelMeshData& parent_model_data, const ModelAnimationSource& animation_source, bool reversed, string_view link_bone, const ModelBounds3D& attachment_bounds, const mat44& attachment_transform) -> optional<ModelBounds3D>
+auto ModelBoundsSampler::SampleBoneTransforms(const ModelAnimationSource& animation, bool reversed, string_view bone) const -> optional<vector<mat44>>
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        if (!IsValidModelBounds(attachment_bounds) || !IsFinite(attachment_transform)) {
+        if (!_hierarchyUsable) {
             return std::nullopt;
         }
 
-        BoundsModel parent_model = BuildBoundsModel(parent_model_data);
-        BoundsAnimation animation = BuildBoundsAnimation(animation_source);
-        optional<unordered_map<string, size_t>> bone_index = BuildBoneIndex(parent_model);
-        optional<unordered_map<string, size_t>> output_index = BuildAnimationOutputIndex(animation);
+        auto bone_it = _boneIndex.find(string(bone));
 
-        if (!bone_index || !output_index) {
+        if (bone_it == _boneIndex.end()) {
             return std::nullopt;
         }
 
-        auto link_bone_it = bone_index->find(string(link_bone));
+        optional<vector<nptr<const ModelAnimationJointSource>>> outputs = BuildBoneOutputs(animation);
 
-        if (link_bone_it == bone_index->end()) {
+        if (!outputs) {
             return std::nullopt;
         }
 
-        vector<nptr<const BoundsAnimationOutput>> outputs = BuildBoneAnimationOutputs(parent_model, animation, *output_index);
-        optional<vector<float32_t>> sample_times = BuildAnimationSampleTimes(animation, outputs, reversed);
+        optional<vector<float32_t>> sample_times = BuildSampleTimes(animation, *outputs, reversed);
 
         if (!sample_times) {
             return std::nullopt;
         }
 
-        vector<mat44> combined_transforms(parent_model.Bones.size());
-        optional<ModelBounds3D> result;
+        vector<mat44> combined_transforms(_bones.size());
+        vector<mat44> result;
+        result.reserve(sample_times->size());
 
         for (float32_t sample_time : *sample_times) {
-            if (!BuildCombinedTransforms(parent_model, outputs, sample_time, animation.Duration, reversed, combined_transforms)) {
+            if (!BuildCombinedTransforms(*outputs, sample_time, animation.Duration, reversed, combined_transforms)) {
                 return std::nullopt;
             }
-            if (!IncludeTransformedModelBounds(result, attachment_bounds, combined_transforms[link_bone_it->second] * attachment_transform)) {
-                return std::nullopt;
-            }
+
+            result.emplace_back(combined_transforms[bone_it->second]);
         }
 
         return result;
@@ -318,161 +194,144 @@ auto CalculateRigidModelAttachmentAnimationBounds(const ModelMeshData& parent_mo
         throw;
     }
     catch (const std::exception& ex) {
-        throw ModelBoundsException(strex("Invalid baked model data while calculating a rigid animated attachment bound: {}", ex.what()));
+        throw ModelBoundsException(strex("Invalid baked model data while sampling a link bone: {}", ex.what()));
     }
 }
 
-static auto BuildBoundsModel(const ModelMeshData& data) -> BoundsModel
+auto CalculateRigidAttachmentBounds(const_span<mat44> bone_transforms, const ModelBounds3D& attachment_bounds, const mat44& attachment_transform) -> optional<ModelBounds3D>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(data.RootBone, "Baked model has no root bone");
+    if (!IsValidModelBounds(attachment_bounds) || !IsFinite(attachment_transform)) {
+        return std::nullopt;
+    }
 
-    BoundsModel model;
-    AppendBoundsBone(*data.RootBone, model, std::nullopt);
-    return model;
+    optional<ModelBounds3D> result;
+
+    for (const mat44& bone_transform : bone_transforms) {
+        if (!IncludeTransformedModelBounds(result, attachment_bounds, bone_transform * attachment_transform)) {
+            return std::nullopt;
+        }
+    }
+
+    return result;
 }
 
-static void AppendBoundsBone(const ModelMeshBoneData& bone, BoundsModel& model, optional<size_t> parent)
+void ModelBoundsSampler::AppendBone(const ModelMeshBoneData& bone, optional<size_t> parent)
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t bone_index = model.Bones.size();
-    BoundsBone& bounds_bone = model.Bones.emplace_back();
-    bounds_bone.Name = bone.Name;
-    bounds_bone.BindTransform = bone.TransformationMatrix;
-    bounds_bone.Parent = parent;
+    size_t bone_index = _bones.size();
+    Bone& target = _bones.emplace_back();
+    target.Name = bone.Name;
+    target.BindTransform = bone.TransformationMatrix;
+    target.Parent = parent;
 
-    if (!IsFinite(bounds_bone.BindTransform)) {
+    if (!IsFinite(target.BindTransform)) {
         throw ModelBoundsException("Baked model contains a non-finite bind transform");
     }
 
     if (bone.AttachedMesh) {
-        bounds_bone.Mesh.emplace(BuildBoundsMesh(*bone.AttachedMesh, bone_index));
+        const ModelMeshGeometryData& source = *bone.AttachedMesh;
+        Mesh& mesh = target.AttachedMesh.emplace();
+        mesh.Vertices.reserve(source.Vertices.size());
+
+        for (const ModelMeshVertexData& source_vertex : source.Vertices) {
+            Vertex& vertex = mesh.Vertices.emplace_back();
+            vertex.Position = source_vertex.Position;
+            std::ranges::copy(source_vertex.BlendWeights, vertex.BlendWeights);
+            std::ranges::copy(source_vertex.BlendIndices, vertex.BlendIndices);
+
+            if (!IsFinite(vertex.Position)) {
+                throw ModelBoundsException("Baked model contains a non-finite vertex position");
+            }
+        }
+
+        mesh.Indices.assign(source.Indices.begin(), source.Indices.end());
+        mesh.SkinBoneNames = source.SkinBoneNames;
+        mesh.SkinBoneOffsets = source.SkinBoneOffsets;
+
+        if (mesh.SkinBoneNames.size() != mesh.SkinBoneOffsets.size()) {
+            throw ModelBoundsException(strex("Skin bone count {} does not match inverse-bind offset count {}", mesh.SkinBoneNames.size(), mesh.SkinBoneOffsets.size()));
+        }
+
+        for (const mat44& offset : mesh.SkinBoneOffsets) {
+            if (!IsFinite(offset)) {
+                throw ModelBoundsException("Baked model contains a non-finite inverse-bind offset");
+            }
+        }
     }
 
     for (const auto& child : bone.Children) {
-        AppendBoundsBone(*child, model, bone_index);
+        AppendBone(*child, bone_index);
     }
 }
 
-static auto BuildBoundsMesh(const ModelMeshGeometryData& data, size_t owner_bone) -> BoundsMesh
+auto ModelBoundsSampler::BuildBoneIndex() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    BoundsMesh mesh;
-    mesh.OwnerBone = owner_bone;
-    mesh.Vertices.reserve(data.Vertices.size());
+    _boneIndex.reserve(_bones.size());
 
-    for (const ModelMeshVertexData& source_vertex : data.Vertices) {
-        Vertex3D& vertex = mesh.Vertices.emplace_back();
-        vertex.Position = source_vertex.Position;
-        std::ranges::copy(source_vertex.BlendWeights, vertex.BlendWeights);
-        std::ranges::copy(source_vertex.BlendIndices, vertex.BlendIndices);
-    }
-
-    mesh.Indices.assign(data.Indices.begin(), data.Indices.end());
-    mesh.SkinBoneNames = data.SkinBoneNames;
-    mesh.SkinBoneOffsets = data.SkinBoneOffsets;
-
-    if (mesh.SkinBoneNames.size() != mesh.SkinBoneOffsets.size()) {
-        throw ModelBoundsException(strex("Skin bone count {} does not match inverse-bind offset count {}", mesh.SkinBoneNames.size(), mesh.SkinBoneOffsets.size()));
-    }
-
-    for (const Vertex3D& vertex : mesh.Vertices) {
-        if (!IsFinite(vertex.Position)) {
-            throw ModelBoundsException("Baked model contains a non-finite vertex position");
-        }
-    }
-    for (const mat44& offset : mesh.SkinBoneOffsets) {
-        if (!IsFinite(offset)) {
-            throw ModelBoundsException("Baked model contains a non-finite inverse-bind offset");
+    for (size_t i = 0; i < _bones.size(); i++) {
+        if (!_boneIndex.emplace(_bones[i].Name, i).second) {
+            return false;
         }
     }
 
-    return mesh;
+    return true;
 }
 
-static auto BuildBoundsAnimation(const ModelAnimationSource& source) -> BoundsAnimation
+auto ModelBoundsSampler::BuildBindPoseTransforms() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    BoundsAnimation animation;
-    animation.Name = source.Name;
-    animation.Duration = source.Duration;
-    animation.Outputs.reserve(source.Joints.size());
+    _bindPoseTransforms.resize(_bones.size());
 
-    for (const ModelAnimationJointSource& source_joint : source.Joints) {
-        BoundsAnimationOutput& output = animation.Outputs.emplace_back();
-        output.BoneName = source_joint.OutputName;
-        output.ScaleTimes = source_joint.Scale.Times;
-        output.ScaleValues = source_joint.Scale.Values;
-        output.RotationTimes = source_joint.Rotation.Times;
-        output.RotationValues = source_joint.Rotation.Values;
-        output.TranslationTimes = source_joint.Translation.Times;
-        output.TranslationValues = source_joint.Translation.Values;
-    }
+    for (size_t i = 0; i < _bones.size(); i++) {
+        if (_bones[i].Parent) {
+            size_t parent = *_bones[i].Parent;
+            FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
+            _bindPoseTransforms[i] = _bindPoseTransforms[parent] * _bones[i].BindTransform;
+        }
+        else {
+            _bindPoseTransforms[i] = _bones[i].BindTransform;
+        }
 
-    return animation;
-}
-
-static auto BuildBoneIndex(const BoundsModel& model) -> optional<unordered_map<string, size_t>>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    unordered_map<string, size_t> result;
-    result.reserve(model.Bones.size());
-
-    for (size_t i = 0; i < model.Bones.size(); i++) {
-        if (!result.emplace(model.Bones[i].Name, i).second) {
-            return std::nullopt;
+        if (!IsFinite(_bindPoseTransforms[i])) {
+            return false;
         }
     }
 
-    return result;
+    return true;
 }
 
-static auto BuildAnimationOutputIndex(const BoundsAnimation& animation) -> optional<unordered_map<string, size_t>>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    unordered_map<string, size_t> result;
-    result.reserve(animation.Outputs.size());
-
-    for (size_t i = 0; i < animation.Outputs.size(); i++) {
-        if (!result.emplace(animation.Outputs[i].BoneName, i).second) {
-            return std::nullopt;
-        }
-    }
-
-    return result;
-}
-
-static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<string, size_t>& bone_index, const vector<string>& disabled_meshes) -> optional<vector<BoundsDrawableMesh>>
+auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_meshes) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     constexpr float64_t weight_sum_tolerance = 0.001;
-    vector<BoundsDrawableMesh> result;
     bool all_meshes_disabled = std::ranges::find(disabled_meshes, string {}) != disabled_meshes.end();
 
-    for (const BoundsBone& owner_bone : model.Bones) {
-        if (!owner_bone.Mesh || owner_bone.Mesh->Vertices.empty() || owner_bone.Mesh->Indices.empty()) {
+    for (size_t bone_index = 0; bone_index < _bones.size(); bone_index++) {
+        const Bone& owner_bone = _bones[bone_index];
+
+        if (!owner_bone.AttachedMesh || owner_bone.AttachedMesh->Vertices.empty() || owner_bone.AttachedMesh->Indices.empty()) {
             continue;
         }
         if (all_meshes_disabled || std::ranges::find(disabled_meshes, owner_bone.Name) != disabled_meshes.end()) {
             continue;
         }
 
-        const BoundsMesh& mesh = *owner_bone.Mesh;
-        BoundsDrawableMesh& drawable_mesh = result.emplace_back();
-        drawable_mesh.Mesh = &mesh;
+        const Mesh& mesh = *owner_bone.AttachedMesh;
+        DrawableMesh& drawable_mesh = _drawableMeshes.emplace_back();
+        drawable_mesh.OwnerBone = bone_index;
 
         vector<bool> referenced_vertices(mesh.Vertices.size());
 
-        for (vindex_t vertex_index : mesh.Indices) {
+        for (ModelMeshIndexData vertex_index : mesh.Indices) {
             if (numeric_cast<size_t>(vertex_index) >= mesh.Vertices.size()) {
-                return std::nullopt;
+                return false;
             }
 
             referenced_vertices[numeric_cast<size_t>(vertex_index)] = true;
@@ -485,94 +344,130 @@ static auto BuildDrawableMeshes(const BoundsModel& model, const unordered_map<st
         }
 
         if (drawable_mesh.VertexIndices.empty()) {
-            result.pop_back();
+            _drawableMeshes.pop_back();
             continue;
         }
 
-        if (mesh.SkinBoneNames.empty()) {
-            continue;
-        }
+        if (!mesh.SkinBoneNames.empty()) {
+            drawable_mesh.SkinBones.reserve(mesh.SkinBoneNames.size());
 
-        if (mesh.SkinBoneNames.size() != mesh.SkinBoneOffsets.size()) {
-            return std::nullopt;
-        }
-
-        drawable_mesh.SkinBones.reserve(mesh.SkinBoneNames.size());
-
-        for (const string& skin_bone_name : mesh.SkinBoneNames) {
-            if (skin_bone_name.empty()) {
-                drawable_mesh.SkinBones.emplace_back(mesh.OwnerBone);
-                continue;
-            }
-
-            auto it = bone_index.find(skin_bone_name);
-
-            if (it == bone_index.end()) {
-                return std::nullopt;
-            }
-
-            drawable_mesh.SkinBones.emplace_back(it->second);
-        }
-
-        for (size_t vertex_index : drawable_mesh.VertexIndices) {
-            const Vertex3D& vertex = mesh.Vertices[vertex_index];
-            float64_t weight_sum = 0.0;
-            bool has_influence = false;
-
-            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                float32_t weight = vertex.BlendWeights[influence];
-                float32_t raw_index = vertex.BlendIndices[influence];
-
-                if (!std::isfinite(weight) || !std::isfinite(raw_index) || weight < 0.0f) {
-                    return std::nullopt;
-                }
-                if (weight == 0.0f) {
+            for (const string& skin_bone_name : mesh.SkinBoneNames) {
+                if (skin_bone_name.empty()) {
+                    drawable_mesh.SkinBones.emplace_back(bone_index);
                     continue;
                 }
 
-                int32_t index = iround<int32_t>(raw_index);
+                auto it = _boneIndex.find(skin_bone_name);
 
-                if (index < 0 || numeric_cast<size_t>(index) >= drawable_mesh.SkinBones.size() || !is_float_equal(raw_index, numeric_cast<float32_t>(index))) {
-                    return std::nullopt;
+                if (it == _boneIndex.end()) {
+                    return false;
                 }
 
-                weight_sum += weight;
-                has_influence = true;
+                drawable_mesh.SkinBones.emplace_back(it->second);
             }
 
-            if (!has_influence || std::abs(weight_sum - 1.0) > weight_sum_tolerance) {
-                return std::nullopt;
+            for (size_t vertex_index : drawable_mesh.VertexIndices) {
+                const Vertex& vertex = mesh.Vertices[vertex_index];
+                float64_t weight_sum = 0.0;
+                bool has_influence = false;
+
+                for (size_t influence = 0; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
+                    float32_t weight = vertex.BlendWeights[influence];
+                    float32_t raw_index = vertex.BlendIndices[influence];
+
+                    if (!std::isfinite(weight) || !std::isfinite(raw_index) || weight < 0.0f) {
+                        return false;
+                    }
+                    if (weight == 0.0f) {
+                        continue;
+                    }
+
+                    int32_t index = iround<int32_t>(raw_index);
+
+                    if (index < 0 || numeric_cast<size_t>(index) >= drawable_mesh.SkinBones.size() || !is_float_equal(raw_index, numeric_cast<float32_t>(index))) {
+                        return false;
+                    }
+
+                    weight_sum += weight;
+                    has_influence = true;
+                }
+
+                if (!has_influence || std::abs(weight_sum - 1.0) > weight_sum_tolerance) {
+                    return false;
+                }
             }
+        }
+
+        if (_measurement == ModelBoundsMeasurement::PerBoneEnvelope) {
+            BuildMeshEnvelopes(drawable_mesh);
         }
     }
 
-    if (result.empty()) {
-        return std::nullopt;
+    return !_drawableMeshes.empty();
+}
+
+// One envelope per skin slot, measured after the inverse-bind offset, so a posed slot needs only its own
+// bone matrix. A blended vertex is a convex combination of its slots, hence inside the union of the boxes
+void ModelBoundsSampler::BuildMeshEnvelopes(DrawableMesh& drawable_mesh) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const Mesh& mesh = *_bones[drawable_mesh.OwnerBone].AttachedMesh;
+
+    if (drawable_mesh.SkinBones.empty()) {
+        for (size_t vertex_index : drawable_mesh.VertexIndices) {
+            (void)IncludeModelBoundsPoint(drawable_mesh.RigidEnvelope, mesh.Vertices[vertex_index].Position);
+        }
+
+        return;
+    }
+
+    drawable_mesh.SkinBoneEnvelopes.resize(drawable_mesh.SkinBones.size());
+
+    for (size_t vertex_index : drawable_mesh.VertexIndices) {
+        const Vertex& vertex = mesh.Vertices[vertex_index];
+
+        for (size_t influence = 0; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
+            if (vertex.BlendWeights[influence] == 0.0f) {
+                continue;
+            }
+
+            size_t skin_index = numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]));
+            glm::vec4 offset_position = mesh.SkinBoneOffsets[skin_index] * glm::vec4 {vertex.Position, 1.0f};
+            (void)IncludeModelBoundsPoint(drawable_mesh.SkinBoneEnvelopes[skin_index], vec3 {offset_position});
+        }
+    }
+}
+
+auto ModelBoundsSampler::BuildBoneOutputs(const ModelAnimationSource& animation) const -> optional<vector<nptr<const ModelAnimationJointSource>>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_map<string, size_t> output_index;
+    output_index.reserve(animation.Joints.size());
+
+    for (size_t i = 0; i < animation.Joints.size(); i++) {
+        if (!output_index.emplace(animation.Joints[i].OutputName, i).second) {
+            return std::nullopt;
+        }
+    }
+
+    vector<nptr<const ModelAnimationJointSource>> result(_bones.size());
+
+    for (size_t i = 0; i < _bones.size(); i++) {
+        if (auto it = output_index.find(_bones[i].Name); it != output_index.end()) {
+            result[i] = &animation.Joints[it->second];
+        }
     }
 
     return result;
 }
 
-static auto BuildBoneAnimationOutputs(const BoundsModel& model, const BoundsAnimation& animation, const unordered_map<string, size_t>& output_index) -> vector<nptr<const BoundsAnimationOutput>>
+auto ModelBoundsSampler::BuildSampleTimes(const ModelAnimationSource& animation, const vector<nptr<const ModelAnimationJointSource>>& outputs, bool reversed) const -> optional<vector<float32_t>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<nptr<const BoundsAnimationOutput>> result(model.Bones.size());
-
-    for (size_t i = 0; i < model.Bones.size(); i++) {
-        if (auto it = output_index.find(model.Bones[i].Name); it != output_index.end()) {
-            result[i] = &animation.Outputs[it->second];
-        }
-    }
-
-    return result;
-}
-
-static auto BuildAnimationSampleTimes(const BoundsAnimation& animation, const vector<nptr<const BoundsAnimationOutput>>& outputs, bool reversed) -> optional<vector<float32_t>>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    constexpr float64_t samples_per_second = 60.0;
+    constexpr float64_t GRID_SAMPLES_PER_SECOND = 60.0;
 
     if (!std::isfinite(animation.Duration) || animation.Duration <= 0.0f) {
         throw ModelBoundsException(strex("Animation '{}' has invalid duration {}", animation.Name, animation.Duration));
@@ -580,20 +475,20 @@ static auto BuildAnimationSampleTimes(const BoundsAnimation& animation, const ve
 
     vector<float32_t> result;
 
-    for (nptr<const BoundsAnimationOutput> output : outputs) {
+    for (nptr<const ModelAnimationJointSource> output : outputs) {
         if (!output) {
             continue;
         }
-        if (!ValidateAnimationOutput(*output)) {
+        if (!ValidateJointTracks(*output)) {
             return std::nullopt;
         }
 
-        AppendTrackSampleTimes(output->ScaleTimes, animation.Duration, reversed, result);
-        AppendTrackSampleTimes(output->RotationTimes, animation.Duration, reversed, result);
-        AppendTrackSampleTimes(output->TranslationTimes, animation.Duration, reversed, result);
+        AppendTrackSampleTimes(output->Scale.Times, animation.Duration, reversed, result);
+        AppendTrackSampleTimes(output->Rotation.Times, animation.Duration, reversed, result);
+        AppendTrackSampleTimes(output->Translation.Times, animation.Duration, reversed, result);
     }
 
-    float64_t interval_count_value = std::ceil(numeric_cast<float64_t>(animation.Duration) * samples_per_second);
+    float64_t interval_count_value = std::ceil(numeric_cast<float64_t>(animation.Duration) * GRID_SAMPLES_PER_SECOND);
     size_t interval_count = std::max<size_t>(1, iround<size_t>(interval_count_value));
     result.reserve(result.size() + interval_count + 1);
 
@@ -607,161 +502,18 @@ static auto BuildAnimationSampleTimes(const BoundsAnimation& animation, const ve
     return result;
 }
 
-static auto ValidateAnimationOutput(const BoundsAnimationOutput& output) -> bool
+auto ModelBoundsSampler::BuildCombinedTransforms(const vector<nptr<const ModelAnimationJointSource>>& outputs, float32_t time, float32_t duration, bool reversed, vector<mat44>& combined_transforms) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto validate_track = [](const auto& times, const auto& values) {
-        if (times.size() != values.size()) {
-            return false;
-        }
-        if (times.empty()) {
-            return false;
-        }
+    FO_VERIFY_AND_THROW(outputs.size() == _bones.size(), "Animation output mapping size does not match model hierarchy");
+    FO_VERIFY_AND_THROW(combined_transforms.size() == _bones.size(), "Combined transform buffer size does not match model hierarchy");
 
-        for (size_t i = 0; i < times.size(); i++) {
-            if (!std::isfinite(times[i]) || !IsFinite(values[i])) {
-                return false;
-            }
-            if (i != 0 && times[i] < times[i - 1]) {
-                return false;
-            }
-        }
+    for (size_t i = 0; i < _bones.size(); i++) {
+        mat44 local_transform = outputs[i] ? SampleJointTransform(*outputs[i], time, duration, reversed) : _bones[i].BindTransform;
 
-        return true;
-    };
-
-    return validate_track(output.ScaleTimes, output.ScaleValues) && validate_track(output.RotationTimes, output.RotationValues) && validate_track(output.TranslationTimes, output.TranslationValues);
-}
-
-static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t duration, bool reversed, vector<float32_t>& sample_times)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (size_t i = 0; i < times.size(); i++) {
-        float32_t sample_time = std::clamp(reversed ? duration - times[i] : times[i], 0.0f, duration);
-        sample_times.emplace_back(sample_time);
-
-        if (reversed && sample_time > 0.0f) {
-            sample_times.emplace_back(std::max(0.0f, std::nextafter(sample_time, std::numeric_limits<float32_t>::lowest())));
-        }
-
-        if (i != 0) {
-            float64_t midpoint = (numeric_cast<float64_t>(times[i - 1]) + numeric_cast<float64_t>(times[i])) * 0.5;
-            float32_t midpoint_time = numeric_cast<float32_t>(midpoint);
-            sample_times.emplace_back(std::clamp(reversed ? duration - midpoint_time : midpoint_time, 0.0f, duration));
-        }
-    }
-}
-
-static auto SampleAnimationOutput(const BoundsAnimationOutput& output, float32_t time, float32_t duration, bool reversed) -> mat44
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vec3 scale = SampleVectorTrack(time, duration, reversed, output.ScaleTimes, output.ScaleValues);
-    quaternion rotation = SampleRotationTrack(time, duration, reversed, output.RotationTimes, output.RotationValues);
-    vec3 translation = SampleVectorTrack(time, duration, reversed, output.TranslationTimes, output.TranslationValues);
-    return glm::translate(mat44 {1.0f}, translation) * glm::mat4_cast(rotation) * glm::scale(mat44 {1.0f}, scale);
-}
-
-static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed, const vector<float32_t>& times, const vector<vec3>& values) -> vec3
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (reversed) {
-        float32_t reversed_time = duration - time;
-
-        for (int32_t i = numeric_cast<int32_t>(times.size() - 1); i >= 0; i--) {
-            if (i >= 1) {
-                size_t index = numeric_cast<size_t>(i);
-
-                if (reversed_time <= times[index] && reversed_time > times[index - 1]) {
-                    vec3 result = values[index];
-                    float32_t factor = (reversed_time - times[index]) / (times[index] - times[index - 1]);
-                    result.x += (values[index - 1].x - result.x) * factor;
-                    result.y += (values[index - 1].y - result.y) * factor;
-                    result.z += (values[index - 1].z - result.z) * factor;
-                    return result;
-                }
-            }
-            else {
-                return values[0];
-            }
-        }
-
-        throw ModelBoundsException("Reversed animation vector track sampling failed");
-    }
-
-    for (size_t i = 0; i < times.size(); i++) {
-        if (i + 1 < times.size()) {
-            if (time >= times[i] && time < times[i + 1]) {
-                vec3 result = values[i];
-                float32_t factor = (time - times[i]) / (times[i + 1] - times[i]);
-                result.x += (values[i + 1].x - result.x) * factor;
-                result.y += (values[i + 1].y - result.y) * factor;
-                result.z += (values[i + 1].z - result.z) * factor;
-                return result;
-            }
-        }
-        else {
-            return values[i];
-        }
-    }
-
-    throw ModelBoundsException("Animation vector track sampling failed");
-}
-
-static auto SampleRotationTrack(float32_t time, float32_t duration, bool reversed, const vector<float32_t>& times, const vector<quaternion>& values) -> quaternion
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (reversed) {
-        float32_t reversed_time = duration - time;
-
-        for (int32_t i = numeric_cast<int32_t>(times.size() - 1); i >= 0; i--) {
-            if (i >= 1) {
-                size_t index = numeric_cast<size_t>(i);
-
-                if (reversed_time <= times[index] && reversed_time > times[index - 1]) {
-                    float32_t factor = (reversed_time - times[index]) / (times[index] - times[index - 1]);
-                    return glm::normalize(glm::slerp(values[index], values[index - 1], factor));
-                }
-            }
-            else {
-                return values[0];
-            }
-        }
-
-        throw ModelBoundsException("Reversed animation rotation track sampling failed");
-    }
-
-    for (size_t i = 0; i < times.size(); i++) {
-        if (i + 1 < times.size()) {
-            if (time >= times[i] && time < times[i + 1]) {
-                float32_t factor = (time - times[i]) / (times[i + 1] - times[i]);
-                return glm::normalize(glm::slerp(values[i], values[i + 1], factor));
-            }
-        }
-        else {
-            return values[i];
-        }
-    }
-
-    throw ModelBoundsException("Animation rotation track sampling failed");
-}
-
-static auto BuildCombinedTransforms(const BoundsModel& model, const vector<nptr<const BoundsAnimationOutput>>& outputs, float32_t time, float32_t duration, bool reversed, vector<mat44>& combined_transforms) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(outputs.size() == model.Bones.size(), "Animation output mapping size does not match model hierarchy");
-    FO_VERIFY_AND_THROW(combined_transforms.size() == model.Bones.size(), "Combined transform buffer size does not match model hierarchy");
-
-    for (size_t i = 0; i < model.Bones.size(); i++) {
-        mat44 local_transform = outputs[i] ? SampleAnimationOutput(*outputs[i], time, duration, reversed) : model.Bones[i].BindTransform;
-
-        if (model.Bones[i].Parent) {
-            size_t parent = *model.Bones[i].Parent;
+        if (_bones[i].Parent) {
+            size_t parent = *_bones[i].Parent;
             FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
             combined_transforms[i] = combined_transforms[parent] * local_transform;
         }
@@ -777,31 +529,50 @@ static auto BuildCombinedTransforms(const BoundsModel& model, const vector<nptr<
     return true;
 }
 
-static auto IncludeTransformedGeometry(const vector<BoundsDrawableMesh>& drawable_meshes, const vector<mat44>& combined_transforms, optional<ModelBounds3D>& bounds) -> bool
+auto ModelBoundsSampler::IncludePosedGeometry(const vector<mat44>& combined_transforms, optional<ModelBounds3D>& bounds) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const BoundsDrawableMesh& drawable_mesh : drawable_meshes) {
-        FO_VERIFY_AND_THROW(drawable_mesh.Mesh, "Drawable bounds mesh is missing its source mesh");
-        const BoundsMesh& mesh = *drawable_mesh.Mesh;
+    for (const DrawableMesh& drawable_mesh : _drawableMeshes) {
+        const Mesh& mesh = *_bones[drawable_mesh.OwnerBone].AttachedMesh;
 
-        if (mesh.OwnerBone >= combined_transforms.size() || drawable_mesh.SkinBones.size() != mesh.SkinBoneOffsets.size()) {
+        if (drawable_mesh.OwnerBone >= combined_transforms.size() || drawable_mesh.SkinBones.size() != mesh.SkinBoneOffsets.size()) {
             return false;
         }
 
-        for (size_t vertex_index : drawable_mesh.VertexIndices) {
-            if (vertex_index >= mesh.Vertices.size()) {
-                return false;
+        if (_measurement == ModelBoundsMeasurement::PerBoneEnvelope) {
+            if (drawable_mesh.SkinBones.empty()) {
+                if (!drawable_mesh.RigidEnvelope || !IncludeTransformedModelBounds(bounds, *drawable_mesh.RigidEnvelope, combined_transforms[drawable_mesh.OwnerBone])) {
+                    return false;
+                }
+
+                continue;
             }
 
-            const Vertex3D& vertex = mesh.Vertices[vertex_index];
+            for (size_t skin_index = 0; skin_index < drawable_mesh.SkinBones.size(); skin_index++) {
+                if (!drawable_mesh.SkinBoneEnvelopes[skin_index]) {
+                    continue;
+                }
+                if (drawable_mesh.SkinBones[skin_index] >= combined_transforms.size()) {
+                    return false;
+                }
+                if (!IncludeTransformedModelBounds(bounds, *drawable_mesh.SkinBoneEnvelopes[skin_index], combined_transforms[drawable_mesh.SkinBones[skin_index]])) {
+                    return false;
+                }
+            }
+
+            continue;
+        }
+
+        for (size_t vertex_index : drawable_mesh.VertexIndices) {
+            const Vertex& vertex = mesh.Vertices[vertex_index];
             glm::vec4 transformed {};
 
             if (drawable_mesh.SkinBones.empty()) {
-                transformed = combined_transforms[mesh.OwnerBone] * glm::vec4 {vertex.Position, 1.0f};
+                transformed = combined_transforms[drawable_mesh.OwnerBone] * glm::vec4 {vertex.Position, 1.0f};
             }
             else {
-                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                for (size_t influence = 0; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
                     float32_t weight = vertex.BlendWeights[influence];
 
                     if (weight == 0.0f) {
@@ -829,6 +600,158 @@ static auto IncludeTransformedGeometry(const vector<BoundsDrawableMesh>& drawabl
     }
 
     return bounds.has_value();
+}
+
+static auto ValidateJointTracks(const ModelAnimationJointSource& joint) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto validate_track = [](const auto& times, const auto& values) {
+        if (times.size() != values.size()) {
+            return false;
+        }
+        if (times.empty()) {
+            return false;
+        }
+
+        for (size_t i = 0; i < times.size(); i++) {
+            if (!std::isfinite(times[i]) || !IsFinite(values[i])) {
+                return false;
+            }
+            if (i != 0 && times[i] < times[i - 1]) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    return validate_track(joint.Scale.Times, joint.Scale.Values) && validate_track(joint.Rotation.Times, joint.Rotation.Values) && validate_track(joint.Translation.Times, joint.Translation.Values);
+}
+
+static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t duration, bool reversed, vector<float32_t>& sample_times)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 0; i < times.size(); i++) {
+        float32_t sample_time = std::clamp(reversed ? duration - times[i] : times[i], 0.0f, duration);
+        sample_times.emplace_back(sample_time);
+
+        // A reversed clip reads a key from the span ending on it, so the pose just before the key is one the
+        // key time itself never produces
+        if (reversed && sample_time > 0.0f) {
+            sample_times.emplace_back(std::max(0.0f, std::nextafter(sample_time, std::numeric_limits<float32_t>::lowest())));
+        }
+
+        if (i != 0) {
+            float64_t midpoint = (numeric_cast<float64_t>(times[i - 1]) + numeric_cast<float64_t>(times[i])) * 0.5;
+            float32_t midpoint_time = numeric_cast<float32_t>(midpoint);
+            sample_times.emplace_back(std::clamp(reversed ? duration - midpoint_time : midpoint_time, 0.0f, duration));
+        }
+    }
+}
+
+static auto SampleJointTransform(const ModelAnimationJointSource& joint, float32_t time, float32_t duration, bool reversed) -> mat44
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    vec3 scale = SampleVectorTrack(time, duration, reversed, joint.Scale);
+    quaternion rotation = SampleRotationTrack(time, duration, reversed, joint.Rotation);
+    vec3 translation = SampleVectorTrack(time, duration, reversed, joint.Translation);
+    return glm::translate(mat44 {1.0f}, translation) * glm::mat4_cast(rotation) * glm::scale(mat44 {1.0f}, scale);
+}
+
+static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed, const ModelAnimationVec3Track& track) -> vec3
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (reversed) {
+        float32_t reversed_time = duration - time;
+        optional<size_t> span = FindReversedKeySpan(track.Times, reversed_time);
+
+        if (!span) {
+            return track.Values.front();
+        }
+
+        size_t index = *span;
+        vec3 result = track.Values[index];
+        float32_t factor = (reversed_time - track.Times[index]) / (track.Times[index] - track.Times[index - 1]);
+        result.x += (track.Values[index - 1].x - result.x) * factor;
+        result.y += (track.Values[index - 1].y - result.y) * factor;
+        result.z += (track.Values[index - 1].z - result.z) * factor;
+        return result;
+    }
+
+    optional<size_t> span = FindForwardKeySpan(track.Times, time);
+
+    if (!span) {
+        return track.Values.back();
+    }
+
+    size_t index = *span;
+    vec3 result = track.Values[index];
+    float32_t factor = (time - track.Times[index]) / (track.Times[index + 1] - track.Times[index]);
+    result.x += (track.Values[index + 1].x - result.x) * factor;
+    result.y += (track.Values[index + 1].y - result.y) * factor;
+    result.z += (track.Values[index + 1].z - result.z) * factor;
+    return result;
+}
+
+static auto SampleRotationTrack(float32_t time, float32_t duration, bool reversed, const ModelAnimationQuaternionTrack& track) -> quaternion
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (reversed) {
+        float32_t reversed_time = duration - time;
+        optional<size_t> span = FindReversedKeySpan(track.Times, reversed_time);
+
+        if (!span) {
+            return track.Values.front();
+        }
+
+        size_t index = *span;
+        float32_t factor = (reversed_time - track.Times[index]) / (track.Times[index] - track.Times[index - 1]);
+        return glm::normalize(glm::slerp(track.Values[index], track.Values[index - 1], factor));
+    }
+
+    optional<size_t> span = FindForwardKeySpan(track.Times, time);
+
+    if (!span) {
+        return track.Values.back();
+    }
+
+    size_t index = *span;
+    float32_t factor = (time - track.Times[index]) / (track.Times[index + 1] - track.Times[index]);
+    return glm::normalize(glm::slerp(track.Values[index], track.Values[index + 1], factor));
+}
+
+// Key times are non-decreasing, so the span holding the sample is the one ending at the first key past it.
+// Absent means the sample sits outside the authored span range and the caller clamps to an end key
+static auto FindForwardKeySpan(const vector<float32_t>& times, float32_t time) -> optional<size_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto upper = std::ranges::upper_bound(times, time);
+
+    if (upper == times.begin() || upper == times.end()) {
+        return std::nullopt;
+    }
+
+    return numeric_cast<size_t>(std::distance(times.begin(), upper)) - 1;
+}
+
+// The reversed pass reads a span by its end key, so it anchors on the first key at or after the sample
+static auto FindReversedKeySpan(const vector<float32_t>& times, float32_t time) -> optional<size_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto lower = std::ranges::lower_bound(times, time);
+
+    if (lower == times.begin() || lower == times.end()) {
+        return std::nullopt;
+    }
+
+    return numeric_cast<size_t>(std::distance(times.begin(), lower));
 }
 
 static auto IsFinite(const vec3& value) -> bool

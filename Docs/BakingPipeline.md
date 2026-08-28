@@ -472,10 +472,28 @@ required root-space contracts to every model section:
   `BoundsMax*` arrays store the individual animation AABBs used by the runtime
   tight-crop predictor.
 
-The baker samples animation keys, their midpoints, and a uniform timeline to
-build deterministic envelopes independent of camera angle, projection factor,
-model-sprite resolution, and renderer backend. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract. Each binary link
+The baker samples every animation key, the midpoint between neighbouring keys, and a 60 Hz grid,
+building deterministic envelopes independent of camera angle, projection factor, model-sprite
+resolution, and renderer backend. That timeline is the same in both measurement modes: a coarser
+one misses the extreme of a fast arc, which would clip a model rather than over-size it.
+
+`Baking.PreciseModelBounds` selects how the posed geometry is measured at each sample:
+
+- `ModelBoundsMeasurement::PerVertex` (`True`) transforms every skinned vertex. This is the exact
+  envelope, and `PublicGame` turns it on so `BakePublicResources` ships it;
+- `ModelBoundsMeasurement::PerBoneEnvelope` (`False`, the default) transforms one envelope box per
+  bone slot instead. A blended vertex is a convex combination of its bones' transformed positions,
+  so the union of the transformed boxes always contains it: the mode can only over-size an
+  envelope, never clip a model. That makes it the right default for a working bake, while the
+  exact mode stays reserved for the shipped one.
+
+`ModelBoundsSampler` prepares one baked model - hierarchy, the geometry selected by one
+disabled-mesh set, and the per-bone envelopes - once, and answers every clip of that model from it.
+A rigid attachment reads only where its link bone travels, so one sampled bone track per clip
+answers every attachment on that bone instead of re-walking the parent hierarchy per attachment,
+and each model section of `ModelAnimationInfo.foinfo` is produced independently and concatenated in
+sorted file order. Missing or invalid aggregate or animation bounds are baking errors in the
+version 2 contract. Each binary link
 contains an explicit `hasGeometry` discriminator before the optional geometry
 payload. The discriminator must match the link type: a non-empty `ChildName`
 with `IsParticles == false` writes `1` followed by the required min/max AABB;
