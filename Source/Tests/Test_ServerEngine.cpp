@@ -3146,6 +3146,21 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
         REQUIRE_FALSE(IsEntityAccessValid(cr));
         CHECK_THROWS_WITH(convert(cr.as_ptr()), Catch::Matchers::ContainsSubstring("Entity access without sync"));
     }
+
+    SECTION("EntityArrayRejectsPrototypeAtTheNativeBoundary")
+    {
+        nptr<const ProtoCritter> proto = server->GetProtoCritter(critter_pid);
+        REQUIRE(proto);
+
+        vector<nptr<const Entity>> script_entities {proto};
+        NativeDataProvider::StorageEntryType storage;
+        ptr<void> array_data = NativeDataProvider::NormalizeArg(script_entities, storage);
+        optional<vector<nptr<const ServerEntity>>> converted_entities;
+
+        auto convert_collection = [&]() { return NativeDataCaller::ConvertArg<readonly_vector<nptr<const ServerEntity>>, optional<vector<nptr<const ServerEntity>>>, true>(array_data, NativeDataProvider::NATIVE_DATA_ACCESSOR, converted_entities); };
+
+        CHECK_THROWS_WITH(convert_collection(), Catch::Matchers::ContainsSubstring("Script entity is not usable as this entity type"));
+    }
 }
 
 TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
