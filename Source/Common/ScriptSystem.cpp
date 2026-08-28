@@ -42,6 +42,13 @@
 
 FO_BEGIN_NAMESPACE
 
+void ThrowScriptEntityTypeMismatch(ptr<Entity> entity)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    throw ScriptException("Script entity is not usable as this entity type", entity->GetTypeName(), entity->GetName());
+}
+
 DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrar> registrar) noexcept :
     _registrar {registrar},
     _props {std::in_place, _registrar}

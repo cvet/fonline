@@ -917,6 +917,64 @@ namespace EntityOps
         return 0;
     }
 
+    // A prototype is an Entity to a script but a sibling of ServerEntity natively, so every position that
+    // promotes a script Entity has to reject one instead of handing the callee a foreign object
+
+    void TestPrototypeAsScalarEntityArgThrows()
+    {
+        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
+
+        Game.DbHasEntity(itemProto);
+    }
+
+    void TestPrototypeInEntityArrayThrows()
+    {
+        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
+        array<Entity> entities = {itemProto};
+
+        Game.DestroyEntities(entities);
+    }
+
+    void TestPrototypeMixedIntoEntityArrayThrows()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
+        array<Entity> entities = {cr, itemProto};
+
+        Game.DestroyEntities(entities);
+    }
+
+    void TestPrototypeAsEntityReceiverThrows()
+    {
+        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
+        Entity protoEntity = itemProto;
+
+        protoEntity.MakePersistent(true);
+    }
+
+    int TestEntityArrayAcceptsRealEntities()
+    {
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr1 is null || cr2 is null) return -1;
+
+        array<Entity> entities = {cr1, cr2};
+        Game.DestroyEntities(entities);
+
+        if (!cr1.IsDestroyed) return -2;
+        if (!cr2.IsDestroyed) return -3;
+
+        return 0;
+    }
+
+    int TestEmptyEntityArrayIsAccepted()
+    {
+        array<Entity> entities;
+        Game.DestroyEntities(entities);
+
+        return 0;
+    }
+
  )" + R"(
     // ========== Global Game Queries ==========
 
@@ -2102,6 +2160,81 @@ TEST_CASE("EntityBaseOperations")
     SECTION("ItemContainerOps")
     {
         RUN_SCRIPT_FUNC("TestItemContainerOps");
+    }
+}
+
+TEST_CASE("ScriptEntityPromotionRejectsPrototypes")
+{
+    MAKE_SERVER();
+
+    SECTION("ScalarArg")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestPrototypeAsScalarEntityArgThrows", "Script entity is not usable as this entity type");
+    }
+
+    SECTION("ArrayArg")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestPrototypeInEntityArrayThrows", "Script entity is not usable as this entity type");
+    }
+
+    SECTION("ArrayArgAfterRealEntity")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestPrototypeMixedIntoEntityArrayThrows", "Script entity is not usable as this entity type");
+    }
+
+    SECTION("Receiver")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestPrototypeAsEntityReceiverThrows", "Script entity is not usable as this entity type");
+    }
+
+    SECTION("RealEntitiesStillPass")
+    {
+        RUN_SCRIPT_FUNC("TestEntityArrayAcceptsRealEntities");
+    }
+
+    SECTION("EmptyArray")
+    {
+        RUN_SCRIPT_FUNC("TestEmptyEntityArrayIsAccepted");
+    }
+}
+
+// No export takes a dict of entity handles, so the dict promotion is driven through the marshaller directly
+TEST_CASE("ScriptEntityDictValuePromotion")
+{
+    MAKE_SERVER();
+
+    nptr<const ProtoItem> item_proto = server->ProtoMngr.GetProtoItem(get_func("TestItem"));
+    REQUIRE(item_proto);
+
+    map<hstring, nptr<const Entity>> source;
+    source.emplace(get_func("entry"), item_proto);
+
+    NativeDataProvider::StorageEntryType storage {};
+    ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+
+    SECTION("NarrowsToTheDeclaredValueType")
+    {
+        optional<map<hstring, nptr<const ProtoItem>>> temp;
+        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<const ProtoItem>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+
+        REQUIRE(narrowed.size() == 1);
+        CHECK(narrowed.begin()->second == item_proto);
+    }
+
+    SECTION("RejectsAValueOfAnotherEntityType")
+    {
+        optional<map<hstring, nptr<const ProtoCritter>>> temp;
+
+        CHECK_THROWS_AS((NativeDataCaller::ConvertArg<map<hstring, nptr<const ProtoCritter>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
+    }
+
+    SECTION("KeepsTheBaseValueTypeAsIs")
+    {
+        optional<map<hstring, nptr<const Entity>>> temp;
+        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<const Entity>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+
+        REQUIRE(narrowed.size() == 1);
+        CHECK(narrowed.begin()->second == item_proto);
     }
 }
 

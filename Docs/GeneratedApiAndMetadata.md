@@ -107,6 +107,16 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 
 `ApplicationShutdownHook` is a native lifecycle hook for project-owned process integrations that must be stopped before a client runtime DLL is unloaded. It is intentionally not part of the compatibility hash because it does not change script metadata, saved data, or the network contract.
 
+## Script Entity promotion
+
+The AngelScript `Entity` type has no single native counterpart. `get_entity_from_target` in `BuildTools/codegen.py` promotes every position that spells a script `Entity` — receiver, argument, array element and return — to the entity class of the target: `ServerEntity*` on the server, `ClientEntity*` on client and mapper, and the base `Entity*` elsewhere. That is why an export writes `ptr<ServerEntity> self` and still registers as a method on the script `Entity`.
+
+The promotion is a claim about the caller, not something AngelScript checked. `register_entity_protos` and `register_entity_abstract` in `Source/Scripting/AngelScript/AngelScriptEntity.cpp` register an implicit cast from every `Proto*` and `Abstract*` type to `Entity`, so a prototype is an `Entity` to a script — but `ProtoEntity` and `ServerEntity` are siblings under a single `Entity` base, so the promotion is false for one. Under single inheritance the pointer value survives it, which means an unchecked promotion does not fail at the call; it fails later, inside the callee, on a member the object does not have.
+
+`NativeDataCaller::ConvertArg` in `Source/Common/ScriptSystem.h` therefore reads every entity slot as the base and narrows it to the declared type, for scalar arguments and array elements alike, throwing `ThrowScriptEntityTypeMismatch` with the type and name that were actually passed. Array elements deliberately keep no destroyed-entity check: an array argument may carry entities that died since the caller built it, and its callees drop them.
+
+A dict value carrying an entity handle is narrowed the same way. Two `static_assert`s bound what is not: an entity handle as a dict *key*, because a key is a script value type rather than a handle slot, and an array of handles nested inside a dict value, because that slot holds a whole array object.
+
 ## Dynamic metadata
 
 `Source/Common/MetadataRegistration.cpp` implements `RegisterDynamicMetadata()`. It reads binary metadata sections and dispatches them into typed registration steps such as:
@@ -152,12 +162,17 @@ Every `Metadata.fometa-*` therefore opens with a fixed header, ahead of the sect
 | file version | `uint16` | `METADATA_FILE_VERSION` — bumped when this file layout changes; a mismatch means "rebake" |
 | metadata version | `uint16` length + bytes | the value above |
 
-`MakeMetadataHeader()` writes it and `ReadMetadataHeader()` reads it, both in `MetadataRegistration.cpp`, so the
-format lives in one place. `RegisterDynamicMetadata()` reads the header before any section and hands the version to
-`EngineMetadata::RegisterMetadataVersion()`; `ReadMetadataVersion()` reads *only* the header, which is
-what the updater and the server startup check use — neither walks the sections to answer "which bake is this". The
-value is read back through `EngineMetadata::GetMetadataVersion()` — it is computed, not configured, so it is
-deliberately **not** a setting (`Network.ForceMetadataVersion` exists only to simulate a divergence in tests).
+**A change to the token layout of any section is a change to this file layout, so it bumps the file version.** The
+metadata version cannot stand in for it: that hash is derived from the codegen tags, which do not move when the
+baker starts writing another token, so an unbumped pack from the previous engine passes the header and is then read
+record by record under the new layout — the failure surfaces as a section-level `VerificationException` deep inside
+registration instead of the "rebake" verdict. `MakeMetadataHeader()` writes the header and `ReadMetadataHeader()`
+reads it, both in `MetadataRegistration.cpp`, so the format lives in one place. `RegisterDynamicMetadata()` reads
+the header before any section and hands the version to `EngineMetadata::RegisterMetadataVersion()`;
+`ReadMetadataVersion()` reads *only* the header, which is what the updater and the server startup check use —
+neither walks the sections to answer "which bake is this". The value is read back through
+`EngineMetadata::GetMetadataVersion()` — it is computed, not configured, so it is deliberately **not** a setting
+(`Network.ForceMetadataVersion` exists only to simulate a divergence in tests).
 
 Four layers keep the invariant, in the order they apply:
 
@@ -182,7 +197,8 @@ server prints `Metadata version:` at startup and names both versions when it rej
 the local version, the server version, and the resource directory it read. From there the question is always the
 same: which of the two resource directories came from a different bake, and why.
 
-Tests: `Test_MetadataBaker.cpp` (one version shared by every target, changed by a property insertion),
+Tests: `Test_MetadataBaker.cpp` (one version shared by every target, changed by a property insertion; a pack
+written in an older file layout is refused),
 `Test_Properties.cpp` (`PropertiesRestoreRejectsForeignMetadata`),
 `Test_ClientServerIntegration.cpp` (`ServerReportsMetadataMismatchInHandshake`).
 

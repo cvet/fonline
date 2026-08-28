@@ -776,6 +776,37 @@ namespace TestSettings
         REQUIRE_THROWS_WITH(RegisterDynamicMetadata(&invalid_meta, missing_value_output), Catch::Matchers::ContainsSubstring("Setting metadata record must contain setting name, value type, and initial value"));
     }
 
+    SECTION("refuses a pack written in an older file layout")
+    {
+        // Layout 1 wrote the Setting record without its configured value, and a token layout change leaves the
+        // metadata version untouched, so only the file layout version can stop such a pack from being read
+        constexpr uint16_t settings_without_value_layout = 1;
+        STATIC_REQUIRE(METADATA_FILE_VERSION > settings_without_value_layout);
+
+        vector<uint8_t> outdated_metadata;
+        auto writer = DataWriter(outdated_metadata);
+        writer.Write<uint32_t>(METADATA_FILE_MAGIC);
+        writer.Write<uint16_t>(settings_without_value_layout);
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(TEST_METADATA_VERSION.length()));
+        writer.WriteStringBytes(TEST_METADATA_VERSION);
+        writer.Write<uint16_t>(const_numeric_cast<uint16_t>(1));
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(METADATA_SETTING_SECTION.length()));
+        writer.WriteStringBytes(METADATA_SETTING_SECTION);
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1));
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(2));
+
+        for (string_view token : {string_view("Common.GameName"), string_view("string")}) {
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
+            writer.WriteStringBytes(token);
+        }
+
+        CHECK_THROWS_WITH(ReadMetadataVersion(outdated_metadata), Catch::Matchers::ContainsSubstring("resources must be rebaked"));
+
+        EngineMetadata outdated_meta {[] { }};
+        outdated_meta.RegisterSide(EngineSideKind::ClientSide);
+        CHECK_THROWS_AS(RegisterDynamicMetadata(&outdated_meta, outdated_metadata), MetadataOutdatedException);
+    }
+
     SECTION("serializes events and remote calls")
     {
         rig.AddSourceFile("Scripts/TestEventsAndRemoteCalls.fos", R"(

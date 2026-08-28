@@ -565,6 +565,9 @@ namespace NativeDataProvider
     }
 }
 
+// Defined where Entity is complete: this header only forward-declares it
+[[noreturn]] extern void ThrowScriptEntityTypeMismatch(ptr<Entity> entity);
+
 namespace NativeDataCaller
 {
     template<typename Fn>
@@ -578,6 +581,33 @@ namespace NativeDataCaller
         static constexpr size_t arity = sizeof...(Args);
     };
 
+    // Conjunction in a concept short-circuits, so `element_type` is only looked up on an actual handle;
+    // spelling this as `if constexpr (... && ...)` instead would substitute it for every argument type
+    template<typename T>
+    concept entity_handle_arg = (specialization_of<T, ptr> || specialization_of<T, nptr>) && std::is_base_of_v<Entity, std::remove_const_t<typename T::element_type>>;
+
+    // A collection of entity handles. The conjunction short-circuits, so `value_type` is only looked up on
+    // an actual collection
+    template<typename T>
+    concept entity_handle_collection = vector_collection<T> && entity_handle_arg<typename T::value_type>;
+
+    // A collection slot holds the script Entity handle whatever the declared element type says, so it is
+    // promoted here rather than reinterpreted, which would let a prototype through and kill the callee
+    template<typename ElemT>
+    auto NarrowEntityCollectionSlot(ptr<void> slot) -> ElemT
+    {
+        using target_t = std::remove_const_t<typename ElemT::element_type>;
+
+        nptr<Entity> base_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(slot);
+        nptr<target_t> target_entity = base_entity.template dyn_cast<target_t>();
+
+        if (base_entity && !target_entity) {
+            ThrowScriptEntityTypeMismatch(base_entity.as_ptr());
+        }
+
+        return ElemT {target_entity};
+    }
+
     // AllowDestroyedEntityArgs exists for the synchronization primitives, which answer "is this entity still
     // reachable": rejecting the argument would make their recoverable-false contract impossible to honour
     template<typename T, typename U, bool AllowDestroyedEntityArgs = false>
@@ -586,23 +616,47 @@ namespace NativeDataCaller
         using raw_t = std::remove_cvref_t<T>;
 
         if constexpr (vector_collection<raw_t>) {
+            using value_t = typename raw_t::value_type;
             auto& v = temp.emplace();
             size_t size = accessor.GetArraySize(data);
             v.reserve(size);
 
             for (size_t i = 0; i < size; i++) {
-                v.emplace_back(*cast_from_void<const typename raw_t::value_type*>(accessor.GetArrayElement(data, i).get()));
+                ptr<void> element = accessor.GetArrayElement(data, i);
+
+                // Destroyed elements stay: an array may outlive entities the caller checked, and its callees
+                // drop them themselves, so rejecting one here would break their recoverable contract
+                if constexpr (entity_handle_arg<value_t>) {
+                    v.emplace_back(NarrowEntityCollectionSlot<value_t>(element));
+                }
+                else {
+                    v.emplace_back(*cast_from_void<const value_t*>(element.get()));
+                }
             }
 
             return v;
         }
         else if constexpr (map_collection<raw_t>) {
+            using key_t = typename raw_t::key_type;
+            using mapped_t = typename raw_t::mapped_type;
+
+            // A dict key is a script value type, and a nested collection slot is a whole array object rather
+            // than a handle, so neither reaches the promotion below
+            static_assert(!entity_handle_arg<key_t> && !entity_handle_collection<key_t>, "Entity handles are not supported as script dict keys");
+            static_assert(!entity_handle_collection<mapped_t>, "Arrays of entity handles in a script dict value are not narrowed yet");
+
             auto& m = temp.emplace();
             size_t size = accessor.GetDictSize(data);
 
             for (size_t i = 0; i < size; i++) {
                 auto kv = accessor.GetDictElement(data, i);
-                m.emplace(*cast_from_void<const typename raw_t::key_type*>(kv.first.get()), *cast_from_void<const typename raw_t::mapped_type*>(kv.second.get()));
+
+                if constexpr (entity_handle_arg<mapped_t>) {
+                    m.emplace(*cast_from_void<const key_t*>(kv.first.get()), NarrowEntityCollectionSlot<mapped_t>(kv.second));
+                }
+                else {
+                    m.emplace(*cast_from_void<const key_t*>(kv.first.get()), *cast_from_void<const mapped_t*>(kv.second.get()));
+                }
             }
 
             return m;
@@ -619,7 +673,12 @@ namespace NativeDataCaller
             if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
                 nptr<Entity> base_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(data);
                 nptr<std::remove_const_t<elem_t>> target_entity = base_entity.template dyn_cast<std::remove_const_t<elem_t>>();
-                FO_VERIFY_AND_THROW(!base_entity || target_entity, "Base entity exists but target entity lookup failed");
+
+                // A method declared on the script Entity is promoted to the target entity here. The handle
+                // reaches native code as the base, so a prototype passed to one is rejected at the call
+                if (base_entity && !target_entity) {
+                    ThrowScriptEntityTypeMismatch(base_entity.as_ptr());
+                }
 
                 if constexpr (!AllowDestroyedEntityArgs) {
                     if (target_entity && target_entity->IsDestroyed()) {
