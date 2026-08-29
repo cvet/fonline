@@ -122,11 +122,19 @@ if(FO_MANAGED_SCRIPTING)
     elseif(FO_WEB)
         SetValue(FO_MANAGED_NM "$ENV{EMSDK}/upstream/bin/llvm-nm")
     else()
-        find_program(FO_MANAGED_NM NAMES llvm-nm nm REQUIRED)
+        # MSVC ships no nm, so the search also covers the LLVM the Visual Studio installer places beside
+        # the toolset and a standalone LLVM install
+        find_program(FO_MANAGED_NM
+            NAMES llvm-nm nm
+            HINTS
+                "$ENV{VCINSTALLDIR}/Tools/Llvm/x64/bin"
+                "$ENV{VCINSTALLDIR}/Tools/Llvm/bin"
+                "$ENV{ProgramFiles}/LLVM/bin"
+                "$ENV{ProgramW6432}/LLVM/bin")
     endif()
 
-    if(NOT EXISTS "${FO_MANAGED_NM}")
-        AbortMessage("Symbol reader for the Managed interop shim table not found: ${FO_MANAGED_NM}")
+    if(NOT FO_MANAGED_NM OR NOT EXISTS "${FO_MANAGED_NM}")
+        AbortMessage("Symbol reader for the Managed interop shim table not found. Install LLVM (llvm-nm) or the Visual Studio \"C++ Clang tools for Windows\" component, or set FO_MANAGED_NM")
     endif()
 
     AddCustomCommand(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"

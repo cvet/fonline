@@ -2176,9 +2176,14 @@ def resolve_interop_shim_dir(runtime_root: Path, os_name: str, arch: str, config
 
 def resolve_minipal_libraries(runtime_root: Path, os_name: str, arch: str, config: str) -> list[Path]:
 	# The shims call into minipal (SystemNative_GetTimestamp needs minipal_hires_ticks), and it is only
-	# ever produced under the intermediate obj tree, so it is picked up separately from the shims
+	# ever produced under the intermediate obj tree, so it is picked up separately from the shims.
+	# The file name follows the target toolchain rather than the host: libminipal.a where CMake applies
+	# the Unix prefix, minipal.lib on MSVC. aotminipal is a different library and stays out
 	obj_root = runtime_root / 'artifacts' / 'obj' / 'native'
-	return sorted(path for parent in obj_root.glob(f'*-{os_name}-{config}-{arch}') for path in (parent / 'minipal').glob('libminipal.*'))
+	return sorted(path
+		for parent in obj_root.glob(f'*-{os_name}-{config}-{arch}')
+		for path in (parent / 'minipal').rglob('*')
+		if path.suffix.lower() in ('.a', '.lib') and path.stem.lower() in ('minipal', 'libminipal'))
 
 
 def copy_browser_runtime_glue(runtime_root: Path, output_lib_dir: Path, os_name: str, arch: str, config: str) -> None:
@@ -2215,7 +2220,9 @@ def copy_interop_shim_libraries(runtime_root: Path, output_lib_dir: Path, os_nam
 	minipal_paths = resolve_minipal_libraries(runtime_root, os_name, arch, config)
 
 	if not minipal_paths:
-		raise SystemExit(f'Interop shim dependency minipal not found under: {runtime_root / "artifacts" / "obj" / "native"}')
+		obj_root = runtime_root / 'artifacts' / 'obj' / 'native'
+		seen = sorted(str(path.relative_to(obj_root)) for parent in obj_root.glob(f'*-{os_name}-{config}-{arch}') for path in (parent / 'minipal').rglob('*') if path.is_file())
+		raise SystemExit(f'Interop shim dependency minipal not found under: {obj_root}/*-{os_name}-{config}-{arch}/minipal (found: {", ".join(seen) if seen else "nothing"})')
 
 	shim_paths.extend(minipal_paths)
 
