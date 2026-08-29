@@ -71,15 +71,21 @@ def emit_table(output_path: Path, libraries: dict[str, list[str]]) -> None:
     lines.append('')
     lines.append('FO_BEGIN_NAMESPACE')
     lines.append('')
-    lines.append('const ManagedPInvokeEntry ManagedPInvokeEntries[] = {')
+    entries = [f'    {{"{library_name}", "{symbol}", reinterpret_cast<const void*>(&{symbol})}},'
+               for library_name, symbols in libraries.items() for symbol in symbols]
 
-    for library_name, symbols in libraries.items():
-        for symbol in symbols:
-            lines.append(f'    {{"{library_name}", "{symbol}", reinterpret_cast<const void*>(&{symbol})}},')
-
-    lines.append('};')
-    lines.append('')
-    lines.append('const size_t ManagedPInvokeEntryCount = sizeof(ManagedPInvokeEntries) / sizeof(ManagedPInvokeEntries[0]);')
+    # The header declares the array with an unknown bound, so an empty table still needs one element to
+    # be a well-formed definition; the count is what callers read
+    if entries:
+        lines.append('const ManagedPInvokeEntry ManagedPInvokeEntries[] = {')
+        lines.extend(entries)
+        lines.append('};')
+        lines.append('')
+        lines.append('const size_t ManagedPInvokeEntryCount = sizeof(ManagedPInvokeEntries) / sizeof(ManagedPInvokeEntries[0]);')
+    else:
+        lines.append('const ManagedPInvokeEntry ManagedPInvokeEntries[1] = {};')
+        lines.append('')
+        lines.append('const size_t ManagedPInvokeEntryCount = 0;')
     lines.append('')
     lines.append('FO_END_NAMESPACE')
     lines.append('')
@@ -102,7 +108,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--nm', required=True, help='nm tool of the target toolchain')
     parser.add_argument('--output', required=True, type=Path, help='generated source file')
-    parser.add_argument('--library', required=True, action='append', type=parse_library_argument, help='<library>=<prefix>=<archive>, repeatable')
+    # A target may link no shim at all: Windows resolves CoreLib's P/Invokes through Win32 itself
+    parser.add_argument('--library', action='append', default=[], type=parse_library_argument, help='<library>=<prefix>=<archive>, repeatable')
     parser.add_argument('--exclude', action='append', default=[], help='entry point the target cannot support, repeatable')
     args = parser.parse_args()
 

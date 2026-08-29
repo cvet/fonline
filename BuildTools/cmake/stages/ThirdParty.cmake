@@ -804,9 +804,10 @@ if(FO_MANAGED_SCRIPTING)
         # Elsewhere the shim resolves ICU at load time; statically it needs ICU present, and none ships
         SetValue(FO_MANAGED_SHIM_LIBS System.Native)
     elseif(FO_WINDOWS)
-        # System.Native is the Unix PAL and dotnet/runtime does not build it for Windows at all: there
-        # CoreLib reaches the OS through Win32 P/Invokes Mono resolves by itself
-        SetValue(FO_MANAGED_SHIM_LIBS System.Globalization.Native)
+        # Nothing to link there: System.Native is the Unix PAL dotnet/runtime does not build for Windows,
+        # where CoreLib reaches the OS through Win32 P/Invokes Mono resolves by itself, and the
+        # globalization shim ships only as a DLL import library and an LTCG archive no nm can read
+        SetValue(FO_MANAGED_SHIM_LIBS "")
     else()
         SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native)
     endif()
@@ -816,16 +817,9 @@ if(FO_MANAGED_SCRIPTING)
     SetValue(FO_MANAGED_SHIM_PREFIX_System.Native SystemNative_)
     SetValue(FO_MANAGED_SHIM_PREFIX_System.Globalization.Native GlobalizationNative_)
 
-    # The archive name follows the target toolchain, not the host. The Windows build publishes each shim
-    # twice and the bare .lib is the DLL's import library, so the statically linked flavour is named out
-    if(FO_WINDOWS)
-        SetValue(FO_MANAGED_SHIM_ARCHIVE_SUFFIX "-Static${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    else()
-        SetValue(FO_MANAGED_SHIM_ARCHIVE_SUFFIX "${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    endif()
-
+    # The archive name follows the target toolchain, not the host
     foreach(shimLib ${FO_MANAGED_SHIM_LIBS})
-        SetValue(shimArchive "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${shimLib}${FO_MANAGED_SHIM_ARCHIVE_SUFFIX}")
+        SetValue(shimArchive "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${shimLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
         AppendList(FO_MANAGED_PINVOKE_ARGS --library "${shimLib}=${FO_MANAGED_SHIM_PREFIX_${shimLib}}=${shimArchive}")
         AppendList(FO_MANAGED_SHIM_ARCHIVES "${shimArchive}")
     endforeach()
