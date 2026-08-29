@@ -2203,7 +2203,7 @@ TEST_CASE("ScriptEntityDictValuePromotion")
 {
     MAKE_SERVER();
 
-    nptr<const ProtoItem> item_proto = server->ProtoMngr.GetProtoItem(get_func("TestItem"));
+    nptr<const ProtoItem> item_proto = server->GetProtoItem(get_func("TestItem"));
     REQUIRE(item_proto);
 
     map<hstring, nptr<const Entity>> source;
