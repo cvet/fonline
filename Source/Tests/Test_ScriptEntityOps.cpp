@@ -2193,7 +2193,7 @@ TEST_CASE("ScriptEntityArgumentPromotion")
     REQUIRE(item_proto);
 
     // A handle slot is non-const by construction, while the proto lookup only hands out a const view
-    ptr<Entity> proto_entity = make_ptr(const_cast<Entity*>(static_cast<const Entity*>(item_proto.get())));
+    ptr<Entity> proto_entity = make_ptr(const_cast<ProtoItem*>(std::addressof(*item_proto)));
 
     SECTION("NarrowsAScalarArgumentToTheDeclaredType")
     {
@@ -2201,10 +2201,10 @@ TEST_CASE("ScriptEntityArgumentPromotion")
         NativeDataProvider::StorageEntryType slot_storage {};
         ptr<void> slot = NativeDataProvider::NormalizeArg(base_entity, slot_storage);
 
-        optional<ptr<ProtoItem>> temp;
+        nptr<ProtoItem> temp;
         auto narrowed = NativeDataCaller::ConvertArg<ptr<ProtoItem>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
 
-        CHECK(narrowed.get() == proto_entity.get());
+        CHECK(narrowed == proto_entity);
     }
 
     SECTION("RejectsAScalarArgumentOfAnotherEntityType")
@@ -2213,7 +2213,7 @@ TEST_CASE("ScriptEntityArgumentPromotion")
         NativeDataProvider::StorageEntryType slot_storage {};
         ptr<void> slot = NativeDataProvider::NormalizeArg(base_entity, slot_storage);
 
-        optional<ptr<ProtoCritter>> temp;
+        nptr<ProtoCritter> temp;
 
         CHECK_THROWS_AS((NativeDataCaller::ConvertArg<ptr<ProtoCritter>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
     }
@@ -2230,7 +2230,7 @@ TEST_CASE("ScriptEntityArgumentPromotion")
         auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<ProtoItem>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
 
         REQUIRE(narrowed.size() == 1);
-        CHECK(narrowed.begin()->second.get() == proto_entity.get());
+        CHECK(narrowed.begin()->second == proto_entity);
     }
 
     SECTION("RejectsADictValueOfAnotherEntityType")
@@ -2258,7 +2258,7 @@ TEST_CASE("ScriptEntityArgumentPromotion")
         auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<Entity>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
 
         REQUIRE(narrowed.size() == 1);
-        CHECK(narrowed.begin()->second.get() == proto_entity.get());
+        CHECK(narrowed.begin()->second == proto_entity);
     }
 }
 
