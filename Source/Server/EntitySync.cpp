@@ -768,30 +768,14 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
 
     CurrentContext = this;
 
-    auto contains_entity = [](const vector<refcount_ptr<ServerEntity>>& owners, const ServerEntity* entity) noexcept { return std::ranges::any_of(owners, [entity](const auto& owner) noexcept { return owner.get() == entity; }); };
-
-    // Callers pass borrowed handles, and ReleaseLocks below deliberately opens a window where another worker
-    // may destroy an entity the old cover alone protected, so pin every request across the whole transition
-    vector<refcount_ptr<ServerEntity>> requested_owners;
-    requested_owners.reserve(entities.size());
-    for (auto entity : entities) {
-        if (!contains_entity(requested_owners, entity.get())) {
-            requested_owners.emplace_back(entity.hold_ref());
-        }
-    }
-
-    // Widen links are raw atomics, so reading one before its source is covered races detach/destruction.
-    // Read each link under its own locked source, then retry with the exact pinned closure
-    vector<refcount_ptr<ServerEntity>> cover_owners = requested_owners;
-
     // The cover is computed from lock-free parent reads, which a concurrent reparent can invalidate while
     // AcquireLocks waits, so the held set is verified afterwards and recomputed if anything escaped
     for (int32_t attempt = 0;; attempt++) {
         // Collect all entity locks, then reduce to minimal covering set:
         // if two entities share a common ancestor, use the ancestor's lock
-        unordered_map<ptr<EntityLock>, refcount_ptr<ServerEntity>> lock_to_entity;
+        unordered_map<ptr<EntityLock>, ptr<ServerEntity>> lock_to_entity;
 
-        for (auto& entity : cover_owners) {
+        for (auto entity : entities) {
             auto lock = entity->GetEntityLock();
 
             if (!lock) {
@@ -799,6 +783,45 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
             }
 
             lock_to_entity.emplace(lock, entity);
+        }
+
+        // Critter and Player are linked outside SetParent, so the parent walk covers only one half; the loop
+        // runs to a fixed point in case a future pair chains, and the verify below re-checks the linkage
+        {
+            bool widened = true;
+
+            while (widened) {
+                widened = false;
+
+                vector<ptr<ServerEntity>> snapshot;
+                snapshot.reserve(lock_to_entity.size() + entities.size());
+
+                for (auto entity : lock_to_entity | std::views::values) {
+                    snapshot.emplace_back(entity);
+                }
+
+                for (auto entity : entities) {
+                    snapshot.emplace_back(entity);
+                }
+
+                for (auto entity : snapshot) {
+                    auto widen = entity->GetSyncWidenEntity();
+
+                    if (widen == nullptr) {
+                        continue;
+                    }
+
+                    auto widen_lock = widen->GetEntityLock();
+
+                    if (widen_lock == nullptr) {
+                        continue;
+                    }
+
+                    if (lock_to_entity.emplace(widen_lock, widen).second) {
+                        widened = true;
+                    }
+                }
+            }
         }
 
         // Exactly the requested entities and their widen partners, with no escalation onto a shared parent:
@@ -850,7 +873,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
 
         bool all_covered = true;
 
-        for (auto& entity : cover_owners) {
+        for (auto entity : entities) {
             auto own_lock = entity->GetEntityLock();
 
             if (own_lock == nullptr) {
@@ -877,6 +900,35 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
                 all_covered = false;
                 break;
             }
+
+            // A widen target counts as covered through an ancestor too, not only its own lock: escalation may
+            // legitimately have replaced it with the parent, and demanding the own lock would exhaust the budget
+            auto widen = entity->GetSyncWidenEntity();
+
+            if (widen != nullptr) {
+                auto widen_lock = widen->GetEntityLock();
+
+                if (widen_lock != nullptr) {
+                    bool widen_covered = held_contains(widen_lock);
+
+                    if (!widen_covered) {
+                        auto current = widen->GetParentRaw();
+
+                        while (current) {
+                            if (held_contains(current->GetEntityLock())) {
+                                widen_covered = true;
+                                break;
+                            };
+                            current = current->GetParentRaw();
+                        }
+                    }
+
+                    if (!widen_covered) {
+                        all_covered = false;
+                        break;
+                    }
+                }
+            }
         }
 
         // A stale mark left by an ancestor that reparented during AcquireLocks would leave a hole in the
@@ -902,52 +954,18 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
             }
         }
 
-        bool cover_changed = false;
-        vector<refcount_ptr<ServerEntity>> next_cover = cover_owners;
-
-        if (all_covered) {
-            next_cover = requested_owners;
-
-            for (size_t i = 0; i < next_cover.size(); i++) {
-                auto& entity = next_cover[i];
-                if (!contains_entity(cover_owners, entity.get())) {
-                    break;
-                }
-
-                auto widen = entity->GetSyncWidenEntity();
-
-                if (!widen) {
-                    continue;
-                }
-
-                if (!contains_entity(next_cover, widen.get())) {
-                    bool widen_already_covered = contains_entity(cover_owners, widen.get());
-                    next_cover.emplace_back(std::move(widen).take_not_null());
-                    if (!widen_already_covered) {
-                        break;
-                    }
-                }
-            }
-
-            cover_changed = next_cover.size() != cover_owners.size() || std::ranges::any_of(next_cover, [&cover_owners, &contains_entity](const auto& entity) noexcept { return !contains_entity(cover_owners, entity.get()); });
-            all_covered = !cover_changed;
-        }
-
         if (all_covered) {
             return;
         }
 
         if (attempt + 1 >= MAX_SYNC_RETRIES) {
             ReleaseLocks();
-            throw EntitySyncException("SyncEntities retry budget exhausted — entity reparenting or widen-link changes raced lock acquisition repeatedly");
+            throw EntitySyncException("SyncEntities retry budget exhausted — entity reparenting raced lock acquisition repeatedly");
         }
 
         // The stale cover is released so other threads are not blocked while waiting, and the back-off keeps
         // the recompute from re-racing the same in-flight transfer
         ReleaseLocks();
-        if (cover_changed) {
-            cover_owners = std::move(next_cover);
-        }
         BackoffBeforeSyncRetry(attempt);
     }
 }

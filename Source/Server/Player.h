@@ -70,8 +70,8 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
-    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
-    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] ptr<const ServerConnection> GetConnection() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
@@ -138,7 +138,6 @@ private:
     string _name {"(NotLoggedIn)"};
     // Atomic non-owning controlled-critter link for lock-free chosen-recipient checks.
     // Published under player cover and used as the Player-to-Critter sync-widen anchor
-    mutable ServerEntityLinkLock _controlledCrLinkLocker {};
     std::atomic<Critter*> _controlledCr {};
     // Atomic source pair prevents property fan-out from echoing a client-originated change.
     // The locked subject makes independent field reads unable to form a false match

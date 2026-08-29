@@ -146,26 +146,23 @@ void Player::SetControlledCritter(nptr<Critter> cr)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    scoped_lock locker {_controlledCrLinkLocker};
     _controlledCr.store(cr.get(), std::memory_order_release);
 }
 
-auto Player::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
+auto Player::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    scoped_lock locker {_controlledCrLinkLocker};
-    return nptr<ServerEntity>(_controlledCr.load(std::memory_order_acquire)).try_hold_ref();
+    return nptr<ServerEntity>(_controlledCr.load(std::memory_order_acquire));
 }
 
-auto Player::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
+auto Player::GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    scoped_lock locker {_controlledCrLinkLocker};
-    return nptr<const ServerEntity>(_controlledCr.load(std::memory_order_acquire)).try_hold_ref();
+    return nptr<const ServerEntity>(_controlledCr.load(std::memory_order_acquire));
 }
 
 void Player::DetachCritter()
@@ -174,7 +171,7 @@ void Player::DetachCritter()
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    if (auto controlled_cr = GetSyncWidenEntity().dyn_cast<Critter>()) {
+    if (auto controlled_cr = _controlledCr.load(std::memory_order_acquire)) {
         controlled_cr->DetachPlayer();
     }
 }

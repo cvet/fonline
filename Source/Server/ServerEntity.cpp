@@ -55,12 +55,7 @@ ServerEntity::~ServerEntity()
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
     // but if something slipped through, this destructor still releases cleanly
-    ServerEntity* parent;
-    {
-        scoped_lock locker {_parentLinkLocker};
-        parent = _parent.exchange(nullptr, std::memory_order_acq_rel);
-    }
-    if (parent != nullptr) {
+    if (auto parent = _parent.load(std::memory_order_relaxed); parent) {
         parent->Release();
     }
 }
@@ -129,7 +124,7 @@ auto ServerEntity::GetEntityLock() const noexcept -> nptr<EntityLock>
     return _entityLock;
 }
 
-auto ServerEntity::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
+auto ServerEntity::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -137,7 +132,7 @@ auto ServerEntity::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
     return nullptr;
 }
 
-auto ServerEntity::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
+auto ServerEntity::GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -194,7 +189,7 @@ auto ServerEntity::GetParent() -> refcount_nptr<ServerEntity>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return GetParentRaw();
+    return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
 auto ServerEntity::GetParent() const -> refcount_nptr<const ServerEntity>
@@ -202,7 +197,7 @@ auto ServerEntity::GetParent() const -> refcount_nptr<const ServerEntity>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return GetParentRaw();
+    return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
 auto ServerEntity::GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>
@@ -210,7 +205,6 @@ auto ServerEntity::GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    scoped_lock locker {_parentLinkLocker};
     return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -220,12 +214,7 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
 
     FO_VALIDATE_ENTITY(NONE);
 
-    bool has_parent;
-    {
-        scoped_lock locker {_parentLinkLocker};
-        has_parent = _parent.load(std::memory_order_relaxed) != nullptr;
-    }
-    if (has_parent) {
+    if (_parent.load(std::memory_order_relaxed) != nullptr) {
         auto ctx = SyncContext::GetCurrentOnThisThread();
         auto lock = GetEntityLock();
         // Reparenting needs the entity's own lock directly, because ancestor coverage is a read-path right only;
@@ -237,12 +226,9 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
         parent->AddRef();
     }
 
-    ServerEntity* old;
-    {
-        scoped_lock locker {_parentLinkLocker};
-        old = _parent.exchange(parent.get(), std::memory_order_acq_rel);
-    }
-    if (old != nullptr) {
+    nptr<ServerEntity> old = _parent.exchange(parent.get(), std::memory_order_acq_rel);
+
+    if (old) {
         old->Release();
     }
 }

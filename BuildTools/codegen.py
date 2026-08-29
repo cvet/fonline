@@ -1707,7 +1707,7 @@ generated_output = GeneratedOutput()
 
 def get_entity_from_target(target: str) -> str:
     # Script Entity is promoted to the target entity, which the exports behind it need for engine, id and lock.
-    # ConvertArg narrows arguments on the way in, so a prototype - a sibling of ServerEntity - is rejected at the call
+    # ConvertArg narrows on the way in, so a prototype - a sibling of ServerEntity - is rejected at the call
     if target == 'Server':
         return 'ServerEntity*'
     if target in CLIENT_ENTITY_TARGETS:
