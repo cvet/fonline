@@ -316,6 +316,11 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
 
     WriteLog("Start networking");
 
+    FO_VERIFY_AND_THROW(Settings->MaxMessageSize >= 0, "ServerNetwork.MaxMessageSize must not be negative", Settings->MaxMessageSize);
+    FO_VERIFY_AND_THROW(Settings->MaxBufferedInputSize >= 0, "ServerNetwork.MaxBufferedInputSize must not be negative", Settings->MaxBufferedInputSize);
+    FO_VERIFY_AND_THROW(Settings->MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->MaxRemoteCallPayloadSize);
+    FO_VERIFY_AND_THROW(Settings->MaxBufferedInputSize == 0 || Settings->MaxMessageSize == 0 || Settings->MaxBufferedInputSize >= Settings->MaxMessageSize, "ServerNetwork.MaxBufferedInputSize must be zero or at least ServerNetwork.MaxMessageSize", Settings->MaxBufferedInputSize, Settings->MaxMessageSize);
+
     unique_ptr<NetworkServer> interthread_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
     _connectionServers.emplace_back(std::move(interthread_server));
 
@@ -1987,7 +1992,12 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
                 if (!_updaterBackend) {
                     WriteLog(LogType::Warning, "Wrong update file request, updater backend disabled, client host '{}'", connection->GetHost());
                     connection->HardDisconnect(DisconnectReason::UpdaterError);
-                    break;
+
+                    // The request body stays unread, so the partially consumed frame is dropped instead
+                    // of being handed to the next read as if it ended on a message boundary
+                    in_buf.Lock();
+                    in_buf->ResetBuf();
+                    return;
                 }
 
                 auto updater_backend = make_ptr(&*_updaterBackend);
@@ -2108,6 +2118,14 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
     auto connection = player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
+        return;
+    }
+
+    // The network thread can only latch an input overflow: it detects one inside the transport receive
+    // lock that a disconnect would take again, so the disconnect itself belongs to this worker pass
+    if (connection->IsInputOverflowed()) {
+        WriteLog("Connection input buffer overflow from host '{}'", connection->GetHost());
+        connection->HardDisconnect(DisconnectReason::ProtocolError);
         return;
     }
 
@@ -4531,26 +4549,36 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
     auto in_buf = connection->ReadBuf();
 
     hstring remote_call_name = in_buf->Read<hstring>(Hashes);
-    int32_t remote_call_data_size = in_buf->Read<int32_t>();
-
-    // The payload can never be larger than the bytes still buffered; reject before allocating
-    if (remote_call_data_size < 0 || numeric_cast<size_t>(remote_call_data_size) > in_buf->GetUnreadSize()) {
-        throw GenericException("Invalid remote call data size", remote_call_data_size);
-    }
-
-    vector<uint8_t> remote_call_data;
-    remote_call_data.resize(remote_call_data_size);
-
-    in_buf->Pop(remote_call_data.data(), remote_call_data_size);
-
-    in_buf.Unlock();
-
     auto remote_calls = GetInboundRemoteCalls();
     auto remote_call_it = remote_calls->find(remote_call_name);
 
     if (remote_call_it == remote_calls->end()) {
         throw GenericException("Invalid remote call", remote_call_name);
     }
+
+    int32_t remote_call_data_size = in_buf->Read<int32_t>();
+
+    // Structural generated bounds are checked before runtime configuration and before allocating. Runtime
+    // limits may only narrow a declaration, never enlarge it
+    if (remote_call_data_size < 0 || numeric_cast<size_t>(remote_call_data_size) > in_buf->GetUnreadSize()) {
+        throw GenericException("Invalid remote call data size", remote_call_data_size);
+    }
+
+    size_t remote_call_payload_size = numeric_cast<size_t>(remote_call_data_size);
+
+    if (remote_call_it->second.MaxPayloadSize != 0 && remote_call_payload_size > remote_call_it->second.MaxPayloadSize) {
+        throw GenericException("Remote call data exceeds structural payload limit", remote_call_name, remote_call_payload_size, remote_call_it->second.MaxPayloadSize);
+    }
+    if (Settings->MaxRemoteCallPayloadSize != 0 && remote_call_payload_size > numeric_cast<size_t>(Settings->MaxRemoteCallPayloadSize)) {
+        throw GenericException("Remote call data exceeds runtime payload limit", remote_call_name, remote_call_payload_size, Settings->MaxRemoteCallPayloadSize);
+    }
+
+    vector<uint8_t> remote_call_data;
+    remote_call_data.resize(remote_call_payload_size);
+
+    in_buf->Pop(remote_call_data.data(), remote_call_payload_size);
+
+    in_buf.Unlock();
 
     ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
 

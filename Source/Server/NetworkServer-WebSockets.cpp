@@ -437,6 +437,11 @@ auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection
     FO_STACK_TRACE_ENTRY();
 
     auto&& connection = _server.get_con_from_hdl(hdl);
+
+    if (_settings->MaxBufferedInputSize > 0) {
+        connection->set_max_message_size(numeric_cast<size_t>(_settings->MaxBufferedInputSize));
+    }
+
     connection->select_subprotocol("binary");
     return true;
 }

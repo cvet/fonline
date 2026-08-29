@@ -270,6 +270,7 @@ void NetInBuffer::ResetBuf() noexcept
     NetBuffer::ResetBuf();
 
     _bufReadPos = 0;
+    _msgEndPos = 0;
 }
 
 void NetInBuffer::AddData(const_span<uint8_t> buf)
@@ -278,6 +279,13 @@ void NetInBuffer::AddData(const_span<uint8_t> buf)
 
     if (buf.empty()) {
         return;
+    }
+
+    size_t buffered_unread = GetBufferedUnreadSize();
+
+    if (_maxBufLen != 0 && (buf.size() > _maxBufLen || buffered_unread > _maxBufLen - buf.size())) {
+        ResetBuf();
+        throw NetBufferException("Network receive buffer exceeds maximum", buffered_unread, buf.size(), _maxBufLen);
     }
 
     GrowBuf(buf.size());
@@ -291,7 +299,7 @@ void NetInBuffer::SetEndPos(size_t pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (pos > _bufData.size()) {
+    if (pos > _bufData.size() || (_msgEndPos != 0 && pos < _msgEndPos)) {
         throw NetBufferException("Invalid set end pos", pos, _bufData.size(), _bufEndPos);
     }
 
@@ -306,9 +314,11 @@ void NetInBuffer::Pop(nptr<void> buf, size_t len)
         return;
     }
 
-    if (_bufReadPos + len > _bufEndPos) {
+    size_t read_limit = GetReadLimit();
+
+    if (_bufReadPos > read_limit || len > read_limit - _bufReadPos) {
         ResetBuf();
-        throw NetBufferException("Invalid read length", len, _bufReadPos, _bufEndPos);
+        throw NetBufferException("Invalid read length", len, _bufReadPos, read_limit, _bufEndPos);
     }
 
     FO_VERIFY_AND_THROW(buf, "Network buffer pop received a null destination for a non-empty read");
@@ -321,6 +331,8 @@ void NetInBuffer::Pop(nptr<void> buf, size_t len)
 void NetInBuffer::ShrinkReadBuf()
 {
     FO_STACK_TRACE_ENTRY();
+
+    FinishMessageRead();
 
     if (_bufReadPos > _bufEndPos) {
         ResetBuf();
@@ -378,9 +390,15 @@ auto NetInBuffer::ReadMsg() -> NetMessage
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_bufReadPos + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage) > _bufEndPos) {
+    FO_VERIFY_AND_THROW(_msgEndPos == 0, "Network message read started before the previous frame was completed", _bufReadPos, _msgEndPos, _bufEndPos);
+
+    constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
+
+    if (_bufReadPos > _bufEndPos || header_size > _bufEndPos - _bufReadPos) {
         throw NetBufferException("Invalid msg read length", _bufReadPos, _bufEndPos);
     }
+
+    size_t msg_start_pos = _bufReadPos;
 
     uint32_t msg_signature;
     auto msg_signature_source = make_ptr(_bufData.data()).offset(_bufReadPos);
@@ -395,6 +413,13 @@ auto NetInBuffer::ReadMsg() -> NetMessage
     CopyBuf(msg_len_source, msg_len_target, EncryptKey(sizeof(msg_len)), sizeof(msg_len));
     _bufReadPos += sizeof(msg_len);
     FO_VERIFY_AND_THROW(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len), "Incoming network message length is smaller than the protocol header", msg_len, sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
+
+    if (msg_len > _bufEndPos - msg_start_pos) {
+        ResetBuf();
+        throw NetBufferException("Incoming network message extends past buffered data", msg_len, msg_start_pos, _bufEndPos);
+    }
+
+    _msgEndPos = msg_start_pos + msg_len;
 
     NetMessage msg;
     auto msg_source = make_ptr(_bufData.data()).offset(_bufReadPos);
@@ -425,6 +450,8 @@ auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 auto NetInBuffer::NeedProcess() -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    FinishMessageRead();
 
     // Check signature
     if (_bufReadPos + sizeof(uint32_t) > _bufEndPos) {
@@ -464,7 +491,26 @@ auto NetInBuffer::NeedProcess() -> bool
         throw UnknownMessageException("Message length exceeds maximum", msg_len, _maxMsgLen);
     }
 
-    return _bufReadPos + msg_len <= _bufEndPos;
+    return msg_len <= _bufEndPos - _bufReadPos;
+}
+
+void NetInBuffer::FinishMessageRead()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_msgEndPos == 0) {
+        return;
+    }
+
+    if (_bufReadPos != _msgEndPos) {
+        size_t read_pos = _bufReadPos;
+        size_t msg_end_pos = _msgEndPos;
+        size_t buf_end_pos = _bufEndPos;
+        ResetBuf();
+        throw NetBufferException("Network message payload was not consumed exactly", read_pos, msg_end_pos, buf_end_pos);
+    }
+
+    _msgEndPos = 0;
 }
 
 FO_END_NAMESPACE

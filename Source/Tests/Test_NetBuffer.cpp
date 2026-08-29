@@ -231,6 +231,63 @@ TEST_CASE("NetBuffer")
         CHECK(in_buf_ok.NeedProcess());
         CHECK(in_buf_ok.ReadMsg() == NetMessage::Ping);
     }
+
+    SECTION("ConcatenatedFramesCannotExtendTheCurrentMessagePayload")
+    {
+        NetOutBuffer out_buf {16};
+        out_buf.StartMsg(NetMessage::RemoteCall);
+        out_buf.Write<uint32_t>(4);
+        out_buf.EndMsg();
+        size_t first_frame_size = out_buf.GetDataSize();
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.Write<uint32_t>(0xAABBCCDD);
+        out_buf.EndMsg();
+
+        NetInBuffer in_buf {16};
+        in_buf.AddData(out_buf.GetData());
+        REQUIRE(in_buf.NeedProcess());
+        CHECK(in_buf.ReadMsg() == NetMessage::RemoteCall);
+        CHECK(in_buf.GetUnreadSize() == sizeof(uint32_t));
+        CHECK(in_buf.GetBufferedUnreadSize() == out_buf.GetDataSize() - (first_frame_size - sizeof(uint32_t)));
+        CHECK(in_buf.Read<uint32_t>() == 4);
+        CHECK(in_buf.GetUnreadSize() == 0);
+
+        REQUIRE(in_buf.NeedProcess());
+        CHECK(in_buf.ReadMsg() == NetMessage::Ping);
+        CHECK(in_buf.Read<uint32_t>() == 0xAABBCCDD);
+        in_buf.ShrinkReadBuf();
+        CHECK(in_buf.GetDataSize() == 0);
+    }
+
+    SECTION("CurrentFrameRejectsCrossFrameRead")
+    {
+        NetOutBuffer out_buf {16};
+        out_buf.StartMsg(NetMessage::RemoteCall);
+        out_buf.Write<uint16_t>(7);
+        out_buf.EndMsg();
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.Write<uint32_t>(42);
+        out_buf.EndMsg();
+
+        NetInBuffer in_buf {16};
+        in_buf.AddData(out_buf.GetData());
+        REQUIRE(in_buf.NeedProcess());
+        CHECK(in_buf.ReadMsg() == NetMessage::RemoteCall);
+        CHECK_THROWS_AS(in_buf.Read<uint32_t>(), NetBufferException);
+        CHECK(in_buf.GetDataSize() == 0);
+    }
+
+    SECTION("UnreadBufferCapRejectsFragmentFloodBeforeGrowth")
+    {
+        NetInBuffer in_buf {8};
+        in_buf.SetMaxBufLen(8);
+        const array<uint8_t, 5> first = {1, 2, 3, 4, 5};
+        const array<uint8_t, 4> second = {6, 7, 8, 9};
+        in_buf.AddData(first);
+        CHECK(in_buf.GetBufferedUnreadSize() == first.size());
+        CHECK_THROWS_AS(in_buf.AddData(second), NetBufferException);
+        CHECK(in_buf.GetDataSize() == 0);
+    }
 }
 
 TEST_CASE("NetBufferAdversarial")

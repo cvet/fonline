@@ -764,7 +764,7 @@ namespace TestEventsAndRemoteCalls
 {
 ///@ Event Server Critter CoverageEvent ( )
 ///@ Event Server Critter CoverageEventArgs ( int32 amount , string? note )
-///@ RemoteCall Server CoverageCall ( int32 amount , string? note )
+///@ RemoteCall Server CoverageCall ( int32 amount , string? note ) MaxBytes 4096 MaxCollectionSize 32
 ///@ RemoteCall Client ClientCoverage ( )
 }
 )");
@@ -782,8 +782,8 @@ namespace TestEventsAndRemoteCalls
         CHECK(std::ranges::count(event_it->second, vector<string> {"Critter", "CoverageEventArgs", "int32", "", "amount", "string", "?", "note"}) == 1);
 
         REQUIRE(remote_call_it != tags.end());
-        CHECK(std::ranges::count(remote_call_it->second, vector<string> {"CoverageCall", "TestEventsAndRemoteCalls.fos", "In", "int32", "", "amount", "string", "?", "note"}) == 1);
-        CHECK(std::ranges::count(remote_call_it->second, vector<string> {"ClientCoverage", "TestEventsAndRemoteCalls.fos", "Out"}) == 1);
+        CHECK(std::ranges::count(remote_call_it->second, vector<string> {"CoverageCall", "TestEventsAndRemoteCalls.fos", "In", "int32", "", "amount", "string", "?", "note", "Limits", "4096", "32"}) == 1);
+        CHECK(std::ranges::count(remote_call_it->second, vector<string> {"ClientCoverage", "TestEventsAndRemoteCalls.fos", "Out", "Limits", "0", "0"}) == 1);
     }
 
     SECTION("rejects invalid event declarations")
@@ -812,6 +812,10 @@ namespace TestEventsAndRemoteCalls
             {"///@ RemoteCall Server CoverageCall ( MissingType value )", "cannot resolve arg type"},
             {"///@ RemoteCall Server CoverageCall ( int32", "expected arg name after it's type"},
             {"///@ RemoteCall Server CoverageCall ( int32 value bool next )", "expected ')' or ',' after arg"},
+            {"///@ RemoteCall Server CoverageCall ( ) MaxBytes", "requires a non-negative integer value"},
+            {"///@ RemoteCall Server CoverageCall ( ) MaxBytes -1", "must not be negative"},
+            {"///@ RemoteCall Server CoverageCall ( ) UnknownLimit 1", "unknown structural limit"},
+            {"///@ RemoteCall Server CoverageCall ( ) MaxBytes 1 MaxBytes 2", "duplicate MaxBytes"},
         };
 
         for (const auto& [script, message] : cases) {
