@@ -944,14 +944,6 @@ namespace EntityOps
         Game.DestroyEntities(entities);
     }
 
-    void TestPrototypeAsEntityReceiverThrows()
-    {
-        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
-        Entity protoEntity = itemProto;
-
-        protoEntity.MakePersistent(true);
-    }
-
     int TestEntityArrayAcceptsRealEntities()
     {
         Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
@@ -2182,10 +2174,8 @@ TEST_CASE("ScriptEntityPromotionRejectsPrototypes")
         RUN_SCRIPT_FUNC_THROWS("TestPrototypeMixedIntoEntityArrayThrows", "Script entity is not usable as this entity type");
     }
 
-    SECTION("Receiver")
-    {
-        RUN_SCRIPT_FUNC_THROWS("TestPrototypeAsEntityReceiverThrows", "Script entity is not usable as this entity type");
-    }
+    // No receiver case: generic exports register on each concrete entity type, never on the script `Entity`,
+    // so a prototype held as an `Entity` has no entity method to call and AngelScript rejects it at compile time
 
     SECTION("RealEntitiesStillPass")
     {
