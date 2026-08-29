@@ -51,6 +51,7 @@ namespace WebRelated
     extern void InitializePersistentData();
     extern auto IsPersistentDataReady() noexcept -> bool;
     extern void StartMainLoop(void (*entry)(void*), void* data) noexcept;
+    extern void StopMainLoop() noexcept;
     extern void SetWebSocketScheme(bool secure) noexcept;
     extern void ShowError(string_view title, string_view text);
 }
