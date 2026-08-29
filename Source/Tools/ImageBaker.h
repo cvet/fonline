@@ -58,6 +58,14 @@ public:
         int16_t NextX {};
         int16_t NextY {};
         vector<uint8_t> Data {};
+        // The `<name>.depth.png` and `<name>.normal.png` companions, already packed into the shipped
+        // quad-per-pixel form, or empty when the source image had neither. Packed here at load rather
+        // than at write time so that every transform reshaping a frame reshapes one plane of the same
+        // width as the pixels, instead of two of their own.
+        vector<uint8_t> SurfaceData {};
+        // Metre bounds the depth values span; carried in the depth companion's text chunks.
+        float32_t DepthNear {};
+        float32_t DepthFar {};
         bool Shared {};
         uint16_t SharedIndex {};
     };
@@ -111,6 +119,10 @@ private:
     [[nodiscard]] auto LoadBam(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
     [[nodiscard]] auto LoadPng(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
     [[nodiscard]] auto LoadTga(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadSurfaceCompanions(string_view fname, const FileCollection& files, isize32 size, float32_t& near_metres, float32_t& far_metres) const -> vector<uint8_t>;
+    [[nodiscard]] auto LoadDepthCompanion(string_view fname, const FileCollection& files, isize32 size, float32_t& near_metres, float32_t& far_metres) const -> vector<uint16_t>;
+    [[nodiscard]] auto LoadNormalCompanion(string_view fname, const FileCollection& files, isize32 size) const -> vector<uint8_t>;
+    [[nodiscard]] auto LoadCompanionImage(string_view fname, string_view kind, const FileCollection& files, isize32 size, nptr<unordered_map<string, string>> text_chunks, bool keep_grey16) const -> vector<uint8_t>;
 
     unordered_map<string, LoadFunc> _fileLoaders {};
 };

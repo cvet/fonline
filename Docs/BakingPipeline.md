@@ -601,6 +601,54 @@ by the sequence name. BAM options accept a cycle index and optional cycle-frame
 selector separated by `-` (for example `$1` or `$1-3`); out-of-range cycle and
 frame selectors fall back to the first available cycle/frame.
 
+An image may carry **companion planes**: extra per-pixel channels of the sprite
+itself, placed beside it as `<name>.depth.png` and `<name>.normal.png`. They are
+not sprites and never bake as such — `ImageBaker` excludes any path whose stem
+ends in `.depth` or `.normal` from discovery, because the loader map is keyed on
+the last extension alone and cannot express a compound suffix. `LoadPng` folds
+whichever companions exist into the frame it is loading, and they follow that
+frame through padding and mesh cropping; a plane left untransformed would still
+satisfy its own size check while describing the wrong pixels.
+
+Both companions are ordinary images, because they are intermediates the baker
+re-encodes rather than textures the engine samples. Depth is a 16-bit greyscale
+PNG — the form a viewer shows as a depth map — whose values span that frame's own
+metre range rather than one absolute scale: a scale wide enough for a building
+leaves a prop using a few per cent of the sixteen bits. The range travels in the
+PNG's `DepthNearMetres` / `DepthFarMetres` text chunks and is written into the blob
+as two `float32` per frame, so values stay comparable between sprites. It is read
+through `LoadCompanionImage`, whose `keep_grey16` mode suppresses the
+`png_set_strip_16` the shared `PngLoad` applies and would leave only the high byte.
+Normals are an RGBA PNG in the usual 0.5-centred camera-space encoding. Both may
+carry alpha, and both are expected to: it matches the sprite's own coverage so the
+files composite with the same soft edge, and for normals it also separates
+background from data, which black alone cannot do since it decodes to a plausible
+vector. That alpha is descriptive only — the baker drops it, because the frame's
+own alpha is the single source of truth for coverage.
+
+The baker packs the pair into **one RGBA quad per pixel** at load time, so the
+shipped plane is uploaded into a texture with no per-pixel work and sampled with
+the sprite's own texture coordinates. `r`/`g` hold the camera-space normal in
+hemi-octahedral form and `b`/`a` hold the depth as a big-endian pair; the exact
+encode and its decode are written out at the top of `SpriteResource.h`. Two
+channels suffice for a normal because a unit vector has two degrees of freedom and
+the third is not even ambiguous here — every visible surface faces the camera — and
+that frees the byte the depth would otherwise have lost. Splitting depth across two
+channels survives bilinear filtering intact, since the decode is linear and the
+hardware filters each channel independently in floating point.
+
+Packing at load rather than at write time also keeps the rest of the pipeline
+simple: one plane the same width as the pixels travels through padding and mesh
+cropping, instead of two with their own element sizes.
+
+In the baked blob each frame writes a single presence flag after its pixel payload,
+followed by the two `float32` bounds and the packed plane when present;
+`SpriteResourceFrameData` exposes it as `Surface`. Adding it moved
+`SPRITE_RESOURCE_VERSION` to `4`; there is no fallback for the older layout. The
+format is pinned end to end by the `SpriteCompanionsArePackedIntoOneSurfaceQuad`
+section of `Test_ImageBaker.cpp`, which bakes authored companions and decodes the
+result back to metres and normals.
+
 `ImageBaker` can also bake an indexed silhouette mesh for every unique RGBA
 frame. The controls live in the dedicated `SpriteMesh.*` setting group inherited
 by `BakingSettings`:

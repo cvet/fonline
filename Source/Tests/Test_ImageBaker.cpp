@@ -352,6 +352,96 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     };
 }
 
+[[nodiscard]] static auto DecodeSurfaceDepth(const vector<uint8_t>& surface, size_t index, float32_t near_metres, float32_t far_metres) -> float32_t
+{
+    uint32_t packed = numeric_cast<uint32_t>(surface[index * 4 + 2]) * 256u + surface[index * 4 + 3];
+
+    return near_metres + numeric_cast<float32_t>(packed) / 65535.0f * (far_metres - near_metres);
+}
+
+[[nodiscard]] static auto DecodeSurfaceNormal(const vector<uint8_t>& surface, size_t index) -> tuple<float32_t, float32_t, float32_t>
+{
+    float32_t ex = numeric_cast<float32_t>(surface[index * 4 + 0]) / 255.0f * 2.0f - 1.0f;
+    float32_t ey = numeric_cast<float32_t>(surface[index * 4 + 1]) / 255.0f * 2.0f - 1.0f;
+    float32_t px = (ex + ey) * 0.5f;
+    float32_t py = (ex - ey) * 0.5f;
+    float32_t pz = std::max(0.0f, 1.0f - std::abs(px) - std::abs(py));
+    float32_t length = std::sqrt(px * px + py * py + pz * pz);
+
+    return {px / length, py / length, -pz / length};
+}
+
+[[nodiscard]] static auto PngCrc32(const_span<uint8_t> data) -> uint32_t
+{
+    uint32_t crc = 0xFFFFFFFFu;
+
+    for (uint8_t byte : data) {
+        crc ^= byte;
+
+        for (int32_t bit = 0; bit < 8; bit++) {
+            if ((crc & 1u) != 0u) {
+                crc = (crc >> 1u) ^ 0xEDB88320u;
+            }
+            else {
+                crc >>= 1u;
+            }
+        }
+    }
+
+    return crc ^ 0xFFFFFFFFu;
+}
+
+static void AppendPngChunk(vector<uint8_t>& png, string_view type, const vector<uint8_t>& payload)
+{
+    vector<uint8_t> body;
+    body.insert(body.end(), type.begin(), type.end());
+    body.insert(body.end(), payload.begin(), payload.end());
+
+    AppendBe32(png, numeric_cast<uint32_t>(payload.size()));
+    png.insert(png.end(), body.begin(), body.end());
+    AppendBe32(png, PngCrc32(body));
+}
+
+// Builds a PNG the way the art pipeline writes companions, which no image library bundled here can
+// produce: 16-bit greyscale plus alpha, carrying the metre range in text chunks.
+[[nodiscard]] static auto MakeCompanionPng(uint16_t width, uint16_t height, uint8_t bit_depth, uint8_t color_type, const vector<uint8_t>& samples, const vector<pair<string, string>>& text) -> vector<uint8_t>
+{
+    size_t channels = color_type == 6 ? 4 : 2;
+    size_t row_size = numeric_cast<size_t>(width) * channels * (bit_depth / 8);
+
+    vector<uint8_t> raw;
+
+    for (uint16_t y = 0; y < height; y++) {
+        raw.emplace_back(uint8_t {0});
+        raw.insert(raw.end(), samples.begin() + numeric_cast<ptrdiff_t>(numeric_cast<size_t>(y) * row_size), samples.begin() + numeric_cast<ptrdiff_t>((numeric_cast<size_t>(y) + 1) * row_size));
+    }
+
+    vector<uint8_t> header;
+    AppendBe32(header, width);
+    AppendBe32(header, height);
+    header.emplace_back(bit_depth);
+    header.emplace_back(color_type);
+    header.emplace_back(uint8_t {0});
+    header.emplace_back(uint8_t {0});
+    header.emplace_back(uint8_t {0});
+
+    vector<uint8_t> png = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+    AppendPngChunk(png, "IHDR", header);
+
+    for (const auto& [keyword, value] : text) {
+        vector<uint8_t> payload;
+        payload.insert(payload.end(), keyword.begin(), keyword.end());
+        payload.emplace_back(uint8_t {0});
+        payload.insert(payload.end(), value.begin(), value.end());
+        AppendPngChunk(png, "tEXt", payload);
+    }
+
+    AppendPngChunk(png, "IDAT", Compressor::Compress(raw));
+    AppendPngChunk(png, "IEND", {});
+
+    return png;
+}
+
 [[nodiscard]] static auto MakeRix() -> vector<uint8_t>
 {
     vector<uint8_t> data;
@@ -846,6 +936,20 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
 
 static void ReadSpriteMesh(DataReader& reader, BakedImageFrame& frame)
 {
+    // The surface plane precedes the mesh descriptor: a flag, then the depth bounds and one packed
+    // quad per pixel when present.
+    uint8_t has_surface = reader.Read<uint8_t>();
+    REQUIRE(has_surface <= 1);
+
+    if (has_surface == 1) {
+        (void)reader.Read<float32_t>();
+        (void)reader.Read<float32_t>();
+
+        for (size_t i = 0; i < numeric_cast<size_t>(frame.Width) * frame.Height * 4; i++) {
+            (void)reader.Read<uint8_t>();
+        }
+    }
+
     uint8_t mesh_kind = reader.Read<uint8_t>();
     REQUIRE(mesh_kind <= static_cast<uint8_t>(SpriteMeshKind::Mesh));
     frame.MeshKind = static_cast<SpriteMeshKind>(mesh_kind);
@@ -2581,6 +2685,96 @@ Frm=one.toy
         vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == "gfx/current.tga");
+    }
+
+    SECTION("SpriteCompanionsArePackedIntoOneSurfaceQuad")
+    {
+        // The shipped depth and normal companions are folded into a single RGBA quad per pixel so the
+        // client can hand the plane straight to a texture. This pins the packing a shader will decode
+        // against: depth must survive to the bit, and the normal must survive the drop from three
+        // channels to two, which is only possible because it always faces the camera.
+        constexpr uint16_t width = 2;
+        constexpr uint16_t height = 1;
+        constexpr float32_t near_metres = 1.0f;
+        constexpr float32_t far_metres = 3.0f;
+
+        vector<uint8_t> sprite_pixels = {200, 100, 50, 255, //
+            10, 20, 30, 255};
+        // 16-bit big-endian greyscale plus alpha. Both values are deliberately lopsided between their
+        // bytes, and the second is a single step away from the near plane: a byte-swapped or 8-bit
+        // encoding cannot reproduce either.
+        vector<uint8_t> depth_samples = {0xC0, 0x00, 0xFF, 0xFF, //
+            0x00, 0x40, 0xFF, 0xFF};
+        // Straight at the camera, then a corner facing equally along all three axes - which encodes to
+        // two visibly different channels, so a swapped pair cannot pass unnoticed.
+        vector<uint8_t> normal_samples = {128, 128, 0, 255, //
+            201, 201, 54, 255};
+
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/prop.png", MakeCompanionPng(width, height, 8, 6, sprite_pixels, {}));
+        AddSourceBinaryFile(rig, "gfx/prop.depth.png", MakeCompanionPng(width, height, 16, 4, depth_samples, {{"DepthNearMetres", "1.0"}, {"DepthFarMetres", "3.0"}}));
+        AddSourceBinaryFile(rig, "gfx/prop.normal.png", MakeCompanionPng(width, height, 8, 6, normal_samples, {}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/prop.png");
+
+        REQUIRE(rig.Outputs.count("gfx/prop.png") == 1);
+        DataReader reader {rig.Outputs.at("gfx/prop.png")};
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+        (void)reader.Read<uint16_t>();
+        (void)reader.Read<uint16_t>();
+        (void)reader.Read<uint8_t>();
+        (void)reader.Read<bool>();
+        (void)reader.Read<int16_t>();
+        (void)reader.Read<int16_t>();
+        uint16_t baked_width = reader.Read<uint16_t>();
+        uint16_t baked_height = reader.Read<uint16_t>();
+        (void)reader.Read<int16_t>();
+        (void)reader.Read<int16_t>();
+
+        size_t pixel_count = numeric_cast<size_t>(baked_width) * baked_height;
+        auto pixels = reader.ReadBytes(pixel_count * 4);
+
+        uint8_t has_surface = reader.Read<uint8_t>();
+        REQUIRE(has_surface == 1);
+        CHECK(reader.Read<float32_t>() == Catch::Approx(near_metres));
+        CHECK(reader.Read<float32_t>() == Catch::Approx(far_metres));
+
+        vector<uint8_t> surface;
+
+        for (size_t i = 0; i < pixel_count * 4; i++) {
+            surface.emplace_back(reader.Read<uint8_t>());
+        }
+
+        // Baking pads the frame with transparent margin, so the two authored pixels are found by
+        // their coverage rather than assumed to still sit at the start of the plane.
+        vector<size_t> opaque;
+
+        for (size_t i = 0; i < pixel_count; i++) {
+            if (pixels[i * 4 + 3] != 0) {
+                opaque.emplace_back(i);
+            }
+        }
+
+        REQUIRE(opaque.size() == 2);
+        size_t first = opaque[0];
+        size_t second = opaque[1];
+
+        // Depth is exact, not approximate: sixteen bits in, the same sixteen bits out. The second
+        // value sits 2 mm from the near plane, which a single byte could not even represent.
+        CHECK(DecodeSurfaceDepth(surface, first, near_metres, far_metres) == Catch::Approx(2.500038f).margin(1e-4));
+        CHECK(DecodeSurfaceDepth(surface, second, near_metres, far_metres) == Catch::Approx(1.001953f).margin(1e-4));
+
+        auto [first_x, first_y, first_z] = DecodeSurfaceNormal(surface, first);
+        CHECK(first_x == Catch::Approx(0.0f).margin(0.02));
+        CHECK(first_y == Catch::Approx(0.0f).margin(0.02));
+        CHECK(first_z == Catch::Approx(-1.0f).margin(0.02));
+
+        auto [second_x, second_y, second_z] = DecodeSurfaceNormal(surface, second);
+        CHECK(second_x == Catch::Approx(0.5774f).margin(0.02));
+        CHECK(second_y == Catch::Approx(0.5774f).margin(0.02));
+        CHECK(second_z == Catch::Approx(-0.5774f).margin(0.02));
     }
 
     SECTION("InvalidTgaInputsAreReported")

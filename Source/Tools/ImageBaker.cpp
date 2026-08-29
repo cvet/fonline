@@ -43,9 +43,10 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
+static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height, nptr<unordered_map<string, string>> text_chunks, bool keep_grey16) -> vector<uint8_t>;
 static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
 
+static auto IsSpriteCompanionPath(string_view path) -> bool;
 static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot;
 static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t;
 static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageBaker::FrameShot& shot);
@@ -193,6 +194,11 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
                 if (file_ext != ext) {
                     continue;
                 }
+
+                if (IsSpriteCompanionPath(file_header.GetPath())) {
+                    continue;
+                }
+
                 current_sprite_sources.emplace(file_header.GetPath());
                 maximum_source_write_time = std::max(maximum_source_write_time, file_header.GetWriteTime());
                 if (scan_mode && _context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
@@ -207,6 +213,10 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         string ext = strex(target_path).get_file_extension();
 
         if (!_fileLoaders.contains(ext)) {
+            return;
+        }
+
+        if (IsSpriteCompanionPath(target_path)) {
             return;
         }
 
@@ -452,6 +462,16 @@ auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                     writer.WriteBytes({bake_shot->Data.data(), bake_shot->Data.size()});
                 }
 
+                bool has_surface = !bake_shot->SurfaceData.empty();
+                writer.Write<uint8_t>(has_surface ? uint8_t {1} : uint8_t {0});
+
+                if (has_surface) {
+                    FO_VERIFY_AND_THROW(bake_shot->SurfaceData.size() == numeric_cast<size_t>(bake_shot->Width) * bake_shot->Height * 4, "Sprite frame surface plane size does not match frame dimensions", bake_shot->SurfaceData.size(), bake_shot->Width, bake_shot->Height);
+                    writer.Write<float32_t>(bake_shot->DepthNear);
+                    writer.Write<float32_t>(bake_shot->DepthFar);
+                    writer.WriteBytes({bake_shot->SurfaceData.data(), bake_shot->SurfaceData.size()});
+                }
+
                 writer.Write<uint8_t>(static_cast<uint8_t>(mesh.Kind));
 
                 if (mesh.Kind == SpriteMeshKind::Mesh) {
@@ -506,6 +526,18 @@ auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     return sprite_info_entry;
 }
 
+static auto IsSpriteCompanionPath(string_view path) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Companions are extra channels of the sprite they are named after and must never bake as
+    // sprites of their own. The loader map is keyed on the last extension alone, so it cannot
+    // express `<name>.depth.png` and the exclusion has to be stated here.
+    string_view stem = strvex(path).erase_file_extension();
+
+    return stem.ends_with(".depth") || stem.ends_with(".normal");
+}
+
 static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot
 {
     FO_STACK_TRACE_ENTRY();
@@ -532,6 +564,22 @@ static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -
         size_t source_offset = numeric_cast<size_t>(y) * source_row_size;
         size_t destination_offset = numeric_cast<size_t>(numeric_cast<int32_t>(y) + padding) * destination_row_size + destination_x_offset;
         MemCopy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
+    }
+
+    // The surface plane describes the same pixels and must land on the same grid; padding one without
+    // the other would shift depth and normals against colour by the padding width.
+    if (!shot.SurfaceData.empty()) {
+        FO_VERIFY_AND_THROW(shot.SurfaceData.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame surface plane size does not match frame dimensions", shot.SurfaceData.size(), shot.Width, shot.Height);
+
+        result.SurfaceData.resize(numeric_cast<size_t>(result.Width) * result.Height * 4);
+        result.DepthNear = shot.DepthNear;
+        result.DepthFar = shot.DepthFar;
+
+        for (uint16_t y = 0; y < shot.Height; y++) {
+            size_t source_offset = numeric_cast<size_t>(y) * shot.Width * 4;
+            size_t destination_offset = (numeric_cast<size_t>(numeric_cast<int32_t>(y) + padding) * result.Width + numeric_cast<size_t>(padding)) * 4;
+            MemCopy(result.SurfaceData.data() + destination_offset, shot.SurfaceData.data() + source_offset, numeric_cast<size_t>(shot.Width) * 4);
+        }
     }
 
     return result;
@@ -625,6 +673,23 @@ static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const
         size_t source_offset = source_y * source_row_size + source_x_offset;
         size_t destination_offset = numeric_cast<size_t>(y) * cropped_row_size;
         MemCopy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
+    }
+
+    // The surface plane is cropped to the same window as colour. A plane left at the original size
+    // would still pass its own size check against the pre-crop dimensions and describe wrong pixels.
+    if (!shot.SurfaceData.empty()) {
+        FO_VERIFY_AND_THROW(shot.SurfaceData.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame surface plane size does not match frame dimensions", shot.SurfaceData.size(), shot.Width, shot.Height);
+
+        result.SurfaceData.resize(numeric_cast<size_t>(result.Width) * result.Height * 4);
+        result.DepthNear = shot.DepthNear;
+        result.DepthFar = shot.DepthFar;
+
+        for (uint16_t y = 0; y < result.Height; y++) {
+            size_t source_y = numeric_cast<size_t>(numeric_cast<int32_t>(y) + minimum_vertex.y);
+            size_t source_offset = (source_y * shot.Width + numeric_cast<size_t>(minimum_vertex.x)) * 4;
+            size_t destination_offset = numeric_cast<size_t>(y) * result.Width * 4;
+            MemCopy(result.SurfaceData.data() + destination_offset, shot.SurfaceData.data() + source_offset, numeric_cast<size_t>(result.Width) * 4);
+        }
     }
 
     return optional<ImageBaker::FrameShot> {std::move(result)};
@@ -2612,16 +2677,14 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(fname);
     ignore_unused(opt);
-    ignore_unused(files);
 
     int32_t width = 0;
     int32_t height = 0;
     const_span<uint8_t> png_data = reader.GetDataSpan();
     FO_VERIFY_AND_THROW(!png_data.empty(), "PNG file has no data to load");
     auto png_data_ptr = make_ptr(png_data.data());
-    auto data = PngLoad(png_data_ptr, width, height);
+    auto data = PngLoad(png_data_ptr, width, height, nullptr, false);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
@@ -2630,6 +2693,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader, 
     collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
     collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
     collection.Main.Frames[0].Data = std::move(data);
+    collection.Main.Frames[0].SurfaceData = LoadSurfaceCompanions(fname, files, {width, height}, collection.Main.Frames[0].DepthNear, collection.Main.Frames[0].DepthFar);
 
     return collection;
 }
@@ -2658,6 +2722,148 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader, 
     return collection;
 }
 
+auto ImageBaker::LoadSurfaceCompanions(string_view fname, const FileCollection& files, isize32 size, float32_t& near_metres, float32_t& far_metres) const -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint16_t> depth_plane = LoadDepthCompanion(fname, files, size, near_metres, far_metres);
+    vector<uint8_t> normal_plane = LoadNormalCompanion(fname, files, size);
+
+    if (depth_plane.empty() && normal_plane.empty()) {
+        return {};
+    }
+
+    // Depth is the half that cannot be defaulted: without it the two channels holding it have no
+    // range to be read against, while a missing normal is simply a surface facing the camera.
+    FO_VERIFY_AND_THROW(!depth_plane.empty(), "Sprite has a normal companion but no depth companion", fname);
+
+    auto encode_channel = [](float32_t value) -> uint8_t { return iround<uint8_t>(std::clamp(value * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f); };
+
+    size_t pixel_count = numeric_cast<size_t>(size.width) * size.height;
+    vector<uint8_t> surface_plane;
+    surface_plane.resize(pixel_count * 4);
+
+    for (size_t i = 0; i < pixel_count; i++) {
+        float32_t normal_x = 0.0f;
+        float32_t normal_y = 0.0f;
+        float32_t normal_z = 1.0f;
+
+        if (!normal_plane.empty()) {
+            normal_x = numeric_cast<float32_t>(normal_plane[i * 3 + 0]) / 255.0f * 2.0f - 1.0f;
+            normal_y = numeric_cast<float32_t>(normal_plane[i * 3 + 1]) / 255.0f * 2.0f - 1.0f;
+            // Mirrored into the upper hemisphere, which is what the octahedral fold below assumes;
+            // the sign is not information, every visible surface faces the camera.
+            normal_z = -(numeric_cast<float32_t>(normal_plane[i * 3 + 2]) / 255.0f * 2.0f - 1.0f);
+        }
+
+        float32_t fold = std::abs(normal_x) + std::abs(normal_y) + std::abs(normal_z);
+
+        if (fold > 0.0f) {
+            normal_x /= fold;
+            normal_y /= fold;
+        }
+        else {
+            normal_x = 0.0f;
+            normal_y = 0.0f;
+        }
+
+        uint16_t depth = depth_plane[i];
+        surface_plane[i * 4 + 0] = encode_channel(normal_x + normal_y);
+        surface_plane[i * 4 + 1] = encode_channel(normal_x - normal_y);
+        surface_plane[i * 4 + 2] = numeric_cast<uint8_t>(depth >> 8);
+        surface_plane[i * 4 + 3] = numeric_cast<uint8_t>(depth & 0xFF);
+    }
+
+    return surface_plane;
+}
+
+auto ImageBaker::LoadDepthCompanion(string_view fname, const FileCollection& files, isize32 size, float32_t& near_metres, float32_t& far_metres) const -> vector<uint16_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_map<string, string> text_chunks;
+    vector<uint8_t> companion = LoadCompanionImage(fname, "depth", files, size, make_nptr(&text_chunks), true);
+
+    if (companion.empty()) {
+        return {};
+    }
+
+    // The metre range travels in the companion's own text chunks: the values span that sprite's
+    // depth rather than one absolute scale, so without the bounds they are a gradient with no units
+    // and two sprites cannot be compared.
+    auto near_entry = text_chunks.find("DepthNearMetres");
+    auto far_entry = text_chunks.find("DepthFarMetres");
+    FO_VERIFY_AND_THROW(near_entry != text_chunks.end() && far_entry != text_chunks.end(), "Sprite depth companion has no metre range", fname);
+    near_metres = strvex(near_entry->second).to_float32();
+    far_metres = strvex(far_entry->second).to_float32();
+    FO_VERIFY_AND_THROW(far_metres > near_metres, "Sprite depth companion range is not increasing", fname, near_metres, far_metres);
+
+    size_t pixel_count = numeric_cast<size_t>(size.width) * size.height;
+    FO_VERIFY_AND_THROW(companion.size() == pixel_count * sizeof(uint16_t), "Sprite depth companion must be a 16-bit greyscale image", fname, companion.size(), pixel_count);
+
+    vector<uint16_t> depth_plane;
+    depth_plane.resize(pixel_count);
+    MemCopy(depth_plane.data(), companion.data(), companion.size());
+
+    return depth_plane;
+}
+
+auto ImageBaker::LoadNormalCompanion(string_view fname, const FileCollection& files, isize32 size) const -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8_t> companion = LoadCompanionImage(fname, "normal", files, size, nullptr, false);
+
+    if (companion.empty()) {
+        return {};
+    }
+
+    size_t pixel_count = numeric_cast<size_t>(size.width) * size.height;
+    vector<uint8_t> normal_plane;
+    normal_plane.resize(pixel_count * 3);
+
+    for (size_t i = 0; i < pixel_count; i++) {
+        if (companion[i * 4 + 3] != 0) {
+            normal_plane[i * 3 + 0] = companion[i * 4 + 0];
+            normal_plane[i * 3 + 1] = companion[i * 4 + 1];
+            normal_plane[i * 3 + 2] = companion[i * 4 + 2];
+        }
+        else {
+            // Facing the camera is the neutral answer where the companion describes nothing; the
+            // encoded zero vector it would otherwise carry reads as a black hole under any light.
+            normal_plane[i * 3 + 0] = 128;
+            normal_plane[i * 3 + 1] = 128;
+            normal_plane[i * 3 + 2] = 0;
+        }
+    }
+
+    return normal_plane;
+}
+
+auto ImageBaker::LoadCompanionImage(string_view fname, string_view kind, const FileCollection& files, isize32 size, nptr<unordered_map<string, string>> text_chunks, bool keep_grey16) const -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A companion is an extra channel of the image it is named after, not a sprite of its own, so it
+    // travels as `<name>.<kind>.png` beside it and is folded into that sprite here.
+    File companion_file = files.FindFileByPath(strex("{}.{}.png", strvex(fname).erase_file_extension(), kind));
+
+    if (!companion_file) {
+        return {};
+    }
+
+    int32_t companion_width = 0;
+    int32_t companion_height = 0;
+    FileReader companion_reader = companion_file.GetReader();
+    const_span<uint8_t> companion_png = companion_reader.GetDataSpan();
+    FO_VERIFY_AND_THROW(!companion_png.empty(), "Sprite companion has no data to load", fname, kind);
+    auto companion_png_ptr = make_ptr(companion_png.data());
+    vector<uint8_t> companion_rgba = PngLoad(companion_png_ptr, companion_width, companion_height, text_chunks, keep_grey16);
+    FO_VERIFY_AND_THROW(companion_width == size.width && companion_height == size.height, "Sprite companion does not match its image size", fname, kind, companion_width, companion_height, size.width, size.height);
+
+    return companion_rgba;
+}
+
 static auto PngMalloc(png_structp png_ptr, png_alloc_size_t size) -> png_voidp
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -2674,7 +2880,7 @@ static void PngFree(png_structp png_ptr, png_voidp mem)
     SafeAlloc::FreeRaw(mem);
 }
 
-static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
+static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height, nptr<unordered_map<string, string>> text_chunks, bool keep_grey16) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2734,8 +2940,23 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
         int32_t color_type = 0;
         png_get_IHDR(png_ptr.get(), info_ptr.get(), &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
 
+        // A companion depth plane is a 16-bit greyscale image and must keep both bytes; every other
+        // caller wants RGBA8, which is what stripping and the alpha filler produce.
+        // A companion depth plane is 16-bit greyscale, with or without the alpha it carries only so a
+        // viewer shows the same soft edge as the sprite. Coverage at runtime comes from the sprite's
+        // own alpha, so the companion's is dropped here rather than becoming a second opinion.
+        bool grey16 = keep_grey16 && bit_depth == 16 && (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA);
+
         // Settings
-        png_set_strip_16(png_ptr.get());
+        if (grey16) {
+            if (color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+                png_set_strip_alpha(png_ptr.get());
+            }
+        }
+        else {
+            png_set_strip_16(png_ptr.get());
+        }
+
         png_set_packing(png_ptr.get());
 
         if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
@@ -2748,18 +2969,42 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
             png_set_expand(png_ptr.get());
         }
 
-        png_set_filler(png_ptr.get(), 0x000000ff, PNG_FILLER_AFTER);
+        if (grey16) {
+            // PNG stores multi-byte samples big-endian; every other engine path is little-endian.
+            png_set_swap(png_ptr.get());
+        }
+        else {
+            png_set_filler(png_ptr.get(), 0x000000ff, PNG_FILLER_AFTER);
+        }
+
         png_read_update_info(png_ptr.get(), info_ptr.get());
+
+        // Companion planes carry their metre range here, so the caller can ask for the text chunks
+        // instead of needing a decoder of its own.
+        if (text_chunks) {
+            png_textp entries = nullptr;
+            int32_t entry_count = 0;
+            png_get_text(png_ptr.get(), info_ptr.get(), &entries, &entry_count);
+
+            for (int32_t i = 0; i < entry_count; i++) {
+                auto entry = make_ptr(entries).offset(i);
+
+                if (entry->key != nullptr && entry->text != nullptr) {
+                    text_chunks->emplace(string {entry->key}, string {entry->text});
+                }
+            }
+        }
 
         // Read
         vector<png_bytep> row_pointers;
         row_pointers.resize(height);
 
+        size_t sample_size = grey16 ? sizeof(uint16_t) : 4;
         vector<uint8_t> result;
-        result.resize(numeric_cast<size_t>(width) * height * 4);
+        result.resize(numeric_cast<size_t>(width) * height * sample_size);
 
         for (png_uint_32 i = 0; i < height; i++) {
-            auto row = make_ptr(result.data() + numeric_cast<size_t>(i) * numeric_cast<size_t>(width) * 4);
+            auto row = make_ptr(result.data() + numeric_cast<size_t>(i) * numeric_cast<size_t>(width) * sample_size);
             row_pointers[i] = row.get();
         }
 
