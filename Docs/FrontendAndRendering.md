@@ -274,20 +274,24 @@ space. Only currently-emitting particle systems extend this envelope;
 a dormant effect (for example furnace smoke that is not puffing) reserves no frame
 space and is absorbed by the expansion pass if and when it starts emitting.
 
-The measured envelope is reported as two rectangles, and the difference is what an
-effect makes. `ModelSpriteBounds::Rect` is the drawn extent — mesh, shadow, live
-particles, and the full frame when an effect or a custom shader forces it — and it is
-what the frame and the atlas crop are sized from, because those pixels are rasterized.
-`ModelSpriteBounds::PoseRect` is the posed model alone, captured before the particle
-pass, and it is what a consumer fitting the model into an area measures
-(`ModelSprite::GetPoseRect`, reaching script through `Game.GetDrawCritter3dBounds`). A
-fit converges only while the measured extent is proportional to the model's scale, and
-already-emitted particles live in world space: they keep their size when the model
-shrinks, so a fit measured against them shrinks the model, finds the effect holding an
-even larger share of the extent, and shrinks it again, frame after frame, until the
-scale underflows and `SparkParticleRuntimeSystem::Setup` rejects the degenerate
-placement. Effects belong in the frame; they do not belong in a fit. If that
-exact envelope needs a larger logical frame,
+The dynamic draw envelope is `ModelSpriteBounds::Rect`: mesh, projected shadow, live
+particles, and the full frame when an effect or a custom shader forces it. It remains an
+internal renderer contract and sizes the frame and atlas crop because those pixels are
+rasterized.
+
+`Game.GetDrawCritter3dBounds` exposes two stable layout rectangles. `DrawRect` is the
+conservative baked active-clip and selected-link envelope plus the projected shadow;
+it serves renderer-layout diagnostics. `ViewRect` is the semantic interface bound: it
+selects idle normally and the whole lower/prone active clip when needed, so interface
+portraits and world overlays use it instead of the larger draw envelope. There is no
+separate pose rectangle because it repeated the same active model-occupancy concept as
+`DrawRect` without owning another behavior.
+
+Already-emitted particles live in world space: they keep their size when the model
+shrinks, so a fit measured against the internal `Rect` shrinks the model, finds the effect
+holding an even larger share of the extent, and shrinks it again until
+`SparkParticleRuntimeSystem::Setup` rejects the degenerate placement. Effects belong in
+the frame; they do not belong in a fit. If that exact envelope needs a larger logical frame,
 the client expands the frame and rerenders before copying. Successive frame
 placements are merged as root-relative intervals, so adjacent pixel-rounded
 pivots or a live world-space particle cannot make an otherwise stable frame
