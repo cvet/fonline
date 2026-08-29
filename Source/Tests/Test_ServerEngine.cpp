@@ -2096,6 +2096,93 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     ctx.Release();
 }
 
+// The link accessors run without the entity cover, so they must hand out an owning handle rather than a raw
+// read: the refcount deltas below are what separates a pin from a bare load that a concurrent detach can free
+
+TEST_CASE("ServerEngineEntityLinkPinSurvivesConcurrentDetach")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto cr = server->CreateCritter(critter_pid, true);
+    auto setup_ctx = server->GetCurrentSyncContext();
+    REQUIRE(static_cast<bool>(setup_ctx));
+    setup_ctx->EnsureEntitySynced(cr);
+
+    auto player = CreateStandalonePlayer(server, "LinkPinPlayer");
+
+    vector<ptr<ServerEntity>> setup_scope {cr, player};
+    setup_ctx->SyncEntities(setup_scope);
+
+    cr->AttachPlayer(player);
+
+    // The link carries its own reference, which is exactly what an unpinned read would be relying on, so the
+    // accessor's contribution has to show up on top of it
+    int32_t linked_player_refs = player->GetRefCount();
+
+    {
+        auto widen = cr->GetSyncWidenEntity();
+        REQUIRE(widen == player);
+        CHECK(player->GetRefCount() == linked_player_refs + 1);
+    }
+
+    CHECK(player->GetRefCount() == linked_player_refs);
+
+    {
+        auto pinned = cr->GetPlayerForSend();
+        REQUIRE(pinned == player);
+        CHECK(player->GetRefCount() == linked_player_refs + 1);
+    }
+
+    // The Player-to-Critter half of the pair is a non-owning link, so there the pin is the caller's only hold
+    int32_t linked_critter_refs = cr->GetRefCount();
+
+    {
+        auto widen_back = player->GetSyncWidenEntity();
+        REQUIRE(widen_back == cr);
+        CHECK(cr->GetRefCount() == linked_critter_refs + 1);
+    }
+
+    CHECK(cr->GetRefCount() == linked_critter_refs);
+
+    // Detach drops the link's reference; a handle taken beforehand keeps the player addressable past that point
+    auto held = cr->GetSyncWidenEntity();
+    REQUIRE(held);
+    int32_t attached_player_refs = player->GetRefCount();
+
+    cr->DetachPlayer();
+
+    CHECK(player->GetRefCount() == attached_player_refs - 1);
+    CHECK_FALSE(static_cast<bool>(cr->GetSyncWidenEntity()));
+    CHECK_FALSE(static_cast<bool>(player->GetSyncWidenEntity()));
+    CHECK(held == player);
+    CHECK(held->GetName() == "LinkPinPlayer");
+}
+
 // Readers and reparenters hammer the race the verify loop exists for. Assertions stay timing-independent so it
 // cannot flake, and an EntitySyncException is an accepted outcome: the bounded retry gives up over livelocking
 

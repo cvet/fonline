@@ -146,23 +146,34 @@ void Player::SetControlledCritter(nptr<Critter> cr)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    scoped_lock locker {_controlledCrLinkLocker};
+
     _controlledCr.store(cr.get(), std::memory_order_release);
 }
 
-auto Player::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
+auto Player::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return nptr<ServerEntity>(_controlledCr.load(std::memory_order_acquire));
+
+    // The link is non-owning, so the pin is what keeps the critter alive for the caller; SetControlledCritter
+    // clears it under the same lock before the critter can reach destruction
+    scoped_lock locker {_controlledCrLinkLocker};
+
+    return nptr<ServerEntity>(_controlledCr.load(std::memory_order_acquire)).try_hold_ref();
 }
 
-auto Player::GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
+auto Player::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return nptr<const ServerEntity>(_controlledCr.load(std::memory_order_acquire));
+
+    scoped_lock locker {_controlledCrLinkLocker};
+
+    return nptr<const ServerEntity>(_controlledCr.load(std::memory_order_acquire)).try_hold_ref();
 }
 
 void Player::DetachCritter()
