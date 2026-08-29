@@ -2196,43 +2196,82 @@ TEST_CASE("ScriptEntityPromotionRejectsPrototypes")
     }
 }
 
-// No export takes a dict of entity handles, so the dict promotion is driven through the marshaller directly
-TEST_CASE("ScriptEntityDictValuePromotion")
+// The receiver is argument zero and no export takes a dict of entity handles, so both are driven through
+// the marshaller directly rather than through a script call
+TEST_CASE("ScriptEntityArgumentPromotion")
 {
     MAKE_SERVER();
 
     nptr<const ProtoItem> item_proto = server->ProtoMngr.GetProtoItem(get_func("TestItem"));
     REQUIRE(item_proto);
 
-    map<hstring, nptr<const Entity>> source;
-    source.emplace(get_func("entry"), item_proto);
+    // A handle slot is non-const by construction, while the proto lookup only hands out a const view
+    ptr<Entity> proto_entity = make_ptr(const_cast<Entity*>(static_cast<const Entity*>(item_proto.get())));
 
-    NativeDataProvider::StorageEntryType storage {};
-    ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
-
-    SECTION("NarrowsToTheDeclaredValueType")
+    SECTION("NarrowsAScalarArgumentToTheDeclaredType")
     {
-        optional<map<hstring, nptr<const ProtoItem>>> temp;
-        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<const ProtoItem>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+        nptr<Entity> base_entity = proto_entity;
+        NativeDataProvider::StorageEntryType slot_storage {};
+        ptr<void> slot = NativeDataProvider::NormalizeArg(base_entity, slot_storage);
 
-        REQUIRE(narrowed.size() == 1);
-        CHECK(narrowed.begin()->second == item_proto);
+        optional<ptr<ProtoItem>> temp;
+        auto narrowed = NativeDataCaller::ConvertArg<ptr<ProtoItem>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+
+        CHECK(narrowed.get() == proto_entity.get());
     }
 
-    SECTION("RejectsAValueOfAnotherEntityType")
+    SECTION("RejectsAScalarArgumentOfAnotherEntityType")
     {
-        optional<map<hstring, nptr<const ProtoCritter>>> temp;
+        nptr<Entity> base_entity = proto_entity;
+        NativeDataProvider::StorageEntryType slot_storage {};
+        ptr<void> slot = NativeDataProvider::NormalizeArg(base_entity, slot_storage);
 
-        CHECK_THROWS_AS((NativeDataCaller::ConvertArg<map<hstring, nptr<const ProtoCritter>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
+        optional<ptr<ProtoCritter>> temp;
+
+        CHECK_THROWS_AS((NativeDataCaller::ConvertArg<ptr<ProtoCritter>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
+    }
+
+    SECTION("NarrowsADictValueToTheDeclaredType")
+    {
+        map<hstring, nptr<Entity>> source;
+        source.emplace(get_func("entry"), proto_entity);
+
+        NativeDataProvider::StorageEntryType storage {};
+        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+
+        optional<map<hstring, nptr<ProtoItem>>> temp;
+        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<ProtoItem>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+
+        REQUIRE(narrowed.size() == 1);
+        CHECK(narrowed.begin()->second.get() == proto_entity.get());
+    }
+
+    SECTION("RejectsADictValueOfAnotherEntityType")
+    {
+        map<hstring, nptr<Entity>> source;
+        source.emplace(get_func("entry"), proto_entity);
+
+        NativeDataProvider::StorageEntryType storage {};
+        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+
+        optional<map<hstring, nptr<ProtoCritter>>> temp;
+
+        CHECK_THROWS_AS((NativeDataCaller::ConvertArg<map<hstring, nptr<ProtoCritter>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
     }
 
     SECTION("KeepsTheBaseValueTypeAsIs")
     {
-        optional<map<hstring, nptr<const Entity>>> temp;
-        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<const Entity>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+        map<hstring, nptr<Entity>> source;
+        source.emplace(get_func("entry"), proto_entity);
+
+        NativeDataProvider::StorageEntryType storage {};
+        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+
+        optional<map<hstring, nptr<Entity>>> temp;
+        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<Entity>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
 
         REQUIRE(narrowed.size() == 1);
-        CHECK(narrowed.begin()->second == item_proto);
+        CHECK(narrowed.begin()->second.get() == proto_entity.get());
     }
 }
 
