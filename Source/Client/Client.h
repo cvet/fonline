@@ -353,6 +353,7 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
+    auto ReceiveDetachedItem() -> refcount_ptr<ItemView>;
     void ReceiveCustomEntities(nptr<Entity> holder);
     auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>;
     void ReceiveCritterMoving(nptr<CritterHexView> cr);
