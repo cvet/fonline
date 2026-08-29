@@ -245,7 +245,7 @@ relative to the draw anchor, or `false` when that instance has not produced a
 valid model sprite. `drawRect` covers the selected animation's complete cycle
 and continuous facing range, including its projected shadow. `viewRect` is the
 stable logical model-and-layers rectangle used by names, coarse picking, and
-similar presentation. GUI preview code fits and centres the draw rectangle;
+similar presentation. GUI preview code fits and centres the view rectangle;
 world-space overlays use the stable view rectangle as their logical anchor,
 without duplicating 3D projection rules or depending on the current atlas crop.
 The former custom pose evaluator and shared mutable matrix-output table have

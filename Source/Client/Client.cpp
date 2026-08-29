@@ -1231,17 +1231,7 @@ void ClientEngine::Net_OnCritterAction()
     refcount_nptr<ItemView> context_item {};
 
     if (is_context_item) {
-        auto item_id = _conn.InBuf->Read<ident_t>();
-        hstring item_pid = _conn.InBuf->Read<hstring>(Hashes);
-        _conn.InBuf->ReadPropsData(_tempPropertiesData);
-
-        auto proto = GetProtoItem(item_pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
-
-        context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
-        context_item->RestoreData(_tempPropertiesData);
-
-        ReceiveCustomEntities(context_item);
+        context_item = ReceiveDetachedItem();
     }
 
     if (!_curMap) {
@@ -1277,17 +1267,7 @@ void ClientEngine::Net_OnCritterMoveItem()
     refcount_nptr<ItemView> moved_item {};
 
     if (is_moved_item) {
-        auto item_id = _conn.InBuf->Read<ident_t>();
-        hstring item_pid = _conn.InBuf->Read<hstring>(Hashes);
-        _conn.InBuf->ReadPropsData(_tempPropertiesData);
-
-        auto proto = GetProtoItem(item_pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
-
-        moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
-        moved_item->RestoreData(_tempPropertiesData);
-
-        ReceiveCustomEntities(moved_item);
+        moved_item = ReceiveDetachedItem();
     }
 
     nptr<CritterView> cr;
@@ -1859,20 +1839,7 @@ void ClientEngine::Net_OnSomeItems()
     items.reserve(items_count);
 
     for (uint32_t i = 0; i < items_count; i++) {
-        auto item_id = _conn.InBuf->Read<ident_t>();
-        hstring pid = _conn.InBuf->Read<hstring>(Hashes);
-        _conn.InBuf->ReadPropsData(_tempPropertiesData);
-        FO_VERIFY_AND_THROW(item_id, "Item id is empty");
-
-        auto proto = GetProtoItem(pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
-
-        auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
-        item->RestoreData(_tempPropertiesData);
-
-        ReceiveCustomEntities(item);
-
-        items.emplace_back(item);
+        items.emplace_back(ReceiveDetachedItem());
     }
 
     auto items2 = vec_transform(items, [](auto&& item) -> ptr<ItemView> { return item; });
@@ -1976,6 +1943,30 @@ void ClientEngine::Net_OnRemoveCustomEntity()
     }
 
     custom_entity->DestroySelf();
+}
+
+auto ClientEngine::ReceiveDetachedItem() -> refcount_ptr<ItemView>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto item_id = _conn.InBuf->Read<ident_t>();
+    hstring pid = _conn.InBuf->Read<hstring>(Hashes);
+    _conn.InBuf->ReadPropsData(_tempPropertiesData);
+    FO_VERIFY_AND_THROW(item_id, "Item id is empty");
+
+    auto proto = GetProtoItem(pid);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
+    item->RestoreData(_tempPropertiesData);
+
+    // Ownership is not synchronized, so a received view would keep the zero default and read as an
+    // item lying on a map hex; these detached snapshots belong nowhere on this side
+    item->SetOwnership(ItemOwnership::Nowhere);
+
+    ReceiveCustomEntities(item);
+
+    return item;
 }
 
 void ClientEngine::ReceiveCustomEntities(nptr<Entity> holder)

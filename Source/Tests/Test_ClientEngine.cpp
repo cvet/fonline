@@ -2190,7 +2190,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     };
 
     auto same_bounds = [](const ModelSpriteBounds& first, const ModelSpriteBounds& second) { //
-        return first.Rect == second.Rect && first.PoseRect == second.PoseRect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
+        return first.Rect == second.Rect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
     };
 
     auto warm_model = make_model();

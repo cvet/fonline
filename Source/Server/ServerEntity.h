@@ -72,22 +72,22 @@ public:
     [[nodiscard]] auto GetParent() -> refcount_nptr<T>
     {
         FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-        return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<T>().try_hold_ref();
+        return GetParentRaw().dyn_cast<T>();
     }
     template<typename T>
     [[nodiscard]] auto GetParent() const -> refcount_nptr<const T>
     {
         FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-        return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<const T>().try_hold_ref();
+        return GetParentRaw().dyn_cast<const T>();
     }
 
     // Unchecked parent accessor — for the lock machinery only
     [[nodiscard]] auto GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>;
 
-    // Return the entity that should be auto-widened into the SyncContext alongside this one,
-    // outside of the parent-chain
-    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity>;
-    [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>;
+    // Return an owning handle to the entity that should be auto-widened into the SyncContext alongside this
+    // one, outside of the parent-chain. Owning, because the caller reads the link before covering its target
+    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>;
+    [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>;
 
     void SetInitCalled() noexcept;
     void SetEntityLock(nptr<EntityLock> lock) noexcept;
@@ -109,6 +109,7 @@ private:
     bool _initCalled {};
     bool _isPersistent {};
     mutable nptr<EntityLock> _entityLock {};
+    mutable atomic_mutex _parentLinkLocker {};
     std::atomic<ServerEntity*> _parent {};
 };
 

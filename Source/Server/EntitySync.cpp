@@ -768,14 +768,23 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
 
     CurrentContext = this;
 
+    // Callers hand over borrowed handles, and the retry path below drops the whole cover before recomputing it,
+    // so every request is pinned once for the transition rather than trusting the caller across that window
+    small_vector<refcount_ptr<ServerEntity>, 8> requested;
+    requested.reserve(entities.size());
+
+    for (auto entity : entities) {
+        requested.emplace_back(entity.hold_ref());
+    }
+
     // The cover is computed from lock-free parent reads, which a concurrent reparent can invalidate while
     // AcquireLocks waits, so the held set is verified afterwards and recomputed if anything escaped
     for (int32_t attempt = 0;; attempt++) {
         // Collect all entity locks, then reduce to minimal covering set:
         // if two entities share a common ancestor, use the ancestor's lock
-        unordered_map<ptr<EntityLock>, ptr<ServerEntity>> lock_to_entity;
+        unordered_map<ptr<EntityLock>, refcount_ptr<ServerEntity>> lock_to_entity;
 
-        for (auto entity : entities) {
+        for (auto& entity : requested) {
             auto lock = entity->GetEntityLock();
 
             if (!lock) {
@@ -794,13 +803,13 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
                 widened = false;
 
                 vector<ptr<ServerEntity>> snapshot;
-                snapshot.reserve(lock_to_entity.size() + entities.size());
+                snapshot.reserve(lock_to_entity.size() + requested.size());
 
-                for (auto entity : lock_to_entity | std::views::values) {
+                for (auto& entity : lock_to_entity | std::views::values) {
                     snapshot.emplace_back(entity);
                 }
 
-                for (auto entity : entities) {
+                for (auto& entity : requested) {
                     snapshot.emplace_back(entity);
                 }
 
@@ -817,7 +826,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
                         continue;
                     }
 
-                    if (lock_to_entity.emplace(widen_lock, widen).second) {
+                    if (lock_to_entity.emplace(widen_lock, widen.take_not_null()).second) {
                         widened = true;
                     }
                 }
@@ -873,7 +882,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
 
         bool all_covered = true;
 
-        for (auto entity : entities) {
+        for (auto& entity : requested) {
             auto own_lock = entity->GetEntityLock();
 
             if (own_lock == nullptr) {
@@ -960,7 +969,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
 
         if (attempt + 1 >= MAX_SYNC_RETRIES) {
             ReleaseLocks();
-            throw EntitySyncException("SyncEntities retry budget exhausted — entity reparenting raced lock acquisition repeatedly");
+            throw EntitySyncException("SyncEntities retry budget exhausted — entity reparenting or widen relinking raced lock acquisition repeatedly");
         }
 
         // The stale cover is released so other threads are not blocked while waiting, and the back-off keeps
