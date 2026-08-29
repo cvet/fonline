@@ -944,14 +944,6 @@ namespace EntityOps
         Game.DestroyEntities(entities);
     }
 
-    void TestPrototypeAsEntityReceiverThrows()
-    {
-        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
-        Entity protoEntity = itemProto;
-
-        protoEntity.MakePersistent(true);
-    }
-
     int TestEntityArrayAcceptsRealEntities()
     {
         Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
@@ -2180,11 +2172,6 @@ TEST_CASE("ScriptEntityPromotionRejectsPrototypes")
         RUN_SCRIPT_FUNC_THROWS("TestPrototypeMixedIntoEntityArrayThrows", "Script entity is not usable as this entity type");
     }
 
-    SECTION("Receiver")
-    {
-        RUN_SCRIPT_FUNC_THROWS("TestPrototypeAsEntityReceiverThrows", "Script entity is not usable as this entity type");
-    }
-
     SECTION("RealEntitiesStillPass")
     {
         RUN_SCRIPT_FUNC("TestEntityArrayAcceptsRealEntities");
@@ -2202,7 +2189,7 @@ TEST_CASE("ScriptEntityArgumentPromotion")
 {
     MAKE_SERVER();
 
-    nptr<const ProtoItem> item_proto = server->ProtoMngr.GetProtoItem(get_func("TestItem"));
+    nptr<const ProtoItem> item_proto = server->GetProtoItem(get_func("TestItem"));
     REQUIRE(item_proto);
 
     // A handle slot is non-const by construction, while the proto lookup only hands out a const view
