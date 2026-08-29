@@ -273,6 +273,7 @@ SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual SpriteMeshSettings
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
+FIXED_SETTING(bool, Baking, PreciseModelBounds, false); // If true, model bounds measure every skinned vertex; if false, per-bone envelope boxes produce a conservative superset far faster
 FIXED_SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest world extent a directly attached model may reach; below it the export sits in a smaller unit space than the engine
 FIXED_SETTING(float32_t, Baking, ModelAttachmentMaxExtent, 50.0f); // Largest world extent a directly attached model may reach; above it the export sits in a larger unit space and the client cannot build its sprite frame
 FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
@@ -288,6 +289,7 @@ FIXED_SETTING(vector<string>, Baking, ServerResourceEntries); // Server resource
 FIXED_SETTING(vector<string>, Baking, ClientResourceEntries); // Client resource entries (read only)
 FIXED_SETTING(vector<string>, Baking, MapperResourceEntries); // Mapper resource entries (read only)
 FIXED_SETTING(int32_t, Baking, ZipCompressLevel, 1); // Zip deflate level (0-9)
+FIXED_SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 
 # Конфигурация игрового проекта
 
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"dd28d99764fc92f1f6ef8a3e9ad53bda8262bdd7b3c6013e4dc8728eae2b0b97"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"8ab91530230aa86d3ba715748ca6db90fec2840628e6cd62f00c13825629b88c"} -->
 
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
@@ -67,6 +67,14 @@ game settings также передаются в metadata, а internal config с
 deltas выбранного sub-config, включая явные false или empty overrides. Command
 line всё равно применяется после local config. Более поздние слои
 переопределяют ранние scalar settings.
+
+Metadata применяется только после создания `BaseEngine`. Если project code
+читает объявленный game setting в `ApplicationInitHook` или более раннем startup
+path, добавьте его fully qualified name в `Baking.BootstrapGameSettings`.
+Config baker запишет такой setting полностью в каждый internal config и
+отклонит неизвестное имя или опечатку. Не включайте обычные runtime settings:
+они принадлежат metadata, а расход фиксированной patch area на них может
+сорвать packaging.
 
 В authored files и operational commands используйте fully qualified names,
 например `Server.DbStorage`. Parser принимает короткие имена встроенных

@@ -6,7 +6,7 @@ document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
 
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3b2d6330d0914695575d867315a2e71d02bc5b51f18edb1978c059b0978db527"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"f93862454776c78a5d78adbd67d1147fc6cf591b5744727aa22de535341fe426"} -->
 
 # Базовый слой Essentials
 
@@ -158,6 +158,14 @@ Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Еди
 Raw-уровень нужен из-за C-образных allocator hooks third-party библиотек: они требуют `realloc`, нетипизированный блок байтов или оба варианта, что невозможно выразить C++ allocator. Он сохраняет ту же политику нехватки памяти, что и `SafeAllocator`: сообщить об ошибке, освободить резервный пул, повторить попытку и детерминированно завершить процесс. Поэтому подключение библиотеки через этот путь не выводит её из общего контракта. Запрос нулевого размера передаётся нижнему allocator, а не трактуется как ошибка.
 
 Примитивы `rpmalloc` намеренно не экспортируются из `MemorySystem.h`. Они возвращают null при сбое и создали бы вторую доступную точку входа, обходящую контракт, поэтому остаются file-local statics в `MemorySystem.cpp`. Операции над блоками `MemCopy` / `MemMove` / `MemFill` / `MemCompare` / `MemReadUnaligned` / `MemWriteUnaligned` не выделяют память и остаются публичными.
+
+Vendored rpmalloc сохраняет upstream spans размером 256 MiB на 64-bit targets.
+На 32-bit targets один span уменьшен до `LARGE_PAGE_SIZE` (16 MiB). Старые
+Windows allocation APIs резервируют `size + alignment`, поэтому aligned span
+256 MiB может потребовать contiguous hole размером 512 MiB в 2 GiB x86 address
+space и сорвать уже первое небольшое allocation. Span 16 MiB на x86 сохраняет
+все встроенные page classes и устраняет startup-зависимость от одной огромной
+непрерывной reservation.
 
 При обходе этого словаря возникают три разных последствия, и их тяжесть различается:
 

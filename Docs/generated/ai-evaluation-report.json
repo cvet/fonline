@@ -764,7 +764,7 @@
             "map-format-guide",
             "entity-model",
             "client-runtime",
-            "baking-pipeline"
+            "server-runtime"
           ]
         }
       ],
@@ -1521,8 +1521,8 @@
             "web-debugging",
             "client-updater",
             "debugging",
-            "packaging-and-release",
-            "server-runtime"
+            "frontend-rendering",
+            "packaging-and-release"
           ]
         },
         {

@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/coding-contracts/thread-safety-analysis.html
 
 # Анализ потокобезопасности
 
-<!-- docs-translation: {"document_id":"thread-safety-analysis","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/thread-safety-analysis.md","source_sha256":"83f13dbf27f02c0bea98329121428aba244ed9eab9665ad20d86de98c37d42b5"} -->
+<!-- docs-translation: {"document_id":"thread-safety-analysis","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/thread-safety-analysis.md","source_sha256":"b92dd0d64ee820868b29fc958040c34b8003dcfd043fd70da65a842de955dc29"} -->
 
 Движок аннотирует обычные mutex с помощью
 [Clang Thread Safety Analysis](https://clang.llvm.org/docs/ThreadSafetyAnalysis.html)
@@ -55,6 +55,7 @@ capability и ничего не проверил. Защищённое сост�
 |------|-------------------------|------------|
 | `fo::mutex` | `std::mutex` | состояние только с exclusive-доступом |
 | `fo::shared_mutex` | `std::shared_mutex` | состояние с reader/writer-доступом |
+| `fo::atomic_mutex` | park/wake поверх атомарного состояния | короткие critical sections из `noexcept` code, где ошибку получения OS mutex невозможно сообщить |
 | `fo::scoped_lock<T>` | `std::scoped_lock` / `std::lock_guard` | exclusive RAII guard для `mutex` или `shared_mutex`; CTAD: `scoped_lock lk {m}` |
 | `fo::shared_lock<T>` | `std::shared_lock` | shared reader guard для `shared_mutex` |
 | `fo::unique_lock<T>` | `std::unique_lock` | exclusive guard с ручными `lock()`/`unlock()`, пригодный для `std::condition_variable_any` |

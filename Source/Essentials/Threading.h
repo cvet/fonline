@@ -114,6 +114,47 @@ private:
     std::shared_mutex _impl;
 };
 
+// Exclusive lock for the short critical sections that noexcept accessors run: it owns no OS resource, so unlike
+// `mutex` it has no acquisition failure to report
+class FO_TSA_CAPABILITY("atomic_mutex") atomic_mutex
+{
+public:
+    atomic_mutex() = default;
+    atomic_mutex(const atomic_mutex&) = delete;
+    atomic_mutex(atomic_mutex&&) noexcept = delete;
+    auto operator=(const atomic_mutex&) -> atomic_mutex& = delete;
+    auto operator=(atomic_mutex&&) noexcept -> atomic_mutex& = delete;
+    ~atomic_mutex() = default;
+
+    void lock() noexcept FO_TSA_ACQUIRE()
+    {
+        uint32_t free_state = STATE_FREE;
+
+        if (_state.compare_exchange_strong(free_state, STATE_HELD, std::memory_order_acquire, std::memory_order_relaxed)) {
+            return;
+        }
+
+        // Every sleeper publishes STATE_CONTENDED before parking, so an unlock reading it back knows a wake is owed
+        while (_state.exchange(STATE_CONTENDED, std::memory_order_acquire) != STATE_FREE) {
+            _state.wait(STATE_CONTENDED, std::memory_order_relaxed);
+        }
+    }
+
+    void unlock() noexcept FO_TSA_RELEASE()
+    {
+        if (_state.exchange(STATE_FREE, std::memory_order_release) == STATE_CONTENDED) {
+            _state.notify_one();
+        }
+    }
+
+private:
+    static constexpr uint32_t STATE_FREE = 0;
+    static constexpr uint32_t STATE_HELD = 1;
+    static constexpr uint32_t STATE_CONTENDED = 2;
+
+    std::atomic<uint32_t> _state {};
+};
+
 // Exclusive RAII guard for mutex or shared_mutex (drop-in for std::scoped_lock / std::lock_guard)
 template<typename T>
 class FO_TSA_SCOPED_CAPABILITY scoped_lock

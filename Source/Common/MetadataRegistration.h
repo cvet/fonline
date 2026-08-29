@@ -45,7 +45,10 @@ FO_DECLARE_EXCEPTION(MetadataOutdatedException);
 // Fixed header written ahead of the sections: a marker that rejects a foreign or truncated file at the first bytes,
 // the version of this file layout itself, and the metadata version derived from every codegen tag
 constexpr uint32_t METADATA_FILE_MAGIC = 0x46444D46; // "FMDF"
-constexpr uint16_t METADATA_FILE_VERSION = 1;
+
+// Bump on any change to a section's token layout below: the metadata version hashes the codegen tags alone, so a
+// layout change leaves it identical and an unbumped pack reaches the new reader instead of being refused as stale
+constexpr uint16_t METADATA_FILE_VERSION = 2;
 
 // Section names of the baked `Metadata.fometa-*` wire format: the baker writes them, the runtime reads them back,
 // and both sides must spell them identically, so they live here rather than as literals on either side

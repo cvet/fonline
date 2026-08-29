@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4961,
-    "current_count": 4961,
+    "entry_count": 4963,
+    "current_count": 4963,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2498,
-      "current_count": 2498,
+      "entry_count": 2500,
+      "current_count": 2500,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15115,6 +15115,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.Baking.BootstrapGameSettings/description",
+          "source": "Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta",
+          "source_sha256": "b6d09bfc4cf6066366c5d8235af3e1452157ad4f7d78edde54006a6f8ca0ebba",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.Baking.CacheResources/description",
           "source": "Cache resources directory",
           "source_sha256": "b73a2fe61ba6dd64d06526898296c8f00b854b8a246968335211b76fc4e4000a",
@@ -15166,6 +15172,12 @@
           "locator": "/symbols/@id=setting.common.Baking.PlatformBinaries/description",
           "source": "Per-platform client runtime binaries directory served by the updater",
           "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Baking.PreciseModelBounds/description",
+          "source": "If true, model bounds measure every skinned vertex; if false, per-bone envelope boxes produce a conservative superset far faster",
+          "source_sha256": "0597d7306b734f8b672d97b6c54eb57ede50655d340d26f4b46012f236d92c03",
           "status": "current"
         },
         {

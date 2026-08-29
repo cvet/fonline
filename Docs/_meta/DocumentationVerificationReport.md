@@ -2,6 +2,69 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-08-30 - master reconciliation through `d697d6e1da`
+
+Scope:
+
+- Reconciled documentation branch head
+  `0cee27133fcb5744c77b7fd53c7e7520e99de8cb` with Engine
+  `origin/master` through `d697d6e1dab20b6c1700ffa370f84ece49d80d8c`.
+- Audited the complete fifteen-commit incoming range after
+  `8235f89d62d7ce1de66ba82491b274c5a47b27a1`, including early game-setting
+  bootstrap, model-info baking performance and bounds policy, metadata layout
+  version 2, script Entity promotion, link lifetime protection, detached item
+  ownership, and the 32-bit rpmalloc span correction.
+- Resolved eight conflicts in legacy monolithic documentation by retaining the
+  short compatibility routes and reconciling the incoming behavior into the
+  canonical English/Russian owning pages.
+
+Documentation and contract reconciliation:
+
+- Documented `Baking.BootstrapGameSettings`, its declared-name and fixed-budget
+  validation, full per-subconfig serialization, early-startup use, and the fact
+  that listed secret values become part of every baked binary configuration.
+- Documented 60 Hz model-bound sampling, reusable animation sampling state,
+  precise per-vertex versus conservative per-bone-envelope modes, and the
+  shipped-build quality boundary. Reconciled the removal of `PoseRect` with the
+  public `DrawRect`/`ViewRect` fitting contract.
+- Documented metadata layout version 2, scalar/array/dictionary script Entity
+  promotion and mismatch handling, detached items entering client views with
+  `ItemOwnership::Nowhere`, and the shared detached-item receive path.
+- Documented per-link `fo::atomic_mutex` protection and widened owning handles
+  during server synchronization, plus the 16 MiB 32-bit and 256 MiB 64-bit
+  rpmalloc span policies.
+- Updated the project metadata decoder for layout version 2. Regenerated 2,498
+  native API entries and all dependent bilingual reference, inventory,
+  screenshot, snippet, site/search, route, AI-evaluation, and AI-delivery
+  artifacts. All 4,963 generated descriptions and all 197 English/Russian page
+  pairs are current; the route model contains 386 routes.
+- The strict contract comparison records five API changes across eighteen
+  domains. All three required breaking-change dispositions are owner-reviewed,
+  with zero missing: the strict model inventory, compatibility `0.0.42`, and
+  the three-argument `Game.GetDrawCritter3dBounds` signature.
+
+Validation:
+
+- `docs_validate.py` passed all 397 Markdown entries. The focused documentation
+  suite passed 76 tests.
+- External snippet validation passed 310 normative snippets, 159 evidence
+  blocks, and 183 external-parser checks. Deterministic AI evaluation passed 27
+  tasks and 65 retrieval checks at 100 percent success and 0.915 MRR.
+- Last Frontier integration configured successfully and built `LF_UnitTests`.
+  The complete native suite passed 570 test cases and 445,609 assertions.
+
+Disposition:
+
+- The incoming reusable behavior is represented in the canonical Engine docs
+  and generated contract surfaces. Post-merge edits outside documentation are
+  limited to source-owned API contract pins, the metadata-layout decoder, and
+  their regression expectations; no project-specific runtime feature was added
+  to Engine.
+- A full Last Frontier bake and project-specific documentation reconciliation
+  remain tied to the subsequent project `origin/main` merge. Visible-client
+  inspection of model framing was not performed here and remains a human/CI
+  acceptance boundary.
+
 ## 2026-08-28 - master reconciliation through `8235f89d62`
 
 Scope:

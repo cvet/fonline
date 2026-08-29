@@ -55,6 +55,13 @@ sub-config deltas for them, including explicit false or empty overrides. The
 command line still applies after local config. Later layers override earlier
 scalar settings.
 
+Metadata is applied only after `BaseEngine` construction. If project code reads
+a declared game setting from `ApplicationInitHook` or an earlier startup path,
+list its fully qualified name in `Baking.BootstrapGameSettings`. The config
+baker then writes that setting in full to every internal config and rejects
+unknown or misspelled names. Do not list ordinary runtime settings: they belong
+in metadata and consuming the fixed patch area for them can make packaging fail.
+
 Use fully qualified names such as `Server.DbStorage` in authored files and operational commands. The parser accepts short built-in names, but qualified names make ownership and review unambiguous.
 
 ## Author the root settings

@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"48ccb6ee99b8d8504872039017c4b7e6417a78f460dfc43a40e12c097a30c291"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"b370a710d385ba2e01336df80f50a91ee052a5fa1dc9a9b88ae77bea0a99e814"} -->
 
 # Frontend и рендеринг
 
@@ -364,13 +364,23 @@ sweep. Это удерживает layer/equipment geometry в facing-independen
 systems; dormant effect ничего не резервирует и попадает в bounded expansion
 pass, если начинает emission.
 
-Измерение содержит два rectangle. `ModelSpriteBounds::Rect` — полный baked
-geometry envelope вместе с shadow, live particles и full frame, принудительно
-выбранным effect; он задаёт frame и atlas crop.
-`ModelSpriteBounds::PoseRect` захватывается до particles и возвращается через
-`ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` для fit-to-area. Уже
-emitted world-space particles не масштабируются вместе с model, поэтому их
-включение в fit создало бы feedback loop. Effects входят во frame, но не в fit.
+Dynamic draw envelope задаётся `ModelSpriteBounds::Rect`: baked geometry,
+projected shadow, live particles и full frame, принудительно выбранный effect.
+Это внутренний renderer contract, который определяет frame и atlas crop.
+
+`Game.GetDrawCritter3dBounds` предоставляет два стабильных layout rectangles.
+`DrawRect` является conservative envelope baked active clip и selected links
+вместе с projected shadow и предназначен для diagnostics renderer layout.
+`ViewRect` является semantic interface bound: обычно он использует
+idle-priority envelope, а при необходимости выбирает полный более низкий
+prone/active clip. GUI portraits и world overlays используют его вместо более
+крупного draw envelope. Отдельный pose rectangle удалён, поскольку дублировал
+тот же contract active model occupancy, что и `DrawRect`, без собственного
+поведения.
+
+Уже emitted world-space particles не масштабируются вместе с model. Fit по
+внутреннему `Rect` создал бы feedback loop, уменьшающий model при неизменном
+размере particles. Effects входят во frame, но не в interface fit.
 
 Если exact envelope больше, frame расширяется и
 перерисовывается. Последовательные frame placements объединяются как

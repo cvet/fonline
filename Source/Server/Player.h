@@ -70,8 +70,8 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
-    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
-    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] ptr<const ServerConnection> GetConnection() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
@@ -132,18 +132,11 @@ private:
     void SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, bool owned);
     void SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr);
 
-    // Serializes lock-free sends with reconnect swaps; shared readers would still serialize on _outBufLocker.
-    // Declare it before _connection so it outlives the guarded pointer
     mutex _connectionLock {};
-    // _connectionLock protects broadcast sends outside recipient entity cover.
-    // Entity-covered accessors and cross-object swaps use FO_TSA_NO_ANALYSIS
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
     string _name {"(NotLoggedIn)"};
-    // Atomic non-owning controlled-critter link for lock-free chosen-recipient checks.
-    // Published under player cover and used as the Player-to-Critter sync-widen anchor
+    mutable atomic_mutex _controlledCrLinkLocker {};
     std::atomic<Critter*> _controlledCr {};
-    // Atomic source pair prevents property fan-out from echoing a client-originated change.
-    // The locked subject makes independent field reads unable to form a false match
     std::atomic<const Entity*> _sendIgnoreEntity {};
     std::atomic<const Property*> _sendIgnoreProperty {};
     optional<ViewMapContext> _viewMap {};

@@ -6,7 +6,7 @@ document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
 
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"71c90f097393a1f47c932747332dc30629ddce4b50aa6fbf2a9717094d00fa79"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"9463a376e9e7297cf9fbc69255be1ae2d2f02e80651ade672e2e84bc7f787690"} -->
 
 # Клиентская среда выполнения
 
@@ -154,6 +154,14 @@ permalink: /Docs/ru/explanation/runtime/client.html
 
 `ClientEngine::RegisterEntity()` и `ClientEngine::UnregisterEntity()` поддерживают lookup id-to-entity для network handlers и скриптов. `Source/Tests/Test_ClientEngine.cpp` проверяет регистрацию клиентских сущностей и их удаление из lookup.
 
+`Item.Ownership` не синхронизируется. Поэтому snapshots предметов, полученные
+вне owned holder, проходят через `ClientEngine::ReceiveDetachedItem()`, который
+восстанавливает данные и явно задаёт `ItemOwnership::Nowhere`. Общий path
+охватывает item-list payloads, action context items и slot-move items. Detached
+snapshot не должен сохранять нулевой default enum (`MapHex`), иначе client
+presentation и actions примут предмет чужого inventory за объект на текущей
+карте.
+
 Script GUI widgets `ItemView` кешируют handles предметов, привязанные к cells. `Resort()` удаляет destroyed handles, возвращённые stale supplier, сохраняет cell только когда источник вернул тот же живой экземпляр handle, и перепривязывает replacement clone с тем же entity id, чтобы callback отрисовки предмета видел актуальное количество и остальные projected properties.
 
 ## Архитектура runtime 3D-моделей
@@ -199,7 +207,7 @@ Canonical joint names, точные runtime lookup names и bindings name-to-ind
 
 Static `.fo3d` instances вычисляют пустой набор Ozz tracks, поэтому canonical rest и procedural transforms тела и головы используют тот же runtime, что и animated instances. За пределами Ozz остаются только direct raw-model instances, строящие parent-ordered world matrices через validation helpers из `ModelAnimation`.
 
-Клиентская script pair `Game.DrawCritter3d(...)` и `Game.GetDrawCritter3dBounds(...)` поддерживает переиспользуемый GUI layout вокруг model sprite. После отрисовки instance запрос bounds возвращает два rectangles относительно draw anchor либо `false`, если instance ещё не создал valid model sprite. `drawRect` охватывает полный цикл выбранной animation и непрерывный диапазон facing вместе с projected shadow. `viewRect` - стабильный логический rectangle модели и layers для names, coarse picking и подобного presentation. Код GUI preview вписывает и центрирует draw rectangle; world-space overlays используют stable view rectangle как logical anchor, не дублируя 3D projection rules и не завися от текущего atlas crop.
+Клиентская script pair `Game.DrawCritter3d(...)` и `Game.GetDrawCritter3dBounds(...)` поддерживает переиспользуемый GUI layout вокруг model sprite. После отрисовки instance запрос bounds возвращает два rectangles относительно draw anchor либо `false`, если instance ещё не создал valid model sprite. `drawRect` охватывает полный цикл выбранной animation и непрерывный диапазон facing вместе с projected shadow. `viewRect` - стабильный логический rectangle модели и layers для names, coarse picking и подобного presentation. Код GUI preview вписывает и центрирует view rectangle; world-space overlays используют stable view rectangle как logical anchor, не дублируя 3D projection rules и не завися от текущего atlas crop.
 
 Прежние custom pose evaluator и общая изменяемая table matrix output удалены. Baked model meshes теперь начинаются обязательным header `LFMODMSH` schema 1 и содержат только recursive hierarchy/bind/drawable mesh payload. Клиент потребляет его целиком и отклоняет данные без header, с несовпадающей schema, truncated или trailing data; serialized TRS tail и legacy mesh fallback отсутствуют. Runtime identity clip, duration, joint presence и sampling поступают только из baked Ozz rig.
 

@@ -360,7 +360,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: d03942ca44415d7f024e553984631e9f95f130e474c465978c3ca0be95fe2e62
+Content SHA-256: 22a54e18a22b01d32fccc66d7c2a40bcce2b45806bb88ce6188ae4a621482bbc
 
 ---
 title: FOnline Public Contract Index
@@ -408,10 +408,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2496**
-- Symbols with source-backed descriptions: **2496**
+- Discovered symbols: **2498**
+- Symbols with source-backed descriptions: **2498**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2496**
+- Explicitly classified symbols: **2498**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -2126,7 +2126,7 @@ When persistence or recovery source changes, run `Source/Tests/Test_DataBase.cpp
 ===== BEGIN DOCUMENT security-and-secrets =====
 Source: Docs/en/how-to/release/security-and-secrets.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/security-and-secrets.html
-Content SHA-256: 1503b15539982e88ef71d5d2d559322d41f7bf5c390c4710ef20093c68e44be7
+Content SHA-256: e9706130a7c402ab7411b86a4852630d69a1cc997659106c45c58fc9cd20e7e4
 
 ---
 layout: default
@@ -2217,7 +2217,9 @@ The Engine does **not** infer a credential type, encrypt settings, zero memory, 
 
 - config values are ordinary strings after resolution;
 - `GlobalSettings::Save()` emits applied values in baking mode;
-- `ConfigBaker` writes non-empty applicable values into side-specific internal configs;
+- `ConfigBaker` writes applicable values into side-specific internal configs;
+  game settings named by `Baking.BootstrapGameSettings` are written in full to
+  every baked sub-config because their consumers run before metadata exists;
 - `GlobalSettings::Draw()` renders registered setting values;
 - project code, third-party libraries, crash handlers, CI shells, and signing tools can log their own inputs;
 - a custom setting reported as unknown during baking is logged with its current value.
@@ -2343,7 +2345,7 @@ Use [Release Operations](operations.md) for target-host preflight, staged rollou
 ===== BEGIN DOCUMENT project-configuration =====
 Source: Docs/en/how-to/build/project-configuration.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/project-configuration.html
-Content SHA-256: dd28d99764fc92f1f6ef8a3e9ad53bda8262bdd7b3c6013e4dc8728eae2b0b97
+Content SHA-256: 8ab91530230aa86d3ba715748ca6db90fec2840628e6cd62f00c13825629b88c
 
 ---
 layout: default
@@ -2401,6 +2403,13 @@ root values also travel in metadata; the internal config carries only selected
 sub-config deltas for them, including explicit false or empty overrides. The
 command line still applies after local config. Later layers override earlier
 scalar settings.
+
+Metadata is applied only after `BaseEngine` construction. If project code reads
+a declared game setting from `ApplicationInitHook` or an earlier startup path,
+list its fully qualified name in `Baking.BootstrapGameSettings`. The config
+baker then writes that setting in full to every internal config and rejects
+unknown or misspelled names. Do not list ordinary runtime settings: they belong
+in metadata and consuming the fixed patch area for them can make packaging fail.
 
 Use fully qualified names such as `Server.DbStorage` in authored files and operational commands. The parser accepts short built-in names, but qualified names make ownership and review unambiguous.
 
@@ -12227,7 +12236,7 @@ A project-side checker should use exact line-level allowlists for reviewed ABI a
 ===== BEGIN DOCUMENT thread-safety-analysis =====
 Source: Docs/en/contributing/coding-contracts/thread-safety-analysis.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/thread-safety-analysis.html
-Content SHA-256: 83f13dbf27f02c0bea98329121428aba244ed9eab9665ad20d86de98c37d42b5
+Content SHA-256: b92dd0d64ee820868b29fc958040c34b8003dcfd043fd70da65a842de955dc29
 
 ---
 layout: default
@@ -12275,6 +12284,7 @@ is a plain `std::` → `fo::` swap:
 |------|-----------------|---------|
 | `fo::mutex` | `std::mutex` | exclusive-only state |
 | `fo::shared_mutex` | `std::shared_mutex` | reader/writer state |
+| `fo::atomic_mutex` | atomic-state park/wake | short critical sections reached from `noexcept` code, where an OS mutex acquisition failure would have no reporting path |
 | `fo::scoped_lock<T>` | `std::scoped_lock` / `std::lock_guard` | exclusive RAII guard for `mutex` *or* `shared_mutex` (CTAD: `scoped_lock lk {m}`) |
 | `fo::shared_lock<T>` | `std::shared_lock` | shared (reader) RAII guard for `shared_mutex` |
 | `fo::unique_lock<T>` | `std::unique_lock` | exclusive guard with manual `lock()`/`unlock()`, usable with `std::condition_variable_any` |
@@ -15492,7 +15502,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 0fa5b884fb24b5b4c5a4783062660355bd2101ec410de7253566200767dcb48f
+Content SHA-256: 6743cc2678333f6b562112460ac251cf3b6439b8c53ac91328c940bcfc72874b
 
 ---
 layout: default
@@ -15955,14 +15965,32 @@ required root-space contracts to every model section:
   `BoundsMax*` arrays store the individual animation AABBs used by the runtime
   tight-crop predictor.
 
-The baker samples animation keys, their midpoints, and a uniform timeline to
-build deterministic envelopes independent of camera angle, projection factor,
-model-sprite resolution, and renderer backend. Each binary description link
-also writes an explicit geometry discriminator: non-particle child links carry
-a required root-space AABB, while the default link and particle links carry no
-geometry payload. Invalid flags, missing child bounds, and degenerate AABBs are
-rejected. Missing or invalid aggregate or animation bounds are baking errors in
-the version 2 contract. In
+The baker samples every animation key, the midpoint between neighbouring keys,
+and a 60 Hz grid. That common timeline prevents a fast arc from being missed
+and keeps deterministic envelopes independent of camera angle, projection
+factor, model-sprite resolution, and renderer backend.
+
+`Baking.PreciseModelBounds` selects the geometry measurement at each sample:
+
+- `true` uses `ModelBoundsMeasurement::PerVertex` and transforms every skinned
+  vertex. `PublicGame` enables this exact mode for shipped resources;
+- `false` (the default) uses `PerBoneEnvelope` and transforms one prepared
+  envelope box per bone slot. Because blended vertices are convex combinations
+  of their transformed bone positions, the union can over-size an envelope but
+  cannot clip the exact geometry. This is the conservative fast path for local
+  working bakes.
+
+`ModelBoundsSampler` prepares a model hierarchy, mesh selection, and per-bone
+envelopes once, then answers every clip from that immutable plan. Attachment
+bounds reuse one sampled bone track per clip and bone instead of re-walking the
+parent hierarchy for every attachment. Model-description sections are produced
+independently and concatenated in sorted source order.
+
+Each binary description link also writes an explicit geometry discriminator:
+non-particle child links carry a required root-space AABB, while the default
+link and particle links carry no geometry payload. Invalid flags, missing child
+bounds, and degenerate AABBs are rejected. Missing or invalid aggregate or
+animation bounds are baking errors in the version 2 contract. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds
@@ -17363,7 +17391,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 48ccb6ee99b8d8504872039017c4b7e6417a78f460dfc43a40e12c097a30c291
+Content SHA-256: b370a710d385ba2e01336df80f50a91ee052a5fa1dc9a9b88ae77bea0a99e814
 
 ---
 layout: default
@@ -17691,14 +17719,23 @@ fixed frame without a per-frame weighted-vertex walk. Only currently-emitting
 particle systems extend this envelope; a dormant effect reserves no frame and is
 absorbed by the bounded expansion pass if it starts emitting.
 
-The measured result contains two rectangles. `ModelSpriteBounds::Rect` is the
-full baked geometry envelope plus shadow, live particles, and any
-effect-forced full frame; it sizes the frame and atlas crop.
-`ModelSpriteBounds::PoseRect` is captured before particles and is returned by
-`ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` for fit-to-area
-calculations. Already emitted world-space particles do not scale with the model,
-so including them in a fit would create a feedback loop. Effects belong in the
-frame, not in the fit.
+The dynamic draw envelope is `ModelSpriteBounds::Rect`: baked geometry,
+projected shadow, live particles, and any effect-forced full frame. It remains
+an internal renderer contract that sizes the frame and atlas crop.
+
+`Game.GetDrawCritter3dBounds` exposes two stable layout rectangles. `DrawRect`
+is the conservative baked active-clip and selected-link envelope plus the
+projected shadow, intended for renderer-layout diagnostics. `ViewRect` is the
+semantic interface bound: it normally uses the idle-priority envelope and
+selects the complete lower/prone active clip where required. GUI portraits and
+world overlays use it instead of the larger draw envelope. The former separate
+pose rectangle was removed because it duplicated the same active
+model-occupancy contract as `DrawRect` without owning distinct behavior.
+
+Already emitted world-space particles do not scale with the model. Fitting
+against the internal `Rect` would therefore create a feedback loop that shrinks
+the model while particles retain their size. Effects belong in the frame, not
+in an interface fit.
 
 If that
 exact envelope needs a larger logical frame,
@@ -18928,7 +18965,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 71c90f097393a1f47c932747332dc30629ddce4b50aa6fbf2a9717094d00fa79
+Content SHA-256: 9463a376e9e7297cf9fbc69255be1ae2d2f02e80651ade672e2e84bc7f787690
 
 ---
 layout: default
@@ -19084,6 +19121,14 @@ Primary view types:
 
 `ClientEngine::RegisterEntity()` and `ClientEngine::UnregisterEntity()` maintain the id-to-entity lookup used by network handlers and scripts. `Source/Tests/Test_ClientEngine.cpp` validates that client entities can be registered and removed from the lookup.
 
+`Item.Ownership` is not synchronized. Item snapshots received outside an owned
+holder therefore pass through `ClientEngine::ReceiveDetachedItem()`, which
+restores their data and explicitly assigns `ItemOwnership::Nowhere`. This shared
+path covers item-list payloads, action context items, and slot-move items. A
+detached snapshot must never retain the enum's zero default (`MapHex`), because
+client presentation and actions would then treat another inventory's item as an
+object lying on the current map.
+
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 
 ## 3D model runtime architecture
@@ -19196,7 +19241,7 @@ relative to the draw anchor, or `false` when that instance has not produced a
 valid model sprite. `drawRect` covers the selected animation's complete cycle
 and continuous facing range, including its projected shadow. `viewRect` is the
 stable logical model-and-layers rectangle used by names, coarse picking, and
-similar presentation. GUI preview code fits and centres the draw rectangle;
+similar presentation. GUI preview code fits and centres the view rectangle;
 world-space overlays use the stable view rectangle as their logical anchor,
 without duplicating 3D projection rules or depending on the current atlas crop.
 The former custom pose evaluator and shared mutable matrix-output table have
@@ -19475,7 +19520,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: 0427251902c0e8c78620eb0f829bd32f670d68125dc590bda69d0ce04fca0574
+Content SHA-256: 489216925884819fb9eefebe8921419ab1e31eac73112f3efd45e277e9f8a8de
 
 ---
 layout: default
@@ -19614,7 +19659,7 @@ Property serialization through `Properties::StoreData()` returns pointer/size li
 **Sync-free server→client broadcasts (the "rassylka").** A broadcast to observers/spectators is the one place where a sender legitimately cannot hold the recipient's cover — the fan-out runs under the **subject** critter's (or map's) cover only, then must reach every recipient's player. The whole broadcast surface is sync-free: property, movement (`Send_Moving`/`Send_MovingSpeed`), facing (`Send_Dir`), action (`Send_Action`), inventory move (`Send_MoveItem`), teleport (`Send_Teleport`), and attachments (`Send_Attachments`), plus their serialization helpers `SendItem`/`SendInnerEntities`/`SendCritterMoving`. The pattern:
 
 - **Recipient sends validate the SUBJECT, not the recipient — and `this` always carries its own explicit marker.** Two independent decisions, both stated at the top of every send: (1) the **`this`-marker** declares how the method treats its own entity — a recipient send writes only the recipient's connection and never reads recipient state, so its `this`-marker is `FO_NO_VALIDATE_ENTITY_ACCESS()`. This marker is **mandatory and is not implied by the value check** — `FO_VALIDATE_ENTITY_ACCESS_VALUE(x)` validates `x`, it is *not* a `this`-decision, so every send pairs the two: `FO_NO_VALIDATE_ENTITY_ACCESS();` then `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject);`. (2) The **subject validation**: every send is handed an entity it serializes or reads — even just its id — and validates it via `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` (= the null-tolerant throwing `ValidateEntityAccess(subject)`). The subject *must* be in sync, and the broadcaster holds its cover for the whole fan-out so the check passes — an uncovered subject is caught (a `ScriptException` reported at the job/script frontier, which continues; escaping a `noexcept` send still terminates the process). This is **intentionally aggressive diagnostic validation**: validate every sent entity to surface every desync immediately (this validation layer is temporary and will be removed after the multithreaded logic system stabilizes; see the TODO below). The recipient connection is guarded by a per-player `_connectionLock` so a concurrent reconnect `SwapConnection` cannot swap `_connection` mid-write. It is a **plain `mutex`, not a `shared_mutex`**: same-player sends already serialize on the connection's own single output-buffer lock (`ServerConnection::_outBufLocker`, held by the `OutBufAccessor` for the whole `WriteMsg`), so a shared "many concurrent send readers" lock would buy nothing — and `mutex::lock()` is cheaper on the hot path than `shared_mutex::lock_shared()`. Cross-player concurrency (the actual win) comes from each player owning its own lock; sends and `SwapConnection` both take it exclusively, and no send re-enters it (the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers take the already-opened buffer as a parameter, so a non-recursive mutex cannot self-deadlock). `is_chosen` is a lock-free atomic identity compare against `Player::_controlledCr` (no deref). Only sends that are handed **no entity at all** — `Send_TimeSync`/`Send_InfoMessage`/`Send_PlaceToGameComplete` (no entity), `Send_HashList` (bare strings; used by the reported-hash broadcast fan-out and the handshake-time full-list push), `Send_RemoteCall` (a name + opaque payload; the outbound remote-call channel — the recipient may be uncovered and mid-reconnect, so the send pins the live connection under `_connectionLock`), `Send_Ping`/`Send_HandshakeAnswer`/`Send_InitData`/`Send_UpdateFileData` (connection-stage protocol replies, isolated in `Player` so no code outside `Player` writes a player-directed `NetMessage`; `Send_HandshakeAnswer` also installs the out-buffer encrypt key under the same lock hold), `Send_RemoveCustomEntity` (a bare `ident_t`), and `Send_SomeItems` (a span — each item is validated downstream in `SendItem`) — are pure `FO_NO_VALIDATE` with no value check. (The validation gap the subject check closes: `StoreData`/`GetRawData` do **not** validate entity access, so a send serializing a subject through them must validate the subject explicitly.) The `Critter::Send_*` forwarders (per-critter "send to my own player") follow the same two-marker shape: `FO_NO_VALIDATE_ENTITY_ACCESS()` for the *recipient* critter (`this`) plus `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` for the forwarded subject. They must **not** validate the recipient critter (the old `this`-check fired spuriously on an uncovered NPC group member with no player during `DestroyCritter` cleanup — the subject being removed is covered, only the recipient was not), and they read `_player` atomically before forwarding.
-- **Fan-outs resolve a refcount-pinned recipient set.** `Critter::Broadcast_*` / `SendAndBroadcast_*` and the generic `SendAndBroadcast(ignore_player, player_callback)` build `Critter::GetBroadcastRecipients(ignore_player)` under the subject cover: each observer's player via `Critter::GetPlayerForSend()` (the no-validate `TryAddRef`-pinned accessor mirroring `ServerEntity::GetParentRaw`) plus map spectators via `Map::GetSpectatorPlayersForSend()` (a `FO_NO_VALIDATE` snapshot guarded by the map's `_spectatorLock` `shared_mutex`, so the broadcaster needs neither the observer's nor the **map's** cover). The pinned `vector<refcount_ptr<Player>>` keeps every recipient alive through the lock-free dispatch (`GetBroadcastRecipients`/`GetMapSpectators`/`GetSpectatorPlayersForSend` return an owning `refcount_ptr` vector; `ref_hold_vector` is reserved for the transient `copy_hold_ref(...)` loop-helper use).
+- **Fan-outs resolve a refcount-pinned recipient set.** `Critter::Broadcast_*` / `SendAndBroadcast_*` and the generic `SendAndBroadcast(ignore_player, player_callback)` build `Critter::GetBroadcastRecipients(ignore_player)` under the subject cover: each observer's player via `Critter::GetPlayerForSend()` (the no-validate, link-lock-protected `TryAddRef` accessor mirroring `ServerEntity::GetParentRaw`) plus map spectators via `Map::GetSpectatorPlayersForSend()` (a `FO_NO_VALIDATE` snapshot guarded by the map's `_spectatorLock` `shared_mutex`, so the broadcaster needs neither the observer's nor the **map's** cover). The pinned `vector<refcount_ptr<Player>>` keeps every recipient alive through the lock-free dispatch (`GetBroadcastRecipients`/`GetMapSpectators`/`GetSpectatorPlayersForSend` return an owning `refcount_ptr` vector; `ref_hold_vector` is reserved for the transient `copy_hold_ref(...)` loop-helper use).
 - **Property broadcasts read the subject live.** Every property broadcast trigger fans out the ordinary `Player::Send_Property(type, prop, subject)` to each pinned recipient: it validates the **subject** (`FO_VALIDATE_ENTITY_ACCESS_VALUE`), reads the subject's serialized bytes live via `Properties::GetRawData` (safe because the broadcaster holds the subject's cover for the whole fan-out), and writes only the recipient's connection under `_connectionLock`. The triggers: critter/critter-item (`Critter::Broadcast_Property`), global (`OnSendGlobalValue` → all players), map (`Map::SendProperty` Map case → map critters + spectators), location (`OnSendLocationValue` → `Map::SendProperty` Location case for each map in the location → map critters + spectators), and custom entity (`OnSendCustomEntityValue` → viewers resolved by the covered `ForEachCustomEntityView`, then dispatched lock-free). (A byte-snapshot optimization — capturing the payload once under the subject's cover and blitting it lock-free — was prototyped and reverted; the live-read fan-out is the current shape.)
 - **TSA-guarded.** Both fine-grained locks are Clang [Thread Safety Analysis](../../../ThreadSafetyAnalysis.md) capabilities (`fo::mutex` / `fo::shared_mutex`), and the state they guard carries `FO_TSA_GUARDED_BY`: `Player::_connection FO_TSA_GUARDED_BY(_connectionLock)` and `Map::_spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock)` (each lock declared before the field it guards). Every lock-free path holds the lock via `scoped_lock`/`shared_lock`, so TSA statically enforces the guard on exactly the threads that lack the entity cover. The accessors that legitimately reach the guarded state under the **entity cover** instead — the cooperative scheme TSA cannot model, and which also excludes the swap/mutation — are `FO_TSA_NO_ANALYSIS` with a comment: `Player::GetConnection` (hands the pointer to entity-cover callers), `Player::SwapConnection` (cross-object `other->_connection` swap), `Map::HasSpectatorPlayers` / `Map::GetSpectatorPlayers` (leak a span), and the single-threaded `~Map` teardown invariant. The `Map::AddItem` / `RemoveItem` / `SendProperty` (MapItem) spectator legs route through `GetSpectatorPlayersForSend()` (which takes the shared lock) rather than touching `_spectatorPlayers` directly, so they stay TSA-clean without an escape hatch.
 
@@ -19679,6 +19724,28 @@ Walk trigger processing is scoped to the critter's current trigger context. If `
 ## Entity synchronization and locking
 
 `Source/Server/EntitySync.{h,cpp}` implements the cover model. Every `ServerEntity` owns an `EntityLock`; a thread proves read access by holding that lock or an appropriate ancestor/widen-chain cover. Parentage mutations require the entity's own lock directly.
+
+Raw atomic links are used where covered identity checks must stay lock-free:
+`ServerEntity::_parent`, `Critter::_player`, and `Player::_controlledCr`. An
+uncovered accessor cannot safely perform a bare pointer load followed by
+`TryAddRef()`, because replacement could release the link's last reference in
+between. Each link therefore has an `atomic_mutex` shared by load-plus-pin and
+replacement. The old owner is released only after the new pointer is published.
+A reader either pins the old target while the link still owns it or observes the
+new target; it never tries to resurrect a freed object. `atomic_mutex` is used
+because these accessors are `noexcept` and an OS mutex acquisition failure would
+have no reporting path.
+
+The controlled-critter link is non-owning. `Critter::DetachPlayer()` clears it
+under the same lock before the critter can be destroyed, and `~Critter` verifies
+the attachment is already gone. `SyncContext::SyncEntities()` keeps owning
+handles for requested and widened entities, acquires the candidate cover, then
+re-reads each parent/widen link under that cover. A concurrent reparent or
+relink invalidates the candidate and triggers a bounded recomputation rather
+than letting the target disappear between discovery and acquisition. Focused
+coverage is in `ServerEngineSyncContextWidenAndAncestorCover`,
+`ServerEngineSyncContextReparentStress`, and
+`ServerEngineEntityLinkPinSurvivesConcurrentDetach`.
 
 | Mode | Purpose | Compatibility |
 |---|---|---|
@@ -23640,7 +23707,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: df50df0820344f27c0d0b40a8734459e6a6276d8b8a3091d2ad271b5ff919deb
+Content SHA-256: 35b3c13182ccd10103b20c6acd58ba1b2be36106cf103829ed79a8bbfeefd65a
 
 ---
 layout: default
@@ -24573,6 +24640,25 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 
 `ApplicationShutdownHook` is a native lifecycle hook for project-owned process integrations that must be stopped before a client runtime DLL is unloaded. It is intentionally not part of the compatibility hash because it does not change script metadata, saved data, or the network contract.
 
+## Script `Entity` promotion
+
+AngelScript's `Entity` type has no single native counterpart. The code generator
+promotes it to the entity class of the current target: `ServerEntity*` for the
+server, `ClientEntity*` for client and mapper, and base `Entity*` elsewhere.
+Methods are registered on the concrete script entity types where they are
+available, so an abstract receiver cannot be used to bypass target ownership.
+
+The script type system still allows `Proto*` and `Abstract*` values to cast to
+`Entity`. A prototype and `ServerEntity` are sibling native types, so promotion
+is a claim that must be checked at the native boundary. `NativeDataCaller`
+reads scalar handles, array elements, and dictionary values as base entities and
+narrows them to the generated target type. A mismatch throws a
+`ScriptException` naming the actual type and entity instead of passing an
+invalid sibling pointer into the callee. Arrays retain their existing
+destroyed-entity tolerance. Entity handles are not supported as dictionary
+keys, and arrays of entity handles nested as dictionary values are rejected at
+compile time until those slot shapes have an explicit conversion contract.
+
 ## Dynamic metadata
 
 `Source/Common/MetadataRegistration.cpp` implements `RegisterDynamicMetadata()`. It reads binary metadata sections and dispatches them into typed registration steps such as:
@@ -24605,6 +24691,12 @@ Every `Metadata.fometa-*` file begins with a fixed header before the section tab
 | file version | `uint16` | `METADATA_FILE_VERSION`; a mismatch requires a rebake |
 | metadata version | `uint16` length + bytes | deterministic version of the parsed tag stream |
 
+Changing the token layout of any metadata section changes the file layout and
+requires a `METADATA_FILE_VERSION` bump. The metadata version cannot replace
+this guard: it hashes code-generation tags, so a reader/writer token change can
+leave that hash unchanged. The current file version is `2`; an older layout is
+rejected with a rebake verdict before section decoding starts.
+
 `MakeMetadataHeader()` and `ReadMetadataHeader()` own the format in `MetadataRegistration.cpp`. `RegisterDynamicMetadata()` reads the header before any section and passes the value to `EngineMetadata::RegisterMetadataVersion()`. `ReadMetadataVersion()` reads only the header for updater and server-startup checks; runtime code retrieves the registered value through `EngineMetadata::GetMetadataVersion()`. The value is computed, not configured. `Network.ForceMetadataVersion` exists only to simulate mismatches in tests.
 
 Four layers enforce the invariant:
@@ -24618,7 +24710,11 @@ Deserialization has an independent guard: `Properties::VerifyRestoredPropertyDat
 
 When a mismatch appears, do not suppress the check. Server startup logs `Metadata version:` and rejection paths name both versions; updater logs also include the resource directory it read. Identify which server or client resource directory came from another bake and redeploy a matched set.
 
-Focused coverage lives in `Test_MetadataBaker.cpp` (one version across targets and version changes), `Test_Properties.cpp` (`PropertiesRestoreRejectsForeignMetadata`), and `Test_ClientServerIntegration.cpp` (`ServerReportsMetadataMismatchInHandshake`).
+Focused coverage lives in `Test_MetadataBaker.cpp` (one version across targets,
+tag changes, and rejection of an older file layout), `Test_Properties.cpp`
+(`PropertiesRestoreRejectsForeignMetadata`), and
+`Test_ClientServerIntegration.cpp`
+(`ServerReportsMetadataMismatchInHandshake`).
 
 Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializer` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
 
@@ -24848,7 +24944,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: 3b2d6330d0914695575d867315a2e71d02bc5b51f18edb1978c059b0978db527
+Content SHA-256: f93862454776c78a5d78adbd67d1147fc6cf591b5744727aa22de535341fe426
 
 ---
 layout: default
@@ -25005,6 +25101,14 @@ Engine code allocates through one of two surfaces, and nothing else:
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `SafeAllocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
 
 The underlying `rpmalloc` primitives are deliberately **not** exported from `MemorySystem.h`. They return null on failure and would be a second, equally reachable entry point that skips the contract; they live as file-local statics in `MemorySystem.cpp`. The `MemCopy` / `MemMove` / `MemFill` / `MemCompare` / `MemReadUnaligned` / `MemWriteUnaligned` block operations are unrelated to allocation and remain public.
+
+The vendored rpmalloc keeps its upstream 256 MiB spans on 64-bit targets. On
+32-bit targets one span is reduced to `LARGE_PAGE_SIZE` (16 MiB). Older Windows
+allocation APIs reserve `size + alignment`; an aligned 256 MiB span can
+therefore require a contiguous 512 MiB hole inside a 2 GiB x86 address space and
+make the first small allocation fail. The 16 MiB x86 span preserves all built-in
+page classes while removing that startup dependency on one enormous contiguous
+reservation.
 
 Three distinct things are at stake when code bypasses this vocabulary, and they are not equally severe:
 
@@ -25504,7 +25608,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 77c3f229d959e7d4d7785c9e27971d3cf8d2a70056166363819fca97040640a3
+Content SHA-256: 75f00d05b8275082fdb42ade38eb24b127fb6442a91963e105e67cdde9ccbb68
 
 ---
 title: Generated API Reference
@@ -25525,32 +25629,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 133 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 978 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 279 | Fixed and runtime-variable engine settings. |
+| [Engine settings](settings.md) | 281 | Fixed and runtime-variable engine settings. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2496 |
-| Symbols with descriptions | 2496 |
+| Addressable symbols | 2498 |
+| Symbols with descriptions | 2498 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2496 |
+| Explicitly classified symbols | 2498 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2495 |
+| <code>experimental</code> | 2497 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2496 stable IDs with SHA-256 <code>691f739ae0c92af5ed79c2a49b0e2d7c916b0172d4439a59fec43fa7b9e30e86</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2498 stable IDs with SHA-256 <code>622aadc0a8b8d904f7d8de7b7af24eaf34c8cd6218cb8427469f57badc161d0b</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 
@@ -25823,7 +25927,7 @@ The engine-owned [minimal project](../../../../Examples/MinimalProject/README.md
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: 43d53c6a8f5ac3fdd9c00281efdc8ea59297402e83898e3a6d3f02f201965883
+Content SHA-256: ba84df739c6a6fd54390b62fb572d9c37b3b9c83361534fb6d0fd1affdac7168
 
 ---
 layout: default
@@ -25948,6 +26052,15 @@ written too, because they must override a non-empty metadata baseline. Built-in
 server/client settings retain the existing non-empty compact-config rules.
 `MetadataBaker` includes applied config timestamps in freshness and rejects a
 game-setting declaration that has no configured value.
+
+That metadata baseline is not applied until `BaseEngine` exists. A game setting
+read by `ApplicationInitHook` or any earlier startup path must therefore travel
+in the binary config itself. `Baking.BootstrapGameSettings` lists exactly those
+exceptions: `ConfigBaker` writes each listed setting in full for every baked
+sub-config instead of reducing it to a delta. Every name must resolve to a
+declared game setting or baking fails. Keep this list narrow so the fixed
+10000-byte internal-config patch remains bootstrap data rather than a second
+copy of the metadata baseline.
 
 `GlobalSettings::Save()` still emits only settings present in `_appliedSettings`,
 which is populated from applied config keys plus the baking-mode

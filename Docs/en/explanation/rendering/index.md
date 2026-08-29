@@ -324,14 +324,23 @@ fixed frame without a per-frame weighted-vertex walk. Only currently-emitting
 particle systems extend this envelope; a dormant effect reserves no frame and is
 absorbed by the bounded expansion pass if it starts emitting.
 
-The measured result contains two rectangles. `ModelSpriteBounds::Rect` is the
-full baked geometry envelope plus shadow, live particles, and any
-effect-forced full frame; it sizes the frame and atlas crop.
-`ModelSpriteBounds::PoseRect` is captured before particles and is returned by
-`ModelSprite::GetPoseRect` / `Game.GetDrawCritter3dBounds` for fit-to-area
-calculations. Already emitted world-space particles do not scale with the model,
-so including them in a fit would create a feedback loop. Effects belong in the
-frame, not in the fit.
+The dynamic draw envelope is `ModelSpriteBounds::Rect`: baked geometry,
+projected shadow, live particles, and any effect-forced full frame. It remains
+an internal renderer contract that sizes the frame and atlas crop.
+
+`Game.GetDrawCritter3dBounds` exposes two stable layout rectangles. `DrawRect`
+is the conservative baked active-clip and selected-link envelope plus the
+projected shadow, intended for renderer-layout diagnostics. `ViewRect` is the
+semantic interface bound: it normally uses the idle-priority envelope and
+selects the complete lower/prone active clip where required. GUI portraits and
+world overlays use it instead of the larger draw envelope. The former separate
+pose rectangle was removed because it duplicated the same active
+model-occupancy contract as `DrawRect` without owning distinct behavior.
+
+Already emitted world-space particles do not scale with the model. Fitting
+against the internal `Rect` would therefore create a feedback loop that shrinks
+the model while particles retain their size. Effects belong in the frame, not
+in an interface fit.
 
 If that
 exact envelope needs a larger logical frame,

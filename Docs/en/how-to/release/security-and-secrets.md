@@ -87,7 +87,9 @@ The Engine does **not** infer a credential type, encrypt settings, zero memory, 
 
 - config values are ordinary strings after resolution;
 - `GlobalSettings::Save()` emits applied values in baking mode;
-- `ConfigBaker` writes non-empty applicable values into side-specific internal configs;
+- `ConfigBaker` writes applicable values into side-specific internal configs;
+  game settings named by `Baking.BootstrapGameSettings` are written in full to
+  every baked sub-config because their consumers run before metadata exists;
 - `GlobalSettings::Draw()` renders registered setting values;
 - project code, third-party libraries, crash handlers, CI shells, and signing tools can log their own inputs;
 - a custom setting reported as unknown during baking is logged with its current value.

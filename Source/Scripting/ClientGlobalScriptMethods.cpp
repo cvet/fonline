@@ -1441,7 +1441,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
 
 // Returns positive draw and view bounds for a previously loaded 3D critter instance, false when unavailable, and throws without 3D support.
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, uint32_t instance, irect32& drawRect, irect32& viewRect, irect32& poseRect)
+FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, uint32_t instance, irect32& drawRect, irect32& viewRect)
 {
 #if FO_ENABLE_3D
     size_t instance_index = numeric_cast<size_t>(instance);
@@ -1458,15 +1458,13 @@ FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, 
 
     irect32 draw_rect = model_spr->GetModel()->GetDrawRect();
     irect32 view_rect = model_spr->GetModel()->GetViewRect();
-    irect32 pose_rect = model_spr->GetPoseRect();
 
-    if (draw_rect.width <= 0 || draw_rect.height <= 0 || view_rect.width <= 0 || view_rect.height <= 0 || pose_rect.width <= 0 || pose_rect.height <= 0) {
+    if (draw_rect.width <= 0 || draw_rect.height <= 0 || view_rect.width <= 0 || view_rect.height <= 0) {
         return false;
     }
 
     drawRect = draw_rect;
     viewRect = view_rect;
-    poseRect = pose_rect;
     return true;
 
 #else
@@ -1474,7 +1472,6 @@ FO_SCRIPT_API bool Client_Game_GetDrawCritter3dBounds(ptr<ClientEngine> client, 
     ignore_unused(instance);
     ignore_unused(drawRect);
     ignore_unused(viewRect);
-    ignore_unused(poseRect);
 
     throw NotEnabled3DException("3D submodule not enabled");
 #endif

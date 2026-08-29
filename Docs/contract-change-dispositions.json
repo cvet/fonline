@@ -1200,6 +1200,42 @@
       "release_note": "Document that language identifiers remain opaque filename suffixes while fallback parents exist only in Baking.BakeLanguages declarations.",
       "compatibility": "Existing filenames remain valid when their bare language names are declared. Tooling that compared filenames to raw configuration tokens must parse language:parent declarations before validation.",
       "owner": "localization"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.021c8838668cc6d7",
+      "baseline_contract_sha256": "780dea931aaf9ed3b4545f9f916a95f5c53eeebe5efedf81c1f48a0e2b5faa75",
+      "current_contract_sha256": "b7716b755f5432783a3c91550a71a0f95227a2944537807ab48725c4eb4a9383",
+      "classification": "breaking",
+      "rationale": "The native-codegen API contract now includes Baking.BootstrapGameSettings and Baking.PreciseModelBounds, increasing the strict symbol inventory from 2496 to 2498. The settings expose the reviewed early-startup configuration and model-bounds quality policies, so the pinned inventory changes intentionally.",
+      "migration": "Regenerate script and API artifacts. Declare only settings genuinely needed before metadata in Baking.BootstrapGameSettings, and choose Baking.PreciseModelBounds explicitly for shipped versus fast local baking when the default is not sufficient.",
+      "release_note": "Document the bootstrap-setting allowlist and precise/conservative model-bounds modes in the generated settings, configuration, security, baking, and rendering references.",
+      "compatibility": "Both settings are additive at runtime, but strict API-model consumers must adopt the regenerated inventory. Engine binaries, generated metadata, baked configuration, and embedding-project settings should update together.",
+      "owner": "build-content"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.8ee0b7b20c3ce9f6",
+      "baseline_contract_sha256": "780dea931aaf9ed3b4545f9f916a95f5c53eeebe5efedf81c1f48a0e2b5faa75",
+      "current_contract_sha256": "b7716b755f5432783a3c91550a71a0f95227a2944537807ab48725c4eb4a9383",
+      "classification": "breaking",
+      "rationale": "The compatibility marker advances from 0.0.40 to 0.0.42 for metadata layout version 2, detached-item ownership normalization, entity-link lifetime protection, and the model-bounds contract changes. Older binaries and newly generated or baked artifacts must not be mixed across this boundary.",
+      "migration": "Update Engine and embedding project together, regenerate native sources and metadata, perform a full resource bake, and rebuild all runtime and tool roles. Do not reuse metadata layout version 1 or model-info outputs from compatibility version 0.0.40.",
+      "release_note": "Record the 0.0.42 compatibility cutover with metadata promotion, detached-item ownership, entity-link lifetime, model-bounds, bootstrap-setting, and allocator updates in the documentation verification record.",
+      "compatibility": "This is an intentional compatibility boundary. Engine binaries, generated bindings, baked metadata and resources, and packaged configuration require one coordinated release.",
+      "owner": "runtime-core"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.230b36541129a8e5",
+      "baseline_contract_sha256": "780dea931aaf9ed3b4545f9f916a95f5c53eeebe5efedf81c1f48a0e2b5faa75",
+      "current_contract_sha256": "b7716b755f5432783a3c91550a71a0f95227a2944537807ab48725c4eb4a9383",
+      "classification": "breaking",
+      "rationale": "ModelSprite no longer stores a separate PoseRect; the internal dynamic rectangle is projected through the public DrawRect and ViewRect. Removing the redundant output keeps script callers aligned with the renderer's actual fit contract.",
+      "migration": "Remove the poseRect output argument from Game.GetDrawCritter3dBounds calls. Use drawRect for the full sprite allocation and viewRect for visible preview fitting and placement.",
+      "release_note": "Document the three-argument bounds API and the DrawRect/ViewRect fitting contract in the generated API, rendering, and client-runtime references.",
+      "compatibility": "Existing script source using the fourth output argument no longer compiles and must be updated. Rebuild scripts and native runtime roles together; the stable method name remains unchanged.",
+      "owner": "runtime-rendering"
     }
   ]
 }

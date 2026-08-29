@@ -113,6 +113,12 @@ namespace ClientServerIntegrationServer
         // verification when the session tears down with attached critters still linked
         npc.AttachToCritter(cr);
         npc.DetachFromCritter();
+
+        // Both remaining detached-item messages: the action context item and the slot-move item
+        Item npcItem = npc.AddItem("UnitTestSharedItem".hstr(), 1);
+        npc.Action(CritterAction::DropItem, 0, npcItem);
+        npc.ChangeItemSlot(npcItem.Id, CritterItemSlot::Main);
+
         cr.SendItems(cr.GetItems(), true, false);
     }
 
@@ -309,6 +315,10 @@ namespace ClientServerIntegrationClient
     int ConnectedCalls = 0;
     int LoginSuccessCalls = 0;
     int DisconnectedCalls = 0;
+    int ReceivedItemCount = 0;
+    int ReceivedMapOwnedItemCount = 0;
+    int ActionContextItemCount = 0;
+    int ActionMapOwnedContextItemCount = 0;
 
     [[ModuleInit]]
     void InitClientServerIntegrationClient()
@@ -317,6 +327,44 @@ namespace ClientServerIntegrationClient
         Game.OnConnected.Subscribe(OnConnected);
         Game.OnLoginSuccess.Subscribe(OnLoginSuccess);
         Game.OnDisconnected.Subscribe(OnDisconnected);
+        Game.OnReceiveItems.Subscribe(OnReceiveItems);
+        Game.OnCritterAction.Subscribe(OnCritterAction);
+    }
+
+    // Items sent through Critter.SendItems arrive as detached views: ownership is not a synchronized
+    // property, so without an explicit mode they would keep the zero default and read as map items
+    [[Event]]
+    void OnReceiveItems(Item[] items, any contextParam)
+    {
+        ReceivedItemCount += items.length();
+
+        for (int i = 0; i < int(items.length()); i++) {
+            if (items[i].Ownership == ItemOwnership::MapHex) {
+                ReceivedMapOwnedItemCount++;
+            }
+        }
+    }
+
+    // A foreign critter's action carries its context item the same detached way, so the same
+    // ownership stamp has to reach it: a weapon in another critter's hands is not a map item
+    [[Event]]
+    void OnCritterAction(bool localCall, Critter cr, CritterAction action, int actionData, AbstractItem? contextItem)
+    {
+        if (contextItem is null) {
+            return;
+        }
+
+        Item? contextItemInstance = cast<Item>(contextItem);
+
+        if (contextItemInstance is null) {
+            return;
+        }
+
+        ActionContextItemCount++;
+
+        if (contextItemInstance.Ownership == ItemOwnership::MapHex) {
+            ActionMapOwnedContextItemCount++;
+        }
     }
 
     [[Event]]
@@ -366,6 +414,26 @@ namespace ClientServerIntegrationClient
     int UnitTestGetDisconnectedCalls()
     {
         return DisconnectedCalls;
+    }
+
+    int UnitTestGetReceivedItemCount()
+    {
+        return ReceivedItemCount;
+    }
+
+    int UnitTestGetReceivedMapOwnedItemCount()
+    {
+        return ReceivedMapOwnedItemCount;
+    }
+
+    int UnitTestGetActionContextItemCount()
+    {
+        return ActionContextItemCount;
+    }
+
+    int UnitTestGetActionMapOwnedContextItemCount()
+    {
+        return ActionMapOwnedContextItemCount;
     }
 
     string UnitTestReadCritterModelName(Critter cr)
@@ -1277,6 +1345,22 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     int32_t client_pings = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetClientPings"), client_pings));
     CHECK(client_pings == 42);
+
+    // The login handler pushes the controlled critter's inventory down as a separate item payload, and
+    // those views must not present themselves as items lying on a map hex
+    int32_t received_items = 0;
+    int32_t received_map_owned_items = -1;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetReceivedItemCount"), received_items));
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetReceivedMapOwnedItemCount"), received_map_owned_items));
+    CHECK(received_items > 0);
+    CHECK(received_map_owned_items == 0);
+
+    int32_t action_context_items = 0;
+    int32_t action_map_owned_context_items = -1;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionContextItemCount"), action_context_items));
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionMapOwnedContextItemCount"), action_map_owned_context_items));
+    CHECK(action_context_items > 0);
+    CHECK(action_map_owned_context_items == 0);
 
     // Movement and property writes from the client side enter the server through their own message
     // handlers, which nothing else in the suite reaches

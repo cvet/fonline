@@ -122,6 +122,15 @@ server/client settings retain the existing non-empty compact-config rules.
 `MetadataBaker` includes applied config timestamps in freshness and rejects a
 game-setting declaration that has no configured value.
 
+That metadata baseline is not applied until `BaseEngine` exists. A game setting
+read by `ApplicationInitHook` or any earlier startup path must therefore travel
+in the binary config itself. `Baking.BootstrapGameSettings` lists exactly those
+exceptions: `ConfigBaker` writes each listed setting in full for every baked
+sub-config instead of reducing it to a delta. Every name must resolve to a
+declared game setting or baking fails. Keep this list narrow so the fixed
+10000-byte internal-config patch remains bootstrap data rather than a second
+copy of the metadata baseline.
+
 `GlobalSettings::Save()` still emits only settings present in `_appliedSettings`,
 which is populated from applied config keys plus the baking-mode
 **auto-settings** allow-list. Runtime-only settings (platform/build flags,

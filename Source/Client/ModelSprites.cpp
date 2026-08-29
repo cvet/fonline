@@ -458,13 +458,6 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         break;
     }
 
-    // Recorded before the draw because callers read the pose rect right after their own draw call, and
-    // re-anchored on the frame pivot so it shares an origin with the model's draw and view rects
-    if (bounds) {
-        ipos32 frame_pivot = model_spr->GetModel()->GetFramePivot();
-        model_spr->_poseRect = {bounds->PoseRect.x - frame_pivot.x, bounds->PoseRect.y - frame_pivot.y, bounds->PoseRect.width, bounds->PoseRect.height};
-    }
-
     // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop
     isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
     FO_VERIFY_AND_THROW(frame_size.width <= AppRender::MAX_ATLAS_WIDTH && frame_size.height <= AppRender::MAX_ATLAS_HEIGHT, "Model sprite frame exceeds the device texture limit", frame_size.width, frame_size.height, render_frame_size.width, render_frame_size.height, ModelInstance::FRAME_SCALE, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);

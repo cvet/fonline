@@ -6,7 +6,7 @@ document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"df50df0820344f27c0d0b40a8734459e6a6276d8b8a3091d2ad271b5ff919deb"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"35b3c13182ccd10103b20c6acd58ba1b2be36106cf103829ed79a8bbfeefd65a"} -->
 
 # Сгенерированный API и метаданные
 
@@ -919,6 +919,25 @@ Hand-authored declarations находятся в `Source/Common/MetadataRegistra
 
 `ApplicationShutdownHook` является native lifecycle hook для project-owned process integrations, которые нужно остановить до выгрузки DLL client runtime. Он намеренно не входит в compatibility hash, потому что не меняет script metadata, saved data или network contract.
 
+## Продвижение script `Entity`
+
+У AngelScript type `Entity` нет единственного native counterpart. Code generator
+продвигает его в entity class текущего target: `ServerEntity*` для server,
+`ClientEntity*` для client и mapper и base `Entity*` для остальных targets.
+Methods регистрируются на конкретных script entity types, где они доступны,
+поэтому abstract receiver не позволяет обойти target ownership.
+
+Script type system при этом разрешает casts `Proto*` и `Abstract*` к `Entity`.
+Prototype и `ServerEntity` являются sibling native types, поэтому promotion
+остаётся заявлением, которое нужно проверить на native boundary.
+`NativeDataCaller` читает scalar handles, array elements и dictionary values
+как base entities и сужает их к сгенерированному target type. Mismatch бросает
+`ScriptException` с фактическими type и entity вместо передачи неверного sibling
+pointer в callee. Arrays сохраняют прежнюю терпимость к destroyed entities.
+Entity handles не поддерживаются как dictionary keys, а arrays entity handles,
+вложенные в dictionary values, отклоняются во время compile, пока для этих slot
+shapes не появится явный conversion contract.
+
 ## Динамические metadata
 
 `Source/Common/MetadataRegistration.cpp` реализует `RegisterDynamicMetadata()`. Функция читает binary sections metadata и направляет их в typed steps регистрации:
@@ -951,6 +970,12 @@ Hand-authored declarations находятся в `Source/Common/MetadataRegistra
 | file version | `uint16` | `METADATA_FILE_VERSION`; mismatch требует rebake |
 | metadata version | `uint16` length + bytes | детерминированная версия parsed tag stream |
 
+Изменение token layout любой metadata section меняет file layout и требует bump
+`METADATA_FILE_VERSION`. Metadata version не заменяет эту защиту: она хеширует
+code-generation tags, поэтому изменение tokens reader/writer может не изменить
+hash. Текущая file version равна `2`; более старый layout отклоняется с verdict
+о необходимости rebake до начала decoding sections.
+
 `MakeMetadataHeader()` и `ReadMetadataHeader()` владеют форматом в `MetadataRegistration.cpp`. `RegisterDynamicMetadata()` читает header до любой section и передаёт значение в `EngineMetadata::RegisterMetadataVersion()`. `ReadMetadataVersion()` читает только header для проверок updater и startup server; runtime получает зарегистрированное значение через `EngineMetadata::GetMetadataVersion()`. Значение вычисляется, а не настраивается. `Network.ForceMetadataVersion` существует только для имитации mismatch в tests.
 
 Invariant обеспечивают четыре слоя:
@@ -964,7 +989,11 @@ Deserialization имеет независимую защиту: `Properties::Ver
 
 При mismatch не отключайте проверку. Startup log server содержит `Metadata version:`, rejection paths называют обе версии, а updater log также указывает прочитанный resource directory. Найдите server или client resource directory из другой bake и повторно разверните согласованный комплект.
 
-Focused coverage находится в `Test_MetadataBaker.cpp` (одна version для всех targets и её изменение), `Test_Properties.cpp` (`PropertiesRestoreRejectsForeignMetadata`) и `Test_ClientServerIntegration.cpp` (`ServerReportsMetadataMismatchInHandshake`).
+Focused coverage находится в `Test_MetadataBaker.cpp` (одна version для всех
+targets, tag changes и отказ от старого file layout), `Test_Properties.cpp`
+(`PropertiesRestoreRejectsForeignMetadata`) и
+`Test_ClientServerIntegration.cpp`
+(`ServerReportsMetadataMismatchInHandshake`).
 
 Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializer`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
 

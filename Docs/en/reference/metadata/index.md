@@ -929,6 +929,25 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 
 `ApplicationShutdownHook` is a native lifecycle hook for project-owned process integrations that must be stopped before a client runtime DLL is unloaded. It is intentionally not part of the compatibility hash because it does not change script metadata, saved data, or the network contract.
 
+## Script `Entity` promotion
+
+AngelScript's `Entity` type has no single native counterpart. The code generator
+promotes it to the entity class of the current target: `ServerEntity*` for the
+server, `ClientEntity*` for client and mapper, and base `Entity*` elsewhere.
+Methods are registered on the concrete script entity types where they are
+available, so an abstract receiver cannot be used to bypass target ownership.
+
+The script type system still allows `Proto*` and `Abstract*` values to cast to
+`Entity`. A prototype and `ServerEntity` are sibling native types, so promotion
+is a claim that must be checked at the native boundary. `NativeDataCaller`
+reads scalar handles, array elements, and dictionary values as base entities and
+narrows them to the generated target type. A mismatch throws a
+`ScriptException` naming the actual type and entity instead of passing an
+invalid sibling pointer into the callee. Arrays retain their existing
+destroyed-entity tolerance. Entity handles are not supported as dictionary
+keys, and arrays of entity handles nested as dictionary values are rejected at
+compile time until those slot shapes have an explicit conversion contract.
+
 ## Dynamic metadata
 
 `Source/Common/MetadataRegistration.cpp` implements `RegisterDynamicMetadata()`. It reads binary metadata sections and dispatches them into typed registration steps such as:
@@ -961,6 +980,12 @@ Every `Metadata.fometa-*` file begins with a fixed header before the section tab
 | file version | `uint16` | `METADATA_FILE_VERSION`; a mismatch requires a rebake |
 | metadata version | `uint16` length + bytes | deterministic version of the parsed tag stream |
 
+Changing the token layout of any metadata section changes the file layout and
+requires a `METADATA_FILE_VERSION` bump. The metadata version cannot replace
+this guard: it hashes code-generation tags, so a reader/writer token change can
+leave that hash unchanged. The current file version is `2`; an older layout is
+rejected with a rebake verdict before section decoding starts.
+
 `MakeMetadataHeader()` and `ReadMetadataHeader()` own the format in `MetadataRegistration.cpp`. `RegisterDynamicMetadata()` reads the header before any section and passes the value to `EngineMetadata::RegisterMetadataVersion()`. `ReadMetadataVersion()` reads only the header for updater and server-startup checks; runtime code retrieves the registered value through `EngineMetadata::GetMetadataVersion()`. The value is computed, not configured. `Network.ForceMetadataVersion` exists only to simulate mismatches in tests.
 
 Four layers enforce the invariant:
@@ -974,7 +999,11 @@ Deserialization has an independent guard: `Properties::VerifyRestoredPropertyDat
 
 When a mismatch appears, do not suppress the check. Server startup logs `Metadata version:` and rejection paths name both versions; updater logs also include the resource directory it read. Identify which server or client resource directory came from another bake and redeploy a matched set.
 
-Focused coverage lives in `Test_MetadataBaker.cpp` (one version across targets and version changes), `Test_Properties.cpp` (`PropertiesRestoreRejectsForeignMetadata`), and `Test_ClientServerIntegration.cpp` (`ServerReportsMetadataMismatchInHandshake`).
+Focused coverage lives in `Test_MetadataBaker.cpp` (one version across targets,
+tag changes, and rejection of an older file layout), `Test_Properties.cpp`
+(`PropertiesRestoreRejectsForeignMetadata`), and
+`Test_ClientServerIntegration.cpp`
+(`ServerReportsMetadataMismatchInHandshake`).
 
 Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializer` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
 

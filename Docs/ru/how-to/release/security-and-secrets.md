@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/security-and-secrets.html
 
 # Безопасность и секреты
 
-<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"1503b15539982e88ef71d5d2d559322d41f7bf5c390c4710ef20093c68e44be7"} -->
+<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"e9706130a7c402ab7411b86a4852630d69a1cc997659106c45c58fc9cd20e7e4"} -->
 
 Это руководство определяет переиспользуемые границы FOnline для credentials, подстановки конфигурации, подписи пакетов, CI, диагностики и incident response. Оно не выбирает secret manager, поставщика сертификатов, production account, срок хранения или incident policy для подключающей игры.
 
@@ -89,7 +89,10 @@ Engine **не** определяет тип credential, не шифрует sett
 
 - config values после разрешения являются обычными strings;
 - `GlobalSettings::Save()` выводит применённые значения в baking mode;
-- `ConfigBaker` записывает непустые применимые значения в side-specific internal configs;
+- `ConfigBaker` записывает применимые значения в side-specific internal configs;
+  game settings из `Baking.BootstrapGameSettings` записываются полностью во
+  все baked sub-configs, поскольку их consumers запускаются до появления
+  metadata;
 - `GlobalSettings::Draw()` отображает зарегистрированные setting values;
 - project code, third-party libraries, crash handlers, CI shells и signing tools могут логировать свои inputs;
 - custom setting, признанный неизвестным во время baking, логируется вместе с текущим значением.

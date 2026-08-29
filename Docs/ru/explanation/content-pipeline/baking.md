@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"0fa5b884fb24b5b4c5a4783062660355bd2101ec410de7253566200767dcb48f"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"6743cc2678333f6b562112460ac251cf3b6439b8c53ac91328c940bcfc72874b"} -->
 
 # Конвейер запекания ресурсов
 
@@ -293,13 +293,33 @@ Index является aggregate output. Обычный scan merge-ит изме
 - deterministic `ViewBoundsMin*`/`ViewBoundsMax*`: сначала `Unarmed + Idle`, затем любой Idle, первая валидная animation или static fallback;
 - `BoundsStateAnimations`/`BoundsActionAnimations` и parallel min/max arrays для отдельных animation AABB.
 
-Bounds строятся по keys, midpoints и uniform timeline независимо от
-camera/backend. Каждый binary description link также содержит явный geometry
-discriminator: non-particle child links несут обязательный root-space AABB, а
-default link и particle links не имеют geometry payload. Invalid flags, missing
-child bounds и degenerate AABB отклоняются. Missing/invalid aggregate или
-animation bounds являются bake error. Loader строго проверяет version, required
-bounds и parallel arrays. Duration и bounds groups независимы: aliases могут
+Bounds строятся по каждому animation key, midpoint между соседними keys и сетке
+60 Hz. Общий timeline не пропускает экстремум быстрой дуги и остаётся
+детерминированным независимо от camera, projection factor, model-sprite
+resolution и renderer backend.
+
+`Baking.PreciseModelBounds` выбирает измерение geometry в каждом sample:
+
+- `true` использует `ModelBoundsMeasurement::PerVertex` и преобразует каждую
+  skinned vertex. `PublicGame` включает этот exact mode для shipped resources;
+- `false` (default) использует `PerBoneEnvelope` и преобразует один заранее
+  подготовленный envelope box на bone slot. Blended vertices являются convex
+  combinations transformed bone positions, поэтому union может только
+  увеличить envelope, но не обрезать exact geometry. Это conservative fast path
+  для локальных рабочих bakes.
+
+`ModelBoundsSampler` один раз подготавливает model hierarchy, mesh selection и
+per-bone envelopes, после чего обрабатывает все clips из этого immutable plan.
+Bounds attachments переиспользуют один sampled bone track на clip и bone вместо
+повторного обхода parent hierarchy для каждого attachment. Sections model
+descriptions строятся независимо и объединяются в sorted source order.
+
+Каждый binary description link также содержит явный geometry discriminator:
+non-particle child links несут обязательный root-space AABB, а default link и
+particle links не имеют geometry payload. Invalid flags, missing child bounds и
+degenerate AABB отклоняются. Missing/invalid aggregate или animation bounds
+являются bake error. Loader строго проверяет version, required bounds и parallel
+arrays. Duration и bounds groups независимы: aliases могут
 создать duration-only keys, а raw `.fo3d` — bounds-only keys. Static section
 может не иметь обеих групп, но companion без model sections malformed.
 

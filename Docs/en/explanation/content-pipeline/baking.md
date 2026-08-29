@@ -459,14 +459,32 @@ required root-space contracts to every model section:
   `BoundsMax*` arrays store the individual animation AABBs used by the runtime
   tight-crop predictor.
 
-The baker samples animation keys, their midpoints, and a uniform timeline to
-build deterministic envelopes independent of camera angle, projection factor,
-model-sprite resolution, and renderer backend. Each binary description link
-also writes an explicit geometry discriminator: non-particle child links carry
-a required root-space AABB, while the default link and particle links carry no
-geometry payload. Invalid flags, missing child bounds, and degenerate AABBs are
-rejected. Missing or invalid aggregate or animation bounds are baking errors in
-the version 2 contract. In
+The baker samples every animation key, the midpoint between neighbouring keys,
+and a 60 Hz grid. That common timeline prevents a fast arc from being missed
+and keeps deterministic envelopes independent of camera angle, projection
+factor, model-sprite resolution, and renderer backend.
+
+`Baking.PreciseModelBounds` selects the geometry measurement at each sample:
+
+- `true` uses `ModelBoundsMeasurement::PerVertex` and transforms every skinned
+  vertex. `PublicGame` enables this exact mode for shipped resources;
+- `false` (the default) uses `PerBoneEnvelope` and transforms one prepared
+  envelope box per bone slot. Because blended vertices are convex combinations
+  of their transformed bone positions, the union can over-size an envelope but
+  cannot clip the exact geometry. This is the conservative fast path for local
+  working bakes.
+
+`ModelBoundsSampler` prepares a model hierarchy, mesh selection, and per-bone
+envelopes once, then answers every clip from that immutable plan. Attachment
+bounds reuse one sampled bone track per clip and bone instead of re-walking the
+parent hierarchy for every attachment. Model-description sections are produced
+independently and concatenated in sorted source order.
+
+Each binary description link also writes an explicit geometry discriminator:
+non-particle child links carry a required root-space AABB, while the default
+link and particle links carry no geometry payload. Invalid flags, missing child
+bounds, and degenerate AABBs are rejected. Missing or invalid aggregate or
+animation bounds are baking errors in the version 2 contract. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds

@@ -239,27 +239,29 @@ auto Critter::GetName() const noexcept -> string_view
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    // Pinned rather than read raw: a concurrent DetachPlayer would otherwise free the player while GetName
+    // reads its string. The view stays borrowed from the player, so callers must consume it before returning
+    if (auto player = GetPlayerForSend()) {
         return player->GetName();
     }
 
     return _proto->GetName();
 }
 
-auto Critter::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
+auto Critter::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return nptr<ServerEntity>(_player.load(std::memory_order_acquire));
+    return GetPlayerForSend();
 }
 
-auto Critter::GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
+auto Critter::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return nptr<const ServerEntity>(_player.load(std::memory_order_acquire));
+    return GetPlayerForSend();
 }
 
 auto Critter::GetPlayerForSend() const noexcept -> refcount_nptr<Player>
@@ -267,6 +269,11 @@ auto Critter::GetPlayerForSend() const noexcept -> refcount_nptr<Player>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
+
+    // Load and pin under one hold: DetachPlayer clears the pointer under the same lock and only then drops the
+    // link's ref, so a player reachable here still carries that ref and TryAddRef cannot resurrect a dead object
+    scoped_lock locker {_playerLinkLocker};
+
     return nptr<Player>(_player.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -384,10 +391,15 @@ void Critter::AttachPlayer(ptr<Player> player)
     FO_VERIFY_AND_THROW(!_player.load(std::memory_order_acquire), "Player is already set");
     FO_VERIFY_AND_THROW(!player->GetViewMap(), "Player still has an active view map");
 
-    // Owning publication (mirrors ServerEntity::SetParent): AddRef the new owner, then publish atomically so a
-    // concurrent lock-free GetPlayerForSend reader sees either the old or the new pointer, never a torn value
+    // Owning publication (mirrors ServerEntity::SetParent): AddRef the new owner, then publish under the link
+    // lock so an uncovered GetPlayerForSend can pin it before the detach path drops this link's ref
     player->AddRef();
-    _player.store(player.get(), std::memory_order_release);
+
+    {
+        scoped_lock locker {_playerLinkLocker};
+
+        _player.store(player.get(), std::memory_order_release);
+    }
 
     player->SetControlledCritterId(GetId());
     player->SetLastControlledCritterId(GetId());
@@ -408,7 +420,12 @@ void Critter::DetachPlayer()
     player->SetControlledCritterId({});
     player->SetControlledCritter(nullptr);
 
-    _player.store(nullptr, std::memory_order_release);
+    {
+        scoped_lock locker {_playerLinkLocker};
+
+        _player.store(nullptr, std::memory_order_release);
+    }
+
     player->Release();
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 }

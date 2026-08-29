@@ -66,11 +66,9 @@ public:
     [[nodiscard]] auto HasPlayer() const noexcept -> bool;
     [[nodiscard]] auto GetPlayer() const noexcept -> nptr<const Player>;
     [[nodiscard]] auto GetPlayer() noexcept -> nptr<Player>;
-    // Lock-free, refcount-pinned controlling-player lookup for broadcast snapshots.
-    // Do not expose it as a script accessor
     [[nodiscard]] auto GetPlayerForSend() const noexcept -> refcount_nptr<Player>;
-    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
-    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] auto GetOfflineTime() const -> timespan;
     [[nodiscard]] auto IsAlive() const noexcept -> bool;
     [[nodiscard]] auto IsDead() const noexcept -> bool;
@@ -90,8 +88,6 @@ public:
     [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter>;
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetGlobalMapGroup() -> vector<ptr<Critter>>;
-    // Group members are independent roots outside this critter's cover, so a caller resolves and covers the
-    // reported ids and then re-reads them with the revision to prove the membership held still
     [[nodiscard]] auto GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&;
     [[nodiscard]] auto IsMoving() const noexcept -> bool;
@@ -224,6 +220,7 @@ private:
     uint32_t _movingUid {};
     refcount_nptr<MovingContext> _moving {};
     refcount_nptr<MovingContext> _lastMoving {};
+    mutable atomic_mutex _playerLinkLocker {};
     std::atomic<Player*> _player {};
     nanotime _playerDetachTime {};
     vector<ptr<Critter>> _attachedCritters {};

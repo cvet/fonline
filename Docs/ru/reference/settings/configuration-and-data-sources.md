@@ -6,7 +6,7 @@ document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
 
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"43d53c6a8f5ac3fdd9c00281efdc8ea59297402e83898e3a6d3f02f201965883"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"ba84df739c6a6fd54390b62fb572d9c37b3b9c83361534fb6d0fd1affdac7168"} -->
 
 # Конфигурация и источники данных
 
@@ -108,6 +108,16 @@ config содержит лишь sub-config deltas game settings; false и empty
 server/client settings сохраняют прежние правила компактной записи непустых
 значений. `MetadataBaker` включает timestamps применённых configs в freshness и
 отклоняет game-setting declaration без настроенного значения.
+
+Этот metadata baseline применяется только после создания `BaseEngine`.
+Game setting, который читает `ApplicationInitHook` или более ранний startup
+path, поэтому обязан находиться в самом binary config.
+`Baking.BootstrapGameSettings` перечисляет только такие исключения:
+`ConfigBaker` записывает каждый указанный setting полностью для каждого baked
+sub-config, не сокращая его до delta. Каждое имя обязано разрешаться в
+объявленный game setting, иначе baking завершается ошибкой. Список должен
+оставаться узким, чтобы фиксированная internal-config patch area размером
+10000 bytes содержала bootstrap data, а не вторую копию metadata baseline.
 
 `GlobalSettings::Save()` по-прежнему выводит только settings из
 `_appliedSettings`, который заполняется keys применённых configs и baking-mode

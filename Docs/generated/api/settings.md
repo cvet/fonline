@@ -494,6 +494,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-baking-bakeoutput-4ee2328337"></a>
 - [`symbol-setting-common-baking-bakeoutput-4ee2328337`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-bakeoutput-4ee2328337)
 
+<a id="symbol-setting-common-baking-bootstrapgamesettings-7b6def613a"></a>
+- [`symbol-setting-common-baking-bootstrapgamesettings-7b6def613a`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-bootstrapgamesettings-7b6def613a)
+
 <a id="symbol-setting-common-baking-cacheresources-cd5fff4a62"></a>
 - [`symbol-setting-common-baking-cacheresources-cd5fff4a62`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-cacheresources-cd5fff4a62)
 
@@ -520,6 +523,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-baking-platformbinaries-d9858a4503"></a>
 - [`symbol-setting-common-baking-platformbinaries-d9858a4503`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-platformbinaries-d9858a4503)
+
+<a id="symbol-setting-common-baking-precisemodelbounds-b405e80260"></a>
+- [`symbol-setting-common-baking-precisemodelbounds-b405e80260`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-precisemodelbounds-b405e80260)
 
 <a id="symbol-setting-common-baking-protofileextensions-b675130712"></a>
 - [`symbol-setting-common-baking-protofileextensions-b675130712`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-protofileextensions-b675130712)

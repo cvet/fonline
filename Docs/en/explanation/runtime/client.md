@@ -152,6 +152,14 @@ Primary view types:
 
 `ClientEngine::RegisterEntity()` and `ClientEngine::UnregisterEntity()` maintain the id-to-entity lookup used by network handlers and scripts. `Source/Tests/Test_ClientEngine.cpp` validates that client entities can be registered and removed from the lookup.
 
+`Item.Ownership` is not synchronized. Item snapshots received outside an owned
+holder therefore pass through `ClientEngine::ReceiveDetachedItem()`, which
+restores their data and explicitly assigns `ItemOwnership::Nowhere`. This shared
+path covers item-list payloads, action context items, and slot-move items. A
+detached snapshot must never retain the enum's zero default (`MapHex`), because
+client presentation and actions would then treat another inventory's item as an
+object lying on the current map.
+
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 
 ## 3D model runtime architecture
@@ -264,7 +272,7 @@ relative to the draw anchor, or `false` when that instance has not produced a
 valid model sprite. `drawRect` covers the selected animation's complete cycle
 and continuous facing range, including its projected shadow. `viewRect` is the
 stable logical model-and-layers rectangle used by names, coarse picking, and
-similar presentation. GUI preview code fits and centres the draw rectangle;
+similar presentation. GUI preview code fits and centres the view rectangle;
 world-space overlays use the stable view rectangle as their logical anchor,
 without duplicating 3D projection rules or depending on the current atlas crop.
 The former custom pose evaluator and shared mutable matrix-output table have
