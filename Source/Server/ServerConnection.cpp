@@ -204,6 +204,20 @@ auto ServerConnection::GetPort() const noexcept -> uint16_t
     return _netConnection->GetPort();
 }
 
+auto ServerConnection::ConsumeContentUpdateSourceReportToken(const ContentUpdateSourceReportToken& token) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _contentUpdateSourceReportReplayGuard.Consume(token);
+}
+
+void ServerConnection::SetContentUpdateFeedbackSessionId(uint64_t session_id)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _contentUpdateSourceReportReplayGuard.Begin(session_id);
+}
+
 auto ServerConnection::IsHardDisconnected() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();

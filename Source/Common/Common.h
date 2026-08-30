@@ -413,7 +413,27 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 2;
+static constexpr uint32_t FO_UPDATER_VERSION = 3;
+
+#ifndef FO_UPDATE_MANIFEST_SIGNATURE_REQUIRED
+#define FO_UPDATE_MANIFEST_SIGNATURE_REQUIRED 0
+#endif
+
+#ifndef FO_UPDATE_MANIFEST_MIN_RELEASE_SEQUENCE
+#define FO_UPDATE_MANIFEST_MIN_RELEASE_SEQUENCE 1
+#endif
+
+#ifndef FO_UPDATE_MANIFEST_TRUSTED_PUBLIC_KEYS
+#define FO_UPDATE_MANIFEST_TRUSTED_PUBLIC_KEYS ""
+#endif
+
+#ifndef FO_UPDATE_MANIFEST_DEVELOPMENT_PUBLIC_KEYS
+#define FO_UPDATE_MANIFEST_DEVELOPMENT_PUBLIC_KEYS ""
+#endif
+
+#ifndef FO_UPDATE_MANIFEST_ALLOW_PACKAGED_DEVELOPMENT_KEYS
+#define FO_UPDATE_MANIFEST_ALLOW_PACKAGED_DEVELOPMENT_KEYS 0
+#endif
 
 enum class UpdatePlatform : uint8_t
 {
@@ -474,6 +494,7 @@ enum class NetMessage : uint8_t
     SendProperty = 121,
     HashList = 122,
     UnresolvedHash = 123,
+    ReportUpdateSource = 124,
 };
 
 enum class EngineSideKind : uint8_t

@@ -80,6 +80,7 @@ static void MainEntry(void* data);
 static void CleanupClientApp() noexcept;
 static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, ClientRuntimeExports& exports) -> nptr<void>;
 static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool;
+static auto VerifyStagedBinaryAuthorization(string_view runtime_live_path, string_view staged_path) -> bool;
 static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClientRuntime;
 static auto ResolveBundledRuntimePath() -> string;
 static auto IsInstalledClientLayout() -> bool;
@@ -524,7 +525,25 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
 
     if (!fs_exists(staged_path)) {
         WriteLog("Client runtime host: no staged DLL at {}", staged_path);
+        (void)fs_remove_file(MakeClientRuntimeAuthorizationPath(runtime_live_path));
         PromoteStagedRuntimeCompanions(binary_dir);
+        return true;
+    }
+
+    if (!VerifyStagedBinaryAuthorization(runtime_live_path, staged_path)) {
+        WriteLog(LogType::Warning, "Client runtime host: staged DLL authorization rejected for {}", staged_path);
+        const string runtime_base_path = strex(runtime_live_path).erase_file_extension().str();
+        (void)fs_remove_file(staged_path);
+        (void)fs_remove_file(MakeClientRuntimeAuthorizationPath(runtime_live_path));
+        (void)fs_remove_file(MakeClientRuntimeStagingPath(strex("{}.pdb", runtime_live_path).str()));
+        (void)fs_remove_file(MakeClientRuntimeStagingPath(strex("{}.pdb", runtime_base_path).str()));
+
+        if (fs_exists(staged_path)) {
+            WriteLog(LogType::Warning, "Client runtime host: failed to discard unauthorized staged DLL {}", staged_path);
+            return false;
+        }
+
+        WriteLog("Client runtime host: discarded unauthorized staged DLL and will continue with the trusted live runtime");
         return true;
     }
 
@@ -533,7 +552,7 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
     bool final_exists = fs_exists(final_path);
 
     WriteLog("Client runtime host: promoting staged DLL {} to {}, backup {}, live DLL exists {}", staged_path, final_path, backup_path, final_exists ? "yes" : "no");
-    fs_remove_file(backup_path);
+    (void)fs_remove_file(backup_path);
 
     if (final_exists && !fs_rename(final_path, backup_path)) {
         WriteLog("Client runtime host: failed to move live DLL {} to backup {}", final_path, backup_path);
@@ -544,20 +563,95 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
         WriteLog("Client runtime host: failed to promote staged DLL {} to {}", staged_path, final_path);
 
         if (final_exists) {
-            fs_rename(backup_path, final_path);
+            (void)fs_rename(backup_path, final_path);
         }
 
         return false;
     }
 
     if (final_exists) {
-        fs_remove_file(backup_path);
+        (void)fs_remove_file(backup_path);
     }
 
+    (void)fs_remove_file(MakeClientRuntimeAuthorizationPath(runtime_live_path));
     PromoteStagedRuntimeCompanions(binary_dir);
     WriteLog("Client runtime host: promoted staged DLL to {}", final_path);
 
     return true;
+}
+
+static auto VerifyStagedBinaryAuthorization(string_view runtime_live_path, string_view staged_path) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_UPDATE_MANIFEST_SIGNATURE_REQUIRED
+    const string authorization_path = MakeClientRuntimeAuthorizationPath(runtime_live_path);
+    const auto descriptor = fs_read_file(authorization_path);
+
+    if (!descriptor.has_value() || descriptor->empty() || descriptor->size() > ContentUpdateMaxDescriptorSize) {
+        return false;
+    }
+
+    vector<ContentUpdateTrustedPublicKey> trusted_keys;
+    const auto append_trusted_keys = [&trusted_keys](string_view configured_keys) -> bool {
+        if (configured_keys.empty()) {
+            return true;
+        }
+
+        size_t key_pos = 0;
+
+        while (key_pos <= configured_keys.size()) {
+            const size_t separator = configured_keys.find(',', key_pos);
+            const string_view key_entry = separator == string_view::npos ? configured_keys.substr(key_pos) : configured_keys.substr(key_pos, separator - key_pos);
+            ContentUpdateTrustedPublicKey key;
+
+            if (key_entry.empty() || !TryParseContentUpdateTrustedPublicKey(key_entry, key) || std::ranges::any_of(trusted_keys, [&key](const ContentUpdateTrustedPublicKey& trusted_key) { return trusted_key.KeyId == key.KeyId; })) {
+                return false;
+            }
+
+            trusted_keys.emplace_back(key);
+
+            if (separator == string_view::npos) {
+                break;
+            }
+
+            key_pos = separator + 1;
+        }
+
+        return true;
+    };
+
+    if (!append_trusted_keys(FO_UPDATE_MANIFEST_TRUSTED_PUBLIC_KEYS) || trusted_keys.empty()) {
+        return false;
+    }
+
+    if ((!IsPackaged() || FO_UPDATE_MANIFEST_ALLOW_PACKAGED_DEVELOPMENT_KEYS) && !append_trusted_keys(FO_UPDATE_MANIFEST_DEVELOPMENT_PUBLIC_KEYS)) {
+        return false;
+    }
+
+    try {
+        const auto staged_size = fs_file_size(staged_path);
+        const auto staged_sha256 = fs_sha256_file(staged_path);
+
+        if (!staged_size.has_value() || !staged_sha256.has_value()) {
+            return false;
+        }
+
+        const string local_runtime_file_name = strex(runtime_live_path).extract_file_name().str();
+        const string packaged_runtime_name = GetPackagedRuntimeName();
+        const string packaged_runtime_file_name = packaged_runtime_name.empty() ? string {} : strex("{}{}", packaged_runtime_name, GetClientRuntimeLibraryExtension()).str();
+        return VerifyContentUpdateStagedBinaryAuthorization({make_ptr(descriptor->data()).reinterpret_as<const uint8_t>().get(), descriptor->size()}, GetCurrentBinaryUpdateTargetName(), FO_UPDATE_MANIFEST_MIN_RELEASE_SEQUENCE, trusted_keys, local_runtime_file_name, packaged_runtime_file_name, *staged_size, *staged_sha256);
+    }
+    catch (const std::exception& ex) {
+        WriteLog(LogType::Warning, "Client runtime host: invalid staged authorization: {}", ex.what());
+    }
+
+    return false;
+#else
+    ignore_unused(runtime_live_path);
+    ignore_unused(staged_path);
+    return true;
+#endif
 }
 
 static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClientRuntime

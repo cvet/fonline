@@ -37,11 +37,14 @@
 
 #include "CacheStorage.h"
 #include "ClientConnection.h"
+#include "ContentUpdateTransport.h"
+#include "ContentUpdater.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "FontManager.h"
 #include "Settings.h"
 #include "SpriteManager.h"
+#include "UpdaterFastClient.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -65,6 +68,7 @@ extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> strin
 extern auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
 extern auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
 extern auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
+extern auto MakeClientRuntimeAuthorizationPath(string_view runtime_live_path) -> string;
 extern auto GetCurrentClientRuntimeLibraryName() -> string;
 extern void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
 extern void ShowUpdaterFailure(UpdaterResult result);
@@ -91,14 +95,27 @@ public:
     auto Process() -> bool;
 
 private:
+    enum class FinalizeResult : uint8_t
+    {
+        Succeeded,
+        IntegrityMismatch,
+        FileSystemFailure,
+    };
+
     struct UpdateFile
     {
-        int32_t Index {};
+        uint32_t Index {};
+        size_t ManifestIndex {};
         string Name;
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
+        Sha256Digest Sha256 {};
+        size_t NextExternalSource {};
         bool IsClientBinary {};
+        bool UseFastUpdate {};
+        bool DirectRetryAttempted {};
+        bool Sha256AlreadyVerified {};
     };
 
     void AddText(string_view text);
@@ -106,7 +123,22 @@ private:
     void GetNextFile();
     void FinishResourcesUpdate();
     auto ReadLocalMetadataVersion() const -> string;
+    void ProcessExternalUpdate();
+    [[nodiscard]] auto TryStartExternalUpdate(UpdateFile& update_file) -> bool;
+    void FallbackFromExternalUpdate(UpdateFile& update_file, ContentUpdateSourceResult result, string_view reason);
+    void ReportExternalSourceResult(const UpdateFile& update_file, const ContentUpdateSource& source, ContentUpdateSourceResult result);
+    void ProcessFastUpdate();
+    void FallbackFromFastUpdate(UpdateFile& update_file, string_view reason);
     void RequestUpdateFile(const UpdateFile& update_file);
+
+    [[nodiscard]] auto FinalizeCurrentFile() -> FinalizeResult;
+    [[nodiscard]] auto MakeFileOutputDir(const UpdateFile& update_file) const -> string;
+    [[nodiscard]] auto MakeTempPath(const UpdateFile& update_file) const -> string;
+    [[nodiscard]] auto MakeExternalCandidatePath(const UpdateFile& update_file, size_t source_index) const -> string;
+    void CleanupStaleTempFiles(const UpdateFile& update_file, string_view current_temp_path) const;
+    [[nodiscard]] auto MakeLivePath(const UpdateFile& update_file) const -> string;
+    [[nodiscard]] auto MakeFinalPath(const UpdateFile& update_file) const -> string;
+    [[nodiscard]] auto TryPromoteStagedBinary(const UpdateFile& update_file, string_view staged_path) -> bool;
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
@@ -116,13 +148,13 @@ private:
     void Net_OnUpdateFileData();
 
     auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
+    [[nodiscard]] auto IsDiskFileSha256Match(string_view file_path, uint64_t expected_size, const Sha256Digest& expected_sha256) const -> bool;
+    [[nodiscard]] auto IsExternalSourceExpired(const ContentUpdateSource& source) const -> bool;
 
     static auto IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool;
     static auto GetDiskFileSize(string_view file_path) -> optional<uint64_t>;
     static auto GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t;
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
-    static auto GetClientBinaryDir() -> string;
-
     ptr<ClientSettings> _settings;
     ClientConnection _conn;
     CacheStorage _cache;
@@ -145,6 +177,15 @@ private:
     SpriteManager _sprMngr;
     FontManager _fontMngr;
     nanotime _startTime {};
+    ContentUpdateManifest _updateManifest {};
+    vector<uint8_t> _signedUpdateDescriptor {};
+    ContentUpdateTransportRegistry _contentUpdateTransports {};
+    unique_nptr<ContentUpdateTransportDownload> _externalUpdate {};
+    optional<size_t> _activeExternalSourceIndex {};
+    string _externalCandidatePath {};
+    set<string> _failedExternalProviders {};
+    set<string> _failedExternalTransports {};
+    optional<UpdaterFastClient> _fastUpdateClient {};
     shared_ptr<Sprite> _splashPic {};
     size_t _bytesRealReceivedCheckpoint {};
 };

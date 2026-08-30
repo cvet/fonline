@@ -376,6 +376,37 @@ auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
     return step(offset, data.data(), data.size());
 }
 
+auto fs_sha256_file(string_view path) -> optional<Sha256Digest>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto stream = fs_open_ifstream(path);
+
+    if (!stream) {
+        return std::nullopt;
+    }
+
+    Sha256Hasher hasher;
+    array<uint8_t, 0x10000> buffer {};
+
+    while (stream) {
+        auto read_buffer = make_nptr(buffer.data()).reinterpret_as<char>();
+        stream.read(read_buffer.get(), numeric_cast<std::streamsize>(buffer.size()));
+
+        const size_t read_size = numeric_cast<size_t>(stream.gcount());
+
+        if (read_size != 0) {
+            hasher.Update({buffer.data(), read_size});
+        }
+
+        if (stream.bad()) {
+            return std::nullopt;
+        }
+    }
+
+    return hasher.Finalize();
+}
+
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, const FsFileVisitor& visitor)
 {
     FO_STACK_TRACE_ENTRY();

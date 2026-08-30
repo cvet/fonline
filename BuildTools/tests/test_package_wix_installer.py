@@ -100,7 +100,9 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
         captured["cmd"] = cmd
         captured["cwd"] = cwd
         # The writable-data marker must exist inside the staged payload at MSI build time
-        assert (Path(cwd) / "LF-Client" / "INSTALLED").is_file()
+        installed_marker = Path(cwd) / "LF-Client" / "INSTALLED"
+        assert installed_marker.is_file()
+        assert installed_marker.read_text(encoding="utf-8") == "FONLINE_INSTALLED_CLIENT_V1\nLast Frontier\n"
         # Drive only createmsi's WiX XML generation without requiring wixl or light
         previous = os.getcwd()
         os.chdir(cwd)
@@ -137,6 +139,7 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     assert "Shortcut" in wxs
     assert "ARPPRODUCTICON" in wxs
     assert 'Version="0.3.422"' in wxs
+    assert "INSTALLED" in wxs
 
 
 def test_make_wix_installer_rejects_missing_upgrade_code(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -187,3 +190,38 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
     assert config["name_base"] == "LastFrontier_Win7"
     assert config["arch"] == 32
     assert config["startmenu_shortcut"] == "LastFrontier_Win7.exe"
+
+
+@pytest.mark.parametrize(
+    "game_name",
+    [
+        "../Unsafe",
+        "CON",
+        "NUL.txt",
+        "COM\u00b9",
+        "COM\u00b2.txt",
+        "COM\u00b3",
+        "LPT\u00b9",
+        "LPT\u00b2.txt",
+        "LPT\u00b3",
+        "Bad|Name",
+        "Bad*Name",
+        "Trailing.",
+        "x" * 129,
+    ],
+)
+def test_make_wix_installer_rejects_unsafe_game_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, game_name: str) -> None:
+    output_dir = tmp_path / "output"
+    staged = _staged_client(output_dir)
+    fomain_lines = [
+        f"Common.GameName = {game_name}",
+        "Common.GameVersion = 0.3.422",
+        "Auth.UriScheme = lastfrontier",
+        "Packaging.MsiUpgradeCode = B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D",
+    ]
+    packager = _make_packager(tmp_path, fomain_lines)
+    packager.target_output_path = str(staged)
+    monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: None)
+
+    with pytest.raises(AssertionError, match="safe writable-directory name"):
+        packager.make_wix_installer()

@@ -395,7 +395,7 @@ SetValue(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
 AddIncludeDirectories("${FO_JSON_DIR}")
 
 # LibreSSL
-if(FO_BUILD_SERVER_LIB AND NOT FO_DISABLE_ASIO AND NOT FO_DISABLE_WEB_SOCKETS AND NOT FO_ANDROID)
+if(FO_BUILD_COMMON_LIB OR (FO_BUILD_SERVER_LIB AND NOT FO_DISABLE_ASIO AND NOT FO_DISABLE_WEB_SOCKETS AND NOT FO_ANDROID))
     SetValue(FO_BUILD_OPENSSL_LIB ON)
 endif()
 
@@ -420,7 +420,8 @@ if(FO_BUILD_OPENSSL_LIB)
         LIBRESSL_LIBRARIES "ssl;crypto;tls"
         LIBRESSL_INCLUDE_DIRS ""
         LIBRESSL_LIBRARY_DIRS "")
-    AppendList(FO_SERVER_LIBS ssl crypto tls)
+    AppendList(FO_COMMON_LIBS crypto)
+    AppendList(FO_SERVER_LIBS ssl tls)
     AppendList(FO_DUMMY_TARGETS compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
     DisableLibWarnings(ssl crypto tls compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
 endif()

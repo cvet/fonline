@@ -100,6 +100,7 @@ namespace
         {"Source/Server/MapManager.cpp", "cr->OnCritterDisappearedDist3.Fire(target);", 1, "visibility distance group"},
         {"Source/Server/MapManager.cpp", "cr->OnItemOnMapAppeared.Fire(item, nullptr);", 1, "visibility item appeared"},
         {"Source/Server/MapManager.cpp", "cr->OnItemOnMapDisappeared.Fire(item, nullptr);", 1, "visibility item disappeared"},
+        {"Source/Server/Server.cpp", "(void)OnContentUpdateCatalogReady.Fire(catalog_generation);", 1, "post-publish updater catalog notification"},
         {"Source/Server/Server.cpp", "if (OnInit.Fire() == EventResult::StopChain) {", 1, "startup gate"},
         {"Source/Server/Server.cpp", "if (OnGenerateWorld.Fire() == EventResult::StopChain) {", 1, "startup gate"},
         {"Source/Server/Server.cpp", "if (OnStart.Fire() == EventResult::StopChain) {", 1, "startup gate"},

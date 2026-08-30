@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,37 +29,41 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//
 
-#pragma once
+#include "ContentUpdateTransport.h"
 
-// Strict dependency order: each Essentials header and implementation may depend only on entries above it.
-// Pass higher-layer data downward explicitly instead of creating an include cycle
+FO_BEGIN_NAMESPACE
 
-// clang-format off
-#include "BasicCore.h"
-#include "GlobalData.h"
-#include "StackTrace.h"
-#include "BaseLogging.h"
-#include "FatalError.h"
-#include "SmartPointers.h"
-#include "MemorySystem.h"
-#include "Containers.h"
-#include "StringUtils.h"
-#include "Platform.h"
-#include "ExceptionHandling.h"
-#include "Threading.h"
-#include "SafeArithmetics.h"
-#include "Sha256.h"
-#include "DataSerialization.h"
-#include "HashedString.h"
-#include "StrongType.h"
-#include "TimeRelated.h"
-#include "ExtendedTypes.h"
-#include "Compressor.h"
-#include "WorkThread.h"
-#include "Logging.h"
-#include "DiskFileSystem.h"
-#include "CommonHelpers.h"
-#include "NetSockets.h"
-// clang-format on
+void ContentUpdateTransportRegistry::Register(string_view transport, Factory factory)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!transport.empty(), "Content update transport name is empty");
+    FO_VERIFY_AND_THROW(factory, "Content update transport factory is empty", transport);
+
+    auto insert_result = _factories.emplace(string(transport), std::move(factory));
+    const bool inserted = insert_result.second;
+    FO_VERIFY_AND_THROW(inserted, "Content update transport is already registered", transport);
+}
+
+auto ContentUpdateTransportRegistry::IsRegistered(string_view transport) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _factories.contains(string(transport));
+}
+
+auto ContentUpdateTransportRegistry::Create(string_view transport, const ContentUpdateTransportRequest& request) const -> unique_nptr<ContentUpdateTransportDownload>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto it = _factories.find(string(transport));
+
+    if (it == _factories.end()) {
+        return nullptr;
+    }
+
+    return it->second(request);
+}
+
+FO_END_NAMESPACE

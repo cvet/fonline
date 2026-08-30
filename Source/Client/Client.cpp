@@ -33,10 +33,12 @@
 
 #include "Client.h"
 #include "AngelScriptScripting.h"
+#include "ContentUpdater.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
+#include "Updater.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -778,6 +780,10 @@ void ClientEngine::Net_OnInitData()
 
     auto data_size = _conn.InBuf->Read<uint32_t>();
 
+    if (data_size > ContentUpdateMaxDescriptorSize || numeric_cast<size_t>(data_size) > _conn.InBuf->GetUnreadSize()) {
+        throw ContentUpdaterException("Invalid content update descriptor length", data_size, _conn.InBuf->GetUnreadSize(), ContentUpdateMaxDescriptorSize);
+    }
+
     vector<uint8_t> data;
     data.resize(data_size);
 
@@ -800,45 +806,58 @@ void ClientEngine::Net_OnInitData()
             resources.AddDirSource(fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
         }
 
-        auto reader = DataReader(data);
+        ContentUpdateManifest update_manifest;
 
-        while (true) {
-            int16_t name_len = reader.Read<int16_t>();
-
-            if (name_len == -1) {
-                break;
+        if (Settings->UpdateManifestSignatureRequired) {
+            if (Settings->UpdateManifestMinimumReleaseSequence <= 0) {
+                throw ContentUpdaterException("Content update minimum release sequence must be positive", Settings->UpdateManifestMinimumReleaseSequence);
             }
 
-            FO_VERIFY_AND_THROW(name_len > 0, "Name len must be positive", name_len);
-            size_t fname_size = numeric_cast<size_t>(name_len);
-            string fname;
-            fname.resize(fname_size);
-            reader.ReadStringBytes(fname);
-            auto size = reader.Read<uint64_t>();
-            auto hash = reader.Read<uint64_t>();
-            auto target = reader.Read<UpdateFileTarget>();
-            auto data_index = reader.Read<uint32_t>();
+            vector<ContentUpdateTrustedPublicKey> trusted_keys;
+            trusted_keys.reserve(Settings->UpdateManifestTrustedPublicKeys.size());
 
-            ignore_unused(hash);
-            ignore_unused(data_index);
+            for (const auto& trusted_key_entry : Settings->UpdateManifestTrustedPublicKeys) {
+                ContentUpdateTrustedPublicKey trusted_key;
 
-            if (target != UpdateFileTarget::ClientResources) {
+                if (!TryParseContentUpdateTrustedPublicKey(trusted_key_entry, trusted_key)) {
+                    throw ContentUpdaterException("Invalid trusted content update public key entry");
+                }
+                if (std::ranges::any_of(trusted_keys, [&trusted_key](const ContentUpdateTrustedPublicKey& key) { return key.KeyId == trusted_key.KeyId; })) {
+                    throw ContentUpdaterException("Duplicate trusted content update public key id", trusted_key.KeyId);
+                }
+
+                trusted_keys.emplace_back(trusted_key);
+            }
+
+            const uint64_t minimum_release_sequence = numeric_cast<uint64_t>(Settings->UpdateManifestMinimumReleaseSequence);
+            const VerifiedContentUpdateManifest verified = VerifyContentUpdateManifestDescriptor(data, GetCurrentBinaryUpdateTargetName(), minimum_release_sequence, trusted_keys);
+
+            if (!AcceptContentUpdateReleaseSequence(Settings->UserWritablePath, verified.ReleaseSequence, minimum_release_sequence)) {
+                throw ContentUpdaterException("Content update release sequence was rolled back or could not be persisted", verified.ReleaseSequence);
+            }
+
+            update_manifest = verified.Manifest;
+        }
+        else {
+            update_manifest = DeserializeContentUpdateManifest(data);
+        }
+
+        for (const auto& file_info : update_manifest.Files) {
+            if (file_info.Target != UpdateFileTarget::ClientResources) {
                 continue;
             }
 
             // Check size
-            if (auto file = resources.ReadFileHeader(fname)) {
-                if (file.GetSize() == size) {
+            if (auto file = resources.ReadFileHeader(file_info.Name)) {
+                if (file.GetSize() == file_info.Size) {
                     continue;
                 }
             }
 
             if (IsPackaged()) {
-                throw ResourcesOutdatedException("Resource pack outdated", fname);
+                throw ResourcesOutdatedException("Resource pack outdated", file_info.Name);
             }
         }
-
-        reader.VerifyEnd();
     }
 }
 

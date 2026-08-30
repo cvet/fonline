@@ -33,6 +33,8 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - name: Run BuildTools Python regression tests
+      run: python3 -m pytest -q BuildTools/tests
     - run: BuildTools/validate.sh unit-tests
   unit-tests-sanitizers:
     name: Run unit tests (${{matrix.sanitizer}} sanitizer)
