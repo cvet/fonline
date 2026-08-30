@@ -294,6 +294,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
     FO_VERIFY_AND_THROW(engine->GetSide() != EngineSideKind::MapperSide, "Remote calls are not supported on mapper side");
 
     ptr<AngelScript::asIScriptEngine> as_engine = func->GetEngine();
+    FO_VERIFY_AND_THROW(inbound_call.MaxPayloadSize == 0 || data.size() <= inbound_call.MaxPayloadSize, "Remote call payload exceeds structural limit", inbound_call.Name, data.size(), inbound_call.MaxPayloadSize);
     DataReader reader(data);
 
     struct RemoteCallPlainArgData
@@ -403,6 +404,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         else if (arg->Type.Kind == ComplexTypeKind::Array) {
             int32_t arr_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
+            FO_VERIFY_AND_THROW(inbound_call.MaxCollectionSize == 0 || numeric_cast<size_t>(arr_size) <= inbound_call.MaxCollectionSize, "Arr size exceeds structural remote-call limit", inbound_call.Name, arg->Name, arr_size, inbound_call.MaxCollectionSize);
             reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(arg->Type.BaseType));
             auto arr_holder = CreateScriptArray(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto arr = arr_holder.as_ptr();
@@ -420,6 +422,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         else if (arg->Type.Kind == ComplexTypeKind::Dict) {
             int32_t dict_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(dict_size >= 0, "Dict size is negative", dict_size);
+            FO_VERIFY_AND_THROW(inbound_call.MaxCollectionSize == 0 || numeric_cast<size_t>(dict_size) <= inbound_call.MaxCollectionSize, "Dict size exceeds structural remote-call limit", inbound_call.Name, arg->Name, dict_size, inbound_call.MaxCollectionSize);
             size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(arg->Type.KeyType.value());
             size_t value_min_size = GetRemoteCallSimpleValueMinWireSize(arg->Type.BaseType);
             FO_VERIFY_AND_THROW(value_min_size <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict entry minimum serialized size overflows", arg->Name);
@@ -439,6 +442,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         else if (arg->Type.Kind == ComplexTypeKind::DictOfArray) {
             int32_t dict_size = reader.Read<int32_t>();
             FO_VERIFY_AND_THROW(dict_size >= 0, "Dict size is negative", dict_size);
+            FO_VERIFY_AND_THROW(inbound_call.MaxCollectionSize == 0 || numeric_cast<size_t>(dict_size) <= inbound_call.MaxCollectionSize, "Dict-of-array size exceeds structural remote-call limit", inbound_call.Name, arg->Name, dict_size, inbound_call.MaxCollectionSize);
             size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(arg->Type.KeyType.value());
             FO_VERIFY_AND_THROW(sizeof(int32_t) <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict-of-array entry minimum serialized size overflows", arg->Name);
             reader.VerifyPayloadCount(numeric_cast<size_t>(dict_size), key_min_size + sizeof(int32_t));
@@ -453,6 +457,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
 
                 int32_t arr_size = reader.Read<int32_t>();
                 FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
+                FO_VERIFY_AND_THROW(inbound_call.MaxCollectionSize == 0 || numeric_cast<size_t>(arr_size) <= inbound_call.MaxCollectionSize, "Nested arr size exceeds structural remote-call limit", inbound_call.Name, arg->Name, arr_size, inbound_call.MaxCollectionSize);
                 reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(arg->Type.BaseType));
                 auto arr = CreateScriptArray(as_engine, strex("array<{}>", MakeScriptTypeName(arg->Type.BaseType)).c_str());
 

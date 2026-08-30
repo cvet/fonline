@@ -56,7 +56,7 @@ TEST_CASE("CacheStorage")
         vector<uint8_t> payload {{0x10, 0x20, 0x30, 0x40}};
 
         cache.SetString("greeting", "hello cache");
-        cache.SetData("folder/item.bin", payload);
+        REQUIRE(cache.SetDataChecked("folder/item.bin", payload));
 
         CHECK(cache.HasEntry("greeting"));
         CHECK(cache.HasEntry("folder/item.bin"));
@@ -117,6 +117,34 @@ TEST_CASE("CacheStorage")
 
         CHECK(moved.HasEntry("name"));
         CHECK(moved.GetString("name") == "value");
+
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
+    SECTION("BoundedReadClassifiesMissingAndRejectsSparseOversizeBeforeAllocation")
+    {
+        string temp_dir = MakeTempCacheDir("cache_storage_bounded");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        CacheStorage cache {temp_dir};
+        auto missing = cache.GetDataBounded("missing", 64);
+        CHECK(missing.Status == CacheStorageReadStatus::Missing);
+        CHECK(missing.Data.empty());
+
+        cache.SetData("slot", vector<uint8_t> {1, 2, 3, 4});
+        auto accepted = cache.GetDataBounded("slot", 4);
+        CHECK(accepted.Status == CacheStorageReadStatus::Success);
+        CHECK(accepted.Data == vector<uint8_t> {1, 2, 3, 4});
+
+        string slot_path = strex(temp_dir).combine_path("slot");
+        std::error_code resize_error;
+        std::filesystem::resize_file(std::filesystem::path {fs_make_path(slot_path)}, 1024ULL * 1024ULL * 1024ULL, resize_error);
+        REQUIRE_FALSE(resize_error);
+
+        auto rejected = cache.GetDataBounded("slot", 64);
+        CHECK(rejected.Status == CacheStorageReadStatus::TooLarge);
+        CHECK(rejected.Data.empty());
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }

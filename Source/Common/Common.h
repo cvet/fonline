@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 42
+///@ MigrationRule Version 0 0 43
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -613,6 +613,8 @@ struct RemoteCallDesc
     hstring Name {};
     vector<ArgDesc> Args {};
     string SubsystemHint {}; // File extension: fos, cs
+    size_t MaxPayloadSize {}; // Structural wire limit generated from the RemoteCall declaration; 0 means unspecified
+    size_t MaxCollectionSize {}; // Structural limit for every declared collection in this call; 0 means unspecified
 };
 
 auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t;

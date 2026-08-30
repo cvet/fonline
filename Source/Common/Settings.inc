@@ -107,6 +107,8 @@ FIXED_SETTING(int32_t, ServerNetwork, ClientPingTime, 10000); // Client ping tim
 FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
 FIXED_SETTING(int32_t, ServerNetwork, LoginTimeout, 0); // Maximum pre-login connection lifetime without handshake/auth/update progress in milliseconds (0 = unlimited)
 FIXED_SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound message size in bytes (0 = unlimited); rejected at the header
+FIXED_SETTING(int32_t, ServerNetwork, MaxBufferedInputSize, 4194304); // Max total unread input bytes retained per connection (0 = unlimited)
+FIXED_SETTING(int32_t, ServerNetwork, MaxRemoteCallPayloadSize, 1048576); // Runtime cap for a decoded remote-call payload (0 = structural per-call cap only)
 FIXED_SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
 FIXED_SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets buffered ahead of the next expected sequence (0 = unlimited)
 FIXED_SETTING(int32_t, ServerNetwork, MaxConnections, 0); // Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept

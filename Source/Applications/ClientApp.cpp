@@ -340,6 +340,12 @@ static void MainEntry([[maybe_unused]] void* data)
     FO_STACK_TRACE_ENTRY();
 
     if (GetApp()->IsQuitRequested()) {
+#if FO_WEB
+        // The simulated infinite loop never returns to RunClientRuntime, so an explicit quit finishes
+        // the client here instead of leaving its shutdown work undone
+        CleanupClientApp();
+        WebRelated::StopMainLoop();
+#endif
         return;
     }
 

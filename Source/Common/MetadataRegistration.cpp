@@ -336,14 +336,18 @@ static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const v
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() >= 3, "RemoteCall metadata record is missing call name, subsystem hint or direction", tokens.size());
-        FO_VERIFY_AND_THROW((tokens.size() - 3) % 3 == 0, "RemoteCall metadata arguments must be encoded as type/nullability/name triples", tokens[0], tokens[1], tokens[2], tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() >= 6, "RemoteCall metadata record is missing call name, subsystem hint, direction or structural limits", tokens.size());
+        FO_VERIFY_AND_THROW(tokens[tokens.size() - 3] == "Limits", "RemoteCall metadata record must end with the structural limits triple", tokens[0], tokens[tokens.size() - 3]);
+        size_t args_end = tokens.size() - 3;
+        FO_VERIFY_AND_THROW((args_end - 3) % 3 == 0, "RemoteCall metadata arguments must be encoded as type/nullability/name triples", tokens[0], tokens[1], tokens[2], tokens.size());
         RemoteCallDesc remote_call;
         remote_call.Name = meta->Hashes.ToHashedString(tokens[0]);
         remote_call.SubsystemHint = tokens[1];
+        remote_call.MaxPayloadSize = numeric_cast<size_t>(strvex(tokens[tokens.size() - 2]).to_int64());
+        remote_call.MaxCollectionSize = numeric_cast<size_t>(strvex(tokens[tokens.size() - 1]).to_int64());
         bool inbound = tokens[2] == "In";
 
-        for (size_t i = 3; i + 3 <= tokens.size(); i += 3) {
+        for (size_t i = 3; i + 3 <= args_end; i += 3) {
             auto arg_type = meta->ResolveComplexType(tokens[i]);
             bool arg_nullable = tokens[i + 1] == "?";
             string arg_name = string(tokens[i + 2]);

@@ -197,6 +197,27 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
     }
 }
 
+TEST_CASE("ServerConnectionLatchesInputOverflowForItsOwningWorker")
+{
+    auto settings = MakeServerNetworkSettings();
+
+    BakerTests::OverrideSetting(settings.MaxMessageSize, 64);
+    BakerTests::OverrideSetting(settings.MaxBufferedInputSize, 64);
+
+    auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
+    auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+
+    CHECK_FALSE(connection->IsInputOverflowed());
+
+    // An escaping overflow would unwind the transport read chain before it re-arms, and disconnecting
+    // from here would deadlock on the receive lock the callback already holds
+    vector<uint8_t> flood(128, uint8_t {0xAB});
+
+    CHECK_NOTHROW(net_connection->Receive(flood));
+    CHECK(connection->IsInputOverflowed());
+    CHECK(connection->GetDisconnectReason() == DisconnectReason::None);
+}
+
 TEST_CASE("ServerConnectionDestructionWaitsForRunningNetworkCallback")
 {
     auto settings = MakeServerNetworkSettings();

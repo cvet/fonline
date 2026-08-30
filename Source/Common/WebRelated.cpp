@@ -544,6 +544,13 @@ namespace WebRelated
 #endif
     }
 
+    void StopMainLoop() noexcept
+    {
+#if FO_WEB
+        emscripten_cancel_main_loop();
+#endif
+    }
+
     void SetWebSocketScheme(bool secure) noexcept
     {
 #if FO_WEB

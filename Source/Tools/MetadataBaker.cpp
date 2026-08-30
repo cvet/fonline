@@ -1374,10 +1374,16 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
         tag_tokens.emplace_back(strvex(tag_desc.SourceFile).extract_file_name());
         tag_tokens.emplace_back(inbound ? "In" : "Out");
 
+        size_t max_payload_size = 0;
+        size_t max_collection_size = 0;
+        bool has_max_payload_size = false;
+        bool has_max_collection_size = false;
+
         size_t cur_token = 3;
 
         while (true) {
             if (cur_token == 3 && tokens[cur_token] == ")") {
+                cur_token++;
                 break;
             }
 
@@ -1419,6 +1425,57 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
                 break;
             }
         }
+
+        while (cur_token < tokens.size()) {
+            string_view option = tokens[cur_token++];
+
+            if (cur_token == tokens.size() || (!strvex(tokens[cur_token]).is_number() && tokens[cur_token] != "-")) {
+                throw MetadataBakerException("Invalid RemoteCall codegen tag: structural limit requires a non-negative integer value", tag_desc.SourceFile, tag_desc.LineNumber, option);
+            }
+
+            int64_t value;
+
+            if (tokens[cur_token] == "-") {
+                cur_token++;
+
+                if (cur_token == tokens.size() || !strvex(tokens[cur_token]).is_number()) {
+                    throw MetadataBakerException("Invalid RemoteCall codegen tag: structural limit requires a non-negative integer value", tag_desc.SourceFile, tag_desc.LineNumber, option);
+                }
+
+                value = -strvex(tokens[cur_token++]).to_int64();
+            }
+            else {
+                value = strvex(tokens[cur_token++]).to_int64();
+            }
+
+            if (value < 0) {
+                throw MetadataBakerException("Invalid RemoteCall codegen tag: structural limit must not be negative", tag_desc.SourceFile, tag_desc.LineNumber, option, value);
+            }
+
+            if (option == "MaxBytes") {
+                if (has_max_payload_size) {
+                    throw MetadataBakerException("Invalid RemoteCall codegen tag: duplicate MaxBytes option", tag_desc.SourceFile, tag_desc.LineNumber);
+                }
+
+                max_payload_size = numeric_cast<size_t>(value);
+                has_max_payload_size = true;
+            }
+            else if (option == "MaxCollectionSize") {
+                if (has_max_collection_size) {
+                    throw MetadataBakerException("Invalid RemoteCall codegen tag: duplicate MaxCollectionSize option", tag_desc.SourceFile, tag_desc.LineNumber);
+                }
+
+                max_collection_size = numeric_cast<size_t>(value);
+                has_max_collection_size = true;
+            }
+            else {
+                throw MetadataBakerException("Invalid RemoteCall codegen tag: unknown structural limit", tag_desc.SourceFile, tag_desc.LineNumber, option);
+            }
+        }
+
+        tag_tokens.emplace_back("Limits");
+        tag_tokens.emplace_back(strex("{}", max_payload_size).str());
+        tag_tokens.emplace_back(strex("{}", max_collection_size).str());
 
         result_tag_remote_call.emplace_back(std::move(tag_tokens));
     }

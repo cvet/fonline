@@ -155,7 +155,7 @@ The rejection validates access **before** it reports the destroyed handle, becau
 
 - nullable `T?` suffix stripping and propagation into metadata;
 - `///@ Event` declarations and matching `[[Event]]` handlers;
-- `///@ RemoteCall` declarations and matching `[[ServerRemoteCall]]`, `[[ClientRemoteCall]]`, or `[[AdminRemoteCall]]` implementations;
+- `///@ RemoteCall` declarations, optional structural `MaxBytes N` / `MaxCollectionSize N` limits, and matching `[[ServerRemoteCall]]`, `[[ClientRemoteCall]]`, or `[[AdminRemoteCall]]` implementations;
 - module/init-function priorities;
 - callback attribute validation rules;
 - `[[InvokeEntry]]` for functions dispatched only by name through the global `Invoke(...)` helper. It blocks ordinary direct calls while still allowing a function reference for `NameOf(...)` registration.
@@ -210,6 +210,8 @@ with the live type, so `GetTypeName()` answers `Critter` for both, and only the 
 - server-side command processing validates client-originated remote calls before invoking server script handlers;
 - client-side runtime receives server-originated remote calls and dispatches client script handlers;
 - admin remote calls use the `CallAdminFunc()` path and require the `AdminRemoteCall` attribute.
+
+For an untrusted client-to-server call, author `MaxBytes` as the largest legitimate serialized payload and `MaxCollectionSize` as the largest legitimate declared collection. The server resolves the call descriptor before body allocation, and native validation plus AngelScript decoding enforce the same collection limit before reserve/construction, including nested dictionary arrays. The server-wide `ServerNetwork.MaxRemoteCallPayloadSize` remains a second hostile-input ceiling. See [Networking.md](Networking.md#inbound-hardening-untrusted-client--server).
 
 Events and remote calls are intentionally separate concepts. Events describe engine/runtime lifecycle and gameplay notifications; remote calls describe network-addressable script entry points. Both rely on metadata signatures, nullability contracts, and generated descriptors.
 
