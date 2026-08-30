@@ -106,6 +106,18 @@ Server-side AngelScript property getters copy non-virtual raw property data thro
 
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
+A numeric property can declare a value range with the `Min = <value>` and `Max = <value>` registration
+tags. The range is checked and applied on every write: typed and script-facing assignment, raw property
+data assignment (including client-originated property messages), and authored text / baked value
+deserialization all clamp the incoming value into the declared range before it reaches storage. Clamping
+runs before the "did the value change" comparison, so a write the range swallows entirely fires no setter
+or post-setter, and it runs again after setter callbacks rewrite the payload. The tags are accepted only
+on plain-data or array properties whose base type is a real integer or floating-point type — enums, bools
+and structs are rejected — and registration additionally rejects a bound that does not fit the stored
+width, an integer bound written as a fractional literal, a duplicated tag, and `Min` greater than `Max`.
+Trusted binary restore (`RestoreData()` / `RestoreAllData()`) does not re-clamp: persisted values that
+fall outside a newly tightened range belong to the migration layer, not to per-write clamping.
+
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
 
 ## Property runtime
@@ -123,6 +135,7 @@ Property flags are load-bearing:
 - `Synced`, `OwnerSync`, `PublicSync`, `NoSync` route network replication behavior.
 - `ModifiableByClient` and `ModifiableByAnyClient` gate client-originated changes.
 - `Virtual`, `Mutable`, `Persistent`, `Historical`, `Nullable`, and `Temporary` influence storage, callbacks, persistence, and script contracts.
+- `Min` and `Max` declare a numeric value range that every write is clamped into.
 
 When changing property metadata, update runtime docs and script/nullability docs together if the change affects script-visible signatures. See [Nullability.md](Nullability.md).
 
