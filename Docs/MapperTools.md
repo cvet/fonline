@@ -41,6 +41,8 @@ Important source areas:
 - `UnloadMap()` and `Shutdown()` — map teardown. `MapView`'s destructor enforces empty-state invariants (entity/item lists cleared, render targets released) that only `MapView::DestroySelf()` (invoked via `UnloadMap()`) satisfies. `MapperEngine` overrides `ClientEngine::Shutdown()` (called by `MapperApp` before the engine is destroyed) to unload every still-open map in `LoadedMaps` — `ClientEngine::Shutdown()` alone only cleans the single `_curMap` — and then chains to `ClientEngine::Shutdown()` for the rest of the client teardown (events, network, render target, location/player). Quitting with maps open therefore neither trips the `MapView` invariants nor skips base shutdown.
 - `Source/Scripting/MapperGlobalScriptMethods.cpp` — mapper-side native script helpers exposed through `Mapper_Game_*` methods.
 
+**Hiding the editor UI.** `F7` (also `View` → `Hide interface`) drops the whole ImGui layer, leaving the map alone on screen for a look or a capture at what a player would see. It took over the key that opened the workspace window, which is still reachable from the menu. The menu entry matters: once the interface is hidden the menu bar goes with it, so the key is the only way back.
+
 ## Extension points and boundaries
 
 Use mapper script methods for editor automation that acts on mapper-owned state: adding/deleting/moving/selecting entities, adding tiles, loading/unloading/saving/showing maps, resizing maps, and managing mapper tabs. The current method group is mapped in [ScriptMethodsMap.md](ScriptMethodsMap.md).

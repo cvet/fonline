@@ -486,9 +486,12 @@ void MapperEngine::DrawMapperFrame()
         OnRenderIface.Fire();
         SpritesCanDraw = false;
 
-        DrawMainPanelImGui();
-        DrawConsoleImGui();
-        DrawInspectorImGui();
+        if (!InterfaceHidden) {
+            DrawMainPanelImGui();
+            DrawConsoleImGui();
+            DrawInspectorImGui();
+        }
+
         CurDraw();
 
         SprMngr.EndScene();
@@ -667,7 +670,7 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         ToggleMapVisibilityFlag(GetCurMap(), Settings->ShowFast);
         break;
     case KeyCode::F7:
-        WorkspaceWindowVisible = !WorkspaceWindowVisible;
+        InterfaceHidden = !InterfaceHidden;
         break;
     case KeyCode::F8:
         if (SprMngr.IsFullscreen()) {
@@ -1457,7 +1460,7 @@ void MapperEngine::DrawMainPanelImGui()
         }
 
         if (ImGui::BeginMenu("Windows")) {
-            ImGui::MenuItem("Workspace", "F7", &WorkspaceWindowVisible);
+            ImGui::MenuItem("Workspace", nullptr, &WorkspaceWindowVisible);
             ImGui::MenuItem("Content", "Shift+F7", &ContentWindowVisible);
 
             if (ImGui::MenuItem("Console", "~", ConsoleEdit)) {
@@ -1534,6 +1537,7 @@ void MapperEngine::DrawMainPanelImGui()
             ImGui::Separator();
             ImGui::MenuItem("Axial grid selection", nullptr, &SelectAxialGrid);
             ImGui::MenuItem("Select entire entity", nullptr, &SelectEntireEntity);
+            ImGui::MenuItem("Hide interface", "F7", &InterfaceHidden);
             ImGui::EndMenu();
         }
 

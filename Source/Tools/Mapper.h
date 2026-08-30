@@ -355,6 +355,7 @@ public:
     vector<MoveCommandEntry> PendingSelectionMoveEntries {};
     bool SelectAxialGrid {true};
     bool SelectEntireEntity {};
+    bool InterfaceHidden {};
     bool WorkspaceWindowVisible {};
     bool ContentWindowVisible {};
     bool CritterAnimationsWindowVisible {};
