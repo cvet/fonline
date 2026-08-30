@@ -135,7 +135,7 @@ auto fs_file_size(string_view path) noexcept -> optional<uint64_t>
     return !ec ? optional<uint64_t> {size} : std::nullopt;
 }
 
-auto fs_read_file(string_view path) -> optional<string>
+static auto fs_read_file_impl(string_view path, optional<size_t> max_size) -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -144,6 +144,12 @@ auto fs_read_file(string_view path) -> optional<string>
     uintmax_t file_size = std::filesystem::file_size(fs_path, ec);
 
     if (ec) {
+        return std::nullopt;
+    }
+
+    // Checked ahead of the memory-buffer guard: a bounded read answers "too large" with an empty result,
+    // and must not raise on a file that only an unbounded read could have tried to hold
+    if (max_size.has_value() && file_size > max_size.value()) {
         return std::nullopt;
     }
 
@@ -167,6 +173,20 @@ auto fs_read_file(string_view path) -> optional<string>
     }
 
     return content;
+}
+
+auto fs_read_file(string_view path) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return fs_read_file_impl(path, std::nullopt);
+}
+
+auto fs_read_file_bounded(string_view path, size_t max_size) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return fs_read_file_impl(path, max_size);
 }
 
 auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool

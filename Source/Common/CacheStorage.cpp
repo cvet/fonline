@@ -48,9 +48,11 @@ public:
     [[nodiscard]] virtual auto HasEntry(string_view entry_name) const -> bool = 0;
     [[nodiscard]] virtual auto GetString(string_view entry_name) const -> string = 0;
     [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uint8_t> = 0;
+    [[nodiscard]] virtual auto GetDataBounded(string_view entry_name, size_t max_size) const -> CacheStorageReadResult = 0;
 
     virtual void SetString(string_view entry_name, string_view str) = 0;
     virtual void SetData(string_view entry_name, const_span<uint8_t> data) = 0;
+    [[nodiscard]] virtual auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool = 0;
     virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
@@ -67,10 +69,12 @@ public:
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool override;
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
     [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8_t> override;
+    [[nodiscard]] auto GetDataBounded(string_view entry_name, size_t max_size) const -> CacheStorageReadResult override;
 
     auto CreateCacheStorage() const -> bool;
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8_t> data) override;
+    [[nodiscard]] auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool override;
     void RemoveEntry(string_view entry_name) override;
 
 private:
@@ -109,6 +113,13 @@ auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
     return _impl->GetData(entry_name);
 }
 
+auto CacheStorage::GetDataBounded(string_view entry_name, size_t max_size) const -> CacheStorageReadResult
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _impl->GetDataBounded(entry_name, max_size);
+}
+
 void CacheStorage::SetString(string_view entry_name, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
@@ -121,6 +132,13 @@ void CacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
     FO_STACK_TRACE_ENTRY();
 
     _impl->SetData(entry_name, data);
+}
+
+auto CacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _impl->SetDataChecked(entry_name, data);
 }
 
 void CacheStorage::RemoveEntry(string_view entry_name)
@@ -196,6 +214,29 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
     return vector<uint8_t>(data->begin(), data->end());
 }
 
+auto FileCacheStorage::GetDataBounded(string_view entry_name, size_t max_size) const -> CacheStorageReadResult
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string path = MakeCacheEntryPath(_workPath, entry_name);
+    auto file_size = fs_file_size(path);
+
+    if (!file_size.has_value()) {
+        return {.Status = fs_exists(path) ? CacheStorageReadStatus::Failed : CacheStorageReadStatus::Missing};
+    }
+    if (file_size.value() > max_size) {
+        return {.Status = CacheStorageReadStatus::TooLarge};
+    }
+
+    auto data = fs_read_file_bounded(path, max_size);
+
+    if (!data.has_value()) {
+        return {.Status = CacheStorageReadStatus::Failed};
+    }
+
+    return {.Status = CacheStorageReadStatus::Success, .Data = vector<uint8_t>(data->begin(), data->end())};
+}
+
 void FileCacheStorage::SetString(string_view entry_name, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
@@ -216,8 +257,15 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
+    (void)SetDataChecked(entry_name, data);
+}
+
+auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
     if (!CreateCacheStorage()) {
-        return;
+        return false;
     }
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
@@ -225,7 +273,10 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
     if (!fs_write_file(path, data)) {
         fs_remove_file(path);
         WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
+        return false;
     }
+
+    return true;
 }
 
 void FileCacheStorage::RemoveEntry(string_view entry_name)

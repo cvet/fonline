@@ -38,7 +38,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
+static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t max_collection_size, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, span<const uint8_t> raw_data, const EngineMetadata& meta);
 static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_t> data, const EngineMetadata& meta);
@@ -107,10 +107,14 @@ void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_spa
     FO_STACK_TRACE_ENTRY();
 
     try {
+        if (inbound_call.MaxPayloadSize != 0 && data.size() > inbound_call.MaxPayloadSize) {
+            throw ClientDataValidationException("Remote call payload exceeds structural limit", inbound_call.Name, data.size(), inbound_call.MaxPayloadSize);
+        }
+
         DataReader reader(data);
 
         for (const auto& arg : inbound_call.Args) {
-            ValidateInboundRemoteCallArgData(arg.Type, reader, meta);
+            ValidateInboundRemoteCallArgData(arg.Type, inbound_call.MaxCollectionSize, reader, meta);
         }
 
         reader.VerifyEnd();
@@ -177,7 +181,7 @@ void ValidateInboundPropertyData(ptr<const Property> prop, const_span<uint8_t> d
     throw ClientDataValidationException("Unsupported property layout", prop->GetName());
 }
 
-static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta)
+static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t max_collection_size, DataReader& reader, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -189,6 +193,9 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
 
         if (arr_size < 0) {
             throw ClientDataValidationException("Negative array size", type.BaseType.Name, arr_size);
+        }
+        if (max_collection_size != 0 && numeric_cast<size_t>(arr_size) > max_collection_size) {
+            throw ClientDataValidationException("Array size exceeds structural remote-call limit", type.BaseType.Name, arr_size, max_collection_size);
         }
 
         reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(type.BaseType));
@@ -202,6 +209,9 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
 
         if (dict_size < 0) {
             throw ClientDataValidationException("Negative dict size", type.BaseType.Name, dict_size);
+        }
+        if (max_collection_size != 0 && numeric_cast<size_t>(dict_size) > max_collection_size) {
+            throw ClientDataValidationException("Dict size exceeds structural remote-call limit", type.BaseType.Name, dict_size, max_collection_size);
         }
 
         size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(type.KeyType.value());
@@ -220,6 +230,9 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
         if (dict_size < 0) {
             throw ClientDataValidationException("Negative dict size", type.BaseType.Name, dict_size);
         }
+        if (max_collection_size != 0 && numeric_cast<size_t>(dict_size) > max_collection_size) {
+            throw ClientDataValidationException("Dict-of-array size exceeds structural remote-call limit", type.BaseType.Name, dict_size, max_collection_size);
+        }
 
         size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(type.KeyType.value());
         FO_VERIFY_AND_THROW(sizeof(int32_t) <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict-of-array entry minimum serialized size overflows", type.BaseType.Name);
@@ -232,6 +245,9 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
 
             if (arr_size < 0) {
                 throw ClientDataValidationException("Negative array size", type.BaseType.Name, arr_size);
+            }
+            if (max_collection_size != 0 && numeric_cast<size_t>(arr_size) > max_collection_size) {
+                throw ClientDataValidationException("Nested array size exceeds structural remote-call limit", type.BaseType.Name, arr_size, max_collection_size);
             }
 
             reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(type.BaseType));

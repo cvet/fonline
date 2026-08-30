@@ -142,10 +142,12 @@ public:
     ~NetInBuffer() override = default;
 
     [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
-    [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return _bufEndPos - _bufReadPos; }
+    [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return GetReadLimit() - _bufReadPos; }
+    [[nodiscard]] auto GetBufferedUnreadSize() const noexcept -> size_t { return _bufEndPos - _bufReadPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
     void SetMaxMsgLen(size_t len) noexcept { _maxMsgLen = len; }
+    void SetMaxBufLen(size_t len) noexcept { _maxBufLen = len; }
     void AddData(const_span<uint8_t> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
@@ -195,9 +197,13 @@ public:
 
 private:
     [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;
+    [[nodiscard]] auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
+    void FinishMessageRead();
 
     size_t _bufReadPos {};
+    size_t _msgEndPos {};
     size_t _maxMsgLen {};
+    size_t _maxBufLen {};
 };
 
 FO_END_NAMESPACE
