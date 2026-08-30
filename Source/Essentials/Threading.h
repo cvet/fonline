@@ -291,8 +291,8 @@ inline constexpr async_launch_mode launch_deferred_only {.use_async = false, .us
 inline constexpr async_launch_mode launch_async_and_deferred {.use_async = true, .use_deferred = true};
 
 // submit_async always queues; try_submit_async returns false at a fully busy cap for inline fallback
-extern void submit_async(string_view task_name, std::function<void()> task);
-extern auto try_submit_async(string_view task_name, std::function<void()> task) -> bool;
+extern void submit_async(string_view task_name, function<void()> task);
+extern auto try_submit_async(string_view task_name, function<void()> task) -> bool;
 
 // Run under the selected launch mode and propagate task exceptions through future.get().
 // The bounded pool is for short jobs; use run_thread for long-lived loops

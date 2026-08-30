@@ -44,7 +44,7 @@ class RenderDrawBuffer;
 class RenderTexture;
 struct RenderSettings;
 
-using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
+using ParticleTextureLoader = copyable_function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
 enum class ParticleSceneBackgroundState : uint8_t
 {
@@ -61,7 +61,7 @@ struct ParticleSceneBackgroundResult
 
 // Unavailable means there is nothing to refract and fails the particle closed, while Deferred only skips this
 // draw during an auxiliary offscreen preview; called solely by a draw that needs it
-using ParticleSceneBackgroundProvider = function<ParticleSceneBackgroundResult()>;
+using ParticleSceneBackgroundProvider = copyable_function<ParticleSceneBackgroundResult()>;
 
 // Two quantities because they do not transform alike: the position box follows the world placement in full,
 // while the billboard radius follows only its scale and is added in the view plane, never rotated or swept

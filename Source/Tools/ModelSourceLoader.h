@@ -113,7 +113,7 @@ class ModelSourceAssetCache final
 {
 public:
     // The callback may run concurrently for different paths; same-path calls are single-flight
-    using LoadCallback = function<ModelSourceAsset(string_view, const File&)>;
+    using LoadCallback = copyable_function<ModelSourceAsset(string_view, const File&)>;
 
     explicit ModelSourceAssetCache(const FileCollection& files, LoadCallback load_callback = {});
     ModelSourceAssetCache(FileCollection&&, LoadCallback = {}) = delete;

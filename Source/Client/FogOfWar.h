@@ -71,7 +71,7 @@ public:
         msize MapSize {};
         nanotime FrameTime {};
         Origin FogOrigin {};
-        function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
+        copyable_function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
     };
 
     FogShape() = default;

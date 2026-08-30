@@ -148,7 +148,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
             };
         };
 
-        auto set_send_callbacks = [](nptr<const PropertyRegistrar> registrar, const PropertyPostSetCallback& callback) {
+        auto set_send_callbacks = [&wrap_post_setter](nptr<const PropertyRegistrar> registrar, void (ClientEngine::*callback)(ptr<Entity>, ptr<const Property>)) {
             FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
             for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
@@ -159,16 +159,16 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
                     continue;
                 }
 
-                prop->AddPostSetter(callback);
+                prop->AddPostSetter(wrap_post_setter(callback));
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrar(GameProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendGlobalValue));
-        set_send_callbacks(GetPropertyRegistrar(PlayerProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendPlayerValue));
-        set_send_callbacks(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendItemValue));
-        set_send_callbacks(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendCritterValue));
-        set_send_callbacks(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendMapValue));
-        set_send_callbacks(GetPropertyRegistrar(LocationProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendLocationValue));
+        set_send_callbacks(GetPropertyRegistrar(GameProperties::ENTITY_TYPE_NAME), &ClientEngine::OnSendGlobalValue);
+        set_send_callbacks(GetPropertyRegistrar(PlayerProperties::ENTITY_TYPE_NAME), &ClientEngine::OnSendPlayerValue);
+        set_send_callbacks(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), &ClientEngine::OnSendItemValue);
+        set_send_callbacks(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), &ClientEngine::OnSendCritterValue);
+        set_send_callbacks(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), &ClientEngine::OnSendMapValue);
+        set_send_callbacks(GetPropertyRegistrar(LocationProperties::ENTITY_TYPE_NAME), &ClientEngine::OnSendLocationValue);
     }
 
     // Properties with custom behaviours

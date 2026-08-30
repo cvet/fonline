@@ -1516,10 +1516,9 @@ namespace ClientEngineTest
         hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
         // The model-backed proto lets the animation viewer build a real preview instead of stopping at a
         // missing model
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {
-            {string {"UnitTestClientCritter"}, [](ProtoCritter&) {}},
-            {string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.ToHashedString("Models/RuntimeInstance.fo3d")); }},
-        };
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+        critter_protos.emplace_back(string {"UnitTestClientCritter"}, [](ProtoCritter&) { });
+        critter_protos.emplace_back(string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.ToHashedString("Models/RuntimeInstance.fo3d")); });
         auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         auto script_blob = MakeClientScriptBinary(compiler_resources);
 
@@ -2157,7 +2156,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     struct SpriteBoundsStep
     {
         string_view Name {};
-        function<void(ptr<ModelInstance>)> Apply {};
+        void (*Apply)(ptr<ModelInstance>) {};
     };
 
     vector<SpriteBoundsStep> steps {

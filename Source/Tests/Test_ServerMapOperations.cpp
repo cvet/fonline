@@ -4786,23 +4786,23 @@ namespace MapOpsTest
 
     static auto MakeStaticItemProtoBlob(EngineMetadata& proto_engine, hstring type_name, bool set_hidden) -> vector<uint8_t>
     {
-        return BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, type_name,
-            {
-                {"TestStaticItem",
-                    [set_hidden](ProtoItem& proto) {
-                        proto.SetStatic(true);
-                        if (set_hidden) {
-                            proto.SetHidden(false);
-                        }
-                    }},
-                {"TestStaticHiddenItem",
-                    [set_hidden](ProtoItem& proto) {
-                        proto.SetStatic(true);
-                        if (set_hidden) {
-                            proto.SetHidden(true);
-                        }
-                    }},
-            });
+        vector<pair<string, function<void(ProtoItem&)>>> item_protos;
+        item_protos.emplace_back("TestStaticItem", [set_hidden](ProtoItem& proto) {
+            proto.SetStatic(true);
+
+            if (set_hidden) {
+                proto.SetHidden(false);
+            }
+        });
+        item_protos.emplace_back("TestStaticHiddenItem", [set_hidden](ProtoItem& proto) {
+            proto.SetStatic(true);
+
+            if (set_hidden) {
+                proto.SetHidden(true);
+            }
+        });
+
+        return BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, type_name, item_protos);
     }
 
     static auto MakeStaticMapBlob(const vector<uint8_t>& metadata_blob, const vector<uint8_t>& critter_blob, const vector<uint8_t>& server_item_blob, const vector<uint8_t>& client_item_blob, const vector<uint8_t>& server_map_blob, const vector<uint8_t>& client_map_blob) -> vector<uint8_t>
@@ -4877,10 +4877,9 @@ namespace MapOpsTest
         REQUIRE(static_cast<bool>(critter_registrar));
         auto multihex_property = critter_registrar->FindProperty("Multihex");
         REQUIRE(static_cast<bool>(multihex_property));
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
-            {"TestCritter", {}},
-            {"TestMultihexCritter", [multihex_property](ProtoCritter& proto) { proto.GetPropertiesForEdit()->SetValue<int32_t>(multihex_property, 2); }},
-        };
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+        critter_protos.emplace_back("TestCritter", nullptr);
+        critter_protos.emplace_back("TestMultihexCritter", [multihex_property](ProtoCritter& proto) { proto.GetPropertiesForEdit()->SetValue<int32_t>(multihex_property, 2); });
         auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
         auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");

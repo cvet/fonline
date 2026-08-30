@@ -24,6 +24,8 @@ The essentials layer should stay dependency-light. It is included by most of the
 - `Source/Essentials/BaseLogging.cpp`
 - `Source/Essentials/FatalError.h`
 - `Source/Essentials/FatalError.cpp`
+- `Source/Essentials/FunctionObjects.h`
+- `Source/Essentials/FunctionObjects.cpp`
 - `Source/Essentials/SmartPointers.h`
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/MemorySystem.h`
@@ -70,7 +72,7 @@ The essentials layer should stay dependency-light. It is included by most of the
 
 `Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 The order is both a compile-time and link-time rule. A module may include and call only modules to its left; declaring an API in an early header and defining it in a later `.cpp` is still a reverse dependency. Direct includes and namespace-level `extern` definition ownership are checked by `BuildTools/tests/test_essentials_layering.py`. Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
@@ -98,6 +100,20 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 `MemorySystem.*` owns backup-memory chunks, bad-allocation reporting, and `SafeAllocator`. `SmartPointers.*` contains pointer wrappers used to make ownership, nullability, and raw-reference intent explicit; see [SmartPointers.md](SmartPointers.md) for the native `ptr` / `nptr` vocabulary and migration rules. Use this layer for generic ownership utilities only; entity lifetime and holder semantics belong in [EntityModel.md](EntityModel.md).
 
+#### Callable vocabulary
+
+`FunctionObjects.*` owns the engine callable wrappers, which replace `std::function` throughout the engine. The two names carry the standard-library contracts of `std::move_only_function` and `std::copyable_function`, so a reader who knows those knows these:
+
+- **`move_only_function<Signature>`** — the target belongs to exactly one wrapper, so a closure may capture `unique_ptr`, `refcount_ptr`, or any other move-only owner.
+- **`copyable_function<Signature>`** — copying duplicates the target rather than sharing it, so the two wrappers stay independent; the target must be copy-constructible. Use it only where a stored callable is genuinely handed to more than one owner, such as a descriptor a runtime hands out repeatedly.
+- **`function<Signature>`** — alias of `move_only_function`. This is the default: reach for `copyable_function` only when a copy is actually required.
+
+A target of at most `FUNCTION_INLINE_TARGET_SIZE` bytes that is nothrow-move-constructible lives inside the wrapper; anything larger, over-aligned, or throwing-move goes to the heap. That covers a closure capturing up to six pointers or holding one `string` by value, which is nearly every engine callback, so the common case allocates nothing and the wrapper stays one cache line wide on a 64-bit target. `is_heap_allocated()` reports which path a wrapper took and is what the module's tests assert against. A throwing move is pushed to the heap on purpose: moving the wrapper is `noexcept`, and only a pointer steal can guarantee that.
+
+A `copyable_function` narrows to `move_only_function` by adopting or copying its target in place, never by wrapping it in a second indirection. The reverse conversion does not exist — a move-only target cannot become copyable.
+
+Calling an empty wrapper is a defect, not a recoverable condition: it hits `FO_BASIC_STRONG_ASSERT` instead of throwing `std::bad_function_call`. Check with `operator bool` where absence is legitimate. The module sits above `SmartPointers` and `MemorySystem` in the include order, so its heap tier uses the globally replaced `operator new` directly and exits through `ReportFatalAndExit` on exhaustion rather than through `SafeAlloc`.
+
 #### Allocation vocabulary
 
 Engine code allocates through one of two surfaces, and nothing else:
@@ -119,7 +135,7 @@ Three distinct things are at stake when code bypasses this vocabulary, and they 
 | **Wrong out-of-memory policy** | `std::allocator` throws `std::bad_alloc` instead of following the terminate-on-OOM model in [ExceptionSafety.md](ExceptionSafety.md) §1. |
 | **Alignment** | `SafeAllocator` routes over-aligned element types through the aligned `operator new`/`delete` overloads. Note that the over-alignment test must stay a member *function*: `alignof(T)` needs a complete `T`, while the allocator has to remain usable with an incomplete one, since `std::vector<T>` may be declared before `T` is defined. |
 
-Known and accepted limits: `std::function`, `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
+Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. `std::function` is no longer among them — engine code uses `move_only_function` / `copyable_function`, whose heap tier terminates like the rest of the engine; the one remaining `std::function` is the `StackTrace.h` script-provider hook, which sits above the callable module in the include order. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
 
 #### Third-party allocators
 
@@ -172,6 +188,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_FunctionObjects.cpp`
 - `Source/Tests/Test_GenericUtils.cpp`
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
@@ -195,6 +212,7 @@ See [Testing.md](Testing.md) for the complete test-suite map and target wiring.
 - Global create/delete callback registration: `Source/Essentials/GlobalData.*`.
 - Stack traces, early fatal reporting, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `Logging.*`, `ExceptionHandling.*`, and [Debugging.md](Debugging.md).
 - Generic memory/pointer utilities: `Source/Essentials/MemorySystem.*`, `SmartPointers.*`, and [SmartPointers.md](SmartPointers.md).
+- Callable wrappers and their inline-storage budget: `Source/Essentials/FunctionObjects.*`.
 - File bytes and low-level writable-path composition on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources and installed-client overlays: [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking.md](Networking.md).
 

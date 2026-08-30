@@ -949,7 +949,7 @@ auto MapperEngine::EntityBuf::operator=(const EntityBuf& other) -> EntityBuf&
     return *this;
 }
 
-MapperEngine::UndoOp::UndoOp(string label, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot) :
+MapperEngine::UndoOp::UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot) :
     Label(std::move(label)),
     IsSnapshot(is_snapshot),
     Undo(std::move(undo)),
@@ -1306,7 +1306,7 @@ auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEn
         return item;
     }
 
-    std::function<nptr<ClientEntity>(ptr<ItemView>)> find_inner_item = [&](ptr<ItemView> owner) -> nptr<ClientEntity> {
+    function<nptr<ClientEntity>(ptr<ItemView>)> find_inner_item = [&](ptr<ItemView> owner) -> nptr<ClientEntity> {
         span<refcount_ptr<ItemView>> inner_items = owner->GetInnerItems();
 
         for (size_t i = 0; i < inner_items.size(); i++) {

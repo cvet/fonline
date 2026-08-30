@@ -832,21 +832,19 @@ namespace MapperMergeTest
             proto.SetPicMap(tile_pic);
         };
 
-        vector<pair<string, function<void(ProtoItem&)>>> tile_protos {
-            {string(TILE_A), configure_tile},
-            {string(TILE_B), configure_tile},
-            {string(TILE_U), configure_unique},
-            {string(SCENERY_A), configure_scenery},
-            {string(WALL_A), configure_wall},
-        };
+        vector<pair<string, function<void(ProtoItem&)>>> tile_protos;
+        tile_protos.emplace_back(string(TILE_A), configure_tile);
+        tile_protos.emplace_back(string(TILE_B), configure_tile);
+        tile_protos.emplace_back(string(TILE_U), configure_unique);
+        tile_protos.emplace_back(string(SCENERY_A), configure_scenery);
+        tile_protos.emplace_back(string(WALL_A), configure_wall);
 
         auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, tile_protos);
 
         // A critter proto makes the client-side critter view surface reachable from mapper scripts
         hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {
-            {string(CRITTER_A), [](ProtoCritter&) { }},
-        };
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+        critter_protos.emplace_back(string(CRITTER_A), [](ProtoCritter&) { });
         auto critter_proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
 
         auto script_blob = MakeMapperScriptBinary(compiler_resources);

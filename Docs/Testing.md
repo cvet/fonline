@@ -406,7 +406,7 @@ process is the working directory — it will write into the repository.
 
 ## Current test inventory
 
-Current count: **100** `Test_*.cpp` suites.
+Current count: **102** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -419,6 +419,7 @@ Current count: **100** `Test_*.cpp` suites.
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_FunctionObjects.cpp`
 - `Source/Tests/Test_GenericUtils.cpp`
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
@@ -502,6 +503,7 @@ Current count: **100** `Test_*.cpp` suites.
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_ImageWriter.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
