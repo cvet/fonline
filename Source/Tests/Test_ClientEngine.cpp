@@ -58,6 +58,7 @@
 #include "PlayerView.h"
 #include "SettingsStorage.h"
 #include "Test_BakerHelpers.h"
+#include "Test_DumpArtifacts.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -2953,6 +2954,11 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(client_resources)));
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    // The sweep below dumps the atlases, so the directories it writes are cleared once the case is done
+    const set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+
+    auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
 
     // The scripts below change the resolution, which writes through to the process-global app window and would
     // otherwise leave every later test computing ratios against the changed size

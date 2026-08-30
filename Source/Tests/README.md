@@ -193,6 +193,8 @@ Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOUR
   checkbox, selectable or folded section runs in a headless frame. Pinned by
   `ImGuiTestHarnessPressesWidgetsByLabel` in `Test_ImGui.cpp`; usage rules are in
   [../../Docs/Testing.md](../../Docs/Testing.md).
+- `Source/Tests/Test_DumpArtifacts.h` - records the `TexDump_*` directories present in the working
+  directory so a suite that triggers an atlas dump removes only the ones its own run wrote.
 
 ## Notes
 

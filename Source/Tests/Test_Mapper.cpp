@@ -52,6 +52,7 @@
 #include "SettingsStorage.h"
 #include "SparkParticleEditor.h"
 #include "Test_BakerHelpers.h"
+#include "Test_DumpArtifacts.h"
 #include "Test_ImGuiHarness.h"
 
 FO_BEGIN_NAMESPACE
@@ -2389,6 +2390,12 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
     auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    // The key sweep below presses F11, which dumps the atlases, so the directories it writes are cleared
+    // once the case is done
+    const set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+
+    auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
 
     mapper->InitIface();
 
