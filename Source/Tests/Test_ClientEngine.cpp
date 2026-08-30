@@ -1202,8 +1202,18 @@ namespace ClientEngineTest
         Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
 
         string[] noModels;
-        Game.Preload3dFiles(noModels);
-
+)"
+#if FO_ENABLE_3D
+                    R"(        Game.Preload3dFiles(noModels);
+)"
+#else
+                    R"(        // The binding stays exported without the 3D submodule and rejects the call
+        int preloadRejections = 0;
+        try { Game.Preload3dFiles(noModels); } catch { preloadRejections++; }
+        if (preloadRejections != 1) return -15;
+)"
+#endif
+                    R"(
         return 0;
     }
 

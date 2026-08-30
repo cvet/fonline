@@ -469,8 +469,10 @@ namespace MapperMergeTest
         cr.Animate(CritterStateAnim(1), CritterActionAnim(1), null, false);
         cr.StopAnim();
 
+        if (cr.GetModelAnimDuration(CritterStateAnim(1), CritterActionAnim(1)).milliseconds != 0) return -20;
+
         ipos boneOffset;
-        cr.GetBonePos("Head".hstr(), boneOffset);
+        if (cr.GetBonePos("Head".hstr(), boneOffset)) return -21;
 
         ProtoItem tileProto = Game.GetProtoItem("MapperMergeTileA".hstr());
         if (cr.CountItem(tileProto) != 0) return -11;
@@ -2151,6 +2153,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
         ImGui::Render();
     }
 
+#if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
     // Nothing below the resource list runs until a control is pressed, so each press is queued against
     // the drawn window and consumed by the frame that follows it
     constexpr std::array PRESSED_CONTROLS = {"Refresh", "Mouse position", "View center", "Play", "Restart", "Remove"};
@@ -2163,6 +2166,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
         REQUIRE_NOTHROW(particle_editor.DrawWindows());
         ImGui::Render();
     }
+#endif
 
     // The viewer lays its controls out in child windows, so each press is addressed to the owning child
     for (string_view toggle : {"Direct draw", "Root", "Name level", "Draw rect", "View rect"}) {
@@ -2190,6 +2194,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     REQUIRE_NOTHROW(animation_viewer.Draw());
     ImGui::Render();
 
+#if FO_SPARK_PARTICLES
     // The SPARK browser sits behind a menu item, and DrawMenuItems draws into ImGui's implicit window
     // when no real menu bar hosts it - so the item is addressable there
     REQUIRE(ImGuiTestHarness::ActivateItem("Debug##Default", "SPARK particle editor"));
@@ -2226,6 +2231,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
             ImGui::Render();
         }
     }
+#endif
 
     // Switching away from the previewed map and then unloading it must take the placed sprite with it
     auto second_map = mapper->LoadMapFromText("PreviewMapB", "PreviewMapB.fomap", MakeMapText(MakeItemBlock(31, TILE_A, 6, 6)));
@@ -2252,7 +2258,11 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     REQUIRE_NOTHROW(animation_viewer.SaveSettings());
     REQUIRE_NOTHROW(particle_viewer.SaveSettings());
 
+#if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
     CHECK(ImGui::GetFrameCount() >= VIEWER_FRAMES + numeric_cast<int32_t>(PRESSED_CONTROLS.size()) + 9);
+#else
+    CHECK(ImGui::GetFrameCount() >= VIEWER_FRAMES + 9);
+#endif
 }
 
 #if FO_SPARK_PARTICLES
