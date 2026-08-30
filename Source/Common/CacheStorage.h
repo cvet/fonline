@@ -70,7 +70,7 @@ public:
 
     void SetString(string_view entry_name, string_view str);
     void SetData(string_view entry_name, const_span<uint8_t> data);
-    [[nodiscard]] auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool;
+    auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool;
     void RemoveEntry(string_view entry_name);
 
 private:
