@@ -52,12 +52,38 @@ class DocumentationMetadataTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             server_calls = [
-                ["CoverageCall", "Coverage.fos", "In", "int32", "", "amount", "string", "?", "note"],
-                ["ClientCoverage", "Coverage.fos", "Out"],
+                [
+                    "CoverageCall",
+                    "Coverage.fos",
+                    "In",
+                    "int32",
+                    "",
+                    "amount",
+                    "string",
+                    "?",
+                    "note",
+                    "Limits",
+                    "4096",
+                    "32",
+                ],
+                ["ClientCoverage", "Coverage.fos", "Out", "Limits", "0", "0"],
             ]
             client_calls = [
-                ["CoverageCall", "Coverage.fos", "Out", "int32", "", "amount", "string", "?", "note"],
-                ["ClientCoverage", "Coverage.fos", "In"],
+                [
+                    "CoverageCall",
+                    "Coverage.fos",
+                    "Out",
+                    "int32",
+                    "",
+                    "amount",
+                    "string",
+                    "?",
+                    "note",
+                    "Limits",
+                    "4096",
+                    "32",
+                ],
+                ["ClientCoverage", "Coverage.fos", "In", "Limits", "0", "0"],
             ]
             server_path = _write_metadata(root, "Server", server_calls)
             client_path = _write_metadata(root, "Client", client_calls)
@@ -72,6 +98,7 @@ class DocumentationMetadataTests(unittest.TestCase):
             self.assertEqual(server_call["id"], "script.remote-call.server.CoverageCall")
             self.assertEqual(server_call["arguments"][1], {"name": "note", "type": "string?", "nullable": True})
             self.assertEqual(server_call["handler_attribute"], "ServerRemoteCall")
+            self.assertEqual(server_call["limits"], {"max_bytes": 4096, "max_collection_size": 32})
             self.assertEqual(
                 server_call["handler_signature"],
                 "void Coverage::CoverageCall(Player player, int32 amount, string? note)",
@@ -85,6 +112,7 @@ class DocumentationMetadataTests(unittest.TestCase):
             self.assertIn("script.remote-call.server.CoverageCall", markdown)
             self.assertIn("client/out, server/in", markdown)
             self.assertIn("MetadataBaker output", markdown)
+            self.assertIn("MaxBytes 4096; MaxCollectionSize 32", markdown)
 
     def test_mismatched_or_unpaired_metadata_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -92,12 +120,12 @@ class DocumentationMetadataTests(unittest.TestCase):
             server_path = _write_metadata(
                 root,
                 "Server",
-                [["CoverageCall", "Coverage.fos", "In", "int32", "", "value"]],
+                [["CoverageCall", "Coverage.fos", "In", "int32", "", "value", "Limits", "1024", "8"]],
             )
             client_path = _write_metadata(
                 root,
                 "Client",
-                [["CoverageCall", "Coverage.fos", "Out", "bool", "", "value"]],
+                [["CoverageCall", "Coverage.fos", "Out", "bool", "", "value", "Limits", "1024", "8"]],
             )
 
             with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "differs between baked inputs"):
@@ -107,6 +135,21 @@ class DocumentationMetadataTests(unittest.TestCase):
 
             partial = docs_metadata.generate_remote_call_model(root, [server_path], require_paired=False)
             self.assertEqual(partial["summary"]["paired_remote_call_count"], 0)
+
+    def test_remote_call_limits_trailer_is_required_and_validated(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            invalid_entries = [
+                ["CoverageCall", "Coverage.fos", "In"],
+                ["CoverageCall", "Coverage.fos", "In", "Limit", "1", "2"],
+                ["CoverageCall", "Coverage.fos", "In", "Limits", "many", "2"],
+                ["CoverageCall", "Coverage.fos", "In", "Limits", "1", "-2"],
+            ]
+            for entry in invalid_entries:
+                with self.subTest(entry=entry):
+                    path = _write_metadata(root, "Server", [entry])
+                    with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "RemoteCall"):
+                        docs_metadata.generate_remote_call_model(root, [path], require_paired=False)
 
     def test_decoder_rejects_truncation_trailing_bytes_and_invalid_utf8(self) -> None:
         valid = _encode_metadata({"Target": [["Server"]]})
@@ -132,8 +175,12 @@ class DocumentationMetadataTests(unittest.TestCase):
     def test_write_and_check_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            server_path = _write_metadata(root, "Server", [["CoverageCall", "Coverage.fos", "In"]])
-            client_path = _write_metadata(root, "Client", [["CoverageCall", "Coverage.fos", "Out"]])
+            server_path = _write_metadata(
+                root, "Server", [["CoverageCall", "Coverage.fos", "In", "Limits", "0", "0"]]
+            )
+            client_path = _write_metadata(
+                root, "Client", [["CoverageCall", "Coverage.fos", "Out", "Limits", "0", "0"]]
+            )
             args = [
                 "--root",
                 str(root),

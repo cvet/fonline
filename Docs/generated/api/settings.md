@@ -987,6 +987,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-server-servernetwork-logintimeout-7533a97eed"></a>
 - [`symbol-setting-server-servernetwork-logintimeout-7533a97eed`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-logintimeout-7533a97eed)
 
+<a id="symbol-setting-server-servernetwork-maxbufferedinputsize-cf5a10f952"></a>
+- [`symbol-setting-server-servernetwork-maxbufferedinputsize-cf5a10f952`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxbufferedinputsize-cf5a10f952)
+
 <a id="symbol-setting-server-servernetwork-maxconnections-3ac20194fd"></a>
 - [`symbol-setting-server-servernetwork-maxconnections-3ac20194fd`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxconnections-3ac20194fd)
 
@@ -998,6 +1001,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-server-servernetwork-maxplayers-0880fd7288"></a>
 - [`symbol-setting-server-servernetwork-maxplayers-0880fd7288`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxplayers-0880fd7288)
+
+<a id="symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2"></a>
+- [`symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2)
 
 <a id="symbol-setting-server-servernetwork-maxudpreorderahead-c017417ca4"></a>
 - [`symbol-setting-server-servernetwork-maxudpreorderahead-c017417ca4`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxudpreorderahead-c017417ca4)

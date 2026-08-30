@@ -925,13 +925,13 @@ End
                 }},
             {"RemoteCall",
                 {
-                    {"UnitTestLogin", "ClientServerIntegrationServer.fos", "In"},
-                    {"UnitTestWorldStep", "ClientServerIntegrationServer.fos", "In", "int32", "", "step"},
-                    {"UnitTestClientPing", "ClientServerIntegrationServer.fos", "Out", "int32", "", "value"},
+                    {"UnitTestLogin", "ClientServerIntegrationServer.fos", "In", "Limits", "0", "0"},
+                    {"UnitTestWorldStep", "ClientServerIntegrationServer.fos", "In", "int32", "", "step", "Limits", "0", "0"},
+                    {"UnitTestClientPing", "ClientServerIntegrationServer.fos", "Out", "int32", "", "value", "Limits", "0", "0"},
                     // One call per direction carrying every wire-representable argument shape, so the
                     // marshalling walks each type's own branch on both sides
-                    {"UnitTestEveryArgToServer", "ClientServerIntegrationServer.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes"},
-                    {"UnitTestEveryArgToClient", "ClientServerIntegrationServer.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes"},
+                    {"UnitTestEveryArgToServer", "ClientServerIntegrationServer.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
+                    {"UnitTestEveryArgToClient", "ClientServerIntegrationServer.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
                 }},
         });
 
@@ -986,11 +986,11 @@ End
                 }},
             {"RemoteCall",
                 {
-                    {"UnitTestLogin", "ClientServerIntegrationClient.fos", "Out"},
-                    {"UnitTestWorldStep", "ClientServerIntegrationClient.fos", "Out", "int32", "", "step"},
-                    {"UnitTestClientPing", "ClientServerIntegrationClient.fos", "In", "int32", "", "value"},
-                    {"UnitTestEveryArgToServer", "ClientServerIntegrationClient.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes"},
-                    {"UnitTestEveryArgToClient", "ClientServerIntegrationClient.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes"},
+                    {"UnitTestLogin", "ClientServerIntegrationClient.fos", "Out", "Limits", "0", "0"},
+                    {"UnitTestWorldStep", "ClientServerIntegrationClient.fos", "Out", "int32", "", "step", "Limits", "0", "0"},
+                    {"UnitTestClientPing", "ClientServerIntegrationClient.fos", "In", "int32", "", "value", "Limits", "0", "0"},
+                    {"UnitTestEveryArgToServer", "ClientServerIntegrationClient.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
+                    {"UnitTestEveryArgToClient", "ClientServerIntegrationClient.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
                 }},
         });
 

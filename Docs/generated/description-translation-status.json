@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4963,
-    "current_count": 4963,
+    "entry_count": 4965,
+    "current_count": 4965,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2500,
-      "current_count": 2500,
+      "entry_count": 2502,
+      "current_count": 2502,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15919,6 +15919,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.server.ServerNetwork.MaxBufferedInputSize/description",
+          "source": "Max total unread input bytes retained per connection (0 = unlimited)",
+          "source_sha256": "a4acd521d44db235f411db199f70381bad1adbd374231eaed8d191f66085d2fc",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.server.ServerNetwork.MaxConnections/description",
           "source": "Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept",
           "source_sha256": "2d0bd3fc64c22c52a4616939bbcfebc1caef731fc09b282cd95196aed2b8bc02",
@@ -15940,6 +15946,12 @@
           "locator": "/symbols/@id=setting.server.ServerNetwork.MaxPlayers/description",
           "source": "Max simultaneous logined players (0 = unlimited); over this, new connections are rejected at accept",
           "source_sha256": "ad0b40cccc89c090046777b0a7244e3e320502281206d088671be349d3ab88d9",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.server.ServerNetwork.MaxRemoteCallPayloadSize/description",
+          "source": "Runtime cap for a decoded remote-call payload (0 = structural per-call cap only)",
+          "source_sha256": "0697aaea07a03add65d0fd18524918d9d0d0b8d32312e15ddb3a704ad4392a39",
           "status": "current"
         },
         {

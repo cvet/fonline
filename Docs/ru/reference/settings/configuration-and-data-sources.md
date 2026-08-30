@@ -6,7 +6,7 @@ document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
 
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"ba84df739c6a6fd54390b62fb572d9c37b3b9c83361534fb6d0fd1affdac7168"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"789db145f73de8c0537fb2d304b6981fc288fc081fdbaf19af1cd9212f0ae036"} -->
 
 # Конфигурация и источники данных
 
@@ -172,7 +172,7 @@ Installed clients сохраняют read-only base resources, смонтиро�
 
 ## Хранилище кэша
 
-`Source/Common/CacheStorage.*` хранит именованные binary/string cache entries через `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()` и `RemoveEntry()`. Оно отделено от resource packs: cache entries являются изменяемыми runtime/tool artifacts, а baked resources генерируются из настроенных inputs. Client-side cache consumers разрешают относительные cache paths через `fs_make_writable_path(UserWritablePath, CacheResources)`, поэтому portable clients хранят cache рядом с executable, а installed clients пишут под per-user root.
+`Source/Common/CacheStorage.*` хранит именованные binary/string cache entries через `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()` и `RemoveEntry()`. Потребители с жёстким пределом используют `GetDataBounded(name, max_size)`: метод проверяет размер файла до выделения памяти и различает результаты `Success`, `Missing`, `TooLarge` и `Failed`. `SetDataChecked(...)` сообщает, удалось ли записать данные полностью. Низкоуровневый helper `fs_read_file_bounded()` применяет тот же предел до allocation и не читает файл, если он слишком велик. Хранилище отделено от resource packs: cache entries являются изменяемыми runtime/tool artifacts, а baked resources генерируются из настроенных inputs. Client-side cache consumers разрешают относительные cache paths через `fs_make_writable_path(UserWritablePath, CacheResources)`, поэтому portable clients хранят cache рядом с executable, а installed clients пишут под per-user root.
 
 Каждый entry хранится как один обычный файл с именем entry, в котором path separators заменены на `_`; поэтому cache directory остается читаемым и пригодным для проверки. Два имени entry, отличающиеся только такими separators, указывают на один файл. Для кэша это допустимо, поскольку miss всегда восстанавливаем, но caller, которому нужны разные entries, не должен полагаться только на структуру каталогов для их разделения. Cache не является confidentiality boundary: все, что нельзя хранить открыто, должно быть защищено владельцем до передачи в хранилище. Именно так работает secure-storage bridge встраивающего проекта.
 

@@ -570,6 +570,7 @@
           "top_document_ids": [
             "angelscript-style",
             "generated-api-metadata",
+            "scripting-runtime",
             "frontend-rendering"
           ]
         }

@@ -45,10 +45,10 @@ FO_BEGIN_NAMESPACE
 // The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-
 // pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,
 // removal, or stable-ID change instead of silently extending this experimental promise.
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2498 InventorySha256=622aadc0a8b8d904f7d8de7b7af24eaf34c8cd6218cb8427469f57badc161d0b
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2500 InventorySha256=18d532157d973c01c0d351bd1bc51393cc29b63a97c2295090d2bd17754bdbd0
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 42
+///@ MigrationRule Version 0 0 43
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -648,6 +648,8 @@ struct RemoteCallDesc
     hstring Name {};
     vector<ArgDesc> Args {};
     string SubsystemHint {}; // File extension: fos, cs
+    size_t MaxPayloadSize {}; // Structural wire limit generated from the RemoteCall declaration; 0 means unspecified
+    size_t MaxCollectionSize {}; // Structural limit for every declared collection in this call; 0 means unspecified
 };
 
 auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t;

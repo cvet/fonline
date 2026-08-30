@@ -145,7 +145,7 @@ The sole opt-out is `///@ ExportMethod ... AllowDestroyedEntityArgs`, emitted as
 
 - nullable `T?` suffix stripping and propagation into metadata;
 - `///@ Event` declarations and matching `[[Event]]` handlers;
-- `///@ RemoteCall` declarations and matching `[[ServerRemoteCall]]` or `[[ClientRemoteCall]]` implementations;
+- `///@ RemoteCall` declarations, optional structural `MaxBytes N` / `MaxCollectionSize N` limits, and matching `[[ServerRemoteCall]]` or `[[ClientRemoteCall]]` implementations;
 - the separate `[[AdminRemoteCall]]` command entry point;
 - module/init-function priorities;
 - callback attribute validation rules;
@@ -175,6 +175,8 @@ Use [Entity Model](../entity-and-property-model/) for entity/property/prototype 
 - server-side command processing validates client-originated remote calls before invoking server script handlers;
 - client-side runtime receives server-originated remote calls and dispatches client script handlers;
 - admin remote calls use the `CallAdminFunc()` path and require the `AdminRemoteCall` attribute.
+
+For an untrusted client-to-server call, author `MaxBytes` as the largest legitimate serialized payload and `MaxCollectionSize` as the largest legitimate declared collection. The server resolves the descriptor before body allocation, and native validation plus AngelScript decoding enforce the collection limit before reserve or construction, including nested dictionary arrays. The server-wide `ServerNetwork.MaxRemoteCallPayloadSize` remains a separate hostile-input ceiling. See [Remote Calls](../../reference/scripting/remote-calls.md) for the declaration, baked-metadata, and compatibility contract.
 
 Events and remote calls are intentionally separate concepts. Events describe engine/runtime lifecycle and gameplay notifications; remote calls describe network-addressable script entry points. Both rely on metadata signatures, nullability contracts, and generated descriptors.
 

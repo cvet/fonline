@@ -2,6 +2,65 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-08-30 - follow-up master reconciliation through `7c5d32b973`
+
+Scope:
+
+- Reconciled documentation branch head
+  `de60506dc800be9d8b5e8fb723ec896dde629044` with Engine
+  `origin/master` through `7c5d32b973d392cbc6903128627f8093acfb2e88`.
+- Audited the complete four-commit incoming range: bounded cache reads and
+  checked writes, explicit browser-client quit, bounded inbound networking and
+  remote-call payloads, and the follow-up source-compatibility adjustment to
+  `SetDataChecked`.
+- Preserved the legacy monolithic documentation as short compatibility routes
+  and reconciled incoming behavior into the canonical English/Russian pages.
+
+Documentation and contract reconciliation:
+
+- Documented bounded cache-read statuses, checked cache writes, and the disk
+  backend's bounded-read behavior.
+- Documented explicit Web shutdown and next-frame main-loop cancellation, while
+  keeping browser tab close as best-effort host cleanup rather than a portable
+  application callback.
+- Documented frame-scoped reads, exact frame consumption, the 4 MiB default
+  `ServerNetwork.MaxBufferedInputSize`, the 1 MiB default
+  `ServerNetwork.MaxRemoteCallPayloadSize`, and worker-owned disconnect after a
+  latched overflow.
+- Documented per-call `MaxBytes` and `MaxCollectionSize` source options, the
+  mandatory baked `Limits` trailer, limit composition, pre-allocation checks,
+  and nested collection enforcement. Updated the project metadata decoder and
+  generated-catalog schema to expose those limits.
+- Regenerated 2,500 native API entries and the dependent bilingual references,
+  inventory, screenshot, snippet, site/search, route, AI-evaluation, and
+  AI-delivery artifacts. All 4,965 generated descriptions are current.
+- The strict comparison against the pre-merge documentation contract records
+  four API changes across eighteen domains. Both required dispositions are
+  present: compatibility `0.0.43` and the two new networking settings.
+
+Validation:
+
+- `docs_validate.py` passed all 397 Markdown entries. The complete documentation
+  discovery suite passed all 548 tests after correcting three stale
+  count/legacy-route expectations found by its first pass.
+- External snippet validation passed 310 normative snippets, 159 evidence
+  blocks, and 183 external-parser checks. Deterministic AI evaluation passed 27
+  tasks and 65 retrieval checks at 100 percent success and 0.915 MRR.
+- The strict contract-diff gate reports zero missing dispositions.
+- Last Frontier integration built `LF_UnitTests`; the complete native suite
+  passed 571 test cases and 445,645 assertions.
+
+Disposition:
+
+- The incoming reusable behavior is represented in canonical Engine docs and
+  generated contract surfaces. Non-documentation edits on the docs branch are
+  limited to source-owned API inventory pins, metadata decoding, and their test
+  expectations; no project-specific runtime feature was added.
+- The final Last Frontier bake and generated project remote-call catalog belong
+  to the subsequent project `origin/main` merge, because that incoming project
+  range supplies the two required server settings. Browser-visible quit
+  behavior remains a manual/CI acceptance boundary.
+
 ## 2026-08-30 - master reconciliation through `d697d6e1da`
 
 Scope:

@@ -127,7 +127,7 @@ python Engine/BuildTools/docs_metadata.py \
   --write
 ```
 
-Both sides must agree on every paired remote call. Do not reconstruct that catalog by parsing `.fos` with a second grammar; the baked metadata is authoritative.
+Both sides must agree on every paired remote call, including its `MaxBytes` and `MaxCollectionSize` structural limits. Every record carries a mandatory `Limits` trailer, with zeroes when limits are omitted. Do not reconstruct that catalog by parsing `.fos` with a second grammar; the baked metadata is authoritative.
 
 Metadata changes can affect persistence, network synchronization, script bindings, content validation, and save compatibility even when native C++ compiles. Review the generated model and run a real bake plus the narrow runtime/test route.
 

@@ -6,7 +6,7 @@ document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"2343681bdb6a8074345a94d32a7306599e16dbc10433659caf331fad4eefa63a"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"a91fa74b7652c145e9f73c1b836bbd219019bb76cbb488fea2d874321ef46081"} -->
 
 # Сборка, упаковка и отладка FOnline в браузере
 
@@ -191,6 +191,8 @@ Runtime нацелен на `#canvas` и создаёт WebGL2 context. Он с�
 ### Main loop, audio и input
 
 Web main loop устанавливается через `emscripten_set_main_loop_arg(..., 0, 1)`. Browser scheduling, throttling background tabs, visibility changes и правила user gesture остаются поведением браузера. Экспортированный runtime содержит helper Emscripten для возобновления audio context, но проект всё равно должен доказать first-use audio activation, mute/unmute, interruption, resume и device changes через реальное взаимодействие.
+
+Явный выход из игры завершается на следующем browser frame. Web client вызывает `ClientEngine::Shutdown()` (включая script subscribers `Game.OnFinish`), а затем отменяет Emscripten main loop через `WebRelated::StopMainLoop()`. Поскольку `emscripten_set_main_loop_arg(..., simulate_infinite_loop=1)` не возвращает управление, на этом пути `RunClientRuntime()` не доходит до обычной post-loop cleanup, result reporting и `ApplicationShutdownHook()`. Закрытие или принудительное завершение browser tab остаётся best effort; если persistence или telemetry требуют обработки такого события, за page lifecycle hooks отвечает встраивающий проект.
 
 Canvas copy events используют Engine clipboard. Runtime запрашивает clipboard-read permission при первом pointer interaction, если API доступно, и перехватывает неповторный `Ctrl+V`; при ошибке navigator access используется Engine clipboard. Clipboard API зависят от secure contexts, permissions, focus и user gestures, а несколько ошибок намеренно подавляются. Проверяйте paste/copy визуально, а не считайте отсутствие exception успехом.
 

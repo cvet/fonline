@@ -138,6 +138,10 @@ Continue with the [canonical English reference](en/reference/metadata/).
 
 Continue with the [canonical English reference](en/reference/metadata/).
 
+## Script `Entity` promotion
+
+Continue with the [canonical English reference](en/reference/metadata/).
+
 ## Metadata registration entry points
 
 Continue with the [canonical English reference](en/reference/metadata/).

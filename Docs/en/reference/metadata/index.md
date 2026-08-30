@@ -878,7 +878,7 @@ The aggregate diff writes `Workspace/contract-diff.json` and `.md`; CI uploads t
 
 ## Project remote-call supplement
 
-Remote calls are declared in project `.fos` files and parsed by `Source/Tools/MetadataBaker.cpp`, so they must not be added to `api.json` by a parallel source parser. After a project bake, `BuildTools/docs_metadata.py` strictly decodes the authoritative `Metadata.fometa-server` and `Metadata.fometa-client` outputs, verifies that both sides agree, and emits a project-owned JSON/Markdown catalog.
+Remote calls are declared in project `.fos` files and parsed by `Source/Tools/MetadataBaker.cpp`, so they must not be added to `api.json` by a parallel source parser. After a project bake, `BuildTools/docs_metadata.py` strictly decodes the authoritative `Metadata.fometa-server` and `Metadata.fometa-client` outputs, verifies that both sides agree on signatures and structural limits, and emits a project-owned JSON/Markdown catalog.
 
 From an embedding project root:
 
@@ -890,7 +890,7 @@ python Engine/BuildTools/docs_metadata.py \
   --write
 ```
 
-Use the same arguments with `--check` after baking in project CI. The default outputs are `Docs/generated/project-remote-calls.json` and `Docs/generated/project-remote-calls.md`. They carry stable `script.remote-call.<target>.<name>` IDs, normalized signatures, caller/handler surfaces, input hashes, and paired direction evidence. They deliberately expose only a source file hint because the baked format does not retain a repository-relative path or line.
+Use the same arguments with `--check` after baking in project CI. The default outputs are `Docs/generated/project-remote-calls.json` and `Docs/generated/project-remote-calls.md`. They carry stable `script.remote-call.<target>.<name>` IDs, normalized signatures, caller/handler surfaces, per-call `MaxBytes` / `MaxCollectionSize` values, input hashes, and paired direction evidence. Every baked record must contain the `Limits` trailer, including explicit zeroes for declarations without structural limits. The catalog deliberately exposes only a source file hint because the baked format does not retain a repository-relative path or line.
 
 The complete declaration, runtime, authority, compatibility, and troubleshooting contract is [Remote Calls](../../reference/scripting/remote-calls.md). The engine-owned minimal project validates the decoder against real baker output without making this repository depend on an external game.
 

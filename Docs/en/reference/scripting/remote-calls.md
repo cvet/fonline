@@ -26,6 +26,8 @@ Remote calls are not engine events, ordinary function calls, or request/response
 - `Source/Tools/MetadataBaker.cpp`
 - `Source/Common/EngineBase.cpp`
 - `Source/Common/MetadataRegistration.cpp`
+- `Source/Common/Settings.inc`
+- `Source/Common/NetBuffer.cpp`
 - `Source/Server/ClientDataValidation.h`
 - `Source/Server/ClientDataValidation.cpp`
 - `Source/Server/Server.cpp`
@@ -60,14 +62,14 @@ The mapper side does not support remote calls. `[[AdminRemoteCall]]` belongs to 
 Declare each contract once in script source visible to metadata baking:
 
 ```angelscript
-///@ RemoteCall Server RequestRename(string name)
-///@ RemoteCall Client RenameResult(bool accepted, string reason)
+///@ RemoteCall Server RequestRename(string name) MaxBytes 256
+///@ RemoteCall Client RenameResult(bool accepted, string reason) MaxBytes 512
 ```
 
 The grammar is:
 
 ```text
-///@ RemoteCall (Server|Client) Name([Type[?] argument [, ...]])
+///@ RemoteCall (Server|Client) Name([Type[?] argument [, ...]]) [MaxBytes N] [MaxCollectionSize N]
 ```
 
 Rules enforced by `MetadataBaker` include:
@@ -76,8 +78,9 @@ Rules enforced by `MetadataBaker` include:
 - the name is followed by parentheses;
 - every argument type resolves through engine metadata;
 - every argument has a name;
-- arguments are comma-separated and no tokens follow the closing parenthesis;
+- arguments are comma-separated;
 - `?` is recorded separately from the resolved type.
+- after the closing parenthesis, only `MaxBytes` and `MaxCollectionSize` are accepted, each at most once and followed by a non-negative integer; `0` or an omitted option means no per-call structural limit.
 
 Names are registered in inbound and outbound maps and must be unique within each direction on a runtime side. Treat the call name, target, argument order, type, and nullability as one network contract.
 
@@ -142,23 +145,27 @@ Keep payloads bounded and purpose-specific. In particular:
 - add an explicit request or correlation ID when more than one response may be outstanding;
 - introduce a new call or a versioned payload when old and new clients cannot interpret the same signature.
 
+For every untrusted client-to-server call, author `MaxBytes` as the largest legitimate serialized body and `MaxCollectionSize` as the largest legitimate size of any declared collection. The collection ceiling applies independently to arrays, dictionaries, and both the outer dictionary and nested arrays of a dictionary-of-arrays. A call without a declared limit retains `0` in metadata; this is an explicit unlimited structural value, not a recommended production default.
+
 ## Authority and failure handling
 
 A client-to-server remote call is a request, not proof that an action is allowed. The server handler should derive caller identity from the engine-supplied `Player`, then validate authentication state, ownership, entity validity, current gameplay state, resource costs, rate limits, and any project-specific authorization before mutation.
 
 Do not accept a player or owner identifier from the payload as a substitute for the calling `Player`. Resolve payload identifiers under the normal synchronization/entity-access contract and re-check state after any yield before using captured entities. Keep client handlers presentation-oriented; authoritative state remains on the server.
 
-On the server, `ServerEngine::Process_RemoteCall()` rejects a negative or unread-byte-exceeding payload size, resolves the declared call, and runs `ValidateInboundRemoteCallData()` before acquiring the calling `Player` cover or invoking the handler. The validator walks the metadata shape, checks enum/hash/reference data, rejects negative collection counts, proves minimum remaining bytes before iterating a collection, and requires complete payload consumption. These transport checks run before the AngelScript decoder allocates collection objects, but they do not replace domain validation. Log failures with enough call/caller context to diagnose them without logging secrets or full untrusted payloads.
+On the server, `ServerEngine::Process_RemoteCall()` rejects a negative or current-frame-exceeding payload size and resolves the declared call before allocating or copying its body. Unknown calls therefore cannot force body allocation. The effective byte ceiling is the smaller nonzero value of the call's `MaxBytes` and the server-wide `ServerNetwork.MaxRemoteCallPayloadSize` (default 1 MiB). The per-call value defines legitimate protocol shape; the global value remains a hostile-input safety ceiling.
+
+The server then runs `ValidateInboundRemoteCallData()` before acquiring the calling `Player` cover or invoking the handler. The validator walks the metadata shape, checks enum/hash/reference data, rejects negative or over-limit collection counts, proves minimum remaining bytes before iterating a collection, and requires complete payload consumption. The AngelScript decoder independently enforces the same collection ceiling before reserve or construction, including nested dictionary arrays. These transport checks do not replace domain validation. Log failures with enough call/caller context to diagnose them without logging secrets or full untrusted payloads.
 
 ## Baked metadata
 
 `MetadataBaker` emits one binary metadata file per target. A remote-call record contains:
 
 ```text
-name, source-file hint, In|Out, type, nullable marker, argument name, ...
+name, source-file hint, In|Out, type, nullable marker, argument name, ..., Limits, max-bytes, max-collection-size
 ```
 
-For a `Server` target, server metadata records `In` and client metadata records `Out`. For a `Client` target, those directions are reversed. Dynamic metadata registration turns the records into `RemoteCallDesc` entries, and the AngelScript runtime registers outbound caller methods and binds inbound handlers from them.
+For a `Server` target, server metadata records `In` and client metadata records `Out`. For a `Client` target, those directions are reversed. Every record has the mandatory three-token `Limits` trailer, including `Limits 0 0` when the declaration omits both options; dynamic registration rejects the older trailer-less shape. Registration turns valid records into `RemoteCallDesc` entries, and the AngelScript runtime registers outbound caller methods and binds inbound handlers from them.
 
 The baked format retains the source file name but not a repository-relative path or declaration line. Documentation generated from `.fometa` must therefore expose that field as a source hint, not fabricate full provenance.
 
@@ -181,7 +188,7 @@ By default it writes these project-owned artifacts:
 
 Each call receives a stable ID of the form `script.remote-call.<target>.<name>` and the status `project-owned`. This status is an ownership boundary, not a promise that a game maintains backward compatibility for the call.
 
-The generator strictly decodes the binary container, validates UTF-8 and record shape, rejects duplicate inputs/calls, and requires matching server/client evidence for every call. It also records SHA-256 hashes for the inputs. Use the same input paths with `--check` in project CI after baking:
+The generator strictly decodes the binary container, validates UTF-8 and the mandatory limits trailer, rejects duplicate inputs/calls, and requires matching server/client signatures and structural limits for every call. The JSON model and Markdown table expose `MaxBytes` and `MaxCollectionSize` alongside each call. The generator also records SHA-256 hashes for the inputs. Use the same input paths with `--check` in project CI after baking:
 
 ```bash
 python Engine/BuildTools/docs_metadata.py \
@@ -197,7 +204,7 @@ python Engine/BuildTools/docs_metadata.py \
 
 Project-authored remote calls are baked project metadata and are intentionally outside the engine-native [generated API model](../../../generated/api.json). A game should check in its generated catalog, diff it during review, and deploy matching client/server project revisions.
 
-Renaming a call, changing its target, reordering arguments, or changing an argument type/nullability is a network-contract change. Record the change in the embedding project's release notes and compatibility policy. Engine-level changes to remote-call transport or registration must also follow the engine compatibility-version rule in [AGENTS.md](../../../../AGENTS.md#validation-routing).
+Renaming a call, changing its target, reordering arguments, changing an argument type/nullability, or changing either structural limit is a network-contract change. Record the change in the embedding project's release notes and compatibility policy. Engine-level changes to remote-call transport, metadata shape, or registration must also follow the engine compatibility-version rule in [AGENTS.md](../../../../AGENTS.md#validation-routing).
 
 ## Troubleshooting
 
@@ -205,6 +212,7 @@ Renaming a call, changing its target, reordering arguments, or changing an argum
 - Attribute validation failure: use `[[ServerRemoteCall]]` only for server inbound calls and `[[ClientRemoteCall]]` only for client inbound calls.
 - Duplicate registration: call names collide within one inbound or outbound side; rename one contract.
 - Unpaired documentation record: server/client metadata came from different or incomplete bakes, or one file is stale.
+- Missing or mismatched limits record: rebake both targets with the same Engine/project revision; every record must end with `Limits <max-bytes> <max-collection-size>` and both sides must agree.
 - Source link unavailable in generated output: `.fometa` stores only the source file hint; inspect the project source inventory instead of guessing a path.
 - Runtime serialization failure: reduce the contract to known supported types and add a focused end-to-end transport test.
 
@@ -216,7 +224,7 @@ Renaming a call, changing its target, reordering arguments, or changing an argum
 4. Generate and review the paired JSON/Markdown catalog from that bake.
 5. Run `BuildTools/docs_metadata.py --check` with the same inputs in CI.
 6. Exercise client-to-server authorization and server-to-client presentation through a real network or project integration test.
-7. Test rejected permissions, stale identifiers, malformed domain values, and payload size limits.
+7. Test rejected permissions, stale identifiers, malformed domain values, global/per-call payload limits, and outer plus nested collection limits.
 8. Give every incompatible call change an explicit release/compatibility disposition.
 
 The engine-owned [minimal project](../../../../Examples/MinimalProject/README.md) proves declaration parsing, both inbound handler bindings, paired baked metadata, stable catalog IDs, and server lifecycle startup. It does not replace a game's real multiplayer transport and authorization tests.

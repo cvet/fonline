@@ -59,6 +59,7 @@ auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;
 auto fs_hash_file(string_view path) -> optional<uint64_t>;
 auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
 auto fs_read_file(string_view path) -> optional<string>;
+auto fs_read_file_bounded(string_view path, size_t max_size) -> optional<string>;
 auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool;
 auto fs_write_file(string_view path, string_view content) -> bool;
 auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool;

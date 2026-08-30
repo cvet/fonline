@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_JSON_OUTPUT = "Docs/generated/project-remote-calls.json"
 DEFAULT_MARKDOWN_OUTPUT = "Docs/generated/project-remote-calls.md"
 SOURCE_PARSER = "Source/Tools/MetadataBaker.cpp"
@@ -78,6 +78,8 @@ class _RemoteCallRecord:
     name: str
     subsystem_hint: str
     arguments: list[dict[str, object]]
+    max_bytes: int
+    max_collection_size: int
     evidence: list[_RemoteCallEvidence]
 
 
@@ -141,8 +143,10 @@ def _metadata_target(sections: dict[str, list[list[str]]], path: Path) -> str:
 def _parse_remote_call_entry(
     entry: list[str], metadata_side: str, input_id: str, path: Path
 ) -> _RemoteCallRecord:
-    if len(entry) < 3 or (len(entry) - 3) % 3 != 0:
-        raise MetadataDecodeError(f"Malformed RemoteCall entry in {path}: expected header plus argument triples")
+    if len(entry) < 6 or entry[-3] != "Limits" or (len(entry) - 6) % 3 != 0:
+        raise MetadataDecodeError(
+            f"Malformed RemoteCall entry in {path}: expected header, argument triples, and Limits trailer"
+        )
 
     name, subsystem_hint, direction = entry[:3]
     if not name or not subsystem_hint:
@@ -152,10 +156,16 @@ def _parse_remote_call_entry(
     if direction not in {"In", "Out"}:
         raise MetadataDecodeError(f"Malformed RemoteCall direction in {path}: {direction}")
 
+    max_bytes_text, max_collection_size_text = entry[-2:]
+    if not max_bytes_text.isdigit() or not max_collection_size_text.isdigit():
+        raise MetadataDecodeError(f"Malformed RemoteCall limits in {path}: expected non-negative integers")
+    max_bytes = int(max_bytes_text)
+    max_collection_size = int(max_collection_size_text)
+
     target = metadata_side if direction == "In" else OPPOSITE_SIDE[metadata_side]
     arguments: list[dict[str, object]] = []
     argument_names: set[str] = set()
-    for index in range(3, len(entry), 3):
+    for index in range(3, len(entry) - 3, 3):
         type_name, nullable_marker, argument_name = entry[index : index + 3]
         if not type_name or not argument_name:
             raise MetadataDecodeError(f"Malformed RemoteCall argument in {path}: type and name are required")
@@ -179,6 +189,8 @@ def _parse_remote_call_entry(
         name=name,
         subsystem_hint=subsystem_hint,
         arguments=arguments,
+        max_bytes=max_bytes,
+        max_collection_size=max_collection_size,
         evidence=[
             _RemoteCallEvidence(
                 metadata_side=metadata_side,
@@ -224,6 +236,8 @@ def _record_identity(record: _RemoteCallRecord) -> tuple[object, ...]:
         record.name,
         record.subsystem_hint,
         tuple((argument["name"], argument["type"], argument["nullable"]) for argument in record.arguments),
+        record.max_bytes,
+        record.max_collection_size,
     )
 
 
@@ -299,6 +313,10 @@ def generate_remote_call_model(
                 + ", ".join(_argument_signature(argument) for argument in record.arguments)
                 + ")",
                 "arguments": record.arguments,
+                "limits": {
+                    "max_bytes": record.max_bytes,
+                    "max_collection_size": record.max_collection_size,
+                },
                 "subsystem_hint": record.subsystem_hint,
                 "handler_attribute": "ServerRemoteCall"
                 if record.target == "server"
@@ -414,8 +432,8 @@ def render_remote_call_markdown(model: dict[str, Any]) -> str:
             [
                 f"## {target.title()} target",
                 "",
-                "| Declaration | Symbol ID | Caller surfaces | Handler | Source hint | Evidence |",
-                "| --- | --- | --- | --- | --- | --- |",
+                "| Declaration | Limits | Symbol ID | Caller surfaces | Handler | Source hint | Evidence |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
         for symbol in target_symbols:
@@ -424,13 +442,17 @@ def render_remote_call_markdown(model: dict[str, Any]) -> str:
             )
             callers = "<br>".join(_code(caller) for caller in symbol["caller_surfaces"])
             handler = f"{_code('[[' + symbol['handler_attribute'] + ']]')}<br>{_code(symbol['handler_signature'])}"
+            limits = symbol["limits"]
+            limit_text = _code(
+                f"MaxBytes {limits['max_bytes']}; MaxCollectionSize {limits['max_collection_size']}"
+            )
             lines.append(
-                f"| {_code(symbol['signature'])} | <a id=\"{_anchor(str(symbol['id']))}\"></a>"
-                f"{_code(symbol['id'])} | {callers} | {handler} | {_code(symbol['source_hint'])} | "
+                f"| {_code(symbol['signature'])} | {limit_text} | "
+                f"<a id=\"{_anchor(str(symbol['id']))}\"></a>{_code(symbol['id'])} | {callers} | {handler} | {_code(symbol['source_hint'])} | "
                 f"{_text(evidence)} |"
             )
         if not target_symbols:
-            lines.append("| - | - | - | - | - | - |")
+            lines.append("| - | - | - | - | - | - | - |")
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"

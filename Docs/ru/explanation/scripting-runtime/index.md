@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 # Скриптовый runtime
 
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"8eb2f7c04834d6814a24a553eb2b54a78e023947abf56bdbd559d8c0a6c84530"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"6ce5488c827a4878c79d88fb54bab7a6bdba46b13262a4cd359616a9de6bb011"} -->
 
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
@@ -130,7 +130,7 @@ Destroyed entities также отклоняются на script-to-native bound
 
 - удаление nullable-суффикса `T?` и перенос признака в метаданные;
 - объявления `///@ Event` и соответствующие обработчики `[[Event]]`;
-- объявления `///@ RemoteCall` и соответствующие реализации `[[ServerRemoteCall]]` или `[[ClientRemoteCall]]`;
+- объявления `///@ RemoteCall`, необязательные структурные пределы `MaxBytes N` / `MaxCollectionSize N` и соответствующие реализации `[[ServerRemoteCall]]` или `[[ClientRemoteCall]]`;
 - отдельный entry point административных команд `[[AdminRemoteCall]]`;
 - приоритеты модулей и init functions;
 - правила проверки callback attributes;
@@ -160,6 +160,8 @@ Lifetime сущностей всё равно принадлежит runtime д�
 - серверная обработка команд проверяет пришедшие от клиента удалённые вызовы до запуска server script handlers;
 - клиентский runtime получает пришедшие от сервера вызовы и dispatch клиентских script handlers;
 - административные вызовы используют путь `CallAdminFunc()` и требуют атрибут `AdminRemoteCall`.
+
+Для недоверенного вызова клиент-сервер задавайте `MaxBytes` как максимальный корректный сериализованный payload, а `MaxCollectionSize` — как максимальную корректную объявленную коллекцию. Сервер разрешает descriptor до allocation тела; native validation и AngelScript decoding применяют предел коллекции до `Reserve()` или создания контейнера, включая вложенные массивы словаря. Общая настройка `ServerNetwork.MaxRemoteCallPayloadSize` остаётся отдельным пределом для враждебного input. Полный контракт декларации, baked metadata и совместимости описан в разделе [Удалённые вызовы](../../reference/scripting/remote-calls.md).
 
 Events и remote calls являются разными понятиями. Events описывают lifecycle движка/runtime и gameplay notifications; remote calls описывают доступные по сети script entry points. Оба механизма опираются на сигнатуры метаданных, nullable-контракты и сгенерированные descriptors.
 

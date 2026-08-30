@@ -168,6 +168,9 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     if (_settings->MaxMessageSize != 0) {
         _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->MaxMessageSize));
     }
+    if (_settings->MaxBufferedInputSize != 0) {
+        _inBuf.SetMaxBufLen(numeric_cast<size_t>(_settings->MaxBufferedInputSize));
+    }
 
     WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
 
@@ -213,6 +216,13 @@ auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     return _gracefulDisconnected;
+}
+
+auto ServerConnection::IsInputOverflowed() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _inputOverflowed.load(std::memory_order_relaxed);
 }
 
 auto ServerConnection::GetDisconnectReason() const noexcept -> DisconnectReason
@@ -414,7 +424,16 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
         scoped_lock locker {_inBufLocker};
 
         if (!buf.empty()) {
-            _inBuf.AddData(buf);
+            // Runs on the network thread, inside the same transport receive lock that Disconnect() takes,
+            // so the overflow is only latched here and the owning worker job performs the disconnect
+            try {
+                _inBuf.AddData(buf);
+            }
+            catch (const NetBufferException& ex) {
+                if (!_inputOverflowed.exchange(true, std::memory_order_relaxed)) {
+                    ReportExceptionAndContinue(ex);
+                }
+            }
         }
 
         callback = _dataArrivedCallback;

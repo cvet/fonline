@@ -6,7 +6,7 @@ document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"35b3c13182ccd10103b20c6acd58ba1b2be36106cf103829ed79a8bbfeefd65a"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"f313dd930058b6133b03abf824274274cd0e51426e9e44a35185b5469d3e7778"} -->
 
 # Сгенерированный API и метаданные
 
@@ -868,7 +868,7 @@ Aggregate diff записывает `Workspace/contract-diff.json` и `.md`; CI 
 
 ## Проектное дополнение remote calls
 
-Remote calls объявляются в project files `.fos` и разбираются `Source/Tools/MetadataBaker.cpp`, поэтому параллельный source parser не должен добавлять их в `api.json`. После project bake инструмент `BuildTools/docs_metadata.py` строго декодирует authoritative outputs `Metadata.fometa-server` и `Metadata.fometa-client`, проверяет согласие сторон и создаёт project-owned каталог JSON/Markdown.
+Remote calls объявляются в project files `.fos` и разбираются `Source/Tools/MetadataBaker.cpp`, поэтому параллельный source parser не должен добавлять их в `api.json`. После project bake инструмент `BuildTools/docs_metadata.py` строго декодирует authoritative outputs `Metadata.fometa-server` и `Metadata.fometa-client`, проверяет совпадение сигнатур и структурных пределов на обеих сторонах и создаёт project-owned каталог JSON/Markdown.
 
 Из корня встраиваемого проекта:
 
@@ -880,7 +880,7 @@ python Engine/BuildTools/docs_metadata.py \
   --write
 ```
 
-После baking в project CI используйте те же arguments с `--check`. Defaults outputs: `Docs/generated/project-remote-calls.json` и `Docs/generated/project-remote-calls.md`. Они содержат стабильные IDs `script.remote-call.<target>.<name>`, нормализованные signatures, surfaces caller/handler, input hashes и paired direction evidence. Намеренно публикуется только hint source file, потому что baked format не сохраняет repository-relative path и line.
+После baking в project CI используйте те же arguments с `--check`. Defaults outputs: `Docs/generated/project-remote-calls.json` и `Docs/generated/project-remote-calls.md`. Они содержат стабильные IDs `script.remote-call.<target>.<name>`, нормализованные signatures, surfaces caller/handler, per-call значения `MaxBytes` / `MaxCollectionSize`, input hashes и paired direction evidence. Каждая baked-запись должна содержать trailer `Limits`, включая явные нули для деклараций без структурных пределов. Намеренно публикуется только hint source file, потому что baked format не сохраняет repository-relative path и line.
 
 Полный контракт declaration, runtime, authority, compatibility и troubleshooting приведён в разделе [Remote calls](../../reference/scripting/remote-calls.md). Принадлежащий движку minimal project проверяет decoder по реальному baker output, не создавая зависимости репозитория от внешней игры.
 

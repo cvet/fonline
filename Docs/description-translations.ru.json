@@ -17961,6 +17961,10 @@
           "source_sha256": "c8d412b042c6dac764bda0a88b6bca5739ebdce6f79ddb13880b4520f5bc0c81",
           "translation": "Максимальное время жизни соединения до входа без прогресса handshake, аутентификации или обновления, в миллисекундах (0 = без ограничения)"
         },
+        "/symbols/@id=setting.server.ServerNetwork.MaxBufferedInputSize/description": {
+          "source_sha256": "a4acd521d44db235f411db199f70381bad1adbd374231eaed8d191f66085d2fc",
+          "translation": "Максимальное число непрочитанных входных байтов, сохраняемых для одного соединения (0 = без ограничения)"
+        },
         "/symbols/@id=setting.server.ServerNetwork.MaxConnections/description": {
           "source_sha256": "2d0bd3fc64c22c52a4616939bbcfebc1caef731fc09b282cd95196aed2b8bc02",
           "translation": "Максимальное число одновременных соединений, включая еще не вошедшие (0 = без ограничения); сверх лимита новые соединения отклоняются при accept"
@@ -17976,6 +17980,10 @@
         "/symbols/@id=setting.server.ServerNetwork.MaxPlayers/description": {
           "source_sha256": "ad0b40cccc89c090046777b0a7244e3e320502281206d088671be349d3ab88d9",
           "translation": "Максимальное число одновременно вошедших игроков (0 = без ограничения); сверх лимита новые соединения отклоняются при accept"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.MaxRemoteCallPayloadSize/description": {
+          "source_sha256": "0697aaea07a03add65d0fd18524918d9d0d0b8d32312e15ddb3a704ad4392a39",
+          "translation": "Runtime-предел decoded payload удалённого вызова (0 = только структурный per-call предел)"
         },
         "/symbols/@id=setting.server.ServerNetwork.MaxUdpReorderAhead/description": {
           "source_sha256": "c4037dc9e27286a727aec6092d5ef280e7d3406b86378f1243841d0390c0ff45",

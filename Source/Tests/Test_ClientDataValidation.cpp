@@ -151,6 +151,26 @@ TEST_CASE("ClientDataValidation")
         CHECK_NOTHROW(ValidateInboundRemoteCallData(call, data, meta));
     }
 
+    SECTION("Rejects payload and collection above structural remote call limits")
+    {
+        RemoteCallDesc payload_limited_call = MakeRemoteCall(meta, {MakeSimpleArg(int_type)});
+        payload_limited_call.MaxPayloadSize = sizeof(int32_t) - 1;
+        vector<uint8_t> scalar_data;
+        DataWriter scalar_writer(scalar_data);
+        scalar_writer.Write<int32_t>(42);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(payload_limited_call, scalar_data, meta), ClientDataValidationException);
+
+        RemoteCallDesc collection_limited_call = MakeRemoteCall(meta, {MakeArrayArg(int_type)});
+        collection_limited_call.MaxCollectionSize = 2;
+        vector<uint8_t> array_data;
+        DataWriter array_writer(array_data);
+        array_writer.Write<int32_t>(3);
+        array_writer.Write<int32_t>(1);
+        array_writer.Write<int32_t>(2);
+        array_writer.Write<int32_t>(3);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(collection_limited_call, array_data, meta), ClientDataValidationException);
+    }
+
     SECTION("Rejects invalid UTF-8 strings")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});

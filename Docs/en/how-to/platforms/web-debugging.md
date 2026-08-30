@@ -190,6 +190,8 @@ The stock shell reports WebGL context loss and requires a reload. The Engine doe
 
 The Web main loop is installed through `emscripten_set_main_loop_arg(..., 0, 1)`. Browser scheduling, throttling in background tabs, visibility changes, and user-gesture rules remain browser behavior. The exported runtime includes Emscripten's audio-context resume helper, but a project must still prove first-use audio activation, mute/unmute, interruption, resume, and device changes through real interaction.
 
+An explicit in-game quit is finalized on the next browser frame. The Web client calls `ClientEngine::Shutdown()` (including script `Game.OnFinish` subscribers) and then cancels the Emscripten main loop through `WebRelated::StopMainLoop()`. Because `emscripten_set_main_loop_arg(..., simulate_infinite_loop=1)` does not return, `RunClientRuntime()` does not reach its ordinary post-loop cleanup, result reporting, or `ApplicationShutdownHook()` on this path. Closing or terminating the browser tab remains best-effort and must use project-owned page lifecycle hooks when persistence or telemetry requires it.
+
 Canvas copy events use the Engine clipboard. The runtime requests clipboard-read permission on the first pointer interaction when APIs exist and intercepts non-repeated `Ctrl+V`; it falls back to the Engine clipboard when navigator access fails. Clipboard APIs depend on secure contexts, permissions, focus, and user gestures, and several failures are intentionally swallowed. Test paste/copy visibly instead of treating absence of an exception as success.
 
 ### Persistent data

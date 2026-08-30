@@ -1236,6 +1236,30 @@
       "release_note": "Document the three-argument bounds API and the DrawRect/ViewRect fitting contract in the generated API, rendering, and client-runtime references.",
       "compatibility": "Existing script source using the fourth output argument no longer compiles and must be updated. Rebuild scripts and native runtime roles together; the stable method name remains unchanged.",
       "owner": "runtime-rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.0c35f0d6ccd6c7e1",
+      "baseline_contract_sha256": "b7716b755f5432783a3c91550a71a0f95227a2944537807ab48725c4eb4a9383",
+      "current_contract_sha256": "c429722b76310216337ecfd900477e1a58c56e3c4f30b7c85294c07bfc4d0cf4",
+      "classification": "breaking",
+      "rationale": "The native-codegen API contract now includes ServerNetwork.MaxBufferedInputSize and ServerNetwork.MaxRemoteCallPayloadSize, increasing the strict symbol inventory from 2498 to 2500. The settings expose reviewed server-side hostile-input ceilings, so the pinned inventory changes intentionally.",
+      "migration": "Regenerate script and API artifacts, review both new server defaults against the embedding project's legitimate traffic, and keep MaxBufferedInputSize zero or at least MaxMessageSize before starting the server.",
+      "release_note": "Document the retained-input and decoded remote-call payload ceilings in the generated settings, networking, remote-call, and configuration references.",
+      "compatibility": "Both settings are additive, but strict API-model consumers must adopt the regenerated inventory. Engine binaries, generated metadata, baked resources, and embedding-project settings should update together.",
+      "owner": "runtime-networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0c62295894330599",
+      "baseline_contract_sha256": "b7716b755f5432783a3c91550a71a0f95227a2944537807ab48725c4eb4a9383",
+      "current_contract_sha256": "c429722b76310216337ecfd900477e1a58c56e3c4f30b7c85294c07bfc4d0cf4",
+      "classification": "breaking",
+      "rationale": "The compatibility marker advances from 0.0.42 to 0.0.43 because every baked remote-call record now carries a mandatory Limits trailer and runtime registration rejects the older trailer-less metadata shape.",
+      "migration": "Update Engine and embedding project together, regenerate native sources, fully rebake server and client metadata, regenerate the paired project remote-call catalog, and rebuild every runtime role. Do not reuse metadata baked for compatibility version 0.0.42.",
+      "release_note": "Record the 0.0.43 compatibility cutover with frame-local input parsing, retained-input bounds, remote-call structural limits, and the server-wide payload ceiling in the documentation verification record.",
+      "compatibility": "This is an intentional client/server metadata boundary. Engine binaries, generated bindings, both baked metadata targets, resources, and packaged configuration require one coordinated release.",
+      "owner": "runtime-networking"
     }
   ]
 }

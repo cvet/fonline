@@ -144,6 +144,7 @@ public:
     [[nodiscard]] auto GetPort() const noexcept -> uint16_t;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
+    [[nodiscard]] auto IsInputOverflowed() const noexcept -> bool;
     [[nodiscard]] auto GetDisconnectReason() const noexcept -> DisconnectReason;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
@@ -204,6 +205,7 @@ private:
     UpdateFileTransferState _updateFileTransfer {};
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
+    std::atomic<bool> _inputOverflowed {};
     std::atomic<DisconnectReason> _disconnectReason {};
 };
 
