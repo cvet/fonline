@@ -450,15 +450,15 @@ typedef void (*asJITFunction)(asSVMRegisters* registers, asPWORD jitArg);
 // GNUC should not complain about the usage as I'm not using 0 as the base pointer.
 #define asOFFSET(s,m) ((int)(size_t)(&reinterpret_cast<s*>(100000)->m)-100000)
 
-#define asFUNCTION(f) asFunctionPtr(f)
+#define asFUNCTION(f) AS_NAMESPACE_QUALIFIER asFunctionPtr(f)
 #if (defined(_MSC_VER) && _MSC_VER <= 1200) || (defined(__BORLANDC__) && __BORLANDC__ < 0x590)
 // MSVC 6 has a bug that prevents it from properly compiling using the correct asFUNCTIONPR with operator >
 // so we need to use ordinary C style cast instead of static_cast. The drawback is that the compiler can't
 // check that the cast is really valid.
 // BCC v5.8 (C++Builder 2006) and earlier have a similar bug which forces us to fall back to a C-style cast.
-#define asFUNCTIONPR(f,p,r) asFunctionPtr((void (*)())((r (*)p)(f)))
+#define asFUNCTIONPR(f,p,r) AS_NAMESPACE_QUALIFIER asFunctionPtr((void (*)())((r (*)p)(f)))
 #else
-#define asFUNCTIONPR(f,p,r) asFunctionPtr(reinterpret_cast<void (*)()>(static_cast<r (*)p>(f)))
+#define asFUNCTIONPR(f,p,r) AS_NAMESPACE_QUALIFIER asFunctionPtr(reinterpret_cast<void (*)()>(static_cast<r (*)p>(f)))
 #endif
 
 #ifndef AS_NO_CLASS_METHODS
@@ -512,8 +512,8 @@ template <typename T>
  #define AS_METHOD_AMBIGUITY_CAST(t) static_cast<t >
 #endif
 
-#define asMETHOD(c,m) asSMethodPtr<sizeof(void (c::*)())>::Convert((void (c::*)())(&c::m))
-#define asMETHODPR(c,m,p,r) asSMethodPtr<sizeof(void (c::*)())>::Convert(AS_METHOD_AMBIGUITY_CAST(r (c::*)p)(&c::m))
+#define asMETHOD(c,m) AS_NAMESPACE_QUALIFIER asSMethodPtr<sizeof(void (c::*)())>::Convert((void (c::*)())(&c::m))
+#define asMETHODPR(c,m,p,r) AS_NAMESPACE_QUALIFIER asSMethodPtr<sizeof(void (c::*)())>::Convert(AS_METHOD_AMBIGUITY_CAST(r (c::*)p)(&c::m))
 
 #else // Class methods are disabled
 
@@ -1779,8 +1779,8 @@ struct asSBCInfo
 	#endif
 #endif
 
-#define asBCINFO(b,t,s) {asBC_##b, asBCTYPE_##t, s, #b}
-#define asBCINFO_DUMMY(b) {asBC_MAXBYTECODE, asBCTYPE_INFO, 0, "BC_" #b}
+#define asBCINFO(b,t,s) {AS_NAMESPACE_QUALIFIER asBC_##b, AS_NAMESPACE_QUALIFIER asBCTYPE_##t, s, #b}
+#define asBCINFO_DUMMY(b) {AS_NAMESPACE_QUALIFIER asBC_MAXBYTECODE, AS_NAMESPACE_QUALIFIER asBCTYPE_INFO, 0, "BC_" #b}
 
 const asSBCInfo asBCInfo[256] =
 {
@@ -2045,13 +2045,13 @@ const asSBCInfo asBCInfo[256] =
 };
 
 // Macros to access bytecode instruction arguments
-#define asBC_DWORDARG(x)  (*(((asDWORD*)x)+1))
-#define asBC_INTARG(x)    (*(int*)(((asDWORD*)x)+1))
-#define asBC_QWORDARG(x)  (*(asQWORD*)(((asDWORD*)x)+1))
-#define asBC_FLOATARG(x)  (*(float*)(((asDWORD*)x)+1))
-#define asBC_PTRARG(x)    (*(asPWORD*)(((asDWORD*)x)+1))
-#define asBC_WORDARG0(x)  (*(((asWORD*)x)+1))
-#define asBC_WORDARG1(x)  (*(((asWORD*)x)+2))
+#define asBC_DWORDARG(x)  (*(((AS_NAMESPACE_QUALIFIER asDWORD*)x)+1))
+#define asBC_INTARG(x)    (*(int*)(((AS_NAMESPACE_QUALIFIER asDWORD*)x)+1))
+#define asBC_QWORDARG(x)  (*(AS_NAMESPACE_QUALIFIER asQWORD*)(((AS_NAMESPACE_QUALIFIER asDWORD*)x)+1))
+#define asBC_FLOATARG(x)  (*(float*)(((AS_NAMESPACE_QUALIFIER asDWORD*)x)+1))
+#define asBC_PTRARG(x)    (*(AS_NAMESPACE_QUALIFIER asPWORD*)(((AS_NAMESPACE_QUALIFIER asDWORD*)x)+1))
+#define asBC_WORDARG0(x)  (*(((AS_NAMESPACE_QUALIFIER asWORD*)x)+1))
+#define asBC_WORDARG1(x)  (*(((AS_NAMESPACE_QUALIFIER asWORD*)x)+2))
 #define asBC_SWORDARG0(x) (*(((short*)x)+1))
 #define asBC_SWORDARG1(x) (*(((short*)x)+2))
 #define asBC_SWORDARG2(x) (*(((short*)x)+3))

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -646,9 +646,24 @@ namespace LocEntity
  )" + R"(
     // ========== Load/Unload Critter ==========
 
-    // Plain void callback resolved by the native time-event tests through Game.FindFunc.
+    // Plain void callback resolved by the native time-event tests through Game.FindFunc
     void OnUnloadTimer()
     {
+    }
+
+    // Self-entity callbacks the native time-event tests fire through the manager. They record their
+    // effect on the critter's LookDistance so C++ can observe that the dispatch really happened
+    void OnCritterTickTimer(Entity self)
+    {
+        Critter cr = cast<Critter>(self);
+        cr.LookDistance = cr.LookDistance + 1;
+    }
+
+    void OnCritterThrowingTimer(Entity self)
+    {
+        Critter cr = cast<Critter>(self);
+        cr.LookDistance = cr.LookDistance + 1000;
+        throw("Time event callback failure for the native dispatch test");
     }
 
     int TestUnloadCritter()
@@ -745,6 +760,8 @@ namespace LocEntity
     {
         vector<uint8_t> map_data;
         auto writer = DataWriter(map_data);
+        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
         writer.Write<uint32_t>(uint32_t {0});
         writer.Write<uint32_t>(uint32_t {0});
         writer.Write<uint32_t>(uint32_t {0});
@@ -756,10 +773,10 @@ namespace LocEntity
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -786,7 +803,13 @@ namespace LocEntity
     {
         return BakerTests::MakeMetadataBlob({
             {"Entity", {{"CoverageTarget"}}},
-            {"EntityHolder", {{"Server", "Critter", "CoverageTarget", "CoverageItems", "Persistent"}}},
+            {"EntityHolder",
+                {
+                    {"Server", "Critter", "CoverageTarget", "CoverageItems", "Persistent"},
+                    // A location survives a restart while an off-map critter does not, so the reload path
+                    // needs a holder on something that comes back
+                    {"Server", "Location", "CoverageTarget", "CoverageLocItems", "Persistent"},
+                }},
         });
     }
 
@@ -1606,6 +1629,85 @@ TEST_CASE("LoadUnloadCritter")
     }
 }
 
+TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
+{
+    // The inner-entity read path runs nowhere else in the suite, because every other test here keeps the world in
+    // memory for one engine's lifetime
+    auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_custom_entity_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    std::error_code remove_error;
+    std::filesystem::remove_all(storage_dir, remove_error);
+    std::filesystem::create_directories(storage_dir);
+
+    auto cleanup_storage = scope_exit([storage_dir]() noexcept {
+        safe_call([storage_dir] {
+            std::error_code ignored;
+            std::filesystem::remove_all(storage_dir, ignored);
+        });
+    });
+
+    string storage_option = strex("JSON {}", storage_dir.generic_string()).str();
+
+    ident_t location_id;
+    ident_t custom_id;
+
+    {
+        auto settings = MakeSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+
+        refcount_ptr<ServerEngine> server = MakeServerEngine(settings);
+        string startup_error = WaitForStart(server.as_ptr());
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("TestLocation"));
+            server->EntityMngr.MakePersistent(location, true, true);
+            location_id = location->GetId();
+
+            auto custom = server->EntityMngr.CreateCustomInnerEntity(location, server->Hashes.ToHashedString("CoverageLocItems"), {});
+            REQUIRE(custom->IsPersistent());
+            custom_id = custom->GetId();
+        }
+
+        server->Shutdown();
+    }
+
+    {
+        auto settings = MakeSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+
+        refcount_ptr<ServerEngine> server = MakeServerEngine(settings);
+
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        string startup_error = WaitForStart(server.as_ptr());
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+        hstring custom_type = server->Hashes.ToHashedString("CoverageTarget");
+
+        // Only registry lookups are asserted, because reading properties needs the entity covered and a test
+        // holding just the engine lock cannot take a pre-existing one into its context
+        CHECK(server->EntityMngr.GetLocation(location_id) != nullptr);
+        CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id) != nullptr);
+        CHECK(server->EntityMngr.GetCustomEntity(custom_type, ident_t {}) == nullptr);
+    }
+}
+
 TEST_CASE("BulkMoveOperations")
 {
     MAKE_LEM_SERVER();
@@ -1811,7 +1913,11 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
     for (size_t i = 0; i < event_count; i++) {
         auto timer_func = server->FindFunc<void>(get_func("LocEntity::OnUnloadTimer"));
         REQUIRE(timer_func);
-        REQUIRE(server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {}) != 0);
+
+        // The consuming call stays out of REQUIRE: the macro re-expands its argument in the
+        // never-executed while clause, which reads as a second use of the moved-from function
+        uint32_t event_id = server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {});
+        REQUIRE(event_id != 0);
     }
 
     size_t cancel_calls = 0;
@@ -1839,6 +1945,390 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
 
     server->TimeEventMngr.ClearDispatcherHooks();
     clear_dispatcher_hooks.release();
+    server->CrMngr.DestroyCritter(cr);
+}
+
+TEST_CASE("TimeEventManagerQueryModifyAndStop")
+{
+    MAKE_LEM_SERVER();
+
+    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
+    hstring timer_name = get_func("LocEntity::OnUnloadTimer");
+
+    auto start_event = [&server, &cr, &timer_name](timespan delay, timespan repeat) {
+        auto timer_func = server->FindFunc<void>(timer_name);
+        REQUIRE(timer_func);
+        return server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, delay, repeat, {});
+    };
+
+    ScriptFuncName timer_func_name {timer_name, 0};
+    ScriptFuncName unknown_func_name {get_func("LocEntity::NoSuchTimer"), 0};
+
+    // Nothing is scheduled yet, so every query answers empty without touching the entity storage
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, 0) == 0);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, ScriptFuncName(), 0) == 0);
+    CHECK_NOTHROW(server->TimeEventMngr.StopTimeEvent(cr, timer_func_name, 0));
+    CHECK_NOTHROW(server->TimeEventMngr.ModifyTimeEvent(cr, timer_func_name, 0, timespan {std::chrono::seconds {5}}, std::nullopt));
+    CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(cr, 1).has_value());
+
+    uint32_t first_id = start_event(timespan {std::chrono::seconds {60}}, timespan {std::chrono::seconds {5}});
+    uint32_t second_id = start_event(timespan {std::chrono::seconds {90}}, {});
+    CHECK(first_id != 0);
+    CHECK(second_id != 0);
+    CHECK(first_id != second_id);
+    CHECK(cr->HasTimeEvents());
+
+    // A zero delay is clamped up to the minimum repeat time rather than firing in the past
+    uint32_t immediate_id = start_event({}, {});
+    CHECK(immediate_id != 0);
+
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, 0) == 3);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, unknown_func_name, 0) == 0);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, ScriptFuncName(), first_id) == 1);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, ScriptFuncName(), 999999) == 0);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, ScriptFuncName(), 0) == 0);
+    CHECK_THROWS_AS(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, first_id), VerificationException);
+
+    // Only the addressed event is retimed, and only the addressed data is replaced
+    vector<any_t> new_data {any_t {"payload"}};
+    server->TimeEventMngr.ModifyTimeEvent(cr, ScriptFuncName(), second_id, timespan {std::chrono::seconds {30}}, vector<any_t> {new_data});
+    server->TimeEventMngr.ModifyTimeEvent(cr, ScriptFuncName(), 999999, timespan {std::chrono::seconds {30}}, std::nullopt);
+    server->TimeEventMngr.ModifyTimeEvent(cr, unknown_func_name, 0, std::nullopt, vector<any_t> {new_data});
+
+    {
+        auto time_events = cr->GetTimeEvents();
+        REQUIRE(time_events);
+        REQUIRE(time_events->size() == 3);
+
+        bool second_seen = false;
+
+        for (const auto& te : *time_events) {
+            if (te->Id == second_id) {
+                second_seen = true;
+                CHECK(te->RepeatDuration == timespan {std::chrono::seconds {30}});
+                CHECK(te->Data.size() == 1);
+            }
+            else {
+                CHECK(te->Data.empty());
+            }
+        }
+
+        CHECK(second_seen);
+    }
+
+    // Modifying by function name with a zero repeat leaves the fire time alone and only swaps data
+    server->TimeEventMngr.ModifyTimeEvent(cr, timer_func_name, 0, std::nullopt, vector<any_t> {new_data});
+    {
+        auto time_events = cr->GetTimeEvents();
+        REQUIRE(time_events);
+
+        for (const auto& te : *time_events) {
+            CHECK(te->Data.size() == 1);
+        }
+    }
+
+    server->TimeEventMngr.StopTimeEvent(cr, ScriptFuncName(), 999999);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, 0) == 3);
+
+    server->TimeEventMngr.StopTimeEvent(cr, ScriptFuncName(), immediate_id);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, 0) == 2);
+
+    server->TimeEventMngr.StopTimeEvent(cr, unknown_func_name, 0);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, 0) == 2);
+
+    server->TimeEventMngr.StopTimeEvent(cr, timer_func_name, 0);
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, 0) == 0);
+    CHECK_FALSE(cr->HasTimeEvents());
+
+    server->CrMngr.DestroyCritter(cr);
+
+    // A destroyed entity answers instead of failing, except where starting new work must be rejected
+    CHECK(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, 0) == 0);
+    CHECK_NOTHROW(server->TimeEventMngr.StopTimeEvent(cr, timer_func_name, 0));
+    CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(cr, first_id).has_value());
+    CHECK_THROWS_AS(server->TimeEventMngr.ModifyTimeEvent(cr, timer_func_name, 0, std::nullopt, std::nullopt), VerificationException);
+}
+
+TEST_CASE("EntityManagerLoadDocumentDiagnostics")
+{
+    MAKE_LEM_SERVER();
+
+    hstring locations_collection = get_func("Locations");
+    hstring maps_collection = get_func("Maps");
+    hstring items_collection = get_func("Items");
+
+    auto make_doc = [](std::initializer_list<pair<string, AnyData::Value>> entries) {
+        AnyData::Document doc;
+
+        for (auto&& [key, value] : entries) {
+            doc.Assign(key, value.Copy());
+        }
+
+        return doc;
+    };
+
+    SECTION("MissingDocumentsAreReportedAsErrors")
+    {
+        bool is_error = false;
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadLocation(ident_t {900001}, is_error)));
+        CHECK(is_error);
+
+        is_error = false;
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadMap(ident_t {900002}, is_error)));
+        CHECK(is_error);
+
+        is_error = false;
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadItem(ident_t {900003}, is_error)));
+        CHECK(is_error);
+    }
+
+    SECTION("MalformedProtoSectionsAreRejected")
+    {
+        ident_t no_proto_id {900011};
+        ident_t wrong_type_id {900012};
+        ident_t empty_proto_id {900013};
+        ident_t unknown_proto_id {900014};
+
+        server->DbStorage.StartCommitChanges();
+        server->DbStorage.Insert(locations_collection, DataBaseKey {no_proto_id}, make_doc({{"Filler", AnyData::Value {int64_t {1}}}}));
+        server->DbStorage.Insert(locations_collection, DataBaseKey {wrong_type_id}, make_doc({{"_Proto", AnyData::Value {int64_t {7}}}}));
+        server->DbStorage.Insert(locations_collection, DataBaseKey {empty_proto_id}, make_doc({{"_Proto", AnyData::Value {string {}}}}));
+        server->DbStorage.Insert(locations_collection, DataBaseKey {unknown_proto_id}, make_doc({{"_Proto", AnyData::Value {string {"NoSuchLocationProto"}}}}));
+        server->DbStorage.WaitCommitChanges();
+
+        // A document without a '_Proto' section fails because a location is expected to carry one
+        bool is_error = false;
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadLocation(no_proto_id, is_error)));
+        CHECK(is_error);
+
+        // A '_Proto' section of the wrong value type is rejected before any hashing happens
+        is_error = false;
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadLocation(wrong_type_id, is_error)));
+        CHECK(is_error);
+
+        is_error = false;
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadLocation(empty_proto_id, is_error)));
+        CHECK(is_error);
+
+        // A well-formed name that no proto matches fails later, at proto resolution
+        is_error = false;
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadLocation(unknown_proto_id, is_error)));
+        CHECK(is_error);
+    }
+
+    SECTION("LocationDropsMapIdsThatCannotBeLoaded")
+    {
+        ident_t loc_id {900021};
+        ident_t missing_map_id {900022};
+
+        AnyData::Array map_ids;
+        map_ids.EmplaceBack(AnyData::Value {numeric_cast<int64_t>(missing_map_id.underlying_value())});
+
+        AnyData::Document loc_doc;
+        loc_doc.Assign("_Proto", AnyData::Value {string {"TestLocation"}});
+        loc_doc.Assign("MapIds", AnyData::Value {std::move(map_ids)});
+
+        server->DbStorage.StartCommitChanges();
+        server->DbStorage.Insert(locations_collection, DataBaseKey {loc_id}, std::move(loc_doc));
+        server->DbStorage.WaitCommitChanges();
+
+        bool is_error = false;
+        auto loc = server->EntityMngr.LoadLocation(loc_id, is_error);
+
+        // The location itself restores, but the unloadable map is pruned from its id list
+        REQUIRE(static_cast<bool>(loc));
+        CHECK(is_error);
+        CHECK(loc->GetMapsCount() == 0);
+        CHECK(loc->GetMapIds().empty());
+
+        server->MapMngr.DestroyLocation(loc.as_ptr());
+    }
+
+    ignore_unused(maps_collection, items_collection);
+}
+
+TEST_CASE("TimeEventManagerFiresScriptCallbacks")
+{
+    MAKE_LEM_SERVER();
+
+    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
+
+    auto start_self_event = [&server, &cr](string_view func_name, timespan repeat) {
+        auto timer_func = server->FindFunc<void, ptr<ScriptSelfEntity>>(server->Hashes.ToHashedString(func_name));
+        REQUIRE(timer_func);
+        return server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, repeat, {});
+    };
+    auto backdate_all_events = [&cr]() {
+        auto time_events = cr->GetTimeEvents();
+        REQUIRE(time_events);
+
+        for (auto& te : *time_events) {
+            te->FireTime = nanotime {};
+        }
+    };
+
+    int32_t base_look = cr->GetLookDistance();
+
+    SECTION("RepeatingEventFiresAndReschedules")
+    {
+        uint32_t event_id = start_self_event("LocEntity::OnCritterTickTimer", timespan {std::chrono::seconds {5}});
+        CHECK(event_id != 0);
+
+        backdate_all_events();
+        server->TimeEventMngr.ProcessTimeEvents();
+
+        CHECK(cr->GetLookDistance() == base_look + 1);
+        // A repeating event survives its own firing and is pushed into the future
+        CHECK(cr->HasTimeEvents());
+
+        optional<timespan> time_until_next;
+        CHECK(server->TimeEventMngr.CollectReadyTimeEvents(time_until_next).empty());
+        CHECK(time_until_next.has_value());
+    }
+
+    SECTION("OneShotEventIsRemovedAfterFiring")
+    {
+        uint32_t event_id = start_self_event("LocEntity::OnCritterTickTimer", {});
+        CHECK(event_id != 0);
+
+        backdate_all_events();
+        server->TimeEventMngr.ProcessTimeEvents();
+
+        CHECK(cr->GetLookDistance() == base_look + 1);
+        CHECK_FALSE(cr->HasTimeEvents());
+    }
+
+    SECTION("ThrowingRepeatingCallbackStopsTheEvent")
+    {
+        (void)start_self_event("LocEntity::OnCritterThrowingTimer", timespan {std::chrono::seconds {5}});
+
+        auto prev_callback = GetExceptionCallback();
+        SetExceptionCallback([](string_view, const CatchedStackTraceData&, bool) { });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+
+        backdate_all_events();
+        server->TimeEventMngr.ProcessTimeEvents();
+
+        CHECK(cr->GetLookDistance() == base_look + 1000);
+        // A callback that throws must not keep rescheduling itself
+        CHECK_FALSE(cr->HasTimeEvents());
+    }
+
+    SECTION("FireAndAdvanceRunsASingleEvent")
+    {
+        uint32_t event_id = start_self_event("LocEntity::OnCritterTickTimer", timespan {std::chrono::seconds {5}});
+
+        backdate_all_events();
+        auto next_delay = server->TimeEventMngr.FireAndAdvance(cr, event_id);
+
+        CHECK(cr->GetLookDistance() == base_look + 1);
+        REQUIRE(next_delay.has_value());
+        CHECK(next_delay.value() > timespan {});
+
+        // A one-shot event reports no follow-up delay because it is gone after firing
+        uint32_t once_id = start_self_event("LocEntity::OnCritterTickTimer", {});
+        backdate_all_events();
+        CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(cr, once_id).has_value());
+    }
+
+    server->TimeEventMngr.CancelAllForEntity(cr);
+    server->CrMngr.DestroyCritter(cr);
+}
+
+TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
+{
+    MAKE_LEM_SERVER();
+
+    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
+    hstring timer_name = get_func("LocEntity::OnUnloadTimer");
+
+    vector<uint32_t> scheduled_ids;
+    vector<timespan> scheduled_delays;
+    vector<uint32_t> cancelled_ids;
+
+    TimeEventManager::DispatcherHooks hooks;
+    hooks.Schedule = [&](refcount_ptr<Entity>, uint32_t event_id, timespan delay) {
+        scheduled_ids.push_back(event_id);
+        scheduled_delays.push_back(delay);
+    };
+    hooks.Cancel = [&](uint32_t event_id) { cancelled_ids.push_back(event_id); };
+    server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
+    auto clear_dispatcher_hooks = scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); });
+
+    auto start_event = [&server, &cr, &timer_name](timespan delay, timespan repeat) {
+        auto timer_func = server->FindFunc<void>(timer_name);
+        REQUIRE(timer_func);
+        return server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, delay, repeat, {});
+    };
+
+    uint32_t ready_id = start_event(TimeEventManager::MIN_REPEAT_TIME, {});
+    uint32_t future_id = start_event(timespan {std::chrono::seconds {600}}, {});
+
+    REQUIRE(scheduled_ids.size() == 2);
+    CHECK(scheduled_ids[0] == ready_id);
+    CHECK(scheduled_ids[1] == future_id);
+    CHECK(scheduled_delays[0] == TimeEventManager::MIN_REPEAT_TIME);
+    CHECK(scheduled_delays[1] == timespan {std::chrono::seconds {600}});
+
+    // Retiming an event cancels the old dispatcher entry before scheduling the new one
+    scheduled_ids.clear();
+    scheduled_delays.clear();
+    server->TimeEventMngr.ModifyTimeEvent(cr, ScriptFuncName(), future_id, timespan {std::chrono::seconds {300}}, std::nullopt);
+    REQUIRE(cancelled_ids.size() == 1);
+    CHECK(cancelled_ids[0] == future_id);
+    REQUIRE(scheduled_ids.size() == 1);
+    CHECK(scheduled_ids[0] == future_id);
+    CHECK(scheduled_delays[0] == timespan {std::chrono::seconds {300}});
+
+    // Nothing is due yet, so the collector only reports how long the dispatcher may sleep
+    {
+        optional<timespan> time_until_pending;
+        CHECK(server->TimeEventMngr.CollectReadyTimeEvents(time_until_pending).empty());
+        REQUIRE(time_until_pending.has_value());
+        CHECK(time_until_pending.value() > timespan {});
+    }
+
+    // Backdate one event instead of waiting on the frame clock, so readiness is deterministic
+    {
+        auto time_events = cr->GetTimeEvents();
+        REQUIRE(time_events);
+
+        for (auto& te : *time_events) {
+            if (te->Id == ready_id) {
+                te->FireTime = nanotime {};
+            }
+        }
+    }
+
+    optional<timespan> time_until_next;
+    auto ready = server->TimeEventMngr.CollectReadyTimeEvents(time_until_next);
+
+    REQUIRE(ready.size() == 1);
+    CHECK(ready.front().Event->Id == ready_id);
+    CHECK(ready.front().OwnerEntity == cr);
+    REQUIRE(time_until_next.has_value());
+    CHECK(time_until_next.value() > timespan {});
+
+    // A paused dispatcher stops delivering notifications without losing the hooks themselves
+    cancelled_ids.clear();
+    scheduled_ids.clear();
+    server->TimeEventMngr.PauseDispatcherHooks();
+    uint32_t paused_id = start_event(timespan {std::chrono::seconds {60}}, {});
+    server->TimeEventMngr.StopTimeEvent(cr, ScriptFuncName(), paused_id);
+    CHECK(scheduled_ids.empty());
+    CHECK(cancelled_ids.empty());
+
+    server->TimeEventMngr.ClearDispatcherHooks();
+    clear_dispatcher_hooks.release();
+
+    // Clearing drops every pending event across all polled entities
+    server->TimeEventMngr.ClearTimeEvents();
+    CHECK_FALSE(cr->HasTimeEvents());
+
+    optional<timespan> time_until_next_after_clear;
+    CHECK(server->TimeEventMngr.CollectReadyTimeEvents(time_until_next_after_clear).empty());
+    CHECK_FALSE(time_until_next_after_clear.has_value());
+
     server->CrMngr.DestroyCritter(cr);
 }
 

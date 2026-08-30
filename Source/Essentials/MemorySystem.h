@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -77,7 +77,6 @@ public:
         return true;
     }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto allocate(size_t count) const noexcept -> T*
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
@@ -85,13 +84,14 @@ public:
             ReportAndExit("Alloc size overflow");
         }
 
-        nptr<void> mem = ::operator new(sizeof(T) * count, std::nothrow);
+        size_t size = sizeof(T) * count;
+        nptr<void> mem = AllocateRaw(size);
 
         if (!mem) {
-            ReportBadAlloc("Safe allocator failed", typeid(T).name(), count, count * sizeof(T));
+            ReportBadAlloc("Safe allocator failed", typeid(T).name(), count, size);
 
             while (!mem && FreeBackupMemoryChunk()) {
-                mem = ::operator new(sizeof(T) * count, std::nothrow);
+                mem = AllocateRaw(size);
             }
 
             if (!mem) {
@@ -103,12 +103,40 @@ public:
         return typed_mem.get();
     }
 
-    // ReSharper disable once CppInconsistentNaming
+    // Size is not passed to the sized delete overload on purpose: callers such as the ImGui and zlib free
+    // callbacks receive no size from their library and must pass a placeholder count
     void deallocate(T* ptr, size_t count) const noexcept
     {
         (void)count;
+        DeallocateRaw(ptr);
+    }
+
+private:
+    // An over-aligned element must take the aligned new/delete overloads. A function rather than a
+    // constexpr member: alignof(T) needs a complete T, the allocator must accept an incomplete one
+    static constexpr auto IsOverAligned() noexcept -> bool { return alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__; }
+
+    static auto AllocateRaw(size_t size) noexcept -> nptr<void>
+    {
+        if constexpr (IsOverAligned()) {
+            return ::operator new(size, std::align_val_t {alignof(T)}, std::nothrow);
+        }
+        else {
+            return ::operator new(size, std::nothrow);
+        }
+    }
+
+    static void DeallocateRaw(T* ptr) noexcept
+    {
         FO_GCC_IGNORE_WARNINGS_PUSH("-Wfree-nonheap-object")
-        ::operator delete(ptr);
+
+        if constexpr (IsOverAligned()) {
+            ::operator delete(ptr, std::align_val_t {alignof(T)});
+        }
+        else {
+            ::operator delete(ptr);
+        }
+
         FO_GCC_IGNORE_WARNINGS_POP()
     }
 };
@@ -171,6 +199,18 @@ public:
         return ptr.get();
     }
 
+    // The only entry point for third-party hooks that demand realloc or an untyped byte block (SDL,
+    // spine, curl); it keeps the SafeAllocator out-of-memory policy, and a zero size passes through
+    [[nodiscard]] static auto MallocRaw(size_t size) noexcept -> nptr<void>;
+    [[nodiscard]] static auto CallocRaw(size_t num, size_t size) noexcept -> nptr<void>;
+    [[nodiscard]] static auto ReallocRaw(nptr<void> ptr, size_t size) noexcept -> nptr<void>;
+    static void FreeRaw(nptr<void> ptr) noexcept;
+
+    // Aligned counterparts. Freeing needs no alignment argument, which is what lets these back library
+    // callbacks that hand back only the pointer (Effekseer's AlignedFreeFunc)
+    [[nodiscard]] static auto MallocAlignedRaw(size_t size, size_t alignment) noexcept -> nptr<void>;
+    static void FreeAlignedRaw(nptr<void> ptr) noexcept;
+
     template<typename T>
         requires(!refcountable<T>)
     static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
@@ -207,16 +247,11 @@ private:
     }
 };
 
-// Memory low level management.
-extern auto MemMalloc(size_t size) noexcept -> nptr<void>;
-extern auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>;
-extern auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>;
-extern void MemFree(nptr<void> ptr) noexcept;
-
+// Memory block operations
 inline void MemCopy(nptr<void> dest, nptr<const void> src, size_t size) noexcept
 {
     // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero.
-    // So check size first.
+    // So check size first
     if (size != 0) {
         std::memcpy(dest.get(), src.get(), size);
     }

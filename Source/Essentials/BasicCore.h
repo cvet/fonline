@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -72,6 +72,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <deque>
 #include <filesystem>
@@ -80,6 +81,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <list>
 #include <map>
@@ -174,6 +176,13 @@
 #else
 #define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code)
 #define FO_MSVC_IGNORE_WARNINGS_POP()
+#endif
+
+// Empty member storage optimization
+#if defined(_MSC_VER)
+#define FO_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+#define FO_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
 // Force inline helper
@@ -317,17 +326,9 @@ struct fixed_string
 };
 
 // Generic helpers
+
+// Mechanical process termination only; failure callers own any diagnostics they require
 [[noreturn]] extern void ExitApp(bool success) noexcept;
-
-// Always-on assertion for Essentials modules that sit above ExceptionHandling in the include order
-// (e.g. SmartPointers) and therefore cannot use FO_STRONG_ASSERT. Defined in ExceptionHandling.cpp; it
-// produces the same StrongAssertationException report and process exit as FO_STRONG_ASSERT.
-[[noreturn]] extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept;
-
-#define FO_BASIC_STRONG_ASSERT(expr) \
-    if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
-    }
 
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;

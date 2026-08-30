@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -104,7 +104,7 @@ static void PrepareModelMeshOptimizationRuntime()
     FO_STACK_TRACE_ENTRY();
 
     // meshoptimizer exposes one allocator table per linked module. This synchronization has no
-    // per-engine semantics; it only makes the identical process-wide setup safe before worker jobs.
+    // per-engine semantics; it only makes the identical process-wide setup safe before worker jobs
     static std::once_flag init_once;
     std::call_once(init_once, [] { meshopt_setAllocator(&ModelMeshOptimizationAllocator::Allocate, &ModelMeshOptimizationAllocator::Deallocate); });
 }
@@ -370,6 +370,12 @@ static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBone
         }
 
         mesh->Vertices.reserve(fbx_mesh->num_indices);
+
+        // A mirrored export (negative scale) flips surface orientation, so the mesh lights from its inside and
+        // renders flat black. Rejected rather than silently corrected here: Docs/BakingPipeline.md
+        if (ufbx_matrix_determinant(&fbx_node->geometry_to_world) < 0.0) {
+            throw ModelMeshBakerException("FBX mesh node is mirrored (negative transform determinant), reset its transform before exporting", fname, bone->Name);
+        }
 
         for (const ufbx_mesh_part& fbx_mesh_part : fbx_mesh->material_parts) {
             vector<uint32_t> triangle_indices;

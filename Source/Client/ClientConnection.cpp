@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -207,26 +207,13 @@ void ClientConnection::ProcessConnection()
         }
     }
 
-    // Lags emulation
-    if (_settings->ArtificalLags != 0 && !_artificalLagTime.has_value()) {
-        auto lag_ms = std::uniform_int_distribution<int32_t> {_settings->ArtificalLags / 2, _settings->ArtificalLags}(_randomGenerator);
-        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {lag_ms};
-    }
-
-    if (_artificalLagTime.has_value()) {
-        if (nanotime::now() >= _artificalLagTime.value()) {
-            _artificalLagTime.reset();
-        }
-        else {
-            return;
-        }
-    }
-
     _netConnection->CheckStatus(false);
     _netConnection->CheckStatus(true);
 
     // Receive and send data
-    if (ReceiveData()) {
+    (void)ReceiveData();
+
+    if (!IsInboundLagged()) {
         while (_netIn.NeedProcess()) {
             auto msg = _netIn.ReadMsg();
 
@@ -268,7 +255,9 @@ void ClientConnection::ProcessConnection()
         _pingTime = nanotime::now();
     }
 
-    SendData();
+    if (!IsOutboundLagged()) {
+        SendData();
+    }
 
     // Handle disconnect
     if (!_netConnection->IsConnected()) {
@@ -290,6 +279,8 @@ void ClientConnection::Disconnect()
     _connectingOverUdp = false;
     _connectingHandled = false;
     _udpFallbackTried = false;
+    _artificalInboundLagTime.reset();
+    _artificalOutboundLagTime.reset();
     _netIn.ResetBuf();
     _netOut.ResetBuf();
     _decompressor.Reset();
@@ -352,6 +343,56 @@ void ClientConnection::SendData()
     }
 }
 
+// Symmetric by design: only the outbound half makes the server's copy of the world trail the client's,
+// and neither half throttles throughput. Delay distribution and its effect: Docs/Debugging.md
+
+auto ClientConnection::IsInboundLagged() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return IsArtificalLagPending(_artificalInboundLagTime, _netIn.NeedProcess());
+}
+
+auto ClientConnection::IsOutboundLagged() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return IsArtificalLagPending(_artificalOutboundLagTime, !_netOut.IsEmpty());
+}
+
+auto ClientConnection::IsArtificalLagPending(optional<nanotime>& deadline, bool has_data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A negative value builds a distribution whose lower bound exceeds its upper bound, which is undefined
+    // rather than merely odd, and the zero early-out below does not screen it
+    FO_VERIFY_AND_THROW(_settings->ArtificalLags >= 0 && _settings->ArtificalLagsJitter >= 0, "Artifical lag settings must not be negative", _settings->ArtificalLags, _settings->ArtificalLagsJitter);
+
+    if ((_settings->ArtificalLags == 0 && _settings->ArtificalLagsJitter == 0) || !has_data) {
+        deadline.reset();
+        return false;
+    }
+
+    if (!deadline.has_value()) {
+        // Both settings are free-form milliseconds, so accumulate wide enough that their sum cannot
+        // overflow before the duration is built
+        int64_t lag_ms = std::uniform_int_distribution<int32_t> {_settings->ArtificalLags / 2, _settings->ArtificalLags}(_randomGenerator);
+
+        if (_settings->ArtificalLagsJitter != 0) {
+            lag_ms += std::uniform_int_distribution<int32_t> {0, _settings->ArtificalLagsJitter}(_randomGenerator);
+        }
+
+        deadline = nanotime::now() + std::chrono::milliseconds {lag_ms};
+    }
+
+    if (nanotime::now() >= deadline.value()) {
+        deadline.reset();
+        return false;
+    }
+
+    return true;
+}
+
 auto ClientConnection::ReceiveData() -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -382,6 +423,13 @@ auto ClientConnection::ReceiveData() -> bool
     return false;
 }
 
+void ClientConnection::SetMetadataVersion(string_view version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _metadataVersion = version;
+}
+
 void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
@@ -397,6 +445,7 @@ void ClientConnection::Net_SendHandshake()
 
     _netOut.StartMsg(NetMessage::Handshake);
     _netOut.Write(_settings->CompatibilityVersion);
+    _netOut.Write(_metadataVersion);
     _netOut.Write(updater_version);
     _netOut.Write(binary_update_target_name);
     _netOut.Write(encrypt_key);
@@ -411,6 +460,8 @@ void ClientConnection::Net_OnHandshakeAnswer()
 
     bool compatibility_outdated = _netIn.Read<bool>();
     bool updater_outdated = _netIn.Read<bool>();
+    bool metadata_outdated = _netIn.Read<bool>();
+    _serverMetadataVersion = _netIn.Read<string>();
     auto encrypt_key = _netIn.Read<uint32_t>();
 
     _netIn.SetEncryptKey(encrypt_key);
@@ -422,6 +473,9 @@ void ClientConnection::Net_OnHandshakeAnswer()
     }
     else if (compatibility_outdated) {
         _connectCallback(ConnectResult::CompatibilityOutdated);
+    }
+    else if (metadata_outdated) {
+        _connectCallback(ConnectResult::MetadataOutdated);
     }
     else {
         _connectCallback(ConnectResult::Success);

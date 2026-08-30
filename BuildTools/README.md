@@ -186,6 +186,26 @@ The `windows-cross-packages` feature installs/checks Linux prerequisites. The `w
 
 For `win32`, `buildtools.py` passes `CMAKE_SYSTEM_PROCESSOR=x86`; the toolchain keeps the xwin `x86` library paths and forces `clang-cl --target=i686-pc-windows-msvc` so CMake compiler probes do not emit x64 objects for an x86 link.
 
+## Checkout case repair
+
+```bash
+python3 Engine/BuildTools/buildtools.py repair-checkout-case
+python3 Engine/BuildTools/buildtools.py repair-checkout-case --check
+```
+
+Renames working-tree entries whose on-disk spelling differs from the name git tracks, recursing into
+submodules. A case-only rename is recorded correctly in the index, but on a case-insensitive
+filesystem git only rewrites file names — an existing directory keeps its old spelling forever — so a
+reused checkout keeps serving the stale name while resource and include lookups stay case-sensitive.
+The symptom appears far from the cause: a file that plainly sits on disk is reported as missing while
+baking. Long-lived checkouts on self-hosted Windows runners are the usual victim; a fresh clone never
+reproduces it, which is why CI jobs on such runners should run this right after checkout.
+
+`--check` reports the drift and exits non-zero without touching the working tree. If the index holds
+the same path under two spellings at once, the command names both and refuses to repair anything —
+that is a repository defect (the two paths are distinct on Linux and one entry on Windows) and only a
+commit can decide which spelling is correct.
+
 ## Windows web debug workflow
 
 The local Windows web debug flow uses these shared commands:
@@ -239,10 +259,15 @@ python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-ga
 At runtime, `FOnlineActivity` stages `assets/Resources` into the app files directory on first launch after install or update and then starts the engine with absolute `Baking.ClientResources` and `Baking.CacheResources` overrides that point to that runtime location.
 
 Android SDK command-line tools version is pinned by `Engine/ThirdParty/android-sdk` and installed into `Workspace/android-sdk`.
+BuildTools uses the package's `android sdk install` interface with metrics
+disabled; the deprecated `sdkmanager` path is not used.
 
 Android NDK version is pinned by `Engine/ThirdParty/android-ndk` and installed into `Workspace/android-ndk`.
 
-The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Android configuration values come from the baked target config for the selected package config, so `SubConfig` overrides affect APK metadata. Android SDKs that require application manifest metadata can use `Android.ManifestMetaData.<android:name> = <android:value>` settings; the packager emits them as `<meta-data>` entries inside `<application>`. SDK Gradle setup can use `Android.GradleMavenRepository.<name> = <url>` and `Android.GradleDependency.<name> = <Gradle dependency statement>` to add package-config-specific Maven repositories and `dependencies { ... }` entries. Package-specific Java sources can use `Android.JavaSource.<name> = <path/to/File.java>`; the packager copies each non-empty source into the generated app package namespace and patches `$PACKAGE$` / `$CONFIG$`.
+The Gradle project template lives in `Engine/BuildTools/android-project/`, pins
+Android Gradle Plugin 9.3.0 with Gradle 9.5.0, compiles Java sources at language
+level 17, and uses `$PLACEHOLDER$` tokens patched by `package.py` during
+packaging. Android configuration values come from the baked target config for the selected package config, so `SubConfig` overrides affect APK metadata. Android SDKs that require application manifest metadata can use `Android.ManifestMetaData.<android:name> = <android:value>` settings; the packager emits them as `<meta-data>` entries inside `<application>`. SDK Gradle setup can use `Android.GradleMavenRepository.<name> = <url>` and `Android.GradleDependency.<name> = <Gradle dependency statement>` to add package-config-specific Maven repositories and `dependencies { ... }` entries. Package-specific Java sources can use `Android.JavaSource.<name> = <path/to/File.java>`; the packager copies each non-empty source into the generated app package namespace and patches `$PACKAGE$` / `$CONFIG$`.
 
 Android release APK packaging signs the artifact. Configure signing through `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the project main config. `package.py` passes `Android.KeystorePassword` and `Android.KeyPassword` to Gradle through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` environment variables instead of writing them into the generated Gradle project. If you build the generated Gradle project manually, set those variables before `./gradlew assembleRelease`; if the signing settings are empty, packaging falls back to the Gradle debug signing key so generated package APKs remain installable on development devices. If needed, these settings can use `$ENV{...}` expressions.
 
@@ -262,7 +287,7 @@ change. Patched regions, all transparent identity/config **text** (never code):
 - `PACKAGED_BUILD_NAME` — marker `###NotPackaged###`, a 128-byte array. The package/build identity string;
   each runtime variant patches its own so `IsPackaged()` and the build name reflect the package.
 - `INTERNAL_CONFIG` — markers `###InternalConfig###…` / `###InternalConfigEnd###`, capacity
-  `FO_INTERNAL_CONFIG_CAPACITY` (40000). The baked internal config blob.
+  fixed by the engine at 10000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
 - Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` also rewrites the PE PDB path (`patch_pe_pdb_path`) and the Android Gradle `$PLACEHOLDER$` tokens.

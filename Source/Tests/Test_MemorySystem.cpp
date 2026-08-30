@@ -1,3 +1,36 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 #include "catch_amalgamated.hpp"
 
 #include "MemorySystem.h"
@@ -20,27 +53,6 @@ TEST_CASE("MemorySystem")
 
         InitBackupMemoryChunks();
         CHECK(FreeBackupMemoryChunk());
-    }
-
-    SECTION("MemCallocAndReallocPreservePrefix")
-    {
-        auto allocated = MemCalloc(3, sizeof(uint32_t)).reinterpret_as<uint32_t>();
-        REQUIRE(allocated);
-        CHECK(allocated[0] == 0);
-        CHECK(allocated[1] == 0);
-        CHECK(allocated[2] == 0);
-
-        allocated[0] = 11;
-        allocated[1] = 22;
-        allocated[2] = 33;
-
-        auto grown = MemRealloc(allocated, sizeof(uint32_t) * 5).reinterpret_as<uint32_t>();
-        REQUIRE(grown);
-        CHECK(grown[0] == 11);
-        CHECK(grown[1] == 22);
-        CHECK(grown[2] == 33);
-
-        MemFree(grown);
     }
 
     SECTION("SafeAllocConstructsObjectsAndZeroInitializedArrays")
@@ -68,6 +80,65 @@ TEST_CASE("MemorySystem")
         CHECK(zero_array[1] == 0);
         CHECK(zero_array[2] == 0);
         CHECK(zero_array[3] == 0);
+    }
+
+    SECTION("SafeAllocRawTierAllocatesZeroesAndGrows")
+    {
+        auto values = SafeAlloc::CallocRaw(3, sizeof(uint32_t)).reinterpret_as<uint32_t>();
+        REQUIRE(values);
+        CHECK(values[0] == 0);
+        CHECK(values[1] == 0);
+        CHECK(values[2] == 0);
+
+        values[0] = 11;
+        values[1] = 22;
+        values[2] = 33;
+
+        auto grown = SafeAlloc::ReallocRaw(values, sizeof(uint32_t) * 5).reinterpret_as<uint32_t>();
+        REQUIRE(grown);
+        CHECK(grown[0] == 11);
+        CHECK(grown[1] == 22);
+        CHECK(grown[2] == 33);
+
+        SafeAlloc::FreeRaw(grown);
+
+        auto bytes = SafeAlloc::MallocRaw(64);
+        REQUIRE(bytes);
+        SafeAlloc::FreeRaw(bytes);
+    }
+
+    SECTION("SafeAllocAlignedRawHonoursRequestedAlignment")
+    {
+        for (size_t alignment : {size_t {8}, size_t {16}, size_t {64}, size_t {256}}) {
+            auto block = SafeAlloc::MallocAlignedRaw(1000, alignment);
+            REQUIRE(block);
+            CHECK(block.as_uintptr() % alignment == 0);
+            SafeAlloc::FreeAlignedRaw(block);
+        }
+    }
+
+    SECTION("SafeAllocatorHonoursOverAlignedElements")
+    {
+        FO_MSVC_IGNORE_WARNINGS_PUSH(4324) // Padding from the alignment specifier is the point of this type
+
+        struct alignas(64) OverAlignedValue
+        {
+            int32_t Value {};
+        };
+
+        FO_MSVC_IGNORE_WARNINGS_POP()
+
+        static_assert(alignof(OverAlignedValue) > __STDCPP_DEFAULT_NEW_ALIGNMENT__);
+
+        constexpr SafeAllocator<OverAlignedValue> over_aligned_allocator;
+        ptr<OverAlignedValue> over_aligned = over_aligned_allocator.allocate(8);
+        CHECK(over_aligned.as_uintptr() % alignof(OverAlignedValue) == 0);
+        over_aligned_allocator.deallocate(over_aligned.get(), 8);
+
+        constexpr SafeAllocator<uint8_t> byte_allocator;
+        ptr<uint8_t> bytes = byte_allocator.allocate(24);
+        CHECK(bytes.as_uintptr() % alignof(std::max_align_t) == 0);
+        byte_allocator.deallocate(bytes.get(), 24);
     }
 
     SECTION("MakeRefCountedPreservesInitialOwnership")

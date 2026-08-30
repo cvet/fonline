@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -113,7 +114,7 @@ namespace
         {"Source/Server/Server.cpp", "OnCritterSendInitialInfo.Fire(cr);", 1, "post-send initial info"},
         {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 1, "player login gate"},
         {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 2, "player login gate"},
-        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, unlogined_player);", 1, "player relogin gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, not_logged_in_player);", 1, "player relogin gate"},
         {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 3, "player login gate"},
         {"Source/Server/Server.cpp", "EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);", 1, "player movement gate"},
         {"Source/Server/Server.cpp", "EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);", 1, "player movement gate"},

@@ -73,7 +73,7 @@ Major responsibilities:
 - create, load, unload, destroy, and switch critters;
 - move critters by paths and movement contexts;
 - dispatch entity lifecycle and gameplay events to scripts;
-- persist entity/property changes through `DataBase` and `PropertiesSerializator`;
+- persist entity/property changes through `DataBase` and `PropertiesSerializer`;
 - host `UpdaterBackend` for client resource/runtime updates;
 - publish health information and optional health-file output.
 
@@ -96,7 +96,7 @@ Major responsibilities:
 - `SyncPointJob()`
 - `FrameTimeJob()`
 - `ScriptSystemJob()`
-- `UnloginedPlayersJob()`
+- `NotLoggedInPlayersJob()`
 - `PlayersJob()`
 - `CrittersJob()`
 - `TimeEventsJob()`
@@ -120,7 +120,7 @@ Property serialization through `Properties::StoreData()` returns pointer/size li
 **Sync-free server→client broadcasts (the "rassylka").** A broadcast to observers/spectators is the one place where a sender legitimately cannot hold the recipient's cover — the fan-out runs under the **subject** critter's (or map's) cover only, then must reach every recipient's player. The whole broadcast surface is sync-free: property, movement (`Send_Moving`/`Send_MovingSpeed`), facing (`Send_Dir`), action (`Send_Action`), inventory move (`Send_MoveItem`), teleport (`Send_Teleport`), and attachments (`Send_Attachments`), plus their serialization helpers `SendItem`/`SendInnerEntities`/`SendCritterMoving`. The pattern:
 
 - **Recipient sends validate the SUBJECT, not the recipient — and `this` always carries its own explicit marker.** Two independent decisions, both stated at the top of every send: (1) the **`this`-marker** declares how the method treats its own entity — a recipient send writes only the recipient's connection and never reads recipient state, so its `this`-marker is `FO_NO_VALIDATE_ENTITY_ACCESS()`. This marker is **mandatory and is not implied by the value check** — `FO_VALIDATE_ENTITY_ACCESS_VALUE(x)` validates `x`, it is *not* a `this`-decision, so every send pairs the two: `FO_NO_VALIDATE_ENTITY_ACCESS();` then `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject);`. (2) The **subject validation**: every send is handed an entity it serializes or reads — even just its id — and validates it via `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` (= the null-tolerant throwing `ValidateEntityAccess(subject)`). The subject *must* be in sync, and the broadcaster holds its cover for the whole fan-out so the check passes — an uncovered subject is caught (a `ScriptException` reported at the job/script frontier, which continues; escaping a `noexcept` send still terminates the process). This is **intentionally aggressive diagnostic validation**: validate every sent entity to surface every desync immediately (this validation layer is temporary and will be removed after the multithreaded logic system stabilizes; see the TODO below). The recipient connection is guarded by a per-player `_connectionLock` so a concurrent reconnect `SwapConnection` cannot swap `_connection` mid-write. It is a **plain `mutex`, not a `shared_mutex`**: same-player sends already serialize on the connection's own single output-buffer lock (`ServerConnection::_outBufLocker`, held by the `OutBufAccessor` for the whole `WriteMsg`), so a shared "many concurrent send readers" lock would buy nothing — and `mutex::lock()` is cheaper on the hot path than `shared_mutex::lock_shared()`. Cross-player concurrency (the actual win) comes from each player owning its own lock; sends and `SwapConnection` both take it exclusively, and no send re-enters it (the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers take the already-opened buffer as a parameter, so a non-recursive mutex cannot self-deadlock). `is_chosen` is a lock-free atomic identity compare against `Player::_controlledCr` (no deref). Only sends that are handed **no entity at all** — `Send_TimeSync`/`Send_InfoMessage`/`Send_PlaceToGameComplete` (no entity), `Send_HashList` (bare strings; used by the reported-hash broadcast fan-out and the handshake-time full-list push), `Send_RemoteCall` (a name + opaque payload; the outbound remote-call channel — the recipient may be uncovered and mid-reconnect, so the send pins the live connection under `_connectionLock`), `Send_Ping`/`Send_HandshakeAnswer`/`Send_InitData`/`Send_UpdateFileData` (connection-stage protocol replies, isolated in `Player` so no code outside `Player` writes a player-directed `NetMessage`; `Send_HandshakeAnswer` also installs the out-buffer encrypt key under the same lock hold), `Send_RemoveCustomEntity` (a bare `ident_t`), and `Send_SomeItems` (a span — each item is validated downstream in `SendItem`) — are pure `FO_NO_VALIDATE` with no value check. (The validation gap the subject check closes: `StoreData`/`GetRawData` do **not** validate entity access, so a send serializing a subject through them must validate the subject explicitly.) The `Critter::Send_*` forwarders (per-critter "send to my own player") follow the same two-marker shape: `FO_NO_VALIDATE_ENTITY_ACCESS()` for the *recipient* critter (`this`) plus `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` for the forwarded subject. They must **not** validate the recipient critter (the old `this`-check fired spuriously on an uncovered NPC group member with no player during `DestroyCritter` cleanup — the subject being removed is covered, only the recipient was not), and they read `_player` atomically before forwarding.
-- **Fan-outs resolve a refcount-pinned recipient set.** `Critter::Broadcast_*` / `SendAndBroadcast_*` and the generic `SendAndBroadcast(ignore_player, player_callback)` build `Critter::GetBroadcastRecipients(ignore_player)` under the subject cover: each observer's player via `Critter::GetPlayerForSend()` (the no-validate `TryAddRef`-pinned accessor mirroring `ServerEntity::GetParentRaw`) plus map spectators via `Map::GetSpectatorPlayersForSend()` (a `FO_NO_VALIDATE` snapshot guarded by the map's `_spectatorLock` `shared_mutex`, so the broadcaster needs neither the observer's nor the **map's** cover). The pinned `vector<refcount_ptr<Player>>` keeps every recipient alive through the lock-free dispatch (`GetBroadcastRecipients`/`GetMapSpectators`/`GetSpectatorPlayersForSend` return an owning `refcount_ptr` vector; `ref_hold_vector` is reserved for the transient `copy_hold_ref(...)` loop-helper use).
+- **Fan-outs resolve a refcount-pinned recipient set.** `Critter::Broadcast_*` / `SendAndBroadcast_*` and the generic `SendAndBroadcast(ignore_player, player_callback)` build `Critter::GetBroadcastRecipients(ignore_player)` under the subject cover: each observer's player via `Critter::GetPlayerForSend()` (the no-validate, link-lock-protected `TryAddRef` accessor mirroring `ServerEntity::GetParentRaw`) plus map spectators via `Map::GetSpectatorPlayersForSend()` (a `FO_NO_VALIDATE` snapshot guarded by the map's `_spectatorLock` `shared_mutex`, so the broadcaster needs neither the observer's nor the **map's** cover). The pinned `vector<refcount_ptr<Player>>` keeps every recipient alive through the lock-free dispatch (`GetBroadcastRecipients`/`GetMapSpectators`/`GetSpectatorPlayersForSend` return an owning `refcount_ptr` vector; `ref_hold_vector` is reserved for the transient `copy_hold_ref(...)` loop-helper use).
 - **Property broadcasts read the subject live.** Every property broadcast trigger fans out the ordinary `Player::Send_Property(type, prop, subject)` to each pinned recipient: it validates the **subject** (`FO_VALIDATE_ENTITY_ACCESS_VALUE`), reads the subject's serialized bytes live via `Properties::GetRawData` (safe because the broadcaster holds the subject's cover for the whole fan-out), and writes only the recipient's connection under `_connectionLock`. The triggers: critter/critter-item (`Critter::Broadcast_Property`), global (`OnSendGlobalValue` → all players), map (`Map::SendProperty` Map case → map critters + spectators), location (`OnSendLocationValue` → `Map::SendProperty` Location case for each map in the location → map critters + spectators), and custom entity (`OnSendCustomEntityValue` → viewers resolved by the covered `ForEachCustomEntityView`, then dispatched lock-free). (A byte-snapshot optimization — capturing the payload once under the subject's cover and blitting it lock-free — was prototyped and reverted; the live-read fan-out is the current shape.)
 - **TSA-guarded.** Both fine-grained locks are Clang [Thread Safety Analysis](ThreadSafetyAnalysis.md) capabilities (`fo::mutex` / `fo::shared_mutex`), and the state they guard carries `FO_TSA_GUARDED_BY`: `Player::_connection FO_TSA_GUARDED_BY(_connectionLock)` and `Map::_spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock)` (each lock declared before the field it guards). Every lock-free path holds the lock via `scoped_lock`/`shared_lock`, so TSA statically enforces the guard on exactly the threads that lack the entity cover. The accessors that legitimately reach the guarded state under the **entity cover** instead — the cooperative scheme TSA cannot model, and which also excludes the swap/mutation — are `FO_TSA_NO_ANALYSIS` with a comment: `Player::GetConnection` (hands the pointer to entity-cover callers), `Player::SwapConnection` (cross-object `other->_connection` swap), `Map::HasSpectatorPlayers` / `Map::GetSpectatorPlayers` (leak a span), and the single-threaded `~Map` teardown invariant. The `Map::AddItem` / `RemoveItem` / `SendProperty` (MapItem) spectator legs route through `GetSpectatorPlayersForSend()` (which takes the shared lock) rather than touching `_spectatorPlayers` directly, so they stay TSA-clean without an escape hatch.
 
@@ -128,13 +128,26 @@ This is why `Critter::_player`, `Player::_controlledCr`, and `Player::_sendIgnor
 
 **Covered-by-design exceptions (intentionally NOT sync-free).** Sends that read the **recipient's own** state stay validated, because that state needs the recipient's cover by construction — they are single-recipient sends issued under that cover, not broadcast distribution: `Send_LoginSuccess` (serializes the recipient itself), `Send_ViewMap` (reads the recipient's own `_viewMap`), `Send_AddCritter` (reads the recipient's controlled-critter visibility mode; sent from the visibility grant / map-load / transfer, which hold the recipient's cover — convertible only by threading the grant-computed vis-mode through its call sites). Every other `Player::Send_*` is **recipient-lock-free** (`this`-marker `FO_NO_VALIDATE_ENTITY_ACCESS()` — the recipient is never validated): every one that is handed an entity validates that **subject** via `FO_VALIDATE_ENTITY_ACCESS_VALUE`, including the ones that read only the subject's id (`Send_RemoveCritter`/`Send_CritterVisibilityMode`/`Send_RemoveItemFromMap`/`Send_ChosenRemoveItem`/`Send_Teleport`) alongside the ones that serialize it (`Send_Property`/`Send_Moving`/`Send_MovingSpeed`/`Send_Dir`/`Send_Action`/`Send_MoveItem`/`Send_Attachments`/`Send_LoadMap`/`Send_AddItemOnMap`/`Send_ChosenAddItem`/`Send_AddCustomEntity` and the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers). Only the sends handed **no entity** are pure `FO_NO_VALIDATE` with no value check: `Send_RemoveCustomEntity` (a bare `ident_t`), `Send_InfoMessage`, `Send_PlaceToGameComplete`, `Send_TimeSync`, and `Send_SomeItems` (a span — each item is validated in `SendItem`). `Map::SendProperty`'s **MapItem** case and the `Map::AddItem`/`RemoveItem` item-appearance loops are also covered-by-design: not pure fan-outs but per-critter notify-and-react loops (`AddVisibleItem`/`RemoveVisibleItem` + a re-entrant `OnItemOnMap*` event with an early-return on item-context change), which require each critter covered; their spectator legs are lock-free. The critter destructor's teardown-invariant diagnostics likewise read only raw members (no validating accessor) so a refcount-driven `~Critter` on a worker thread outside the critter's cover cannot fault.
 
+`FO_VALIDATE_ENTITY(<flags>)` at method entry declares which preconditions the method requires, so calling
+it at the wrong time (outside the sync scope, or during/after destruction) is caught rather than silently
+tolerated. The flags combine in any order and expand to the matching check on `this`:
+
+| Flag | Precondition | Disposition on violation |
+|------|--------------|--------------------------|
+| `LOCKED` | the calling thread's sync context covers this entity | recoverable `ScriptException`, so the script/job frontier reports it and the job continues; escaping a `noexcept` method still terminates |
+| `NOT_DESTROYED` | the entity is not already destroyed | `FO_STRONG_ASSERT` (deterministic exit): the script boundary already rejects a destroyed receiver, so reaching here means a stale pointer was dereferenced. noexcept-safe |
+| `NOT_DESTROYING` | the entity is not mid-destruction | `FO_VERIFY_AND_THROW` as the internal backstop behind the `FO_SCRIPT_API` frontier. It throws, so a `noexcept` method that must survive on a destroying entity uses `FO_VERIFY_AND_RETURN*` instead |
+| `NONE` | no precondition — explicitly callable at any time | — |
+
+Example: `FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);`
+
 Manual server-side entity methods that read or mutate their own entity state declare the LOCKED precondition with `FO_VALIDATE_ENTITY(LOCKED, ...)` at method entry. It expands to the regular throwing validator (`ValidateEntityAccess(this)`), which **throws a recoverable `ScriptException`** on an uncovered access — at the job/script frontier the violation is reported and the job continues, so a sync-scope bug no longer takes the whole server down. An exception escaping a `noexcept`-declared method still terminates the process, so violations inside noexcept accessors remain fatal; the frontier-reachable throwing surface recovers. Generated C++ property accessors (`GetX()`, `SetX()`, `IsNonEmptyX()`) validate the owning entity through `FO_VALIDATE_ENTITY_ACCESS_VALUE(entity)` (the same throwing form), which currently resolves the entity from `Properties::GetEntity()` before touching property storage; low-level raw `Properties` access remains reserved for serialization, loading, tooling, and other paths that already establish their own storage-access contract. These validation macros live in `Common.h` so the temporary stabilization checks can be removed or compiled out from one location later. The check is intentionally always-on while the multithreaded logic system is being stabilized. Methods used by the validator, persistence callbacks, and lock machinery itself are marked with `FO_NO_VALIDATE_ENTITY_ACCESS()` as explicit unchecked escape hatches: constructors/destructors, `GetId()`, `GetName()`, `IsPersistent()`, `GetEntityLock()`, raw parent access, `GetSyncWidenEntity()`, and low-level parent/lock lifecycle setters must not recursively validate while the access checker is trying to produce diagnostics, handle persistence hooks, or prove the current lock cover.
 
 Two ordering contracts follow from this model. **(1) Script-export functions validate an entity argument before its first property read.** Property accessors are `noexcept`, so the throwing validator inside one cannot be recovered — an uncovered read there terminates the process. Every `FO_SCRIPT_API` function that reads a property of an entity argument therefore calls `ValidateEntityAccess(arg)` first, converting a caller's sync-scope violation into the recoverable frontier `ScriptException`; the `Server_Game_DestroyCritter(s)` family is the reference pattern. **(2) Ordinary manager entry points consume caller-owned cover; they do not acquire a missing container/holder.** The script caller covers every existing destination, source holder, map/location, or destroy dependency before crossing the native boundary. Manager code may use `EnsureEntitySynced()` only to retain the own lock of an entity already in that package across a detach or reparent. A genuinely fresh unpublished entity is different: `EntityManager::CaptureFreshEntity()` uses the private `EnsureFreshEntitySynced()` boundary before publication, without granting access to any pre-existing dependency. An omitted existing container or holder is therefore a caller error that fails validation; native create/destroy code must not repair it by replacing or widening the cover.
 
 TODO: remove the entire entity-access validation system after multithreaded logic stabilization; it is a high-overhead diagnostic layer, not a permanent runtime safety mechanism. If any `FO_VALIDATE_ENTITY_ACCESS*` check fires, fix the owning top-level path (job dispatch, script entry, sync widening, entity creation/registration, or holder transfer) so the entity cover is acquired before the code can reach the checked access at all. Do not treat the checked method or property accessor as the synchronization boundary unless that method is itself the top-level entry point.
 
-Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()` submits an `UnloginedPlayerJob()` for the temporary player object, and `OnPlayerLogined()` cancels the unlogged job key and submits the logged-in `PlayerJob()`. `Player.HardDisconnect()` and other hard-disconnect paths only mark the underlying connection as disconnected; logged-in player teardown (`OnPlayerLogout`, critter detach, view reset, destroyed mark, and unregister) belongs to the next `PlayerJob()` pass through `ProcessPlayer()`. Code that continues after a script-visible player event should validate possible connection/control changes, but it should not treat hard disconnect as an inline player-destruction path.
+Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()` submits an `NotLoggedInPlayerJob()` for the temporary player object, and `OnPlayerLoggedIn()` cancels the unlogged job key and submits the logged-in `PlayerJob()`. `Player.HardDisconnect()` and other hard-disconnect paths only mark the underlying connection as disconnected; logged-in player teardown (`OnPlayerLogout`, critter detach, view reset, destroyed mark, and unregister) belongs to the next `PlayerJob()` pass through `ProcessPlayer()`. Code that continues after a script-visible player event should validate possible connection/control changes, but it should not treat hard disconnect as an inline player-destruction path.
 
 `SwitchPlayerCritter()` sends the new critter's initial info before `OnPlayerCritterSwitched`. `OnCritterSendInitialInfo` can re-enter scripts and detach or switch the player again, so the switch notification is emitted only if the player still controls the same critter after initial-info scripts return. Switching to no critter sends `RemoveCritter`, detaches the previous chosen server-side, and sends `AddCritter` for the same entity as an ordinary non-chosen view. An active client therefore clears `HasChosen` immediately without making the still-loaded critter disappear. Initial info for a critter on the global map covers only that critter — the script attaching it delivers the rest of its travelling group with `Critter.SendGlobalMapGroupInfo()` (see the independent-roots section above).
 
@@ -171,6 +184,77 @@ Script event handlers may re-enter item movement while an item is already in its
 
 Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex.
 
+## Entity synchronization and locking
+
+`Source/Server/EntitySync.{h,cpp}` implements the cover model the script contract in
+[../AGENTS.md](../AGENTS.md) describes. Every `ServerEntity` owns an `EntityLock`, and a thread proves access
+to an entity by holding that lock or a lock-free ancestor on its parent / widen chain. `IsEntityAccessValid()`
+is that read-path check; mutating an entity's parentage is stricter and requires its own lock directly.
+
+**Link lifetime: the pin and the replacement share one lock.** `ServerEntity::_parent` and the Critter/Player
+widen pair publish raw atomic pointers, because the covered identity checks that read them must stay lock-free.
+The cover cannot protect the readers that legitimately run *without* it — `GetParentRaw()`, `GetPlayerForSend()`
+and `GetSyncWidenEntity()` are all `FO_VALIDATE_ENTITY(NONE)` — and for those a bare `load()` followed by
+`TryAddRef()` races the link's own release: the target's last reference can be dropped in between, so the
+`TryAddRef` reads a freed object. Each link therefore carries an `atomic_mutex` (`_parentLinkLocker`,
+`_playerLinkLocker`, `_controlledCrLinkLocker`) that covers *load-plus-pin* on the reading side and *replace*
+on the writing side, with the old owner released only after the replacement is published. Mutual exclusion then
+leaves a reader with exactly two outcomes: it pins while the link still holds its ref, or it observes the new
+value. The lock is an `atomic_mutex` rather than a `mutex` because these accessors are `noexcept` and an OS
+mutex has an acquisition failure they could not report. The fields are deliberately **not**
+`FO_TSA_GUARDED_BY(...)`: most readers (the `Send_*` forwarders, `DetachCritter`, the `SetParent` precondition)
+are serialized by the entity cover instead, the cooperative scheme TSA cannot model.
+
+`Player::_controlledCr` is the one non-owning link, so its pin depends on the critter clearing the link before
+it can be destroyed: `Critter::DetachPlayer()` calls `SetControlledCritter(nullptr)` under that same lock, and
+`~Critter` verifies the attachment is already gone.
+
+`SyncContext::SyncEntities()` widens in one pass, from the owning handles `GetSyncWidenEntity()` returns, and
+then re-reads each link **under the acquired cover** to verify the current partner is held — a relink that
+raced acquisition fails that verify and recomputes the cover within the bounded retry budget, exactly as a
+reparent does. `Source/Tests/Test_ServerEngine.cpp` exercises symmetric Player/Critter widening
+(`ServerEngineSyncContextWidenAndAncestorCover`), concurrent parent churn
+(`ServerEngineSyncContextReparentStress`) and the link pin itself
+(`ServerEngineEntityLinkPinSurvivesConcurrentDetach`).
+
+### Acquisition modes
+
+| Mode | Meaning | Compatibility |
+|------|---------|---------------|
+| `Exclusive` (`Acquire`) | the classic writer | excludes every other mode, re-entrant per thread |
+| `Shared` (`AcquireShared`) | reader, used only for Game-singleton property reads so concurrent readers do not serialize on the engine-global lock | many readers together, excluded by `Exclusive`; subsumed into the exclusive recursion if the same thread already writes |
+| `DescendantHold` (`RegisterDescendantHold`) | intention mark recording "this thread holds a descendant of you", placed on every separate-lock ancestor | compatible among threads (siblings run in parallel), conflicts with a foreign `Exclusive` **both ways**, re-entrant per thread |
+
+`DescendantHold` is bookkeeping, not access: nobody reads an entity through it. It exists so an ancestor's
+exclusive `Acquire` knows a descendant is busy and queues instead of cutting underneath it, and so a descendant
+cannot be taken under a foreign-held ancestor. A registration yields to an already-waiting exclusive writer, so
+a stream of sibling locks cannot starve a map- or location-exclusive operation. `Shared` and `DescendantHold`
+never coexist on one lock, because a Game singleton is in no entity's parent chain.
+
+### Waiting and ordering
+
+Waiters queue FIFO. Each `WaitEntry` carries an atomic state — waiting, granted, or aborted — and the hand-off
+CAS in `Release` / `AbortPendingWaiters` disambiguates the abort-races-grant window; `notify_one` then wakes
+exactly that waiter rather than the whole queue. `GrantWaiters()` grants a run of consecutive shared waiters
+together but stops at the first exclusive one, so readers batch without starving writers. Shutdown marks every
+lock and force-aborts its parked waiters, and rejects later acquisitions so a tick firing after shutdown cannot
+deadlock on an empty owner field.
+
+A multi-lock `Ensure` is all-or-nothing: it validates compatibility for the whole batch under the state mutexes
+and only then commits ownership, and it escalates in a global order, releasing an already-held ancestor down to
+zero and re-taking it the same number of times so the parent context's recursion and intention counters are
+restored exactly. `GetExclusiveRecursionForCurrentThread()` and `GetDescendantHoldCountForCurrentThread()`
+exist for that restoration.
+
+### Storage shape
+
+Per-lock holder counts are a linear inline vector rather than a hash map: entities number in the millions while
+concurrent holders per lock stay in the low single digits, so an idle lock must allocate nothing — a per-entity
+hash map would eagerly reserve bucket storage across a loaded world. The per-`Sync` cover and held-lock lists
+are `small_vector` for the same reason (a full gameplay-test run performs tens of millions of `Sync` ops), with
+capacity sized to the measured cover; the parallel owner lists stay `vector` because their `refcount_ptr`
+element needs a complete `ServerEntity`, which this header deliberately does not include.
+
 ## Entity ownership and persistence
 
 `EntityManager` (`Source/Server/EntityManager.h`) is the central registry and persistence boundary for server entities.
@@ -186,17 +270,17 @@ It owns:
 
 Custom entities held directly by the global game object share its singleton `EntityLock`. When an engine operation calls `EnsureEntitySynced()` for one of those entities inside `Game.Lock()`, the current synchronization context reuses the singleton acquisition instead of tracking the same physical lock in both its ordinary and singleton buckets. A balanced `Game.Unlock()` therefore releases the lock completely after the operation.
 
-Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializator`. The database facade and backends are documented in [Persistence.md](Persistence.md).
+Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializer`. The database facade and backends are documented in [Persistence.md](Persistence.md).
 
 A persisted entity whose proto resolves through a `Proto <Type> <Name> Remove` migration rule is **dropped** on load: `LoadEntityDoc()` detects that the proto migration rule maps the saved proto to the `Remove` sentinel and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. `OnCritterPreLoad` destruction is the script-controlled equivalent for a fully restored critter and also returns null without a load error after `DestroyCritter()` removes its persistent graph. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A dropped critter requested directly through `ServerEngine::LoadCritter()` is not silently returned — the wrapper raises so a player login cannot continue without its character.
 
 ## Player and connection flow
 
-A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes an unlogged `Player` through `CreateUnloginedPlayer()`.
+A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes an unlogged `Player` through `CreateNotLoggedInPlayer()`.
 
 The server then processes the player in two broad states:
 
-1. **Unlogged player** — `ProcessUnloginedPlayer()` reads initial protocol messages and runs handshake/login logic.
+1. **Unlogged player** — `ProcessNotLoggedInPlayer()` reads initial protocol messages and runs handshake/login logic.
 2. **Logged player** — `ProcessPlayer()` handles normal game messages for an attached player/critter session.
 
 `Player` in `Source/Server/Player.h` owns the server-side per-client send surface:
@@ -296,7 +380,7 @@ Do not duplicate the Common entity taxonomy here; [EntityModel.md](EntityModel.m
 
 ## Movement and authoritative state
 
-Client movement requests enter through `Process_Move()`, `Process_StopMove()`, and `Process_Dir()`. The server validates the request, applies script events such as `OnPlayerMoveCritter` and `OnPlayerDirCritter`, then updates the authoritative `Critter` and broadcasts the resulting state. Stop-move packets include the client's current hex and hex offset; the server normalizes that pair to a canonical in-bounds hex/offset, reconciles positions that lie on the critter's current authoritative `MovingContext` path, and allows a small pathfinding-validated correction for rapid start/stop input that stopped between path centers. This lets client and server converge without accepting arbitrary stop teleports. If the reported stop position cannot be reconciled, the server stops at its authoritative position and sends that final position back to the controlling player; only a successfully reconciled stop may omit the redundant self-update.
+Client movement requests enter through `Process_Move()`, `Process_StopMove()`, and `Process_Dir()`. The server validates the request, applies script events such as `OnPlayerMoveCritter` and `OnPlayerDirCritter`, then updates the authoritative `Critter` and broadcasts the resulting state. Stop-move packets include the client's current hex and hex offset; the server normalizes that pair to a canonical in-bounds hex/offset, reconciles positions that lie on the critter's current authoritative `MovingContext` path, and allows a small pathfinding-validated correction for rapid start/stop input that stopped between path centers. Normalization runs through the same passability guard the client applies (`GeometryHelper::NormalizeHexOffset` with an `is_movable` predicate): when rounding a sub-hex offset would cross into a blocked neighboring hex, the reported logical hex is retained and the offset is clamped instead of starting a full-cell correction toward the blocker. This lets client and server converge without accepting arbitrary stop teleports. If the reported stop position cannot be reconciled, the server stops at its authoritative position and sends that final position back to the controlling player; only a successfully reconciled stop may omit the redundant self-update.
 
 `Process_StopMove()` also fires `OnPlayerDirCritter` during stop reconciliation, before it can stop the active `MovingContext`. Scripts may hard-disconnect the connection, detach or switch the player's controlled critter, or move the critter to another map; the native continuation revalidates those possible outcomes before applying the final stop to avoid completing a stale client command.
 

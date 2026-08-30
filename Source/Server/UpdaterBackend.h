@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -170,7 +170,7 @@ public:
     [[nodiscard]] auto ClearContentUpdateSources(uint64_t generation, string_view provider) -> bool;
     [[nodiscard]] auto ReportContentUpdateSourceResult(uint64_t generation, uint32_t file_id, const ContentUpdateSourceReportToken& report_token, uint64_t feedback_session_id, ContentUpdateSourceResult result, uint64_t reporter_id, int64_t current_synchronized_time_ms, const ContentUpdateSourceFeedbackPolicy& policy) -> ContentUpdateSourceFeedbackDecision;
 
-    void LoadFromClientResources(const GlobalSettings& settings);
+    void LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version);
     void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
     void ProcessContentUpdateSourceReport(ptr<Player> player, int64_t current_synchronized_time_ms, const ServerSettings& settings);
     [[nodiscard]] auto ReadFastUpdateChunk(uint32_t file_index, uint32_t chunk_index, vector<uint8_t>& data, uint64_t& chunk_hash) const -> bool;
@@ -245,6 +245,7 @@ private:
     void RecalculateNextSourceExpiry(CatalogState& catalog) const;
     void PruneExpiredSourcesLocked(int64_t current_synchronized_time_ms) FO_TSA_REQUIRES(_catalogLocker);
     [[nodiscard]] auto MakeSourceReportToken(uint64_t feedback_session_id, const CatalogState& catalog, uint32_t file_id, const ContentUpdateSource& source) const -> ContentUpdateSourceReportToken;
+    static void VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version);
     mutable mutex _catalogLocker {};
     shared_ptr<const CatalogState> _catalog FO_TSA_GUARDED_BY(_catalogLocker) {};
     uint64_t _catalogGenerationCounter FO_TSA_GUARDED_BY(_catalogLocker) {};

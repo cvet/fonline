@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -111,14 +111,23 @@ struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dc
 
         for (const auto& e : value) {
             if constexpr (std::same_as<T, FO_NAMESPACE vector<FO_NAMESPACE string>>) {
-                result += e + " ";
+                result += e;
             }
             else if constexpr (std::same_as<T, FO_NAMESPACE vector<bool>>) {
-                result += e ? "True " : "False ";
+                result += e ? "True" : "False";
+            }
+            else if constexpr (std::is_integral_v<std::remove_cvref_t<decltype(e)>>) {
+                // Preserve std::to_string's integral-promotion behaviour for char-like elements
+                (void)std::format_to(std::back_inserter(result), "{}", +e);
+            }
+            else if constexpr (std::is_floating_point_v<std::remove_cvref_t<decltype(e)>>) {
+                (void)std::format_to(std::back_inserter(result), "{:f}", e);
             }
             else {
-                result += std::to_string(e) + " ";
+                (void)std::format_to(std::back_inserter(result), "{}", e);
             }
+
+            result += " ";
         }
 
         if (!result.empty()) {

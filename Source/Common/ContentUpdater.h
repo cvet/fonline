@@ -112,8 +112,8 @@ struct ContentUpdateSource
     string Transport;
     string Locator;
     int32_t Priority {};
-    int64_t ExpiresAt {}; // Game.SynchronizedTime milliseconds; zero means no declared expiry.
-    ContentUpdateSourceReportToken ReportToken {}; // One-shot connection-bound authenticated client-health ticket.
+    int64_t ExpiresAt {}; // Game.SynchronizedTime milliseconds; zero means no declared expiry
+    ContentUpdateSourceReportToken ReportToken {}; // One-shot connection-bound authenticated client-health ticket
 };
 
 struct ContentUpdateFileInfo

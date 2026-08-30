@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -720,7 +720,7 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEg
     }
 
     // SetTransparentEgg expects a hex-center-relative offset; GetHexMapPos is the cell top-left,
-    // so reference the hex visual center (top-left + half a hex) when measuring the sprite center.
+    // so reference the hex visual center (top-left + half a hex) when measuring the sprite center
     irect32 rect = cr_hex->GetViewRect();
     ipos32 hex_pos = self->GetHexMapPos(cr_hex->GetHex());
     ipos32 hex_center = {hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2, hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2};
@@ -892,6 +892,22 @@ FO_SCRIPT_API ptr<ItemView> Client_Map_CreateLocalItem(ptr<MapView> self, hstrin
 FO_SCRIPT_API void Client_Map_SetHiddenRoof(ptr<MapView> self, mpos hex)
 {
     self->SetHiddenRoof(hex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Map_GetRoofNum(ptr<MapView> self, mpos hex)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    return self->GetField(hex).RoofNum;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Map_GetHiddenRoofNum(ptr<MapView> self)
+{
+    return self->GetHiddenRoofNum();
 }
 
 FO_END_NAMESPACE

@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: EngineSources ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(EngineSources Pre|Post <macro-name>).
+# Register engine sources and extend through AddStageHook(EngineSources Pre|Post <macro-name>)
 
 # App icon
 SetValue(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
@@ -25,6 +23,8 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/MemorySystem.cpp"
@@ -106,6 +106,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/FileSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/Geometry.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Geometry.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImageWriter.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/ImageWriter.h"
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.h"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.cpp"
@@ -124,8 +126,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/PathFinding.h"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.h"
-    "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializator.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializator.h"
+    "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializer.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializer.h"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.h"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.cpp"
@@ -164,7 +166,7 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/DataBase-Json.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/DataBase-Memory.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/DataBase-Mongo.cpp"
-    "${FO_ENGINE_ROOT}/Source/Server/DataBase-UnQLite.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/DataBase-SQLite.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/DataBase.h"
     "${FO_ENGINE_ROOT}/Source/Server/EntityManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/EntityManager.h"
@@ -401,6 +403,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Server/Map.h"
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
+    "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.h"
     "${FO_ENGINE_ROOT}/Source/Server/UpdaterBackend.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
@@ -428,6 +431,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BaseLogging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BasicCore.cpp"
@@ -454,6 +458,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EngineMetadata.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ExceptionHandling.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FileSystem.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageWriter.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FogOfWar.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Rendering.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Settings.cpp"
@@ -479,6 +484,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationPoseProcedural.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationRuntime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBounds.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelMeshData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSpriteLayout.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSkeletonCompatibility.cpp"

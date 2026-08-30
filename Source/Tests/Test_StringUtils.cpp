@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,28 @@
 
 FO_BEGIN_NAMESPACE
 
+// Formatting this value always throws, so the safe_format path can be checked after it has already
+// appended part of its output
+struct ThrowingFormatValue
+{
+};
+
+FO_END_NAMESPACE
+
+template<>
+struct std::formatter<FO_NAMESPACE ThrowingFormatValue> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
+{
+    // The return type has to be spelled out: the body only throws, so deduction would pick void and the
+    // type would stop satisfying the formattable concept
+    template<typename FormatContext>
+    auto format(const FO_NAMESPACE ThrowingFormatValue& /*value*/, FormatContext& ctx) const -> decltype(ctx.out())
+    {
+        throw std::format_error("Intentional formatting failure");
+    }
+};
+
+FO_BEGIN_NAMESPACE
+
 TEST_CASE("StringUtils")
 {
     SECTION("Storage")
@@ -60,6 +82,24 @@ TEST_CASE("StringUtils")
     {
         CHECK(strex("  {} World {}", "Hello", "!").str() == "  Hello World !");
         CHECK(strex("{}{}{}", 1, 2, 3).str() == "123");
+    }
+
+    SECTION("Format")
+    {
+        CHECK(strex("{} {} {}", "text", 42, 1.5).str() == "text 42 1.5");
+        CHECK(strex(strex::safe_format, "{} {} {}", "text", 42, 1.5).str() == "text 42 1.5");
+        CHECK(strex(strex::dynamic_format, "{} {} {}", "text", 42, 1.5).str() == "text 42 1.5");
+        CHECK(strex("{}", string("engine string")).str() == "engine string");
+        CHECK(strex("no placeholders").str() == "no placeholders");
+    }
+
+    SECTION("SafeFormatReportsErrorInsteadOfPartialOutput")
+    {
+        // The formatter appends directly into the result buffer, so a mid-format throw must not leave
+        // the already-written prefix behind
+        strex formatted {strex::safe_format, "written prefix {} unreachable suffix", ThrowingFormatValue {}};
+        CHECK(formatted.strv().starts_with("Format error: "));
+        CHECK_FALSE(formatted.strv().starts_with("written prefix"));
     }
 
     SECTION("Trim")

@@ -4,6 +4,32 @@
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -38,9 +64,26 @@ TEST_CASE("MetadataBaker")
 
     TestRig rig;
     auto bakers = MakeRequestedBakers({string(MetadataBaker::NAME)}, rig);
-    auto read_baked_tags = [](const vector<uint8_t>& output) {
+    auto skip_baked_header = [](DataReader& reader) {
+        ignore_unused(reader.Read<uint32_t>());
+        ignore_unused(reader.Read<uint16_t>());
+        auto version_size = reader.Read<uint16_t>();
+        ignore_unused(reader.ReadStringView(version_size));
+    };
+    auto read_baked_header = [](const vector<uint8_t>& output) {
+        DataReader reader(output);
+        CHECK(reader.Read<uint32_t>() == METADATA_FILE_MAGIC);
+        CHECK(reader.Read<uint16_t>() == METADATA_FILE_VERSION);
+        auto version_size = reader.Read<uint16_t>();
+        string version;
+        version.resize(version_size);
+        reader.ReadStringBytes(version);
+        return version;
+    };
+    auto read_baked_tags = [&skip_baked_header](const vector<uint8_t>& output) {
         map<string, vector<vector<string>>> tags;
         DataReader reader(output);
+        skip_baked_header(reader);
         auto tag_count = reader.Read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;
@@ -122,6 +165,28 @@ TEST_CASE("MetadataBaker")
         CHECK(std::ranges::count(enum_it->second, vector<string> {"CoverageSide", "uint8", "First", "1", "Second", "2"}) == 1);
     }
 
+    SECTION("uses the applied config write time for setting values")
+    {
+        string temp_dir = fs_path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+        REQUIRE(fs_create_directories(temp_dir));
+        string config_path = strex(temp_dir).combine_path("Test.fomain").str();
+        REQUIRE(fs_write_file(config_path, "Coverage.Enabled = true\n"));
+
+        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
+
+        vector<uint64_t> checked_write_times;
+        MetadataBaker baker(rig.MakeContext("MetaPack", [&checked_write_times](string_view, uint64_t write_time) {
+            checked_write_times.emplace_back(write_time);
+            return false;
+        }));
+
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(checked_write_times.size() == 3);
+        CHECK(std::ranges::all_of(checked_write_times, [&](uint64_t write_time) { return write_time == fs_last_write_time(config_path); }));
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
     SECTION("returns without output when bake checker rejects every side")
     {
         rig.AddSourceFile("Scripts/TestEnum.fos", "///@ Enum CoverageDisabled Value = 1", 7);
@@ -139,6 +204,99 @@ TEST_CASE("MetadataBaker")
         CHECK(checks[1] == pair<string, uint64_t> {"MetaPack.fometa-client", 7});
         CHECK(checks[2] == pair<string, uint64_t> {"MetaPack.fometa-mapper", 7});
         CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("writes one metadata version shared by every target")
+    {
+        rig.AddSourceFile("Scripts/TestMetadataVersion.fos", R"(
+namespace TestMetadataVersion
+{
+///@ Property Critter Server int32 LayoutValue Mutable
+///@ Property Critter Common bool LayoutFlag Mutable PublicSync
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        auto read_metadata_version = [&](string_view target) -> string {
+            string output_name = strex("TestPack.fometa-{}", target).str();
+            REQUIRE(rig.Outputs.contains(output_name));
+
+            return read_baked_header(rig.Outputs.at(output_name));
+        };
+
+        // Client and server resolve wire property indices through their own metadata, so a target-dependent
+        // version would leave the mismatch it exists to catch undetectable
+        string client_version = read_metadata_version("client");
+        CHECK_FALSE(client_version.empty());
+        CHECK(read_metadata_version("server") == client_version);
+        CHECK(read_metadata_version("mapper") == client_version);
+
+        auto bake_version_of = [&](string_view script) -> string {
+            TestRig changed_rig;
+            changed_rig.AddSourceFile("Scripts/TestMetadataVersion.fos", string(script));
+
+            MetadataBaker changed_baker(changed_rig.MakeContext());
+            REQUIRE_NOTHROW(changed_baker.BakeFiles(changed_rig.GetAllSourceFiles(), ""));
+            REQUIRE(changed_rig.Outputs.contains("TestPack.fometa-client"));
+
+            return read_baked_header(changed_rig.Outputs.at("TestPack.fometa-client"));
+        };
+
+        // Inserting a property shifts every reg index below it, which is exactly the desync being versioned
+        CHECK(bake_version_of(R"(
+namespace TestMetadataVersion
+{
+///@ Property Critter Server int32 LayoutValue Mutable
+///@ Property Critter Server int32 LayoutExtra Mutable
+///@ Property Critter Common bool LayoutFlag Mutable PublicSync
+}
+)") != client_version);
+
+        // Every tag kind takes part, not only the ones that shape the property table: metadata that differs in
+        // any way came from another bake, and that is what the version has to catch
+        CHECK(bake_version_of(R"(
+namespace TestMetadataVersion
+{
+///@ Property Critter Server int32 LayoutValue Mutable
+///@ Property Critter Common bool LayoutFlag Mutable PublicSync
+///@ Enum CoverageMood Calm = 1
+}
+)") != client_version);
+    }
+
+    SECTION("keeps the metadata version apart when a token repeats the tag name")
+    {
+        auto bake_version_of = [&](string_view script) -> string {
+            TestRig local_rig;
+            local_rig.AddSourceFile("Scripts/TestMetadataVersionCollision.fos", string(script));
+
+            MetadataBaker baker(local_rig.MakeContext());
+            REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+            REQUIRE(local_rig.Outputs.contains("TestPack.fometa-client"));
+
+            return read_baked_header(local_rig.Outputs.at("TestPack.fometa-client"));
+        };
+
+        // Two tags versus one tag whose trailing tokens spell out the second one. ParseEnum reads the first entry
+        // and ignores the tail, so these are genuinely different metadata, and the version has to say so
+        string two_tags = bake_version_of(R"(
+namespace TestMetadataVersionCollision
+{
+///@ Enum CoverageAlpha Key = 1
+///@ Enum CoverageBeta Key = 2
+}
+)");
+        string one_tag = bake_version_of(R"(
+namespace TestMetadataVersionCollision
+{
+///@ Enum CoverageAlpha Key = 1 Enum CoverageBeta Key = 2
+}
+)");
+
+        CHECK_FALSE(two_tags.empty());
+        CHECK(two_tags != one_tag);
     }
 
     SECTION("parses continued tags and strips trailing comments")
@@ -443,8 +601,10 @@ namespace TestOffTargetMetadataStubs
         REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during preparing of metadata"));
     }
 
-    SECTION("resolves optional setting groups")
+    SECTION("resolves setting groups and serializes their configured values")
     {
+        ConfigFile config {"Common.DebugBuild = true\nDebugFlag = false\n"};
+        rig.Settings.ApplyConfigFile(config, "");
         rig.AddSourceFile("Scripts/TestSettings.fos", R"(
 namespace TestSettings
 {
@@ -463,6 +623,7 @@ namespace TestSettings
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
+        skip_baked_header(reader);
         auto tag_count = reader.Read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;
@@ -496,8 +657,104 @@ namespace TestSettings
 
         reader.VerifyEnd();
 
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool"}) == 3);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"DebugFlag", "bool"}) == 1);
+        auto debug_build_value = rig.Settings.FindSettingValue("Common.DebugBuild");
+        auto debug_flag_value = rig.Settings.FindSettingValue("DebugFlag");
+        REQUIRE(debug_build_value);
+        REQUIRE(debug_flag_value);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool", *debug_build_value}) == 3);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"DebugFlag", "bool", *debug_flag_value}) == 1);
+    }
+
+    SECTION("rejects setting declarations without a configured value")
+    {
+        ExpectMetadataBakerError("///@ Setting Client bool Missing.Value", "setting has no configured value");
+    }
+
+    SECTION("serializes and applies initial game setting values")
+    {
+        ConfigFile bake_config {"Common.GameName = MetadataGame\n"};
+        rig.Settings.ApplyConfigFile(bake_config, "");
+        rig.Settings.SetCustomSetting("Daylight.SunriseMinute", any_t(string("540")));
+        rig.AddSourceFile("Scripts/TestSettingValue.fos", "///@ Setting Common string Common.GameName\n///@ Setting Client int32 Daylight.SunriseMinute");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+
+        const auto& output = rig.Outputs.at("TestPack.fometa-client");
+        auto tags = read_baked_tags(output);
+        auto setting_it = tags.find("Setting");
+
+        REQUIRE(setting_it != tags.end());
+        CHECK(std::ranges::count(setting_it->second, vector<string> {"Common.GameName", "string", "MetadataGame"}) == 1);
+        CHECK(std::ranges::count(setting_it->second, vector<string> {"Daylight.SunriseMinute", "int32", "540"}) == 1);
+
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ClientSide);
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        // Mirrors what BaseEngine does with the registered values
+        auto apply_metadata_settings = [&](GlobalSettings& settings) {
+            for (const auto& [name, value] : meta.GetGameSettingsInitialValues()) {
+                if (!settings.FindSettingValue(name)) {
+                    settings.SetSettingValue(name, value);
+                }
+            }
+        };
+
+        GlobalSettings unconfigured_runtime_settings {false};
+        unconfigured_runtime_settings.ApplyDefaultSettings();
+        apply_metadata_settings(unconfigured_runtime_settings);
+        CHECK(unconfigured_runtime_settings.GameName == "MetadataGame");
+        CHECK_FALSE(unconfigured_runtime_settings.FindCustomSetting("Common.GameName"));
+        REQUIRE(unconfigured_runtime_settings.FindCustomSetting("Daylight.SunriseMinute"));
+        CHECK(unconfigured_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "540");
+
+        // The applied configuration is the operator's explicit override, so a sub-config, local config or
+        // command-line value survives the metadata baseline
+        GlobalSettings overridden_runtime_settings {false};
+        overridden_runtime_settings.ApplyDefaultSettings();
+        ConfigFile runtime_config {"Common.GameName = LocalGame\n"};
+        overridden_runtime_settings.ApplyConfigFile(runtime_config, "");
+        overridden_runtime_settings.SetCustomSetting("Daylight.SunriseMinute", any_t(string("600")));
+        apply_metadata_settings(overridden_runtime_settings);
+        CHECK(overridden_runtime_settings.GameName == "LocalGame");
+        CHECK(overridden_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "600");
+
+        auto missing_value_output = MakeMetadataBlob({{"Setting", {{"Invalid.WithoutValue", "bool"}}}});
+        EngineMetadata invalid_meta {[] { }};
+        invalid_meta.RegisterSide(EngineSideKind::ClientSide);
+        REQUIRE_THROWS_WITH(RegisterDynamicMetadata(&invalid_meta, missing_value_output), Catch::Matchers::ContainsSubstring("Setting metadata record must contain setting name, value type, and initial value"));
+    }
+
+    SECTION("refuses a pack written in an older file layout")
+    {
+        // Layout 1 wrote the Setting record without its configured value, and a token layout change leaves the
+        // metadata version untouched, so only the file layout version can stop such a pack from being read
+        constexpr uint16_t settings_without_value_layout = 1;
+        STATIC_REQUIRE(METADATA_FILE_VERSION > settings_without_value_layout);
+
+        vector<uint8_t> outdated_metadata;
+        auto writer = DataWriter(outdated_metadata);
+        writer.Write<uint32_t>(METADATA_FILE_MAGIC);
+        writer.Write<uint16_t>(settings_without_value_layout);
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(TEST_METADATA_VERSION.length()));
+        writer.WriteStringBytes(TEST_METADATA_VERSION);
+        writer.Write<uint16_t>(const_numeric_cast<uint16_t>(1));
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(METADATA_SETTING_SECTION.length()));
+        writer.WriteStringBytes(METADATA_SETTING_SECTION);
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1));
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(2));
+
+        for (string_view token : {string_view("Common.GameName"), string_view("string")}) {
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
+            writer.WriteStringBytes(token);
+        }
+
+        CHECK_THROWS_WITH(ReadMetadataVersion(outdated_metadata), Catch::Matchers::ContainsSubstring("resources must be rebaked"));
+
+        EngineMetadata outdated_meta {[] { }};
+        outdated_meta.RegisterSide(EngineSideKind::ClientSide);
+        CHECK_THROWS_AS(RegisterDynamicMetadata(&outdated_meta, outdated_metadata), MetadataOutdatedException);
     }
 
     SECTION("serializes events and remote calls")
@@ -607,6 +864,7 @@ namespace TestMigration
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
+        skip_baked_header(reader);
         auto tag_count = reader.Read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;
@@ -696,10 +954,10 @@ namespace TestRefTypeProps
         const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
         REQUIRE(route_snapshot_type.IsRefType);
         REQUIRE(route_snapshot_type.RefType != nullptr);
-        REQUIRE(route_snapshot_type.RefType->FieldsRegistrator != nullptr);
-        auto steps_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Steps");
-        auto tags_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Tags");
-        auto note_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Note");
+        REQUIRE(route_snapshot_type.RefType->FieldsRegistrar != nullptr);
+        auto steps_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Steps");
+        auto tags_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Tags");
+        auto note_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Note");
         REQUIRE(static_cast<bool>(steps_prop));
         REQUIRE(static_cast<bool>(tags_prop));
         REQUIRE(static_cast<bool>(note_prop));
@@ -739,11 +997,11 @@ namespace TestRefTypeEntityProps
         meta.RegisterEnumGroup("CritterProperty", "uint16", {{"None", 0}});
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
-        auto critter_registrator = meta.GetPropertyRegistrator("Critter");
-        REQUIRE(static_cast<bool>(critter_registrator));
+        auto critter_registrar = meta.GetPropertyRegistrar("Critter");
+        REQUIRE(static_cast<bool>(critter_registrar));
 
-        auto snapshot_prop = critter_registrator->FindProperty("Snapshot");
-        auto snapshots_prop = critter_registrator->FindProperty("Snapshots");
+        auto snapshot_prop = critter_registrar->FindProperty("Snapshot");
+        auto snapshots_prop = critter_registrar->FindProperty("Snapshots");
 
         REQUIRE(static_cast<bool>(snapshot_prop));
         REQUIRE(static_cast<bool>(snapshots_prop));
@@ -753,8 +1011,8 @@ namespace TestRefTypeEntityProps
         CHECK(snapshots_prop->GetViewTypeName() == "RouteSnapshot[]");
         CHECK(snapshots_prop->IsBaseTypeRefType());
         CHECK(snapshots_prop->IsArray());
-        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Steps")));
-        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Note")));
+        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrar->FindProperty("Steps")));
+        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrar->FindProperty("Note")));
     }
 
     SECTION("serializes entity component properties")
@@ -847,14 +1105,14 @@ namespace TestNestedRefTypeProps
         REQUIRE(beta_type.IsRefType);
         REQUIRE(alpha_type.RefType != nullptr);
         REQUIRE(beta_type.RefType != nullptr);
-        REQUIRE(alpha_type.RefType->FieldsRegistrator != nullptr);
-        REQUIRE(beta_type.RefType->FieldsRegistrator != nullptr);
+        REQUIRE(alpha_type.RefType->FieldsRegistrar != nullptr);
+        REQUIRE(beta_type.RefType->FieldsRegistrar != nullptr);
 
-        auto dependency_prop = alpha_type.RefType->FieldsRegistrator->FindProperty("Dependency");
+        auto dependency_prop = alpha_type.RefType->FieldsRegistrar->FindProperty("Dependency");
         REQUIRE(static_cast<bool>(dependency_prop));
         CHECK(dependency_prop->GetViewTypeName() == "Beta");
         CHECK(dependency_prop->IsBaseTypeRefType());
-        CHECK(static_cast<bool>(beta_type.RefType->FieldsRegistrator->FindProperty("Value")));
+        CHECK(static_cast<bool>(beta_type.RefType->FieldsRegistrar->FindProperty("Value")));
     }
 
     SECTION("rejects legacy ref type layout syntax")
@@ -978,7 +1236,7 @@ namespace TestRefTypeComponent
         auto ref_type_it = tags.find("RefType");
 
         REQUIRE(ref_type_it != tags.end());
-        // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating.
+        // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating
         CHECK(std::ranges::count(ref_type_it->second, vector<string> {"RouteSnapshot", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"}) == 1);
     }
 

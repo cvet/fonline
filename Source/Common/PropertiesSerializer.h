@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,10 +42,10 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(PropertySerializationException);
 
-class PropertiesSerializator final
+class PropertiesSerializer final
 {
 public:
-    PropertiesSerializator() = delete;
+    PropertiesSerializer() = delete;
 
     [[nodiscard]] static auto SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document;
     [[nodiscard]] static auto LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool;

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,9 @@
 #include "UpdaterBackend.h"
 #include "DataSerialization.h"
 #include "DiskFileSystem.h"
+#include "FileSystem.h"
 #include "Logging.h"
+#include "MetadataRegistration.h"
 #include "Player.h"
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
@@ -342,9 +344,8 @@ static void ScavengeContentUpdateSnapshotDirs() noexcept
 
             const string owner_path = fs_path_to_string(snapshot_root / string(ContentUpdateSnapshotOwnerFile));
 
-            // A recognizable owner marker plus an obtainable exclusive lock proves that this is
-            // an updater snapshot left by a process that no longer owns it. Locked and unknown
-            // roots are deliberately preserved.
+            // A recognizable owner marker plus an obtainable exclusive lock proves an updater snapshot whose
+            // owning process is gone; locked and unknown roots are deliberately preserved
             if (!IsContentUpdateSnapshotOwnerMarker(owner_path)) {
                 continue;
             }
@@ -677,7 +678,7 @@ static auto ReadUpdateFileData(const T& update_file, uint64_t start_offset, vect
     return update_file.DiskStorage && update_file.DiskStorage->Read(start_offset, data);
 }
 
-void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
+void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -688,7 +689,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     }
 
     // Build the complete immutable catalog off to the side. Any failure while reading or hashing
-    // resources leaves the currently published catalog and its descriptors untouched.
+    // resources leaves the currently published catalog and its descriptors untouched
     auto catalog = SafeAlloc::MakeShared<CatalogState>();
 
     catalog->ManifestSignatureRequired = settings.UpdateManifestSignatureRequired;
@@ -838,6 +839,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         }
     }
 
+    VerifyClientResourcesMetadata(settings, server_metadata_version);
+
     auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
     string platform_binaries_path = fs_path_to_string(platform_binaries_dir);
 
@@ -872,13 +875,32 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     BuildDescriptorSnapshots(*catalog);
 
     // No-throw commit tail: clearing feedback destroys only owned values and moving the shared
-    // catalog pointer cannot throw, so readers never observe a partially rebuilt catalog.
+    // catalog pointer cannot throw, so readers never observe a partially rebuilt catalog
     {
         scoped_lock locker {_catalogLocker};
         FO_VERIFY_AND_THROW(!_catalog || _catalog->Generation < catalog->Generation, "Stale content update catalog load completion", catalog->Generation, _catalog ? _catalog->Generation : 0);
         _sourceFeedback.clear();
         _catalog = std::move(catalog);
     }
+}
+
+void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The server runs on its own resource directory and hands out another one, so a deploy that refreshed only
+    // one of them would hand every synced client a property layout this server cannot talk to
+    FileSystem client_resources;
+    client_resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
+
+    vector<uint8_t> metadata_bin = ReadMetadataBin(&client_resources, "Client");
+    string client_metadata_version = ReadMetadataVersion(metadata_bin);
+
+    if (client_metadata_version != server_metadata_version) {
+        throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.ClientResources, client_metadata_version, settings.ServerResources, server_metadata_version);
+    }
+
+    WriteLog("Client data packs match the server metadata version {}", client_metadata_version);
 }
 
 auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name, int64_t current_synchronized_time_ms, uint64_t feedback_session_id) -> shared_ptr<const vector<uint8_t>>
@@ -1053,7 +1075,7 @@ auto UpdaterBackend::UpsertContentUpdateSource(uint64_t generation, uint32_t fil
     BuildAffectedDescriptorSnapshots(*next_catalog, {file_id});
 
     // No-throw commit tail: a failed descriptor rebuild must preserve both the published catalog
-    // and its accumulated feedback/token state.
+    // and its accumulated feedback/token state
     _catalog = std::move(next_catalog);
     _sourceFeedback.erase(source_identity);
     return true;
@@ -1458,7 +1480,7 @@ void UpdaterBackend::ProcessContentUpdateSourceReport(ptr<Player> player, int64_
 
     if (!IsValidContentUpdateSourceResult(result)) {
         WriteLog(LogType::Warning, "Invalid content update source result {} from client host '{}'", result, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
@@ -1497,13 +1519,13 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (!catalog || file_index >= catalog->UpdateFiles.size()) {
         WriteLog(LogType::Warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
     if (update_file_max_portion_size <= 0) {
         WriteLog(LogType::Warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
@@ -1512,7 +1534,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (start_offset > file_size) {
         WriteLog(LogType::Warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
-        connection->HardDisconnect();
+        connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
@@ -1525,11 +1547,13 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     vector<uint8_t> disk_update_data;
 
     if (update_portion_size != 0 && !update_file->MemoryData) {
+        // Disk-backed packs are served from this catalog generation's private snapshot copy, so the bytes
+        // always match the announced hash even when the source pack is replaced under a live server
         disk_update_data.resize(update_portion_size);
 
         if (!ReadUpdateFileData(*update_file, start_offset, disk_update_data)) {
             WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file->DiskStorage->GetDiskPath(), file_index, connection->GetHost());
-            connection->HardDisconnect();
+            connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }
     }

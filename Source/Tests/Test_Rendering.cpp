@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "ModelSpriteLayout.h"
 #include "Rendering.h"
 
 FO_BEGIN_NAMESPACE
@@ -52,6 +53,17 @@ MainTex = 0
 MainTexBuf = 1
 ProjBuf = 2
 )";
+        }
+
+        if (name == "Effects/Test_DepthVariants.fofx") {
+            return R"([Effect]
+Passes = 1
+DepthVariants = True
+)";
+        }
+
+        if (name == "Effects/Test_DepthVariants.fofx-1-info") {
+            return "[EffectInfo]\n";
         }
 
         throw GenericException("Unexpected test effect request", name);
@@ -100,6 +112,37 @@ TEST_CASE("NullRenderer")
         CHECK(effect->MainTexBuf.has_value());
         CHECK(effect->ProjBuf.has_value());
     }
+
+    SECTION("DepthVariantRequiresBuiltState")
+    {
+        auto dbuf = renderer.CreateDrawBuffer(false);
+        auto fixed_effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader());
+        auto variant_effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_DepthVariants.fofx", MakeTestEffectLoader());
+
+        CHECK(fixed_effect->ResolveDepthVariantSlot(0) == 3);
+
+        fixed_effect->DepthVariant = DepthVariantType::TestNoWrite;
+        CHECK_THROWS_WITH(fixed_effect->DrawBuffer(dbuf), Catch::Matchers::ContainsSubstring("depth state the effect did not build"));
+
+        variant_effect->DepthVariant = DepthVariantType::TestNoWrite;
+        CHECK(variant_effect->ResolveDepthVariantSlot(0) == 2);
+        CHECK_NOTHROW(variant_effect->DrawBuffer(dbuf));
+    }
 }
+
+#if FO_ENABLE_3D
+
+TEST_CASE("ModelSpriteFrameSizeIsBounded")
+{
+    float32_t maximum = const_numeric_cast<float32_t>(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION);
+
+    optional<isize32> maximum_frame = CalculateModelSpriteFrameSize(-maximum * 0.5f, -maximum * 0.75f, maximum * 0.5f, maximum * 0.25f);
+    REQUIRE(maximum_frame);
+    CHECK(*maximum_frame == isize32 {MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION, MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION});
+
+    CHECK_FALSE(CalculateModelSpriteFrameSize(-maximum, -maximum, maximum, maximum));
+}
+
+#endif
 
 FO_END_NAMESPACE

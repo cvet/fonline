@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(*GetInitRef()),
     _protoMap {proto},
@@ -684,7 +684,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         }
 
         // Pure fan-out to every map critter's player plus the spectators (both resolved lock-free, pinned).
-        // Send_Property validates the subject (this map) and reads its data live; the map is in sync here.
+        // Send_Property validates the subject (this map) and reads its data live; the map is in sync here
         for (auto cr : _critters) {
             if (auto player = cr->GetPlayerForSend()) {
                 player->Send_Property(type, prop, entity);
@@ -845,9 +845,8 @@ auto Map::IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // NOT NOT_DESTROYED: this is the post-event re-validation that Map::AddItem calls after firing
-    // OnItemOnMapAppeared (which may destroy this map). It must run on a destroyed self and report the change
-    // via the graceful return below — a strict flag would assert before reaching it.
+    // NOT NOT_DESTROYED: OnItemOnMapAppeared may destroy this map before post-event revalidation.
+    // Report that state through the return value instead of asserting
     FO_VALIDATE_ENTITY(LOCKED);
 
     if (IsDestroyed() || item->IsDestroyed()) {
@@ -1293,9 +1292,8 @@ auto Map::GetStaticItemsOnHex(mpos hex) noexcept -> span<ptr<StaticItem>>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    // Read the shared static grid (read-only proto data shared across all runtime maps of this proto). The
-    // cell is guaranteed present by the empty-check, so reuse it rather than GetCellForWriting, which would
-    // mutate/insert into the shared grid concurrently with another runtime map's read (different locks).
+    // Reuse the guaranteed shared prototype cell without invoking mutating GetCellForWriting.
+    // Runtime-map locks do not serialize this cross-map static grid
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
     if (static_field.StaticItems.empty()) {

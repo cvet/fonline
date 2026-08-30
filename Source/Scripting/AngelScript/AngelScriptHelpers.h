@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -60,7 +60,7 @@ FO_BEGIN_NAMESPACE
     }
 
 #ifdef AS_MAX_PORTABILITY
-#define FO_SCRIPT_GENERIC(name) AngelScript::asFUNCTION(name)
+#define FO_SCRIPT_GENERIC(name) asFUNCTION(name)
 #define FO_SCRIPT_FUNC(name) FO_AS_WRAP_FN(name)
 #define FO_SCRIPT_FUNC_EXT(name, params, ret) FO_AS_WRAP_FN_PR(name, params, ret)
 #define FO_SCRIPT_FUNC_THIS(name) FO_AS_WRAP_OBJ_FIRST(name)
@@ -71,12 +71,12 @@ FO_BEGIN_NAMESPACE
 #define FO_SCRIPT_FUNC_THIS_CONV AngelScript::asCALL_GENERIC
 #define FO_SCRIPT_METHOD_CONV AngelScript::asCALL_GENERIC
 #else
-#define FO_SCRIPT_GENERIC(name) AngelScript::asFUNCTION(name)
-#define FO_SCRIPT_FUNC(name) AngelScript::asFUNCTION(name)
-#define FO_SCRIPT_FUNC_EXT(name, params, ret) AngelScript::asFUNCTIONPR(name, params, ret)
-#define FO_SCRIPT_FUNC_THIS(name) AngelScript::asFUNCTION(name)
-#define FO_SCRIPT_METHOD(type, name) AngelScript::asMETHOD(type, name)
-#define FO_SCRIPT_METHOD_EXT(type, name, params, ret) AngelScript::asMETHODPR(type, name, params, ret)
+#define FO_SCRIPT_GENERIC(name) asFUNCTION(name)
+#define FO_SCRIPT_FUNC(name) asFUNCTION(name)
+#define FO_SCRIPT_FUNC_EXT(name, params, ret) asFUNCTIONPR(name, params, ret)
+#define FO_SCRIPT_FUNC_THIS(name) asFUNCTION(name)
+#define FO_SCRIPT_METHOD(type, name) asMETHOD(type, name)
+#define FO_SCRIPT_METHOD_EXT(type, name, params, ret) asMETHODPR(type, name, params, ret)
 #define FO_SCRIPT_GENERIC_CONV AngelScript::asCALL_GENERIC
 #define FO_SCRIPT_FUNC_CONV AngelScript::asCALL_CDECL
 #define FO_SCRIPT_FUNC_THIS_CONV AngelScript::asCALL_CDECL_OBJFIRST
@@ -123,9 +123,9 @@ auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> Scrip
 
 [[nodiscard]] auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
 [[nodiscard]] auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
-// GetArgAddress returns the argument value, which for a handle/pointer arg may legitimately be null, so it is nullable.
+// GetArgAddress returns the argument value, which for a handle/pointer arg may legitimately be null, so it is nullable
 [[nodiscard]] auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>;
-// GetAddressOfArg returns the address of the argument's storage slot, which always exists, so it is non-null.
+// GetAddressOfArg returns the address of the argument's storage slot, which always exists, so it is non-null
 [[nodiscard]] auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>;
 [[nodiscard]] auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>;
 [[nodiscard]] auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index) noexcept -> ptr<void>;
@@ -204,16 +204,16 @@ FO_END_NAMESPACE
 #include <angelscript.h>
 FO_BEGIN_NAMESPACE
 
-#define FO_AS_WRAP_FN(name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::FunctionWrapper<name>::f))
-#define FO_AS_WRAP_MFN(ClassType, name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::MethodWrapper<&ClassType::name>::f))
-#define FO_AS_WRAP_OBJ_FIRST(name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::ObjFirstWrapper<name>::f))
-#define FO_AS_WRAP_OBJ_LAST(name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::ObjLastWrapper<name>::f))
-#define FO_AS_WRAP_FN_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::FunctionWrapper<static_cast<ReturnType(*) Parameters>(name)>::f))
-#define FO_AS_WRAP_MFN_PR(ClassType, name, Parameters, ReturnType) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::MethodWrapper<AS_METHOD_AMBIGUITY_CAST(ReturnType(ClassType::*) Parameters)(&ClassType::name)>::f))
-#define FO_AS_WRAP_OBJ_FIRST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::ObjFirstWrapper<static_cast<ReturnType(*) Parameters>(name)>::f))
-#define FO_AS_WRAP_OBJ_LAST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::ObjLastWrapper<static_cast<ReturnType(*) Parameters>(name)>::f))
-#define FO_AS_WRAP_CON(ClassType, Parameters) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::ConstructorWrapper<ClassType Parameters>::f))
-#define FO_AS_WRAP_DES(ClassType) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::destroy<ClassType>))
+#define FO_AS_WRAP_FN(name) asFUNCTION((FO_NAMESPACE aswrap::FunctionWrapper<name>::f))
+#define FO_AS_WRAP_MFN(ClassType, name) asFUNCTION((FO_NAMESPACE aswrap::MethodWrapper<&ClassType::name>::f))
+#define FO_AS_WRAP_OBJ_FIRST(name) asFUNCTION((FO_NAMESPACE aswrap::ObjFirstWrapper<name>::f))
+#define FO_AS_WRAP_OBJ_LAST(name) asFUNCTION((FO_NAMESPACE aswrap::ObjLastWrapper<name>::f))
+#define FO_AS_WRAP_FN_PR(name, Parameters, ReturnType) asFUNCTION((FO_NAMESPACE aswrap::FunctionWrapper<static_cast<ReturnType(*) Parameters>(name)>::f))
+#define FO_AS_WRAP_MFN_PR(ClassType, name, Parameters, ReturnType) asFUNCTION((FO_NAMESPACE aswrap::MethodWrapper<AS_METHOD_AMBIGUITY_CAST(ReturnType(ClassType::*) Parameters)(&ClassType::name)>::f))
+#define FO_AS_WRAP_OBJ_FIRST_PR(name, Parameters, ReturnType) asFUNCTION((FO_NAMESPACE aswrap::ObjFirstWrapper<static_cast<ReturnType(*) Parameters>(name)>::f))
+#define FO_AS_WRAP_OBJ_LAST_PR(name, Parameters, ReturnType) asFUNCTION((FO_NAMESPACE aswrap::ObjLastWrapper<static_cast<ReturnType(*) Parameters>(name)>::f))
+#define FO_AS_WRAP_CON(ClassType, Parameters) asFUNCTION((FO_NAMESPACE aswrap::ConstructorWrapper<ClassType Parameters>::f))
+#define FO_AS_WRAP_DES(ClassType) asFUNCTION((FO_NAMESPACE aswrap::destroy<ClassType>))
 
 namespace aswrap
 {

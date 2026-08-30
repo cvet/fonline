@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,8 @@
 #include "ParticleRuntime.h"
 
 FO_BEGIN_NAMESPACE
+
+void InitializeEffekseerMemory() noexcept;
 
 class EffekseerParticleRuntimeBackend;
 
@@ -96,11 +98,19 @@ private:
     unique_ptr<Impl> _impl;
 };
 
-// A baked Effekseer effect carries its precomputed world-space bounds as a fixed-size trailer appended after the
-// compiled "SKFE" payload (the effect keeps its magic at offset 0). Only our runtime reads the .efk - it is never
-// reopened by the Effekseer editor - so appending the trailer is safe: the baker writes it, and the runtime splits it
-// back off and hands the untouched payload to Effekseer::Effect::Create. Baking the trailer is mandatory, so a
-// missing or malformed one is a broken invariant of our baked data and throws rather than being silently skipped.
+// Enforced before Effekseer's unchecked parser allocates from serialized counts, so a compact count bomb cannot
+// amplify into an unbounded decoded model
+inline constexpr size_t EFFEKSEER_MODEL_PAYLOAD_SIZE_MAX = 64U * 1024U * 1024U;
+inline constexpr int32_t EFFEKSEER_MODEL_FRAME_COUNT_MAX = 4096;
+inline constexpr int32_t EFFEKSEER_MODEL_VERTEX_COUNT_MAX = 64000;
+inline constexpr int32_t EFFEKSEER_MODEL_FACE_COUNT_MAX = EFFEKSEER_MODEL_VERTEX_COUNT_MAX / 3;
+
+// Effekseer's model constructor trusts every serialized count without consulting the buffer size, so the part it
+// will read is validated first; a valid legacy payload may carry trailing bytes it ignores
+auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>;
+
+// Only our runtime reads the .efk — the Effekseer editor never reopens it — so the baker may append this trailer
+// after the payload; it is mandatory, and a missing or malformed one throws
 constexpr uint32_t EFFEKSEER_BOUNDS_TRAILER_MAGIC = 0x42424546u; // bytes 'F','E','B','B' little-endian
 
 struct EffekseerBoundsTrailer

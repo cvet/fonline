@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,7 @@ constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
 
 class RenderEffect;
 class Sprite;
+class ItemHexView;
 class MapSpriteList;
 
 ///@ ExportEnum
@@ -129,6 +130,8 @@ public:
     [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect ? *_drawEffect : nullptr; }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
     [[nodiscard]] auto GetMapProjected() const noexcept -> bool { return _mapProjected; }
+    [[nodiscard]] auto GetItemOwner() const noexcept -> nptr<ItemHexView> { return _itemOwner; }
+    [[nodiscard]] auto IsItemHitTestWhenHidden() const noexcept -> bool { return _itemHitTestWhenHidden; }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
@@ -140,6 +143,7 @@ public:
     void SetElevation(int16_t elevation) noexcept;
     void SetAngle(int16_t angle) noexcept;
     void SetMapProjected(bool map_projected) noexcept;
+    void SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept;
     void CreateExtraChain(ptr<MapSprite*> mspr);
     void AddToExtraChain(ptr<MapSprite> mspr);
 
@@ -159,9 +163,8 @@ private:
     ipos32 _hexOffset {};
     nptr<const ipos32> _pHexOffset {};
     nptr<const ipos32> _pSprOffset {};
-    // Static logical-root offset (item proto Offset): the bottom-center→trunk vector. Kept separate from
-    // _pSprOffset (which still positions the bitmap) so the depth/sort anchor can use the logical root, not the
-    // bitmap bottom-center. Null for sprites without one (critters, particles).
+    // Static bottom-center-to-logical-root offset kept separate from the bitmap-positioning _pSprOffset.
+    // Null for sprites without a logical-root adjustment
     nptr<const ipos32> _pRootOffset {};
     nptr<const uint8_t> _alpha {};
     nptr<const ucolor> _light {};
@@ -176,6 +179,8 @@ private:
     nptr<MapSprite*> _extraChainRoot {};
     nptr<MapSprite> _extraChainParent {};
     nptr<MapSprite> _extraChainChild {};
+    nptr<ItemHexView> _itemOwner {};
+    bool _itemHitTestWhenHidden {};
 };
 
 class MapSpriteList final

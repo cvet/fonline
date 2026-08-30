@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,11 @@
 #include "GlobalData.h"
 #include "StackTrace.h"
 
+// Only the non-rpmalloc Windows path needs the CRT aligned allocation entry points
+#if !FO_HAVE_RPMALLOC && FO_WINDOWS
+#include <malloc.h>
+#endif
+
 FO_BEGIN_NAMESPACE
 
 struct MemorySystemData
@@ -45,6 +50,15 @@ struct MemorySystemData
     BadAllocCallback Callback {};
 };
 FO_GLOBAL_DATA(MemorySystemData, MemorySystem);
+
+// Unpoliced primitives that only report failure by returning null, kept out of the public header so
+// every caller goes through SafeAlloc and its out-of-memory contract
+static auto MemMalloc(size_t size) noexcept -> nptr<void>;
+static auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>;
+static auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>;
+static void MemFree(nptr<void> ptr) noexcept;
+static auto MemAlignedMalloc(size_t size, size_t alignment) noexcept -> nptr<void>;
+static void MemAlignedFree(nptr<void> ptr) noexcept;
 
 static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;
 static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb = 10mb
@@ -303,7 +317,115 @@ FO_BEGIN_NAMESPACE
 
 #endif
 
-extern auto MemMalloc(size_t size) noexcept -> nptr<void>
+auto SafeAlloc::MallocRaw(size_t size) noexcept -> nptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<void> mem = MemMalloc(size);
+
+    if (!mem && size != 0) {
+        ReportBadAlloc("Raw malloc failed", "byte", 1, size);
+
+        while (!mem && FreeBackupMemoryChunk()) {
+            mem = MemMalloc(size);
+        }
+
+        if (!mem) {
+            ReportAndExit("Failed to allocate raw from backup pool");
+        }
+    }
+
+    return mem;
+}
+
+auto SafeAlloc::CallocRaw(size_t num, size_t size) noexcept -> nptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (size != 0 && num > std::numeric_limits<size_t>::max() / size) {
+        ReportBadAlloc("Raw calloc size overflow", "byte", num, size);
+        ReportAndExit("Raw calloc size overflow");
+    }
+
+    nptr<void> mem = MemCalloc(num, size);
+
+    if (!mem && num != 0 && size != 0) {
+        ReportBadAlloc("Raw calloc failed", "byte", num, size);
+
+        while (!mem && FreeBackupMemoryChunk()) {
+            mem = MemCalloc(num, size);
+        }
+
+        if (!mem) {
+            ReportAndExit("Failed to allocate raw zeroed from backup pool");
+        }
+    }
+
+    return mem;
+}
+
+auto SafeAlloc::ReallocRaw(nptr<void> ptr, size_t size) noexcept -> nptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<void> mem = MemRealloc(ptr, size);
+
+    if (!mem && size != 0) {
+        ReportBadAlloc("Raw realloc failed", "byte", 1, size);
+
+        while (!mem && FreeBackupMemoryChunk()) {
+            mem = MemRealloc(ptr, size);
+        }
+
+        if (!mem) {
+            ReportAndExit("Failed to reallocate raw from backup pool");
+        }
+    }
+
+    return mem;
+}
+
+void SafeAlloc::FreeRaw(nptr<void> ptr) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    MemFree(ptr);
+}
+
+auto SafeAlloc::MallocAlignedRaw(size_t size, size_t alignment) noexcept -> nptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
+        ReportBadAlloc("Raw aligned malloc received invalid alignment", "byte", alignment, size);
+        ReportAndExit("Raw aligned allocation alignment is invalid");
+    }
+
+    nptr<void> mem = MemAlignedMalloc(size, alignment);
+
+    if (!mem && size != 0) {
+        ReportBadAlloc("Raw aligned malloc failed", "byte", alignment, size);
+
+        while (!mem && FreeBackupMemoryChunk()) {
+            mem = MemAlignedMalloc(size, alignment);
+        }
+
+        if (!mem) {
+            ReportAndExit("Failed to allocate raw aligned from backup pool");
+        }
+    }
+
+    return mem;
+}
+
+void SafeAlloc::FreeAlignedRaw(nptr<void> ptr) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    MemAlignedFree(ptr);
+}
+
+static auto MemMalloc(size_t size) noexcept -> nptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -319,7 +441,7 @@ extern auto MemMalloc(size_t size) noexcept -> nptr<void>
 #endif
 }
 
-extern auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>
+static auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -342,7 +464,7 @@ extern auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>
 #endif
 }
 
-extern auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>
+static auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -359,7 +481,7 @@ extern auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>
 #endif
 }
 
-extern void MemFree(nptr<void> ptr) noexcept
+static void MemFree(nptr<void> ptr) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -368,6 +490,48 @@ extern void MemFree(nptr<void> ptr) noexcept
     tracy::rpfree(ptr.get());
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     rpfree(ptr.get());
+#else
+    free(ptr.get());
+#endif
+}
+
+static auto MemAlignedMalloc(size_t size, size_t alignment) noexcept -> nptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC && FO_TRACY
+    tracy::InitRpmalloc();
+    void* p = tracy::rpaligned_alloc(alignment, size);
+    TracyAlloc(p, size);
+    return p;
+#elif FO_HAVE_RPMALLOC && !FO_TRACY
+    return rpaligned_alloc(alignment, size);
+#elif FO_WINDOWS
+    return _aligned_malloc(size, alignment);
+#else
+    void* p = nullptr;
+    // posix_memalign rejects alignments below sizeof(void*); over-aligning is always safe
+    size_t effective_alignment = std::max(alignment, sizeof(void*));
+
+    if (::posix_memalign(&p, effective_alignment, size) != 0) {
+        return nullptr;
+    }
+
+    return p;
+#endif
+}
+
+static void MemAlignedFree(nptr<void> ptr) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC && FO_TRACY
+    TracyFree(ptr.get());
+    tracy::rpfree(ptr.get());
+#elif FO_HAVE_RPMALLOC && !FO_TRACY
+    rpfree(ptr.get());
+#elif FO_WINDOWS
+    _aligned_free(ptr.get());
 #else
     free(ptr.get());
 #endif

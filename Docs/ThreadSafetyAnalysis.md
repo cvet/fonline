@@ -36,6 +36,7 @@ is a plain `std::` → `fo::` swap:
 |------|-----------------|---------|
 | `fo::mutex` | `std::mutex` | exclusive-only state |
 | `fo::shared_mutex` | `std::shared_mutex` | reader/writer state |
+| `fo::atomic_mutex` | `std::atomic_flag` park/wake | short critical sections reached from `noexcept` code, where a `std::mutex` acquisition failure would have no reporting path |
 | `fo::scoped_lock<T>` | `std::scoped_lock` / `std::lock_guard` | exclusive RAII guard for `mutex` *or* `shared_mutex` (CTAD: `scoped_lock lk {m}`) |
 | `fo::shared_lock<T>` | `std::shared_lock` | shared (reader) RAII guard for `shared_mutex` |
 | `fo::unique_lock<T>` | `std::unique_lock` | exclusive guard with manual `lock()`/`unlock()`, usable with `std::condition_variable_any` |

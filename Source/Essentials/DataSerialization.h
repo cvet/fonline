@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-// Data serialization helpers.
+// Data serialization helpers
 FO_DECLARE_EXCEPTION(DataReadingException);
 
 inline void span_align_pos(size_t& pos, size_t alignment)
@@ -243,7 +243,7 @@ public:
     [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return _dataBuf.size() - _readPos; }
 
     // Preflights an untrusted element count before a caller allocates or loops. Variable-size items pass their
-    // minimum wire size.
+    // minimum wire size
     void VerifyPayloadCount(size_t count, size_t minimum_item_size) const
     {
         FO_VERIFY_AND_THROW(minimum_item_size != 0, "Payload minimum item size is zero");
@@ -277,7 +277,7 @@ public:
         }
     }
 
-    // Reads a zero-copy view of the next `size` bytes as text (no length prefix); the view borrows the underlying buffer.
+    // Reads a zero-copy view of the next `size` bytes as text (no length prefix); the view borrows the underlying buffer
     auto ReadStringView(size_t size) -> string_view
     {
         const_span<uint8_t> bytes = ReadBytes(size);
@@ -291,7 +291,7 @@ public:
         return {chars.get(), bytes.size()};
     }
 
-    // Reads a self-describing string written with WriteString (uint32 length prefix + bytes).
+    // Reads a self-describing string written with WriteString (uint32 length prefix + bytes)
     auto ReadString() -> string
     {
         uint32_t len = Read<uint32_t>();
@@ -306,7 +306,7 @@ public:
         return value;
     }
 
-    // Reads a self-describing vector of strings written with WriteStringVector (uint32 count + each element via ReadString).
+    // Reads a self-describing vector of strings written with WriteStringVector (uint32 count + each element via ReadString)
     auto ReadStringVector() -> vector<string>
     {
         uint32_t count = Read<uint32_t>();
@@ -338,7 +338,7 @@ public:
         }
     }
 
-    // Reads a self-describing vector of trivially-copyable objects written with WriteSizedObjectVector (uint32 count + elements).
+    // Reads a self-describing vector of trivially-copyable objects written with WriteSizedObjectVector (uint32 count + elements)
     template<typename T>
         requires(std::is_standard_layout_v<T>)
     auto ReadSizedObjectVector() -> vector<T>
@@ -451,7 +451,7 @@ public:
         }
     }
 
-    // Writes a self-describing string (uint32 length prefix + bytes); read back with DataReader::ReadString.
+    // Writes a self-describing string (uint32 length prefix + bytes); read back with DataReader::ReadString
     void WriteString(string_view data)
     {
         Write<uint32_t>(numeric_cast<uint32_t>(data.length()));
@@ -488,7 +488,7 @@ public:
         }
     }
 
-    // Writes the elements of a vector without a length prefix; the reader must already know the count.
+    // Writes the elements of a vector without a length prefix; the reader must already know the count
     template<typename T>
     void WriteObjectVector(const vector<T>& values)
     {
@@ -497,7 +497,7 @@ public:
         }
     }
 
-    // Writes a self-describing vector of trivially-copyable objects (uint32 count + elements); read back with DataReader::ReadObjectVector.
+    // Writes a self-describing vector of trivially-copyable objects (uint32 count + elements); read back with DataReader::ReadObjectVector
     template<typename T>
     void WriteSizedObjectVector(const vector<T>& values)
     {
@@ -505,7 +505,7 @@ public:
         WriteObjectVector(values);
     }
 
-    // Writes a self-describing vector of strings (uint32 count + each element via WriteString); read back with DataReader::ReadStringVector.
+    // Writes a self-describing vector of strings (uint32 count + each element via WriteString); read back with DataReader::ReadStringVector
     void WriteStringVector(const vector<string>& values)
     {
         Write<uint32_t>(numeric_cast<uint32_t>(values.size()));

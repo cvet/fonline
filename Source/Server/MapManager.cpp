@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@
 #include "EntityManager.h"
 #include "ItemManager.h"
 #include "LineTracer.h"
+#include "MapLoader.h"
 #include "Player.h"
 #include "ProtoManager.h"
 #include "Server.h"
@@ -56,7 +57,7 @@ void MapManager::LoadFromResources()
     FO_STACK_TRACE_ENTRY();
 
     auto map_files = _engine->Resources.FilterFiles("fomap-bin-server");
-    std::vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
+    vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
 
     for (const auto& map_file_header : map_files) {
         hstring map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
@@ -72,6 +73,8 @@ void MapManager::LoadFromResources()
             auto map_file = File::Load(map_file_header_copy);
             auto reader = DataReader(map_file.GetDataSpan());
 
+            MapLoader::ReadBakedFileHeader(reader, map_proto->GetName());
+
             auto map_size = map_proto->GetSize();
             auto static_map = SafeAlloc::MakeUnique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
 
@@ -79,12 +82,12 @@ void MapManager::LoadFromResources()
             {
                 auto hashes_count = reader.Read<uint32_t>();
 
-                string str;
+                // Counts and sizes come from a resource file that may be stale or damaged, so every one of them
+                // is preflighted against the buffer before it drives an allocation or a loop
+                reader.VerifyPayloadCount(hashes_count, sizeof(uint32_t));
 
                 for (uint32_t i = 0; i < hashes_count; i++) {
-                    auto str_len = reader.Read<uint32_t>();
-                    str.resize(str_len);
-                    reader.ReadStringBytes(str);
+                    string str = reader.ReadString();
                     hstring hstr = _engine->Hashes.ToHashedString(str);
                     ignore_unused(hstr);
                 }
@@ -97,6 +100,8 @@ void MapManager::LoadFromResources()
                 // Read critters
                 {
                     auto cr_count = reader.Read<uint32_t>();
+
+                    reader.VerifyPayloadCount(cr_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
                     static_map->CritterBillets.reserve(cr_count);
 
@@ -111,8 +116,9 @@ void MapManager::LoadFromResources()
                             throw MapManagerException("Critter proto not found on map", map_proto->GetName(), cr_pid);
                         }
 
-                        auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrator());
+                        auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrar());
                         auto props_data_size = reader.Read<uint32_t>();
+                        reader.VerifyPayloadCount(props_data_size, sizeof(uint8_t));
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
                         reader.ReadBytes(props_data_span);
@@ -135,6 +141,8 @@ void MapManager::LoadFromResources()
                 {
                     auto item_count = reader.Read<uint32_t>();
 
+                    reader.VerifyPayloadCount(item_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
+
                     static_map->ItemBillets.reserve(item_count);
                     static_map->HexItemBillets.reserve(item_count);
                     static_map->ChildItemBillets.reserve(item_count);
@@ -152,8 +160,9 @@ void MapManager::LoadFromResources()
                             throw MapManagerException("Item proto not found on map", map_proto->GetName(), item_pid);
                         }
 
-                        auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
+                        auto item_props = Properties(item_proto->GetProperties()->GetRegistrar());
                         auto props_data_size = reader.Read<uint32_t>();
+                        reader.VerifyPayloadCount(props_data_size, sizeof(uint8_t));
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
                         reader.ReadBytes(props_data_span);
@@ -422,7 +431,7 @@ void MapManager::DestroyMapContent(ptr<Map> map)
             _engine->ItemMngr.DestroyItem(item);
         }
 
-        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption.
+        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption
         size_t remaining_deps = map->GetCritters().size() + map->GetItems().size();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Map content destruction made no progress", map->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
@@ -622,7 +631,7 @@ void MapManager::DestroyLocation(ptr<Location> loc)
             ReportExceptionAndContinue(ex);
         }
 
-        // Each pass must strictly reduce the location's remaining inner entities; non-convergence is corruption.
+        // Each pass must strictly reduce the location's remaining inner entities; non-convergence is corruption
         size_t remaining_deps = loc->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Location inner-entity destruction made no progress", loc->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
@@ -670,7 +679,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
 
     EnsureEntitySynced(map);
 
-    // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap.
+    // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap
     while (map->HasSpectatorPlayers()) {
         auto player = map->GetSpectatorPlayers().back();
         ValidateEntityAccess(player);
@@ -692,7 +701,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
             ReportExceptionAndContinue(ex);
         }
 
-        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption.
+        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption
         size_t remaining_deps = map->GetCritters().size() + map->GetItems().size() + map->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Map destruction made no progress", map->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
@@ -1120,7 +1129,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         }
     }
 
-    // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments.
+    // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments
     ValidateEntityAccess(cr);
     ValidateEntityAccess(prev_map_ref);
     _engine->OnCritterTransfer.Fire(cr, prev_map_ref);
@@ -1190,7 +1199,7 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
         }
         else {
             // Tight lambda so the property lock is released (even on a throw) exactly when the
-            // trip-id read/advance finishes, without widening the locked region over the work below.
+            // trip-id read/advance finishes, without widening the locked region over the work below
             auto trip_id = [this]() {
                 _engine->LockForPropertyAccess();
                 auto unlock_prop = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });

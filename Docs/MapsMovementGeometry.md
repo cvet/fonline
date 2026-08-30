@@ -62,6 +62,30 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 
 `mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
 
+## Map camera projection
+
+The map camera works in a world frame of `+X` right, `+Y` up (elevation), `+Z` map-south, where one world
+unit is one pixel of hex spacing. It is a parallel (orthographic) projection that rigidly tilts the world
+about X by `MAP_CAMERA_ANGLE` (`arcsin(sqrt(3)/4)`, the angle that keeps hexes metric-regular): ground
+northing is foreshortened by `sin(angle)` (`== 1 / GetYProj()`) and elevation by `cos(angle)`. Anchoring a
+ground point at `z = legacy_y / sin(angle)` makes `ProjectWorldToMap` reproduce the legacy `GetHexPos`
+screen position exactly at elevation 0, so 3D models render in the same frame with no extra transform.
+
+`ProjectWorldToMap` is the reference form with no scroll or zoom. It returns map-space pixels in `.x`/`.y`
+(legacy convention, Y down) and view depth in `.z`, where a larger depth is nearer the camera and therefore
+drawn on top. The `(.y, .z)` pair is an orthonormal rotation of the world `(Z, Y)` pair, which makes this a
+true rigid camera tilt rather than a shear.
+
+`MakeMapCameraView` is the GPU form of the same projection with the camera's scroll (translate) and zoom
+(scale) folded in, plus a `yaw_deg` that orbits the camera about the vertical axis for a real 3D camera.
+At `yaw == 0` it reproduces the fixed isometric view: `(ProjectWorldToMap(world).xy - scroll) * zoom`, depth
+unchanged. The renderer composes the backend ortho on top (`MapViewProj = CreateOrthoMatrix(0, w, h, 0,
+near, far) * MakeMapCameraView`), so sprites, 3D models, and particles share one world→clip matrix. 2D map
+sprites write per-vertex world depth and test it with `DepthFunc = LessEqual` — the CPU painter sort still
+orders blended layers — so the shared depth buffer resolves occlusion across all three.
+
+`Test_Geometry.cpp` pins both forms against each other and against `GetHexPos`. `GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`, so changing the view origin translates every hex by one pixel delta; `MapView` relies on that identity when it shifts cached light primitives on scroll.
+
 ## Geometry helper responsibilities
 
 `GeometryHelper` is a static utility class. It owns coordinate projection and directional math such as:
@@ -96,7 +120,10 @@ Important `FindPathInput` fields:
 - `FromHex` / `ToHex` — requested route endpoints.
 - `ToHexOffset` — the target's real sub-hex offset within `ToHex` (the continuous target position is `ToHex` center + `ToHexOffset`). Used only by the `FreeMovement` end-offset computation.
 - `MapSize` — bounds for all checks.
-- `MaxLength` — maximum BFS depth, normally derived from engine settings.
+- `MaxLength` — maximum BFS depth, normally derived from engine settings. It bounds the search depth
+  only: the visited grid is sized by `min(MaxLength + 1, max(map width, map height))` per axis,
+  because the search never steps off the map and never travels further than the depth limit. Raising
+  the setting therefore costs nothing on maps smaller than the new limit.
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).

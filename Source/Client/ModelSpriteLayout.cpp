@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "ModelSpriteLayout.h"
 
@@ -37,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr float32_t MODEL_SPRITE_LAYOUT_GUARD = 2.0f;
-// Keep in sync with the default 3D_Skinned shadow pass.
+// Keep in sync with the default 3D_Skinned shadow pass
 static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
 static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
@@ -55,9 +56,9 @@ static auto IsFinite(const mat44& value) -> bool;
 static auto CalculateHarmonicRange(float32_t value_0, float32_t value_90, float32_t value_180) -> optional<pair<float32_t, float32_t>>;
 static void IncludeProjectedRange(ProjectedLayoutBounds& bounds, const pair<float32_t, float32_t>& x_range, const pair<float32_t, float32_t>& y_range);
 static auto IncludeProjectedCorner(const vec3& point, const mat44& post_direction_transform, float32_t projection_factor, bool include_shadow, const vec3& ground_pos, ProjectedLayoutBounds& body_bounds, ProjectedLayoutBounds& draw_bounds) -> bool;
-static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>;
+static auto RoundFrameDimension(uint64_t value, bool clamp_to_max, uint64_t max_value) -> optional<int32_t>;
 
-auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y) -> optional<isize32>
+auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, bool clamp_to_max_frame, isize32 max_logical_frame) -> optional<isize32>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -72,8 +73,11 @@ auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t m
         return std::nullopt;
     }
 
-    optional<int32_t> width = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_width)));
-    optional<int32_t> height = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_height)));
+    // An empty cap means the caller has no live device, so the portable ceiling applies
+    int32_t max_width = max_logical_frame.width > 0 ? max_logical_frame.width : MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION;
+    int32_t max_height = max_logical_frame.height > 0 ? max_logical_frame.height : MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION;
+    optional<int32_t> width = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_width)), clamp_to_max_frame, numeric_cast<uint64_t>(max_width));
+    optional<int32_t> height = RoundFrameDimension(std::max<uint64_t>(4, iround<uint64_t>(required_height)), clamp_to_max_frame, numeric_cast<uint64_t>(max_height));
 
     if (!width || !height) {
         return std::nullopt;
@@ -112,7 +116,112 @@ auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float3
     };
 }
 
-auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow) -> optional<ModelSpriteLayout>
+auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpriteFramePlacement required) -> optional<ModelSpriteFramePlacement>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // An animation or attached effect may put the whole visible envelope on one side of the root, so the pivot is
+    // a signed root-relative anchor and only the frame dimensions must be positive
+    auto is_valid = [](const ModelSpriteFramePlacement& placement) noexcept { return placement.Size.width > 0 && placement.Size.height > 0; };
+
+    if (!is_valid(current) || !is_valid(required)) {
+        return std::nullopt;
+    }
+
+    // Quantize each side, not just the extents, so a pivot that drifts by a pixel keeps the same frame.
+    // Rounding towards +infinity also covers a negative side (the root may sit outside the tight frame).
+    auto align_up = [](int64_t value) noexcept -> int64_t {
+        constexpr int64_t alignment = MODEL_SPRITE_FRAME_ALIGNMENT;
+        int64_t steps = value >= 0 ? (value + alignment - 1) / alignment : -((-value) / alignment);
+        return steps * alignment;
+    };
+
+    int64_t left = align_up(std::max<int64_t>(current.Pivot.x, required.Pivot.x));
+    int64_t top = align_up(std::max<int64_t>(current.Pivot.y, required.Pivot.y));
+    int64_t right = align_up(std::max<int64_t>(numeric_cast<int64_t>(current.Size.width) - current.Pivot.x, numeric_cast<int64_t>(required.Size.width) - required.Pivot.x));
+    int64_t bottom = align_up(std::max<int64_t>(numeric_cast<int64_t>(current.Size.height) - current.Pivot.y, numeric_cast<int64_t>(required.Size.height) - required.Pivot.y));
+    int64_t width = left + right;
+    int64_t height = top + bottom;
+
+    if (width <= 0 || height <= 0 || width > std::numeric_limits<int32_t>::max() || height > std::numeric_limits<int32_t>::max()) {
+        return std::nullopt;
+    }
+
+    return ModelSpriteFramePlacement {
+        .Size = {numeric_cast<int32_t>(width), numeric_cast<int32_t>(height)},
+        .Pivot = {numeric_cast<int32_t>(left), numeric_cast<int32_t>(top)},
+    };
+}
+
+auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, isize32 max_logical_frame) -> ModelBounds3D
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Names anchor to the stable idle silhouette so a raised weapon cannot lift them, except for a pose that sits
+    // lower; tops are compared after the base transforms, since an imported model's raw Max.y is not a height
+    if (!active_animation_bounds || !IsValidModelBounds(*active_animation_bounds) || !IsValidModelBounds(idle_bounds)) {
+        return idle_bounds;
+    }
+
+    optional<ModelSpriteLayout> idle_layout = CalculateModelSpriteLayout(idle_bounds, post_direction_transform, pre_direction_transform, projection_factor, false, false, max_logical_frame);
+    optional<ModelSpriteLayout> active_layout = CalculateModelSpriteLayout(*active_animation_bounds, post_direction_transform, pre_direction_transform, projection_factor, false, false, max_logical_frame);
+
+    if (!idle_layout || !active_layout) {
+        return idle_bounds;
+    }
+
+    return active_layout->ViewRect.y > idle_layout->ViewRect.y ? *active_animation_bounds : idle_bounds;
+}
+
+auto ResolveModelSpriteMaxLogicalFrame(int32_t max_texture_width, int32_t max_texture_height, int32_t device_atlas_width, int32_t device_atlas_height) -> isize32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The floor is applied last: one grid step must stay allocatable however small the setting or the device atlas is
+    constexpr int32_t min_texture = MODEL_SPRITE_FRAME_SCALE * MODEL_SPRITE_FRAME_ALIGNMENT;
+    int32_t texture_width = max_texture_width;
+    int32_t texture_height = max_texture_height;
+
+    if (device_atlas_width > 0) {
+        texture_width = std::min(texture_width, device_atlas_width);
+    }
+
+    if (device_atlas_height > 0) {
+        texture_height = std::min(texture_height, device_atlas_height);
+    }
+
+    texture_width = std::max(texture_width, min_texture);
+    texture_height = std::max(texture_height, min_texture);
+
+    int32_t logical_width = texture_width / MODEL_SPRITE_FRAME_SCALE;
+    int32_t logical_height = texture_height / MODEL_SPRITE_FRAME_SCALE;
+    logical_width = std::max((logical_width / MODEL_SPRITE_FRAME_ALIGNMENT) * MODEL_SPRITE_FRAME_ALIGNMENT, MODEL_SPRITE_FRAME_ALIGNMENT);
+    logical_height = std::max((logical_height / MODEL_SPRITE_FRAME_ALIGNMENT) * MODEL_SPRITE_FRAME_ALIGNMENT, MODEL_SPRITE_FRAME_ALIGNMENT);
+
+    return {logical_width, logical_height};
+}
+
+auto ClampModelSpriteFramePlacement(ModelSpriteFramePlacement placement, isize32 max_logical_frame) -> ModelSpriteFramePlacement
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t width = std::min(placement.Size.width, max_logical_frame.width);
+    int32_t height = std::min(placement.Size.height, max_logical_frame.height);
+    width = std::max((width / MODEL_SPRITE_FRAME_ALIGNMENT) * MODEL_SPRITE_FRAME_ALIGNMENT, MODEL_SPRITE_FRAME_ALIGNMENT);
+    height = std::max((height / MODEL_SPRITE_FRAME_ALIGNMENT) * MODEL_SPRITE_FRAME_ALIGNMENT, MODEL_SPRITE_FRAME_ALIGNMENT);
+
+    bool shrunk = width < placement.Size.width || height < placement.Size.height;
+    placement.Size = {width, height};
+
+    if (shrunk) {
+        placement.Pivot.x = std::clamp(placement.Pivot.x, 0, placement.Size.width);
+        placement.Pivot.y = std::clamp(placement.Pivot.y, 0, placement.Size.height);
+    }
+
+    return placement;
+}
+
+auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow, bool clamp_to_max_frame, isize32 max_logical_frame) -> optional<ModelSpriteLayout>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -160,7 +269,7 @@ auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_d
     draw_bounds.MaxX += MODEL_SPRITE_LAYOUT_GUARD;
     draw_bounds.MaxY += MODEL_SPRITE_LAYOUT_GUARD;
 
-    optional<isize32> draw_size = CalculateModelSpriteFrameSize(draw_bounds.MinX, draw_bounds.MinY, draw_bounds.MaxX, draw_bounds.MaxY);
+    optional<isize32> draw_size = CalculateModelSpriteFrameSize(draw_bounds.MinX, draw_bounds.MinY, draw_bounds.MaxX, draw_bounds.MaxY, clamp_to_max_frame, max_logical_frame);
 
     if (!draw_size) {
         return std::nullopt;
@@ -307,21 +416,32 @@ static auto IncludeProjectedCorner(const vec3& point, const mat44& post_directio
     return true;
 }
 
-static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
+static auto RoundFrameDimension(uint64_t value, bool clamp_to_max, uint64_t max_value) -> optional<int32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
+    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_ALIGNMENT;
+    uint64_t cap = std::max(max_value, alignment);
 
-    if (value > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
-        return std::nullopt;
+    // Particles reject an oversize frame to keep the established atlas slot. Model sprites clamp to the authored
+    // texture cap instead, so a valid envelope that does not fit is drawn cropped
+    if (value > cap) {
+        if (!clamp_to_max) {
+            return std::nullopt;
+        }
+
+        value = cap;
     }
 
-    constexpr uint64_t alignment = MODEL_SPRITE_FRAME_SCALE;
     uint64_t rounded = (std::max<uint64_t>(value, 1) + alignment - 1) / alignment * alignment;
 
-    if (rounded > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
-        return std::nullopt;
+    if (rounded > cap) {
+        if (!clamp_to_max) {
+            return std::nullopt;
+        }
+
+        rounded = (cap / alignment) * alignment;
+        rounded = std::max(rounded, alignment);
     }
 
     return numeric_cast<int32_t>(rounded);

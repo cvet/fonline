@@ -291,7 +291,7 @@ High-value source areas to document:
 - `Source/Common/EntityProperties.*`
 - `Source/Common/EntityProtos.*`
 - `Source/Common/Properties.*`
-- `Source/Common/PropertiesSerializator.*`
+- `Source/Common/PropertiesSerializer.*`
 - `Source/Common/ProtoManager.*`
 - `Source/Server/*Entity*.h`
 - `Source/Client/*Entity*.h`
@@ -374,7 +374,7 @@ High-value source areas to document:
 - `Source/Server/DataBase-Json.cpp`
 - `Source/Server/DataBase-Memory.cpp`
 - `Source/Server/DataBase-Mongo.cpp`
-- `Source/Server/DataBase-UnQLite.cpp`
+- `Source/Server/DataBase-SQLite.cpp`
 - `Source/Tests/Test_DataBase.cpp`
 
 **Write:**

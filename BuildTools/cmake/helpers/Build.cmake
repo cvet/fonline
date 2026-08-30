@@ -39,7 +39,7 @@ function(DisableLibWarnings)
 		# flags also reach ASM_MASM sources (e.g. AngelScript's as_callfunc_x64_msvc_asm.asm under clang-cl), and the
 		# MASM assembler (llvm-ml) rejects the warning flags with "ignoring unsupported 'w'/'W' option" — a warning that
 		# our own warning-silencing was the sole cause of. Keeping the gate makes vendored ASM assemble cleanly while the
-		# C/CXX warning suppression is unchanged.
+		# C/CXX warning suppression is unchanged
 		target_compile_options(${lib} PRIVATE
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>>:-w>
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-Wno-error=incompatible-pointer-types
@@ -55,9 +55,8 @@ function(DisableLibWarnings)
 			# check stays active, and the flag is a harmless no-op on non-sanitizer builds.
 			#
 			# -fsanitize=alignment is excluded for the same reason — but ONLY genuine third-party packing remains here:
-			#   * unqlite (the embedded KV DB) is the dominant case: its pager/allocator casts byte buffers to structs
-			#     (Page/lhcell/SyMemBlock/...) at 4-byte-aligned addresses by design (~2.2k UBSan sites); fixing it would
-			#     mean rewriting a 50k-line vendored amalgamation, which we do not own.
+			#   * SQLite (the embedded DB) casts page-cache bytes to its own record/page structs by design; fixing it
+			#     would mean rewriting a vendored amalgamation we do not own.
 			#   * AngelScript packs pointer-sized asPWORD operands into its asDWORD[] (4-byte) bytecode buffer at 4-byte
 			#     slots by design (asBC_PTRARG/asBC_QWORDARG = `*(asPWORD*)((asDWORD*)bc+1)`, plus the serializer's
 			#     WriteByteCode/ReadByteCode pointer operands), ~136 sites — upstream bytecode encoding, not our patches.
@@ -73,7 +72,7 @@ function(DisableLibWarnings)
 			# "subtraction of unsigned offset overflowed" even though the result stays inside the VM stack frame — upstream
 			# interpreter addressing, correct on every target architecture, not our patch. A full gameplay San_Undefined
 			# run reports this at exactly one site (the AngelScript VM) and 0 pointer-overflow sites in Engine/Source, so
-			# keeping the check active for our own code (this exclusion is vendored-libs-only) loses no coverage.
+			# keeping the check active for our own code (this exclusion is vendored-libs-only) loses no coverage
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow>
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()
@@ -193,7 +192,7 @@ macro(SetOptionValues)
 		# untyped -D / preset cache entries have no shadow yet, so preserve those as initial overrides too.
 		# Otherwise (unset, or still our default) -> (re)apply the current cmake-file default with FORCE.
 		# This keeps the cmake file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no
-		# longer sticks at an old number) while still honoring real overrides.
+		# longer sticks at an old number) while still honoring real overrides
 		if(DEFINED ${optionName} AND DEFINED ${_soptShadow} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
 			set(_soptResolved "${${optionName}}")
 		elseif(_soptHasCache AND _soptCacheType STREQUAL "UNINITIALIZED" AND NOT DEFINED ${_soptShadow})
@@ -665,7 +664,7 @@ macro(AddExecutableApplication target sourceFile)
 		# ASan instrumentation inflates stack frames well past the 1 MiB Windows executable default, so
 		# sanitizer configs get the same 8 MiB reserve that Linux runs already have from the default rlimit.
 		# Production configs deliberately keep the 1 MiB default: this is ASan-overhead parity, not a
-		# statement that the engine needs a bigger stack.
+		# statement that the engine needs a bigger stack
 		TargetLinkOptions(${target} PRIVATE $<${expr_SanitizerConfigs}:/STACK:8388608>)
 	endif()
 
@@ -722,7 +721,7 @@ macro(AddSharedApplication target sourceFile)
 		# Runtime modules are dlopen'ed by an engine host executable that exports its own engine
 		# symbols (-rdynamic for stack traces). Bind the module's global references to its own
 		# definitions so it keeps private global data and allocator state instead of interposing
-		# on the host's copies; the host/runtime C ABI never transfers ownership across modules.
+		# on the host's copies; the host/runtime C ABI never transfers ownership across modules
 		TargetLinkOptions(${target} PRIVATE -Wl,-Bsymbolic)
 	endif()
 
@@ -751,7 +750,7 @@ endfunction()
 # binary as a POST_BUILD step, and ensure the producer is built first. Useful
 # for shared libraries / plugins that must sit next to a host executable
 # (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
-# to a tool host, ...). Silently does nothing if either target is missing.
+# to a tool host, ...). Silently does nothing if either target is missing
 function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
 	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
 		return()

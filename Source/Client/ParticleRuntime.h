@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,12 +46,25 @@ struct RenderSettings;
 
 using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
-// Bake-time extent of a particle system, kept as two separable quantities because they do not transform alike. The
-// position box is swept by the particles themselves, so it follows the emitter's world placement (bone matrix, atlas
-// frame scale, entity scale) in full and rotates with the model's facing. The billboard radius is the largest
-// half-extent one particle's camera-facing sprite reaches: it follows only the placement's *scale*, because a sprite
-// always faces the camera and keeps the same screen footprint at every facing, so it is added once in the view plane
-// and never rotated or swept.
+enum class ParticleSceneBackgroundState : uint8_t
+{
+    Unavailable,
+    Available,
+    Deferred,
+};
+
+struct ParticleSceneBackgroundResult
+{
+    ParticleSceneBackgroundState State {};
+    nptr<const RenderTexture> Texture {};
+};
+
+// Unavailable means there is nothing to refract and fails the particle closed, while Deferred only skips this
+// draw during an auxiliary offscreen preview; called solely by a draw that needs it
+using ParticleSceneBackgroundProvider = function<ParticleSceneBackgroundResult()>;
+
+// Two quantities because they do not transform alike: the position box follows the world placement in full,
+// while the billboard radius follows only its scale and is added in the view plane, never rotated or swept
 struct ParticleBounds3D
 {
     vec3 PositionMin {};
@@ -60,13 +73,11 @@ struct ParticleBounds3D
 };
 
 // Validate a measured bake-time extent. An inverted or non-finite box and a negative radius mean the baked data cannot
-// frame anything, so the caller reserves no space instead of trusting it.
+// frame anything, so the caller reserves no space instead of trusting it
 auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, float32_t billboard_radius) noexcept -> optional<ParticleBounds3D>;
 
-// Fold a bake-time extent through a frame transform (the emitter's world placement combined with the view matrix).
-// The position box follows the matrix outright; the billboard radius follows only its scale, because the renderers
-// scale a sprite with the effect's placement while a camera-facing quad keeps the same screen footprint at every
-// facing - so the radius must never be rotated or swept.
+// The position box follows the matrix outright while the billboard radius follows only its scale, because a
+// camera-facing quad keeps the same screen footprint at every facing
 auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix) noexcept -> optional<ParticleBounds3D>;
 
 struct ParticleRuntimeSetup
@@ -87,6 +98,7 @@ struct ParticleRuntimeServices
     ptr<IAppRender> Render;
     ptr<FileSystem> Resources;
     ParticleTextureLoader TextureLoader;
+    ParticleSceneBackgroundProvider SceneBackgroundProvider;
     ptr<RenderSettings> Settings;
 };
 
@@ -131,12 +143,11 @@ public:
 };
 
 // Create particle runtime backends for all available particle systems.
-// The returned vector is sorted by backend priority, with the first backend being the most preferred.
+// The returned vector is sorted by backend priority, with the first backend being the most preferred
 auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
 
-// Debug wireframe overlay for particle geometry: re-draws a particle draw buffer's triangles as a line list through
-// the primitive effect with the same projection, mirroring the sprite-batch wireframe from Render.DrawWireframe. The
-// overlay buffer is created lazily on first use and reused between draws.
+// Mirrors the sprite-batch wireframe from Render.DrawWireframe by re-drawing the triangles as a line list; the
+// overlay buffer is created lazily and reused
 void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, unique_nptr<RenderDrawBuffer>& overlay_buf, const RenderDrawBuffer& source_buf, size_t index_count, const mat44& proj_matrix);
 
 FO_END_NAMESPACE

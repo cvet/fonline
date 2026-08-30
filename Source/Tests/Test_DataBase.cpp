@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,15 +29,16 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
 #include "DataBase.h"
 #include "DiskFileSystem.h"
 
-#if FO_HAVE_UNQLITE
+#if FO_HAVE_SQLITE
 FO_DISABLE_WARNINGS_PUSH()
-#include <unqlite.h>
+#include "sqlite3.h"
 FO_DISABLE_WARNINGS_POP()
 #endif
 
@@ -63,7 +64,7 @@ namespace
             _stringKeyEscaping {string_key_escaping}
         {
             // _hashes (member) must outlive _collectionKeyTypes/_collectionNames in the base class,
-            // because the hstrings registered below hold pointers into _hashes._hashStorage.
+            // because the hstrings registered below hold pointers into _hashes._hashStorage
             InitializeCollections({
                 {_hashes.ToHashedString("test_collection"), DataBaseKeyType::IntId},
                 {_hashes.ToHashedString("test_string_collection"), DataBaseKeyType::String},
@@ -492,20 +493,37 @@ namespace
         CHECK(committed_content->empty());
     }
 
-#if FO_HAVE_UNQLITE
-    void StoreRawUnQLiteRecord(const std::filesystem::path& db_path, const vector<uint8_t>& key_data, string_view value)
+#if FO_HAVE_SQLITE
+    // Writes straight into the storage file, bypassing the backend, so the key-validation paths can be
+    // exercised against data the backend would never have produced itself
+    void StoreRawSQLiteRecord(const std::filesystem::path& storage_dir, string_view collection_name, const vector<uint8_t>& key_data, string_view value)
     {
         FO_STACK_TRACE_ENTRY();
 
-        REQUIRE(fs_create_directories(fs_path_to_string(db_path.parent_path())));
+        // sqlite3_config only applies before initialization, so initializing directly here would silently lose the
+        // engine allocator for the backend created later
+        InitializeSQLiteRuntime();
 
-        unqlite* db = nullptr;
-        REQUIRE(unqlite_open(&db, fs_path_to_string(db_path).c_str(), UNQLITE_OPEN_CREATE) == UNQLITE_OK);
+        REQUIRE(fs_create_directories(fs_path_to_string(storage_dir)));
 
-        auto close_db = scope_exit([&]() noexcept { unqlite_close(db); });
+        string db_path = fs_path_to_string(storage_dir / "Storage.sqlite");
+        sqlite3* db = nullptr;
+        REQUIRE(sqlite3_open_v2(db_path.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr) == SQLITE_OK);
 
-        REQUIRE(unqlite_kv_store(db, key_data.data(), numeric_cast<int>(key_data.size()), value.data(), numeric_cast<unqlite_int64>(value.size())) == UNQLITE_OK);
-        REQUIRE(unqlite_commit(db) == UNQLITE_OK);
+        auto close_db = scope_exit([&]() noexcept { (void)sqlite3_close(db); });
+
+        string create_sql = strex(R"(CREATE TABLE IF NOT EXISTS "{}" (key BLOB PRIMARY KEY NOT NULL, value BLOB NOT NULL) WITHOUT ROWID)", collection_name).str();
+        REQUIRE(sqlite3_exec(db, create_sql.c_str(), nullptr, nullptr, nullptr) == SQLITE_OK);
+
+        string insert_sql = strex(R"(INSERT OR REPLACE INTO "{}" (key, value) VALUES (?, ?))", collection_name).str();
+        sqlite3_stmt* stmt = nullptr;
+        REQUIRE(sqlite3_prepare_v2(db, insert_sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK);
+
+        auto finalize_stmt = scope_exit([&]() noexcept { (void)sqlite3_finalize(stmt); });
+
+        REQUIRE(sqlite3_bind_blob(stmt, 1, key_data.data(), numeric_cast<int32_t>(key_data.size()), SQLITE_TRANSIENT) == SQLITE_OK);
+        REQUIRE(sqlite3_bind_blob(stmt, 2, value.data(), numeric_cast<int32_t>(value.size()), SQLITE_TRANSIENT) == SQLITE_OK);
+        REQUIRE(sqlite3_step(stmt) == SQLITE_DONE);
     }
 #endif
 } // namespace
@@ -1663,18 +1681,18 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
     CHECK(db.GetDbRequestsPerMinute() >= 1);
 }
 
-#if FO_HAVE_UNQLITE
-TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
+#if FO_HAVE_SQLITE
+TEST_CASE("SQLiteDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};
     HashStorage hashes;
-    ScopedRecoveryLogs storage_dir_scope {"unqlite-roundtrip"};
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-roundtrip"};
     string storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
     hstring collection = hashes.ToHashedString("test_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     ident_t first_id = ident_t {1001};
     ident_t second_id = ident_t {1002};
-    auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, strex("DbSQLite {}", storage_dir).str(), collection_schemas, {});
 
     CHECK(db.InValidState());
     CHECK(db.GetAllIntIds(collection).empty());
@@ -1712,14 +1730,14 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
-    CHECK(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite")));
+    CHECK(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "Storage.sqlite")));
 }
 
-TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
+TEST_CASE("SQLiteDataBasePersistsDocumentsAcrossReconnects")
 {
     GlobalSettings settings {false};
     HashStorage hashes;
-    ScopedRecoveryLogs storage_dir_scope {"unqlite-reconnect"};
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-reconnect"};
     string storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
     hstring int_collection = hashes.ToHashedString("test_collection");
     hstring string_collection = hashes.ToHashedString("test_string_collection");
@@ -1729,7 +1747,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     };
     ident_t int_id = ident_t {1001};
     DataBaseKey string_id {string("steam:user/Привет")};
-    string connection_info = strex("DbUnQLite {}", storage_dir).str();
+    string connection_info = strex("DbSQLite {}", storage_dir).str();
 
     {
         auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
@@ -1780,11 +1798,11 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     }
 }
 
-TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
+TEST_CASE("SQLiteDataBaseRejectsCorruptedStoredKeys")
 {
     GlobalSettings settings {false};
     HashStorage hashes;
-    ScopedRecoveryLogs storage_dir_scope {"unqlite-corrupted-keys"};
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-corrupted-keys"};
     string storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
     hstring int_collection = hashes.ToHashedString("test_collection");
     hstring string_collection = hashes.ToHashedString("test_string_collection");
@@ -1795,9 +1813,9 @@ TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
 
     SECTION("Invalid numeric key size")
     {
-        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", vector<uint8_t> {1, 2, 3}, "payload");
+        StoreRawSQLiteRecord(*storage_dir_scope.Dir() / "storage", "test_collection", vector<uint8_t> {1, 2, 3}, "payload");
 
-        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, strex("DbSQLite {}", storage_dir).str(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
     }
@@ -1805,18 +1823,18 @@ TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
     SECTION("Invalid numeric key value")
     {
         vector<uint8_t> zero_key(sizeof(int64_t));
-        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", zero_key, "payload");
+        StoreRawSQLiteRecord(*storage_dir_scope.Dir() / "storage", "test_collection", zero_key, "payload");
 
-        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, strex("DbSQLite {}", storage_dir).str(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
     }
 
     SECTION("Invalid encoded string key")
     {
-        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_string_collection.unqlite", vector<uint8_t> {'b', 'a', 'd'}, "payload");
+        StoreRawSQLiteRecord(*storage_dir_scope.Dir() / "storage", "test_string_collection", vector<uint8_t> {'b', 'a', 'd'}, "payload");
 
-        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, strex("DbSQLite {}", storage_dir).str(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllStringIds(string_collection), DataBaseException);
     }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,7 @@ FO_BEGIN_NAMESPACE
 #define FO_ENTITY_PROPERTY(prop_type, prop) \
     inline auto GetProperty##prop() const noexcept -> ptr<const Property> \
     { \
-        return _propsRef->GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
+        return _propsRef->GetRegistrar()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
     } \
     inline auto Get##prop() const noexcept \
     { \
@@ -125,7 +125,7 @@ struct EntityTypeDesc
     bool HasProtos {};
     bool HasStatics {};
     bool HasAbstract {};
-    unique_ptr<PropertyRegistrator> PropRegistrator;
+    unique_ptr<PropertyRegistrar> PropRegistrar;
     unordered_map<hstring, HolderEntryDesc> HolderEntries {};
     vector<MethodDesc> Methods {};
     vector<EntityEventDesc> Events {};
@@ -189,8 +189,8 @@ public:
     [[nodiscard]] virtual auto GetName() const noexcept -> string_view = 0;
     [[nodiscard]] virtual auto GetId() const noexcept -> ident_t { return {}; }
     [[nodiscard]] virtual auto IsGlobal() const noexcept -> bool { return false; }
-    [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeName(); }
-    [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeNamePlural(); }
+    [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrar()->GetTypeName(); }
+    [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrar()->GetTypeNamePlural(); }
     [[nodiscard]] auto GetProperties() const noexcept -> ptr<const Properties> { return &_props; }
     [[nodiscard]] auto GetPropertiesForEdit() noexcept -> ptr<Properties> { return &_props; }
     [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying.load(std::memory_order_acquire); }
@@ -243,7 +243,7 @@ public:
     void MarkAsDestroyed() noexcept;
 
 protected:
-    Entity(ptr<const PropertyRegistrator> registrator, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept;
+    Entity(ptr<const PropertyRegistrar> registrar, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept;
     virtual ~Entity();
 
     auto GetInitRef() noexcept -> ptr<Properties> { return &_props; }
@@ -344,7 +344,7 @@ public:
     virtual ~EntityManagerApi() = default;
 };
 
-// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`.
+// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`
 inline void ValidateEntityAccess(nptr<const Entity> entity)
 {
     if (entity) {

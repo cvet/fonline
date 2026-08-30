@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,20 @@ static_assert(offsetof(ModelMeshVertexData, BlendWeights) == offsetof(Vertex3D, 
 static_assert(offsetof(ModelMeshVertexData, BlendIndices) == offsetof(Vertex3D, BlendIndices));
 static_assert(offsetof(ModelMeshVertexData, Color) == offsetof(Vertex3D, Color));
 
-ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
+auto ResolveModelParticleSceneBackground(bool direct_scene_draw, bool direct_model_draw, const ParticleSceneBackgroundProvider& scene_background_provider) -> ParticleSceneBackgroundResult
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!direct_scene_draw) {
+        // A direct model still renders an auxiliary atlas frame for preview/hit testing. Its distortion attachments
+        // must survive that offscreen pass and retry when the real scene draw follows
+        return direct_model_draw && scene_background_provider ? ParticleSceneBackgroundResult {.State = ParticleSceneBackgroundState::Deferred} : ParticleSceneBackgroundResult {};
+    }
+
+    return scene_background_provider ? scene_background_provider() : ParticleSceneBackgroundResult {};
+}
+
+ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider) :
     _settings {settings},
     _resources {resources},
     _engineMetadata {engine_metadata},
@@ -72,7 +85,8 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     _gameTime {game_time},
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
-    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader))
+    _sceneBackgroundProvider {std::move(scene_background_provider)},
+    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->ModelDirectDraw, _sceneBackgroundProvider); })
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -89,7 +89,7 @@ class ClientEngine : public BaseEngine, public AnimationResolver
 
 public:
     explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window); // For client
-    explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MeatdataRegistrator& mapper_registrator); // For mapper
+    explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar); // For mapper
     ClientEngine(const ClientEngine&) = delete;
     ClientEngine(ClientEngine&&) noexcept = delete;
     auto operator=(const ClientEngine&) = delete;
@@ -307,6 +307,7 @@ protected:
 
     void ProcessInputEvents();
     void ProcessVideo();
+    void ReleaseAbandonedOffscreenSurfaces() noexcept;
 
     void UnloadMap();
     void LmapPrepareMap();
@@ -352,6 +353,7 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
+    auto ReceiveDetachedItem() -> refcount_ptr<ItemView>;
     void ReceiveCustomEntities(nptr<Entity> holder);
     auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>;
     void ReceiveCritterMoving(nptr<CritterHexView> cr);
@@ -423,7 +425,7 @@ protected:
     vector<tuple<string, bool>> _videoQueue {};
 
     // Sorted ascending by `FireTime`. Per-frame dispatch in `MainLoop` only needs to peek
-    // the front and pop entries whose deadline passed; nothing scanned every frame.
+    // the front and pop entries whose deadline passed; nothing scanned every frame
     struct ScheduledCallback
     {
         nanotime FireTime {};

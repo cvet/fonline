@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -132,8 +132,9 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
 
     hstring proto_rule_name = meta->Hashes.ToHashedString("Proto");
 
-    // Collect data
-    unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
+    // Collect data, ordered: an unordered map would chain same-bucket entries in insertion order, so
+    // moving a proto between files would rewrite baked output that did not change
+    map<hstring, map<hstring, map<string, string>>> all_file_protos;
 
     for (const auto& file : files) {
         // Nested ($Name/...-addressed) sections carry map content, never proto declarations
@@ -191,26 +192,26 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
         }
     }
 
-    unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> all_protos;
+    map<hstring, map<hstring, refcount_ptr<ProtoEntity>>> all_protos;
 
     auto create_empty_proto = [&](hstring type_name, hstring pid) -> refcount_ptr<ProtoEntity> {
-        auto registrator = meta->GetPropertyRegistrator(type_name);
-        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
+        auto registrar = meta->GetPropertyRegistrar(type_name);
+        FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrar, nullptr);
         }
         if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrar, nullptr);
         }
         if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrar, nullptr);
         }
         if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrar, nullptr);
         }
 
-        return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, nullptr);
+        return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrar, nullptr);
     };
 
     for (const auto& [type_name, file_protos] : all_file_protos) {
@@ -243,6 +244,8 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
             string_view base_name = pid.as_str();
             // Fill content from parents
             map<string, string> proto_kv;
+            unordered_set<hstring> reached_parents;
+            vector<hstring> parent_path;
 
             function<void(string_view, const map<string, string>&)> fill_parent_recursive = [&](string_view name, const map<string, string>& cur_kv) {
                 auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
@@ -261,7 +264,25 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
                         throw ProtoBakerException("Proto fail to load parent for another proto", base_name, parent_name, name);
                     }
 
+                    // The path guard is what keeps the walk finite: a cycle would otherwise recurse until the stack is gone
+                    if (std::ranges::find(parent_path, parent_pid) != parent_path.end()) {
+                        throw ProtoBakerException("Proto parent chain contains a cycle", base_name, parent_name, name);
+                    }
+
+                    // A repeated ancestor contributes only where it is first reached: applying it again would
+                    // undo whatever the earlier parent overrode, which the source gives no hint of
+                    if (!reached_parents.insert(parent_pid).second) {
+                        if (!_context->Settings->AllowRepeatedProtoParents) {
+                            throw ProtoBakerException("Proto reaches the same parent through several inheritance paths", base_name, parent_name, name);
+                        }
+
+                        continue;
+                    }
+
+                    parent_path.emplace_back(parent_pid);
                     fill_parent_recursive(parent_name, it_parent->second);
+                    parent_path.pop_back();
+
                     insert_map_values(it_parent->second, proto_kv);
                 }
             };

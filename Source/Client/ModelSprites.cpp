@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -143,7 +143,7 @@ void ModelSprite::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them.
+    // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them
     _model->PrepareFrameLayout();
     _model->PoseSpriteFrame(false);
     _model->PrewarmParticles();
@@ -194,6 +194,11 @@ void ModelSprite::SetSize(isize32 size)
 
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
+
+    int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
+    int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
+    FO_VERIFY_AND_THROW(size.width <= max_draw_width, "Requested model sprite width exceeds the renderable frame", size.width, max_draw_width);
+    FO_VERIFY_AND_THROW(size.height <= max_draw_height, "Requested model sprite height exceeds the renderable frame", size.height, max_draw_height);
 
     _requestedFrameSize = size;
     _model->RequestRedraw();
@@ -278,12 +283,12 @@ auto ModelSprite::PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBound
     bool same_envelope = envelope_id && _cropEnvelopeId && envelope_id->BodyAnimationIndices == _cropEnvelopeId->BodyAnimationIndices && envelope_id->MoveAnimationIndices == _cropEnvelopeId->MoveAnimationIndices && envelope_id->CombinedMeshGenerationRevision == _cropEnvelopeId->CombinedMeshGenerationRevision && envelope_id->BodyAnimationCount == _cropEnvelopeId->BodyAnimationCount && envelope_id->MoveAnimationCount == _cropEnvelopeId->MoveAnimationCount && envelope_id->ShadowEnabled == _cropEnvelopeId->ShadowEnabled && envelope_id->FullFrame == _cropEnvelopeId->FullFrame;
 
     if (same_frame && same_envelope && has_bounded_crop && _boundedCropEstablished) {
-        // Keep the slot stable across small pose-to-pose bounds changes.
+        // Keep the slot stable across small pose-to-pose bounds changes
         normalized_crop.expand(_cropRect);
     }
 
     // Anchor the sprite on the model origin's exact pixel inside the frame (its ground point), not a fixed
-    // centre-x / three-quarter-y fraction: X keeps the crop centred on the origin, Y hangs it from the origin row.
+    // centre-x / three-quarter-y fraction: X keeps the crop centred on the origin, Y hangs it from the origin row
     ipos32 pivot = _model->GetFramePivot();
     int32_t offset_x = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.x) + normalized_crop.width / 2 - pivot.x);
     int32_t offset_y = numeric_cast<int32_t>(numeric_cast<int64_t>(normalized_crop.y) + normalized_crop.height - pivot.y);
@@ -342,8 +347,13 @@ void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds>
 ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
     _settings {settings},
-    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
-        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.ToHashedString(path)); })}
+    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(
+        settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
+        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.ToHashedString(path)); }, //
+        [spr_mngr]() mutable FO_DEFERRED {
+            nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
+            return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
+        })}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -383,7 +393,7 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
     auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
-        // Model UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset.
+        // Model UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset
         auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {
@@ -409,17 +419,17 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
     model_spr->GetModel()->PrepareFrameLayout();
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->ModelSpriteMaxTextureWidth, _settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     isize32 render_frame_size = model_spr->_requestedFrameSize.value_or(model_spr->GetModel()->GetDrawSize());
+    ModelSpriteFramePlacement start_placement = ClampModelSpriteFramePlacement({.Size = render_frame_size, .Pivot = model_spr->GetModel()->GetFramePivot()}, max_logical_frame);
+    render_frame_size = start_placement.Size;
 
     if (model_spr->GetModel()->GetDrawSize() != render_frame_size) {
-        model_spr->GetModel()->SetupFrame(render_frame_size, model_spr->GetModel()->GetFramePivot());
+        model_spr->GetModel()->SetupFrame(render_frame_size, start_placement.Pivot);
     }
 
-    // Size the sprite frame from the posed geometry before drawing anything. GetSpriteBounds derives the frame extent
-    // from the skinned skeleton and the baked particle box - there is no shader/GPU read-back - so the required size is
-    // fully known without a render. Pose the model (advancing the animation only on the first pass), measure, and grow
-    // the frame if the pose overflows it; the extent is frame-size-invariant, so it settles in one grow. The re-poses
-    // are cheap CPU work, not renders.
+    // The frame size is known from the posed skeleton without any GPU read-back, so the model is posed and measured
+    // first; placements merge in root-relative coordinates, or rounding could alternate pivots forever
     optional<ModelSpriteBounds> bounds;
 
     for (size_t size_pass = 0; size_pass < 3; size_pass++) {
@@ -427,16 +437,20 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         bounds = model_spr->_model->GetSpriteBounds();
 
         if (bounds) {
-            isize32 settled_frame_size {
-                std::max(render_frame_size.width, bounds->RequiredFrameSize.width),
-                std::max(render_frame_size.height, bounds->RequiredFrameSize.height),
+            ModelSpriteFramePlacement current_placement {
+                .Size = render_frame_size,
+                .Pivot = model_spr->GetModel()->GetFramePivot(),
             };
+            ModelSpriteFramePlacement required_placement {.Size = bounds->RequiredFrameSize, .Pivot = bounds->Pivot};
+            optional<ModelSpriteFramePlacement> settled_placement = MergeModelSpriteFramePlacements(current_placement, required_placement);
+            FO_VERIFY_AND_THROW(settled_placement, "Model sprite frame placements could not be merged", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot);
+            *settled_placement = ClampModelSpriteFramePlacement(*settled_placement, max_logical_frame);
 
-            // A full-frame particle crop may already have enough pixels but still need its root moved inside that frame.
-            if (settled_frame_size != render_frame_size || bounds->Pivot != model_spr->GetModel()->GetFramePivot()) {
-                FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", render_frame_size, settled_frame_size);
-                model_spr->_model->SetupFrame(settled_frame_size, bounds->Pivot);
-                render_frame_size = settled_frame_size;
+            // A full-frame particle crop may already have enough pixels but still need its root moved inside that frame
+            if (settled_placement->Size != current_placement.Size || settled_placement->Pivot != current_placement.Pivot) {
+                FO_VERIFY_AND_THROW(size_pass + 1 < 3, "Model sprite frame did not converge after expansion", current_placement.Size, current_placement.Pivot, required_placement.Size, required_placement.Pivot, settled_placement->Size, settled_placement->Pivot);
+                model_spr->_model->SetupFrame(settled_placement->Size, settled_placement->Pivot);
+                render_frame_size = settled_placement->Size;
                 continue;
             }
         }
@@ -444,8 +458,10 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         break;
     }
 
-    // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop.
+    // Render the posed model once, at the settled size, into the full logical frame before applying the tight atlas crop
     isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
+    FO_VERIFY_AND_THROW(frame_size.width <= AppRender::MAX_ATLAS_WIDTH && frame_size.height <= AppRender::MAX_ATLAS_HEIGHT, "Model sprite frame exceeds the device texture limit", frame_size.width, frame_size.height, render_frame_size.width, render_frame_size.height, ModelInstance::FRAME_SCALE, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+
     ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
         for (ptr<RenderTarget> rt : _rtIntermediate) {
             if (rt->GetTexture()->Size == frame_size) {

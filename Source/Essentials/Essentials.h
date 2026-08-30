@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,26 +33,15 @@
 
 #pragma once
 
-// Essential headers
-// In order of dependency
-//
-// This is a strict layering — each Essentials header may only include (directly or transitively
-// from another Essentials header) the headers listed above it in this block. The same rule applies
-// to each Essentials .cpp: it must not pull in an Essentials header that sits below its own .h.
-// Crossing the layer downward (e.g. MemorySystem.cpp including Platform.h) creates a cycle in the
-// dependency DAG, breaks the bootstrap order (MemorySystem must be usable before Platform is
-// initialised), and tangles features that need to stay independently buildable.
-//
-// If a low-layer module needs information that physically lives in a higher layer (e.g. an
-// allocator query that would otherwise want OS process stats as a fallback), the lower layer must
-// either expose only what it can produce on its own or let the caller supply the higher-layer
-// data through a parameter — do not back-channel the include.
+// Strict dependency order: each Essentials header and implementation may depend only on entries above it.
+// Pass higher-layer data downward explicitly instead of creating an include cycle
 
 // clang-format off
 #include "BasicCore.h"
 #include "GlobalData.h"
 #include "StackTrace.h"
 #include "BaseLogging.h"
+#include "FatalError.h"
 #include "SmartPointers.h"
 #include "MemorySystem.h"
 #include "Containers.h"

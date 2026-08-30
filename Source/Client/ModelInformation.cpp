@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr size_t BAKED_STRING_MIN_SIZE = sizeof(uint32_t);
-static constexpr size_t BAKED_MODEL_DESCRIPTION_LINK_MIN_SIZE = 2 * sizeof(int32_t) + 2 * BAKED_STRING_MIN_SIZE + sizeof(uint8_t) + 10 * sizeof(float32_t) + 5 * sizeof(uint32_t);
+static constexpr size_t BAKED_MODEL_DESCRIPTION_LINK_MIN_SIZE = 2 * sizeof(int32_t) + 2 * BAKED_STRING_MIN_SIZE + 2 * sizeof(uint8_t) + 10 * sizeof(float32_t) + 5 * sizeof(uint32_t);
 static constexpr size_t BAKED_MODEL_DESCRIPTION_CUT_MIN_SIZE = BAKED_STRING_MIN_SIZE + sizeof(uint32_t) + sizeof(uint32_t) + 3 * BAKED_STRING_MIN_SIZE + sizeof(uint8_t);
 static constexpr size_t BAKED_MODEL_DESCRIPTION_ANIM_ENTRY_MIN_SIZE = 2 * sizeof(int32_t) + 2 * BAKED_STRING_MIN_SIZE;
 
@@ -216,7 +216,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     uint64_t animation_rig_data_size = reader.Read<uint64_t>();
     FO_VERIFY_AND_THROW(animation_rig_data_size != 0 && animation_rig_data_size <= std::numeric_limits<size_t>::max(), "Baked model description contains invalid animation rig-data size", name, animation_rig_data_size);
-    VerifyModelBakedCountFitsData(reader, animation_rig_data_size, sizeof(uint8_t), "animation rig data", name);
+    VerifyModelBakedCountFitsData(reader, static_cast<size_t>(animation_rig_data_size), sizeof(uint8_t), "animation rig data", name);
     unique_ptr<ModelAnimationRuntimeRig> animation_runtime_rig = LoadModelAnimationRuntimeRig(reader.ReadBytes(static_cast<size_t>(animation_rig_data_size)), name, model, disable_animation_interpolation);
 
     reader.VerifyEnd();
@@ -309,6 +309,14 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         }
 
         _animData.emplace_back(std::move(link.Data));
+    }
+
+    for (size_t link_index = 0; link_index < _animData.size(); link_index++) {
+        const ModelAnimationData& link = _animData[link_index];
+
+        if (!link.ChildName.empty() && !link.IsParticles) {
+            FO_VERIFY_AND_THROW(link.Bounds, "Baked model geometry link has no bounds", name, link_index, link.ChildName);
+        }
     }
 
     if (!anim_entries.empty()) {
@@ -568,6 +576,22 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader, string_
         link.CutInfo.emplace_back(ReadBakedModelDescriptionCutInfo(reader));
     }
 
+    uint8_t has_geometry_value = reader.Read<uint8_t>();
+    FO_VERIFY_AND_THROW(has_geometry_value <= uint8_t {1}, "Baked model link geometry flag is not 0 or 1", context, link.Data.ChildName, has_geometry_value);
+    bool has_geometry = has_geometry_value != 0;
+    bool expected_geometry = !link.Data.ChildName.empty() && !link.Data.IsParticles;
+    FO_VERIFY_AND_THROW(has_geometry == expected_geometry, "Baked model link geometry flag does not match its child type", context, link.Data.ChildName, link.Data.IsParticles, has_geometry);
+
+    if (has_geometry) {
+        ModelBounds3D bounds {
+            .Min = reader.Read<vec3>(),
+            .Max = reader.Read<vec3>(),
+        };
+        FO_VERIFY_AND_THROW(IsValidModelBounds(bounds), "Model link bounds minimum exceeds maximum or contains a non-finite coordinate", context, link.Data.ChildName, bounds.Min.x, bounds.Min.y, bounds.Min.z, bounds.Max.x, bounds.Max.y, bounds.Max.z);
+        FO_VERIFY_AND_THROW(HasModelBoundsExtent(bounds), "Model link bounds are degenerate", context, link.Data.ChildName);
+        link.Data.Bounds = bounds;
+    }
+
     return link;
 }
 
@@ -668,7 +692,7 @@ auto ModelInformation::GetRootBone() const -> ptr<const ModelBone>
     FO_STACK_TRACE_ENTRY();
 
     // A loaded model always has a hierarchy (both load paths reject a missing
-    // one) and its root bone is a non-null ptr, so absence is an invariant break.
+    // one) and its root bone is a non-null ptr, so absence is an invariant break
     FO_VERIFY_AND_THROW(_hierarchy, "Model information has no hierarchy", _fileName);
     return _hierarchy->_rootBone;
 }

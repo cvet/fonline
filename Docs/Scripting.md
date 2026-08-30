@@ -31,6 +31,7 @@ Read this page together with:
 - `Source/Scripting/AngelScript/AngelScriptReflection.cpp`
 - `Source/Scripting/AngelScript/CoreScripts/*.fos`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
+- `ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp`
 - `Source/Scripting/*ScriptMethods.cpp`
 - `Source/Scripting/Mono/*.cs`
 - `Source/Scripting/Native/.keepalive`
@@ -38,6 +39,7 @@ Read this page together with:
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
+- `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
@@ -86,6 +88,14 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+Separate script contexts may request a registered object's type id concurrently during first use. AngelScript
+assigns that id lazily, so FOnline's vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine
+reader/writer lock and refreshes the local value after acquiring the exclusive lock. No caller may observe the
+pre-lock `-1` after another thread has completed assignment. This protects simultaneous first-login paths that
+construct return-type metadata in different server workers. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads`
+starts 16 native workers against 128 fresh object types through the public `asITypeInfo::GetTypeId()` entry
+point and requires every worker to receive the same valid id.
+
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
 The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
 value itself for primitives/enums/value types (`int32&`, `mpos&`, `string&`), the handle cell for object handles
@@ -114,6 +124,10 @@ the property-accessor plus method-call form that exposed this during GUI shutdow
 Global variables, delegates, script object handles, arrays, dictionaries, and GUI object graphs must be cleaned by module shutdown, destructors, `ReleaseAllHandles`, and the AngelScript GC. Embedding-project scripts should not add `Game.OnFinish` / `EngineCallback_Finish` cleanup just to silence shutdown diagnostics; if a graph survives shutdown, fix the owning native release/GC enumeration bug.
 
 Entity deletion/unload clears the entity's own event callbacks and time events from `Entity::MarkAsDestroyed()`, so embedding-project scripts should not keep central per-entity unsubscribe / `StopTimeEvent` registries for ordinary entity lifetime. Entity mutators and event/time-event entry points assert or verify when called after `MarkAsDestroyed()`, making accidental attempts to repopulate a destroyed entity show their stack trace at the offending call. During `ServerEngine::Shutdown` / `ClientEngine::Shutdown`, the engine also runs `UnsubscribeAllEvents()` + `ClearAllTimeEvents()` on the global engine entity and all live entities before `DestroyAllEntities()`. Embedding-project scripts should not hand-maintain unsubscribe / global-clear / `StopTimeEvent` cleanup in their `Game.OnFinish` handler purely to keep the GC quiet — only genuinely functional teardown belongs there.
+
+A destroyed entity does not cross the script-to-native boundary either: `ConvertArg` in `Source/Common/ScriptSystem.h` rejects a destroyed entity argument for every `///@ ExportMethod`, so an export body never has to guard against one.
+
+The rejection validates access **before** it reports the destroyed handle, because missing cover is the cause and a destroyed argument is only the symptom. Every destroy path takes the victim's own lock through `EnsureEntitySynced`, and a descendant lock cannot be registered under a foreign-held ancestor (`EntitySync.h`, descendant-hold), so a caller holding any valid cover — the entity's own lock or any ancestor's — cannot have the entity die under it. A destroyed entity therefore reaches the boundary in exactly two shapes: uncovered, where `ServerEntity::ValidateAccess` throws *"Entity access without sync"* and names the actionable defect, or still covered by the caller that destroyed it and kept using the handle, which is the only case the *"Target entity lookup returned destroyed entity"* message describes. On the client `ValidateAccess` is a no-op and only the second message can appear. Both branches are pinned by `Source/Tests/Test_ServerEngine.cpp` → `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst`. The single opt-out is `///@ ExportMethod … AllowDestroyedEntityArgs`, which codegen turns into a compile-time template argument on `NativeDataCaller::NativeCall`. It exists for the explicit synchronization primitives (`Game.Sync`), whose purpose is to answer whether an entity is still reachable: a script can test liveness and then call, but never both at once, so a concurrent destroy always fits between the two and rejecting the argument would make the recoverable-`false` contract of their script wrappers impossible to honour. Those exports accept a destroyed entity and leave it uncovered rather than synchronizing it. Do not add the flag to an ordinary export — a destroyed argument reaching one is a caller bug and must keep failing. Pinned by `Source/Tests/Test_ServerScriptMethods.cpp` → `SyncAcceptsDestroyedEntity`.
 
 ## Attributes, declarations, and metadata
 
@@ -180,7 +194,7 @@ The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript
 - `Gui.fos`
 - `Sprite.fos`
 - `LineTracer.fos`
-- `Serializator.fos`
+- `Serializer.fos`
 - `MapperCore.fos`
 - `FixedDropMenu.fos`
 - `Tween.fos`
@@ -212,6 +226,7 @@ Script behavior is covered by focused tests:
 - `Source/Tests/Test_AngelScriptAttributes.cpp` — attribute parsing, nullable suffix handling, events, remote calls, and callback rules.
 - `Source/Tests/Test_AngelScriptBaker.cpp` — AngelScript bytecode/resource baking path.
 - `Source/Tests/Test_AngelScriptBytecode.cpp` — bytecode compilation/loading behavior.
+- `Source/Tests/Test_AngelScriptCall.cpp` — native/script call shapes, return cleanup, and concurrent lazy type-id assignment.
 - `Source/Tests/Test_CommonScriptMethods.cpp` — common exported methods.
 - `Source/Tests/Test_ServerScriptMethods.cpp` — server exported methods.
 - `Source/Tests/Test_ScriptBuiltins.cpp` — built-in script helpers/types.

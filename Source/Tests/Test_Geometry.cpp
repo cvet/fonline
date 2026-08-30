@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -363,6 +363,34 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
         }
     }
 
+    SECTION("GetHexOffset view-origin shift is a uniform pixel translation")
+    {
+        // MapView translates cached light primitives on scroll instead of rebuilding the fans
+        ipos32 shifts[] = {ipos32 {1, 0}, ipos32 {-1, 0}, ipos32 {0, 2}, ipos32 {0, -2}, ipos32 {1, 2}, ipos32 {-1, -2}, ipos32 {2, 0}, ipos32 {-3, 4}};
+        ipos32 origins[] = {ipos32 {0, 0}, ipos32 {1, 0}, ipos32 {0, 1}, ipos32 {7, 9}, ipos32 {-2, 3}};
+
+        for (ipos32 origin : origins) {
+            for (ipos32 shift : shifts) {
+                ipos32 new_origin = origin + shift;
+                ipos32 expected = GeometryHelper::GetHexOffset(new_origin, origin);
+
+                // The light TexUV anchor is GetHexOffset({0, 0}, origin), which MapView shifts by the negated delta
+                ipos32 anchor_delta = GeometryHelper::GetHexOffset(ipos32 {0, 0}, new_origin) - GeometryHelper::GetHexOffset(ipos32 {0, 0}, origin);
+                CHECK(anchor_delta.x == -expected.x);
+                CHECK(anchor_delta.y == -expected.y);
+
+                for (int32_t hx = -3; hx < 8; hx++) {
+                    for (int32_t hy = -3; hy < 8; hy++) {
+                        ipos32 hex {hx, hy};
+                        ipos32 delta = GeometryHelper::GetHexOffset(new_origin, hex) - GeometryHelper::GetHexOffset(origin, hex);
+                        CHECK(delta.x == expected.x);
+                        CHECK(delta.y == expected.y);
+                    }
+                }
+            }
+        }
+    }
+
     SECTION("GetHexOffset mpos overload matches ipos32 overload")
     {
         for (int16_t ax = 0; ax < 5; ax++) {
@@ -465,11 +493,11 @@ TEST_CASE("Map camera world projection")
     {
         vec3 ground = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {3, 3}, ipos32 {}, 0.0f));
         vec3 raised = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {3, 3}, ipos32 {}, 100.0f));
-        // Higher elevation appears higher on screen (smaller Y in the Y-down map convention).
+        // Higher elevation appears higher on screen (smaller Y in the Y-down map convention)
         CHECK(raised.y < ground.y);
-        // Higher elevation is nearer the camera (larger depth), so it draws on top.
+        // Higher elevation is nearer the camera (larger depth), so it draws on top
         CHECK(raised.z > ground.z);
-        // X is unaffected by elevation.
+        // X is unaffected by elevation
         CHECK(is_float_equal(raised.x, ground.x));
     }
 
@@ -538,7 +566,7 @@ TEST_CASE("Map camera world projection")
     {
         vec3 north = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {0, 0}, ipos32 {}));
         vec3 south = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {0, 10}, ipos32 {}));
-        // Larger hex.y maps further down-screen and nearer the camera, matching the legacy painter's order.
+        // Larger hex.y maps further down-screen and nearer the camera, matching the legacy painter's order
         CHECK(south.y > north.y);
         CHECK(south.z > north.z);
     }
@@ -554,7 +582,7 @@ TEST_CASE("Map camera world projection")
                 ipos32 legacy = GeometryHelper::GetHexPos(ipos32 {rx, ry});
                 glm::vec4 clip = view * glm::vec4 {world.x, world.y, world.z, 1.0f};
                 INFO("rx=" << rx << " ry=" << ry);
-                // The matrix agrees with the reference projection (and so with legacy GetHexPos) pixel-for-pixel.
+                // The matrix agrees with the reference projection (and so with legacy GetHexPos) pixel-for-pixel
                 CHECK(is_float_equal(clip.x, ref.x));
                 CHECK(is_float_equal(clip.y, ref.y));
                 CHECK(is_float_equal(clip.z, ref.z));
@@ -572,7 +600,7 @@ TEST_CASE("Map camera world projection")
         vec3 world = GeometryHelper::GetHexWorldPos(ipos32 {7, 3}, ipos32 {});
         vec3 ref = GeometryHelper::ProjectWorldToMap(world);
         glm::vec4 clip = view * glm::vec4 {world.x, world.y, world.z, 1.0f};
-        // Matches MapView::MapPosToScreenPos: screen = (mapPixel - scroll) * zoom; depth is independent.
+        // Matches MapView::MapPosToScreenPos: screen = (mapPixel - scroll) * zoom; depth is independent
         CHECK(is_float_equal(clip.x, (ref.x - scroll.x) * zoom));
         CHECK(is_float_equal(clip.y, (ref.y - scroll.y) * zoom));
         CHECK(is_float_equal(clip.z, ref.z));
@@ -591,7 +619,7 @@ TEST_CASE("Map camera world projection")
     SECTION("MakeMapCameraView yaw leaves the vertical (up) axis projection invariant")
     {
         // Yaw rotates the world about the vertical, so a point on the up axis projects to the same screen point
-        // and depth at any yaw (walls/models stay vertical on screen while the ground orbits beneath the camera).
+        // and depth at any yaw (walls/models stay vertical on screen while the ground orbits beneath the camera)
         glm::vec4 up {0.0f, 100.0f, 0.0f, 1.0f};
         mat44 view0 = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
         glm::vec4 ref = view0 * up;
@@ -609,7 +637,7 @@ TEST_CASE("Map camera world projection")
     SECTION("MakeMapCameraView yaw 90 deg maps the +X ground axis onto the -Z ground axis")
     {
         // Orbiting 90 deg about the vertical sends the +X ground direction to -Z, so projecting +X at yaw 90
-        // equals projecting -Z at yaw 0 — i.e. the camera really rotated around the scene.
+        // equals projecting -Z at yaw 0 — i.e. the camera really rotated around the scene
         mat44 view0 = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
         mat44 view90 = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, 90.0f, fpos32 {0.0f, 0.0f}, 1.0f);
         glm::vec4 a = view90 * glm::vec4 {50.0f, 0.0f, 0.0f, 1.0f};
@@ -657,6 +685,82 @@ TEST_CASE("GetHexScreenRow")
         float32_t near_depth = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(near_hex, ipos32 {}, 0.0f)).z;
 
         CHECK(near_depth > far_depth);
+    }
+}
+
+TEST_CASE("NormalizeHexOffset")
+{
+    constexpr msize MAP_SIZE {200, 200};
+    constexpr mpos START_HEX {100, 100};
+
+    // An offset of one whole hex step: normalization must move the logical hex by exactly that step
+    const auto offset_to_neighbour = [](mpos from_hex, mpos to_hex) -> ipos16 {
+        ipos32 delta = GeometryHelper::GetHexPos(to_hex) - GeometryHelper::GetHexPos(from_hex);
+        return {numeric_cast<int16_t>(delta.x), numeric_cast<int16_t>(delta.y)};
+    };
+
+    mpos neighbour_hex = START_HEX;
+    REQUIRE(GeometryHelper::MoveHexByDir(neighbour_hex, mdir(hdir::East), MAP_SIZE));
+    REQUIRE(neighbour_hex != START_HEX);
+
+    SECTION("Crossing into a neighbour normalizes when every hex is movable")
+    {
+        mpos hex = START_HEX;
+        ipos16 hex_offset = offset_to_neighbour(START_HEX, neighbour_hex);
+
+        REQUIRE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, [](mpos) { return true; }));
+        CHECK(hex == neighbour_hex);
+        CHECK(hex_offset == ipos16 {});
+    }
+
+    SECTION("A blocked target hex leaves the position untouched")
+    {
+        mpos hex = START_HEX;
+        ipos16 hex_offset = offset_to_neighbour(START_HEX, neighbour_hex);
+        ipos16 original_offset = hex_offset;
+
+        // This is the production defect: the rounding lands on a hex the critter could never walk
+        // onto, and adopting it makes the server's move reconciliation fail for good
+        const auto reject_neighbour = [neighbour_hex](mpos check_hex) { return check_hex != neighbour_hex; };
+
+        CHECK_FALSE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, reject_neighbour));
+        CHECK(hex == START_HEX);
+        CHECK(hex_offset == original_offset);
+    }
+
+    SECTION("A sub-hex offset that stays inside the current hex ignores passability")
+    {
+        mpos hex = START_HEX;
+        ipos16 hex_offset {1, 1};
+
+        // The predicate is consulted only when the hex actually changes, so a critter already
+        // standing on a blocked hex can still renormalize its own offset
+        REQUIRE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, [](mpos) { return false; }));
+        CHECK(hex == START_HEX);
+        CHECK(hex_offset == ipos16 {1, 1});
+    }
+
+    SECTION("The predicate-free overload keeps normalizing regardless of passability")
+    {
+        mpos hex = START_HEX;
+        ipos16 hex_offset = offset_to_neighbour(START_HEX, neighbour_hex);
+
+        REQUIRE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE));
+        CHECK(hex == neighbour_hex);
+    }
+
+    SECTION("Positions outside the map are refused before the predicate runs")
+    {
+        mpos hex {0, 0};
+        ipos16 hex_offset {-32000, -32000};
+        bool predicate_called = false;
+
+        CHECK_FALSE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, [&predicate_called](mpos) {
+            predicate_called = true;
+            return true;
+        }));
+        CHECK_FALSE(predicate_called);
+        CHECK(hex == mpos {0, 0});
     }
 }
 

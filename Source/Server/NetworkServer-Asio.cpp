@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -78,7 +78,8 @@ private:
 
     asio::ip::tcp::socket _socket;
     std::atomic_bool _writePending {};
-    std::vector<uint8_t> _inBufData {};
+    vector<uint8_t> _inBufData {};
+    vector<uint8_t> _sendBuf {};
 };
 
 class NetworkServer_Asio : public NetworkServer
@@ -240,15 +241,17 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
 
     auto write_guard = scope_fail([this]() noexcept { _writePending = false; });
 
-    auto buf = SendCallback();
+    _sendBuf = SendCallback();
 
-    if (!buf.empty()) {
+    if (!_sendBuf.empty()) {
         auto write_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
             ignore_unused(lifetime);
             AsyncWriteComplete(error, bytes);
         };
 
-        async_write(_socket, asio::buffer(buf.data(), buf.size()), write_handler);
+        // A member, unlike the other transports: the write reads the bytes after this returns, and
+        // _writePending admits one chain at a time so the next assignment comes from AsyncWriteComplete
+        async_write(_socket, asio::buffer(_sendBuf.data(), _sendBuf.size()), write_handler);
     }
     else {
         _writePending = false;

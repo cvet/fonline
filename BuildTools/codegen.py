@@ -22,6 +22,7 @@ TagContext: TypeAlias = bool | int | str | list[str] | None
 EXPORT_TARGETS = ('Server', 'Client', 'Mapper', 'Common')
 REGISTRATION_TARGETS = ('Server', 'Client', 'Mapper')
 CLIENT_ENTITY_TARGETS = ('Client', 'Mapper')
+INTERNAL_CONFIG_CAPACITY = 10000
 
 
 @dataclass(slots=True)
@@ -135,7 +136,7 @@ class ExportMethodTag:
     ret_nullable: bool = False
     # ptr<T> / nptr<T> wrapper spellings for the return value and the engine/entity
     # receiver (the skipped first parameter), plus ptr<T> / nptr<T> container element wrapper
-    # spellings for vector/readonly_vector returns. C++-glue detail, not part of the script hash.
+    # spellings for vector/readonly_vector returns. C++-glue detail, not part of the script hash
     ret_wrapper: bool = False
     ret_container_element_wrapper: str = ''
     receiver_wrapper: bool = False
@@ -270,7 +271,6 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
     parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
     parser.add_argument('-embedded', dest='embedded', required=True, help='embedded buffer capacity')
-    parser.add_argument('-internalcfg', dest='internalcfg', required=True, help='internal config buffer capacity')
     parser.add_argument('-enginedefine', dest='enginedefine', action='append', default=[], help='engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h')
     parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
     parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
@@ -824,9 +824,9 @@ def resolve_property_targets(entity: str, property_flags: list[str], game_entiti
 
 def strip_pointer_wrapper(type_text: str) -> tuple[str, bool, bool]:
     # Recognize ptr<T> / nptr<T> script-ABI wrapper spellings and reduce them to the raw
-    # `T*` form the meta-type parser understands. Returns (raw_type_text, is_wrapper, is_nullable).
+    # `T*` form the meta-type parser understands. Returns (raw_type_text, is_wrapper, is_nullable)
     type_text = type_text.strip()
-    # Strip leading C++ attributes such as [[maybe_unused]] (used on ignored receivers).
+    # Strip leading C++ attributes such as [[maybe_unused]] (used on ignored receivers)
     while type_text.startswith('[['):
         attr_end = type_text.find(']]')
         if attr_end == -1:
@@ -896,7 +896,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     name = function_tokens[2]
 
     # The first parameter (engine/entity receiver) is skipped by parse_method_args, so detect its
-    # ptr<T> wrapper spelling here for the generated extern declaration / function-pointer cast.
+    # ptr<T> wrapper spelling here for the generated extern declaration / function-pointer cast
     receiver_wrapper = False
     receiver_args = split_engine_args(function_args)
     if receiver_args:
@@ -981,7 +981,7 @@ def parse_enum_key_values(enum_lines: list[str]) -> list[EnumKeyValue]:
         stripped = line.strip()
         if not stripped or stripped.startswith('}'):
             # Skip blank lines, comment-only lines (truncated to empty above) and the closing brace, so they are
-            # not parsed as enum entries (which would produce empty keys and auto-values that collide).
+            # not parsed as enum entries (which would produce empty keys and auto-values that collide)
             continue
         separator = line.find('=')
         if separator == -1:
@@ -1143,7 +1143,7 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str], allow_r
         'string_view': 'string', 'string': 'string', 'hstring': 'hstring', 'any_t': 'any',
     }
     # Reduce nested ptr<T> / nptr<T> wrappers (e.g. vector<ptr<ItemView>>) to the raw T* form.
-    # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements.
+    # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements
     for prefix in ('ptr<', 'nptr<'):
         if engine_type.startswith(prefix) and engine_type.endswith('>'):
             return engine_type_to_unified_type(engine_type[len(prefix):-1].strip() + '*', valid_types, allow_raw_handle_pointer=True)
@@ -1211,7 +1211,7 @@ def is_validated_pointer_meta_type(meta_type: str) -> bool:
     # Codegen emits CheckArgNotNull / CheckReturnNotNull for every meta-type
     # whose runtime representation is a script handle to a heap object: game
     # entities, the generic `Entity` base, entity relatives (Abstract*,
-    # Proto*, Static*) and user-declared `///@ ExportRefType` classes.
+    # Proto*, Static*) and user-declared `///@ ExportRefType` classes
     return (meta_type in game_entities
             or meta_type == 'Entity'
             or meta_type in entity_relatives
@@ -1463,7 +1463,7 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper))
             # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
             # detail (nullability is already carried by `nullable`), so it must not change the
-            # client/server compatibility hash when a raw signature is converted to a wrapper.
+            # client/server compatibility hash when a raw signature is converted to a wrapper
             hashable_args = [(a.arg_type, a.name, a.nullable, a.default_value) for a in result_args]
             hash_recursive(compatibility_hasher, (target, entity, name, ret, hashable_args, export_flags, ret_nullable))
 
@@ -1706,6 +1706,8 @@ class GeneratedOutput:
 generated_output = GeneratedOutput()
 
 def get_entity_from_target(target: str) -> str:
+    # Script Entity is promoted to the target entity, which the exports behind it need for engine, id and lock.
+    # ConvertArg narrows arguments on the way in, so a prototype - a sibling of ServerEntity - is rejected at the call
     if target == 'Server':
         return 'ServerEntity*'
     if target in CLIENT_ENTITY_TARGETS:
@@ -1768,7 +1770,7 @@ def wrap_handle_engine_type(engine_type: str, nullable: bool) -> str:
 def container_element_wrapper(type_text: str) -> str:
     # Report the wrapper of a script-ABI container element (e.g. readonly_vector<nptr<Critter>> ->
     # 'nptr', vector<ptr<Item>> -> 'ptr'). Parameter types are part of the C++ mangled symbol, so
-    # the generated extern/native-call cast must spell the element exactly as the source did.
+    # the generated extern/native-call cast must spell the element exactly as the source did
     text = type_text.strip()
     for prefix in ('readonly_vector<', 'vector<'):
         if text.startswith(prefix):
@@ -1783,7 +1785,7 @@ def container_element_wrapper(type_text: str) -> str:
 def apply_container_element_wrapper(engine_type: str, element_wrapper: str) -> str:
     # Re-spell the element of a script-ABI container engine type (readonly_vector<Critter*> ->
     # readonly_vector<nptr<Critter>>) so the generated glue matches the source parameter's C++
-    # mangling. Only the C++-glue spelling changes; the script-facing meta type is unaffected.
+    # mangling. Only the C++-glue spelling changes; the script-facing meta type is unaffected
     if not element_wrapper:
         return engine_type
     open_pos = engine_type.find('<')
@@ -2093,7 +2095,7 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
     # AFTER the referenced type's layout — the engine assertion on
     # `field.Type.IsSimpleStruct` requires the dependency to be fully registered first.
     # Without this sort, codegen emits in file-alphabetic order, which breaks any
-    # cross-file dependency that points "downward" alphabetically.
+    # cross-file dependency that points "downward" alphabetically
     value_type_tags = list(codegen_tags['ExportValueType'])
     value_type_names = {tag.name for tag in value_type_tags}
 
@@ -2176,12 +2178,12 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
 
 def append_entity_type_registration(register_lines: list[str], target: str) -> None:
     register_lines.append('// Entity types')
-    register_lines.append('unordered_map<string, PropertyRegistrator*> registrators;')
+    register_lines.append('unordered_map<string, PropertyRegistrar*> registrars;')
     for entity in game_entities:
         if not entity_allowed(entity, target):
             continue
         entity_info = game_entities_info[entity]
-        register_lines.append('registrators["' + entity + '"] = meta->RegisterEntityType("' + entity + '", ' +
+        register_lines.append('registrars["' + entity + '"] = meta->RegisterEntityType("' + entity + '", ' +
                 cpp_bool(entity_info.exported) + ', ' +
                 cpp_bool(entity_info.is_global) + ', ' +
                 cpp_bool(entity_info.has_protos) + ', ' +
@@ -2204,14 +2206,14 @@ def append_property_registration(helper_lines: list[str], register_lines: list[s
         body_lines: list[str] = []
         for prop_tag in codegen_tags['ExportProperty']:
             if prop_tag.entity == entity:
-                body_lines.append('registrator->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
+                body_lines.append('registrar->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
 
         if not body_lines:
             continue
 
         function_name = make_unique_cpp_identifier(used_names, 'RegisterProperties_', entity)
-        append_static_function(helper_lines, 'static void ' + function_name + '(PropertyRegistrator* registrator)', body_lines)
-        register_lines.append(function_name + '(registrators["' + entity + '"]);')
+        append_static_function(helper_lines, 'static void ' + function_name + '(PropertyRegistrar* registrar)', body_lines)
+        register_lines.append(function_name + '(registrars["' + entity + '"]);')
 
     register_lines.append('')
 
@@ -2256,8 +2258,11 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     if not is_validated_pointer_meta_type(p.arg_type):
                         continue
                     method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
+                # AllowDestroyedEntityArgs opts one export out of the blanket destroyed-entity argument
+                # rejection; it exists for the synchronization primitives (see ScriptSystem.h ConvertArg).
+                allow_destroyed_entity_args = ', true' if 'AllowDestroyedEntityArgs' in method_tag.flags else ''
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
-                    ', '.join([apply_container_element_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity', wrap_handles=True, nullable=p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+                    ', '.join([apply_container_element_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity', wrap_handles=True, nullable=p.nullable), p.container_element_wrapper) for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')' + allow_destroyed_entity_args + '>(call);')
                 if not method_tag.ret_nullable and method_tag.ret != 'void' and is_validated_pointer_meta_type(method_tag.ret):
                     method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:
@@ -2405,7 +2410,7 @@ def write_internal_config() -> None:
     def write_internal_config_impl() -> None:
         start_marker = b'###InternalConfig###1234'
         end_marker = b'###InternalConfigEnd###'
-        capacity = int(args.internalcfg)
+        capacity = INTERNAL_CONFIG_CAPACITY
         assert capacity >= len(start_marker) + len(end_marker), 'Internal config capacity must fit patch markers'
         data = [ord('0') + i % 10 for i in range(capacity)]
         data[:len(start_marker)] = start_marker
@@ -2426,7 +2431,7 @@ def try_get_git_branch() -> str:
 def write_engine_config() -> None:
     def write_engine_config_impl() -> None:
         # Single generated header with configuration and build/version macros, pulled in at the very top of
-        # BasicCore.h instead of cluttering the compiler command line.
+        # BasicCore.h instead of cluttering the compiler command line
         generated_output.create_file('EngineConfig.gen.h', args.genoutput)
         generated_output.write_line('// FOnline Engine generated configuration. Do not edit.')
         generated_output.write_line('')

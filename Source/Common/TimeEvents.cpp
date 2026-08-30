@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -207,7 +207,7 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
     }
 
     // Re-fire the dispatcher hook outside the manager's lock so the dispatcher can take its own
-    // mutex without nesting concerns.
+    // mutex without nesting concerns
     for (const auto& info : to_resubmit) {
         NotifyCancel(info.EventId);
         NotifySchedule(entity, info.EventId, info.Delay);
@@ -248,7 +248,7 @@ void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_nam
             time_events->erase(time_events->begin() + numeric_cast<ptrdiff_t>(i)); // te is not valid anymore
             cancelled_ids.push_back(removed_id);
 
-            // Identifier may be only one.
+            // Identifier may be only one
             if (id != 0) {
                 break;
             }
@@ -584,9 +584,8 @@ void TimeEventManager::PauseDispatcherHooks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Notifications are read lock-free from worker threads, so the hook objects themselves may only be
-    // reassigned once every worker is gone; pausing through the atomic flag is the thread-safe way to cut
-    // the dispatcher off while workers are still draining
+    // Workers read notifications lock-free, so hook objects cannot change until every worker exits.
+    // Pause through the atomic flag while workers drain
     _dispatcherPaused.store(true, std::memory_order_release);
 }
 
@@ -681,6 +680,14 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
         te = *it;
     }
 
+    nanotime dispatch_time = _engine->GameTime.GetFrameTime();
+
+    // The dispatcher runs on its own clock, so a debugger pause or DeltaTimeCap can wake this job early:
+    // stay pending and ask it to retry after the remaining engine-time delay
+    if (te->FireTime > dispatch_time) {
+        return te->FireTime - dispatch_time;
+    }
+
     auto fired = FireTimeEvent(entity, te);
 
     nanotime next_fire_time;
@@ -691,12 +698,12 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
         PostFireTimeEvent(entity, te, fired);
 
         if (entity->IsDestroyed()) {
-            // The handler destroyed its owner; the fired event is done and must not be rescheduled.
+            // The handler destroyed its owner; the fired event is done and must not be rescheduled
             return std::nullopt;
         }
 
         if (te->Id == 0) {
-            // PostFire removed the event because it was a one-shot or the script asked to stop.
+            // PostFire removed the event because it was a one-shot or the script asked to stop
             return std::nullopt;
         }
 
@@ -707,7 +714,7 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
 
     if (next_fire_time <= now) {
         // Edge case: handler took long enough that next FireTime is already in the past. Schedule
-        // an immediate rerun (tiny non-zero delay so the dispatcher doesn't busy-loop).
+        // an immediate rerun (tiny non-zero delay so the dispatcher doesn't busy-loop)
         return MIN_REPEAT_TIME;
     }
 

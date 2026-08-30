@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -52,6 +52,7 @@ FO_DISABLE_WARNINGS_POP()
 #include "WinApiUndef.inc"
 
 FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
+FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 FO_BEGIN_NAMESPACE
 
@@ -71,6 +72,65 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string;
 static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
 static auto DecodeHexDigit(char ch) -> uint8_t;
+
+static auto BsonMalloc(size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MallocRaw(size).get();
+}
+
+static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::CallocRaw(num, size).get();
+}
+
+static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::ReallocRaw(mem, size).get();
+}
+
+static void BsonFree(void* mem) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    SafeAlloc::FreeRaw(mem);
+}
+
+// bson frees every block through the plain free member, so the aligned path must stay free()-compatible — on
+// Windows without rpmalloc it is not, which is why bson's own vtable also falls back to plain malloc
+static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC || !FO_WINDOWS
+    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+#else
+    ignore_unused(alignment);
+
+    return SafeAlloc::MallocRaw(size).get();
+#endif
+}
+
+void InitializeBsonMemory() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static std::once_flag once;
+    std::call_once(once, [] {
+        bson_mem_vtable_t vtable {};
+        vtable.malloc = &BsonMalloc;
+        vtable.calloc = &BsonCalloc;
+        vtable.realloc = &BsonRealloc;
+        vtable.free = &BsonFree;
+        vtable.aligned_alloc = &BsonAlignedAlloc;
+        bson_mem_set_vtable(&vtable);
+    });
+}
 
 DataBase::DataBase() = default;
 
@@ -1078,7 +1138,7 @@ void DataBaseImpl::StartPanic(string_view message)
 
     run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
         std::this_thread::sleep_for(timeout);
-        ExitApp(false);
+        ReportFatalAndExit("Database panic shutdown timed out");
     }).detach();
 }
 
@@ -1157,7 +1217,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 #if FO_WINDOWS
     auto size = _lseeki64(_fd, 0, SEEK_END);
 #else
-    const auto size = lseek(_fd, 0, SEEK_END);
+    auto size = lseek(_fd, 0, SEEK_END);
 #endif
 
     if (size < 0) {
@@ -1187,7 +1247,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
         auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
         int32_t read_size = _read(_fd, read_pos.get(), chunk);
 #else
-        const auto read_size = read(_fd, read_pos.get(), remaining);
+        ssize_t read_size = read(_fd, read_pos.get(), remaining);
 #endif
 
         if (read_size <= 0) {
@@ -1333,7 +1393,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
         int32_t written_size = _write(_fd, write_pos.get(), chunk);
 #else
-        const auto written_size = write(_fd, write_pos.get(), remaining);
+        ssize_t written_size = write(_fd, write_pos.get(), remaining);
 #endif
 
         if (written_size <= 0) {
@@ -1379,9 +1439,9 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
         if (options.front() == "JSON" && options.size() == 2) {
             return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));
         }
-#if FO_HAVE_UNQLITE
-        if (options.front() == "DbUnQLite" && options.size() == 2) {
-            return finish_connect(CreateUnQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
+#if FO_HAVE_SQLITE
+        if (options.front() == "DbSQLite" && options.size() == 2) {
+            return finish_connect(CreateSQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
         }
 #endif
 #if FO_HAVE_MONGO
@@ -2040,4 +2100,5 @@ static auto DecodeHexDigit(char ch) -> uint8_t
 
 FO_END_NAMESPACE
 
+FO_GCC_IGNORE_WARNINGS_POP()
 FO_CLANG_IGNORE_WARNINGS_POP()

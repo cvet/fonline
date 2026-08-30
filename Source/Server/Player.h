@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,8 +70,8 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
-    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
-    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] ptr<const ServerConnection> GetConnection() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
@@ -105,7 +105,7 @@ public:
     void Send_HashList(const_span<string> hash_strings);
     void Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data);
     void Send_Ping(bool answer);
-    void Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, uint32_t out_encrypt_key);
+    void Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, bool metadata_outdated, string_view metadata_version, uint32_t out_encrypt_key);
     void Send_InitData(const_span<uint8_t> update_desc);
     void Send_UpdateFileData(const_span<uint8_t> update_data);
     void Send_Action(ptr<const Critter> from_cr, CritterAction action, int32_t action_data, nptr<const Item> context_item);
@@ -129,27 +129,11 @@ private:
     void SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, bool owned);
     void SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr);
 
-    // Guards the _connection pointer against a concurrent reconnect SwapConnection while a lock-free send is
-    // writing through it. A plain mutex (not shared): same-player sends serialize on the connection's own
-    // _outBufLocker anyway, so shared readers would gain nothing; cross-player concurrency comes from each
-    // player owning its own lock. Sends and SwapConnection both take it exclusively. Declared before _connection
-    // so it outlives the data it guards.
     mutex _connectionLock {};
-    // FO_TSA_GUARDED_BY(_connectionLock): the lock-free broadcast/recipient sends reach _connection without the
-    // recipient's entity cover, so TSA enforces the lock on those paths. The entity-cover accessors that cannot
-    // hold it (the GetConnection getters, the cross-object SwapConnection swap of other->_connection) reach it
-    // under the cooperative entity cover — which also excludes SwapConnection — and are FO_TSA_NO_ANALYSIS.
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
-    string _name {"(Unlogined)"};
-    // Non-owning back-pointer to the controlled critter, atomic so the lock-free broadcast fan-out can read it
-    // for the is_chosen identity compare (subject == controlled critter) without the recipient's entity lock.
-    // Published under the player's cover (SetControlledCritter); also the Player->Critter sync-widen anchor.
+    string _name {"(NotLoggedIn)"};
+    mutable atomic_mutex _controlledCrLinkLocker {};
     std::atomic<Critter*> _controlledCr {};
-    // Anti-loopback filter for client-originated property changes: set on the originating player around the
-    // apply, read per-recipient in the send path to skip echoing the change back to its source. Atomic so the
-    // sync-free fan-out can read it without the recipient's entity lock; the two fields are read independently
-    // (a false match is impossible — the broadcast subject is locked, so only the originator can carry a pair
-    // matching this (entity, prop)).
     std::atomic<const Entity*> _sendIgnoreEntity {};
     std::atomic<const Property*> _sendIgnoreProperty {};
     optional<ViewMapContext> _viewMap {};

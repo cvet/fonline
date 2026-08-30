@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,12 +50,13 @@ FO_BEGIN_NAMESPACE
 
 enum class UpdaterResult : uint8_t
 {
-    ResourcesReady = 0, // Gameplay compat OK; resources are now in sync, caller may start the game.
-    BinariesStaged = 1, // Gameplay compat outdated; native modules are ready on disk, caller must promote them and restart.
-    PlatformUnsupported = 2, // Compat outdated and CanSelfUpdateNativeModules() == false (Web / iOS / Android).
-    ServerMissingNativeUpdate = 3, // Compat outdated but server has no binaries for our target — config bug.
-    UpdaterOutdated = 4, // FO_UPDATER_VERSION mismatch; protocol is unusable.
-    Failed = 5, // Any other failure: connection, disk, etc.
+    ResourcesReady = 0, // Gameplay compat OK; resources are now in sync, caller may start the game
+    BinariesStaged = 1, // Gameplay compat outdated; native modules are ready on disk, caller must reload
+    PlatformUnsupported = 2, // Compat outdated and CanSelfUpdateNativeModules() == false (Web / iOS / Android)
+    ServerMissingNativeUpdate = 3, // Compat outdated but server has no binaries for our target — config bug
+    UpdaterOutdated = 4, // FO_UPDATER_VERSION mismatch; protocol is unusable
+    Failed = 5, // Any other failure: connection, disk, etc
+    MetadataMismatch = 6, // Resources are in sync with the descriptor, yet the server runs another metadata version
 };
 
 extern auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
@@ -90,7 +91,7 @@ public:
     [[nodiscard]] auto GetRuntimeLivePath() const -> string;
 
     // One iteration of network processing + UI rendering. Returns true once the updater
-    // reached a terminal state and the caller should inspect GetResult().
+    // reached a terminal state and the caller should inspect GetResult()
     auto Process() -> bool;
 
 private:
@@ -120,6 +121,8 @@ private:
     void AddText(string_view text);
     void Abort(string_view text);
     void GetNextFile();
+    void FinishResourcesUpdate();
+    auto ReadLocalMetadataVersion() const -> string;
     void ProcessExternalUpdate();
     [[nodiscard]] auto TryStartExternalUpdate(UpdateFile& update_file) -> bool;
     void FallbackFromExternalUpdate(UpdateFile& update_file, ContentUpdateSourceResult result, string_view reason);
@@ -156,6 +159,7 @@ private:
     ClientConnection _conn;
     CacheStorage _cache;
     string _binaryDir;
+    string _serverMetadataVersion {};
     optional<UpdaterResult> _result;
     bool _binariesMode {};
     bool _aborted {};

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -1327,9 +1327,9 @@ FO_SCRIPT_API void Common_ImGui_SetItemTooltip([[maybe_unused]] ptr<ScriptImGui>
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_BeginTooltip([[maybe_unused]] ptr<ScriptImGui> self)
+FO_SCRIPT_API bool Common_ImGui_BeginTooltip([[maybe_unused]] ptr<ScriptImGui> self)
 {
-    ImGui::BeginTooltip();
+    return ImGui::BeginTooltip();
 }
 
 ///@ ExportMethod
@@ -1960,7 +1960,22 @@ FO_SCRIPT_API bool Common_ImGui_ColorButton([[maybe_unused]] ptr<ScriptImGui> se
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetColorEditOptions([[maybe_unused]] ptr<ScriptImGui> self, ImGui_ColorEditFlags flags)
 {
-    ImGui::SetColorEditOptions(static_cast<ImGuiColorEditFlags>(flags));
+    ImGuiColorEditFlags imgui_flags = static_cast<ImGuiColorEditFlags>(flags);
+
+    if ((imgui_flags & ImGuiColorEditFlags_DisplayMask_) == 0) {
+        imgui_flags |= ImGuiColorEditFlags_DefaultOptions_ & ImGuiColorEditFlags_DisplayMask_;
+    }
+    if ((imgui_flags & ImGuiColorEditFlags_DataTypeMask_) == 0) {
+        imgui_flags |= ImGuiColorEditFlags_DefaultOptions_ & ImGuiColorEditFlags_DataTypeMask_;
+    }
+    if ((imgui_flags & ImGuiColorEditFlags_PickerMask_) == 0) {
+        imgui_flags |= ImGuiColorEditFlags_DefaultOptions_ & ImGuiColorEditFlags_PickerMask_;
+    }
+    if ((imgui_flags & ImGuiColorEditFlags_InputMask_) == 0) {
+        imgui_flags |= ImGuiColorEditFlags_DefaultOptions_ & ImGuiColorEditFlags_InputMask_;
+    }
+
+    ImGui::GetIO().ConfigColorEditFlags = imgui_flags;
 }
 
 ///@ ExportMethod
@@ -2151,7 +2166,7 @@ FO_SCRIPT_API string Common_ImGui_SaveIniSettingsToMemory([[maybe_unused]] ptr<S
     return data ? string(data.get(), ini_size) : string {};
 }
 
-// Keep script enum bindings in sync with upstream Dear ImGui constants.
+// Keep script enum bindings in sync with upstream Dear ImGui constants
 static_assert(static_cast<int>(ImGui_WindowFlags::None) == ImGuiWindowFlags_None);
 static_assert(static_cast<int>(ImGui_WindowFlags::NoTitleBar) == ImGuiWindowFlags_NoTitleBar);
 static_assert(static_cast<int>(ImGui_WindowFlags::NoResize) == ImGuiWindowFlags_NoResize);

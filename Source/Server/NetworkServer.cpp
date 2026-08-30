@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -125,8 +125,6 @@ void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncRec
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_sendCallbackSet, "Send callback set is already set");
-    FO_VERIFY_AND_THROW(!_disconnectCallbackSet, "Disconnect callback set is already set");
     FO_VERIFY_AND_THROW(send, "Missing required send callback");
     FO_VERIFY_AND_THROW(receive, "Missing required receive callback");
     FO_VERIFY_AND_THROW(disconnect, "Missing required disconnect callback");
@@ -135,15 +133,19 @@ void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncRec
         return;
     }
 
-    _sendCallback = std::move(send);
-    _sendCallbackSet = true;
+    {
+        scoped_lock locker {_sendLocker};
 
-    _disconnectCallback = std::move(disconnect);
-    _disconnectCallbackSet = true;
+        FO_VERIFY_AND_THROW(!_sendCallback, "Send callback is already set");
+        _sendCallback = std::move(send);
+    }
 
     {
         scoped_lock locker {_receiveLocker};
 
+        FO_VERIFY_AND_THROW(!_disconnectCallback, "Disconnect callback is already set");
+
+        _disconnectCallback = std::move(disconnect);
         _receiveCallback = std::move(receive);
 
         if (!_initReceiveBuf.empty()) {
@@ -169,23 +171,46 @@ void NetworkServerConnection::Disconnect()
 {
     FO_STACK_TRACE_ENTRY();
 
+    {
+        scoped_lock locker {_sendLocker};
+
+        _sendCallback = {};
+    }
+
     bool expected = false;
+    bool disconnected_here = _isDisconnected.compare_exchange_strong(expected, true);
 
-    if (_isDisconnected.compare_exchange_strong(expected, true)) {
+    if (disconnected_here) {
         DisconnectImpl();
+    }
 
-        if (_disconnectCallbackSet) {
-            _disconnectCallback();
+    // Taken on every call, not only the first: the owning ServerConnection disconnects from its own
+    // destructor, and waiting here is what lets a running callback finish before its owner is gone
+    scoped_lock locker {_receiveLocker};
+
+    _receiveCallback = {};
+
+    // Only the call that won the flag may take the disconnect callback: a nested call from the
+    // transport teardown above would otherwise drop it before the winner reports the disconnect
+    if (disconnected_here) {
+        DisconnectCallback disconnect_callback = std::move(_disconnectCallback);
+        _disconnectCallback = {};
+
+        if (disconnect_callback) {
+            disconnect_callback();
         }
     }
 }
 
-// ReSharper disable once CppMemberFunctionMayBeConst
-auto NetworkServerConnection::SendCallback() -> const_span<uint8_t>
+auto NetworkServerConnection::SendCallback() -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_sendCallbackSet) {
+    // Held across the call, not just around the lookup: the sender may be destroyed by another thread,
+    // and Disconnect() drops this callback under the same lock
+    scoped_lock locker {_sendLocker};
+
+    if (!_sendCallback) {
         return {};
     }
 

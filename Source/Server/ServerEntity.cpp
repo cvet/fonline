@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,8 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
-ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) noexcept :
-    Entity(registrator, props, engine->Settings->ServerPropertiesPackData ? base_props : nullptr),
+ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props) noexcept :
+    Entity(registrar, props, engine->Settings->ServerPropertiesPackData ? base_props : nullptr),
     _engine {engine},
     _id {id}
 {
@@ -54,8 +54,16 @@ ServerEntity::~ServerEntity()
 
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
-    // but if something slipped through, this destructor still releases cleanly.
-    if (auto parent = _parent.load(std::memory_order_relaxed); parent) {
+    // but if something slipped through, this destructor still releases cleanly
+    nptr<ServerEntity> parent;
+
+    {
+        scoped_lock locker {_parentLinkLocker};
+
+        parent = nptr<ServerEntity> {_parent.exchange(nullptr, std::memory_order_acq_rel)};
+    }
+
+    if (parent) {
         parent->Release();
     }
 }
@@ -124,7 +132,7 @@ auto ServerEntity::GetEntityLock() const noexcept -> nptr<EntityLock>
     return _entityLock;
 }
 
-auto ServerEntity::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
+auto ServerEntity::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -132,7 +140,7 @@ auto ServerEntity::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
     return nullptr;
 }
 
-auto ServerEntity::GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
+auto ServerEntity::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -189,7 +197,7 @@ auto ServerEntity::GetParent() -> refcount_nptr<ServerEntity>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
+    return GetParentRaw();
 }
 
 auto ServerEntity::GetParent() const -> refcount_nptr<const ServerEntity>
@@ -197,7 +205,7 @@ auto ServerEntity::GetParent() const -> refcount_nptr<const ServerEntity>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
+    return GetParentRaw();
 }
 
 auto ServerEntity::GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>
@@ -205,6 +213,11 @@ auto ServerEntity::GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
+
+    // Load and pin under one hold: SetParent replaces the pointer under the same lock and only then drops the
+    // link's ref, so a parent reachable here still carries that ref and TryAddRef cannot resurrect a dead object
+    scoped_lock locker {_parentLinkLocker};
+
     return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -217,11 +230,8 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
     if (_parent.load(std::memory_order_relaxed) != nullptr) {
         auto ctx = SyncContext::GetCurrentOnThisThread();
         auto lock = GetEntityLock();
-        // Strict access model: reparenting a live entity requires its OWN lock held directly (ancestor
-        // coverage is a read-path right only; there is no empty-context free pass). The only exemption
-        // is a thread with no sync context at all (non-server threads). Stop-the-world owners
-        // (ServerEngine::Lock / Shutdown) satisfy this naturally: their reparents run through the
-        // capture paths (EnsureEntitySynced), which take the entity's own lock.
+        // Reparenting needs the entity's own lock directly, because ancestor coverage is a read-path right only;
+        // the sole exemption is a thread with no sync context at all
         FO_VERIFY_AND_CONTINUE(!ctx || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
     }
 
@@ -229,7 +239,15 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
         parent->AddRef();
     }
 
-    nptr<ServerEntity> old = _parent.exchange(parent.get(), std::memory_order_acq_rel);
+    // The replacement is published under the link lock and the old ref dropped after it, so no reader can be
+    // holding the old pointer without having already pinned it
+    nptr<ServerEntity> old;
+
+    {
+        scoped_lock locker {_parentLinkLocker};
+
+        old = nptr<ServerEntity> {_parent.exchange(parent.get(), std::memory_order_acq_rel)};
+    }
 
     if (old) {
         old->Release();
@@ -246,12 +264,12 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
         return EventResult::ContinueChain;
     }
 
-    // Engine-wide invariant: a primary SyncContext is always active when an event fires.
+    // Engine-wide invariant: a primary SyncContext is always active when an event fires
     FO_STRONG_ASSERT(SyncContext::GetCurrentOnThisThread(), "Server entity event fired without active sync context");
 
     bool had_exception = false;
 
-    // Iterate a copy — callbacks vector may be changed/invalidated during cycle work.
+    // Iterate a copy — callbacks vector may be changed/invalidated during cycle work
     small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
 
     for (const auto& cb : callbacks_snapshot) {
@@ -282,7 +300,7 @@ auto CustomEntity::GetName() const noexcept -> string_view
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return _propsRef->GetRegistrator()->GetTypeName();
+    return _propsRef->GetRegistrar()->GetTypeName();
 }
 
 auto CustomEntityWithProto::GetName() const noexcept -> string_view

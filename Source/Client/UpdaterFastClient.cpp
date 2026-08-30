@@ -146,7 +146,7 @@ void UpdaterFastClient::Process()
     }
 
     // Drain already queued replies before expiring requests. A delayed client tick must not discard
-    // a valid challenge or chunk that arrived before the timeout but was not processed yet.
+    // a valid challenge or chunk that arrived before the timeout but was not processed yet
     ProcessReceives();
 
     if (_failed || _finished) {

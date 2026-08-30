@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -193,7 +193,11 @@ ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<Re
     _sprMngr {spr_mngr},
     _settings {settings},
     _particleMngr {settings, effect_mngr, &spr_mngr->GetRender(), spr_mngr->GetResources(), game_time, //
-        [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); }}
+        [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); }, //
+        [spr_mngr]() mutable FO_DEFERRED {
+            nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
+            return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
+        }}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -240,7 +244,7 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
     auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
-        // Particle UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset.
+        // Particle UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset
         auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {

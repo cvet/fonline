@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -655,16 +656,16 @@ namespace EntityOps
         int pos1 = s.findFirstOf("de");
         if (pos1 != 3) return -1;
 
-        // findLastOf - start=0 to search from beginning
-        int pos2 = s.findLastOf("de", 0);
+        // findLastOf - the default start scans back from the end of the string
+        int pos2 = s.findLastOf("de");
         if (pos2 != 10) return -2;
 
         // findFirstNotOf
         int pos3 = s.findFirstNotOf("abc");
         if (pos3 != 3) return -3;
 
-        // findLastNotOf - start=0 to search from beginning
-        int pos4 = s.findLastNotOf("def", 0);
+        // findLastNotOf - the default start scans back from the end of the string
+        int pos4 = s.findLastNotOf("def");
         if (pos4 < 0) return -4;
 
         return 0;
@@ -913,6 +914,56 @@ namespace EntityOps
         }
 
         Game.DestroyCritter(cr);
+        return 0;
+    }
+
+    // A prototype is an Entity to a script but a sibling of ServerEntity natively, so every position that
+    // promotes a script Entity has to reject one instead of handing the callee a foreign object
+
+    void TestPrototypeAsScalarEntityArgThrows()
+    {
+        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
+
+        Game.DbHasEntity(itemProto);
+    }
+
+    void TestPrototypeInEntityArrayThrows()
+    {
+        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
+        array<Entity> entities = {itemProto};
+
+        Game.DestroyEntities(entities);
+    }
+
+    void TestPrototypeMixedIntoEntityArrayThrows()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        ProtoItem itemProto = Game.GetProtoItem("TestItem".hstr());
+        array<Entity> entities = {cr, itemProto};
+
+        Game.DestroyEntities(entities);
+    }
+
+    int TestEntityArrayAcceptsRealEntities()
+    {
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr1 is null || cr2 is null) return -1;
+
+        array<Entity> entities = {cr1, cr2};
+        Game.DestroyEntities(entities);
+
+        if (!cr1.IsDestroyed) return -2;
+        if (!cr2.IsDestroyed) return -3;
+
+        return 0;
+    }
+
+    int TestEmptyEntityArrayIsAccepted()
+    {
+        array<Entity> entities;
+        Game.DestroyEntities(entities);
+
         return 0;
     }
 
@@ -2099,6 +2150,115 @@ TEST_CASE("EntityBaseOperations")
     SECTION("ItemContainerOps")
     {
         RUN_SCRIPT_FUNC("TestItemContainerOps");
+    }
+}
+
+TEST_CASE("ScriptEntityPromotionRejectsPrototypes")
+{
+    MAKE_SERVER();
+
+    SECTION("ScalarArg")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestPrototypeAsScalarEntityArgThrows", "Script entity is not usable as this entity type");
+    }
+
+    SECTION("ArrayArg")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestPrototypeInEntityArrayThrows", "Script entity is not usable as this entity type");
+    }
+
+    SECTION("ArrayArgAfterRealEntity")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestPrototypeMixedIntoEntityArrayThrows", "Script entity is not usable as this entity type");
+    }
+
+    SECTION("RealEntitiesStillPass")
+    {
+        RUN_SCRIPT_FUNC("TestEntityArrayAcceptsRealEntities");
+    }
+
+    SECTION("EmptyArray")
+    {
+        RUN_SCRIPT_FUNC("TestEmptyEntityArrayIsAccepted");
+    }
+}
+
+// The receiver is argument zero and no export takes a dict of entity handles, so both are driven through
+// the marshaller directly rather than through a script call
+TEST_CASE("ScriptEntityArgumentPromotion")
+{
+    MAKE_SERVER();
+
+    nptr<const ProtoItem> item_proto = server->GetProtoItem(get_func("TestItem"));
+    REQUIRE(item_proto);
+
+    // A handle slot is non-const by construction, while the proto lookup only hands out a const view
+    ptr<Entity> proto_entity = make_ptr(const_cast<ProtoItem*>(std::addressof(*item_proto)));
+
+    SECTION("NarrowsAScalarArgumentToTheDeclaredType")
+    {
+        nptr<Entity> base_entity = proto_entity;
+        NativeDataProvider::StorageEntryType slot_storage {};
+        ptr<void> slot = NativeDataProvider::NormalizeArg(base_entity, slot_storage);
+
+        nptr<ProtoItem> temp;
+        auto narrowed = NativeDataCaller::ConvertArg<ptr<ProtoItem>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+
+        CHECK(narrowed == proto_entity);
+    }
+
+    SECTION("RejectsAScalarArgumentOfAnotherEntityType")
+    {
+        nptr<Entity> base_entity = proto_entity;
+        NativeDataProvider::StorageEntryType slot_storage {};
+        ptr<void> slot = NativeDataProvider::NormalizeArg(base_entity, slot_storage);
+
+        nptr<ProtoCritter> temp;
+
+        CHECK_THROWS_AS((NativeDataCaller::ConvertArg<ptr<ProtoCritter>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
+    }
+
+    SECTION("NarrowsADictValueToTheDeclaredType")
+    {
+        map<hstring, nptr<Entity>> source;
+        source.emplace(get_func("entry"), proto_entity);
+
+        NativeDataProvider::StorageEntryType storage {};
+        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+
+        optional<map<hstring, nptr<ProtoItem>>> temp;
+        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<ProtoItem>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+
+        REQUIRE(narrowed.size() == 1);
+        CHECK(narrowed.begin()->second == proto_entity);
+    }
+
+    SECTION("RejectsADictValueOfAnotherEntityType")
+    {
+        map<hstring, nptr<Entity>> source;
+        source.emplace(get_func("entry"), proto_entity);
+
+        NativeDataProvider::StorageEntryType storage {};
+        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+
+        optional<map<hstring, nptr<ProtoCritter>>> temp;
+
+        CHECK_THROWS_AS((NativeDataCaller::ConvertArg<map<hstring, nptr<ProtoCritter>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
+    }
+
+    SECTION("KeepsTheBaseValueTypeAsIs")
+    {
+        map<hstring, nptr<Entity>> source;
+        source.emplace(get_func("entry"), proto_entity);
+
+        NativeDataProvider::StorageEntryType storage {};
+        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+
+        optional<map<hstring, nptr<Entity>>> temp;
+        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<Entity>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+
+        REQUIRE(narrowed.size() == 1);
+        CHECK(narrowed.begin()->second == proto_entity);
     }
 }
 

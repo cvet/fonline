@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,6 +61,15 @@ TEST_CASE("HashedString")
         hstring resolved = storage.ResolveHash(hs.as_hash());
         CHECK(resolved == hs);
         CHECK(resolved.as_str() == "EssentialsTest");
+    }
+
+    SECTION("StableHashes")
+    {
+        CHECK(HashStorage::DefaultHash(make_const_span(string_view {})) == UINT64_C(0x42bc986dc5eec4d3));
+        CHECK(HashStorage::DefaultHash(make_const_span(string_view {"1234567"})) == UINT64_C(0x25d18bd4513cc04c));
+        CHECK(HashStorage::DefaultHash(make_const_span(string_view {"12345678"})) == UINT64_C(0x28dd7b65ff012f34));
+        CHECK(HashStorage::DefaultHash(make_const_span(string_view {"0123456789abcdef"})) == UINT64_C(0x461ebd6f5b59dfa7));
+        CHECK(HashStorage::DefaultHash(make_const_span(string_view {"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"})) == UINT64_C(0xcfe8eedc725d7d69));
     }
 
     SECTION("IdempotentInsertion")

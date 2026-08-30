@@ -1,3 +1,36 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 #include "catch_amalgamated.hpp"
 
 #include "EngineBase.h"
@@ -13,11 +46,11 @@ static void InitTestMapLoaderMetadata(EngineMetadata& meta)
     meta.RegisterEntityType("Item", true, false, true, true, true);
 }
 
-static auto GetTestMapLoaderRegistrator(EngineMetadata& meta, string_view type_name) -> ptr<const PropertyRegistrator>
+static auto GetTestMapLoaderRegistrar(EngineMetadata& meta, string_view type_name) -> ptr<const PropertyRegistrar>
 {
-    auto registrator = meta.GetPropertyRegistrator(type_name);
-    REQUIRE(static_cast<bool>(registrator));
-    return registrator;
+    auto registrar = meta.GetPropertyRegistrar(type_name);
+    REQUIRE(static_cast<bool>(registrar));
+    return registrar;
 }
 
 TEST_CASE("MapLoader")
@@ -95,7 +128,7 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
         HashStorage hashes {};
@@ -167,8 +200,8 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), GetTestMapLoaderRegistrator(meta, "Critter"));
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), GetTestMapLoaderRegistrar(meta, "Critter"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Critter"), critter_proto);
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
@@ -220,7 +253,7 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
         HashStorage hashes {};
@@ -296,7 +329,7 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
         HashStorage hashes {};
@@ -311,6 +344,40 @@ TEST_CASE("MapLoader")
         CHECK_NOTHROW(MapLoader::Load("StemMap", "StemMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }));
 
         CHECK(item_calls == 1);
+    }
+
+    SECTION("RejectsBakedMapFileThatIsNotCurrentFormat")
+    {
+        auto make_baked_map_header = [](uint32_t magic, uint32_t version) {
+            vector<uint8_t> data;
+            auto writer = DataWriter(data);
+            writer.Write<uint32_t>(magic);
+            writer.Write<uint32_t>(version);
+            writer.Write<uint32_t>(uint32_t {7});
+            return data;
+        };
+
+        vector<uint8_t> current = make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION);
+        auto current_reader = DataReader {current};
+        CHECK_NOTHROW(MapLoader::ReadBakedFileHeader(current_reader, "TestMap"));
+        CHECK(current_reader.Read<uint32_t>() == 7);
+
+        vector<uint8_t> future = make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION + 1);
+        auto future_reader = DataReader {future};
+        CHECK_THROWS_AS(MapLoader::ReadBakedFileHeader(future_reader, "TestMap"), MapLoaderException);
+
+        // The pre-header layout opened with the hash count, so a stale resource file is caught by the magic
+        vector<uint8_t> headerless;
+        auto headerless_writer = DataWriter(headerless);
+        headerless_writer.Write<uint32_t>(uint32_t {2});
+        headerless_writer.Write<uint32_t>(uint32_t {4});
+        headerless_writer.WriteStringBytes("Item");
+        auto headerless_reader = DataReader {headerless};
+        CHECK_THROWS_AS(MapLoader::ReadBakedFileHeader(headerless_reader, "TestMap"), MapLoaderException);
+
+        vector<uint8_t> truncated;
+        auto truncated_reader = DataReader {truncated};
+        CHECK_THROWS(MapLoader::ReadBakedFileHeader(truncated_reader, "TestMap"));
     }
 }
 

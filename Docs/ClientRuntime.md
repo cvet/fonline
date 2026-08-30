@@ -246,7 +246,7 @@ relative to the draw anchor, or `false` when that instance has not produced a
 valid model sprite. `drawRect` covers the selected animation's complete cycle
 and continuous facing range, including its projected shadow. `viewRect` is the
 stable logical model-and-layers rectangle used by names, coarse picking, and
-similar presentation. GUI preview code fits and centres the draw rectangle;
+similar presentation. GUI preview code fits and centres the view rectangle;
 world-space overlays use the stable view rectangle as their logical anchor,
 without duplicating 3D projection rules or depending on the current atlas crop.
 The former custom pose evaluator and shared mutable matrix-output table have
@@ -281,6 +281,10 @@ the pack before this loader runs.
 
 Map light source intensity is authored as a percentage magnitude (`0..100`, with negative values keeping the same magnitude but opting into constant/personal capacity semantics). `MapView` clamps the current animated percentage, converts it to an internal raw falloff scale (`0..10000`), and then scales light-map RGB to the engine light range (`0..200`) and primitive alpha to `0..255` through the source's day-light capacity percentage. `SetDayColors()` must invalidate applied light fans when either the day color or the light-capacity percentage changes, because both feed cached per-hex lighting.
 
+`GetHexOffset(from, to)` is `GetHexPos(to) - GetHexPos(from)`, so scrolling the view origin (`RebuildMapOffset`) moves every light vertex by the same pixel delta. `MapView` translates cached `_lightPoints` by that delta instead of calling `LightFanToPrimitves` on every hex-scroll. A light that leaves the view (last visible hex hidden in `HideHex`) still forces a primitive rebuild so leftover triangles are not drawn. New lights entering the view reapply their fans and rebuild as before. The uniform-delta identity is pinned by `Test_Geometry` (`GetHexOffset view-origin shift is a uniform pixel translation`).
+
+Map item hit testing walks the active item-owned `MapSprite` values in the ordinary and indoor-mask lists. `DrawHexItem` binds each primary and multihex sprite to its item, and invalidation clears that borrow before the pooled sprite can be reused. Empty screen points therefore cost one pass over visible sprites rather than one pass over every hex in the padded view field, while draw-order, transparent-egg, and alpha hit tests keep using the same sprite records as rendering.
+
 The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
 ## Resources, sprites, effects, and render targets
@@ -304,29 +308,50 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   `EngineMetadata` for the already parsed version 2 aggregate, idle-priority
   view, and per-animation bounds from `ModelAnimationInfo.foinfo`; the client model
   layer never reopens or reparses that companion, and no authored `.fo3d`
-  `DrawSize` or `ViewSize` remains.
-  Enabled body/movement animation envelopes are projected through the active
-  model transform across every facing direction to derive a power-of-two
-  logical scratch frame large enough for the body and projected shadow. The
-  separate view envelope (`Unarmed + Idle`, any Idle, then deterministic
-  fallback) seeds the body `ViewRect`. Runtime layer and child-model bounds
-  extend both the view/name rectangle and the aggregate horizontal-lighting
-  frame; the envelope resets when mesh composition changes and otherwise only
-  grows. Names, coarse picking, transparent eggs, flying text, and attachments
-  therefore stay inside automatically derived bounds without authored sizes.
+  `DrawSize` or `ViewSize` remains. Every selectable geometry link in the binary
+  `.fo3d` also carries its own conservative root-space AABB. A root/skinned link
+  is sampled through every animation mapped by its parent description; a named-bone
+  link sweeps its child envelope through that bone and the authored link transform.
+  Disabled child meshes and nested description transforms are part of the same bake.
+  Runtime unions the active body/movement clip records with only the currently
+  selected link records and projects eight corners per AABB across every facing
+  direction. It never reads, deduplicates, or skins model vertices to determine a
+  sprite frame or crop.
+
+  The resulting envelope derives a grid-aligned logical scratch frame large enough
+  for the active composition and projected shadow. The separate view envelope
+  (`Unarmed + Idle`, any Idle, then deterministic fallback) seeds the body
+  `ViewRect`, while the aggregate root `ModelBounds` envelope sizes the
+  horizontal-lighting frame. Layout math that has no live GPU uses
+  `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` as the portable logical ceiling
+  (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`): bake-host
+  `MAX_ATLAS_WIDTH` / `HEIGHT` is not the game device. At runtime the scratch
+  texture cannot exceed `Render.ModelSpriteMaxTextureWidth` / `Height` or this
+  machine's atlas; the logical frame is that texture divided by `FRAME_SCALE`
+  (the model renders at 2×). A pose or lighting envelope that would need more
+  is clamped to that cap and drawn cropped: an authored model `Scale` combined
+  with a GUI preview `SetScale` zoom can push an in-band model past the cap.
+  Invalid or non-finite bounds still assert rather than falling back, and those
+  asserts report the six coordinates plus the model file name. Runtime layer
+  and child-model bounds extend the drawing frame without lifting the stable
+  view/name rectangle. The configuration envelope resets when mesh composition
+  changes and otherwise only grows, so attachments stay inside the automatically
+  derived frame without authored sizes.
   A body/movement animation switch can refresh the scratch frame, but it must
   retain this accumulated configuration view envelope instead of falling back
   to the root model's idle-only view; otherwise a turn animation temporarily
   moves the name and flying-text anchor for equipped critters.
 
   The model is rendered into a reusable 2x scratch target for the automatic
-  frame. Per-animation prediction and exact weighted skinning of referenced
-  combined-mesh vertices choose the atlas crop. If the evaluated pose requires a larger scratch frame,
-  the factory expands it and rerenders before copying; the bounded retry loop
-  fails rather than accepting a clipped frame that does not converge. The
-  cropped sprite offset preserves the fixed model root, hit-test coordinates,
-  and stable horizontal lighting gradient. Scratch-frame setup does not reserve
-  atlas space; allocation happens only after the final crop is known. A changed
+  frame. The same baked active-composition envelope chooses the atlas crop; it is
+  deliberately conservative, so an attachment can reserve a small transparent
+  margin instead of paying for a live weighted-vertex sweep. If the evaluated
+  composition requires a larger scratch frame, the factory expands it and
+  rerenders before copying; the bounded retry loop fails rather than accepting a
+  clipped frame that does not converge. The cropped sprite offset preserves the
+  fixed model root, hit-test coordinates, and stable horizontal lighting gradient.
+  Scratch-frame setup does not reserve atlas space; allocation happens only after
+  the final crop is known. A changed
   placement is prepared locally, rendered, and published only after the atlas
   copy succeeds, while failures request an immediate redraw and retain the old
   allocation. An atlas

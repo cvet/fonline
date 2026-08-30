@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -416,9 +416,9 @@ enum class ImGui_ColorEditFlags : uint32_t
     Float = 16777216, // ImGuiColorEditFlags_Float
     PickerHueBar = 33554432, // ImGuiColorEditFlags_PickerHueBar
     PickerHueWheel = 67108864, // ImGuiColorEditFlags_PickerHueWheel
-    InputRGB = 134217728, // ImGuiColorEditFlags_InputRGB
-    InputHSV = 268435456, // ImGuiColorEditFlags_InputHSV
-    DefaultOptions = 177209344, // ImGuiColorEditFlags_DefaultOptions_
+    InputRGB = 268435456, // ImGuiColorEditFlags_InputRGB
+    InputHSV = 536870912, // ImGuiColorEditFlags_InputHSV
+    DefaultOptions = 311427072, // ImGuiColorEditFlags_DefaultOptions_
 };
 
 ///@ ExportEnum
@@ -483,8 +483,8 @@ enum class ImGui_StyleVar : int32_t
     GrabMinSize = 21, // ImGuiStyleVar_GrabMinSize
     GrabRounding = 22, // ImGuiStyleVar_GrabRounding
     TabRounding = 25, // ImGuiStyleVar_TabRounding
-    ButtonTextAlign = 36, // ImGuiStyleVar_ButtonTextAlign
-    SelectableTextAlign = 37, // ImGuiStyleVar_SelectableTextAlign
+    ButtonTextAlign = 38, // ImGuiStyleVar_ButtonTextAlign
+    SelectableTextAlign = 39, // ImGuiStyleVar_SelectableTextAlign
 };
 
 inline void ImGuiTextUnformatted(string_view text)

@@ -294,16 +294,39 @@ trying to interpret an incompatible descriptor or transport contract. Gameplay c
 | Direction | Field | Type | Purpose |
 |-----------|-------|------|---------|
 | client â†’ server | `CompatibilityVersion` | `string` | gameplay compatibility |
+| client â†’ server | `MetadataVersion` | `string` | baked metadata version, empty while the updater has no resources of its own |
 | client â†’ server | `updater_version` | `uint32` | `FO_UPDATER_VERSION` |
 | client â†’ server | `binary_target` | `string` | e.g. `Windows-win64`, `Android-arm64` (from `GetCurrentBinaryUpdateTargetName()`) |
 | client â†’ server | `in_encrypt_key` | `uint32` | session keys |
 | server â†’ client | `compatibility_outdated` | `bool` | gameplay version mismatch |
 | server â†’ client | `updater_outdated` | `bool` | `FO_UPDATER_VERSION` mismatch â€” protocol is unusable |
+| server â†’ client | `metadata_outdated` | `bool` | client resources were baked from another revision |
+| server â†’ client | `MetadataVersion` | `string` | the metadata version the server itself runs on |
 | server â†’ client | `out_encrypt_key` | `uint32` | session keys |
 
 `updater_outdated == true` is fatal to the connection â€” the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
 
-Malformed pre-handshake payloads that fail buffer decoding are treated as invalid handshake data: the server logs a warning with the remote endpoint and hard-disconnects without reporting an exception stack trace. Post-handshake decode failures still go through the normal exception reporting path.
+`metadata_outdated == true` means the binaries match but the baked data does not. **Server and client must run
+on metadata from one bake** — the property index space carried by entity payloads is that metadata's registration
+order (see [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md), metadata version). Reaching this verdict is
+therefore a defect report, not a supported mode: the updater is supposed to have made it impossible.
+
+Order of operations that keeps it impossible:
+
+1. The updater connects first, sends whatever layout version its current packs carry (empty on a fresh install),
+   and syncs every file the server announces.
+2. After the sync it re-reads the version from the local packs. Unless it now equals the server's, the result is
+   `UpdaterResult::MetadataMismatch` and **no `ClientEngine` is created** — the client never talks to a server
+   whose data it does not share. A server that distributes no resources at all (unpackaged dev server) has nothing
+   to verify and is skipped.
+3. Only then is the client constructed, and it sends its own version in its own handshake.
+
+If the verdict still arrives at that point, the server changed its resources between the sync and the connect: the
+client throws `ResourcesOutdatedException` and the host syncs again — as often as that happens, since a server can
+be redeployed any number of times while a client is running. This cannot spin: what stops a real divergence is step
+2, where the updater refuses to report the resources ready at all, and every further round runs against the server's
+new state. An unpackaged client is the exception — it has no updater and plays off `Baking.BakeOutput`, so its
+verdict goes through the normal exception path instead.
 
 ### Init data and signed descriptor
 
@@ -466,6 +489,10 @@ Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Serve
 - `start_offset > file_size` â†’ `LogType::Warning` + `HardDisconnect`.
 - `update_file_max_portion_size <= 0` (misconfiguration) â†’ `LogType::Warning` + `HardDisconnect`.
 - Disk-mode read failure â†’ `LogType::Warning` + `HardDisconnect`.
+- Disk-mode size drift against the announced descriptor entry - `LogType::Warning` + `HardDisconnect`. With
+  `ServerNetwork.UpdateFilesInMemory = False` the descriptor is a start-time snapshot while the bytes are read on
+  demand, so a pack replaced under a live server would otherwise reach the client under the hash announced for the
+  previous one.
 
 Client-side, the `Updater` writes each portion to `~<filename>.__sha256.<digest>`, verifies both streamed FNV (`fs_hash_file`) and SHA-256 (`fs_sha256_file`, [../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The digest-qualified name prevents a partial from an older manifest from being resumed as bytes for a different artifact. Before selecting a source, the updater removes the legacy `~<filename>` family, legacy external/fast sidecars, and temp files for prior digests; current-digest external candidates remain isolated from the reliable channel and are validated before promotion.
 
@@ -549,7 +576,7 @@ auto ReportContentUpdateSourceResult(uint64_t generation, uint32_t file_id,
     ContentUpdateSourceResult result, uint64_t reporter_id, int64_t current_synchronized_time_ms,
     const ContentUpdateSourceFeedbackPolicy& policy) -> ContentUpdateSourceFeedbackDecision;
 
-void LoadFromClientResources(const GlobalSettings& settings);
+void LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version);
 void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
 void ProcessContentUpdateSourceReport(ptr<Player> player, int64_t current_synchronized_time_ms,
     const ServerSettings& settings);
@@ -574,6 +601,10 @@ auto ReadFastUpdateChunk(uint32_t file_index, uint32_t chunk_index,
   directories: a lock that can be acquired proves the former owner is gone, so that orphan is removed;
   locked snapshots and unknown/prefix-colliding directories are preserved. This reclaims crash leftovers
   without deleting snapshots still served by another engine/server process.
+- `VerifyClientResourcesMetadata` then mounts the client packs and compares their metadata version against the
+  one the server itself loaded. The server runs on `Settings.ServerResources` and hands out
+  `Settings.ClientResources`, so a deploy that refreshed only one of them would leave every synced client with a
+  property layout the server cannot talk to; startup fails with `UpdaterException` naming both versions instead.
 - Each successful catalog load receives a non-zero, monotonically increasing generation. Artifact ids
   are opaque within that generation; asynchronous publishers must bind completion to generation, file id,
   and expected SHA-256. A stale generation, unknown id, or digest mismatch returns `false` and cannot attach
@@ -641,6 +672,7 @@ auto ReadFastUpdateChunk(uint32_t file_index, uint32_t chunk_index,
 | `ServerNetwork.UpdateSourceFeedbackFailurePercent` | top-level | Failure percentage required for the advisory threshold log; runtime-clamped to `1..100` (Last Frontier default: `60`). |
 | `ServerNetwork.UpdateSourceFeedbackWindowSeconds` | top-level | Advisory aggregation window, clamped to `1..86400` seconds (Last Frontier default: `300`). |
 | `ServerNetwork.UpdateFilesInMemory` | top-level + `[SubConfig]` | `True` keeps every packaged update file in RAM (low CPU under load). `False` serves from disk on demand (low RAM, more I/O). Public `[SubConfig]`s in this project: `PublicGame = True`, `DailyTest = True`, `Staging = True`. |
+| `Network.ForceMetadataVersion` | top-level | Testing only: overrides the layout version the client reports, so a divergence can be simulated without a second bake. Empty in every shipped config. |
 | `Baking.PlatformBinaries` | top-level | Directory the server reads per-target client runtime libraries from, and the packager writes them to. Default `PlatformBinaries`, resolved relative to the server's working directory / package root. |
 | `Client.UserWritablePath` | client | Writable data root for cache/log/update overlays. A valid versioned `INSTALLED` marker is authoritative and selects `<GetUserDataBase>/<marker GameName>`. Without one, empty = portable, `*` = the per-OS user data dir plus `Common.GameName`, and another value is an explicit path. Resolution runs again after local-config/command-line overrides. See below. |
 
@@ -732,7 +764,7 @@ Both the bundled runtime library in client packages and the runtime libraries st
 
 Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order invariant.
 
-The internal config patch area is generated from the CMake `FO_INTERNAL_CONFIG_CAPACITY` option, next to `FO_EMBEDDED_DATA_CAPACITY`; `package.py` discovers the actual reserved size from the generated binary markers before writing config data.
+The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data.
 
 Naming convention from `build_runtime_update_target_name` in `BuildTools/package.py`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
@@ -800,6 +832,9 @@ instead of looping back to the game which would only reject the connection again
 | Signed release is below the configured/persisted trust floor | client log reports release rollback or inability to persist trust state; the descriptor is rejected before file selection |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
 | Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `LogType::Warning`), client gets disconnected |
+| Client data does not match the server data | server log `Connected client X runs metadata version A while the server runs B`; updater log `synced resources run metadata version A while the server runs B, resources <dir>`. Both name the two versions - find which resource directory came from a different bake |
+| Server distributing resources it does not run on | server startup fails with `Distributed client resources were baked apart from the server resources`, naming both resource directories and both layout versions |
+| Baked resources predate the current metadata format | startup fails at the metadata header: `does not start with the metadata file marker`, `file version does not match the engine`, or `carries no version` - run a full rebake |
 | Server has no native update for this target | message box `Server doesn't provide a native client update for binary target <target>` |
 | Stale staging file | `<live>-staging` survived a previous failed swap; the next `LF_Client.exe` startup promotes it via `ApplyStagedBinaryUpdate` before loading the runtime |
 | Linux host logs `LoadModule failed` for a present, valid runtime `.so`, then `trying embedded fallback` on every launch | `dlopen` rejected the module. Two engine build rules must hold (see "Linux module isolation" above): the module is linked with `-Wl,-Bsymbolic` (`AddSharedApplication`), and no vendored code forces initial-exec TLS on Linux — an IE-model TLS relocation fails `dlopen` with `cannot allocate memory in static TLS block` (diagnose with a standalone `dlopen` of the `.so`, e.g. via `python3 -c "import ctypes; ctypes.CDLL('./<runtime>.so')"`). A silently-engaged embedded fallback makes a native self-update loop: the downloaded `.so` is promoted on disk but never executed |

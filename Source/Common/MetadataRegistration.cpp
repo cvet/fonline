@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,14 +46,62 @@ static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector
 static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static auto ReadMetadataHeader(DataReader& reader) -> string_view;
+static auto ReadMetadataSections(DataReader& reader) -> map<string_view, vector<vector<string_view>>>;
 
 void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Read data
-    map<string_view, vector<vector<string_view>>> engine_data;
     auto reader = DataReader(metadata_bin);
+
+    meta->RegisterMetadataVersion(ReadMetadataHeader(reader));
+
+    map<string_view, vector<vector<string_view>>> engine_data = ReadMetadataSections(reader);
+
+    RegisterDynamicMetadataEnums(meta, engine_data[METADATA_ENUM_SECTION]);
+    RegisterDynamicMetadataEntities(meta, engine_data[METADATA_ENTITY_SECTION]);
+    RegisterDynamicMetadataEntityHolders(meta, engine_data[METADATA_ENTITY_HOLDER_SECTION]);
+    RegisterDynamicMetadataFixedTypes(meta, engine_data[METADATA_FIXED_TYPE_SECTION]);
+    RegisterDynamicMetadataValueTypes(meta, engine_data[METADATA_VALUE_TYPE_SECTION]);
+    RegisterDynamicMetadataRefTypes(meta, engine_data[METADATA_REF_TYPE_SECTION]);
+    RegisterDynamicMetadataProperties(meta, engine_data[METADATA_PROPERTY_SECTION]);
+    RegisterDynamicMetadataEvents(meta, engine_data[METADATA_EVENT_SECTION]);
+    RegisterDynamicMetadataRemoteCalls(meta, engine_data[METADATA_REMOTE_CALL_SECTION]);
+    RegisterDynamicMetadataSettings(meta, engine_data[METADATA_SETTING_SECTION]);
+    RegisterDynamicMetadataMigrationRules(meta, engine_data[METADATA_MIGRATION_RULE_SECTION]);
+}
+
+static auto ReadMetadataHeader(DataReader& reader) -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto magic = reader.Read<uint32_t>();
+    FO_VERIFY_AND_THROW(magic == METADATA_FILE_MAGIC, "Baked metadata does not start with the metadata file marker", magic, METADATA_FILE_MAGIC);
+
+    // A bake of another file version cannot be trusted field by field, and a bake with no layout version cannot be
+    // verified against a peer at all - both mean the resources have to be rebaked
+    auto file_version = reader.Read<uint16_t>();
+
+    if (file_version != METADATA_FILE_VERSION) {
+        throw MetadataOutdatedException("Baked metadata file version does not match the engine, resources must be rebaked", file_version, METADATA_FILE_VERSION);
+    }
+
+    auto metadata_version_size = reader.Read<uint16_t>();
+    string_view metadata_version = reader.ReadStringView(metadata_version_size);
+
+    if (metadata_version.empty()) {
+        throw MetadataOutdatedException("Baked metadata carries no version, resources must be rebaked");
+    }
+
+    return metadata_version;
+}
+
+static auto ReadMetadataSections(DataReader& reader) -> map<string_view, vector<vector<string_view>>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    map<string_view, vector<vector<string_view>>> engine_data;
     auto sections_count = reader.Read<uint16_t>();
 
     for (uint16_t i = 0; i < sections_count; i++) {
@@ -81,17 +129,7 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
 
     reader.VerifyEnd();
 
-    RegisterDynamicMetadataEnums(meta, engine_data["Enum"]);
-    RegisterDynamicMetadataEntities(meta, engine_data["Entity"]);
-    RegisterDynamicMetadataEntityHolders(meta, engine_data["EntityHolder"]);
-    RegisterDynamicMetadataFixedTypes(meta, engine_data["FixedType"]);
-    RegisterDynamicMetadataValueTypes(meta, engine_data["ValueType"]);
-    RegisterDynamicMetadataRefTypes(meta, engine_data["RefType"]);
-    RegisterDynamicMetadataProperties(meta, engine_data["Property"]);
-    RegisterDynamicMetadataEvents(meta, engine_data["Event"]);
-    RegisterDynamicMetadataRemoteCalls(meta, engine_data["RemoteCall"]);
-    RegisterDynamicMetadataSettings(meta, engine_data["Setting"]);
-    RegisterDynamicMetadataMigrationRules(meta, engine_data["MigrationRule"]);
+    return engine_data;
 }
 
 static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
@@ -163,10 +201,10 @@ static void RegisterDynamicMetadataEntityHolders(ptr<EngineMetadata> meta, const
             meta->RegsiterEntityHolderEntry(holder_entity, target_entity, entry, sync, has_persistent);
         }
         else {
-            auto prop_registrator = meta->GetPropertyRegistratorForEdit(holder_entity);
+            auto prop_registrar = meta->GetPropertyRegistrarForEdit(holder_entity);
             ptr<const Property> prop = has_persistent ? //
-                prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
-                prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
+                prop_registrar->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
+                prop_registrar->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
             meta->RegisterEnumEntry(strex("{}Property", holder_entity), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
         }
     }
@@ -262,10 +300,10 @@ static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const ve
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 4, "Property metadata record is missing entity name or property declaration tokens", tokens.size());
         auto entity_name = tokens[0];
-        auto prop_registrator = meta->GetPropertyRegistratorForEdit(entity_name);
+        auto prop_registrar = meta->GetPropertyRegistrarForEdit(entity_name);
         auto prop_tokens = span(tokens).subspan(1);
 
-        auto prop = prop_registrator->RegisterProperty(prop_tokens);
+        auto prop = prop_registrar->RegisterProperty(prop_tokens);
         string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
         meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
     }
@@ -326,11 +364,12 @@ static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vect
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() >= 2, "Setting metadata record is missing setting name or value type", tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() == 3, "Setting metadata record must contain setting name, value type, and initial value", tokens.size());
         auto name = tokens[0];
         const auto& type = meta->GetBaseType(tokens[1]);
+        auto initial_value = tokens[2];
 
-        meta->RegisterGameSetting(name, type);
+        meta->RegisterGameSetting(name, type, initial_value);
     }
 }
 
@@ -350,13 +389,42 @@ auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vec
     FO_STACK_TRACE_ENTRY();
 
     string target_lower = strex(target).lower();
+    string metadata_file_name = strex("Metadata.fometa-{}", target_lower).str();
 
-    if (auto restore_info = resources->ReadFile(strex("Metadata.fometa-{}", target_lower))) {
+    if (auto restore_info = resources->ReadFile(metadata_file_name)) {
         return restore_info.GetData();
     }
     else {
-        throw MetadataNotFoundException(FO_LINE_STR);
+        throw MetadataNotFoundException("Baked metadata file is not present in the resources", metadata_file_name);
     }
+}
+
+auto ReadMetadataVersion(const_span<uint8_t> metadata_bin) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Header only: the updater compares its own resource pack against the server before any engine exists, and it
+    // has no reason to walk the sections to do that
+    auto reader = DataReader(metadata_bin);
+
+    return string(ReadMetadataHeader(reader));
+}
+
+auto MakeMetadataHeader(string_view metadata_version) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!metadata_version.empty(), "Metadata version is empty");
+
+    vector<uint8_t> metadata_bin;
+    auto writer = DataWriter(metadata_bin);
+
+    writer.Write<uint32_t>(METADATA_FILE_MAGIC);
+    writer.Write<uint16_t>(METADATA_FILE_VERSION);
+    writer.Write<uint16_t>(numeric_cast<uint16_t>(metadata_version.length()));
+    writer.WriteStringBytes(metadata_version);
+
+    return metadata_bin;
 }
 
 FO_END_NAMESPACE

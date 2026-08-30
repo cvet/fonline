@@ -55,7 +55,7 @@ PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
 INSTALLED_CLIENT_MARKER_HEADER = 'FONLINE_INSTALLED_CLIENT_V1'
 INSTALLED_CLIENT_DIRECTORY_NAME_MAX_SIZE = 128
-# Windows treats the superscript 1/2/3 code points as device-number aliases too.
+# Windows treats the superscript 1/2/3 code points as device-number aliases too
 WINDOWS_RESERVED_DEVICE_NAMES = {
 	'CON', 'PRN', 'AUX', 'NUL',
 	*(f'COM{i}' for i in range(1, 10)),
@@ -69,7 +69,7 @@ WINDOWS_RESERVED_DEVICE_NAMES = {
 # binaries are staged with the Android ABI name (armeabi-v7a, arm64-v8a) while
 # the C++ side reports the canonical arch (arm32, arm64). Keep this table in sync
 # with GetCurrentBinaryUpdateTargetName so the server-side updater payload
-# directory and the client request name agree per platform.
+# directory and the client request name agree per platform
 PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('Windows', 'win32'): 'win32',
 	('Windows', 'win64'): 'win64',
@@ -610,7 +610,7 @@ class Packager:
 			return None
 		after_client = binary_entry_name[len('Client-'):]
 		# Optional trailing suffixes (-Profiling_Total/-OnDemand, -Debug, -{binary_output_postfix})
-		# follow the platform/arch prefix, so pick the longest matching known (platform, arch).
+		# follow the platform/arch prefix, so pick the longest matching known (platform, arch)
 		best_platform: str | None = None
 		best_cxx_arch: str | None = None
 		best_prefix_len = -1
@@ -632,7 +632,7 @@ class Packager:
 		# doesn't match any known platform/arch. The server-side runtime payload packager uses
 		# this to tag each PlatformBinaries/{target}/{name}.{ext} payload with its variant's
 		# postfix so multiple FO_BINARY_OUTPUT_POSTFIX builds (e.g. Steam vs non-Steam) can
-		# coexist under one binary_target_name and a client picks its own by PACKAGED_BUILD_NAME.
+		# coexist under one binary_target_name and a client picks its own by PACKAGED_BUILD_NAME
 		if not binary_entry_name.startswith('Client-'):
 			return None
 		after_client = binary_entry_name[len('Client-'):]
@@ -751,7 +751,7 @@ class Packager:
 				# Client-Linux-x64 vs Client-Linux-x64-Steam) do not collide. Each
 				# client variant patches its own PACKAGED_BUILD_NAME to match the
 				# resulting suffixed payload, so updater's remap_runtime_name picks
-				# the right file.
+				# the right file
 				postfix_suffix = '_' + entry_postfix if entry_postfix else ''
 
 				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
@@ -800,7 +800,7 @@ class Packager:
 						# Stage the host executable's PDB (`<name>.pdb`) so a client that lost it can
 						# re-download it. The client fetches it only when its local copy is missing and
 						# never overwrites a present one (see Updater.cpp): an up-to-date host recovers a
-						# matching PDB, while an older host (whose PDB is build-specific) is never clobbered.
+						# matching PDB, while an older host (whose PDB is build-specific) is never clobbered
 						host_pdb_input = os.path.join(entry_path, self.build_client_runtime_alias_name(runtime_variant) + '.pdb')
 						if os.path.isfile(host_pdb_input):
 							host_pdb_out = os.path.join(payload_dir, output_name + '.pdb')
@@ -1072,7 +1072,7 @@ class Packager:
 			# Mirror of the suffix appended to server-side payloads in
 			# package_all_client_runtime_update_payloads: tagging the client output
 			# name keeps PACKAGED_BUILD_NAME aligned with what the server stages
-			# under PlatformBinaries/<target>/<name>.dll for this variant.
+			# under PlatformBinaries/<target>/<name>.dll for this variant
 			binary_output_postfix = self.args.binary_output_postfix
 			client_postfix_suffix = '_' + binary_output_postfix if binary_output_postfix else ''
 			for variant in self.iter_windows_variants():
@@ -1104,7 +1104,7 @@ class Packager:
 					# Point the frozen host exe at its sibling `<name>.pdb` (renamed from the
 					# build's `<bin_name>.pdb`). Otherwise the exe keeps the build-machine
 					# CodeView path and only resolves symbols via a debugger's module-adjacent
-					# basename heuristic.
+					# basename heuristic
 					assert patch_pe_pdb_path(main_binary_path, bin_out_name + '.pdb'), 'Host exe RSDS not patched: ' + main_binary_path
 
 	def package_linux(self) -> None:
@@ -1120,7 +1120,7 @@ class Packager:
 
 		# Mirrors the postfix tagging in package_all_client_runtime_update_payloads
 		# so the Linux client's PACKAGED_BUILD_NAME matches the server-staged payload
-		# for this binary_output_postfix variant.
+		# for this binary_output_postfix variant
 		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.target == 'Client' and self.args.binary_output_postfix else ''
 
 		for arch in self.iter_arches():
@@ -1336,7 +1336,7 @@ class Packager:
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
 
-		# Read Android config from the baked target config so SubConfig overrides affect APK metadata.
+		# Read Android config from the baked target config so SubConfig overrides affect APK metadata
 		android_config = self.get_effective_config_section()
 		package_name = android_config.getStr('Android.PackageName', 'com.fonline.app')
 		version_code = android_config.getStr('Android.VersionCode', '1')
@@ -1460,7 +1460,7 @@ class Packager:
 		# the script owns the tool (osslsigncode / signtool / Azure Trusted Signing / SSL.com eSigner), the
 		# certificate, the timestamp URL and any secrets (kept out of the repo and the main config). Empty hook =
 		# unsigned (today's behavior). A signing failure is fatal so a release that asked to be signed never ships
-		# unsigned.
+		# unsigned
 		if self.args.platform != 'Windows':
 			return
 
@@ -1518,7 +1518,7 @@ class Packager:
 	def resolve_game_version(self) -> str:
 		# Resolve Common.GameVersion to a concrete value. The main config commonly points it at a file
 		# (e.g. `Common.GameVersion = $FILE{VERSION}`); foconfig keeps directives verbatim, so resolve the
-		# `$FILE{...}` indirection here relative to the main config directory.
+		# `$FILE{...}` indirection here relative to the main config directory
 		raw = self.fomain.mainSection().getStr('Common.GameVersion', '0.0.0').strip()
 		file_match = re.match(r'^\$FILE\{(.+)\}$', raw)
 		if file_match:
@@ -1533,7 +1533,7 @@ class Packager:
 		# clear message instead of a cryptic subprocess error. The host OS decides the toolset: WiX
 		# (candle/light) on Windows, GNOME wixl elsewhere — matching msicreator/createmsi.py. On
 		# Debian/Ubuntu wixl ships in its own "wixl" apt package (the "msitools" package carries only
-		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl).
+		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl)
 		if os.name == 'nt':
 			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
 			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
@@ -1546,7 +1546,7 @@ class Packager:
 		# runtime (installer-time registration is the AV-friendly path; the runtime self-register in
 		# SourceExt/DeepLink.cpp stays as the fallback for the portable/zip/Steam builds). The MSI is a
 		# required artifact: a missing toolset or a generator/build error fails the package. All
-		# game-specific values come from the project config, so the engine packager stays game-agnostic.
+		# game-specific values come from the project config, so the engine packager stays game-agnostic
 		assert self.args.platform == 'Windows' and self.args.target == 'Client', 'Wix pack is only valid for the Windows Client target'
 
 		self.ensure_msi_toolset()
@@ -1614,7 +1614,7 @@ class Packager:
 		# Drop the installed-build marker into the staged payload so the MSI-installed client uses
 		# the per-user writable data dir (cache/logs/self-update overlay) instead of the read-only
 		# install dir. Added only for the MSI and removed afterwards, so the sibling Raw/Zip
-		# portable artifacts (already finalized earlier in finalize_output) stay portable.
+		# portable artifacts (already finalized earlier in finalize_output) stay portable
 		marker_path = os.path.join(self.target_output_path, 'INSTALLED')
 		try:
 			with open(marker_path, 'w', encoding='utf-8') as marker_file:
@@ -1623,7 +1623,7 @@ class Packager:
 			createmsi = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'msicreator', 'createmsi.py')
 			log('Wix: building MSI installer', config_path)
 			# createmsi.py requires a bare json filename (no path segment) and resolves it plus the staged
-			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir.
+			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir
 			subprocess.run([sys.executable, createmsi, os.path.basename(config_path)], cwd=work_dir, check=True)
 			log('Wix: MSI built (registers %s:// URI scheme, Start Menu + Desktop shortcuts, installs writable-data marker)' % scheme)
 		finally:

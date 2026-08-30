@@ -4,6 +4,32 @@
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -13,6 +39,7 @@
 
 #include "ModelAnimation.h"
 #include "ModelAnimationData.h"
+#include "ModelBoundsCalculator.h"
 #include "ModelHierarchy.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
@@ -24,7 +51,7 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ENABLE_3D
 
-static void WriteTestModelBone(DataWriter& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names)
+static void WriteTestModelBone(DataWriter& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names, float32_t vertex_scale = 1.0f)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -37,9 +64,9 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
 
     if (attached_mesh) {
         array<ModelMeshVertexData, 3> vertices {};
-        vertices[0].Position = vec3 {-0.5f, 0.0f, 0.0f};
-        vertices[1].Position = vec3 {0.5f, 0.0f, 0.0f};
-        vertices[2].Position = vec3 {0.0f, 1.0f, 0.0f};
+        vertices[0].Position = vec3 {-0.5f, 0.0f, 0.0f} * vertex_scale;
+        vertices[1].Position = vec3 {0.5f, 0.0f, 0.0f} * vertex_scale;
+        vertices[2].Position = vec3 {0.0f, 1.0f, 0.0f} * vertex_scale;
 
         for (ModelMeshVertexData& vertex : vertices) {
             vertex.BlendWeights[0] = 1.0f;
@@ -251,14 +278,14 @@ static void AddTestModelSource(BakerTests::TestRig& rig, const ModelSourceAsset&
     rig.AddSourceFile(asset.FileName, WriteTestModelSourceFixture(asset), write_time);
 }
 
-static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}) -> vector<uint8_t>
+static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}, float32_t vertex_scale = 1.0f) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
     DataWriter writer {data};
     WriteModelMeshHeader(writer);
-    WriteTestModelBone(writer, root_bone, attached_mesh, diffuse_texture, skin_bone_names);
+    WriteTestModelBone(writer, root_bone, attached_mesh, diffuse_texture, skin_bone_names, vertex_scale);
     return data;
 }
 
@@ -404,22 +431,22 @@ static void AddModelInfoMetadata(BakerTests::TestRig& rig)
     rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
 }
 
-static void BakeModelInfoFiles(BakerTests::TestRig& rig)
+static void BakeModelInfoFiles(BakerTests::TestRig& rig, string_view target_path = {})
 {
     FO_STACK_TRACE_ENTRY();
 
     ModelInfoBaker info_baker(rig.MakeContext(), LoadTestModelSourceFixture);
-    info_baker.BakeFiles(rig.GetAllSourceFiles(), "");
+    info_baker.BakeFiles(rig.GetAllSourceFiles(), target_path);
 }
 
-static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig) -> string
+static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig, string_view target_path = {}) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<string> captured_messages;
     SetLogCallback("model-info-animation-geometry-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
     auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-info-animation-geometry-test", {}); });
-    CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
+    CHECK_THROWS_AS(BakeModelInfoFiles(rig, target_path), ModelInfoBakerException);
 
     auto diagnostic = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Model description baking error:") != string::npos; });
     REQUIRE(diagnostic != captured_messages.end());
@@ -448,6 +475,7 @@ struct SavedModelInfoLink
     uint32_t TextureInfoCount {};
     uint32_t EffectInfoCount {};
     uint32_t CutInfoCount {};
+    optional<ModelBounds3D> Bounds {};
 };
 
 static auto ReadSavedModelInfoString(DataReader& reader) -> string
@@ -534,6 +562,19 @@ static auto ReadSavedModelInfoLink(DataReader& reader) -> SavedModelInfoLink
     link.CutInfoCount = reader.Read<uint32_t>();
     for (uint32_t i = 0; i < link.CutInfoCount; i++) {
         SkipSavedModelInfoCut(reader);
+    }
+
+    uint8_t has_geometry_value = reader.Read<uint8_t>();
+    CHECK(has_geometry_value <= uint8_t {1});
+    bool has_geometry = has_geometry_value != 0;
+    bool expected_geometry = !link.ChildName.empty() && !link.IsParticles;
+    CHECK(has_geometry == expected_geometry);
+
+    if (has_geometry) {
+        link.Bounds = ModelBounds3D {
+            .Min = reader.Read<vec3>(),
+            .Max = reader.Read<vec3>(),
+        };
     }
 
     return link;
@@ -1416,6 +1457,46 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
     }
 
+    SECTION("BakesSelectableModelLinkBoundsIntoDescription")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\nLayer 1 Value 2 Attach Equipment.fo3d Link Hand MoveX 3\n", 7);
+        rig.AddSourceFile("Critters/Equipment.fo3d", "Model Equipment.fbx\nMoveX 2\n", 6);
+        AddTestModelSource(rig, MakeTestModelSourceWithChild("Critters/Body.fbx", "Body", "Hand", 3.0f, {"Idle"}));
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModelWithChildBone("Body", "Hand"));
+        AddTestModel(rig, "Critters/Equipment.fbx", "Body", true, {}, {}, {"Body"});
+
+        ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"), LoadTestModelSourceFixture);
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
+        auto reader = DataReader({output.data(), output.size()});
+        ReadSavedModelInfoHeader(reader);
+        CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
+        (void)reader.Read<uint8_t>(); // DisableAnimationInterpolation
+        (void)reader.Read<uint8_t>(); // DisableBackwardAnim
+        (void)reader.Read<uint8_t>(); // ShadowDisabled
+        (void)reader.Read<int32_t>(); // DrawWidth
+        (void)reader.Read<int32_t>(); // DrawHeight
+        (void)reader.Read<int32_t>(); // ViewWidth
+        (void)reader.Read<int32_t>(); // ViewHeight
+        (void)ReadSavedModelInfoString(reader); // RotationBone
+        CHECK_FALSE(ReadSavedModelInfoLink(reader).Bounds);
+
+        REQUIRE(reader.Read<uint32_t>() == 1);
+        SavedModelInfoLink equipment_link = ReadSavedModelInfoLink(reader);
+        CHECK(equipment_link.LinkBone == "Hand");
+        REQUIRE(equipment_link.Bounds);
+        CHECK(IsValidModelBounds(*equipment_link.Bounds));
+        CHECK(HasModelBoundsExtent(*equipment_link.Bounds));
+        CHECK(equipment_link.Bounds->Max.x > 5.0f);
+
+        string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
+        CHECK(config.find("BoundsVersion = 2\n") != string::npos);
+        CHECK(config.find("LinkBounds") == string::npos);
+    }
+
     SECTION("Materializes model animation aliases with client lookup semantics")
     {
         TestRig rig;
@@ -1469,9 +1550,8 @@ ActionAnimEqual 4 6
 
     SECTION("Rejects ModelAnimationInfo effective duration that rounds below one millisecond")
     {
-        // Default clip duration is 1.0s, so speed 1e6 yields 0.001ms, which rounds to a zero millisecond
-        // count. The runtime model-anim-info load requires a positive duration, so baking must fail here
-        // rather than emit a manifest the client cannot load.
+        // This speed rounds the clip to a zero millisecond count, and the runtime load requires a positive
+        // duration, so baking must fail rather than emit a manifest the client cannot load
         TestRig rounding_rig;
         AddModelInfoMetadata(rounding_rig);
         rounding_rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\nAnimSpeed 0 1 1e6\n", 1);
@@ -1689,6 +1769,7 @@ TEST_CASE("ModelInfoBakerValidations")
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nLayer 1\nValue 2\nAttach Child.fo3d Link Hand\n", 1);
         rig.AddSourceFile("Critters/Child.fo3d", "Model Child.fbx\n", 2);
         AddTestModel(rig, "Critters/Body.fbx", "Hand", true);
+        AddTestModel(rig, "Critters/Child.fbx", "Child", true);
 
         ModelInfoBaker baker(rig.MakeContext(), LoadTestModelSourceFixture);
         CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Critters/Test.fo3d"));
@@ -1697,11 +1778,19 @@ TEST_CASE("ModelInfoBakerValidations")
 
     SECTION("Accepts baked-only attached model descriptions")
     {
+        TestRig child_rig;
+        AddModelInfoMetadata(child_rig);
+        child_rig.AddSourceFile("Critters/Child.fo3d", "Model Child.fbx\n", 1);
+        AddTestModel(child_rig, "Critters/Child.fbx", "Child", true);
+        REQUIRE_NOTHROW(BakeModelInfoFiles(child_rig, "Critters/Child.fo3d"));
+        REQUIRE(child_rig.Outputs.count("Critters/Child.fo3d") == 1);
+
         TestRig rig;
         AddModelInfoMetadata(rig);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nLayer 1\nValue 2\nAttach Child.fo3d Link Hand\n", 1);
         AddTestModel(rig, "Critters/Body.fbx", "Hand", true);
-        rig.AddBakedFile("Critters/Child.fo3d", "stub");
+        rig.AddBakedFile("Critters/Child.fo3d", child_rig.Outputs.at("Critters/Child.fo3d"));
+        rig.AddBakedFile("Critters/Child.fbx", MakeTestBakedModel("Child", true));
 
         CHECK_NOTHROW(BakeModelInfoFiles(rig));
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
@@ -1890,6 +1979,46 @@ TEST_CASE("ModelInfoBakerValidations")
 
         CHECK_NOTHROW(BakeModelInfoFiles(rig));
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
+    }
+
+    SECTION("Rejects a root model whose aggregate bounds leave the authored world extent")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        OverrideSetting(rig.Settings.ModelAttachmentMaxExtent, 2.0f);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\n", 1);
+        AddTestModelSource(rig, MakeTestModelSource("Critters/Body.fbx", "Body", {}));
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Body", true, {}, {}, 100.0f));
+
+        string diagnostic;
+        bool threw = false;
+
+        try {
+            BakeModelInfoFiles(rig);
+        }
+        catch (const ModelInfoBakerException& ex) {
+            threw = true;
+            diagnostic = ex.what();
+        }
+
+        REQUIRE(threw);
+        CHECK(diagnostic.find("Model bounds reach beyond the authored world extent") != string::npos);
+        CHECK(diagnostic.find("Critters/Test.fo3d") != string::npos);
+    }
+
+    SECTION("Rejects a targeted root model whose aggregate bounds leave the authored world extent")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        OverrideSetting(rig.Settings.ModelAttachmentMaxExtent, 2.0f);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\n", 1);
+        AddTestModelSource(rig, MakeTestModelSource("Critters/Body.fbx", "Body", {}));
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Body", true, {}, {}, 100.0f));
+
+        string diagnostic = CaptureModelInfoBakingError(rig, "Critters/Test.fo3d");
+        CHECK(diagnostic.find("Model bounds reach beyond the authored world extent") != string::npos);
+        CHECK(diagnostic.find("Critters/Test.fo3d") != string::npos);
+        CHECK(rig.Outputs.count("Critters/Test.fo3d") == 0);
     }
 
     SECTION("Rejects missing cut shapes")
@@ -2260,6 +2389,171 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
     }
 #endif
 }
+
+#if FO_ENABLE_3D
+
+// Two bones sharing one blended vertex: the exact envelope follows the blended path, while the per-bone
+// envelope plan measures each bone's box separately and must stay a superset of it
+static auto MakeBoundsPlanTestModel() -> ModelMeshData
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ModelMeshData data;
+    data.RootBone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+    data.RootBone->Name = "Root";
+    data.RootBone->TransformationMatrix = mat44 {1.0f};
+    data.RootBone->GlobalTransformationMatrix = mat44 {1.0f};
+
+    ModelMeshGeometryData& mesh = data.RootBone->AttachedMesh.emplace();
+    mesh.SkinBoneNames = {"Root", "Arm"};
+    mesh.SkinBoneOffsets = {mat44 {1.0f}, mat44 {1.0f}};
+
+    ModelMeshVertexData& blended = mesh.Vertices.emplace_back();
+    blended.Position = vec3 {2.0f, 0.0f, 0.0f};
+    blended.BlendWeights[0] = 0.5f;
+    blended.BlendWeights[1] = 0.5f;
+    blended.BlendIndices[0] = 0.0f;
+    blended.BlendIndices[1] = 1.0f;
+
+    ModelMeshVertexData& anchor = mesh.Vertices.emplace_back();
+    anchor.Position = vec3 {0.0f, 0.0f, 0.0f};
+    anchor.BlendWeights[0] = 1.0f;
+    anchor.BlendIndices[0] = 0.0f;
+
+    mesh.Indices = {0, 1, 0};
+
+    auto arm = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+    arm->Name = "Arm";
+    arm->TransformationMatrix = mat44 {1.0f};
+    arm->GlobalTransformationMatrix = mat44 {1.0f};
+    data.RootBone->Children.emplace_back(std::move(arm));
+
+    return data;
+}
+
+// Quarter turn about Z across the clip, so the posed geometry sweeps an arc rather than sitting still
+static auto MakeBoundsPlanTestAnimation() -> ModelAnimationSource
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ModelAnimationSource animation;
+    animation.FileName = "Critters/Body.fbx";
+    animation.Name = "Turn";
+    animation.Duration = 1.0f;
+
+    ModelAnimationJointSource& arm = animation.Joints.emplace_back();
+    arm.OutputName = "Arm";
+    arm.Hierarchy = {"Root", "Arm"};
+    arm.Translation = ModelAnimationVec3Track {{0.0f, 1.0f}, {vec3 {0.0f}, vec3 {0.0f}}};
+    arm.Rotation = ModelAnimationQuaternionTrack {{0.0f, 1.0f}, {glm::angleAxis(0.0f, vec3 {0.0f, 0.0f, 1.0f}), glm::angleAxis(glm::radians(90.0f), vec3 {0.0f, 0.0f, 1.0f})}};
+    arm.Scale = ModelAnimationVec3Track {{0.0f, 1.0f}, {vec3 {1.0f}, vec3 {1.0f}}};
+    return animation;
+}
+
+static auto ContainsModelBounds(const ModelBounds3D& outer, const ModelBounds3D& inner) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return outer.Min.x <= inner.Min.x && outer.Min.y <= inner.Min.y && outer.Min.z <= inner.Min.z && outer.Max.x >= inner.Max.x && outer.Max.y >= inner.Max.y && outer.Max.z >= inner.Max.z;
+}
+
+TEST_CASE("ModelBoundsMeasurementModes")
+{
+    SECTION("Per-bone envelopes cover the exact posed geometry")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+
+        optional<ModelBounds3D> precise = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerVertex}.CalculateAnimationBounds(animation, false);
+        optional<ModelBounds3D> fast = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerBoneEnvelope}.CalculateAnimationBounds(animation, false);
+
+        REQUIRE(precise);
+        REQUIRE(fast);
+        CHECK(ContainsModelBounds(*fast, *precise));
+
+        // The blended vertex reaches only the midpoint of the two bones while the rotated bone's envelope
+        // reaches its own corner, so a collapsed difference means the boxes are no longer measured at all
+        CHECK(fast->Max.y > precise->Max.y + 0.5f);
+    }
+
+    SECTION("Per-bone envelopes cover the exact geometry of a reversed clip")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+
+        optional<ModelBounds3D> precise = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerVertex}.CalculateAnimationBounds(animation, true);
+        optional<ModelBounds3D> fast = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerBoneEnvelope}.CalculateAnimationBounds(animation, true);
+
+        REQUIRE(precise);
+        REQUIRE(fast);
+        CHECK(ContainsModelBounds(*fast, *precise));
+    }
+
+    SECTION("Per-vertex measurement follows the swept arc of a blended vertex")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+
+        optional<ModelBounds3D> precise = ModelBoundsSampler {data, {}, ModelBoundsMeasurement::PerVertex}.CalculateAnimationBounds(animation, false);
+
+        REQUIRE(precise);
+
+        // Blend of the resting vertex with its rotated self: x runs from 2 down to 1, y up to 1
+        CHECK(precise->Max.x == Catch::Approx(2.0f).margin(0.05));
+        CHECK(precise->Max.y == Catch::Approx(1.0f).margin(0.05));
+        CHECK(precise->Min.x == Catch::Approx(0.0f).margin(0.05));
+        CHECK(precise->Min.z == Catch::Approx(0.0f).margin(0.05));
+    }
+
+    SECTION("A sampled bone track folds an attachment like the bone transform it carries")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+        ModelBoundsSampler sampler {data, {}, ModelBoundsMeasurement::PerVertex};
+
+        optional<vector<mat44>> track = sampler.SampleBoneTransforms(animation, false, "Arm");
+
+        REQUIRE(track);
+        REQUIRE(!track->empty());
+
+        constexpr ModelBounds3D attachment {.Min = vec3 {1.0f, 0.0f, 0.0f}, .Max = vec3 {1.0f, 0.0f, 0.0f}};
+        optional<ModelBounds3D> folded = CalculateRigidAttachmentBounds(*track, attachment, mat44 {1.0f});
+
+        REQUIRE(folded);
+
+        // The same track answers every attachment on the bone, so a second box must land on the same sweep
+        // scaled by its own offset rather than on a re-walked hierarchy
+        constexpr ModelBounds3D far_attachment {.Min = vec3 {2.0f, 0.0f, 0.0f}, .Max = vec3 {2.0f, 0.0f, 0.0f}};
+        optional<ModelBounds3D> far_folded = CalculateRigidAttachmentBounds(*track, far_attachment, mat44 {1.0f});
+
+        REQUIRE(far_folded);
+        CHECK(folded->Max.x == Catch::Approx(1.0f).margin(0.01));
+        CHECK(folded->Max.y == Catch::Approx(1.0f).margin(0.01));
+        CHECK(far_folded->Max.x == Catch::Approx(2.0f).margin(0.01));
+        CHECK(far_folded->Max.y == Catch::Approx(2.0f).margin(0.01));
+    }
+
+    SECTION("Missing bones and unmeasurable selections stay absent rather than guessed")
+    {
+        ModelMeshData data = MakeBoundsPlanTestModel();
+        ModelAnimationSource animation = MakeBoundsPlanTestAnimation();
+        ModelBoundsSampler sampler {data, {}, ModelBoundsMeasurement::PerVertex};
+
+        CHECK_FALSE(sampler.SampleBoneTransforms(animation, false, "NoSuchBone"));
+        CHECK_FALSE(sampler.GetBindPoseBoneTransform("NoSuchBone"));
+        REQUIRE(sampler.GetBindPoseBoneTransform("Arm"));
+
+        ModelBoundsSampler disabled {data, vector<string> {"Root"}, ModelBoundsMeasurement::PerVertex};
+        CHECK_FALSE(disabled.IsMeasurable());
+        CHECK_FALSE(disabled.CalculateStaticBounds());
+        CHECK_FALSE(disabled.CalculateAnimationBounds(animation, false));
+
+        // The hierarchy still answers a link bone, which is what a rigid attachment on a hidden mesh needs
+        CHECK(disabled.SampleBoneTransforms(animation, false, "Arm"));
+    }
+}
+
+#endif
 
 FO_END_NAMESPACE
 

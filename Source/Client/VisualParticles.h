@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 class ParticleManager;
 
 // Sprite-frame layout derived from a particle's baked bounds: the atlas frame size in pixels, the root offset within
-// it, the ortho extent in world units, and the world transform that seats the effect inside the frame.
+// it, the ortho extent in world units, and the world transform that seats the effect inside the frame
 struct ParticleSpriteFrame
 {
     isize32 DrawSize {};
@@ -115,7 +115,7 @@ class ParticleManager final
     friend class ParticleSystem;
 
 public:
-    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader);
+    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider = nullptr);
     ParticleManager(const ParticleManager&) = delete;
     ParticleManager(ParticleManager&&) noexcept = delete;
     auto operator=(const ParticleManager&) = delete;

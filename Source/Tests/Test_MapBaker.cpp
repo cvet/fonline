@@ -4,10 +4,37 @@
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
 #include "MapBaker.h"
+#include "MapLoader.h"
 #include "Test_BakerHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -19,10 +46,10 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     vector<uint8_t> props_data;
     set<hstring> str_hashes;
 
-    auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-    REQUIRE(static_cast<bool>(registrator));
+    auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+    REQUIRE(static_cast<bool>(registrar));
 
-    ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
+    ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
     proto.SetSize(msize {50, 50});
     proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -161,13 +188,14 @@ static void SkipBakedMapEntities(DataReader& reader, uint32_t count)
     }
 }
 
-static auto ReadBakedMapServerSummary(const vector<uint8_t>& data) -> BakedMapServerSummary
+static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapServerSummary
 {
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader {data};
     auto summary = BakedMapServerSummary {};
 
+    MapLoader::ReadBakedFileHeader(reader, map_name);
     summary.Hashes = reader.Read<uint32_t>();
     SkipBakedMapStrings(reader, summary.Hashes);
     summary.Critters = reader.Read<uint32_t>();
@@ -179,13 +207,14 @@ static auto ReadBakedMapServerSummary(const vector<uint8_t>& data) -> BakedMapSe
     return summary;
 }
 
-static auto ReadBakedMapClientSummary(const vector<uint8_t>& data) -> BakedMapClientSummary
+static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapClientSummary
 {
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader {data};
     auto summary = BakedMapClientSummary {};
 
+    MapLoader::ReadBakedFileHeader(reader, map_name);
     summary.Hashes = reader.Read<uint32_t>();
     SkipBakedMapStrings(reader, summary.Hashes);
     summary.Items = reader.Read<uint32_t>();
@@ -193,6 +222,13 @@ static auto ReadBakedMapClientSummary(const vector<uint8_t>& data) -> BakedMapCl
     reader.VerifyEnd();
 
     return summary;
+}
+
+static void ConfigureMapSourceExtensions(BakerTests::TestRig& rig)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    BakerTests::OverrideSetting(rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
 }
 
 TEST_CASE("MapBaker")
@@ -211,6 +247,7 @@ TEST_CASE("MapBaker")
     SECTION("SkipsNonMapSourcesAndCheckerRejectedMaps")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         local_rig.AddSourceFile("Nested/Readme.txt", "not a map");
         local_rig.AddSourceFile("Nested/SkippedMap.fomap",
             "[ProtoMap]\n"
@@ -232,6 +269,7 @@ TEST_CASE("MapBaker")
     SECTION("RechecksSkippedServerSideWhenClientSideNeedsBake")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "UnitTestMap");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
@@ -253,6 +291,7 @@ TEST_CASE("MapBaker")
     SECTION("RechecksSkippedClientSideWhenServerSideNeedsBake")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "UnitTestMap");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
@@ -274,6 +313,7 @@ TEST_CASE("MapBaker")
     SECTION("UsesMapNameForBakedOutputAndIncrementalTracking")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "UnitTestMap");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
@@ -298,6 +338,7 @@ TEST_CASE("MapBaker")
     SECTION("FindsExactSourceMapForTargetedRuntimeBake")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "ExactMap");
         local_rig.AddSourceFile("ExactMap.fomap",
             "[ProtoMap]\n"
@@ -312,6 +353,7 @@ TEST_CASE("MapBaker")
     SECTION("FindsSourceMapInSubdirectoryForTargetedRuntimeBake")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "UnitTestMap");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
@@ -326,6 +368,7 @@ TEST_CASE("MapBaker")
     SECTION("BakesCrittersAndStaticItems")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndEntityProtos(local_rig, "RichMap", "MapBakerCritter", "MapBakerVisibleItem", "MapBakerHiddenItem");
         local_rig.AddSourceFile("RichMap.fomap",
             "[ProtoMap]\n"
@@ -352,8 +395,8 @@ TEST_CASE("MapBaker")
         REQUIRE(local_rig.Outputs.contains("RichMap.fomap-bin-server"));
         REQUIRE(local_rig.Outputs.contains("RichMap.fomap-bin-client"));
 
-        auto server_summary = ReadBakedMapServerSummary(local_rig.Outputs.at("RichMap.fomap-bin-server"));
-        auto client_summary = ReadBakedMapClientSummary(local_rig.Outputs.at("RichMap.fomap-bin-client"));
+        auto server_summary = ReadBakedMapServerSummary(local_rig.Outputs.at("RichMap.fomap-bin-server"), "RichMap");
+        auto client_summary = ReadBakedMapClientSummary(local_rig.Outputs.at("RichMap.fomap-bin-client"), "RichMap");
 
         CHECK(server_summary.Hashes >= 3);
         CHECK(server_summary.Critters == 1);
@@ -365,6 +408,7 @@ TEST_CASE("MapBaker")
     SECTION("RejectsValidationErrors")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndEntityProtos(local_rig, "InvalidResourceMap", "MapBakerCritter", "MapBakerVisibleItem", "MapBakerHiddenItem");
         local_rig.AddSourceFile("InvalidResourceMap.fomap",
             "[ProtoMap]\n"
@@ -382,6 +426,7 @@ TEST_CASE("MapBaker")
     SECTION("SkipsMissingTargetedRuntimeBake")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         local_rig.AddSourceFile("Nested/Readme.txt", "not a map");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
@@ -395,6 +440,7 @@ TEST_CASE("MapBaker")
     SECTION("BakeCheckerCanSkipTargetedRuntimeBake")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         local_rig.AddSourceFile("UnitTestMap.fomap",
             "[ProtoMap]\n"
             "$Name = UnitTestMap\n",
@@ -416,6 +462,7 @@ TEST_CASE("MapBaker")
     SECTION("BakesEveryMapFromMultiMapFile")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "MultiMapOne");
         local_rig.AddSourceFile("Nested/MultiMaps.fomap",
             "[ProtoMap]\n"
@@ -435,6 +482,7 @@ TEST_CASE("MapBaker")
     SECTION("FindsMapInsideMultiMapFileForTargetedRuntimeBake")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "MultiMapOne");
         local_rig.AddSourceFile("Nested/MultiMaps.fomap",
             "[ProtoMap]\n"
@@ -454,6 +502,7 @@ TEST_CASE("MapBaker")
     SECTION("SkipsProtoFilesWithoutMapAnchors")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         local_rig.AddSourceFile("Items/Plain.fopro",
             "[ProtoItem]\n"
             "$Name = PlainItem\n");
@@ -466,6 +515,7 @@ TEST_CASE("MapBaker")
     SECTION("BakesMapsFromAnyProtoExtensionContainer")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "FoproDeclaredMap");
         local_rig.AddSourceFile("Protos/MixedContainer.fopro",
             "[ProtoMap]\n"
@@ -481,6 +531,7 @@ TEST_CASE("MapBaker")
     SECTION("AnonymousAnchorBakesUnderFileStemAlongsideNamedOnes")
     {
         TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "MixedMaps");
         local_rig.AddSourceFile("Nested/MixedMaps.fomap",
             "[ProtoMap]\n"

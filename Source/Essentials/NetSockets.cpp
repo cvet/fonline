@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -378,7 +378,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 
     addr.sin_addr.s_addr = *resolved;
 
-    // Switch to non-blocking before kicking off connect so we can return immediately on EWOULDBLOCK/EINPROGRESS.
+    // Switch to non-blocking before kicking off connect so we can return immediately on EWOULDBLOCK/EINPROGRESS
 #if FO_WINDOWS
     u_long mode = 1;
 
@@ -387,7 +387,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
         return false;
     }
 #else
-    const int32_t flags = ::fcntl(sock, F_GETFL, 0);
+    int32_t flags = ::fcntl(sock, F_GETFL, 0);
 
     if (flags < 0 || ::fcntl(sock, F_SETFL, flags | O_NONBLOCK) != 0) {
         CloseSocket(sock);

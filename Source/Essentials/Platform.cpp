@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@
 //
 
 #include "Platform.h"
-#include "ExceptionHandling.h"
+#include "FatalError.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
 
@@ -176,7 +176,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
 #elif FO_LINUX
     char path[FILENAME_MAX];
     auto path_data = make_ptr(path);
-    auto size = ::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1);
+    ssize_t size = ::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1);
 
     if (size == -1) {
         return std::nullopt;
@@ -369,7 +369,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     FILETIME user_time {};
 
     if (::GetProcessTimes(::GetCurrentProcess(), &creation_time, &exit_time, &kernel_time, &user_time) != 0) {
-        // FILETIME process times are in 100 ns units.
+        // FILETIME process times are in 100 ns units
         result.ProcessTimeNs = (file_time_to_uint64(kernel_time) + file_time_to_uint64(user_time)) * 100;
     }
 
@@ -515,15 +515,15 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     mach_msg_type_number_t processor_info_count = 0;
 
     if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &raw_processor_info, &processor_info_count) == KERN_SUCCESS) {
-        FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "Processor info pointer is null");
+        FO_BASIC_STRONG_ASSERT(raw_processor_info != nullptr);
         auto processor_info = make_ptr(raw_processor_info);
         auto load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
-        auto load_info = make_span(load_info_data, processor_count);
+        const_span<processor_cpu_load_info_data_t> load_info {load_info_data.get(), static_cast<size_t>(processor_count)};
 
         result.Cores.reserve(static_cast<size_t>(processor_count));
 
         for (natural_t i = 0; i < processor_count; i++) {
-            processor_cpu_load_info_data_t& info = load_info[i];
+            const processor_cpu_load_info_data_t& info = load_info[i];
             uint64_t user_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_USER]);
             uint64_t system_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_SYSTEM]);
             uint64_t idle_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_IDLE]);
@@ -549,7 +549,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             return 0;
         }
 
-        // task_info time_value_t fields are seconds + microseconds.
+        // task_info time_value_t fields are seconds + microseconds
         return static_cast<uint64_t>(info.user_time.seconds) * 1000000000ULL + static_cast<uint64_t>(info.user_time.microseconds) * 1000ULL + static_cast<uint64_t>(info.system_time.seconds) * 1000000000ULL + static_cast<uint64_t>(info.system_time.microseconds) * 1000ULL;
     }();
 #endif

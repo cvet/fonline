@@ -22,12 +22,17 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 - `../Source/Essentials/StackTrace.cpp`
 - `../Source/Essentials/BaseLogging.h`
 - `../Source/Essentials/BaseLogging.cpp`
+- `../Source/Essentials/FatalError.h`
+- `../Source/Essentials/FatalError.cpp`
 - `../Source/Essentials/ExceptionHandling.h`
 - `../Source/Essentials/ExceptionHandling.cpp`
+- `../Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
+- `../Source/Scripting/AngelScript/AngelScriptHelpers.cpp`
 - `../Source/Scripting/AngelScript/AngelScriptContext.cpp`
 - `../Source/Frontend/ApplicationInit.cpp`
 - `../Source/Tests/Test_StackTrace.cpp`
 - `../Source/Tests/Test_ExceptionHandling.cpp`
+- `../Source/Tests/Test_ScriptBuiltins.cpp`
 - `../../.vscode/launch.json`
 - `../../.vscode/tasks.json`
 
@@ -91,6 +96,8 @@ The reporters (`ReportExceptionAndExit`, `ReportExceptionAndContinue`) create a 
 
 The exception callback receives the already-captured `CatchedStackTraceData` and the fatal flag directly. There is no separate context object in the current source; if callback behavior changes, update `ExceptionCallback` in [../Source/Essentials/ExceptionHandling.h](../Source/Essentials/ExceptionHandling.h), `ReportExceptionAndExit` / `ReportExceptionAndContinue` in [../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp), and the default callback in [../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp) together.
 
+AngelScript `throw(...)` / `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, name, runtime id, and proto id (or `<none>` when the entity has no proto), so a production exception identifies the involved objects instead of reporting only `Critter` or `AbstractItem`. Primitive, enum, string, and null context formatting keeps its existing compact form. `Test_ScriptBuiltins.cpp` pins the entity-context representation through the real global `throw` binding.
+
 ### Logging and crash-path primitives
 
 [../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `SafeWriteStackTrace(const StackTraceData&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `WriteLogMessage` with the captured `CatchedStackTraceData`; immediate duplicate exception messages are collapsed into a later `...and N more same messages` summary by `Logging.cpp`. Async file writing is still controlled by `SetAsyncLogWriting(true)` once `settings.AsyncLogWrite` is known.
@@ -103,10 +110,12 @@ Every abnormal death must leave usable diagnostics in the log file, not only on 
 - **`std::terminate`** (an exception escaping a `noexcept` function or a thread, a rethrow with no handler, a pure-virtual call) is routed through `SignalHandling::terminator()` — an **FOnline patch** that installs `std::set_terminate` on POSIX too (it was Windows-only upstream). It records the failing exception's type + `what()` via `SetCrashTerminationInfo("std::terminate")` (`FormatRuntimeCrashInfo`), prints the report, and `_Exit`s without re-entering the `SIGABRT` handler. Without it, the default POSIX terminate handler prints the exception text to `stderr` only and the log gets a bare `Signal 6 (SIGABRT)`.
 - **Stack overflow** is a `SIGSEGV` on the guard page; the handler needs an **alternate signal stack** (`SA_ONSTACK`) because the thread's own stack is exhausted. backward installs one only on the thread that constructs it (the main thread), so every long-lived worker thread calls `InstallCrashHandlerStackForThisThread()` ([../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp)) at entry (see `WorkThread::ThreadEntry`) to keep worker-thread overflows diagnosable. Threads created outside the engine (e.g. third-party Asio/SDL threads) do not get one; add the call at their entry if they run engine logic that can recurse deeply.
 - **Caught exceptions** reported through `ReportExceptionAndExit` / `ReportExceptionAndContinue` take the graceful path instead: the exception callback logs the message + `CatchedStackTraceData` via `WriteLogMessage`, plus `Shutdown!` for the fatal variant. No `FATAL ERROR!` header.
+- **Explicit low-level fatal exits** call `ReportFatalAndExit` or `ReportStrongAssertAndExit` in [../Source/Essentials/FatalError.cpp](../Source/Essentials/FatalError.cpp). This early layer suspends async logging, writes one synchronous native report, and then calls `ExitApp(false)`. It sits after `StackTrace` / `BaseLogging` and before `SmartPointers`, so low-level callers do not create a reverse dependency on `ExceptionHandling`.
+- **Raw application exit** remains status-only: `ExitApp(false)` drains the async log through the registered `at_quick_exit` handler and returns `EXIT_FAILURE`, but does not invent a fatal report. Controlled failures such as compiler input errors use the non-zero status without being mislabeled as crashes; true fatal callers must report explicitly before exiting. `ReportExceptionAndExit` and the terminate-on-OOM path already own their reports and therefore produce no generic duplicate. A successful exit (`ExitApp(true)`) likewise prints nothing.
 
 `InstallCrashHandlerStackForThisThread()` allocates a per-thread 2 MiB signal stack (lazily committed; touched only during a crash) and is a no-op on non-POSIX targets and under a debugger (where backward does not install its handlers).
 
-**Self-test.** [../Source/Common/DiagnosticSelfTest.cpp](../Source/Common/DiagnosticSelfTest.cpp) deliberately induces a chosen crash class to verify the above end-to-end. It is driven by the `FO_SELFTEST_CRASH` environment variable (not a setting, so it is inert in production and invisible to the config/script surface) and fires once in `InitApp`, after logging + the exception callback + the async-log mode are live. Modes: `main_null_read` / `main_null_write` / `main_wild_write` (SIGSEGV), `main_fpe`, `main_abort`, `main_stack_overflow`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, and `thread_*` counterparts that run the same crash on a worker-style `std::thread`. The embedding project's `Tools/PipelineTests/test_crash_diagnostics_linux.py` exercises these against the Linux headless server.
+**Self-test.** [../Source/Common/DiagnosticSelfTest.cpp](../Source/Common/DiagnosticSelfTest.cpp) deliberately induces a chosen crash class to verify the above end-to-end. It is driven by the `FO_SELFTEST_CRASH` environment variable (not a setting, so it is inert in production and invisible to the config/script surface) and fires once in `InitApp`, after logging + the exception callback + the async-log mode are live. Modes: `main_null_read` / `main_null_write` / `main_wild_write` (SIGSEGV), `main_fpe`, `main_abort`, `main_stack_overflow`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, `main_failure_exit`, and `thread_*` counterparts that run the same crash on a worker-style `std::thread`. The embedding project's `Tools/PipelineTests/test_crash_diagnostics_linux.py` exercises these against the Linux headless server.
 
 ### Coverage
 
@@ -187,6 +196,7 @@ Use the deterministic engine test target for Common and metadata regressions bef
 2. Run it with `cmake --build Build/MSVC2026 --config RelWithDebInfo --target RunUnitTests`.
 3. Prefer this path for migration-rule, serialization, and other engine-only regressions that do not require resource baking or a live server-client session.
 4. Self-contained client-engine tests run through `NullRenderer`. They may still log missing `.fofx` files from the minimal in-memory test resources, but the headless renderer now synthesizes the required effect metadata instead of treating those missing shader assets as fatal.
+5. A recoverable ImGui error reaches the engine as an `IM_ASSERT` throw carrying only the stringified expression, so a report like `ImGui: (0) && "Missing End()"` says what went wrong but not where. `ImGuiExt::Init` therefore installs an ImGui error callback that logs `ImGui error in window '<name>': <message>` just before the assert fires. When a headless client or mapper test aborts a frame over an unbalanced window, read that line to find the `Begin` that was never closed. The callback is the only route available here: ImGui's own error log is compiled out by `IMGUI_DISABLE_DEBUG_TOOLS`, which `ImGuiConfig.h` defines, while `g.ErrorCallback` is invoked outside that guard.
 
 ## Gameplay Bug Triage
 
@@ -198,6 +208,28 @@ Use the headless workflow first for script, proto, content, and scene-runtime re
 4. Watch `TEST` log lines for suite progress, per-suite completion summaries, and the final parallel aggregate, plus `SCENE` log lines for startup-scene and runtime-context issues. Engine and extension threads created through the shared thread helper now inherit the suite thread namespace in logs, for example `TestSuite-Combat::ServerWorker`, which makes parallel output easier to separate even when the code uses direct thread creation instead of `WorkThread`. The default log file for this flow is `LF_ServerHeadless.log` in the workspace root.
 5. Use the regular launch or scene-launch profiles only when the bug depends on the embedded client, rendering, direct input, AngelScript stepping, or startup scene UX.
 6. For engine-side regressions that may also affect gameplay, run `LF_UnitTests` first, then move to the headless gameplay pass if the failure path crosses scripting, baking, or network replication.
+
+## Network Latency Emulation
+
+`Network.ArtificalLags` (milliseconds, `0` disables) makes a client behave as if it were on a slow link, for reproducing latency-dependent desynchronization without a real remote host. It is implemented entirely in `ClientConnection::ProcessConnection` and applies **symmetrically**, drawing a fresh `ArtificalLags / 2 .. ArtificalLags` sample for each delayed batch:
+
+- **Inbound** — a complete received message waits in the receive buffer until its delivery deadline, the way it would wait on the wire.
+- **Outbound** — queued data waits before it reaches the socket, so the *server* learns about the client's actions late.
+
+Both halves matter and they are not interchangeable. Only the outbound half makes the server's copy of the world trail the player's own copy, which is the direction every "the server saw me somewhere else" symptom depends on: with inbound delay alone the server still receives a movement the instant the client starts it and can never fall behind. An emulation that delays only one direction will silently fail to reproduce that entire class of bug.
+
+Neither half throttles throughput. A slow link still transmits continuously; gating the whole network pump on the interval instead starves the initial state sync and produces a client that looks broken rather than merely slow.
+
+`Network.ArtificalLags` is not a fixed delay: each delayed batch draws its own `ArtificalLags/2 .. ArtificalLags` sample, so consecutive batches already differ by up to half the base value. `Network.ArtificalLagsJitter` (milliseconds, `0` disables) adds a further `0 .. jitter` sample on top, widening that spread.
+
+The spread is what matters for a client/server divergence, not the mean. Two related messages — the client starting a movement, then acting on having arrived — each carry their own delay, and the server's copy trails by the *difference* between them: a delay that were truly identical for both would cancel, since the server would begin the movement late by `D` and judge the action late by `D`, having covered exactly the missing distance in between. Base lag alone therefore bounds the divergence at about half its value; raise `ArtificalLagsJitter` when a wider one is needed, which also matches how a real link behaves when packet loss stalls one message and not the next. A modest base with a large jitter (for example `300` and `1500`) emulates an ordinary link with occasional stalls.
+
+(Adding or renaming a setting needs no manual compatibility-version bump: `codegen.py` feeds every settings entry into the compatibility hash, so the version changes on its own and an older client is told to update at handshake.)
+
+Two related facts when reading a latency-dependent movement bug:
+
+- The server→client direction carries an `offset_time` field, so a client that learns about a movement late fast-forwards into it correctly.
+- The client→server direction carries no timestamp or elapsed-time field. `Process_Move` replays the movement from `GameTime.GetFrameTime()` with a zero offset, so the server's copy of a player-driven critter trails the client's by the one-way latency for the whole walk.
 
 ## Key Files and Integration Points
 

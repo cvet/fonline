@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -92,12 +92,15 @@ private:
         unordered_map<string, RefTypeState> RefTypes {};
         vector<string> RefTypeRegistrationOrder {};
         vector<unique_ptr<string>> NormalizedLines {};
-        unordered_map<string, vector<CodeGenTagDesc>> CodeGenTags {};
-        map<string, vector<vector<string>>> ResultTags {};
+        // Keyed by the section-name constants and by tag names pointing into the parsed files, both of which
+        // outlive this context
+        unordered_map<string_view, vector<CodeGenTagDesc>> CodeGenTags {};
+        map<string_view, vector<vector<string>>> ResultTags {};
         string_view Target {};
     };
 
     auto BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8_t>;
+    auto MakeMetadataVersion(const TagsParsingContext& ctx) const -> string;
     void ParseEnum(TagsParsingContext& ctx) const;
     void ParseEntity(TagsParsingContext& ctx) const;
     void ParseFixedType(TagsParsingContext& ctx) const;

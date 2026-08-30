@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -585,7 +585,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
     auto resolve_hash = [prop](const_span<uint8_t> hash_data) -> hstring {
         FO_VERIFY_AND_THROW(hash_data.size() == sizeof(hstring::hash_t), "Serialized hash payload size does not match hash storage size");
         hstring::hash_t hash = MemReadUnaligned<hstring::hash_t>(hash_data.data());
-        return hash ? prop->GetRegistrator()->GetHashResolver()->ResolveHash(hash) : hstring();
+        return hash ? prop->GetRegistrar()->GetHashResolver()->ResolveHash(hash) : hstring();
     };
 
     auto resolve_fixed_type = [prop, as_engine, &resolve_hash](const_span<uint8_t> hash_data) -> nptr<Entity> {
@@ -1659,6 +1659,20 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
         return strex("synctime: {}", *script_obj.reinterpret_as<synctime>());
     }
 
+    if (meta->IsValidBaseType(type_name) && meta->GetBaseType(type_name).IsEntity) {
+        auto entity = script_obj.reinterpret_as<const Entity>();
+        string proto_id = "<none>";
+
+        if (auto proto = entity.dyn_cast<const ProtoEntity>()) {
+            proto_id = proto->GetProtoId().as_str();
+        }
+        else if (auto entity_with_proto = entity.dyn_cast<const EntityWithProto>()) {
+            proto_id = entity_with_proto->GetProtoId().as_str();
+        }
+
+        return strex("{}: name {} id {} proto {}", type_name, entity->GetName(), entity->GetId(), proto_id);
+    }
+
     if (auto enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
         int32_t enum_value = 0;
 
@@ -1820,9 +1834,9 @@ auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<co
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
 
-    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrator);
+    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrar);
     ref_instance->LoadFromRawData(base_type, raw_data);
 
     return ref_instance;
@@ -1834,7 +1848,7 @@ auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<voi
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
 
     if (!as_obj) {
         return {};

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -60,6 +60,8 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         return;
     }
 
+    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->BakeLanguages);
+
     // Collect files
     vector<File> filtered_files;
     set<string> filtered_paths;
@@ -102,7 +104,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         if (!packs_to_complete.contains(text_pack_name)) {
             continue;
         }
-        if (std::ranges::find(_context->Settings->BakeLanguages, lang_name) == _context->Settings->BakeLanguages.end()) {
+        if (std::ranges::find(bake_languages.Languages, lang_name) == bake_languages.Languages.end()) {
             continue;
         }
         if (filtered_paths.contains(string(file_header.GetPath()))) {
@@ -118,7 +120,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     }
 
     // Find languages
-    const auto& default_lang = _context->Settings->BakeLanguages.front();
+    const string& default_lang = bake_languages.Languages.front();
     set<string> languages;
     set<string> all_languages;
 
@@ -128,7 +130,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         const auto& lang_name = name_pair[1];
 
         if (all_languages.emplace(lang_name).second) {
-            if (std::ranges::find(_context->Settings->BakeLanguages, lang_name) == _context->Settings->BakeLanguages.end()) {
+            if (std::ranges::find(bake_languages.Languages, lang_name) == bake_languages.Languages.end()) {
                 WriteLog(LogType::Warning, "Unsupported language: {}. Skip", lang_name);
             }
             else {
@@ -174,7 +176,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         }
     }
 
-    TextPack::FixPacks(_context->Settings->BakeLanguages, lang_packs);
+    TextPack::FixPacks(bake_languages, lang_packs);
 
     // Save parsed packs
     for (auto&& [lang_name, lang_pack] : lang_packs) {

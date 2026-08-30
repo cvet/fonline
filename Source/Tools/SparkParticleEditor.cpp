@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@
 #include "ImGuiStuff.h"
 #include "Mapper.h"
 #include "SparkExtension.h"
+#include "SpriteResource.h"
 #include "VisualParticles.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -250,15 +251,21 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
 
         auto reader = file.GetReader();
 
-        uint8_t check_number = reader.GetUInt8();
-        FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
+        uint8_t magic = reader.GetUInt8();
+        FO_VERIFY_AND_THROW(magic == SPRITE_RESOURCE_MAGIC, "Sprite file header magic is invalid", magic);
 
+        uint8_t version = reader.GetUInt8();
+        FO_VERIFY_AND_THROW(version == SPRITE_RESOURCE_VERSION, "Sprite file version is not supported", version);
+
+        // Collection header: frame count, animation ticks, direction count
         (void)reader.GetLEUInt16();
         (void)reader.GetLEUInt16();
         (void)reader.GetUInt8();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
+
+        // First frame of the first direction: shared-reference flag, then offset and size
         (void)reader.GetUInt8();
+        (void)reader.GetLEInt16();
+        (void)reader.GetLEInt16();
         uint16_t w = reader.GetLEUInt16();
         uint16_t h = reader.GetLEUInt16();
         (void)reader.GetLEInt16();

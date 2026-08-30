@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -304,32 +304,34 @@ static void UpdateMonitorSettings(GlobalSettings& settings, ptr<const SDL_Displa
     *const_cast<std::remove_cvref_t<decltype(settings.MonitorHeight)>*>(&settings.MonitorHeight) = display_mode->h;
 }
 
+// Routed through the SafeAlloc raw tier rather than the bare Mem* primitives so SDL gets the same
+// out-of-memory handling as ImGui, AngelScript, zlib and ozz instead of silently receiving null
 static auto SdlMemMalloc(size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MemMalloc(size).get();
+    return SafeAlloc::MallocRaw(size).get();
 }
 
 static auto SdlMemCalloc(size_t num, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MemCalloc(num, size).get();
+    return SafeAlloc::CallocRaw(num, size).get();
 }
 
 static auto SdlMemRealloc(void* mem, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MemRealloc(mem, size).get();
+    return SafeAlloc::ReallocRaw(mem, size).get();
 }
 
 static void SdlMemFree(void* mem) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    MemFree(mem);
+    SafeAlloc::FreeRaw(mem);
 }
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
@@ -652,8 +654,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     io.Fonts->TexDesiredFormat = ImTextureFormat_RGBA32;
     io.Fonts->TexMinWidth = Settings.ImGuiFontTextureSize;
     io.Fonts->TexMinHeight = Settings.ImGuiFontTextureSize;
-    io.Fonts->TexMaxWidth = AppRender::MAX_ATLAS_SIZE;
-    io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_SIZE;
+    io.Fonts->TexMaxWidth = AppRender::MAX_ATLAS_WIDTH;
+    io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_HEIGHT;
 
     // Default effect
     FileSystem base_fs;
@@ -697,7 +699,7 @@ Application::~Application()
     _ctx->NullWindowStubs.clear();
     _ctx->RenderTargetTex = nullptr;
 
-    // Renderer backends may need the SDL window while releasing their native resources.
+    // Renderer backends may need the SDL window while releasing their native resources
     _ctx->ActiveRenderer.reset();
 
     if (MainWindow._windowHandle) {
@@ -991,7 +993,7 @@ void Application::EndWindowRender()
     _currentRenderingWindow = nullptr;
 
     if (was_virtual) {
-        // Restore the host's screen size so engine chrome (tab bar, server panel) renders at OS pixels.
+        // Restore the host's screen size so engine chrome (tab bar, server panel) renders at OS pixels
         if (_hostScreenSizeSaved) {
             Settings.ScreenWidth = _hostScreenWidthSaved;
             Settings.ScreenHeight = _hostScreenHeightSaved;
@@ -1651,7 +1653,7 @@ void Application::BeginFrame()
             switch_active_to_hovered_child(screen_pos);
 
             // Mouse events are pushed to the active client; remap host (ImGui display) coords into
-            // the active virtual window's local screen coords so the client sees positions inside its own viewport.
+            // the active virtual window's local screen coords so the client sees positions inside its own viewport
             ipos32 local_pos = TranslateHostPosToActiveWindow(screen_pos);
             ipos32 local_delta = ScaleHostDeltaToActiveWindow(host_delta);
 
@@ -2325,7 +2327,7 @@ void Application::EndFrame()
         auto clip_scale = draw_data->FramebufferScale;
 
         // Render command lists
-        for (int32_t cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
+        for (int32_t cmd = 0; cmd < draw_data->CmdLists.Size; cmd++) {
             ptr<const ImDrawList> cmd_list = draw_data->CmdLists[cmd];
 
             _imguiDrawBuf->Vertices.resize(cmd_list->VtxBuffer.Size);
@@ -2418,7 +2420,7 @@ void Application::WaitForRequestedQuit()
 
     while (!_quit) {
         // Timed wait: the signal handler only latches the quit-signal flag (async-signal-safe), so this
-        // waiting thread is the one that converts it into a regular RequestQuit with logging/notification.
+        // waiting thread is the one that converts it into a regular RequestQuit with logging/notification
         _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
 
         if (IsQuitSignalReceived()) {
@@ -2702,7 +2704,7 @@ void AppWindow::SetTitle(string_view title)
 
     _title = string {title};
 
-    // Virtual windows show the title in the engine's tab bar; only OS windows need to push it down to SDL.
+    // Virtual windows show the title in the engine's tab bar; only OS windows need to push it down to SDL
     if (!_isVirtual && _windowHandle && _app->_ctx->ActiveRendererType != RenderType::Null) {
         auto title_ptr = make_ptr(_title.c_str());
         auto sdl_window = _windowHandle.reinterpret_as<SDL_Window>();
@@ -2775,7 +2777,7 @@ void AppRender::SetRenderTarget(nptr<RenderTexture> tex)
     FO_STACK_TRACE_ENTRY();
 
     // While a virtual window is active, redirect the implicit "back buffer" target (nullptr)
-    // to the window's offscreen texture so the existing render-target stack walks back into it.
+    // to the window's offscreen texture so the existing render-target stack walks back into it
     if (!tex) {
         if (auto virt = _app->_currentRenderingWindow; virt) {
             if (virt->IsVirtual()) {
@@ -2933,7 +2935,7 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
         auto restore_mouse_motion = scope_exit([]() noexcept { SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true); });
 
         // When the active window is virtual, `pos` is in that window's local screen coords —
-        // remap it back into host (ImGui display) coords before handing it to SDL.
+        // remap it back into host (ImGui display) coords before handing it to SDL
         ipos32 host_pos = _app->TranslateActiveWindowPosToHost(pos);
 
         if (relative_to) {

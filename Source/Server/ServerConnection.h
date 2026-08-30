@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,26 @@
 #include "NetworkServer.h"
 
 FO_BEGIN_NAMESPACE
+
+// Why a connection was closed. Recorded on the connection itself so the reason outlives the code path
+// that ended it and is still readable while scripts run their logout handlers
+///@ ExportEnum
+enum class DisconnectReason : uint8_t
+{
+    None = 0,
+    ClientClosed = 1,
+    InactivityTimeout = 2,
+    PingTimeout = 3,
+    LoginTimeout = 4,
+    ProtocolError = 5,
+    UpdaterError = 6,
+    ServerShutdown = 7,
+    ScriptRequest = 8,
+    LoginFailed = 9,
+    ReplacedByReconnect = 10,
+};
+
+auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view;
 
 class ServerConnection final
 {
@@ -114,6 +134,7 @@ public:
     [[nodiscard]] auto GetPort() const noexcept -> uint16_t;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
+    [[nodiscard]] auto GetDisconnectReason() const noexcept -> DisconnectReason;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
@@ -136,12 +157,12 @@ public:
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
     // These factories deliberately return a guard that still holds the buffer lock (released when the caller's
-    // accessor leaves scope); TSA cannot express "returns holding a lock", so the trivial bodies are exempt.
+    // accessor leaves scope); TSA cannot express "returns holding a lock", so the trivial bodies are exempt
     OutBufAccessor WriteMsg(NetMessage msg) FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), msg); }
     OutBufAccessor WriteBuf() FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), std::nullopt); }
     InBufAccessor ReadBuf() FO_TSA_NO_ANALYSIS { return InBufAccessor(make_ptr(this)); }
 
-    void HardDisconnect();
+    void HardDisconnect(DisconnectReason reason);
     void GracefulDisconnect();
 
 private:
@@ -161,8 +182,9 @@ private:
     };
 
     void StartAsyncSend();
-    auto AsyncSendData() -> const_span<uint8_t>;
+    auto AsyncSendData() -> vector<uint8_t>;
     void AsyncReceiveData(const_span<uint8_t> buf);
+    void RecordDisconnectReason(DisconnectReason reason) noexcept;
 
     ptr<ServerNetworkSettings> _settings;
     shared_ptr<NetworkServerConnection> _netConnection;
@@ -170,13 +192,13 @@ private:
     NetInBuffer _inBuf;
     mutex _outBufLocker {};
     NetOutBuffer _outBuf;
-    vector<uint8_t> _sendBuf {};
     StreamCompressor _compressor {};
     ActivityState _activity {};
     UpdateFileTransferState _updateFileTransfer {};
     ContentUpdateSourceReportReplayGuard _contentUpdateSourceReportReplayGuard {};
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
+    std::atomic<DisconnectReason> _disconnectReason {};
 };
 
 FO_END_NAMESPACE

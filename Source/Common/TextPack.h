@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,12 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(TextPackException);
 
 class FileSystem;
+
+struct BakeLanguageConfig final
+{
+    vector<string> Languages {};
+    map<string, string> Fallbacks {};
+};
 
 ///@ ExportValueType Layout = hstring-Name
 using TextPackName = strong_type<hstring, struct TextPackName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
@@ -116,11 +122,11 @@ public:
     ~TextPack() = default;
 
     [[nodiscard]] auto GetText(TextPackKey key) const -> string_view;
-    [[nodiscard]] auto GetText(TextPackKey key, size_t skip) const -> string_view;
+    [[nodiscard]] auto GetText(TextPackKey key, size_t text_index) const -> string_view;
     [[nodiscard]] auto GetTextCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto IsTextPresent(TextPackKey key) const -> bool;
     [[nodiscard]] auto GetStr(TextPackKey key) const -> string_view;
-    [[nodiscard]] auto GetStr(TextPackKey key, size_t skip) const -> string_view;
+    [[nodiscard]] auto GetStr(TextPackKey key, size_t text_index) const -> string_view;
     [[nodiscard]] auto GetStrCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
     [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
@@ -137,7 +143,8 @@ public:
     void FixStr(const TextPack& base_pack);
     void Clear();
 
-    static void FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
+    static auto ParseBakeLanguages(const_span<string> declarations) -> BakeLanguageConfig;
+    static void FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
 
     friend struct TextPackKey;
 

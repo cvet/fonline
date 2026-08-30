@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -104,7 +104,10 @@ public:
             _extendedMessage.append(message);
             _message = message;
 
-            _params = {string(std::format("{}", std::forward<Args>(args)))...};
+            // Each context argument is formatted straight into its engine-allocated element; std::format
+            // would build a std::allocator string first and copy it in
+            _params.reserve(sizeof...(Args));
+            ((void)std::format_to(std::back_inserter(_params.emplace_back()), "{}", std::forward<Args>(args)), ...);
 
             for (const auto& param : _params) {
                 _extendedMessage.append("\n- ");

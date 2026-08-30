@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -493,10 +493,10 @@ auto strex::replace(string_view from, string_view to) noexcept -> strex&
 
     auto pos = _sv.find(from);
 
-    if (pos != std::string::npos) {
+    if (pos != string::npos) {
         own_storage();
 
-        while (pos != std::string::npos) {
+        while (pos != string::npos) {
             _s.replace(pos, from.length(), to);
             pos += to.length();
             pos = _s.find(from, pos);

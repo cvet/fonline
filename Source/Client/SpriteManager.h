@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -147,7 +147,7 @@ struct DipData
 };
 
 // A direct-to-scene sprite (e.g. particle system) deferred to a single pass after the sprite batch, so its
-// own shader does not split the batch. Occlusion stays correct via the shared scene depth buffer.
+// own shader does not split the batch. Occlusion stays correct via the shared scene depth buffer
 struct DirectDrawSprite
 {
     nptr<const Sprite> Spr {};
@@ -175,6 +175,10 @@ public:
     [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
+    // Copied on demand and at most once per direct-draw replay, so a frame with nothing refracting never pays
+    // for it
+    [[nodiscard]] auto AcquireSceneBackground() -> nptr<const RenderTexture>;
+
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetMainRenderTarget() const noexcept -> nptr<const RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
@@ -218,6 +222,7 @@ public:
 
     void BeginScene();
     void EndScene();
+    void AbortScene() noexcept; // Must be called if an exception escapes between BeginScene and EndScene, or the sprite manager state stays corrupt
 
     void DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color);
     void DrawSpriteSize(ptr<const Sprite> spr, ipos32 pos, isize32 size, bool fit, bool center, ucolor color);
@@ -275,6 +280,8 @@ private:
     unordered_map<ptr<const Sprite>, weak_ptr<Sprite>> _updateSprites {};
 
     nptr<RenderTarget> _rtMain {};
+    nptr<RenderTarget> _rtSceneBackground {};
+    bool _sceneBackgroundValid {};
 
     vector<DipData> _dipQueue {};
     vector<DirectDrawSprite> _directDrawSprites {};

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -87,11 +87,13 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         throw ProtoTextBakerException("Prototype text baker cannot choose a default language because BakeLanguages is empty", _context->PackName);
     }
 
+    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->BakeLanguages);
+
     // Process files
     if (_context->BakeChecker) {
         bool check_result = false;
 
-        for (const auto& lang_name : _context->Settings->BakeLanguages) {
+        for (const auto& lang_name : bake_languages.Languages) {
             check_result |= _context->BakeChecker(strex("{}.Protos.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
             check_result |= _context->BakeChecker(strex("{}.Items.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
             check_result |= _context->BakeChecker(strex("{}.Critters.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
@@ -183,6 +185,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     };
 
+    bool allow_repeated_parents = _context->Settings->AllowRepeatedProtoParents;
+
     for (const auto& file_protos : all_file_protos) {
         const auto& type_name = file_protos.first;
         const auto& file_proto_pids = file_protos.second;
@@ -192,6 +196,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             FO_VERIFY_AND_THROW(all_proto_texts[type_name].count(pid) == 0, "Prototype text is registered more than once for the same entity type", type_name, pid);
 
             map<string, string> proto_kv;
+            unordered_set<hstring> reached_parents;
+            vector<hstring> parent_path;
 
             function<void(string_view, const map<string, string>&)> fill_parent_recursive = [&](string_view name, const map<string, string>& cur_kv) {
                 auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
@@ -210,7 +216,25 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                         throw ProtoTextBakerException("Proto fail to load parent for another proto", base_name, parent_name, name);
                     }
 
+                    // The path guard is what keeps the walk finite: a cycle would otherwise recurse until the stack is gone
+                    if (std::ranges::find(parent_path, parent_pid) != parent_path.end()) {
+                        throw ProtoTextBakerException("Proto parent chain contains a cycle", base_name, parent_name, name);
+                    }
+
+                    // A repeated ancestor contributes only where it is first reached: applying it again would
+                    // undo whatever the earlier parent overrode, which the source gives no hint of
+                    if (!reached_parents.insert(parent_pid).second) {
+                        if (!allow_repeated_parents) {
+                            throw ProtoTextBakerException("Proto reaches the same parent through several inheritance paths", base_name, parent_name, name);
+                        }
+
+                        continue;
+                    }
+
+                    parent_path.emplace_back(parent_pid);
                     fill_parent_recursive(parent_name, it_parent->second);
+                    parent_path.pop_back();
+
                     insert_map_values(it_parent->second, proto_kv);
                 }
             };
@@ -218,7 +242,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             fill_parent_recursive(base_name, file_kv);
             insert_map_values(file_kv, proto_kv);
 
-            const string& default_lang = _context->Settings->BakeLanguages.front();
+            const string& default_lang = bake_languages.Languages.front();
 
             all_proto_texts[type_name][pid] = {};
 
@@ -261,7 +285,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     size_t errors = 0;
     vector<pair<string, map<string, TextPack>>> lang_packs;
 
-    for (const auto& lang : _context->Settings->BakeLanguages) {
+    for (const auto& lang : bake_languages.Languages) {
         auto empty_lang_pack = map<string, TextPack>();
         empty_lang_pack.try_emplace("Items", &engine.Hashes);
         empty_lang_pack.try_emplace("Critters", &engine.Hashes);
@@ -304,7 +328,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     }
 
-    TextPack::FixPacks(_context->Settings->BakeLanguages, lang_packs);
+    TextPack::FixPacks(bake_languages, lang_packs);
 
     if (errors != 0) {
         throw ProtoTextBakerException("Errors during proto texts parsing");

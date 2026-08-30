@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -354,6 +355,61 @@ static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
     return layouts.size();
 }
 
+// The client's real load is ~1000 small frames on one page, each re-placed as its animation advances; free-list
+// cost scales with the per-page working set, so a setting can win on the corpus above and lose here
+static auto RunAtlasProductionChurn(size_t churn_allocations) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr isize32 atlas_size = {2048, 2048};
+    constexpr size_t live_target = 1000;
+
+    auto layout = SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size);
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live;
+    uint32_t random_state = 0x5EED17u;
+
+    auto next_size = [&random_state]() -> isize32 {
+        random_state = random_state * 1664525u + 1013904223u;
+        int32_t width = 32 + numeric_cast<int32_t>(random_state % 32u);
+        random_state = random_state * 1664525u + 1013904223u;
+        int32_t height = 32 + numeric_cast<int32_t>(random_state % 32u);
+        return {width, height};
+    };
+
+    while (live.size() < live_target) {
+        auto allocation = layout->Allocate(next_size());
+
+        if (!allocation) {
+            break;
+        }
+
+        live.emplace_back(std::move(allocation));
+    }
+
+    FO_STRONG_ASSERT(live.size() == live_target, "Production churn fixture must reach its working set", live.size());
+
+    for (size_t i = 0; i < churn_allocations; i++) {
+        random_state = random_state * 1664525u + 1013904223u;
+        size_t victim = random_state % live.size();
+        live[victim].reset();
+        live[victim] = layout->Allocate(next_size());
+        FO_STRONG_ASSERT(live[victim], "Production churn fixture must keep its working set placed", i);
+    }
+
+    return layout->GetPruneCount();
+}
+
+// Pins the prune rate, which is host-independent, rather than the time it takes; the bound separates regimes
+// rather than tuning, so a failure reads as the trigger no longer making progress
+TEST_CASE("TextureAtlasLayoutPruningStaysRareUnderProductionChurn", "[texture-atlas]")
+{
+    constexpr size_t churn_allocations = 4000;
+
+    size_t prune_count = RunAtlasProductionChurn(churn_allocations);
+    CAPTURE(prune_count);
+    CHECK(prune_count * 2 < churn_allocations);
+}
+
 TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
 {
     vector<isize32> corpus = MakeAtlasCorpus();
@@ -362,9 +418,88 @@ TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
     CAPTURE(packed_pages);
     CHECK(packed_pages <= 6);
 
+    // Churn must not cost a page: releases do not coalesce, so placements come from a list drifted off the exact
+    // maximal set
     size_t churned_pages = RunAtlasCorpus(corpus, true);
     CAPTURE(churned_pages);
     CHECK(churned_pages <= 6);
+}
+
+// The drift from non-coalescing releases must be self-limiting, since a placement miss rebuilds the exact set;
+// the churn runs far past where a leak would show, pinning both page growth and space recovery
+TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
+{
+    constexpr isize32 atlas_size = {2048, 2048};
+    constexpr size_t rounds = 400;
+    constexpr size_t live_target = 96;
+
+    auto layout = SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size);
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live;
+    uint32_t random_state = 0xC0FFEEu;
+    size_t rejected = 0;
+
+    auto next_size = [&random_state]() -> isize32 {
+        random_state = random_state * 1664525u + 1013904223u;
+        int32_t width = 24 + numeric_cast<int32_t>(random_state % 200u);
+        random_state = random_state * 1664525u + 1013904223u;
+        int32_t height = 24 + numeric_cast<int32_t>(random_state % 200u);
+        return {width, height};
+    };
+
+    // Fill to the working set, then churn: release a slot and allocate a differently sized replacement,
+    // which is the pattern that fragments the free list without changing the live count
+    while (live.size() < live_target) {
+        auto allocation = layout->Allocate(next_size());
+
+        if (!allocation) {
+            break;
+        }
+
+        live.emplace_back(std::move(allocation));
+    }
+
+    REQUIRE(live.size() == live_target);
+    size_t live_after_fill = live.size();
+
+    for (size_t round = 0; round < rounds; round++) {
+        random_state = random_state * 1664525u + 1013904223u;
+        size_t victim = random_state % live.size();
+        live[victim].reset();
+
+        auto replacement = layout->Allocate(next_size());
+
+        if (replacement) {
+            live[victim] = std::move(replacement);
+        }
+        else {
+            rejected++;
+            live[victim] = layout->Allocate({24, 24});
+        }
+    }
+
+    // A single page absorbed the whole run: fragmentation never made the atlas claim to be full, which
+    // is what keeps same-type art on one page and therefore one draw call
+    CAPTURE(rejected);
+    CHECK(rejected == 0);
+
+    size_t live_after_churn = 0;
+
+    for (const auto& allocation : live) {
+        if (allocation) {
+            live_after_churn++;
+        }
+    }
+
+    CAPTURE(live_after_fill);
+    CAPTURE(live_after_churn);
+    CHECK(live_after_churn == live_after_fill);
+
+    // Releasing everything must return the atlas to pristine: a full-page allocation has to succeed,
+    // which only holds if the freed slots were genuinely reclaimed and coalesced rather than lost
+    live.clear();
+
+    auto whole_page = layout->Allocate(atlas_size);
+    CHECK(whole_page);
 }
 
 TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
@@ -379,6 +514,13 @@ TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
     BENCHMARK("Pack and refill after runtime churn")
     {
         return RunAtlasCorpus(corpus, true);
+    };
+
+    // Enough churn to cross the prune threshold several times, so the sample includes both the cheap
+    // allocations and the periodic prune they pay for
+    BENCHMARK("Sustained churn at a production working set")
+    {
+        return RunAtlasProductionChurn(4000);
     };
 }
 

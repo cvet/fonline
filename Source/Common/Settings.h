@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -73,12 +73,14 @@ public:
     [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
     [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
     [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
+    [[nodiscard]] auto FindSettingValue(string_view name) const -> nptr<const string>;
 
 protected:
     vector<ResourcePackInfo> _resourcePacks {};
     vector<SubConfigInfo> _subConfigs {};
     vector<string> _appliedConfigs {};
     unordered_set<string> _appliedSettings {};
+    map<string, string> _settingValues {};
 };
 
 #define SETTING_GROUP(name, ...) \
@@ -116,6 +118,7 @@ public:
     void ApplyDefaultSettings();
     void ApplyAutoSettings();
     void CopyFrom(const GlobalSettings& other);
+    void SetSettingValue(string_view name, string_view value);
     void SetCustomSetting(string_view name, any_t value);
     void Draw(bool editable);
 

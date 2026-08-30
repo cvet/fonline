@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -205,9 +206,8 @@ namespace
 
     static void RegisterDummyCritterType(ptr<asIScriptEngine> engine)
     {
-        // Critter is registered as an implicit-handle ref type so the
-        // game-side `Critter` / `Critter?` syntax (without explicit `@`) matches the
-        // production engine's `asEP_ALLOW_IMPLICIT_HANDLE_TYPES` setup.
+        // Registered as an implicit-handle ref type so the `Critter` / `Critter?` syntax matches the production
+        // engine's setup
         CHECK(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
         REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF | asOBJ_IMPLICIT_HANDLE) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
@@ -712,10 +712,8 @@ void WithPriority()
 }
 )";
 
-    // `?` is no longer stripped by the preprocessor — AngelScript itself
-    // parses the suffix on handle types. The script uses the project's implicit-handle
-    // syntax (`Critter?`) since Critter is registered with `asOBJ_IMPLICIT_HANDLE`;
-    // ternary uses inside function bodies stay disambiguated by the AS parser.
+    // AngelScript parses the `?` suffix itself rather than the preprocessor stripping it, and the parser keeps a
+    // ternary inside a function body disambiguated
     static constexpr string_view NullableStripScript = R"(
 namespace AttrTest
 {
@@ -1454,14 +1452,14 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterEntityType("Critter", true, false, true, true, true);
         meta.RegisterRefType("RouteSnapshot");
 
-        PropertyRegistrator registrator("ScriptPropertyNameEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
-        auto int_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-        auto string_array_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
-        auto counter_dict_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
-        auto proto_array_dict_prop = registrator.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
-        auto ref_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
-        auto ref_array_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
-        auto ref_dict_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+        PropertyRegistrar registrar("ScriptPropertyNameEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
+        auto int_prop = registrar.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+        auto string_array_prop = registrar.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+        auto counter_dict_prop = registrar.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
+        auto proto_array_dict_prop = registrar.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
+        auto ref_prop = registrar.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+        auto ref_array_prop = registrar.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+        auto ref_dict_prop = registrar.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
 
         CHECK(MakeScriptPropertyName(int_prop) == "int");
         CHECK(MakeScriptPropertyName(string_array_prop) == "array<string>");
@@ -1787,10 +1785,8 @@ void NamespacedCall()
 
     SECTION("ParsesNullableTypeSuffix")
     {
-        // `?` now passes through the preprocessor untouched and is parsed
-        // by AngelScript itself as a first-class nullable handle marker. The `?` suffix
-        // must survive into the AS source; ternary `cond ? a : b` inside function bodies
-        // must continue to parse normally.
+        // The suffix must survive the preprocessor into the AS source, where it is parsed as a nullable marker,
+        // while a ternary inside a function body still parses normally
         auto parsed = ParseScript("AttributesNullableStrip.fos", NullableStripScript);
 
         INFO(parsed.Errors);
@@ -1819,7 +1815,7 @@ void NamespacedCall()
     SECTION("RejectsNullableSuffixOnPrimitive")
     {
         // `?` is only meaningful on handle types — applying it to a
-        // primitive must produce a parse / type-check error.
+        // primitive must produce a parse / type-check error
         static constexpr string_view PrimitiveNullableScript = R"(
 namespace AttrTest
 {
@@ -1882,7 +1878,7 @@ void TakesIntPlease(int? value)
         auto mod = BuildModule(engine, "AttrDirectCall", parsed.Source, messages);
         // The script uses `[[EngineOnly]]` as a placeholder blocking attribute; declare it via
         // the project-extras list so the validator treats it as direct-call-blocking (Rule 1)
-        // rather than as a viral marker (Rule 2 default for unknown attributes).
+        // rather than as a viral marker (Rule 2 default for unknown attributes)
         vector<string> project_blocking_extras {"EngineOnly"};
         string bind_error = BindFunctionAttributeRecords(mod, parsed.Records, &project_blocking_extras);
         INFO(bind_error);
@@ -1897,9 +1893,8 @@ void TakesIntPlease(int? value)
 
     SECTION("RejectsDirectCallsToInvokeEntryFunctions")
     {
-        // `[[InvokeEntry]]` marks a function that is dispatched only through the engine's dynamic
-        // `Invoke(name, ...)` global, so it is a built-in direct-call-blocking attribute: no
-        // project-extras list is passed here, proving the engine blocks the direct call on its own.
+        // No project-extras list is passed, which proves the engine blocks the direct call on its own for a
+        // built-in dispatch-only attribute
         auto parsed = ParseScript("AttributesInvokeEntryDirectCall.fos", InvokeEntryDirectCallScript);
         REQUIRE(parsed.Errors.empty());
 
@@ -1908,11 +1903,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrInvokeEntryDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("SceneEntry") != string::npos);
         CHECK(usage_error.find("CallDirect") != string::npos);
@@ -1922,7 +1917,7 @@ void TakesIntPlease(int? value)
     SECTION("AllowsFunctionReferencesToInvokeEntryFunctions")
     {
         // Registering the entry by name (`NameOf(SceneEntry)`) compiles to a function reference, so
-        // referencing an `[[InvokeEntry]]` function must stay legal - only calling it is blocked.
+        // referencing an `[[InvokeEntry]]` function must stay legal - only calling it is blocked
         auto parsed = ParseScript("AttributesInvokeEntryReference.fos", InvokeEntryReferenceScript);
         REQUIRE(parsed.Errors.empty());
 
@@ -1931,11 +1926,11 @@ void TakesIntPlease(int? value)
         ptr<asIScriptEngine> engine = engine_holder.get();
 
         auto mod = BuildModule(engine, "AttrInvokeEntryReference", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        string bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        string usage_error = ValidateAttributedFunctionUsage(mod);
         CHECK(usage_error.empty());
     }
 

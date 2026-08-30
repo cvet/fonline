@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -66,12 +66,9 @@ public:
     [[nodiscard]] auto HasPlayer() const noexcept -> bool;
     [[nodiscard]] auto GetPlayer() const noexcept -> nptr<const Player>;
     [[nodiscard]] auto GetPlayer() noexcept -> nptr<Player>;
-    // Lock-free, refcount-pinned resolution of the controlling player for sync-free broadcast fan-out.
-    // Mirrors ServerEntity::GetParentRaw: no entity-access validation, and the returned handle keeps the
-    // player alive for the whole send. Use only on the snapshot/dispatch path, never as a script accessor.
     [[nodiscard]] auto GetPlayerForSend() const noexcept -> refcount_nptr<Player>;
-    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
-    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] auto GetOfflineTime() const -> timespan;
     [[nodiscard]] auto IsAlive() const noexcept -> bool;
     [[nodiscard]] auto IsDead() const noexcept -> bool;
@@ -91,10 +88,6 @@ public:
     [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter>;
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetGlobalMapGroup() -> vector<ptr<Critter>>;
-    // Ids of the current global-map group plus the group's membership revision (empty with revision 0 when the
-    // critter is mapped). Group members are independent roots that this critter's cover does not include, so a
-    // caller that must touch them resolves and covers the reported ids, then re-reads ids and revision to prove
-    // the membership did not change while it was acquiring that cover.
     [[nodiscard]] auto GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&;
     [[nodiscard]] auto IsMoving() const noexcept -> bool;
@@ -212,6 +205,7 @@ private:
     uint32_t _movingUid {};
     refcount_nptr<MovingContext> _moving {};
     refcount_nptr<MovingContext> _lastMoving {};
+    mutable atomic_mutex _playerLinkLocker {};
     std::atomic<Player*> _player {};
     nanotime _playerDetachTime {};
     vector<ptr<Critter>> _attachedCritters {};
@@ -230,10 +224,8 @@ private:
     EntityLock _ownedLock {};
 };
 
-// Membership of one global-map group, shared by every critter travelling in it. Group members are separate
-// entity-lock roots, so a join/leave performed under one member's cover races a membership read performed
-// under another member's cover: the internal lock is what makes both safe. `Revision` advances on every
-// membership change so a caller can prove the membership it resolved and covered is still the current one.
+// Members are separate entity-lock roots, so a join under one member's cover races a read under another's and
+// the internal lock is what makes both safe; `Revision` lets a caller prove what it covered is current
 class GlobalMapGroup final
 {
 public:
@@ -251,7 +243,7 @@ public:
     void RemoveMember(ptr<Critter> cr);
 
 private:
-    // Declared before the state it guards so it outlives it.
+    // Declared before the state it guards so it outlives it
     mutable shared_mutex _lock {};
     vector<ptr<Critter>> _members FO_TSA_GUARDED_BY(_lock) {};
     uint64_t _revision FO_TSA_GUARDED_BY(_lock) {};

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,7 @@
 FO_BEGIN_NAMESPACE
 
 Player::Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection> connection, nptr<const Properties> props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props, nullptr),
+    ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props, nullptr),
     PlayerProperties(*GetInitRef()),
     _connection {std::move(connection)}
 {
@@ -146,23 +146,34 @@ void Player::SetControlledCritter(nptr<Critter> cr)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    scoped_lock locker {_controlledCrLinkLocker};
+
     _controlledCr.store(cr.get(), std::memory_order_release);
 }
 
-auto Player::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
+auto Player::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return nptr<ServerEntity>(_controlledCr.load(std::memory_order_acquire));
+
+    // The link is non-owning, so the pin is what keeps the critter alive for the caller; SetControlledCritter
+    // clears it under the same lock before the critter can reach destruction
+    scoped_lock locker {_controlledCrLinkLocker};
+
+    return nptr<ServerEntity>(_controlledCr.load(std::memory_order_acquire)).try_hold_ref();
 }
 
-auto Player::GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
+auto Player::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return nptr<const ServerEntity>(_controlledCr.load(std::memory_order_acquire));
+
+    scoped_lock locker {_controlledCrLinkLocker};
+
+    return nptr<const ServerEntity>(_controlledCr.load(std::memory_order_acquire)).try_hold_ref();
 }
 
 void Player::DetachCritter()
@@ -176,9 +187,7 @@ void Player::DetachCritter()
     }
 }
 
-// FO_TSA_NO_ANALYSIS: swaps this->_connection (guarded, held below) with other->_connection (guarded by the
-// other player's lock, which is deliberately not taken — see below); the cross-object guarded access cannot be
-// expressed to TSA.
+// FO_TSA_NO_ANALYSIS: TSA cannot express the deliberate cross-object connection swap
 void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
@@ -187,9 +196,8 @@ void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
     FO_VALIDATE_ENTITY_ACCESS_VALUE(other);
     FO_STRONG_ASSERT(other != this, "Player connection swap target is the same player");
 
-    // Exclude a concurrent lock-free send on this player while its connection pointer is swapped. `other` is the
-    // freshly-connected, not-yet-in-world player (reconnect, Server.cpp): it is in no critter's visible set and is
-    // no spectator, so it can never be a lock-free send target and needs no guard here.
+    // Exclude lock-free sends while swapping this player's connection.
+    // The not-yet-visible reconnect player cannot be a send target and needs no guard
     scoped_lock conn_lock {_connectionLock};
 
     std::swap(_connection, other->_connection);
@@ -756,14 +764,14 @@ void Player::Send_Ping(bool answer)
     out_buf->Write(answer);
 }
 
-void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, uint32_t out_encrypt_key)
+void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, bool metadata_outdated, string_view metadata_version, uint32_t out_encrypt_key)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
 
     // The out-buffer encrypt key must be installed on the same connection the answer was written to, so
-    // both steps happen under one connection-lock hold.
+    // both steps happen under one connection-lock hold
     scoped_lock conn_lock {_connectionLock};
 
     {
@@ -771,6 +779,8 @@ void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outd
 
         out_buf->Write(compatibility_outdated);
         out_buf->Write(updater_outdated);
+        out_buf->Write(metadata_outdated);
+        out_buf->Write(metadata_version);
         out_buf->Write(out_encrypt_key);
     }
 

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -253,6 +253,18 @@ public:
 #else
         FO_VERIFY_AND_THROW(dbuf->VertCount <= dbuf->Vertices.size(), "Null renderer draw references more vertices than the draw buffer contains", dbuf->VertCount, dbuf->Vertices.size(), start_index, draw_indices);
 #endif
+
+        // Nothing is rasterized, but the depth state is still resolved so a draw asking for a state the
+        // effect never built fails headlessly too, not only on a backend with real device objects
+        for (size_t pass = 0; pass < _passCount; pass++) {
+#if FO_ENABLE_3D
+            if (DisableShadow && _isShadow[pass]) {
+                continue;
+            }
+#endif
+
+            (void)ResolveDepthVariantSlot(pass);
+        }
 
         if (_needMainTex) {
             if (!custom_tex) {

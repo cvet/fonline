@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -52,9 +52,9 @@ class ScriptImGui;
 class EngineMetadata : public NameResolver
 {
 public:
-    using MeatdataRegistrator = function<void()>;
+    using MetadataRegistrar = function<void()>;
 
-    explicit EngineMetadata(const MeatdataRegistrator& registrator);
+    explicit EngineMetadata(const MetadataRegistrar& registrar);
     EngineMetadata(const EngineMetadata&) = delete;
     EngineMetadata(EngineMetadata&&) noexcept = delete;
     auto operator=(const EngineMetadata&) = delete;
@@ -62,9 +62,10 @@ public:
     ~EngineMetadata() override = default;
 
     [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
-    [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> nptr<const PropertyRegistrator>;
-    [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const noexcept -> nptr<const PropertyRegistrator>;
-    [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> ptr<PropertyRegistrator>;
+    [[nodiscard]] auto GetMetadataVersion() const noexcept -> string_view { return _metadataVersion; }
+    [[nodiscard]] auto GetPropertyRegistrar(hstring type_name) const noexcept -> nptr<const PropertyRegistrar>;
+    [[nodiscard]] auto GetPropertyRegistrar(string_view type_name) const noexcept -> nptr<const PropertyRegistrar>;
+    [[nodiscard]] auto GetPropertyRegistrarForEdit(string_view type_name) -> ptr<PropertyRegistrar>;
     [[nodiscard]] auto IsValidBaseType(string_view type_str) const noexcept -> bool;
     [[nodiscard]] auto GetBaseType(string_view type_str) const -> const BaseTypeDesc& override;
     [[nodiscard]] auto GetBaseTypes() const -> const auto& { return _baseTypes; }
@@ -87,6 +88,7 @@ public:
     [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_inboundRemoteCalls; }
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
     [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
+    [[nodiscard]] auto GetGameSettingsInitialValues() const noexcept -> const auto& { return _gameSettingsInitialValues; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
     [[nodiscard]] auto GetAllProtos() const noexcept -> const auto& { return _protoMngr.GetAllProtos(); }
     [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _protoMngr.GetProtoItems(); }
@@ -102,8 +104,9 @@ public:
     [[nodiscard]] auto GetAnimationInfo(hstring resource_name) const noexcept -> nptr<const AnimationInfo>;
 
     void RegisterSide(EngineSideKind side);
-    auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrator>;
-    auto RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrator>;
+    void RegisterMetadataVersion(string_view version);
+    auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrar>;
+    auto RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrar>;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent);
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value);
@@ -119,7 +122,7 @@ public:
     void RegisterEntityEvent(string_view entity_name, EntityEventDesc&& event);
     void RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call);
     void RegisterInboundRemoteCall(RemoteCallDesc&& remote_call);
-    void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
+    void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
     void RegisterProtos(const FileSystem& resources);
@@ -133,6 +136,7 @@ private:
     auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;
 
     EngineSideKind _side {};
+    string _metadataVersion {};
     bool _registrationFinalized {};
     map<hstring, EntityTypeDesc> _entityTypes {};
     map<hstring, EntityTypeDesc> _fixedTypes {};
@@ -148,11 +152,12 @@ private:
     unordered_map<string, ptr<const BaseTypeDesc>> _enumsUnderlyingType {};
     unordered_map<string, StructLayoutDesc> _structLayouts {};
     unordered_map<string, RefTypeDesc> _refTypes {};
-    unordered_map<string, unique_ptr<PropertyRegistrator>> _dynamicRefTypeRegistrators {};
+    unordered_map<string, unique_ptr<PropertyRegistrar>> _dynamicRefTypeRegistrars {};
     unordered_map<string, BaseTypeDesc> _baseTypes {};
     unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
     unordered_map<hstring, RemoteCallDesc> _inboundRemoteCalls {};
     unordered_map<string, ptr<const BaseTypeDesc>> _gameSettings {};
+    map<string, string> _gameSettingsInitialValues {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };
@@ -189,7 +194,7 @@ public:
     unique_del_nptr<uint8_t> UserData {};
 
 protected:
-    explicit BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator);
+    explicit BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MetadataRegistrar& registrar);
     ~BaseEngine() override = default;
 
     virtual void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) { ignore_unused(name, caller, data); } // Managed by derived class

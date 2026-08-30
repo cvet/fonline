@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 namespace ParticleTests
 {
     // Effekseer upstream Dev/Cpp/Test/Resource/Simple_GeneratingPosition1.efkproj (MIT), normalized
-    // by Effekseer Editor 1.80.5. Keep this compact source fixture independent of embedding projects.
+    // by Effekseer Editor 1.80.5. Keep this compact source fixture independent of embedding projects
     inline constexpr string_view SimpleGeneratingPositionProject = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root>
@@ -151,9 +151,8 @@ namespace ParticleTests
 </EffekseerProject>
 )EFFEKSEER";
 
-    // Effekseer upstream Dev/Cpp/Test/Resource/Simple_Sprite_FixedYAxis.efk (MIT), exported by
-    // Effekseer 1.70e. Keep this tiny cooked fixture self-contained so the reusable engine tests
-    // do not depend on an embedding project's resource tree.
+    // Effekseer upstream Simple_Sprite_FixedYAxis.efk (MIT, exported by 1.70e), inlined so the engine tests do not
+    // depend on an embedding project's resource tree
     inline constexpr string_view SimpleSpriteFixedYAxisEffectHex = "534b464507000000010000001700000054006500780074007500720065002f005000610072007400690063006c006500300031002e0070006e006700"
                                                                    "000000000000000000000000803fffffffff01000000020000002c000000640000000200000002000000020000000100000000000000000000004600"
                                                                    "0000460000000000803f0000000001000000480000000000a040000000000000a0400000a0c0000000000000a0c00ad7233c000000000ad7233c0ad7"
@@ -163,9 +162,8 @@ namespace ParticleTests
                                                                    "ff008080800000000000000000000000803f0000000001000000000000bf000000bf0000003f000000bf000000bf0000003f0000003f0000003f0000"
                                                                    "000000000000";
 
-    // Project-authored with Effekseer Editor 1.80.5 from a minimal six-instance Sprite node:
-    // random sphere generation, Clamp sampling, and NormalOrder Z-sort. Only the Z-sort enum is
-    // patched below, so all three modes exercise the same modern cooked effect (SKFE version 1810).
+    // Project-authored with Editor 1.80.5; only the Z-sort enum is patched below, so all three modes exercise the
+    // same cooked effect
     inline constexpr string_view ZSortSpriteEffectHex = "534b464512070000010000001700000054006500780074007500720065002f005000610072007400690063006c006500300031002e0070006e006700"
                                                         "000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000010000000000"
                                                         "00000000803fffffffff00000000000000000000000000000000ffffffff0100000002000000010000000000000064000000ffffffffffffffffffff"
@@ -182,10 +180,8 @@ namespace ParticleTests
                                                         "00000000000000000000000000000000000002000000000000000000000000000000ffffffff0000000001000000000000bf000000bf0000003f0000"
                                                         "00bf000000bf0000003f0000003f0000003f000000000000000000000000";
 
-    // Effekseer upstream TestData Effects/Performance/ManyRings2 at commit
-    // ed93b472428ae0a15e9bf6cd102b7116ddd60050, authored with Editor 1.80.3. This is its
-    // self-contained SKFE/1810 cooked payload. MakeModernRingEffect limits the original 4000
-    // instances to a requested test count while preserving the Ring node and renderer parameters.
+    // Effekseer upstream ManyRings2 (Editor 1.80.3) as a self-contained payload; the builder trims its 4000
+    // instances to the requested count while keeping the Ring node and renderer parameters
     inline constexpr string_view ModernRingEffectHex = "534b46451207000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000"
                                                        "0000000001000000000000000000803fffffffff00000000000000000000000000000000ffffffff0100000004000000010000000000000064000000"
                                                        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa00f00000200000002000000020000000000000001000000"
@@ -237,7 +233,7 @@ namespace ParticleTests
         FO_VERIFY_AND_THROW(result.size() > texture_wrap_offset && result[texture_wrap_offset] == 0, "Effekseer test fixture layout changed");
 
         // The upstream fixture requests Repeat. FOnline atlases require Clamp, so this mirrors the
-        // one-field authoring patch documented for the production runtime-smoke copy.
+        // one-field authoring patch documented for the production runtime-smoke copy
         result[texture_wrap_offset] = 1;
         return result;
     }
@@ -275,6 +271,317 @@ namespace ParticleTests
         result[max_generation_offset + 2] = numeric_cast<uint8_t>((encoded_generation >> 16) & 0xff);
         result[max_generation_offset + 3] = numeric_cast<uint8_t>((encoded_generation >> 24) & 0xff);
         result[z_sort_offset] = numeric_cast<uint8_t>(z_sort);
+        return result;
+    }
+
+    // A strip is only geometry once several instances of one group are alive together, hence four staggered
+    // generations moving along +Y; both stay untextured because an in-memory fixture cannot offer an image file
+    inline constexpr string_view StripProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>4</Value>
+          </MaxGeneration>
+          <Life>
+            <Center>60</Center>
+            <Max>60</Max>
+            <Min>60</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>1</Center>
+              <Max>1</Max>
+              <Min>1</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <LocationValues>
+          <Type>2</Type>
+          <Easing>
+            <End>
+              <Y>
+                <Center>4</Center>
+                <Max>4</Max>
+                <Min>4</Min>
+              </Y>
+            </End>
+          </Easing>
+        </LocationValues>
+        <RendererCommonValues>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+{}
+        </DrawingValues>
+        <Name>Strip</Name>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations />
+  </Dynamic>
+  <ProceduralModel>
+    <ProceduralModels />
+  </ProceduralModel>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER";
+
+    inline auto MakeSimpleRibbonProject(bool viewpoint_dependent) -> string
+    {
+        return strex(StripProjectTemplate, strex("          <Type>3</Type>\n          <Ribbon>\n            <ViewpointDependent>{}</ViewpointDependent>\n          </Ribbon>", viewpoint_dependent ? "True" : "False").str()).str();
+    }
+
+    inline auto MakeSimpleTrackProject() -> string
+    {
+        return strex(StripProjectTemplate, "          <Type>6</Type>\n          <TrailSmoothing>0</TrailSmoothing>\n          <Track />").str();
+    }
+
+    // The mesh is written out in Effekseer's own version-6 model layout so the fixture stays self-contained: one
+    // unit quad, two faces, distinct vertex colours per corner
+    inline constexpr string_view ModelProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>2</Value>
+          </MaxGeneration>
+          <Life>
+            <Center>60</Center>
+            <Max>60</Max>
+            <Min>60</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>1</Center>
+              <Max>1</Max>
+              <Min>1</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Type>5</Type>
+          <Model>
+            <Model>Model/Fixture.efkmodel</Model>
+            <Billboard>2</Billboard>
+            <Culling>{}</Culling>
+          </Model>
+        </DrawingValues>
+        <Name>Mesh</Name>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations />
+  </Dynamic>
+  <ProceduralModel>
+    <ProceduralModels />
+  </ProceduralModel>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER";
+
+    // Effekseer culling: 0 = discard front faces, 1 = discard back faces, 2 = draw both
+    inline auto MakeModelProject(int32_t culling) -> string
+    {
+        FO_VERIFY_AND_THROW(culling >= 0 && culling <= 2, "Effekseer model fixture culling mode is invalid", culling);
+
+        return strex(ModelProjectTemplate, culling).str();
+    }
+
+    inline auto MakeFixtureModelPayload() -> vector<uint8_t>
+    {
+        vector<uint8_t> result;
+
+        const auto write_int32 = [&result](int32_t value) {
+            for (size_t byte = 0; byte < sizeof(int32_t); byte++) {
+                result.emplace_back(numeric_cast<uint8_t>((numeric_cast<uint32_t>(value) >> (byte * 8)) & 0xff));
+            }
+        };
+        const auto write_float = [&result](float32_t value) {
+            array<uint8_t, sizeof(float32_t)> bytes {};
+            MemCopy(bytes.data(), &value, sizeof(float32_t));
+
+            for (uint8_t byte : bytes) {
+                result.emplace_back(byte);
+            }
+        };
+        const auto write_vertex = [&write_float, &result](float32_t x, float32_t y, float32_t u, float32_t v, uint8_t red) {
+            write_float(x);
+            write_float(y);
+            write_float(0.0f);
+            // Normal, binormal and tangent are part of the layout but the renderer draws unlit meshes
+            for (size_t axis = 0; axis < 9; axis++) {
+                write_float(axis % 3 == 2 ? 1.0f : 0.0f);
+            }
+
+            write_float(u);
+            write_float(v);
+            write_float(0.0f);
+            write_float(0.0f);
+            result.emplace_back(red);
+            result.emplace_back(255);
+            result.emplace_back(255);
+            result.emplace_back(255);
+        };
+
+        write_int32(6); // version
+        write_int32(1); // scale
+        write_int32(1); // model count
+        write_int32(1); // frame count
+        write_int32(4); // vertex count
+        write_vertex(-0.5f, -0.5f, 0.0f, 1.0f, 10);
+        write_vertex(0.5f, -0.5f, 1.0f, 1.0f, 20);
+        write_vertex(-0.5f, 0.5f, 0.0f, 0.0f, 30);
+        write_vertex(0.5f, 0.5f, 1.0f, 0.0f, 40);
+        write_int32(2); // face count
+        write_int32(0);
+        write_int32(1);
+        write_int32(2);
+        write_int32(2);
+        write_int32(1);
+        write_int32(3);
+
+        return result;
+    }
+
+    // The compiler assigns a texture index only for an image it can measure, so this one compiles from a directory
+    // holding a PNG header just complete enough to measure
+    inline constexpr string_view DistortionProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>2</Value>
+          </MaxGeneration>
+          <Life>
+            <Center>60</Center>
+            <Max>60</Max>
+            <Min>60</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>1</Center>
+              <Max>1</Max>
+              <Min>1</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <Material>6</Material>
+          <ColorTexture>Texture/Distortion.png</ColorTexture>
+          <DistortionIntensity>{}</DistortionIntensity>
+          <AlphaBlend>{}</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Type>2</Type>
+          <Sprite>
+            <Billboard>0</Billboard>
+          </Sprite>
+        </DrawingValues>
+        <Name>Refraction</Name>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations />
+  </Dynamic>
+  <ProceduralModel>
+    <ProceduralModels />
+  </ProceduralModel>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER";
+
+    inline auto MakeDistortionProject(float32_t intensity, int32_t alpha_blend) -> string
+    {
+        return strex(DistortionProjectTemplate, intensity, alpha_blend).str();
+    }
+
+    // The Effekseer compiler reads an image only to learn its size, from the PNG signature and the first header chunk
+    inline auto MakeFixtureImageHeader(int32_t width, int32_t height) -> vector<uint8_t>
+    {
+        FO_VERIFY_AND_THROW(width > 0 && height > 0, "Fixture image size is invalid", width, height);
+
+        vector<uint8_t> result {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
+        result.insert(result.end(), 8, 0); // chunk length and type, unread by the size probe
+
+        for (int32_t value : {width, height}) {
+            for (size_t byte = 0; byte < sizeof(int32_t); byte++) {
+                result.emplace_back(numeric_cast<uint8_t>((numeric_cast<uint32_t>(value) >> ((sizeof(int32_t) - 1 - byte) * 8)) & 0xff));
+            }
+        }
+
         return result;
     }
 }

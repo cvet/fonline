@@ -38,6 +38,7 @@
 
 #include "ConfigFile.h"
 #include "ContentUpdater.h"
+#include "MetadataRegistration.h"
 #include "NetSockets.h"
 #include "UpdaterBackend.h"
 #include "UpdaterFastClient.h"
@@ -107,6 +108,28 @@ namespace
         settings.ApplyAutoSettings();
         settings.ApplyConfigFile(config, "");
         return settings;
+    }
+
+    constexpr string_view TestClientMetadataVersion = "contentupdatertest";
+
+    // The backend proves that the packs it hands out were baked with the server's own metadata version, so
+    // every advertised client pack needs that header on disk before a load can succeed
+    void LoadTestClientResources(UpdaterBackend& backend, const GlobalSettings& settings)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const vector<uint8_t> metadata = MakeMetadataHeader(TestClientMetadataVersion);
+
+        for (const auto& pack_name : settings.ClientResourceEntries) {
+            if (pack_name == "Embedded") {
+                continue;
+            }
+
+            const string metadata_path = strex(settings.ClientResources).combine_path(pack_name).combine_path("Metadata.fometa-client").str();
+            REQUIRE(fs_write_file(metadata_path, metadata));
+        }
+
+        backend.LoadFromClientResources(settings, TestClientMetadataVersion);
     }
 
     auto VerifyTestDescriptor(const_span<uint8_t> descriptor, string_view binary_target) -> ContentUpdateManifest
@@ -1305,10 +1328,10 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend disk_backend;
-        disk_backend.LoadFromClientResources(disk_settings);
+        LoadTestClientResources(disk_backend, disk_settings);
 
         UpdaterBackend memory_backend;
-        memory_backend.LoadFromClientResources(memory_settings);
+        LoadTestClientResources(memory_backend, memory_settings);
 
         const auto disk_descriptor = disk_backend.GetUpdateDescriptor("Windows-win64", 0);
         const auto memory_descriptor = memory_backend.GetUpdateDescriptor("Windows-win64", 0);
@@ -1368,9 +1391,9 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend disk_backend;
-        disk_backend.LoadFromClientResources(disk_settings);
+        LoadTestClientResources(disk_backend, disk_settings);
         UpdaterBackend memory_backend;
-        memory_backend.LoadFromClientResources(memory_settings);
+        LoadTestClientResources(memory_backend, memory_settings);
 
         const auto disk_catalog = disk_backend.GetContentUpdateCatalog();
         const auto memory_catalog = memory_backend.GetContentUpdateCatalog();
@@ -1461,7 +1484,7 @@ TEST_CASE("ContentUpdater")
 
         {
             UpdaterBackend backend;
-            backend.LoadFromClientResources(settings);
+            LoadTestClientResources(backend, settings);
             const auto catalog = backend.GetContentUpdateCatalog();
             REQUIRE(catalog.size() == 2);
 
@@ -1482,7 +1505,7 @@ TEST_CASE("ContentUpdater")
 
             for (uint32_t pass = 0; pass != 3 && std::ranges::any_of(orphan_roots, [](const string& root) { return fs_exists(root); }); ++pass) {
                 UpdaterBackend scavenger_backend;
-                scavenger_backend.LoadFromClientResources(settings);
+                LoadTestClientResources(scavenger_backend, settings);
                 CHECK(fs_exists(active_root));
                 CHECK(fs_exists(unknown_root));
                 CHECK(fs_exists(unknown_contents_root));
@@ -1529,7 +1552,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         auto catalog = backend.GetContentUpdateCatalog();
         REQUIRE(catalog.size() == 1);
@@ -1579,7 +1602,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         const auto catalog = backend.GetContentUpdateCatalog();
         REQUIRE(catalog.size() == 1);
@@ -1646,7 +1669,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(VerifyTestDescriptor(*backend.GetUpdateDescriptor("Windows-win64", 1499), "Windows-win64").Files[0].Sources.size() == 1);
         CHECK(VerifyTestDescriptor(*backend.GetUpdateDescriptor("Windows-win64", 1500), "Windows-win64").Files[0].Sources.empty());
 
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
         CHECK(backend.GetContentUpdateCatalogGeneration() > generation);
         CHECK_FALSE(backend.UpsertContentUpdateSource(generation, file_id, sha256, primary_source));
     }
@@ -1665,7 +1688,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(strex(resources_dir).combine_path("FastPack.zip").str(), MakePayload(1024)));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
         const auto catalog = backend.GetContentUpdateCatalog();
         REQUIRE(catalog.size() == 1);
         const uint64_t generation = catalog[0]->GetGeneration();
@@ -1759,7 +1782,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
         const auto catalog = backend.GetContentUpdateCatalog();
         REQUIRE(catalog.size() == 1);
         const uint64_t generation = catalog[0]->GetGeneration();
@@ -1866,7 +1889,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(strex(linux_dir).combine_path("Runtime.so").str(), MakePayload(513)));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         auto catalog = backend.GetContentUpdateCatalog();
         REQUIRE(catalog.size() == 3);
@@ -1930,7 +1953,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         const auto descriptor = backend.GetUpdateDescriptor("Windows-win64", 0);
         REQUIRE(descriptor);
@@ -1959,7 +1982,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         const auto descriptor = backend.GetUpdateDescriptor("Windows-win64", 0);
         REQUIRE(descriptor);
@@ -1988,7 +2011,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         const auto descriptor = backend.GetUpdateDescriptor("Windows-win64", 0);
         REQUIRE(descriptor);
@@ -2019,7 +2042,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         const auto descriptor = backend.GetUpdateDescriptor("Windows-win64", 0);
         REQUIRE(descriptor);
@@ -2054,7 +2077,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         CHECK_FALSE(backend.IsFastUpdateEnabled());
 
@@ -2084,7 +2107,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         const auto descriptor = backend.GetUpdateDescriptor("Windows-win64", 0);
         REQUIRE(descriptor);
@@ -2108,10 +2131,8 @@ TEST_CASE("ContentUpdater")
         UpdaterFastClient fast_client {settings, manifest, manifest.Files[0], client_file_path};
         REQUIRE_FALSE(fast_client.IsFailed());
 
-        // One advertised endpoint must still use the configured parallel socket count. Complete
-        // the same-size anti-amplification cookie round trip for the initial socket window, then
-        // consume authenticated chunk replies without polling the server again. Receiving at least
-        // two chunks proves both authenticated requests were already in flight.
+        // One advertised endpoint must still use the configured parallel socket count: after the same-size
+        // cookie round trip, two chunks arriving without another poll prove both requests were already in flight
         fast_client.Process();
 
         for (int32_t poll_index = 0; poll_index < 20; ++poll_index) {
@@ -2167,7 +2188,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, expected_payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
         const auto descriptor = backend.GetUpdateDescriptor("Windows-win64", 0);
         REQUIRE(descriptor);
         const ContentUpdateManifest manifest = VerifyTestDescriptor(*descriptor, "Windows-win64");
@@ -2255,7 +2276,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fs_write_file(pack_path, payload));
 
         UpdaterBackend backend;
-        backend.LoadFromClientResources(settings);
+        LoadTestClientResources(backend, settings);
 
         const auto descriptor = backend.GetUpdateDescriptor("Windows-win64", 0);
         REQUIRE(descriptor);

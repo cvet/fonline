@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,13 +43,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// SDL_GPU works with explicit render/copy passes recorded into a per-frame command buffer, while the engine
-// renderer contract is immediate-mode (interleaved target switches, clears, uploads, readbacks, draws).
-// The backend therefore keeps a small pass state machine in its Context: at most one render or copy pass is
-// open at a time, passes begin lazily right before the operation that needs them, clears are deferred into the
-// next render pass load-op, and readbacks flush the recorded work with a fence wait. The window backbuffer is
-// never rendered to directly: all backbuffer output goes to an RGBA8 proxy texture that Present() blits to the
-// acquired swapchain texture, which keeps mid-frame flushes safe and pipeline target formats uniform.
+// SDL_GPU records explicit passes while the engine renderer contract is immediate-mode, so this backend
+// adds a lazy pass state machine and a backbuffer proxy (Docs/FrontendAndRendering.md, "SDL_GPU renderer")
 
 class SDLGpu_Texture final : public RenderTexture
 {
@@ -121,6 +116,8 @@ public:
         int32_t FragMainTex {-1};
         int32_t VertIndoorMaskTex {-1};
         int32_t FragIndoorMaskTex {-1};
+        int32_t VertBackgroundTex {-1};
+        int32_t FragBackgroundTex {-1};
 
         int32_t VertProjBuf {-1};
         int32_t FragProjBuf {-1};
@@ -130,6 +127,8 @@ public:
         int32_t FragEggBuf {-1};
         int32_t VertSpriteBorderBuf {-1};
         int32_t FragSpriteBorderBuf {-1};
+        int32_t VertParticleSamplingBuf {-1};
+        int32_t FragParticleSamplingBuf {-1};
         int32_t VertTimeBuf {-1};
         int32_t FragTimeBuf {-1};
         int32_t VertRandomValueBuf {-1};
@@ -276,6 +275,22 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> SDL_GPUBlendOp
     FO_UNREACHABLE_PLACE();
 }
 
+static auto ConvertCullMode(CullModeType cull_mode) -> SDL_GPUCullMode
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (cull_mode) {
+    case CullModeType::None:
+        return SDL_GPU_CULLMODE_NONE;
+    case CullModeType::Back:
+        return SDL_GPU_CULLMODE_BACK;
+    case CullModeType::Front:
+        return SDL_GPU_CULLMODE_FRONT;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
 static auto ConvertCompareOp(DepthFuncType depth_func) -> SDL_GPUCompareOp
 {
     FO_STACK_TRACE_ENTRY();
@@ -308,9 +323,8 @@ static auto ConvertPrimitiveType(RenderPrimitiveType prim_type) -> SDL_GPUPrimit
 
     switch (prim_type) {
     case RenderPrimitiveType::PointList:
-        // The effect vertex shaders do not write gl_PointSize, so point-list is unusable on the Vulkan driver
-        // (and SPIRV-Cross cannot emit it for the other flavors). Mirror Rendering-Vulkan and remap to triangle-list;
-        // point primitives are unused by content.
+        // The effect vertex shaders never write gl_PointSize, so point lists are unusable here; content uses
+        // none, and the native Vulkan backend remaps them the same way
         return SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
     case RenderPrimitiveType::LineList:
         return SDL_GPU_PRIMITIVETYPE_LINELIST;
@@ -810,7 +824,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     auto sdl_effect = SafeAlloc::MakeUnique<SDLGpu_Effect>(usage, name, loader, _ctx);
 
     // The SDL_GPU backend consumes the SDL-convention baked flavors (per-stage descriptor sets), not the native
-    // `-spv` that Rendering-Vulkan uses: `-spv_sdl` for the Vulkan driver, SDL-remapped `-msl_*` for the Metal driver.
+    // `-spv` that Rendering-Vulkan uses: `-spv_sdl` for the Vulkan driver, SDL-remapped `-msl_*` for the Metal driver
     bool spirv = _ctx->ShaderFormat == SDL_GPU_SHADERFORMAT_SPIRV;
 #if FO_IOS
     const string_view shader_flavor = spirv ? "spv_sdl" : "msl_ios";
@@ -843,10 +857,12 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         read_slot_pair("MainTex", slots.VertMainTex, slots.FragMainTex);
         read_slot_pair("IndoorMaskTex", slots.VertIndoorMaskTex, slots.FragIndoorMaskTex);
+        read_slot_pair("BackgroundTex", slots.VertBackgroundTex, slots.FragBackgroundTex);
         read_slot_pair("ProjBuf", slots.VertProjBuf, slots.FragProjBuf);
         read_slot_pair("MainTexBuf", slots.VertMainTexBuf, slots.FragMainTexBuf);
         read_slot_pair("EggBuf", slots.VertEggBuf, slots.FragEggBuf);
         read_slot_pair("SpriteBorderBuf", slots.VertSpriteBorderBuf, slots.FragSpriteBorderBuf);
+        read_slot_pair("ParticleSamplingBuf", slots.VertParticleSamplingBuf, slots.FragParticleSamplingBuf);
         read_slot_pair("TimeBuf", slots.VertTimeBuf, slots.FragTimeBuf);
         read_slot_pair("RandomValueBuf", slots.VertRandomValueBuf, slots.FragRandomValueBuf);
         read_slot_pair("ScriptValueBuf", slots.VertScriptValueBuf, slots.FragScriptValueBuf);
@@ -1399,14 +1415,9 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
 {
     FO_STACK_TRACE_ENTRY();
 
-    bool disable_culling =
-#if FO_ENABLE_3D
-        DisableCulling;
-#else
-        false;
-#endif
-
-    uint32_t key = numeric_cast<uint32_t>(pass) | (static_cast<uint32_t>(topology) << 3) | (with_depth ? 1u << 6 : 0u) | (DisableBlending ? 1u << 7 : 0u) | (disable_culling ? 1u << 8 : 0u);
+    size_t depth_slot = ResolveDepthVariantSlot(pass);
+    CullModeType cull_mode = ResolveCullMode();
+    uint32_t key = numeric_cast<uint32_t>(pass) | (static_cast<uint32_t>(topology) << 3) | (with_depth ? 1u << 6 : 0u) | (DisableBlending ? 1u << 7 : 0u) | (static_cast<uint32_t>(cull_mode) << 8) | (numeric_cast<uint32_t>(depth_slot) << 10);
 
     auto pipeline_it = _pipelines.find(key);
 
@@ -1473,11 +1484,7 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
     pipeline_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
     pipeline_info.rasterizer_state.enable_depth_clip = true;
 
-#if FO_ENABLE_3D
-    pipeline_info.rasterizer_state.cull_mode = _usage == EffectUsage::Model && !disable_culling ? SDL_GPU_CULLMODE_BACK : SDL_GPU_CULLMODE_NONE;
-#else
-    pipeline_info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
-#endif
+    pipeline_info.rasterizer_state.cull_mode = ConvertCullMode(cull_mode);
 
     pipeline_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
@@ -1490,8 +1497,8 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
 
     if (with_depth && depth_usage) {
         pipeline_info.depth_stencil_state.enable_depth_test = true;
-        pipeline_info.depth_stencil_state.enable_depth_write = _depthWrite[pass];
-        pipeline_info.depth_stencil_state.compare_op = ConvertCompareOp(_depthFunc[pass]);
+        pipeline_info.depth_stencil_state.enable_depth_write = GetDepthVariantWrite(depth_slot);
+        pipeline_info.depth_stencil_state.compare_op = ConvertCompareOp(GetDepthVariantFunc(pass, depth_slot));
     }
 
     // Color target: always RGBA8 (offscreen textures and the backbuffer proxy share the format)
@@ -1560,12 +1567,8 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         return;
     }
 
-    // Derive ProjBuf/MainTexBuf from renderer state ONLY when a caller has not already supplied them.
-    // 3D model draws set ProjBuf externally to the per-frame model projection (ModelInstance.cpp), so overwriting
-    // it here with the renderer's current 2D ortho would project the skinned mesh off-screen and it
-    // would render nothing (only its 2D nameplate remained). The other externally fed buffers keep
-    // their last value inside the optionals to emulate GPU-buffer persistence; ProjBuf/MainTexBuf are
-    // reset at the end of the draw so the next non-model draw re-derives them.
+    // Derived only when the caller supplied nothing: a 3D draw sets ProjBuf to its own model projection,
+    // and overwriting it with the renderer's 2D ortho would push the skinned mesh off-screen
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
@@ -1581,7 +1584,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 
     // Derived buffers are per-draw: if the draw throws before the end-of-function reset, clear them here so
-    // a caught exception does not leave a stale projection / main-texture-size uniform for the next draw.
+    // a caught exception does not leave a stale projection / main-texture-size uniform for the next draw
     auto reset_derived_on_fail = scope_fail([this]() noexcept {
         ProjBuf.reset();
         MainTexBuf.reset();
@@ -1646,6 +1649,14 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             bind_sampler(slots.VertIndoorMaskTex, slots.FragIndoorMaskTex, indoor_tex);
         }
 
+        if (slots.VertBackgroundTex != -1 || slots.FragBackgroundTex != -1) {
+            nptr<const RenderTexture> background_tex_source = BackgroundTex ? BackgroundTex : _ctx->DummyTexture;
+            FO_VERIFY_AND_THROW(background_tex_source, "SDL_GPU dummy texture is not created");
+            auto background_tex = background_tex_source.dyn_cast<const SDLGpu_Texture>();
+            FO_VERIFY_AND_THROW(background_tex, "SDL_GPU background texture is not of the expected backend type");
+            bind_sampler(slots.VertBackgroundTex, slots.FragBackgroundTex, background_tex);
+        }
+
 #if FO_ENABLE_3D
         if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
@@ -1680,15 +1691,14 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         push_uniform(_needMainTexBuf, MainTexBuf, slots.VertMainTexBuf, slots.FragMainTexBuf);
         push_uniform(_needEggBuf, EggBuf, slots.VertEggBuf, slots.FragEggBuf);
         push_uniform(_needSpriteBorderBuf, SpriteBorderBuf, slots.VertSpriteBorderBuf, slots.FragSpriteBorderBuf);
+        push_uniform(_needParticleSamplingBuf, ParticleSamplingBuf, slots.VertParticleSamplingBuf, slots.FragParticleSamplingBuf);
         push_uniform(_needTimeBuf, TimeBuf, slots.VertTimeBuf, slots.FragTimeBuf);
         push_uniform(_needRandomValueBuf, RandomValueBuf, slots.VertRandomValueBuf, slots.FragRandomValueBuf);
         push_uniform(_needScriptValueBuf, ScriptValueBuf, slots.VertScriptValueBuf, slots.FragScriptValueBuf);
         push_uniform(_needCameraBuf, CameraBuf, slots.VertCameraBuf, slots.FragCameraBuf);
 #if FO_ENABLE_3D
-        // Push the full ModelBuffer (matching the Vulkan backend) rather than trimming to
-        // 32+64*MatrixCount bytes: SDL_GPU validates pushed uniform data against the shader's declared
-        // UBO size, so a short push can trip validation. The unused tail matrices are harmless — the
-        // shader reads only MatrixCount of them.
+        // The full ModelBuffer, not just the used matrices: SDL_GPU validates a push against the shader's
+        // declared UBO size, and the shader reads only MatrixCount of them anyway
         push_uniform(_needModelBuf, ModelBuf, slots.VertModelBuf, slots.FragModelBuf, sizeof(ModelBuffer));
         push_uniform(_needModelTexBuf, ModelTexBuf, slots.VertModelTexBuf, slots.FragModelTexBuf);
         push_uniform(_needModelAnimBuf, ModelAnimBuf, slots.VertModelAnimBuf, slots.FragModelAnimBuf);
@@ -1698,7 +1708,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 
     // Derived buffers are per-draw: clear them so the next draw re-derives ProjBuf/MainTexBuf from the
-    // renderer state (or preserves a fresh externally-supplied ProjBuf, e.g. the next model's projection).
+    // renderer state (or preserves a fresh externally-supplied ProjBuf, e.g. the next model's projection)
     ProjBuf.reset();
     MainTexBuf.reset();
 }

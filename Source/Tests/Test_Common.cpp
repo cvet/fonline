@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -121,53 +121,155 @@ TEST_CASE("CommonEvents")
 
 TEST_CASE("CommonUtilities")
 {
-    SECTION("WriteSimpleTgaCreatesFileWithExpectedHeader")
+    SECTION("SeededRandomGeneratorProducesValues")
     {
-        auto temp_root = std::filesystem::temp_directory_path() / "lf_common_tests" / std::to_string(std::random_device {}());
-        auto file_path = temp_root / "nested" / "sample.tga";
+        auto generator = MakeSeededRandomGenerator();
 
-        isize32 image_size {2, 1};
-        vector<ucolor> pixels;
-        pixels.emplace_back(ucolor {1, 2, 3, 4});
-        pixels.emplace_back(ucolor {5, 6, 7, 8});
+        // Two generators need not differ, since random_device may be deterministic, but the engine must not walk
+        // mt19937's fixed default sequence, which would mean it was never seeded
+        std::mt19937 default_seeded;
+        bool matches_default_sequence = true;
 
-        WriteSimpleTga(string(file_path.string()), image_size, pixels);
+        for (int32_t i = 0; i < 4; i++) {
+            if (generator() != default_seeded()) {
+                matches_default_sequence = false;
+            }
+        }
 
-        REQUIRE(std::filesystem::exists(file_path));
-        CHECK(std::filesystem::file_size(file_path) == 18 + pixels.size() * sizeof(uint32_t));
+        CHECK_FALSE(matches_default_sequence);
 
-        std::ifstream input(file_path, std::ios::binary);
-        REQUIRE(input);
+        // And that it is immediately usable by its consumers
+        std::uniform_int_distribution<int32_t> distribution {10, 20};
 
-        std::array<uint8_t, 18> header {};
-        input.read(reinterpret_cast<char*>(header.data()), static_cast<std::streamsize>(header.size()));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(header.size()));
+        for (int32_t i = 0; i < 8; i++) {
+            int32_t value = distribution(generator);
+            CHECK(value >= 10);
+            CHECK(value <= 20);
+        }
+    }
 
-        CHECK(header[2] == 2);
-        CHECK(header[12] == 2);
-        CHECK(header[13] == 0);
-        CHECK(header[14] == 1);
-        CHECK(header[15] == 0);
-        CHECK(header[16] == 32);
-        CHECK(header[17] == 0x20);
+    SECTION("PackagedBuildAccessorsAreConsistent")
+    {
+        // An unpackaged test build reports no runtime name; a packaged one must name it
+        CHECK(IsPackaged() == !GetPackagedRuntimeName().empty());
+    }
+}
 
-        std::array<uint32_t, 2> stored_pixels {};
-        input.read(reinterpret_cast<char*>(stored_pixels.data()), static_cast<std::streamsize>(sizeof(stored_pixels)));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
+TEST_CASE("CommonFrameBalancer")
+{
+    SECTION("DisabledBalancerDoesNotWait")
+    {
+        FrameBalancer balancer {false, 100, 0};
 
-        // A TrueColor TGA stores pixels in B, G, R, A order, so the writer swaps red and blue
-        auto to_bgra = [](ucolor c) -> uint32_t {
-            std::swap(c.comp.r, c.comp.b);
-            return c.rgba;
-        };
+        nanotime start = nanotime::now();
+        balancer.StartLoop();
+        balancer.EndLoop();
 
-        CHECK(stored_pixels[0] == to_bgra(pixels[0]));
-        CHECK(stored_pixels[1] == to_bgra(pixels[1]));
+        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {50}});
+    }
 
-        input.close();
+    SECTION("ZeroSleepYieldsInsteadOfSleeping")
+    {
+        FrameBalancer balancer {true, 0, 0};
 
-        uintmax_t removed = std::filesystem::remove_all(temp_root);
-        CHECK(removed > 0);
+        nanotime start = nanotime::now();
+        balancer.StartLoop();
+        balancer.EndLoop();
+
+        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {50}});
+    }
+
+    SECTION("PositiveSleepWaitsForTheRequestedTime")
+    {
+        FrameBalancer balancer {true, 5, 0};
+
+        nanotime start = nanotime::now();
+        balancer.StartLoop();
+        balancer.EndLoop();
+
+        CHECK(nanotime::now() - start >= timespan {std::chrono::milliseconds {4}});
+    }
+
+    SECTION("FixedFpsBalancesTheIdleTime")
+    {
+        // A negative sleep hands control to the fixed-fps arm, which pads each loop up to the frame budget
+        FrameBalancer balancer {true, -1, 200};
+
+        nanotime start = nanotime::now();
+
+        for (int32_t i = 0; i < 3; i++) {
+            balancer.StartLoop();
+            balancer.EndLoop();
+        }
+
+        CHECK(nanotime::now() - start >= timespan {std::chrono::milliseconds {5}});
+    }
+}
+
+TEST_CASE("CommonRemoteCallWireSizes")
+{
+    auto make_primitive = [](string_view name, size_t size) {
+        BaseTypeDesc type;
+        type.Name = string {name};
+        type.Size = size;
+        type.IsPrimitive = true;
+        return type;
+    };
+
+    SECTION("PlainAndReferenceTypesReportTheirMinimumSize")
+    {
+        CHECK(GetRemoteCallSimpleValueMinWireSize(make_primitive("int32", sizeof(int32_t))) == sizeof(int32_t));
+        CHECK(GetRemoteCallSimpleValueMinWireSize(make_primitive("int64", sizeof(int64_t))) == sizeof(int64_t));
+
+        BaseTypeDesc enum_type;
+        enum_type.Name = "TestEnum";
+        enum_type.Size = sizeof(uint16_t);
+        enum_type.IsEnum = true;
+        CHECK(GetRemoteCallSimpleValueMinWireSize(enum_type) == sizeof(uint16_t));
+
+        // A string only has to carry its length prefix to be well formed
+        BaseTypeDesc string_type;
+        string_type.Name = "string";
+        string_type.IsString = true;
+        CHECK(GetRemoteCallSimpleValueMinWireSize(string_type) == sizeof(uint32_t));
+
+        BaseTypeDesc hash_type;
+        hash_type.Name = "hstring";
+        hash_type.IsHashedString = true;
+        CHECK(GetRemoteCallSimpleValueMinWireSize(hash_type) == sizeof(hstring::hash_t));
+    }
+
+    SECTION("StructSizesAreTheSumOfTheirFields")
+    {
+        auto layout = SafeAlloc::MakeShared<StructLayoutDesc>();
+        layout->Fields.emplace_back();
+        layout->Fields.back().Type = make_primitive("int32", sizeof(int32_t));
+        layout->Fields.emplace_back();
+        layout->Fields.back().Type = make_primitive("int16", sizeof(int16_t));
+
+        BaseTypeDesc struct_type;
+        struct_type.Name = "TestStruct";
+        struct_type.IsStruct = true;
+        struct_type.StructLayout = layout;
+
+        CHECK(GetRemoteCallSimpleValueMinWireSize(struct_type) == sizeof(int32_t) + sizeof(int16_t));
+    }
+
+    SECTION("UnsupportedAndMalformedTypesAreRejected")
+    {
+        BaseTypeDesc zero_sized;
+        zero_sized.Name = "BadPrimitive";
+        zero_sized.IsPrimitive = true;
+        CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(zero_sized), VerificationException);
+
+        BaseTypeDesc no_layout;
+        no_layout.Name = "BadStruct";
+        no_layout.IsStruct = true;
+        CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(no_layout), VerificationException);
+
+        BaseTypeDesc unsupported;
+        unsupported.Name = "Unsupported";
+        CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(unsupported), NotSupportedException);
     }
 }
 
