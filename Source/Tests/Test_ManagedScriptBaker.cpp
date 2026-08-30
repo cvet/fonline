@@ -425,7 +425,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("<AssemblyName>TestPack.Client</AssemblyName>") != string::npos);
     CHECK(unified_project.find("<AssemblyName>TestPack.Mapper</AssemblyName>") != string::npos);
     CHECK(unified_project.find("TRACE;SERVER") != string::npos);
-    CHECK(unified_project.find("../../Work/Baking/TestPack/Assemblies/ServerAssemblies/") != string::npos);
+    CHECK(unified_project.find("<OutputPath>$(FOnlineBakeRoot)/") != string::npos);
+    CHECK(unified_project.find("/TestPack/Assemblies/ServerAssemblies/</OutputPath>") != string::npos);
     CHECK(unified_project.find("ServerEnums.gen.cs") != string::npos);
     CHECK(unified_project.find("ClientEnums.gen.cs") != string::npos);
     CHECK(unified_project.find("MapperEnums.gen.cs") != string::npos);

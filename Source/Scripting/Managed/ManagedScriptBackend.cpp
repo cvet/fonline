@@ -2310,11 +2310,26 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
     const uint32_t handler_handle = mono_gchandle_new(handler, false);
     backend->AddRemoteCallHandlerGcHandle(handler_handle);
 
+    // The handler outlives this registration, so the declaration's structural wire limits are copied out of
+    // the RemoteCallDesc rather than captured by reference
+    const hstring call_name = inbound_call.Name;
+    const size_t max_payload_size = inbound_call.MaxPayloadSize;
+    const size_t max_collection_size = inbound_call.MaxCollectionSize;
+    vector<string> wire_arg_names;
+    wire_arg_names.reserve(inbound_call.Args.size());
+
+    for (const auto& arg : inbound_call.Args) {
+        wire_arg_names.emplace_back(arg.Name);
+    }
+
     WriteLog("Registered managed inbound remote call '{}' ({} wire arg(s), {}){}", name, inbound_call.Args.size(), server_side ? "server" : "client", client_facade_call ? ", replacing script handler" : "");
 
     engine->SetRemoteCallHandler(
         name_hashed,
-        [backend = backend.as_ptr(), engine, args, handler_handle, server_side](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
+        [backend = backend.as_ptr(), engine, args, handler_handle, server_side, call_name, max_payload_size, max_collection_size,
+         wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
+            FO_VERIFY_AND_THROW(max_payload_size == 0 || data.size() <= max_payload_size, "Remote call payload exceeds structural limit", call_name, data.size(), max_payload_size);
+
             // Attach to the Managed domain up front: building managed List objects for array args (below) invokes mono,
             // and this handler may run on the engine's network-receive thread
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -2356,8 +2371,11 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
                 else {
                     // Array. Wire: int32 count, then each element (shared scalar format). Deserialize into a managed
                     // List rooted by a bridge so the MANAGED_DATA_ACCESSOR can read it back when boxing the argument
+                    const string& wire_arg_name = wire_arg_names[arg_index - (server_side ? 1 : 0)];
                     const int32_t count = reader.Read<int32_t>();
                     FO_VERIFY_AND_THROW(count >= 0, "Remote call array element count is negative");
+                    FO_VERIFY_AND_THROW(max_collection_size == 0 || numeric_cast<size_t>(count) <= max_collection_size, "Arr size exceeds structural remote-call limit", call_name, wire_arg_name, count, max_collection_size);
+                    reader.VerifyPayloadCount(numeric_cast<size_t>(count), GetRemoteCallSimpleValueMinWireSize(arg_type.BaseType));
 
                     auto& bridge = array_bridges.emplace_back();
                     bridge.Backend = backend;
