@@ -965,7 +965,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
     std::cout << "Type numbers separated by space: ";
 
     string str;
-    std::getline(std::cin, str);
+    getline(std::cin, str);
 
     auto in_selected = strex(str).split_to_int32(' ');
 

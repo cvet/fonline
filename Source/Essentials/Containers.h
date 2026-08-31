@@ -35,15 +35,23 @@
 
 #include "BasicCore.h"
 #include "MemorySystem.h"
+#include "StringObject.h"
 
 FO_BEGIN_NAMESPACE
 
 // Basic types with safe allocator
-using string = std::basic_string<char, std::char_traits<char>, SafeAllocator<char>>;
-using wstring = std::basic_string<wchar_t, std::char_traits<wchar_t>, SafeAllocator<wchar_t>>;
+using string = basic_string<char, STRING_INLINE_CAPACITY>;
+using wstring = basic_string<wchar_t, WSTRING_INLINE_CAPACITY>;
 using istringstream = std::basic_istringstream<char, std::char_traits<char>, SafeAllocator<char>>;
 using ostringstream = std::basic_ostringstream<char, std::char_traits<char>, SafeAllocator<char>>;
 using stringstream = std::basic_stringstream<char, std::char_traits<char>, SafeAllocator<char>>;
+using stream_string = std::basic_string<char, std::char_traits<char>, SafeAllocator<char>>;
+
+// The standard string streams are specified on std::basic_string, so text handed to one is copied over
+[[nodiscard]] inline auto make_stream_string(string_view value) -> stream_string
+{
+    return stream_string(value.data(), value.size());
+}
 
 template<typename T>
 using list = std::list<T, SafeAllocator<T>>;

@@ -422,7 +422,7 @@ auto strex::erase(char what) noexcept -> strex&
 
     own_storage();
 
-    std::erase(_s, what);
+    (void)_s.erase(std::remove(_s.begin(), _s.end(), what), _s.end());
 
     _sv = _s;
 

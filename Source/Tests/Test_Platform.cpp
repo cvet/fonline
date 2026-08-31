@@ -39,6 +39,7 @@
 #include <unistd.h>
 #endif
 
+#include "DiskFileSystem.h"
 #include "Platform.h"
 #include "StringUtils.h"
 
@@ -52,8 +53,8 @@ TEST_CASE("Platform")
 
         REQUIRE(exe_path.has_value());
         CHECK_FALSE(exe_path->empty());
-        CHECK(std::filesystem::exists(*exe_path));
-        CHECK(std::filesystem::is_regular_file(*exe_path));
+        CHECK(std::filesystem::exists(fs_make_path(*exe_path)));
+        CHECK(std::filesystem::is_regular_file(fs_make_path(*exe_path)));
     }
 
     SECTION("CurrentProcessIdStringMatchesRuntime")

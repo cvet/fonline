@@ -5937,7 +5937,7 @@ void MapperEngine::ParseCommand(string_view command)
     else if (command[0] == '#') {
         string before_snapshot = _curMap && !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
         string command_str = string(command.substr(1));
-        istringstream icmd(command_str);
+        istringstream icmd(make_stream_string(command_str));
         string func_name;
 
         if (!(icmd >> func_name)) {
@@ -6017,7 +6017,7 @@ void MapperEngine::ParseCommand(string_view command)
     // Other
     else if (command[0] == '*') {
         string icommand_str = string(command.substr(1));
-        istringstream icommand(icommand_str);
+        istringstream icommand(make_stream_string(icommand_str));
         string command_ext;
 
         if (!(icommand >> command_ext)) {

@@ -579,11 +579,11 @@ void ModelDescriptionParser::ParseContent(string_view fname, const string& conte
 {
     FO_STACK_TRACE_ENTRY();
 
-    istringstream istr = istringstream(content);
+    istringstream istr = istringstream(make_stream_string(content));
     string line_buf;
     size_t line = 0;
 
-    while (std::getline(istr, line_buf)) {
+    while (getline(istr, line_buf)) {
         line++;
 
         vector<string> tokens = TokenizeModelDescriptionLine(line_buf);
@@ -2728,7 +2728,7 @@ static auto TokenizeModelDescriptionLine(string_view line) -> vector<string>
     }
 
     string clean_line = string(comment_pos != string_view::npos ? line.substr(0, comment_pos) : line);
-    istringstream istr = istringstream(clean_line);
+    istringstream istr = istringstream(make_stream_string(clean_line));
     vector<string> tokens;
     string token;
 

@@ -558,7 +558,7 @@ void ParticleBaker::BakeSparkFile(const File& file) const
         throw ParticleBakerException("Failed to save SPARK particle binary", source_path);
     }
 
-    string str = oss.str();
+    stream_string str = oss.str();
     vector<uint8_t> binary(str.begin(), str.end());
 
     _context->WriteData(output_path, binary);

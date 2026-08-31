@@ -111,7 +111,7 @@ TEST_CASE("DiskFileSystem")
         CHECK(fs_exists(file_path));
         CHECK(fs_last_write_time(file_path) != 0);
 
-        std::istringstream stream {string {"abcdef"}, std::ios::binary};
+        std::istringstream stream {std::string {"abcdef"}, std::ios::binary};
         CHECK(stream_get_size(stream) == 6);
         CHECK(stream_get_read_pos(stream) == 0);
 
