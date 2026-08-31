@@ -411,7 +411,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     if (stat_file) {
         string line;
 
-        while (std::getline(stat_file, line)) {
+        while (getline(stat_file, line)) {
             string_view line_view {line};
 
             if (line_view.size() <= 3 || !line_view.starts_with("cpu") || !std::isdigit(static_cast<unsigned char>(line_view[3]))) {
@@ -473,7 +473,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         }
 
         string text;
-        std::getline(file, text);
+        getline(file, text);
 
         size_t comm_end = text.rfind(')');
 

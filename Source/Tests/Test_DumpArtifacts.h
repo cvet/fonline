@@ -31,7 +31,6 @@
 // SOFTWARE.
 //
 
-
 #pragma once
 
 #include "Common.h"

@@ -81,7 +81,7 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (some_property_plain_type<T>) {
         auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
-        istringstream istr {string(any_value.AsString())};
+        istringstream istr {make_stream_string(any_value.AsString())};
         istr >> entry;
     }
     else {
