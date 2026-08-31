@@ -476,6 +476,7 @@ struct SavedModelInfoLink
     uint32_t EffectInfoCount {};
     uint32_t CutInfoCount {};
     optional<ModelBounds3D> Bounds {};
+    vector<tuple<int32_t, int32_t, ModelBounds3D>> AnimationBounds {};
 };
 
 static auto ReadSavedModelInfoString(DataReader& reader) -> string
@@ -575,6 +576,15 @@ static auto ReadSavedModelInfoLink(DataReader& reader) -> SavedModelInfoLink
             .Min = reader.Read<vec3>(),
             .Max = reader.Read<vec3>(),
         };
+
+        uint32_t animation_bounds_count = reader.Read<uint32_t>();
+
+        for (uint32_t i = 0; i < animation_bounds_count; i++) {
+            int32_t state_anim = reader.Read<int32_t>();
+            int32_t action_anim = reader.Read<int32_t>();
+            ModelBounds3D clip_bounds {.Min = reader.Read<vec3>(), .Max = reader.Read<vec3>()};
+            link.AnimationBounds.emplace_back(state_anim, action_anim, clip_bounds);
+        }
     }
 
     return link;
@@ -1491,6 +1501,17 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(IsValidModelBounds(*equipment_link.Bounds));
         CHECK(HasModelBoundsExtent(*equipment_link.Bounds));
         CHECK(equipment_link.Bounds->Max.x > 5.0f);
+
+        // The per-clip boxes are what keeps a frame off the attachment's whole-animation envelope, so the link
+        // has to carry them and each one has to stay inside the envelope it was folded into
+        CHECK_FALSE(equipment_link.AnimationBounds.empty());
+
+        for (const auto& [state_anim, action_anim, clip_bounds] : equipment_link.AnimationBounds) {
+            CHECK(IsValidModelBounds(clip_bounds));
+            CHECK(HasModelBoundsExtent(clip_bounds));
+            CHECK(clip_bounds.Min.x >= equipment_link.Bounds->Min.x);
+            CHECK(clip_bounds.Max.x <= equipment_link.Bounds->Max.x);
+        }
 
         string config = rig.GetOutputText("ModelAnimationInfo.foinfo");
         CHECK(config.find("BoundsVersion = 2\n") != string::npos);

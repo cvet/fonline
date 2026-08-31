@@ -782,22 +782,20 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
     };
 
     if (_drawRenderRect) {
-        // The draw rect is the maximal area the model rasterizes into, larger than the cropped sprite,
-        // so it is placed to put the model origin at (drawW/2, drawH - drawH/4) where the crop's root sits
+        // The draw rect is the maximal area the model rasterizes into, larger than the cropped sprite
         irect32 render_local = {0, 0, sprite_size.width, sprite_size.height};
 #if FO_ENABLE_3D
         if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
-            // The frame's top-left in sprite-local space: the model origin sits at the exact frame pivot inside the
-            // frame and at root_in_sprite inside the crop, so the frame origin (0,0) maps to root_in_sprite - pivot
-            isize32 draw_size = model_spr->GetModel()->GetDrawSize();
-            ipos32 pivot = model_spr->GetModel()->GetFramePivot();
+            // Both corners come from the tight draw rect, whose origin is the model root. Sizing this box by the
+            // allocated frame instead drew it off centre: the frame is rounded up onto the 16 px grid per side
+            irect32 draw_rect = model_spr->GetModel()->GetDrawRect();
             ipos32 sprite_offset = _previewSprite->GetOffset();
             ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
             render_local = {
-                root_in_sprite.x - pivot.x,
-                root_in_sprite.y - pivot.y,
-                draw_size.width,
-                draw_size.height,
+                root_in_sprite.x + draw_rect.x,
+                root_in_sprite.y + draw_rect.y,
+                draw_rect.width,
+                draw_rect.height,
             };
         }
 #endif

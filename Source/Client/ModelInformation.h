@@ -85,6 +85,7 @@ struct ModelAnimationData
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ptr<ModelCutData>> CutInfo {};
     optional<ModelBounds3D> Bounds {};
+    vector<optional<ModelBounds3D>> ClipBounds {}; // Indexed by animation clip, empty entries fall back to Bounds
 };
 
 struct MeshData;
@@ -127,6 +128,7 @@ private:
     {
         ModelAnimationData Data {};
         vector<BakedModelDescriptionCutInfo> CutInfo {};
+        vector<tuple<int32_t, int32_t, ModelBounds3D>> AnimationBounds {};
     };
 
     struct BakedModelDescriptionAnimationEntry
