@@ -601,7 +601,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         FrameAdvance();
 
         // Worker pool
-        int32_t worker_threads = Settings->WorkerThreads != 0 ? Settings->WorkerThreads : 0;
+        int32_t worker_threads = Settings->SingleThreadedLogic ? 1 : Settings->WorkerThreads;
         _workerPool.emplace("ServerPool", worker_threads, &_shutdownInProgress, /*start_paused*/ true);
 
         TimeEventManager::DispatcherHooks hooks;
@@ -1015,6 +1015,14 @@ auto ServerEngine::GetCompletedServerJobsCount() const -> uint64_t
     FO_STACK_TRACE_ENTRY();
 
     return _completedServerStatsJobs.load(std::memory_order_relaxed);
+}
+
+// Zero until the pool is created in InitMetadataJob, so an aborted startup reports no workers rather than faulting
+auto ServerEngine::GetWorkerThreadCount() const -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _workerPool ? _workerPool->GetThreadCount() : 0;
 }
 
 void ServerEngine::Shutdown()

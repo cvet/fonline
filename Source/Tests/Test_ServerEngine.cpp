@@ -767,6 +767,47 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(server->EntityMngr.GetCrittersCount() == critter_count);
 }
 
+TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
+{
+    auto settings = MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.SingleThreadedLogic, true);
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    // One worker is what serializes the jobs, which is what lets the cover requirement go away
+    CHECK(server->GetWorkerThreadCount() == 1);
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    auto cr = server->CreateCritter(critter_pid, false);
+    ident_t cr_id = cr->GetId();
+
+    // This is ServerEngineStartsAndCreatesCritter with every synchronization call removed: login work re-syncs
+    // the context onto the player, so in the multithreaded mode the critter below is uncovered and every access
+    // to it throws "Entity access without sync"
+    auto player = CreateLoggedPlayer(server, "UnitTestSingleThreaded");
+    CHECK(player->GetId() != ident_t {});
+
+    CHECK(IsEntityAccessValid(cr));
+    CHECK_NOTHROW(ignore_unused(cr->GetProtoId()));
+    CHECK_NOTHROW(server->CrMngr.DestroyCritter(cr));
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+}
+
 TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
 {
     auto settings = MakeServerTestSettings();

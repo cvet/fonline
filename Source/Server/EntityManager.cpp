@@ -1227,12 +1227,12 @@ void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
         }
 
         FO_VERIFY_AND_THROW(custom_entity->GetEntityLock() == holder_lock, "Custom entity must use its nearest holder lock", custom_entity->GetName(), custom_entity->GetId());
-        FO_VERIFY_AND_THROW(holder_lock->IsLockedByCurrentThread(), "Custom entity publication requires its holder lock", custom_entity->GetName(), custom_entity->GetId());
+        FO_VERIFY_AND_THROW(IsSingleThreadedLogic(custom_entity) || holder_lock->IsLockedByCurrentThread(), "Custom entity publication requires its holder lock", custom_entity->GetName(), custom_entity->GetId());
     }
     else {
         auto engine_lock = _engine->GetEntityLock();
         FO_VERIFY_AND_THROW(custom_entity->GetEntityLock() == engine_lock, "Engine-held custom entity must use the engine lock", custom_entity->GetName(), custom_entity->GetId());
-        FO_VERIFY_AND_THROW(engine_lock->IsLockedByCurrentThread(), "Engine-held custom entity publication requires the engine lock", custom_entity->GetName(), custom_entity->GetId());
+        FO_VERIFY_AND_THROW(IsSingleThreadedLogic(custom_entity) || engine_lock->IsLockedByCurrentThread(), "Engine-held custom entity publication requires the engine lock", custom_entity->GetName(), custom_entity->GetId());
     }
 
     ValidateEntityAccess(custom_entity);

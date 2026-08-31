@@ -590,6 +590,15 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
     safe_call([] { WriteLog("SyncDiag   stack:\n{}", FormatStackTrace(GetStackTrace())); });
 }
 
+// Single-threaded logic runs every job on one worker, so no cover can ever be contended and the whole
+// acquire/validate layer is bypassed — the mode is an engine setting, read through the entity at hand
+auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return entity && entity->GetEngine()->Settings->SingleThreadedLogic;
+}
+
 // One pass is authoritative because a reparent holds the entity's own lock, so a cover cannot flap mid-walk.
 // A step passes on a held or lock-free ancestor of the entity's own chain or its widen-coupled one
 auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcept -> bool
@@ -597,6 +606,10 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
     FO_NO_STACK_TRACE_ENTRY();
 
     if (!entity) {
+        return true;
+    }
+
+    if (IsSingleThreadedLogic(entity)) {
         return true;
     }
 
@@ -759,6 +772,12 @@ static void RollbackOps(const_span<pair<ptr<EntityLock>, bool>> ops, size_t coun
 void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Nothing is ever acquired in single-threaded logic, so there is no cover to replace and the cycle the
+    // singleton guard below rejects needs a second thread to exist at all
+    if (!entities.empty() && IsSingleThreadedLogic(entities.front())) {
+        return;
+    }
 
     // Holding the engine singleton and then syncing would close a {Engine,Entity} <-> {Entity,Engine} cycle
     // against another thread's per-property auto-lock, so scripts must Game.Unlock() first
@@ -999,6 +1018,10 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
         return;
     }
 
+    if (IsSingleThreadedLogic(entity)) {
+        return;
+    }
+
     if (!IsEntityAccessValid(entity, true)) {
         throw EntitySyncException("EnsureEntitySynced: entity is neither locked nor covered — its scope must be Sync'd in advance", entity->GetName(), entity->GetId());
     }
@@ -1014,6 +1037,10 @@ void SyncContext::EnsureFreshEntitySynced(nptr<ServerEntity> entity)
     FO_VERIFY_AND_THROW(!entity->IsDestroying(), "Fresh entity capture cannot retain an entity that is being destroyed", entity->GetName(), entity->GetId());
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Fresh entity capture cannot retain a destroyed entity", entity->GetName(), entity->GetId());
     FO_VERIFY_AND_THROW(!entity->GetParentRaw(), "Fresh entity capture requires an unpublished parentless entity", entity->GetName(), entity->GetId());
+
+    if (IsSingleThreadedLogic(entity)) {
+        return;
+    }
 
     EnsureEntitySyncedImpl(entity);
 }
@@ -1231,6 +1258,10 @@ auto SyncContext::ValidateAccess(nptr<const ServerEntity> entity) const noexcept
 
     if (!entity) {
         return false;
+    }
+
+    if (IsSingleThreadedLogic(entity)) {
+        return true;
     }
 
     auto lock = entity->GetEntityLock();
