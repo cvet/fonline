@@ -239,11 +239,19 @@ void MapManager::LoadFromResources()
                                     add_item_to_field(multihex_field);
                                 });
                             }
+
                             if (item->IsNonEmptyMultihexMesh()) {
                                 for (auto multihex : item->GetMultihexMesh()) {
                                     if (multihex != hex && map_size.is_valid_pos(multihex)) {
                                         auto multihex_field = static_map->HexField->GetCellForWriting(multihex);
                                         add_item_to_field(multihex_field);
+
+                                        if (item->IsNonEmptyMultihexLines()) {
+                                            GeometryHelper::ForEachMultihexLines(item->GetMultihexLines(), multihex, map_size, [&](mpos line_hex) {
+                                                auto line_field = static_map->HexField->GetCellForWriting(line_hex);
+                                                add_item_to_field(line_field);
+                                            });
+                                        }
                                     }
                                 }
                             }
