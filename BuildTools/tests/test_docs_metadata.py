@@ -168,7 +168,9 @@ class DocumentationMetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "metadata file marker"):
             docs_metadata.decode_metadata(struct.pack("<I", 0) + valid[4:])
         with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "file version does not match"):
-            docs_metadata.decode_metadata(valid[:4] + struct.pack("<H", 3) + valid[6:])
+            docs_metadata.decode_metadata(
+                valid[:4] + struct.pack("<H", docs_metadata.METADATA_FILE_VERSION + 1) + valid[6:]
+            )
         with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "carries no version"):
             docs_metadata.decode_metadata(valid[:6] + struct.pack("<H", 0) + valid[8 + len(b"test-metadata-version") :])
 

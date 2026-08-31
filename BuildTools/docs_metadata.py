@@ -18,7 +18,7 @@ DEFAULT_JSON_OUTPUT = "Docs/generated/project-remote-calls.json"
 DEFAULT_MARKDOWN_OUTPUT = "Docs/generated/project-remote-calls.md"
 SOURCE_PARSER = "Source/Tools/MetadataBaker.cpp"
 METADATA_FILE_MAGIC = 0x46444D46
-METADATA_FILE_VERSION = 2
+METADATA_FILE_VERSION = 3
 VALID_TARGETS = {"Server": "server", "Client": "client"}
 OPPOSITE_SIDE = {"server": "client", "client": "server"}
 

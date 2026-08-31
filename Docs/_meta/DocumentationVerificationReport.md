@@ -2,6 +2,65 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-08-31 - follow-up master reconciliation through `bd344844382`
+
+Scope:
+
+- Reconciled documentation branch head `4b7b350ad` with Engine
+  `origin/master` through `bd3448443823cc0a9d9de1481e309c9455c1a9da`.
+- Audited the complete eighteen-commit incoming range: restored property
+  `Min`/`Max` clamping, engine-owned string and function-object types,
+  `Test_DumpArtifacts`, Mapper interface hiding and scroll clamping, detached
+  static items without ids, single-threaded server logic, map multihex lines,
+  per-animation model bounds, and entity collection conversion fixes.
+- Reconciled reusable contracts into the canonical English/Russian owners and
+  regenerated their structured, site, route, search, and AI-delivery surfaces.
+
+Documentation and contract reconciliation:
+
+- Documented property-range enforcement and the conversion boundary for
+  scalar and collection values, including the corrected entity fixtures.
+- Documented `fo::string` inline-capacity ownership, project native-extension
+  interop, engine-owned move-only/copyable callables, and their selection and
+  lifetime rules.
+- Documented dump-artifact directory ownership, Mapper `F7` interface hiding,
+  the corrected scroll clamp, static-item empty-id handling,
+  `Server.SingleThreadedLogic`, runtime multihex-line footprints, and the
+  versioned per-animation model-bounds payload.
+- Regenerated 2,501 native API entries and 4,969 translated generated
+  descriptions. The strict comparison against `4b7b350ad` found five API
+  changes; all three required dispositions are present and none is missing.
+- The project-baked catalog exposed a stale documentation decoder constant:
+  runtime metadata layout version 3 was rejected as version 2 even though the
+  decoder already understood the mandatory remote-call `Limits` trailer. The
+  decoder and its mismatch test now track version 3, and the paired Last
+  Frontier server/client catalog generates and checks successfully with 400
+  calls.
+
+Validation:
+
+- `docs_validate.py` passed all 397 Markdown entries. Complete documentation
+  discovery passed all 548 tests after the first pass exposed and the
+  reconciliation corrected four stale inventory/count expectations.
+- External snippet validation passed 310 normative snippets, 159 evidence
+  blocks, and 183 external-parser checks. Deterministic AI evaluation passed
+  27 tasks and 65 retrieval checks at 100 percent success and 0.915 MRR.
+- The focused project-catalog suite passed all 6 tests. Last Frontier rebuilt
+  `LF_UnitTests`; a first randomized run reported one failing test, while the
+  recorded rerun passed all 578 test cases and 446,544 assertions.
+- Last Frontier completed a forced full bake in 3 minutes 51 seconds with zero
+  dialog-composition errors, then completed an incremental bake with zero
+  files rebuilt in every pack.
+
+Disposition:
+
+- The reusable incoming range and the layout-3 project-catalog handoff are
+  represented in canonical documentation, tests, and generated artifacts.
+- Mapper interface/scroll behavior, animation fitting, runtime multihex
+  placement, and other visible behavior still require their normal human or
+  project gameplay acceptance; automated documentation and bake evidence does
+  not replace those gates.
+
 ## 2026-08-30 - follow-up master reconciliation through `7c5d32b973`
 
 Scope:
