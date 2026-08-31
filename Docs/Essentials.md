@@ -30,6 +30,8 @@ The essentials layer should stay dependency-light. It is included by most of the
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/MemorySystem.h`
 - `Source/Essentials/MemorySystem.cpp`
+- `Source/Essentials/StringObject.h`
+- `Source/Essentials/StringObject.cpp`
 - `Source/Essentials/Containers.h`
 - `Source/Essentials/Containers.cpp`
 - `Source/Essentials/StringUtils.h`
@@ -72,7 +74,7 @@ The essentials layer should stay dependency-light. It is included by most of the
 
 `Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 The order is both a compile-time and link-time rule. A module may include and call only modules to its left; declaring an API in an early header and defining it in a later `.cpp` is still a reverse dependency. Direct includes and namespace-level `extern` definition ownership are checked by `BuildTools/tests/test_essentials_layering.py`. Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
@@ -114,11 +116,26 @@ A `copyable_function` narrows to `move_only_function` by adopting or copying its
 
 Calling an empty wrapper is a defect, not a recoverable condition: it hits `FO_BASIC_STRONG_ASSERT` instead of throwing `std::bad_function_call`. Check with `operator bool` where absence is legitimate. The module sits above `SmartPointers` and `MemorySystem` in the include order, so its heap tier uses the globally replaced `operator new` directly and exits through `ReportFatalAndExit` on exhaustion rather than through `SafeAlloc`.
 
+#### String vocabulary
+
+`StringObject.*` owns `basic_string<CharT, InlineCapacity>`, the engine string that `Containers.h` aliases as `string` and `wstring`. It behaves as `std::basic_string` — same constructors, same member and free operators, same `constexpr` support for targets that stay inline, same `npos`/`max_size`/`out_of_range`/`length_error` contracts — with one difference: the small-string buffer is a template parameter instead of a fixed property of the standard library.
+
+- **`FO_STRING_INLINE_CAPACITY`** is the build option that sets it, defaulting to 31 (a 48-byte object) and reaching the code as `STRING_INLINE_CAPACITY` through `EngineConfig.gen.h`. Only 7, 15, 23, 31, 39, 47, ... are worth setting — one less than a multiple of 8. The object rounds the inline array up to the pointer size, so 19 produces the same 40-byte object as 23 and 27 the same 48-byte one as 31, holding fewer characters for the same memory. `WSTRING_INLINE_CAPACITY` derives from it so a wide string costs the same bytes rather than the same characters. Codegen depends on its input files rather than on the values it is passed, so reconfiguring with a new capacity does not by itself rewrite the header — build the `ForceCodeGeneration` target after changing it, as with every other `-enginedefine` value.
+- The object is a union of the inline array and the heap pointer plus the `size` and `capacity` words. `capacity == InlineCapacity` is the discriminator, so heap growth never lands on that value and no flag or pointer tagging is needed; `is_inlined()` reports which tier a string is on.
+- Growth is geometric and rounds the whole buffer, terminator included, up to the allocator bucket, so a block's tail is spent on characters rather than padding.
+- Allocation goes through `SafeAllocator`, so the string carries the same terminate-on-OOM contract as every other engine container.
+
+The 31 default is not a guess: it is the value a peak-size census produced in an embedding project (Last Frontier), measured over roughly 30 million destroyed strings on its performance scenes. The client is what the choice serves — 88-94% of its strings stay inside the object against 71-82% at the 15 a standard library typically ships, and its string allocations drop by about 60% — while a 48-byte object still fits inside a cache line. Servers tend to look different: that project's server barely moved (64% to 69%) because its distribution is bimodal, with a quarter of strings past 66 characters and a long tail beyond 1024 that no sane capacity inlines. Re-measure per project rather than assuming these numbers transfer.
+
+Two lookup rules are load-bearing and easy to break. `operator<<` lives in the engine namespace because Catch2 is included before the engine headers and can only reach it through ADL. `operator>>` lives in the global namespace instead, beside the `FO_DECLARE_TYPE_PARSER` operators: an `operator>>` inside the engine namespace would hide every one of those from unqualified lookup in engine code. `getline` is an engine-namespace overload, so calls must be unqualified — `std::getline` cannot find it.
+
+The standard string streams are specified on `std::basic_string`, so they keep the `stream_string` alias and text handed to one is copied through `make_stream_string`. `std::filesystem::path` likewise only recognises the standard string shapes; build a path from an engine string with `fs_make_path`, which is the correct engine idiom anyway because it carries UTF-8 rather than the native narrow encoding.
+
 #### Allocation vocabulary
 
 Engine code allocates through one of two surfaces, and nothing else:
 
-- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. Each is the standard container instantiated on `SafeAllocator`. Use these, never the `std::` originals.
+- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. Use these, never the `std::` originals. `string` and `wstring` are the engine `basic_string` described above; the rest are the standard containers instantiated on `SafeAllocator`.
 - **`SafeAlloc`** — `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` for typed objects, and the raw tier `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` plus `MallocAlignedRaw` / `FreeAlignedRaw` for C-ABI boundaries.
 
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `SafeAllocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
@@ -199,6 +216,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
@@ -213,6 +231,7 @@ See [Testing.md](Testing.md) for the complete test-suite map and target wiring.
 - Stack traces, early fatal reporting, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `Logging.*`, `ExceptionHandling.*`, and [Debugging.md](Debugging.md).
 - Generic memory/pointer utilities: `Source/Essentials/MemorySystem.*`, `SmartPointers.*`, and [SmartPointers.md](SmartPointers.md).
 - Callable wrappers and their inline-storage budget: `Source/Essentials/FunctionObjects.*`.
+- The string type and its inline-capacity budget: `Source/Essentials/StringObject.*`; the aliases and stream interop: `Containers.h`.
 - File bytes and low-level writable-path composition on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources and installed-client overlays: [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking.md](Networking.md).
 

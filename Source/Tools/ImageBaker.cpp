@@ -1406,7 +1406,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
             if (frame_spec_len != 0) {
                 string frame_spec {opt.substr(i + 1, frame_spec_len)};
-                istringstream idelim(frame_spec);
+                istringstream idelim(make_stream_string(frame_spec));
                 char ch = 0;
 
                 if (frame_spec.find('-') != string::npos) {
@@ -1701,7 +1701,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 }
             }
 
-            istringstream ientry(entry);
+            istringstream ientry(make_stream_string(entry));
 
             // Parse numbers
             int32_t rgb[4];
@@ -2455,7 +2455,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
     // Format: fileName$5-6.bam
     string opt_str = string(opt);
-    istringstream idelim(opt_str);
+    istringstream idelim(make_stream_string(opt_str));
     int32_t need_cycle = 0;
     int32_t specific_frame = -1;
     idelim >> need_cycle;

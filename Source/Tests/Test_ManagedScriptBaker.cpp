@@ -119,7 +119,7 @@ public:
 
         for (uint32_t attempt = 0; attempt < 100; attempt++) {
             std::error_code ec;
-            const std::filesystem::path candidate = base_dir / strex("FOnlineManagedScriptBakerTest_{}_{}", stamp, attempt).str();
+            const std::filesystem::path candidate = base_dir / fs_make_path(strex("FOnlineManagedScriptBakerTest_{}_{}", stamp, attempt));
 
             if (std::filesystem::create_directory(candidate, ec) && !ec) {
                 _path = candidate;

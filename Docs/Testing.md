@@ -420,7 +420,7 @@ process is the working directory — it will write into the repository.
 
 ## Current test inventory
 
-Current count: **102** `Test_*.cpp` suites.
+Current count: **103** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -444,6 +444,7 @@ Current count: **102** `Test_*.cpp` suites.
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`

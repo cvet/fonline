@@ -101,6 +101,7 @@
 #include <span>
 #include <sstream>
 #include <stack>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <tuple>

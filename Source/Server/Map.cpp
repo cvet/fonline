@@ -582,6 +582,15 @@ void Map::SetItem(ptr<Item> item)
                     RecacheHexFlags(multihex_field);
                     multihex_entries.emplace_back(multihex);
                 }
+
+                GeometryHelper::ForEachMultihexLines(multihex_lines, multihex, _mapSize, [&](mpos line_hex) {
+                    auto line_field = _hexField->GetCellForWriting(line_hex);
+
+                    if (vec_safe_add_unique_value(line_field->Items, item)) {
+                        RecacheHexFlags(line_field);
+                        multihex_entries.emplace_back(line_hex);
+                    }
+                });
             }
         }
 

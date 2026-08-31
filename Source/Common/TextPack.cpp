@@ -51,7 +51,7 @@ static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool 
     if (last == string::npos && allow_multiline && sstr) {
         string additional_line;
 
-        while (last == string::npos && std::getline(*sstr, additional_line, '\n')) {
+        while (last == string::npos && getline(*sstr, additional_line, '\n')) {
             line += "\n" + additional_line;
             last = line.find('}', first);
         }
@@ -277,10 +277,10 @@ auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
 
     bool failed = false;
 
-    istringstream sstr(str);
+    istringstream sstr(make_stream_string(str));
     string line;
 
-    while (std::getline(sstr, line, '\n')) {
+    while (getline(sstr, line, '\n')) {
         size_t offset = 0;
 
         string token1;

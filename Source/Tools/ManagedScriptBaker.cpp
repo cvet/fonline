@@ -330,7 +330,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         }
     }
 
-    const auto project_path = managed_generated_dir / MakeGeneratedManagedUnifiedProjectFileName(project_name);
+    const auto project_path = managed_generated_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(project_name));
 
     for (const TargetBakeTask& task : target_tasks) {
         if (!task.ShouldBake) {
@@ -929,7 +929,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
         throw ManagedScriptBakerException("ManagedScriptTargetFramework setting is empty");
     }
 
-    const auto project_path = project_dir / MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME);
+    const auto project_path = project_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME));
     ostringstream file;
     file << GENERATED_XML_DISCLAIMER;
     file << "<Project Sdk=\"Microsoft.NET.Sdk\">\n";
@@ -962,7 +962,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     FO_STACK_TRACE_ENTRY();
 
     const string proj_name = MakeGeneratedManagedUnifiedProjectFileName(project_name);
-    const auto proj_path = project_dir / proj_name;
+    const auto proj_path = project_dir / fs_make_path(proj_name);
 
     if (target_framework.empty()) {
         throw ManagedScriptBakerException("ManagedScriptTargetFramework setting is empty");
@@ -1049,7 +1049,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
                 continue;
             }
 
-            file << "    <ProjectReference Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {analyzer})) << "\" OutputItemType=\"Analyzer\" ReferenceOutputAssembly=\"false\" GlobalPropertiesToRemove=\"OutputPath;Configuration;Platform\" />\n";
+            file << "    <ProjectReference Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {fs_make_path(analyzer)})) << "\" OutputItemType=\"Analyzer\" ReferenceOutputAssembly=\"false\" GlobalPropertiesToRemove=\"OutputPath;Configuration;Platform\" />\n";
         }
 
         file << "  </ItemGroup>\n";
@@ -1059,7 +1059,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     WriteTextFileIfChanged(proj_path, file.str(), "Can't create generated project file");
 
     std::error_code ec;
-    std::filesystem::remove(project_dir / strex("{}.csproj", project_name).str(), ec);
+    std::filesystem::remove(project_dir / fs_make_path(strex("{}.csproj", project_name)), ec);
 }
 
 void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& project_dir, string_view solution_name, const vector<string>& project_names)
@@ -1067,7 +1067,7 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
     FO_STACK_TRACE_ENTRY();
 
     const string sln_name = MakeGeneratedManagedSolutionFileName(solution_name);
-    const auto sln_path = project_dir / sln_name;
+    const auto sln_path = project_dir / fs_make_path(sln_name);
 
     ostringstream file;
     constexpr string_view CSHARP_PROJECT_TYPE_GUID = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}";
@@ -1086,7 +1086,7 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
 
     for (const string& project_name : project_names) {
         const string project_guid = MakeManagedSolutionGuid(strex("ManagedProject:{}", project_name).str());
-        const auto project_path = project_dir / MakeGeneratedManagedUnifiedProjectFileName(project_name);
+        const auto project_path = project_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(project_name));
         project_guids.emplace_back(project_guid);
 
         file << "Project(\"" << CSHARP_PROJECT_TYPE_GUID << "\") = \"" << EscapeSolutionString(project_name) << "\", \"" << EscapeSolutionString(MakeSolutionProjectPath(project_dir, project_path)) << "\", \"" << project_guid << "\"\r\n";
@@ -1118,7 +1118,7 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
     WriteTextFileIfChanged(sln_path, file.str(), "Can't create generated solution file");
 
     std::error_code ec;
-    std::filesystem::remove(project_dir / strex("{}.sln", solution_name).str(), ec);
+    std::filesystem::remove(project_dir / fs_make_path(strex("{}.sln", solution_name)), ec);
 }
 
 auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& dir_source_files, const vector<string>& extra_sources, string_view assembly_name, string_view target_name, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>
@@ -1150,7 +1150,7 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
             continue;
         }
 
-        const std::filesystem::path disk_path = file.GetDiskPath();
+        const std::filesystem::path disk_path = fs_make_path(file.GetDiskPath());
 
         if (IsGeneratedManagedArtifactFileName(strex("{}", disk_path.filename().string()).str())) {
             continue;
@@ -1187,7 +1187,7 @@ auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_reference
     unordered_set<string> unique_refs(result.begin(), result.end());
 
     for (const string& reference_value : CollectScopedValues(extra_references, assembly_name, target_name)) {
-        const bool is_path_reference = reference_value.find('\\') != string::npos || reference_value.find('/') != string::npos || std::filesystem::path(reference_value).extension() == ".dll";
+        const bool is_path_reference = reference_value.find('\\') != string::npos || reference_value.find('/') != string::npos || std::filesystem::path(fs_make_path(reference_value)).extension() == ".dll";
         string reference = reference_value;
 
         if (is_path_reference) {
@@ -1694,7 +1694,7 @@ static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesyst
     const auto applied_configs = settings.GetAppliedConfigs();
 
     if (!applied_configs.empty()) {
-        std::filesystem::path config_path {applied_configs.front()};
+        std::filesystem::path config_path {fs_make_path(applied_configs.front())};
 
         if (config_path.is_relative() && !config_dir.empty()) {
             config_path = config_dir / config_path;
@@ -1877,7 +1877,9 @@ static auto MakeManagedSolutionGuid(string_view value) -> string
     output << std::setw(12) << (second & 0x0000FFFFFFFFFFFFull);
     output << '}';
 
-    return output.str();
+    const stream_string result = output.str();
+
+    return {result.data(), result.size()};
 }
 
 static auto MakeAbsoluteProjectOutputPath(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> string
@@ -1885,7 +1887,7 @@ static auto MakeAbsoluteProjectOutputPath(const std::filesystem::path& assemblie
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto target_output_path = assemblies_output_dir / strex("{}Assemblies", target_name).str();
+    const auto target_output_path = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
     const auto output_path = std::filesystem::absolute(target_output_path, ec).lexically_normal();
     string result = strex("{}", (ec ? target_output_path.lexically_normal() : output_path).generic_string()).str();
 
@@ -1903,8 +1905,11 @@ static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::
     FO_VERIFY_AND_THROW(context.Settings, "Baking context has no settings");
 
     std::error_code ec;
-    const auto output_dir = std::filesystem::absolute(std::filesystem::current_path() / context.Settings->BakeOutput / context.PackName / "Assemblies", ec).lexically_normal();
-    return ec ? (std::filesystem::current_path() / context.Settings->BakeOutput / context.PackName / "Assemblies").lexically_normal() : output_dir;
+    const auto output_dir =
+        std::filesystem::absolute(std::filesystem::current_path() / fs_make_path(context.Settings->BakeOutput) / fs_make_path(context.PackName) / "Assemblies", ec)
+            .lexically_normal();
+    return ec ? (std::filesystem::current_path() / fs_make_path(context.Settings->BakeOutput) / fs_make_path(context.PackName) / "Assemblies").lexically_normal()
+              : output_dir;
 }
 
 static auto MakeCsTypeToken(string_view name) -> string
@@ -4164,7 +4169,9 @@ static void WriteTextFileIfChanged(const std::filesystem::path& file_path, strin
         ostringstream existing_content;
         existing_content << existing_file.rdbuf();
 
-        if (existing_content.str() == new_content) {
+        const stream_string existing_text = existing_content.str();
+
+        if (string_view {existing_text.data(), existing_text.size()} == new_content) {
             return;
         }
     }
@@ -4216,11 +4223,11 @@ static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_
     FO_STACK_TRACE_ENTRY();
 
     const string file_name = MakeGeneratedManagedApiFileName(target_name, suffix);
-    const auto file_path = project_dir / file_name;
+    const auto file_path = project_dir / fs_make_path(file_name);
     WriteTextFileIfChanged(file_path, content, "Can't create generated C# file");
 
     std::error_code ec;
-    std::filesystem::remove(project_dir / strex("{}{}.cs", target_name, suffix).str(), ec);
+    std::filesystem::remove(project_dir / fs_make_path(strex("{}{}.cs", target_name, suffix)), ec);
 }
 
 static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>
@@ -4241,7 +4248,7 @@ static auto CollectManagedOutputAssemblies(const std::filesystem::path& assembli
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_dir = assemblies_output_dir / strex("{}Assemblies", target_name).str();
+    const auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
     vector<std::filesystem::path> result;
 
     std::error_code ec;
@@ -4277,7 +4284,7 @@ static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblie
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_dir = assemblies_output_dir / strex("{}Assemblies", target_name).str();
+    const auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
 
     std::error_code ec;
 
@@ -4310,13 +4317,13 @@ static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_o
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_dir = assemblies_output_dir / strex("{}Assemblies", target_name).str();
+    const auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
     string assembly_file_stem = strex(assembly_file_name).erase_file_extension().str();
 
     std::error_code ec;
-    std::filesystem::remove(output_dir / strex("{}.deps.json", assembly_file_stem).str(), ec);
+    std::filesystem::remove(output_dir / fs_make_path(strex("{}.deps.json", assembly_file_stem)), ec);
     ec.clear();
-    std::filesystem::remove(output_dir / strex("{}.pdb", assembly_file_stem).str(), ec);
+    std::filesystem::remove(output_dir / fs_make_path(strex("{}.pdb", assembly_file_stem)), ec);
 }
 
 static void AppendProjectReferences(std::ostream& file, const std::filesystem::path& project_dir, const vector<string>& references, optional<string_view> condition)
@@ -4336,10 +4343,10 @@ static void AppendProjectReferences(std::ostream& file, const std::filesystem::p
     file << ">\n";
 
     for (const string& reference : references) {
-        const bool is_path_reference = reference.find('\\') != string::npos || reference.find('/') != string::npos || std::filesystem::path(reference).extension().string() == ".dll";
+        const bool is_path_reference = reference.find('\\') != string::npos || reference.find('/') != string::npos || std::filesystem::path(fs_make_path(reference)).extension().string() == ".dll";
 
         if (is_path_reference) {
-            const std::filesystem::path reference_path = reference;
+            const std::filesystem::path reference_path = fs_make_path(reference);
             const auto hint_path = reference_path.is_absolute() ? reference_path : std::filesystem::current_path() / reference_path;
             file << "    <Reference Include=\"" << EscapeXml(reference_path.stem().string()) << "\">\n";
             file << "      <HintPath>" << EscapeXml(MakeRelativeProjectPath(project_dir, hint_path)) << "</HintPath>\n";

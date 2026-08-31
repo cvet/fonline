@@ -408,7 +408,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     string image_name;
 
     // Parse data
-    istringstream str(file.GetStr());
+    istringstream str(make_stream_string(file.GetStr()));
     string key;
     string letter_buf;
     nptr<FontData::Letter> cur_letter;
@@ -460,7 +460,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
             break;
         }
         else if (key == "Letter") {
-            std::getline(str, letter_buf, '\n');
+            getline(str, letter_buf, '\n');
             auto utf8_letter_begin = letter_buf.find('\'');
 
             if (utf8_letter_begin == string::npos) {

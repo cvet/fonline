@@ -4990,7 +4990,7 @@ static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>
     candidates.emplace_back(std::filesystem::current_path() / "ManagedRuntime");
 
     if (const auto exe_path = Platform::GetExePath()) {
-        const auto exe_dir = std::filesystem::path(*exe_path).parent_path();
+        const auto exe_dir = std::filesystem::path(fs_make_path(*exe_path)).parent_path();
         candidates.emplace_back(exe_dir / "ManagedRuntime");
     }
 
@@ -5188,11 +5188,12 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
         return restored_paths;
     }
 
-    const auto cache_root = std::filesystem::current_path() / "Cache" / "ManagedAssemblies" / MakeManagedAssemblyCacheKey(assembly_resources);
+    const auto cache_root =
+        std::filesystem::current_path() / "Cache" / "ManagedAssemblies" / fs_make_path(MakeManagedAssemblyCacheKey(assembly_resources));
     restored_paths.reserve(assembly_resources.size());
 
     for (const ManagedAssemblyResource& resource : assembly_resources) {
-        const auto disk_path = cache_root / resource.ResourcePath;
+        const auto disk_path = cache_root / fs_make_path(resource.ResourcePath);
         const string disk_dir = fs_path_to_string(disk_path.parent_path());
 
         if (!fs_create_directories(disk_dir)) {
@@ -5229,7 +5230,7 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
             continue;
         }
 
-        const auto target_dir = pack_it->path() / "Assemblies" / target_subdir;
+        const auto target_dir = pack_it->path() / "Assemblies" / fs_make_path(target_subdir);
         std::error_code dir_ec;
 
         if (!std::filesystem::is_directory(target_dir, dir_ec)) {

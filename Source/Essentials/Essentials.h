@@ -45,6 +45,7 @@
 #include "FunctionObjects.h"
 #include "SmartPointers.h"
 #include "MemorySystem.h"
+#include "StringObject.h"
 #include "Containers.h"
 #include "StringUtils.h"
 #include "Platform.h"

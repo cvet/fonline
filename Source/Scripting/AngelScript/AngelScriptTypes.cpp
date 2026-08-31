@@ -664,7 +664,7 @@ static auto Any_Conv(const any_t& self) -> T
     }
     else {
         T value = {};
-        istringstream istr(self);
+        istringstream istr(make_stream_string(self));
         istr >> value;
         return value;
     }

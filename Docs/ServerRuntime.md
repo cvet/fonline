@@ -217,6 +217,35 @@ reparent does. `Source/Tests/Test_ServerEngine.cpp` exercises symmetric Player/C
 (`ServerEngineSyncContextReparentStress`) and the link pin itself
 (`ServerEngineEntityLinkPinSurvivesConcurrentDetach`).
 
+### Single-threaded logic
+
+`Server.SingleThreadedLogic` is a fixed setting that trades the concurrency for the contract. When it is on,
+`ServerEngine` pins the worker pool to exactly one thread, so every keyed job — player, not-logged-in player,
+critter movement, time event — runs to completion before the next one starts, and startup on `_starter`
+finishes before the pool is resumed. No cover can then be contended by construction, and the whole
+acquire/validate layer is bypassed: `IsEntityAccessValid()` and `SyncContext::ValidateAccess()` answer true for
+every entity, and `SyncEntities()` / `EnsureEntitySynced()` / `EnsureFreshEntitySynced()` acquire nothing. The
+mode is an engine setting rather than process state, so the sync layer reads it through the entity each
+operation is handed (`IsSingleThreadedLogic()` in `Source/Server/EntitySync.cpp`) and two engines with
+different settings can coexist in one process.
+
+The point of the mode is the script contract: with it on, a script may read and mutate any entity it can reach
+without covering it first. `Game.Sync` and `Game.SyncRelease` become inert, `[[Async]]` markers carry no
+synchronization requirement, and scripts written for the multithreaded mode keep working unchanged because
+their acquisition calls simply do nothing. `Game.Lock` / `Game.Unlock` still take the engine singleton bucket,
+which is uncontended and therefore always immediate.
+
+What the mode removes is the **cover** requirement, not entity liveness. Jobs still run one after another, so
+an entity a callback captured earlier can be destroyed before that callback runs, and a handle still has to be
+checked before use. An embedding project whose script wrapper around `Game.Sync` also carries a destroyed-entity
+policy — the `if (!Lock(...)) return;` shape — therefore keeps that wrapper for its liveness half even though its
+acquisition half is now a no-op. Deleting such guards as "dead synchronization" is a correctness regression.
+
+Nothing else changes: entities still own their `EntityLock`, the sync contexts are still created per job and
+per script execution, and turning the setting off restores the full cover requirement. The mode is pinned by
+`ServerEngineSingleThreadedLogicRunsWithoutEntityCover` in `Source/Tests/Test_ServerEngine.cpp`, which drives
+the `ServerEngineStartsAndCreatesCritter` flow with every synchronization call removed.
+
 ### Acquisition modes
 
 | Mode | Meaning | Compatibility |

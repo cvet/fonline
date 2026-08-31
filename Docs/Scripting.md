@@ -175,6 +175,10 @@ Entity lifetime is still owned by the engine runtime:
 
 Use [EntityModel.md](EntityModel.md) for entity/property/prototype ownership and [Persistence.md](Persistence.md) for database boundaries.
 
+Server scripts additionally owe the native call graph an entity cover before they cross the boundary, unless the
+server runs with `Server.SingleThreadedLogic`, which drops that requirement entirely; both contracts live in
+[ServerRuntime.md](ServerRuntime.md).
+
 ### A prototype is not a live entity, and the script types must say so
 
 Natively the two are unrelated: `ProtoCritter` derives from `ProtoEntity`, while `Critter` derives from
