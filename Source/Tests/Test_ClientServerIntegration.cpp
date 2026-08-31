@@ -121,20 +121,27 @@ namespace ClientServerIntegrationServer
 
         // The scenery-interaction shape: a static item has no entity id, and the client must take it.
         // A missing fixture item is not guarded here because the client-side counter is the assertion
-        StaticItem[] staticItems = map.GetStaticItemsOnHex(mpos(0, 0));
+        StaticItem[] staticItems = map.GetStaticItemsInRadius(mpos(0, 0), 3, "UnitTestSharedItem".hstr());
+        StaticContextActions = int(staticItems.length());
 
         for (int i = 0; i < int(staticItems.length()); i++) {
-            npc.Action(CritterAction::PickItem, 0, staticItems[i]);
+            npc.Action(CritterAction::Refresh, 0, staticItems[i]);
         }
 
         cr.SendItems(cr.GetItems(), true, false);
     }
 
     int NpcCritters = 0;
+    int StaticContextActions = 0;
 
     int UnitTestGetNpcCritters()
     {
         return NpcCritters;
+    }
+
+    int UnitTestGetStaticContextActions()
+    {
+        return StaticContextActions;
     }
 
     int WorldSteps = 0;
@@ -328,6 +335,7 @@ namespace ClientServerIntegrationClient
     int ActionContextItemCount = 0;
     int ActionMapOwnedContextItemCount = 0;
     int ActionStaticContextItemCount = 0;
+    int ActionRefreshContextItemCount = 0;
 
     [[ModuleInit]]
     void InitClientServerIntegrationClient()
@@ -378,6 +386,10 @@ namespace ClientServerIntegrationClient
         // A static item has no entity id, so counting its arrival proves the read path accepts one
         if (contextItemInstance.Id == ZERO_IDENT) {
             ActionStaticContextItemCount++;
+        }
+
+        if (action == CritterAction::Refresh) {
+            ActionRefreshContextItemCount++;
         }
     }
 
@@ -453,6 +465,11 @@ namespace ClientServerIntegrationClient
     int UnitTestGetActionStaticContextItemCount()
     {
         return ActionStaticContextItemCount;
+    }
+
+    int UnitTestGetActionRefreshContextItemCount()
+    {
+        return ActionRefreshContextItemCount;
     }
 
     string UnitTestReadCritterModelName(Critter cr)
@@ -1408,6 +1425,14 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionMapOwnedContextItemCount"), action_map_owned_context_items));
     CHECK(action_context_items > 0);
     CHECK(action_map_owned_context_items == 0);
+
+    int32_t static_context_actions = 0;
+    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetStaticContextActions"), static_context_actions));
+    CHECK(static_context_actions > 0);
+
+    int32_t action_refresh_context_items = 0;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionRefreshContextItemCount"), action_refresh_context_items));
+    CHECK(action_refresh_context_items > 0);
 
     int32_t action_static_context_items = 0;
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionStaticContextItemCount"), action_static_context_items));
