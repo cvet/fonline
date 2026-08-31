@@ -158,7 +158,11 @@ restores their data and explicitly assigns `ItemOwnership::Nowhere`. This shared
 path covers item-list payloads, action context items, and slot-move items. A
 detached snapshot must never retain the enum's zero default (`MapHex`), because
 client presentation and actions would then treat another inventory's item as an
-object lying on the current map.
+object lying on the current map. Item-list payloads still require a nonzero
+entity id because callers retain and address those items. An action-context
+snapshot may instead represent an immutable static map item and legitimately
+carry an empty id; `ReceiveDetachedItem()` accepts that generic state, while the
+list handler enforces identity at its narrower boundary.
 
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 

@@ -151,7 +151,7 @@ public:
     ///@ EnumValueDoc EventResult ContinueChain // Continues dispatching callbacks with lower priority.
     ///@ EnumValueDoc EventResult StopChain // Stops the current event callback chain immediately.
 
-    using EventCallback = function<EventResult(FuncCallData&)>;
+    using EventCallback = copyable_function<EventResult(FuncCallData&)>;
 
     // Relative ordering assigned to callbacks subscribed to the same entity event.
     ///@ ExportEnum

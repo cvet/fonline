@@ -27,7 +27,8 @@ parameters or a higher owning layer. Register new implementation files in
 link at the correct dependency point rather than bypassing the layer.
 
 The exact umbrella order is `BasicCore`, `GlobalData`, `StackTrace`,
-`BaseLogging`, `FatalError`, `SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`,
+`BaseLogging`, `FatalError`, `FunctionObjects`, `SmartPointers`, `MemorySystem`,
+`StringObject`, `Containers`, `StringUtils`,
 `Platform`, `ExceptionHandling`, `Threading`, `SafeArithmetics`,
 `DataSerialization`, `HashedString`, `StrongType`, `TimeRelated`,
 `ExtendedTypes`, `Compressor`, `WorkThread`, `Logging`, `DiskFileSystem`,
@@ -64,10 +65,14 @@ not bypass the contract-change gate.
 - `Source/Essentials/BaseLogging.cpp`
 - `Source/Essentials/FatalError.h`
 - `Source/Essentials/FatalError.cpp`
+- `Source/Essentials/FunctionObjects.h`
+- `Source/Essentials/FunctionObjects.cpp`
 - `Source/Essentials/SmartPointers.h`
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/MemorySystem.h`
 - `Source/Essentials/MemorySystem.cpp`
+- `Source/Essentials/StringObject.h`
+- `Source/Essentials/StringObject.cpp`
 - `Source/Essentials/Containers.h`
 - `Source/Essentials/Containers.cpp`
 - `ThirdParty/small_vector/README.md`
@@ -115,7 +120,7 @@ not bypass the contract-change gate.
 
 `Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include and call only modules that appear earlier in the umbrella block. Declaring an API early but defining it in a later `.cpp` is still a reverse link dependency. `BuildTools/tests/test_essentials_layering.py` checks direct includes and namespace-level external-definition ownership. Do not reorder the list to hide a cycle; move data through parameters or split the responsibility at the correct layer.
 
@@ -143,11 +148,24 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 `MemorySystem.*` owns backup-memory chunks, bad-allocation reporting, and `SafeAllocator`. `SmartPointers.*` contains pointer wrappers used to make ownership, nullability, and raw-reference intent explicit; see [SmartPointers.md](../../contributing/coding-contracts/smart-pointers.md) for the native `ptr` / `nptr` vocabulary and migration rules. Use this layer for generic ownership utilities only; entity lifetime and holder semantics belong in [Entity Model](../../explanation/entity-and-property-model/).
 
+#### Callable vocabulary
+
+`FunctionObjects.*` replaces `std::function` with two engine-owned wrappers.
+`function<Signature>` is an alias of move-only `move_only_function<Signature>`
+and is the default. Use `copyable_function<Signature>` only when copying the
+stored target is the real ownership contract, such as a callback snapshot
+distributed to more than one owner. Both keep a small nothrow-movable target
+inline and allocate larger targets through a fail-fast path, so construction
+does not introduce a recoverable `std::bad_alloc`. If migration exposes a copy,
+first decide whether the owner should move instead. The `StackTrace.h`
+script-provider hook is the sole retained `std::function`, because it precedes
+`FunctionObjects` in the dependency order.
+
 #### Allocation vocabulary
 
 Engine code allocates through one of two surfaces, and nothing else:
 
-- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. Each is the standard container instantiated on `SafeAllocator`. Use these, never the `std::` originals.
+- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. `string` and `wstring` use the engine `basic_string` from `StringObject.h`; the remaining allocator-aware aliases use `SafeAllocator`. Use these, never the `std::` originals.
 - **`SafeAlloc`** — `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` for typed objects, and the raw tier `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` plus `MallocAlignedRaw` / `FreeAlignedRaw` for C-ABI boundaries.
 
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `SafeAllocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
@@ -170,7 +188,7 @@ Three distinct things are at stake when code bypasses this vocabulary, and they 
 | **Wrong out-of-memory policy** | `std::allocator` throws `std::bad_alloc` instead of following the terminate-on-OOM model in [ExceptionSafety.md](../../contributing/coding-contracts/exception-safety.md) §1. |
 | **Alignment** | `SafeAllocator` routes over-aligned element types through the aligned `operator new`/`delete` overloads. Note that the over-alignment test must stay a member *function*: `alignof(T)` needs a complete `T`, while the allocator has to remain usable with an incomplete one, since `std::vector<T>` may be declared before `T` is defined. |
 
-Known and accepted limits: `std::function`, `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
+Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. The sole `std::function` in `StackTrace.h` is also above the engine callable module. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
 
 #### Third-party allocators
 
@@ -226,6 +244,16 @@ For an adoption, record the measured distribution and object count, audit addres
 
 ### Serialization, values, strings, and hashes
 
+`StringObject.*` owns the engine `basic_string` implementation. Its API follows
+`std::basic_string`, while `FO_STRING_INLINE_CAPACITY` selects the compiled
+small-string buffer for both `string` and `wstring`; this is a build-wide ABI
+choice, not a per-call optimization. Three standard-library boundaries require
+explicit adapters: copy text into a standard stream with `make_stream_string`,
+construct `std::filesystem::path` through `fs_make_path`, and call `getline`
+unqualified so argument-dependent lookup selects the engine overload. String
+growth uses the same deterministic terminate-on-OOM policy as other engine
+storage.
+
 `DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `DataReader::Read<T>()` and `DataWriter::Write<T>()` copy standard-layout values through byte copies so serialized streams do not depend on buffer alignment. The zero-copy `ReadPtr<T>(size)` overload is only for raw byte/string views (`uint8_t`, `char`, or `void`); typed values that need alignment must use `Read<T>()` or `ReadPtr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives. `iround` rejects non-finite and out-of-int64-range floating-point input before rounding so no value undefined for `std::llround` can reach it. `HashStorage::SetResolveHashFailureHandler` lets higher layers observe failed hash resolution in both throwing and flagged no-throw lookup paths without teaching essentials about a specific recovery policy.
 
 ### Filesystem, compression, sockets, and work threads
@@ -251,6 +279,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_FunctionObjects.cpp`
 - `Source/Tests/Test_GenericUtils.cpp`
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
@@ -261,6 +290,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
@@ -276,6 +306,8 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 - Global create/delete callback registration: `Source/Essentials/GlobalData.*`.
 - Stack traces, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*`, and [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
 - Generic memory/pointer utilities: `Source/Essentials/MemorySystem.*`, `SmartPointers.*`, and [SmartPointers.md](../../contributing/coding-contracts/smart-pointers.md).
+- Callable ownership and inline targets: `Source/Essentials/FunctionObjects.*`.
+- Engine strings and the build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; aliases and stream interop: `Containers.h`.
 - File bytes and low-level writable-path composition on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources and installed-client overlays: [Configuration and Data Sources](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking](../../explanation/authority-and-networking/).
 

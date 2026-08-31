@@ -231,8 +231,8 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
         auto ctx = SyncContext::GetCurrentOnThisThread();
         auto lock = GetEntityLock();
         // Reparenting needs the entity's own lock directly, because ancestor coverage is a read-path right only;
-        // the sole exemption is a thread with no sync context at all
-        FO_VERIFY_AND_CONTINUE(!ctx || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
+        // the exemptions are single-threaded logic, which takes no locks at all, and a thread with no sync context
+        FO_VERIFY_AND_CONTINUE(IsSingleThreadedLogic(this) || !ctx || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
     }
 
     if (parent) {

@@ -49,6 +49,8 @@ class EntityManager;
 // The read-path coverage check — reparenting is stricter and needs the entity's own lock. `diagnose` dumps the
 // parent chain before the caller throws, which the non-throwing Game.IsEntityLocked probe turns off
 [[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
+// True when the owning engine runs its logic on a single worker, which is when the cover model is bypassed
+[[nodiscard]] auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool;
 
 class EntityLock final
 {

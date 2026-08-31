@@ -132,7 +132,7 @@ class MetadataAndEssentialsDocumentationTests(unittest.TestCase):
         umbrella = self._read("Source/Essentials/Essentials.h")
         guide = self._read(ESSENTIALS_PATH)
         include_order = re.findall(r'^#include "([A-Za-z0-9_.]+)"$', umbrella, re.MULTILINE)
-        self.assertEqual(len(include_order), 24)
+        self.assertEqual(len(include_order), 26)
 
         section = guide.split("## Include and dependency model", 1)[1].split("\n## ", 1)[0]
         order_line = next(line for line in section.splitlines() if " \u2192 " in line)

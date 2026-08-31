@@ -52,6 +52,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_FunctionObjects.cpp`
 - `Source/Tests/Test_GenericUtils.cpp`
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
@@ -62,6 +63,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_SettingsStorage.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
@@ -214,6 +216,8 @@ Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOUR
   checkbox, selectable or folded section runs in a headless frame. Pinned by
   `ImGuiTestHarnessPressesWidgetsByLabel` in `Test_ImGui.cpp`; usage rules are in
   [../../Docs/Testing.md](../../Docs/Testing.md).
+- `Source/Tests/Test_DumpArtifacts.h` - records the `TexDump_*` directories present in the working
+  directory so a suite that triggers an atlas dump removes only the ones its own run wrote.
 
 ## Notes
 

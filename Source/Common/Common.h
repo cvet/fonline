@@ -45,10 +45,10 @@ FO_BEGIN_NAMESPACE
 // The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-
 // pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,
 // removal, or stable-ID change instead of silently extending this experimental promise.
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2500 InventorySha256=18d532157d973c01c0d351bd1bc51393cc29b63a97c2295090d2bd17754bdbd0
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2501 InventorySha256=6ca94ee0ce42589e1b9fdbe128e4109081cb24586ac2b0746fc375856377a3d8
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 43
+///@ MigrationRule Version 0 0 44
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -280,7 +280,7 @@ public:
 
     [[nodiscard]] auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
-        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), cb);
+        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb));
         return EventUnsubscriberCallback([this, it]() FO_DEFERRED { _subscriberCallbacks.erase(it); });
     }
 
@@ -923,7 +923,7 @@ extern auto MakeSeededRandomGenerator() -> std::mt19937;
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
 extern mutex InterthreadListenersLocker;
-extern map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+extern map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 // Logical critter item destinations used for inventory, equipped-main-slot, and outside-item transfers.
 ///@ ExportEnum

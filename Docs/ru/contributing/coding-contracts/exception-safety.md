@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 
 # Безопасность исключений и устойчивость инвариантов движка
 
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"0cc37bd85ec70a8d44c5b742ff316d7d57096899d8b265820cdc6426fa6d6ee7"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"2ae86323d62d8fb3d5959157004361ceae162ad815ad970d685dbb4b62ba9a0e"} -->
 
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
@@ -40,6 +40,12 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
   retry, `ReportAndExit` к C-совместимому выделению. Через них подключены SDL,
   Effekseer, spine-cpp, libpng и curl; низкоуровневые rpmalloc-примитивы
   остаются локальными для `MemorySystem.cpp`.
+- `move_only_function` / `copyable_function` из
+  `Source/Essentials/FunctionObjects.h` держат небольшой nothrow-movable target
+  inline, а крупный выделяют через nothrow path с `ReportFatalAndExit` при
+  исчерпании. Модуль расположен до `MemorySystem` и не может использовать
+  `SafeAlloc`, но хранение callable движка всё равно завершает процесс, а не
+  возвращает `std::bad_alloc`.
 - `ModelMeshBaker` один раз, до параллельных заданий, передает приватной
   meshoptimizer callbacks на `SafeAllocator<uint8_t>`. Эта зависимость
   используется только baker-ом и не входит в runtime-читатели моделей.
@@ -60,11 +66,12 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 поскольку inline-перемещение меняет адреса. Правила выбора и границы точных
 типов принадлежат [Essentials.md](../../reference/native/essentials.md#vector-containers-and-inline-storage).
 
-`std::bad_alloc` остается достижим за пределами словаря памяти движка:
-`std::function` за пределами малого буфера, shared state у `std::future`,
-`std::promise` и `std::packaged_task`, `std::thread`,
+`std::bad_alloc` остается достижим за пределами словаря памяти движка: shared
+state у `std::future`, `std::promise` и `std::packaged_task`, `std::thread`,
 `std::filesystem::path`, файловые потоки и сторонние ABI со своими
-контейнерами (`nlohmann::json`, LibreSSL, ogg/vorbis/theora). `BasicCore`,
+контейнерами (`nlohmann::json`, LibreSSL, ogg/vorbis/theora). Единственный
+сохранённый `std::function` — hook script provider в `StackTrace.h`, находящийся
+выше callable module движка. `BasicCore`,
 `StackTrace` и `BaseLogging` намеренно используют стандартные контейнеры выше
 `MemorySystem` в порядке включения; OOM-репортер не должен зависеть от
 сломавшегося allocator-а. Поэтому interop-граница может обоснованно ловить

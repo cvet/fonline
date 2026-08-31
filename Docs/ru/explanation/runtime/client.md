@@ -6,7 +6,7 @@ document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
 
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"9463a376e9e7297cf9fbc69255be1ae2d2f02e80651ade672e2e84bc7f787690"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"6f41b643086dbf02e3759a538fa535d4b1c995766beb6e158ad2e41f12089c29"} -->
 
 # Клиентская среда выполнения
 
@@ -160,7 +160,11 @@ permalink: /Docs/ru/explanation/runtime/client.html
 охватывает item-list payloads, action context items и slot-move items. Detached
 snapshot не должен сохранять нулевой default enum (`MapHex`), иначе client
 presentation и actions примут предмет чужого inventory за объект на текущей
-карте.
+карте. Item-list payloads по-прежнему требуют ненулевой entity id, поскольку
+callers сохраняют и адресуют эти items. Action-context snapshot может
+представлять immutable static map item и корректно иметь empty id:
+`ReceiveDetachedItem()` принимает это общее состояние, а list handler проверяет
+identity на своей более узкой boundary.
 
 Script GUI widgets `ItemView` кешируют handles предметов, привязанные к cells. `Resort()` удаляет destroyed handles, возвращённые stale supplier, сохраняет cell только когда источник вернул тот же живой экземпляр handle, и перепривязывает replacement clone с тем же entity id, чтобы callback отрисовки предмета видел актуальное количество и остальные projected properties.
 

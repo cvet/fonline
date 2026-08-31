@@ -956,6 +956,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-server-server-shutdowngracems-541553c76d"></a>
 - [`symbol-setting-server-server-shutdowngracems-541553c76d`](../../en/reference/script-api/settings.md#symbol-setting-server-server-shutdowngracems-541553c76d)
 
+<a id="symbol-setting-server-server-singlethreadedlogic-a89624116a"></a>
+- [`symbol-setting-server-server-singlethreadedlogic-a89624116a`](../../en/reference/script-api/settings.md#symbol-setting-server-server-singlethreadedlogic-a89624116a)
+
 <a id="symbol-setting-server-server-syncperiodms-c6da953da2"></a>
 - [`symbol-setting-server-server-syncperiodms-c6da953da2`](../../en/reference/script-api/settings.md#symbol-setting-server-server-syncperiodms-c6da953da2)
 

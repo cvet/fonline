@@ -55,6 +55,13 @@ of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. Test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` or `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
 
+Atlas and render-target dump tests use `TexDumpArtifacts` from
+`Source/Tests/Test_DumpArtifacts.h`. A test snapshots the existing
+`TexDump_*` directories before it invokes production dumping, then removes only
+new directories created by that run. This prevents parallel or interrupted
+test sessions from deleting pre-existing diagnostic evidence and keeps cleanup
+scoped to artifacts the test can prove it owns.
+
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:

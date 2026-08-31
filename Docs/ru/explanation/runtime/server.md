@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/runtime/server.html
 
 # Серверная среда выполнения
 
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"489216925884819fb9eefebe8921419ab1e31eac73112f3efd45e277e9f8a8de"} -->
+<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"a04871d6656ab4d3ba541590139cbd0a7c346581154d34255d6f0b2261c1ea87"} -->
 
 > Документация движка. Эта страница описывает переиспользуемое поведение серверной среды выполнения из `Source/Server/`; игровые правила, содержимое мира, конкретный баланс, задания и политика развёртывания отдельного проекта остаются в документации подключающего проекта.
 
@@ -201,6 +201,27 @@ TODO: после стабилизации многопоточной логик�
 Обработка триггеров ходьбы ограничена текущим контекстом триггера криттера. Если `OnStaticItemWalk` или `OnCritterWalk` предмета перемещает, переносит, уничтожает либо иначе выводит криттера из контекста, `VerifyTrigger()` прекращает обработку оставшихся триггеров прежней карты и клетки.
 
 ## Синхронизация и блокировки сущностей
+
+`Server.SingleThreadedLogic` является fixed opt-out из concurrent entity-cover
+contract. При включении `ServerEngine` ограничивает worker pool одним потоком и
+завершает startup work до его возобновления, поэтому keyed jobs игроков,
+соединений, движения и time events выполняются последовательно.
+`IsEntityAccessValid()` и `SyncContext::ValidateAccess()` принимают любую entity,
+а `SyncEntities()`, `EnsureEntitySynced()` и `EnsureFreshEntitySynced()` ничего
+не захватывают. `Game.Sync` и `Game.SyncRelease` становятся inert;
+`Game.Lock`/`Game.Unlock` по-прежнему берут singleton bucket движка, который в
+этом режиме не имеет конкурентов.
+
+Setting отменяет cover acquisition, но не проверки времени жизни entity.
+Handle, захваченный одним job, всё ещё может указывать на сущность, уничтоженную
+до следующего job, поэтому project wrappers, совмещающие synchronization с
+destroyed-entity guard, должны сохранять liveness half. Mode читается через
+entity конкретного engine instance, поэтому в одном процессе могут сосуществовать
+серверы с разными настройками. Отключение setting возвращает полный
+multithreaded cover contract, не ломая scripts, сохранившие обычные calls
+синхронизации. Opt-out path закреплён тестом
+`ServerEngineSingleThreadedLogicRunsWithoutEntityCover` в
+`Source/Tests/Test_ServerEngine.cpp`.
 
 `Source/Server/EntitySync.{h,cpp}` реализует cover model. Каждая `ServerEntity` владеет `EntityLock`; thread доказывает read access удержанием этого lock или подходящего cover в ancestor/widen chain. Изменение parentage требует непосредственно собственного lock сущности.
 

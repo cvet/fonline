@@ -6,7 +6,7 @@ document_id: mapper-interactive-manual
 permalink: /Docs/ru/how-to/tools/mapper-interactive.html
 ---
 
-<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"b021026bc629ff501477cc19a4a781f8943e669243cefffe365dc1ce0b0eabff"} -->
+<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"8984833f19d34fa517cfb1e44de7682c5f0b5528a60f586d90a576da06d37202"} -->
 
 # Интерактивное руководство по Mapper
 
@@ -76,8 +76,11 @@ ImGui располагаются поверх неё и не сериализу�
 | **History** | Просмотр истории отмены и повтора текущей карты и переход к нужной операции. |
 | **Console** | Выполнение команд Mapper и просмотр их истории. |
 
-При свежей раскладке видимы Map browser и Controls. Workspace переключается
-клавишей `F7`, Content сочетанием `Shift+F7`. Inspector открывается по `F9`,
+При свежей раскладке видимы Map browser и Controls. Workspace остаётся доступен
+из меню **Windows**, Content переключается сочетанием `Shift+F7`. Клавиша `F7`
+скрывает или возвращает весь интерфейс ImGui, чтобы карту можно было осмотреть
+или снять без editor chrome. Вместе с интерфейсом исчезает и menu bar, поэтому
+вернуться из этого режима можно только по `F7`. Inspector открывается по `F9`,
 когда выбрана сущность или предмет контейнера.
 
 ## Справочник меню
@@ -129,6 +132,10 @@ clear selection, delete, copy, cut и paste работают с сущностя
 доказывает корректность видимости, блокировки, освещения или владения во время
 выполнения игры.
 
+Если `Map.ScrollAxialArea` не равен нулю, camera clamp оставляет один полный hex
+внутри каждой настроенной границы, поэтому сама boundary row оказывается за
+пределами view. Нулевой rectangle оставляет доступной для прокрутки всю карту.
+
 ### Tools
 
 | Команда | Назначение |
@@ -173,7 +180,7 @@ Mapper может держать загруженными несколько к�
 скриптовой настройки. Штатные режимы включают Item, Tile, Critter, Fast,
 Ignore, Inventory, Messages, Maps и десять пользовательских слотов.
 
-1. Откройте Workspace клавишей `F7`.
+1. Откройте Workspace из меню **Windows**.
 2. Выберите вкладку и подвкладку.
 3. При большой коллекции отфильтруйте её по имени прототипа.
 4. Выберите предпросмотр прототипа, чтобы перейти в режим размещения.
@@ -227,7 +234,7 @@ Copy, cut и paste сохраняют данные сущностей Mapper в�
 | Клавиша | Действие |
 |---|---|
 | `F1` .. `F6` | Переключить видимость Items, Scenery, Walls, Critters, Tiles и Fast. |
-| `F7` / `Shift+F7` | Переключить Workspace / Content. |
+| `F7` / `Shift+F7` | Скрыть или вернуть весь интерфейс ImGui / переключить Content. |
 | `F8` | Переключить прокрутку у края для текущего полноэкранного или оконного режима. |
 | `F9` | Открыть Inspector для выделения либо очистить выделение, если Inspector уже видим. |
 | `F10` | Переключить гексовый оверлей Mapper. |

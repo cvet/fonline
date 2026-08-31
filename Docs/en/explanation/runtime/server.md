@@ -199,6 +199,25 @@ Walk trigger processing is scoped to the critter's current trigger context. If `
 
 ## Entity synchronization and locking
 
+`Server.SingleThreadedLogic` is a fixed opt-out from the concurrent entity-cover
+contract. When enabled, `ServerEngine` pins its worker pool to one thread and
+finishes startup work before resuming that pool, so keyed player, connection,
+movement, and time-event jobs run serially. `IsEntityAccessValid()` and
+`SyncContext::ValidateAccess()` then accept every entity, while `SyncEntities()`,
+`EnsureEntitySynced()`, and `EnsureFreshEntitySynced()` acquire nothing.
+`Game.Sync` and `Game.SyncRelease` are inert; `Game.Lock` and `Game.Unlock` still
+take the engine singleton bucket, which is uncontended.
+
+The setting removes cover acquisition, not entity lifetime checks. A handle
+captured by one job can still refer to an entity destroyed before a later job
+runs, so project wrappers that combine synchronization with a destroyed-entity
+guard must keep their liveness half. Engine instances read the mode through the
+entity they operate on, allowing differently configured servers to coexist in
+one process. Disabling the setting restores the complete multithreaded cover
+contract without changing scripts that retained their ordinary synchronization
+calls. `ServerEngineSingleThreadedLogicRunsWithoutEntityCover` pins the opt-out
+path in `Source/Tests/Test_ServerEngine.cpp`.
+
 `Source/Server/EntitySync.{h,cpp}` implements the cover model. Every `ServerEntity` owns an `EntityLock`; a thread proves read access by holding that lock or an appropriate ancestor/widen-chain cover. Parentage mutations require the entity's own lock directly.
 
 Raw atomic links are used where covered identity checks must stay lock-free:

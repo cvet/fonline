@@ -99,6 +99,16 @@ Server-side AngelScript property getters copy non-virtual raw property data thro
 
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
+Numeric `Min = value` and `Max = value` metadata are enforced on every write.
+Registration accepts signed integer and finite decimal literals only when they
+fit the property's scalar base type, rejects duplicate bounds, enums, compound
+records, dictionaries, and an inverted range, and applies the same bound to
+every element of a plain numeric array. Assignment, raw restore, text/document
+load, and setter-mutated payloads are clamped before comparison with stored
+data. A write swallowed entirely by the range therefore produces no setter or
+post-setter change notification. Non-finite validation still runs before float
+clamping; NaN and infinity are errors, not values to coerce to an endpoint.
+
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
 
 ## Property runtime
@@ -116,6 +126,7 @@ Property flags are load-bearing:
 - `Synced`, `OwnerSync`, `PublicSync`, `NoSync` route network replication behavior.
 - `ModifiableByClient` and `ModifiableByAnyClient` gate client-originated changes.
 - `Virtual`, `Mutable`, `Persistent`, `Historical`, `Nullable`, and `Temporary` influence storage, callbacks, persistence, and script contracts.
+- `Min` and `Max` declare the inclusive clamp range for a numeric scalar or plain numeric array.
 
 When changing property metadata, update runtime docs and script/nullability docs together if the change affects script-visible signatures. See [Nullability.md](../../../Nullability.md).
 

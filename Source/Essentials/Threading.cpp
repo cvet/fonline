@@ -53,7 +53,7 @@ FO_GLOBAL_DATA(ThreadingData, ThreadingState);
 struct PoolTask
 {
     string Name;
-    std::function<void()> Body;
+    function<void()> Body;
 };
 
 struct Pool
@@ -105,7 +105,7 @@ static void ensure_initialized_locked(Pool& pool, size_t max_workers, string_vie
 
 // Returns `false` only when the pool cannot queue, has no idle worker, and is at `MaxWorkers`; that
 // is how `try_submit_async` learns to run the task inline instead
-static auto submit_impl(Pool& pool, string_view task_name, std::function<void()> task, bool can_queue) -> bool
+static auto submit_impl(Pool& pool, string_view task_name, function<void()> task, bool can_queue) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -261,7 +261,7 @@ static auto hardware_concurrency_or_one() noexcept -> size_t
     return hw != 0 ? static_cast<size_t>(hw) : size_t {1};
 }
 
-static void submit_run_thread(string_view task_name, std::function<void()> task)
+static void submit_run_thread(string_view task_name, function<void()> task)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -362,7 +362,7 @@ extern auto run_thread(string_view task_name, function<void()> task) -> thread
     return handle;
 }
 
-auto try_submit_async(string_view task_name, std::function<void()> task) -> bool
+auto try_submit_async(string_view task_name, function<void()> task) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -378,7 +378,7 @@ auto try_submit_async(string_view task_name, std::function<void()> task) -> bool
     return submit_impl(pool, task_name, std::move(task), /*can_queue*/ false);
 }
 
-void submit_async(string_view task_name, std::function<void()> task)
+void submit_async(string_view task_name, function<void()> task)
 {
     FO_STACK_TRACE_ENTRY();
 

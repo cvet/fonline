@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/how-to/content/map-format.html
 ---
 
-<!-- docs-translation: {"document_id":"map-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/map-format.md","source_sha256":"1eea266a44b114e0ab2d31823c9489eb44f0def4c84cd33644fe1d98e56046c0"} -->
+<!-- docs-translation: {"document_id":"map-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/map-format.md","source_sha256":"cd72eed704aecb3db0397d7385e5f7a206d556694f195cb7a35270869ed5c853"} -->
 
 # Формат карт FOnline
 
@@ -196,6 +196,15 @@ MultihexMesh = \
 ```
 
 Нечётное число значений приводит к ошибке сериализации. Загрузка в Mapper также может объединять подходящие предметы в multihex-сетки согласно прототипному `MultihexGeneration`; сохранение после такой операции способно существенно переписать размещения. Проверяйте такие diff как семантические изменения карты.
+
+`MultihexLines` задаёт принадлежащую прототипу directional geometry,
+разворачиваемую вокруг placement anchor. Server materialization применяет эти
+line cells к static и dynamic map items, а также разворачивает линии вокруг
+каждого допустимого cell из `MultihexMesh`. Все получившиеся cells указывают на
+один item и участвуют в cached blocking/interaction flags. Поэтому runtime
+placement считает anchor, mesh cells и их line expansions единым footprint;
+project validator должен проверять весь expanded footprint, а не только anchor
+и явные пары mesh.
 
 ## Цикл Mapper
 

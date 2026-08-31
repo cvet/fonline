@@ -72,9 +72,12 @@ The normal work surfaces are:
 | **History** | Inspect and jump through the current map's undo/redo history. |
 | **Console** | Run mapper commands and review command history. |
 
-Map browser and Controls start visible in a fresh layout. Workspace is toggled
-with `F7`; Content uses `Shift+F7`. The Inspector appears with `F9` when an
-entity or container item is selected.
+Map browser and Controls start visible in a fresh layout. Workspace remains
+available from the **Windows** menu; Content uses `Shift+F7`. `F7` hides or
+restores the entire ImGui interface so the map can be inspected or captured
+without editor chrome. Because the menu bar is hidden too, `F7` is the only way
+back from that mode. The Inspector appears with `F9` when an entity or container
+item is selected.
 
 ## Menu reference
 
@@ -123,6 +126,10 @@ entity.
 Visibility is an authoring aid. It does not remove content or prove runtime
 visibility, blocking, lighting, or ownership.
 
+When `Map.ScrollAxialArea` is nonzero, camera clamping keeps one complete map
+hex inside each configured edge, so the boundary row itself is outside the
+view. A zero rectangle leaves the whole map scrollable.
+
 ### Tools
 
 | Command | Intended use |
@@ -164,7 +171,7 @@ Workspace tabs are driven by loaded prototypes and project script
 customization. The stock modes include Item, Tile, Critter, Fast, Ignore,
 Inventory, Messages, Maps, and ten custom slots.
 
-1. Open Workspace with `F7`.
+1. Open Workspace from the **Windows** menu.
 2. Choose a tab and subtab.
 3. Filter by prototype name when the collection is large.
 4. Select a prototype preview to enter placement mode.
@@ -214,7 +221,7 @@ Hotkeys are suppressed while an ImGui text field is active.
 | Key | Action |
 |---|---|
 | `F1` .. `F6` | Toggle Items, Scenery, Walls, Critters, Tiles, and Fast visibility. |
-| `F7` / `Shift+F7` | Toggle Workspace / Content. |
+| `F7` / `Shift+F7` | Hide or restore the complete ImGui interface / toggle Content. |
 | `F8` | Toggle edge scrolling for the current fullscreen/windowed mode. |
 | `F9` | Open Inspector for selection, or clear selection when Inspector is visible. |
 | `F10` | Toggle the mapper hex overlay. |

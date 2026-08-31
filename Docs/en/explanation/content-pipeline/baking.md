@@ -481,10 +481,13 @@ parent hierarchy for every attachment. Model-description sections are produced
 independently and concatenated in sorted source order.
 
 Each binary description link also writes an explicit geometry discriminator:
-non-particle child links carry a required root-space AABB, while the default
-link and particle links carry no geometry payload. Invalid flags, missing child
-bounds, and degenerate AABBs are rejected. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract. In
+non-particle child links carry a required aggregate root-space AABB followed by
+the `(state, action, AABB)` bounds of every mapped parent clip; the default link
+and particle links carry no geometry payload. Multiple state/action pairs that
+reuse one sampled clip all reference that clip's box. Invalid flags, missing
+child bounds, unknown animation pairs, and degenerate AABBs are rejected.
+Missing or invalid aggregate or animation bounds are baking errors in the
+version 2 contract. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds
@@ -496,10 +499,12 @@ neither group; a present companion with no model sections is malformed.
 Enabled animation bounds size
 the logical scratch frame, the dedicated view bound seeds the stable body/name
 rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
-layer/child-model envelopes extend both contracts. The client projects baked
-active-animation and selected-link envelope corners instead of walking or
-skinning combined-mesh vertices; live particle bounds can still expand and
-rerender the scratch frame.
+layer/child-model bounds extend both contracts. For a direct child, the client
+selects link boxes matching the active clips of the parent rig and uses the
+aggregate link envelope when no matching clip is active. Nested links retain
+their own aggregate envelope because their clip indexes belong to another rig.
+The client projects those corners instead of walking or skinning combined-mesh
+vertices; live particle bounds can still expand and rerender the scratch frame.
 
 `Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
 root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,

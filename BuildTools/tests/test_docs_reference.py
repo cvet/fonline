@@ -338,9 +338,9 @@ class DocumentationReferenceTests(unittest.TestCase):
         self.assertEqual(len(anchors), model["summary"]["symbol_count"])
         self.assertFalse(any(line.endswith(" ") for line in rendered.splitlines()))
         self.assertIn("## Scope contract", english_index)
-        self.assertIn("2500 stable IDs", english_index)
+        self.assertIn("2501 stable IDs", english_index)
         self.assertIn("## Контракт области", russian_index)
-        self.assertIn("2500 стабильных ID", russian_index)
+        self.assertIn("2501 стабильных ID", russian_index)
         self.assertNotIn("The complete current inventory", russian_index)
 
     def test_engine_russian_pages_pin_hashes_and_use_semantic_overlay(self) -> None:

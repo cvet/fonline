@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 // Helper: wait for `predicate` to become true, polling every 1 ms up to `max_wait`.
 // Used instead of sleep+CHECK to keep tests robust against scheduler jitter
-static auto WaitFor(std::function<bool()> predicate, std::chrono::milliseconds max_wait = std::chrono::milliseconds {500}) -> bool
+static auto WaitFor(function<bool()> predicate, std::chrono::milliseconds max_wait = std::chrono::milliseconds {500}) -> bool
 {
     auto deadline = std::chrono::steady_clock::now() + max_wait;
     while (std::chrono::steady_clock::now() < deadline) {

@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/testing/
 
 # Тестирование
 
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"2f2acd565f0502fc6195c5377a53eef81e08e4888be28bafd98b835547f4935e"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"be4f8add5bb817cfa7d9d083c099c0f331ed4c946231042e070aaad78a6a53aa"} -->
 
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
@@ -76,6 +76,12 @@ Executable можно вызвать напрямую с аргументами 
 `Binaries/Tests-*`, например
 `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` или
 `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
+
+Tests dump-ов atlas и render target используют `TexDumpArtifacts` из
+`Source/Tests/Test_DumpArtifacts.h`. До production dump test сохраняет snapshot
+существующих каталогов `TexDump_*`, а затем удаляет только новые каталоги своего
+run. Поэтому parallel или прерванный test session не удаляет ранее собранные
+diagnostic evidence, а cleanup ограничен artifacts с доказанным ownership.
 
 Для Visual Studio/MSBuild `RunUnitTests` пишет process output в
 `<build-dir>/<ProjectDevName>_UnitTests.log` и использует exit code процесса.

@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4965,
-    "current_count": 4965,
+    "entry_count": 4969,
+    "current_count": 4969,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2502,
-      "current_count": 2502,
+      "entry_count": 2503,
+      "current_count": 2503,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15871,6 +15871,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.server.Server.SingleThreadedLogic/description",
+          "source": "If true, all game logic runs on one worker thread and scripts need no explicit entity synchronization",
+          "source_sha256": "f0c058599eae0f4edca39d294d1481bef9a88125d846712efdb5a7713359592a",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.server.Server.SyncPeriodMs/description",
           "source": "Sync-point job period in milliseconds (100 FPS by default)",
           "source_sha256": "f38db5ef388a156ffea687f3debce4890206245b2c12fa6f2fec9fd326b89d3f",
@@ -22359,8 +22365,8 @@
     },
     "map-format": {
       "source_model": "Docs/generated/map-format.json",
-      "entry_count": 207,
-      "current_count": 207,
+      "entry_count": 210,
+      "current_count": 210,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -23391,6 +23397,24 @@
           "status": "current"
         },
         {
+          "locator": "/rules/@id=map-format.rule.multihex-lines-runtime/description",
+          "source": "Server static and dynamic materialization index every expanded line cell to the same item and recache its blocking and interaction flags.",
+          "source_sha256": "04e1660de475121e99892babb27ea31a53a15a0a2586e9c3af7fcc5fbccb5eaf",
+          "status": "current"
+        },
+        {
+          "locator": "/rules/@id=map-format.rule.multihex-lines-runtime/name",
+          "source": "Runtime multihex-line footprint",
+          "source_sha256": "e4348db0c6d994d4235e4a8503e0b787b6add230d16c44da8c424e7e0d5917f8",
+          "status": "current"
+        },
+        {
+          "locator": "/rules/@id=map-format.rule.multihex-lines-runtime/requirement",
+          "source": "Treat MultihexLines as part of an item's complete runtime footprint around both its anchor and every valid MultihexMesh cell.",
+          "source_sha256": "495d17b3216a87074a9aa277eaa527b018910a0d157bd0b362085a278e9a90b2",
+          "status": "current"
+        },
+        {
           "locator": "/rules/@id=map-format.rule.multihex-mesh/description",
           "source": "An odd coordinate count fails mapper serialization.",
           "source_sha256": "1db342baa55001182d9845f7dd3051cdb86094fc9f7f6c0f575327885ae4089d",
@@ -23828,14 +23852,14 @@
         },
         {
           "locator": "/rules/@id=model-format.rule.baked-link-bounds/rationale",
-          "source": "Runtime framing projects selected-link envelope corners instead of walking and skinning combined-mesh vertices.",
-          "source_sha256": "69c22e6cf205189207709964213cc04ce1e4846199a807235671706f5e01778d",
+          "source": "Runtime framing selects direct-child bounds for active parent clips and falls back to the aggregate link envelope instead of walking and skinning combined-mesh vertices.",
+          "source_sha256": "8f50f9cce65e96d54ad14f7932e3b5bb9270fe1d1cd17afc8c74eeaaaebcd095",
           "status": "current"
         },
         {
           "locator": "/rules/@id=model-format.rule.baked-link-bounds/requirement",
-          "source": "Every non-particle child link carries a validated baked root-space AABB; default and particle links carry no geometry payload.",
-          "source_sha256": "596e68b9b759316552db736920198fe4dc2ce37979ace92fa55b87910b858a4e",
+          "source": "Every non-particle child link carries a validated aggregate root-space AABB plus per-animation AABBs for its parent's mapped clips; default and particle links carry no geometry payload.",
+          "source_sha256": "8f3577c8290270029dd8ed1002cab4f580134d2c1d8acc2458d0fd30a04f53d1",
           "status": "current"
         },
         {

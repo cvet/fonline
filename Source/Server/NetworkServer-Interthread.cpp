@@ -143,11 +143,13 @@ InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewCon
     }
 
     auto connection_registry = GetConnectionRegistry();
-    InterthreadListeners.emplace(_virtualPort, [connection_registry_ = std::move(connection_registry), settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) mutable -> InterthreadDataCallback FO_DEFERRED {
+    // The registry hands the listener out by copy, so the move-only connection callback travels behind a shared owner
+    auto shared_callback = SafeAlloc::MakeShared<NewConnectionCallback>(std::move(callback));
+    InterthreadListeners.emplace(_virtualPort, [connection_registry_ = std::move(connection_registry), settings, callback_ = std::move(shared_callback)](InterthreadDataCallback client_send) mutable -> InterthreadDataCallback FO_DEFERRED {
         auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
 
         if (connection_registry_->TrackConnection(conn)) {
-            callback_(conn);
+            (*callback_)(conn);
         }
 
         return [conn_ = conn](const_span<uint8_t> buf) mutable FO_DEFERRED { conn_->Receive(buf); };

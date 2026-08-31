@@ -1447,8 +1447,8 @@
     {
       "id": "model-format.rule.baked-link-bounds",
       "name": "Baked geometry-link bounds",
-      "requirement": "Every non-particle child link carries a validated baked root-space AABB; default and particle links carry no geometry payload.",
-      "rationale": "Runtime framing projects selected-link envelope corners instead of walking and skinning combined-mesh vertices.",
+      "requirement": "Every non-particle child link carries a validated aggregate root-space AABB plus per-animation AABBs for its parent's mapped clips; default and particle links carry no geometry payload.",
+      "rationale": "Runtime framing selects direct-child bounds for active parent clips and falls back to the aggregate link envelope instead of walking and skinning combined-mesh vertices.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1462,14 +1462,16 @@
           "path": "Source/Client/ModelInformation.cpp",
           "anchors": [
             "Baked model geometry link has no bounds",
-            "Baked model link geometry flag does not match its child type"
+            "link animation bounds",
+            "Model link animation bounds name an animation"
           ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
           "anchors": [
             "CollectActiveAnimationBounds",
-            "Active model link bounds are invalid"
+            "select_link_bounds",
+            "Model link clip bounds are invalid"
           ]
         }
       ]
@@ -1566,5 +1568,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "c6a3ec054d2d0df5013725e5383d4287d45387a0ed150e562f8c17983449a7b0"
+  "contract_digest": "f6b988ffdcc8e32bca13a9318482407410733edf7ddeb44fc30a4af53e3faa84"
 }

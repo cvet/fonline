@@ -317,12 +317,16 @@ inputs are baked per clip, so the result is constant for a given animation and c
 drift within it.
 
 The automatic logical frame owns the reusable 2x scratch render target. The
-client unions baked active-animation bounds with the AABBs serialized on every
-selected non-particle child link, then projects the eight envelope corners across
-the facing sweep. This keeps layer/equipment geometry in a facing-independent
-fixed frame without a per-frame weighted-vertex walk. Only currently-emitting
-particle systems extend this envelope; a dormant effect reserves no frame and is
-absorbed by the bounded expansion pass if it starts emitting.
+client unions baked active-animation bounds with the per-animation AABBs of
+selected direct non-particle child links whose parent clips are active. If no
+matching clip is active, or a link is nested under another child rig, the baked
+aggregate link envelope is used. It then projects the eight selected corners
+across the facing sweep. This keeps layer/equipment geometry in a
+facing-independent fixed frame without reserving a rigid attachment's entire
+all-animation travel or performing a per-frame weighted-vertex walk. Only
+currently-emitting particle systems extend this envelope; a dormant effect
+reserves no frame and is absorbed by the bounded expansion pass if it starts
+emitting.
 
 The dynamic draw envelope is `ModelSpriteBounds::Rect`: baked geometry,
 projected shadow, live particles, and any effect-forced full frame. It remains

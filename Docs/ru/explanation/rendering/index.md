@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"b370a710d385ba2e01336df80f50a91ee052a5fa1dc9a9b88ae77bea0a99e814"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"46b532a0da05213b72d6571fc7081c2abbb7d92df2ff8f584f2114e682829967"} -->
 
 # Frontend и рендеринг
 
@@ -357,10 +357,13 @@ name на standing height; при этом более широкий lying pose 
 время удара. Оба input baked per clip, и результат не дрейфует внутри animation.
 
 Automatic logical frame владеет переиспользуемым scratch render target 2x.
-Клиент объединяет baked active-animation bounds с AABB каждого выбранного
-non-particle child link, затем проецирует восемь corners envelope по facing
-sweep. Это удерживает layer/equipment geometry в facing-independent fixed frame
-без per-frame weighted-vertex walk. Envelope расширяют только emitting particle
+Клиент объединяет baked active-animation bounds с per-animation AABB выбранных
+direct non-particle child links, parent clips которых активны. Если matching
+clip не активен либо link вложен под другой child rig, используется baked
+aggregate link envelope. Затем восемь выбранных corners проецируются по facing
+sweep. Это удерживает layer/equipment geometry в facing-independent fixed frame,
+не резервируя полный all-animation travel rigid attachment и не выполняя
+per-frame weighted-vertex walk. Envelope расширяют только emitting particle
 systems; dormant effect ничего не резервирует и попадает в bounded expansion
 pass, если начинает emission.
 

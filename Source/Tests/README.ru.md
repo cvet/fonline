@@ -6,7 +6,7 @@ locale: ru
 document_id: unit-tests-readme
 ---
 
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"03516dba46d095ef5b59fdcf84f9dfbd842c1561a943ce7ba11c7a8f6a74225c"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"8e8493dc53dd1a51b42413a31f6679ebd725cb82c2f515a089e5e995af41a2e6"} -->
 
 # Модульные тесты
 
@@ -53,6 +53,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_FunctionObjects.cpp`
 - `Source/Tests/Test_GenericUtils.cpp`
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
@@ -63,6 +64,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_SettingsStorage.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
@@ -192,6 +194,20 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 
 Отчёты о покрытии создаются в `CodeCoverage/<Toolchain>/<Platform-Config>/`,
 а `Source/Tests/` исключается из знаменателя покрытия исходного кода.
+
+## Общие вспомогательные средства тестов
+
+Заголовочные вспомогательные средства находятся рядом с наборами тестов и не входят в `FO_TESTS_SOURCE`:
+
+- `Source/Tests/Test_BakerHelpers.h` содержит fixtures запечённых ресурсов (спрайтов, прототипов и metadata) и
+  `TestRig`, который запускает настоящие bakers поверх источников в памяти.
+- `Source/Tests/Test_ParticleFixtures.h` содержит fixtures ресурсов частиц.
+- `Source/Tests/Test_ImGuiHarness.h` нажимает виджеты ImGui по label, чтобы ветвь за кнопкой,
+  checkbox, selectable или свёрнутой секцией выполнялась в headless-кадре. Контракт закреплён
+  тестом `ImGuiTestHarnessPressesWidgetsByLabel` в `Test_ImGui.cpp`; правила использования приведены
+  в разделе [Тестирование](../../Docs/ru/contributing/testing/).
+- `Source/Tests/Test_DumpArtifacts.h` запоминает каталоги `TexDump_*`, существующие в рабочем каталоге,
+  чтобы набор, запускающий выгрузку atlas, удалял только артефакты, созданные собственным запуском.
 
 ## Примечания
 

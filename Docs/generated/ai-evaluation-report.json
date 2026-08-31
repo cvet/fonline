@@ -372,10 +372,10 @@
           "passed": true,
           "top_document_ids": [
             "project-local-dependencies",
-            "exception-safety",
             "baking-pipeline",
-            "client-updater",
-            "native-essentials"
+            "exception-safety",
+            "native-essentials",
+            "client-updater"
           ]
         }
       ],

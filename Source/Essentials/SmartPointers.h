@@ -35,6 +35,7 @@
 
 #include "BasicCore.h"
 #include "FatalError.h"
+#include "FunctionObjects.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -56,7 +57,7 @@ concept dynamically_castable_to = requires(From& from) { dynamic_cast<To&>(from)
 namespace details
 {
     template<typename T>
-    [[nodiscard]] FO_FORCE_INLINE auto make_void_ptr(T* value) noexcept -> void*
+    [[nodiscard]] auto make_void_ptr(T* value) noexcept -> void*
     {
         return const_cast<void*>(static_cast<const void*>(value));
     }
@@ -2192,38 +2193,40 @@ static_assert(!std::is_copy_constructible_v<unique_del_ptr<int32_t>>);
 // Heterogeneous wrapper comparison
 template<typename L, typename R>
     requires((is_borrow_pointer_wrapper_v<L> || is_owning_pointer_v<L>) && (is_borrow_pointer_wrapper_v<R> || is_owning_pointer_v<R>) && !std::is_same_v<L, R> && requires(const L& l, const R& r) { l.get() == r.get(); })
-[[nodiscard]] FO_FORCE_INLINE auto operator==(const L& lhs, const R& rhs) noexcept -> bool
+[[nodiscard]] auto operator==(const L& lhs, const R& rhs) noexcept -> bool
 {
     return lhs.get() == rhs.get();
 }
 
 template<typename T>
-[[nodiscard]] FO_FORCE_INLINE auto adopt_unique_ptr(ptr<T> value) noexcept -> unique_ptr<T>
+[[nodiscard]] auto adopt_unique_ptr(ptr<T> value) noexcept -> unique_ptr<T>
 {
     return unique_ptr<T> {value.get()};
 }
 
 template<typename T>
-[[nodiscard]] FO_FORCE_INLINE auto adopt_unique_ptr(nptr<T> value) noexcept -> unique_ptr<T>
+[[nodiscard]] auto adopt_unique_ptr(nptr<T> value) noexcept -> unique_ptr<T>
 {
     ptr<T> checked_value = value;
     return adopt_unique_ptr(checked_value);
 }
 
+// Unlike the wrappers above these do not just move a pointer: each erases the caller deleter into a
+// `function<void(T*)>`, which is too much body for a forced inline to be honoured
 template<typename T, typename Deleter>
-[[nodiscard]] FO_FORCE_INLINE auto make_unique_del_ptr(ptr<T> value, Deleter&& deleter) -> unique_del_ptr<T>
+[[nodiscard]] auto make_unique_del_ptr(ptr<T> value, Deleter&& deleter) -> unique_del_ptr<T>
 {
     return unique_del_ptr<T> {value.get(), std::forward<Deleter>(deleter)};
 }
 
 template<typename T, typename Deleter>
-[[nodiscard]] FO_FORCE_INLINE auto make_unique_del_ptr(nptr<T> value, Deleter&& deleter) -> unique_del_nptr<T>
+[[nodiscard]] auto make_unique_del_ptr(nptr<T> value, Deleter&& deleter) -> unique_del_nptr<T>
 {
     return unique_del_nptr<T> {value.get(), std::forward<Deleter>(deleter)};
 }
 
 template<typename T>
-[[nodiscard]] FO_FORCE_INLINE auto take_not_null(unique_del_nptr<T>& value) noexcept -> unique_del_ptr<T>
+[[nodiscard]] auto take_not_null(unique_del_nptr<T>& value) noexcept -> unique_del_ptr<T>
 {
     FO_BASIC_STRONG_ASSERT(value);
     auto value_ptr = ptr<T> {value};

@@ -403,6 +403,7 @@ FIXED_SETTING(bool, Server, CollapseLogOnStart, false); // If true, log is colla
 FIXED_SETTING(int32_t, Server, MaxServerLogLines, 1000); // Maximum server log lines in UI
 FIXED_SETTING(int32_t, Server, LockMaxWaitTime, 100); // Maximum lock wait time in milliseconds
 FIXED_SETTING(int32_t, Server, WorkerThreads, 0); // Worker thread count for entity processing (0 = auto)
+FIXED_SETTING(bool, Server, SingleThreadedLogic, false); // If true, all game logic runs on one worker thread and scripts need no explicit entity synchronization
 FIXED_SETTING(bool, Server, WriteHealthFile, false); // If true, health file is written
 FIXED_SETTING(bool, Server, ProtoMapStaticGrid, false); // If true, proto map static grid is enabled
 FIXED_SETTING(bool, Server, MapInstanceStaticGrid, false); // If true, map instance static grid is enabled

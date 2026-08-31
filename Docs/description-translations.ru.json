@@ -1955,12 +1955,12 @@
           "translation": "Запечённые bounds geometry link"
         },
         "/rules/@id=model-format.rule.baked-link-bounds/rationale": {
-          "source_sha256": "69c22e6cf205189207709964213cc04ce1e4846199a807235671706f5e01778d",
-          "translation": "Runtime framing проецирует corners envelope выбранного link вместо обхода и skinning combined-mesh vertices."
+          "source_sha256": "8f50f9cce65e96d54ad14f7932e3b5bb9270fe1d1cd17afc8c74eeaaaebcd095",
+          "translation": "Runtime framing выбирает bounds direct child для active parent clips и при их отсутствии использует aggregate link envelope вместо обхода и skinning combined-mesh vertices."
         },
         "/rules/@id=model-format.rule.baked-link-bounds/requirement": {
-          "source_sha256": "596e68b9b759316552db736920198fe4dc2ce37979ace92fa55b87910b858a4e",
-          "translation": "Каждый non-particle child link содержит проверенный baked root-space AABB; default и particle links не содержат geometry payload."
+          "source_sha256": "8f3577c8290270029dd8ed1002cab4f580134d2c1d8acc2458d0fd30a04f53d1",
+          "translation": "Каждый non-particle child link содержит проверенный aggregate root-space AABB и per-animation AABB mapped clips parent; default и particle links не содержат geometry payload."
         },
         "/rules/@id=model-format.rule.selector-order/name": {
           "source_sha256": "6030dfb7525b1ac3baa9f794922bbb56536e01a6a9129b92c70f1e4d3cc0e388",
@@ -4335,6 +4335,18 @@
         "/rules/@id=map-format.rule.mapper-round-trip/requirement": {
           "source_sha256": "1050d9ee4146fb707e51707bf475ada9b6a42fea4cf9b75b1a5ac840bab7786e",
           "translation": "Проверяйте сохранённые Mapper diff как нормализованный output, а не побайтовую сериализацию."
+        },
+        "/rules/@id=map-format.rule.multihex-lines-runtime/description": {
+          "source_sha256": "04e1660de475121e99892babb27ea31a53a15a0a2586e9c3af7fcc5fbccb5eaf",
+          "translation": "Серверная материализация статических и динамических предметов индексирует каждую развёрнутую ячейку линии на тот же предмет и пересчитывает его флаги блокировки и взаимодействия."
+        },
+        "/rules/@id=map-format.rule.multihex-lines-runtime/name": {
+          "source_sha256": "e4348db0c6d994d4235e4a8503e0b787b6add230d16c44da8c424e7e0d5917f8",
+          "translation": "Runtime-контур multihex-линий"
+        },
+        "/rules/@id=map-format.rule.multihex-lines-runtime/requirement": {
+          "source_sha256": "495d17b3216a87074a9aa277eaa527b018910a0d157bd0b362085a278e9a90b2",
+          "translation": "Считайте MultihexLines частью полного runtime-контура предмета вокруг его якоря и каждой допустимой ячейки MultihexMesh."
         },
         "/rules/@id=map-format.rule.multihex-mesh/description": {
           "source_sha256": "1db342baa55001182d9845f7dd3051cdb86094fc9f7f6c0f575327885ae4089d",
@@ -17920,6 +17932,10 @@
         "/symbols/@id=setting.server.Server.ServerPropertiesPackData/description": {
           "source_sha256": "f3ff134c5d47e74cfc70bf05784d364b5b6ff19b27285a701d30fea481d73032",
           "translation": "Если true, серверные сущности с прототипами используют оверлейное хранилище свойств"
+        },
+        "/symbols/@id=setting.server.Server.SingleThreadedLogic/description": {
+          "source_sha256": "f0c058599eae0f4edca39d294d1481bef9a88125d846712efdb5a7713359592a",
+          "translation": "Если true, вся игровая логика выполняется в одном worker thread и скриптам не нужна явная синхронизация сущностей"
         },
         "/symbols/@id=setting.server.Server.ServerWidth/description": {
           "source_sha256": "677b3b7701267f5e21f97a7406ab310eb067fea325c2885b3665102605c3f85b",

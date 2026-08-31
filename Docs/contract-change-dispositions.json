@@ -1260,6 +1260,42 @@
       "release_note": "Record the 0.0.43 compatibility cutover with frame-local input parsing, retained-input bounds, remote-call structural limits, and the server-wide payload ceiling in the documentation verification record.",
       "compatibility": "This is an intentional client/server metadata boundary. Engine binaries, generated bindings, both baked metadata targets, resources, and packaged configuration require one coordinated release.",
       "owner": "runtime-networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.adc0c0a231029e33",
+      "baseline_contract_sha256": "c429722b76310216337ecfd900477e1a58c56e3c4f30b7c85294c07bfc4d0cf4",
+      "current_contract_sha256": "eafb061c00bfa11269d9fa904336a4e9c03588ec39d7c19f810e5817b0b9dade",
+      "classification": "breaking",
+      "rationale": "The native-codegen API contract now includes Server.SingleThreadedLogic, increasing the strict symbol inventory from 2500 to 2501. The setting exposes an intentional server scheduling mode in which game logic uses one worker and script-side entity synchronization is unnecessary.",
+      "migration": "Regenerate script and API artifacts, keep the default multi-worker mode unless the embedding project deliberately selects single-threaded logic, and review script synchronization assumptions before changing the setting.",
+      "release_note": "Document Server.SingleThreadedLogic in the generated settings reference and the server-runtime scheduling and synchronization guidance for this Engine revision.",
+      "compatibility": "The setting is additive, but strict API-model consumers must adopt the regenerated inventory. Engine binaries, generated metadata, baked configuration, and embedding-project settings should update together.",
+      "owner": "runtime-server"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.6025c902a1a76d69",
+      "baseline_contract_sha256": "c429722b76310216337ecfd900477e1a58c56e3c4f30b7c85294c07bfc4d0cf4",
+      "current_contract_sha256": "eafb061c00bfa11269d9fa904336a4e9c03588ec39d7c19f810e5817b0b9dade",
+      "classification": "breaking",
+      "rationale": "The compatibility marker advances from 0.0.43 to 0.0.44 with the Engine-owned callable wrappers and configurable-inline-capacity string cutover. Native layout, allocation, callback, and string ownership contracts must not be mixed with binaries built against the previous primitives.",
+      "migration": "Update Engine and embedding project together, rebuild every native role and extension, regenerate native sources and metadata, and fully rebake resources. Replace persisted or ABI-facing assumptions about std::function and std::basic_string with the documented Engine callable and string vocabulary.",
+      "release_note": "Record the 0.0.44 compatibility cutover and link the callable, string, allocation, and exception-safety contracts in the native Essentials and verification record.",
+      "compatibility": "This is an intentional native compatibility boundary. Engine binaries, native extensions, generated bindings, baked metadata and resources, and packaged tools require one coordinated release.",
+      "owner": "runtime-core"
+    },
+    {
+      "domain": "model-format",
+      "change_id": "model-format-change.modified.c05ef827feb012c4",
+      "baseline_contract_sha256": "024da8134609b7c820148374190950f355ee2d9a14925829bf8ab34bb897b569",
+      "current_contract_sha256": "77339d4533c7012c933862739e9a99d56cd1d431d007a38be86233424c9a8d39",
+      "classification": "breaking",
+      "rationale": "Baked non-particle model links now carry per-animation root-space AABBs in addition to their aggregate envelope. Runtime preview framing selects the active parent clip's direct-child bounds and uses the aggregate only as fallback, avoiding over-wide framing across unrelated animations.",
+      "migration": "Update Engine and project together, fully rebake every affected model-info resource, reject old link payloads, and visibly validate preview framing for representative clips, nested attachments, default links, and particle links.",
+      "release_note": "Document per-animation link-bound baking, direct-child runtime selection, aggregate fallback, and visible validation in the model-format, baking-pipeline, rendering, and client-runtime references.",
+      "compatibility": "The baked model-info link payload changed and is revision-pinned. Runtime binaries and fully rebaked model resources must ship together; there is no fallback parser for the previous payload shape.",
+      "owner": "content-rendering"
     }
   ]
 }

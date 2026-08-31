@@ -80,7 +80,7 @@
     ]
   },
   "engine_tests": {
-    "test_file_count": 101,
+    "test_file_count": 103,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -118,6 +118,7 @@
       "Source/Tests/Test_ExtendedTypes.cpp",
       "Source/Tests/Test_FileSystem.cpp",
       "Source/Tests/Test_FogOfWar.cpp",
+      "Source/Tests/Test_FunctionObjects.cpp",
       "Source/Tests/Test_GenericUtils.cpp",
       "Source/Tests/Test_Geometry.cpp",
       "Source/Tests/Test_GlobalData.cpp",
@@ -173,6 +174,7 @@
       "Source/Tests/Test_SettingsStorage.cpp",
       "Source/Tests/Test_SmartPointers.cpp",
       "Source/Tests/Test_StackTrace.cpp",
+      "Source/Tests/Test_StringObject.cpp",
       "Source/Tests/Test_StringUtils.cpp",
       "Source/Tests/Test_StrongType.cpp",
       "Source/Tests/Test_TextBaker.cpp",
@@ -186,7 +188,7 @@
     ]
   },
   "settings": {
-    "declaration_count": 283,
+    "declaration_count": 284,
     "source": "Source/Common/Settings.inc"
   }
 }

@@ -504,6 +504,20 @@
       }
     },
     {
+      "id": "map-format.rule.multihex-lines-runtime",
+      "name": "Runtime multihex-line footprint",
+      "requirement": "Treat MultihexLines as part of an item's complete runtime footprint around both its anchor and every valid MultihexMesh cell.",
+      "stability": "experimental",
+      "description": "Server static and dynamic materialization index every expanded line cell to the same item and recache its blocking and interaction flags.",
+      "source": {
+        "path": "Source/Server/Map.cpp",
+        "anchors": [
+          "ForEachMultihexLines(multihex_lines, hex",
+          "SetMultihexEntries"
+        ]
+      }
+    },
+    {
       "id": "map-format.rule.error-aggregation",
       "name": "Error aggregation",
       "requirement": "Treat any accumulated entity load or property/resource validation error as a failed map bake.",
@@ -3559,7 +3573,7 @@
     "directive_count": 5,
     "ownership_count": 4,
     "supported_ownership_count": 3,
-    "rule_count": 16,
+    "rule_count": 17,
     "property_count": 108,
     "authorable_property_count": 87,
     "excluded_property_count": 21,
@@ -3574,5 +3588,5 @@
       "Map": 14
     }
   },
-  "contract_digest": "dcfc919cf691c5a7ae01a943e42e850b9aa58f9b2ce64fc6e1b0f5a33d6d0f4f"
+  "contract_digest": "dfd4b084c30506fb490134d815f495da0843ba79733b7273e503436d909f4cf8"
 }

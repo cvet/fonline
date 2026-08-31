@@ -6,7 +6,7 @@ document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
 
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"867d028be74e636ddcc4cc229047c3f380c67617faa451abee41793f23e43fac"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"fbe82911b8dd868355ecfc1e50ffba33ff70b72ad4e17dcc55e1f2aefbe078d7"} -->
 
 # Модель сущностей
 
@@ -101,6 +101,16 @@ Item ownership resolvers являются эталонным шаблоном: �
 
 Типизированное и скриптовое присваивание свойств отклоняет не конечные floating-point leaves до записи, в том числе значения внутри массивов, структур и ключей или значений словарей. Та же проверка повторяется после того, как setter callback изменили raw-данные, а сериализация документа и текста отклоняет не конечные значения, если доверенное бинарное восстановление или native-код передали повреждённый payload.
 
+Числовые metadata `Min = value` и `Max = value` применяются при каждой записи.
+Регистрация принимает signed integer и конечные decimal literals только в
+границах scalar base type свойства, запрещает повторные bounds, enum, compound
+records, dictionaries и инвертированный диапазон. Для plain numeric array одна
+граница применяется к каждому элементу. Assignment, raw restore,
+text/document load и payload после setter clamp-ятся до сравнения с сохранённым
+значением. Поэтому запись, полностью поглощённая диапазоном, не вызывает setter
+или post-setter notification об изменении. Проверка finite выполняется до clamp:
+NaN и infinity являются ошибкой, а не значениями для замены endpoint-ом.
+
 Хранилище raw-данных свойств имеет естественное выравнивание: storage blob и буферы `PropertyRawData` начинаются с максимального выравнивания, регистрация layout структуры проверяет выравнивание смещений полей, а overlay/POD offsets следуют выравниванию данных каждого свойства. Поэтому readers свойств используют обычные типизированные загрузки без обходов unaligned access и runtime-проверок выравнивания; нарушение контракта обнаруживают sanitizer-сборки. Равенство raw payload проверяется побайтно (`MemCompare`): общая длина payload не повышает требования к его выравниванию.
 
 ## Runtime свойств
@@ -118,6 +128,7 @@ Item ownership resolvers являются эталонным шаблоном: �
 - `Synced`, `OwnerSync`, `PublicSync`, `NoSync` задают сетевую репликацию.
 - `ModifiableByClient` и `ModifiableByAnyClient` разрешают изменения, пришедшие от клиента.
 - `Virtual`, `Mutable`, `Persistent`, `Historical`, `Nullable` и `Temporary` влияют на хранение, callback, persistence и скриптовые контракты.
+- `Min` и `Max` задают включительный clamp range числового scalar или plain numeric array.
 
 При изменении метаданных свойств одновременно обновляйте runtime- и script/nullability-документацию, если изменение затрагивает видимые скриптам сигнатуры. См. [Nullability.md](../../../Nullability.md).
 

@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"6743cc2678333f6b562112460ac251cf3b6439b8c53ac91328c940bcfc72874b"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"904518250c363682fbe0ee1b8a98076e1fb1b9b7e301f940f43aec655c024015"} -->
 
 # Конвейер запекания ресурсов
 
@@ -315,17 +315,23 @@ Bounds attachments переиспользуют один sampled bone track на
 descriptions строятся независимо и объединяются в sorted source order.
 
 Каждый binary description link также содержит явный geometry discriminator:
-non-particle child links несут обязательный root-space AABB, а default link и
-particle links не имеют geometry payload. Invalid flags, missing child bounds и
-degenerate AABB отклоняются. Missing/invalid aggregate или animation bounds
-являются bake error. Loader строго проверяет version, required bounds и parallel
-arrays. Duration и bounds groups независимы: aliases могут
+non-particle child links несут обязательный aggregate root-space AABB и затем
+`(state, action, AABB)` bounds каждого mapped parent clip; default link и
+particle links не имеют geometry payload. Несколько state/action pairs,
+использующих один sampled clip, ссылаются на его общий box. Invalid flags,
+missing child bounds, неизвестные animation pairs и degenerate AABB отклоняются.
+Missing/invalid aggregate или animation bounds являются bake error. Loader
+строго проверяет version, required bounds и parallel arrays. Duration и bounds groups независимы: aliases могут
 создать duration-only keys, а raw `.fo3d` — bounds-only keys. Static section
 может не иметь обеих групп, но companion без model sections malformed.
 
-Runtime объединяет active-animation bounds с envelopes выбранных links и
-проецирует только их corners вместо обхода и skinning combined-mesh vertices.
-Live particle bounds всё ещё могут расширить scratch frame и вызвать rerender.
+Runtime объединяет active-animation bounds с bounds выбранных links. Для direct
+child клиент выбирает link boxes, соответствующие active clips parent rig, и
+использует aggregate envelope, когда matching clip не активен. Nested links
+сохраняют собственный aggregate envelope, поскольку их clip indexes принадлежат
+другому rig. Клиент проецирует только эти corners вместо обхода и skinning
+combined-mesh vertices. Live particle bounds всё ещё могут расширить scratch
+frame и вызвать rerender.
 
 `ModelBounds` владеет finite/ordered AABB, point/bounds accumulation, transformed eight corners и guard `max(0.01, maxAbs * 0.001)`. `ModelBoundsCalculator` только читает baked data и sampling geometry. При отключении всех base meshes baker повторяет расчёт на unfiltered model; реально пустая/invalid geometry остаётся ошибкой.
 

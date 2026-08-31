@@ -58,6 +58,7 @@
 #include "PlayerView.h"
 #include "SettingsStorage.h"
 #include "Test_BakerHelpers.h"
+#include "Test_DumpArtifacts.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -1202,8 +1203,18 @@ namespace ClientEngineTest
         Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
 
         string[] noModels;
-        Game.Preload3dFiles(noModels);
-
+)"
+#if FO_ENABLE_3D
+                    R"(        Game.Preload3dFiles(noModels);
+)"
+#else
+                    R"(        // The binding stays exported without the 3D submodule and rejects the call
+        int preloadRejections = 0;
+        try { Game.Preload3dFiles(noModels); } catch { preloadRejections++; }
+        if (preloadRejections != 1) return -15;
+)"
+#endif
+                    R"(
         return 0;
     }
 
@@ -1516,10 +1527,9 @@ namespace ClientEngineTest
         hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
         // The model-backed proto lets the animation viewer build a real preview instead of stopping at a
         // missing model
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {
-            {string {"UnitTestClientCritter"}, [](ProtoCritter&) {}},
-            {string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.ToHashedString("Models/RuntimeInstance.fo3d")); }},
-        };
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+        critter_protos.emplace_back(string {"UnitTestClientCritter"}, [](ProtoCritter&) { });
+        critter_protos.emplace_back(string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.ToHashedString("Models/RuntimeInstance.fo3d")); });
         auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         auto script_blob = MakeClientScriptBinary(compiler_resources);
 
@@ -2157,7 +2167,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     struct SpriteBoundsStep
     {
         string_view Name {};
-        function<void(ptr<ModelInstance>)> Apply {};
+        void (*Apply)(ptr<ModelInstance>) {};
     };
 
     vector<SpriteBoundsStep> steps {
@@ -2944,6 +2954,11 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(client_resources)));
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    // The sweep below dumps the atlases, so the directories it writes are cleared once the case is done
+    const set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+
+    auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
 
     // The scripts below change the resolution, which writes through to the process-global app window and would
     // otherwise leave every later test computing ratios against the changed size

@@ -360,7 +360,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 099f0dba4161002f78a3e0c568dd51e845d8cef374fdc9ffe20a1ac5af91e5cb
+Content SHA-256: 27766486b5c4cce6f4d1f8623e2cc26aa5abfd4c7fdcdfdab3a34baf81893e08
 
 ---
 title: FOnline Public Contract Index
@@ -408,10 +408,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2500**
-- Symbols with source-backed descriptions: **2500**
+- Discovered symbols: **2501**
+- Symbols with source-backed descriptions: **2501**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2500**
+- Explicitly classified symbols: **2501**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -4157,7 +4157,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: 2f2acd565f0502fc6195c5377a53eef81e08e4888be28bafd98b835547f4935e
+Content SHA-256: be4f8add5bb817cfa7d9d083c099c0f331ed4c946231042e070aaad78a6a53aa
 
 ---
 layout: default
@@ -4215,6 +4215,13 @@ cover text compilation, dependency invalidation, malformed XML, and rejection
 of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. Test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` or `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
+
+Atlas and render-target dump tests use `TexDumpArtifacts` from
+`Source/Tests/Test_DumpArtifacts.h`. A test snapshots the existing
+`TexDump_*` directories before it invokes production dumping, then removes only
+new directories created by that run. This prevents parallel or interrupted
+test sessions from deleting pre-existing diagnostic evidence and keeps cleanup
+scoped to artifacts the test can prove it owns.
 
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
 
@@ -6044,7 +6051,7 @@ When an embedding project advances its Engine revision:
 ===== BEGIN DOCUMENT map-format-guide =====
 Source: Docs/en/how-to/content/map-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/map-format.html
-Content SHA-256: 1eea266a44b114e0ab2d31823c9489eb44f0def4c84cd33644fe1d98e56046c0
+Content SHA-256: cd72eed704aecb3db0397d7385e5f7a206d556694f195cb7a35270869ed5c853
 
 ---
 layout: default
@@ -6242,6 +6249,15 @@ MultihexMesh = \
 ```
 
 An odd number of values fails serialization. Mapper load may also coalesce eligible items into multihex meshes according to prototype `MultihexGeneration`; saving after that operation can substantially rewrite placement layout. Review those diffs as semantic map changes.
+
+`MultihexLines` is prototype-owned directional geometry expanded around the
+placement anchor. Server materialization applies those line cells to static and
+dynamic map items, and also expands the lines around every valid
+`MultihexMesh` cell. All resulting cells point to the same item and participate
+in cached blocking/interaction flags. Runtime placement therefore treats the
+authored anchor, mesh cells, and their line expansions as one footprint; a
+project validator must check the complete expanded footprint, not only the
+anchor and explicit mesh pairs.
 
 ## Mapper Round-Trip
 
@@ -9023,7 +9039,7 @@ production game's visual policy.
 ===== BEGIN DOCUMENT mapper-interactive-manual =====
 Source: Docs/en/how-to/tools/mapper-interactive.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper-interactive.html
-Content SHA-256: b021026bc629ff501477cc19a4a781f8943e669243cefffe365dc1ce0b0eabff
+Content SHA-256: 8984833f19d34fa517cfb1e44de7682c5f0b5528a60f586d90a576da06d37202
 
 ---
 layout: default
@@ -9099,9 +9115,12 @@ The normal work surfaces are:
 | **History** | Inspect and jump through the current map's undo/redo history. |
 | **Console** | Run mapper commands and review command history. |
 
-Map browser and Controls start visible in a fresh layout. Workspace is toggled
-with `F7`; Content uses `Shift+F7`. The Inspector appears with `F9` when an
-entity or container item is selected.
+Map browser and Controls start visible in a fresh layout. Workspace remains
+available from the **Windows** menu; Content uses `Shift+F7`. `F7` hides or
+restores the entire ImGui interface so the map can be inspected or captured
+without editor chrome. Because the menu bar is hidden too, `F7` is the only way
+back from that mode. The Inspector appears with `F9` when an entity or container
+item is selected.
 
 ## Menu reference
 
@@ -9150,6 +9169,10 @@ entity.
 Visibility is an authoring aid. It does not remove content or prove runtime
 visibility, blocking, lighting, or ownership.
 
+When `Map.ScrollAxialArea` is nonzero, camera clamping keeps one complete map
+hex inside each configured edge, so the boundary row itself is outside the
+view. A zero rectangle leaves the whole map scrollable.
+
 ### Tools
 
 | Command | Intended use |
@@ -9191,7 +9214,7 @@ Workspace tabs are driven by loaded prototypes and project script
 customization. The stock modes include Item, Tile, Critter, Fast, Ignore,
 Inventory, Messages, Maps, and ten custom slots.
 
-1. Open Workspace with `F7`.
+1. Open Workspace from the **Windows** menu.
 2. Choose a tab and subtab.
 3. Filter by prototype name when the collection is large.
 4. Select a prototype preview to enter placement mode.
@@ -9241,7 +9264,7 @@ Hotkeys are suppressed while an ImGui text field is active.
 | Key | Action |
 |---|---|
 | `F1` .. `F6` | Toggle Items, Scenery, Walls, Critters, Tiles, and Fast visibility. |
-| `F7` / `Shift+F7` | Toggle Workspace / Content. |
+| `F7` / `Shift+F7` | Hide or restore the complete ImGui interface / toggle Content. |
 | `F8` | Toggle edge scrolling for the current fullscreen/windowed mode. |
 | `F9` | Open Inspector for selection, or clear selection when Inspector is visible. |
 | `F10` | Toggle the mapper hex overlay. |
@@ -10924,7 +10947,7 @@ python BuildTools\docs_validate.py
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: aa847497cc9d06b072881d2fdba888cf08f12856952c498467e92e153251ddea
+Content SHA-256: 58798e4c3372cc268ff93a797101e7b699b6468f36d336bc8fbb261fd2f7cc7c
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11085,7 +11108,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 
 ## Behavioral Rules
 
-- **Script callers own the complete native entity cover.** Before an ordinary server `FO_SCRIPT_API` call, AngelScript must acquire every existing entity the native call graph can read or mutate, including transitive map/location, holder, controlled-critter, and group dependencies. A native path reachable from that call may validate the prepared package with `ValidateEntityAccess()` and may call `EnsureEntitySynced()` freely and repeatedly to retain the own lock of an entity already covered by the current context. Both operations are idempotent no-ops once their condition is satisfied, so loops, repeated same-target calls, `catch` handlers, and recursion carry no call-count restriction. Each actual `EnsureEntitySynced()` acquisition never releases/reacquires the caller cover and never parks on a lock: it only ADDS the target's own lock plus the intermediate ancestor marks, as one all-or-nothing state-mutex transaction. Because the covering ancestor is held exclusively, any block it meets is a foreign thread mid-flight through its own non-blocking pass (releasing marks by lock address rather than hierarchy, or rolling back an ascending-address try-prefix), which clears in microseconds — so the acquisition is MANDATORY and retries the whole batch with bounded back-off until it lands, retaining nothing across the back-off. It throws only when the target is not actually covered or the covered-cover invariant is corrupt, never for ordinary transient contention, and a failure leaves the caller cover intact. It cannot repair an omitted unrelated existing dependency. Fresh parentless entities are captured only by the private trusted registration boundary before publication; that boundary never authorizes discovery or acquisition of pre-existing dependencies. Native code must not call `SyncEntity()` / `SyncEntities()` or otherwise obtain missing existing cover on the script's behalf. The explicit synchronization primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock`, and `Game.Unlock` are the exceptions because changing synchronization state is their script-visible purpose.
+- **Script callers own the complete native entity cover.** Before an ordinary server `FO_SCRIPT_API` call, AngelScript must acquire every existing entity the native call graph can read or mutate, including transitive map/location, holder, controlled-critter, and group dependencies. A native path reachable from that call may validate the prepared package with `ValidateEntityAccess()` and may call `EnsureEntitySynced()` freely and repeatedly to retain the own lock of an entity already covered by the current context. Both operations are idempotent no-ops once their condition is satisfied, so loops, repeated same-target calls, `catch` handlers, and recursion carry no call-count restriction. Each actual `EnsureEntitySynced()` acquisition never releases/reacquires the caller cover and never parks on a lock: it only ADDS the target's own lock plus the intermediate ancestor marks, as one all-or-nothing state-mutex transaction. Because the covering ancestor is held exclusively, any block it meets is a foreign thread mid-flight through its own non-blocking pass (releasing marks by lock address rather than hierarchy, or rolling back an ascending-address try-prefix), which clears in microseconds — so the acquisition is MANDATORY and retries the whole batch with bounded back-off until it lands, retaining nothing across the back-off. It throws only when the target is not actually covered or the covered-cover invariant is corrupt, never for ordinary transient contention, and a failure leaves the caller cover intact. It cannot repair an omitted unrelated existing dependency. Fresh parentless entities are captured only by the private trusted registration boundary before publication; that boundary never authorizes discovery or acquisition of pre-existing dependencies. Native code must not call `SyncEntity()` / `SyncEntities()` or otherwise obtain missing existing cover on the script's behalf. The explicit synchronization primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock`, and `Game.Unlock` are the exceptions because changing synchronization state is their script-visible purpose. The whole contract is opt-out: with the `Server.SingleThreadedLogic` setting the engine runs its logic on one worker, the cover model is bypassed, and scripts need no synchronization at all (see [Docs/ServerRuntime.md](Docs/ServerRuntime.md)).
 - **Fix the source, never mask.** When a lower layer returns a wrong result, swallows an error, or silently coerces bad input into "looks fine", fix it at the source (throw / validate / propagate) instead of papering over it from the caller with pre-checks, try/catch that fabricates a "good" value, default substitutes, or other workarounds. If you find yourself adding a guard that compensates for a bug elsewhere, stop and fix the bug instead.
 - **No legacy compatibility in the reusable engine.** When an engine API, configuration key, data format, or internal contract is replaced, remove the old surface completely. Do not retain deprecated aliases, fallback parsing, detection of removed keys, migration shims, compatibility branches, tests, or documentation for the removed contract. Compatibility-version markers may reject incompatible builds or data, but must not implement the old behavior. Migration of database-persisted game data belongs to the embedding project and must not leak into Engine.
 - **Keep engine invariants stable under exceptions.** An exception thrown partway through a multi-step engine mutation (entity create/register/destroy/invalidate, cross-entity links) must never leave a half-mutated, restart-only state. Engine allocation terminates on OOM (`SafeAlloc`/`SafeAllocator`), so `bad_alloc` is not a recoverable error and never a reason to build a rollback. A post-mutation invariant that "can only be false if the world is already corrupt" is a `FO_STRONG_ASSERT` (always-on, deterministic exit), not a swallowable `FO_VERIFY_AND_THROW`. Entity create/destroy is throw-as-signal, not transactional rollback (events may legitimately destroy or relocate the entity; the function throws but the entity is left in a valid state) — pinned by `Source/Tests/Test_EntityLifecycle.cpp` and `Test_ServerMapOperations.cpp`, so do not add a blanket create-time rollback. Full rules: [Docs/en/contributing/coding-contracts/exception-safety.md](Docs/en/contributing/coding-contracts/exception-safety.md).
@@ -11114,7 +11137,9 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - Use fixed-width types (`int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `int64_t`, `uint64_t`, `float32_t`, `float64_t`, `size_t`) instead of bare `int` / `float` in new engine code.
 - Do not use `auto` for primitive values or simple obvious types such as `string`, `hstring`, `size_t`, and the fixed-width aliases.
 - Use the engine smart-pointer vocabulary from `Source/Essentials/SmartPointers.h` — `ptr<T>`/`nptr<T>` for borrows, `unique_*`/`refcount_*` for owners, engine-own `shared_ptr`/`weak_ptr` via `SafeAlloc::MakeShared()` — instead of `std::` smart pointers or bare raw `T*`. Raw pointers remain only at the documented ABI/low-level allowlist boundaries; inside a function, bind them to wrappers before ordinary engine work and unwrap with `.get()` only at the final handoff. See [Docs/en/contributing/coding-contracts/smart-pointers.md](Docs/en/contributing/coding-contracts/smart-pointers.md). Embedding projects may add their own whole-tree audit, allowlist, and baseline, but those project-owned artifacts are not normative engine evidence.
-- **Use the engine container aliases from `Source/Essentials/Containers.h`, never their `std::` originals** — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector`. Each is the standard container instantiated on `SafeAllocator`, so it follows the terminate-on-OOM contract instead of throwing `std::bad_alloc`. For allocation that cannot be expressed as a C++ container, use `SafeAlloc`: the `Make*` family for typed objects, and the raw tier (`MallocRaw`/`CallocRaw`/`ReallocRaw`/`FreeRaw`, `MallocAlignedRaw`/`FreeAlignedRaw`) for third-party C-ABI hooks. Do not reach for bare `malloc`/`free`, and do not use `std::format`/`std::vformat`/`std::to_string`, which materialise a `std::allocator` string — format into an existing buffer with `std::format_to`/`std::vformat_to` instead. Exceptions are limited to foreign ABI boundaries, the Essentials modules above `MemorySystem` in the include order, and standard types with no allocator parameter; each one is recorded with a written reason. See [Essentials](Docs/en/reference/native/essentials.md). Embedding projects may enforce a stricter project-owned allocation audit, but its commands and allowlists do not define the reusable engine contract.
+- **Use the engine container aliases from `Source/Essentials/Containers.h`, never their `std::` originals** — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector`. Each follows the terminate-on-OOM contract instead of throwing `std::bad_alloc`: `string` and `wstring` are the engine `basic_string` from `Source/Essentials/StringObject.h`, whose small-string buffer is the `FO_STRING_INLINE_CAPACITY` build option, and the rest are standard containers instantiated on `SafeAllocator`. For allocation that cannot be expressed as a C++ container, use `SafeAlloc`: the `Make*` family for typed objects, and the raw tier (`MallocRaw`/`CallocRaw`/`ReallocRaw`/`FreeRaw`, `MallocAlignedRaw`/`FreeAlignedRaw`) for third-party C-ABI hooks. Do not reach for bare `malloc`/`free`, and do not use `std::format`/`std::vformat`/`std::to_string`, which materialise a `std::allocator` string — format into an existing buffer with `std::format_to`/`std::vformat_to` instead. Exceptions are limited to foreign ABI boundaries, the Essentials modules above `MemorySystem` in the include order, and standard types with no allocator parameter; each one is recorded with a written reason. See [Essentials](Docs/en/reference/native/essentials.md). Embedding projects may enforce a stricter project-owned allocation audit, but its commands and allowlists do not define the reusable engine contract.
+- **Use the engine callable wrappers from `Source/Essentials/FunctionObjects.h`, never `std::function`** — `function<Sig>` (an alias of `move_only_function<Sig>`) is the default, and `copyable_function<Sig>` is for a stored callable that is genuinely copied, such as one snapshotted during dispatch or handed to several owners. Both keep a small nothrow-movable target inside the wrapper, so an ordinary closure allocates nothing. When a `function` member no longer compiles because something copies it, first check whether the copy should be a `std::move`; reach for `copyable_function` only when the copy is the actual contract. The sole remaining `std::function` is the `StackTrace.h` script-provider hook, which sits above the callable module in the Essentials order. See [Essentials](Docs/en/reference/native/essentials.md).
+- **The engine `string` behaves as `std::basic_string`, so write it as you would the standard string.** The one difference is the tunable inline buffer, which is a build option rather than a source-level choice. Three interop rules do not follow from the standard: text handed to a standard string stream is copied through `make_stream_string`, a `std::filesystem::path` is built from an engine string with `fs_make_path`, and `getline` must be called unqualified so ADL finds the engine overload. See [Essentials](Docs/en/reference/native/essentials.md).
 - **Task-language definition:** in requirements, reviews, and conversation about engine code, informal wording such as “pointer”, “raw pointer”, “borrowed pointer”, “указатель”, or “сырой указатель” means a non-owning engine borrow, **not** permission to write a bare C++ `T*`. Use `ptr<T>` when presence is guaranteed and `nptr<T>` when absence is valid. A bare `T*` is authorized only when the request explicitly requires the literal C++ `T*` type **and** identifies a documented ABI/low-level boundary; if either condition is missing, the wrapper rule wins.
 - For `Entity` and derived types use **pointers**, not references.
 - Prefer `static` free functions for file-local helpers instead of unnamed namespaces.
@@ -11136,7 +11161,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 ===== BEGIN DOCUMENT exception-safety =====
 Source: Docs/en/contributing/coding-contracts/exception-safety.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/exception-safety.html
-Content SHA-256: 0cc37bd85ec70a8d44c5b742ff316d7d57096899d8b265820cdc6426fa6d6ee7
+Content SHA-256: 2ae86323d62d8fb3d5959157004361ceae162ad815ad970d685dbb4b62ba9a0e
 
 ---
 layout: default
@@ -11158,6 +11183,7 @@ Engine memory comes from paths that **terminate the process on exhaustion instea
 - `SafeAllocator<T>` (`MemorySystem.h`) backs **every engine container alias** - `vector`, `small_vector`, `unordered_map`/`unordered_set`, `map`/`set`, `list`, `deque`, `string`/`stringstream` (`Source/Essentials/Containers.h`). Its `allocate()` is nothrow + backup-pool retry + `ReportAndExit`. So `emplace`, `emplace_back`, `insert`, `resize`, `reserve`, rehash, complex-property storage growth, and string growth on engine containers **cannot throw `std::bad_alloc` - they terminate at the allocation site.**
 - The private model-animation codec installs an engine-owned allocator from `ModelAnimationData.cpp` before any runtime or offline Ozz object is created. Its aligned byte blocks are backed by `SafeAllocator<uint8_t>`, so Ozz uses the same rpmalloc, backup-pool retry, OOM reporting, and deterministic termination policy as engine containers. The vendored Ozz sources remain identical to the pinned upstream release; each linked host/runtime module installs its own adapter for its own statically linked Ozz state.
 - `SafeAlloc::MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` and `MallocAlignedRaw` / `FreeAlignedRaw` (`MemorySystem.h`) apply the identical report → backup-pool retry → `ReportAndExit` sequence to untyped C-shaped allocation. This tier exists so third-party allocator hooks — which demand `realloc` or a raw byte block and therefore cannot be expressed as a C++ allocator — stay inside the contract instead of silently opting out of it. SDL, Effekseer, spine-cpp, libpng and curl are wired through it; the unpoliced rpmalloc primitives underneath are file-local to `MemorySystem.cpp` precisely so they cannot become a second entry point that returns null.
+- `move_only_function` / `copyable_function` (`Source/Essentials/FunctionObjects.h`) keep a small nothrow-movable target inline and send larger targets through nothrow allocation followed by `ReportFatalAndExit` on exhaustion. The module precedes `MemorySystem`, so it cannot use `SafeAlloc`, but storing an engine callable still terminates instead of surfacing `std::bad_alloc`.
 - `ModelMeshBaker` installs `SafeAllocator<uint8_t>` callbacks into its private meshoptimizer dependency once before parallel mesh jobs start. Vertex-cache/fetch passes therefore use the same rpmalloc and fail-fast backup-pool policy for all temporary optimization blocks; the dependency remains baker-only and is not linked into runtime model readers.
 
 **Consequence — do not write rollbacks for allocation.** A code path whose only failure mode is an allocation cannot leave a half-mutated world: it either completes or the process dies deterministically at the failing allocation (which is the fail-fast outcome we want). Treat `std::bad_alloc` as "can't happen"; never add `scope_exit`/`scope_fail` undo logic justified solely by a possible container/string/refcount allocation between two mutations.
@@ -11166,7 +11192,7 @@ Engine memory comes from paths that **terminate the process on exhaustion instea
 
 The allocator rule does not make every container operation no-throw. Element construction, conversion, comparison, and move/swap can still throw. This matters especially when replacing `vector` with `small_vector`: inline moves relocate elements, and move/swap are conditionally `noexcept` based on the element type. Re-derive the enclosing function's guarantee and audit surviving pointers/iterators; [Essentials.md](../../reference/native/essentials.md#vector-containers-and-inline-storage) owns the adoption rules and exact-type boundaries.
 
-**Where `std::bad_alloc` genuinely remains reachable.** "Can't happen" is a statement about the engine allocation vocabulary, not about every allocation in the process. Some standard types have no allocator parameter at all and therefore always allocate through the throwing global `operator new`: `std::function` (any callable beyond its small-buffer capacity), `std::future`/`std::promise`/`std::packaged_task` shared state, `std::thread`, `std::filesystem::path`, and the file streams. So does anything reached through a foreign ABI that owns its own containers — `nlohmann::json`, and the vendored libraries with no hook (LibreSSL, ogg/vorbis/theora). Separately, `BasicCore`, `StackTrace` and `BaseLogging` use `std::` containers by design, because they sit above `MemorySystem` in the `Essentials.h` include order and `ReportBadAlloc` calls into them — the OOM reporter must not depend on the allocator that just failed, which is why `SafeWriteStackTrace` wraps its resolution in `try`/`catch` with a raw-address fallback. None of this changes §1's rule for engine code; it means a `catch (const std::bad_alloc&)` is not automatically dead code at an interop boundary. An embedding project may enforce the full inventory with its own allocator audit, but project commands and allowlists are not normative Engine evidence.
+**Where `std::bad_alloc` genuinely remains reachable.** "Can't happen" is a statement about the engine allocation vocabulary, not about every allocation in the process. Some standard types have no allocator parameter at all and therefore always allocate through the throwing global `operator new`: `std::future`/`std::promise`/`std::packaged_task` shared state, `std::thread`, `std::filesystem::path`, and the file streams. The sole retained `std::function` is the `StackTrace.h` script-provider hook above the engine callable module. Foreign ABIs may also own their containers — `nlohmann::json`, and the vendored libraries with no hook (LibreSSL, ogg/vorbis/theora). Separately, `BasicCore`, `StackTrace` and `BaseLogging` use `std::` containers by design, because they sit above `MemorySystem` in the `Essentials.h` include order and `ReportBadAlloc` calls into them — the OOM reporter must not depend on the allocator that just failed, which is why `SafeWriteStackTrace` wraps its resolution in `try`/`catch` with a raw-address fallback. None of this changes §1's rule for engine code; it means a `catch (const std::bad_alloc&)` is not automatically dead code at an interop boundary. An embedding project may enforce the full inventory with its own allocator audit, but project commands and allowlists are not normative Engine evidence.
 
 **The terminate-on-failure guarantee is memory allocation only — it does *not* extend to other resource acquisition.** Only heap allocation through `SafeAlloc` / the engine containers is "can't fail" (§1). OS-resource acquisition that can fail by exhaustion is a **genuinely recoverable throw** and must be handled, not assumed away. The canonical case is **thread creation**: constructing a `std::thread` can throw `std::system_error` when the OS is out of thread resources — that is *not* the allocation case, so `Threading.cpp`'s `spawn_pool_worker` is **not** `noexcept`, and `submit_impl` rolls back the just-queued task on that throw (otherwise the orphaned task would keep a dangling capture of an unwinding caller). So: only suppress a guard / avoid `ES: None` when the sole throw is a `SafeAlloc` memory allocation; a possible thread-creation, file-open, socket, or other OS-resource failure still needs correct handling.
 
@@ -15509,7 +15535,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 6743cc2678333f6b562112460ac251cf3b6439b8c53ac91328c940bcfc72874b
+Content SHA-256: 904518250c363682fbe0ee1b8a98076e1fb1b9b7e301f940f43aec655c024015
 
 ---
 layout: default
@@ -15994,10 +16020,13 @@ parent hierarchy for every attachment. Model-description sections are produced
 independently and concatenated in sorted source order.
 
 Each binary description link also writes an explicit geometry discriminator:
-non-particle child links carry a required root-space AABB, while the default
-link and particle links carry no geometry payload. Invalid flags, missing child
-bounds, and degenerate AABBs are rejected. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract. In
+non-particle child links carry a required aggregate root-space AABB followed by
+the `(state, action, AABB)` bounds of every mapped parent clip; the default link
+and particle links carry no geometry payload. Multiple state/action pairs that
+reuse one sampled clip all reference that clip's box. Invalid flags, missing
+child bounds, unknown animation pairs, and degenerate AABBs are rejected.
+Missing or invalid aggregate or animation bounds are baking errors in the
+version 2 contract. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds
@@ -16009,10 +16038,12 @@ neither group; a present companion with no model sections is malformed.
 Enabled animation bounds size
 the logical scratch frame, the dedicated view bound seeds the stable body/name
 rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
-layer/child-model envelopes extend both contracts. The client projects baked
-active-animation and selected-link envelope corners instead of walking or
-skinning combined-mesh vertices; live particle bounds can still expand and
-rerender the scratch frame.
+layer/child-model bounds extend both contracts. For a direct child, the client
+selects link boxes matching the active clips of the parent rig and uses the
+aggregate link envelope when no matching clip is active. Nested links retain
+their own aggregate envelope because their clip indexes belong to another rig.
+The client projects those corners instead of walking or skinning combined-mesh
+vertices; live particle bounds can still expand and rerender the scratch frame.
 
 `Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
 root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,
@@ -16653,7 +16684,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 ===== BEGIN DOCUMENT entity-model =====
 Source: Docs/en/explanation/entity-and-property-model/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/entity-and-property-model/
-Content SHA-256: 867d028be74e636ddcc4cc229047c3f380c67617faa451abee41793f23e43fac
+Content SHA-256: fbe82911b8dd868355ecfc1e50ffba33ff70b72ad4e17dcc55e1f2aefbe078d7
 
 ---
 layout: default
@@ -16756,6 +16787,16 @@ Server-side AngelScript property getters copy non-virtual raw property data thro
 
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
+Numeric `Min = value` and `Max = value` metadata are enforced on every write.
+Registration accepts signed integer and finite decimal literals only when they
+fit the property's scalar base type, rejects duplicate bounds, enums, compound
+records, dictionaries, and an inverted range, and applies the same bound to
+every element of a plain numeric array. Assignment, raw restore, text/document
+load, and setter-mutated payloads are clamped before comparison with stored
+data. A write swallowed entirely by the range therefore produces no setter or
+post-setter change notification. Non-finite validation still runs before float
+clamping; NaN and infinity are errors, not values to coerce to an endpoint.
+
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
 
 ## Property runtime
@@ -16773,6 +16814,7 @@ Property flags are load-bearing:
 - `Synced`, `OwnerSync`, `PublicSync`, `NoSync` route network replication behavior.
 - `ModifiableByClient` and `ModifiableByAnyClient` gate client-originated changes.
 - `Virtual`, `Mutable`, `Persistent`, `Historical`, `Nullable`, and `Temporary` influence storage, callbacks, persistence, and script contracts.
+- `Min` and `Max` declare the inclusive clamp range for a numeric scalar or plain numeric array.
 
 When changing property metadata, update runtime docs and script/nullability docs together if the change affects script-visible signatures. See [Nullability.md](../../../Nullability.md).
 
@@ -17398,7 +17440,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: b370a710d385ba2e01336df80f50a91ee052a5fa1dc9a9b88ae77bea0a99e814
+Content SHA-256: 46b532a0da05213b72d6571fc7081c2abbb7d92df2ff8f584f2114e682829967
 
 ---
 layout: default
@@ -17719,12 +17761,16 @@ inputs are baked per clip, so the result is constant for a given animation and c
 drift within it.
 
 The automatic logical frame owns the reusable 2x scratch render target. The
-client unions baked active-animation bounds with the AABBs serialized on every
-selected non-particle child link, then projects the eight envelope corners across
-the facing sweep. This keeps layer/equipment geometry in a facing-independent
-fixed frame without a per-frame weighted-vertex walk. Only currently-emitting
-particle systems extend this envelope; a dormant effect reserves no frame and is
-absorbed by the bounded expansion pass if it starts emitting.
+client unions baked active-animation bounds with the per-animation AABBs of
+selected direct non-particle child links whose parent clips are active. If no
+matching clip is active, or a link is nested under another child rig, the baked
+aggregate link envelope is used. It then projects the eight selected corners
+across the facing sweep. This keeps layer/equipment geometry in a
+facing-independent fixed frame without reserving a rigid attachment's entire
+all-animation travel or performing a per-frame weighted-vertex walk. Only
+currently-emitting particle systems extend this envelope; a dormant effect
+reserves no frame and is absorbed by the bounded expansion pass if it starts
+emitting.
 
 The dynamic draw envelope is `ModelSpriteBounds::Rect`: baked geometry,
 projected shadow, live particles, and any effect-forced full frame. It remains
@@ -18972,7 +19018,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 9463a376e9e7297cf9fbc69255be1ae2d2f02e80651ade672e2e84bc7f787690
+Content SHA-256: 6f41b643086dbf02e3759a538fa535d4b1c995766beb6e158ad2e41f12089c29
 
 ---
 layout: default
@@ -19134,7 +19180,11 @@ restores their data and explicitly assigns `ItemOwnership::Nowhere`. This shared
 path covers item-list payloads, action context items, and slot-move items. A
 detached snapshot must never retain the enum's zero default (`MapHex`), because
 client presentation and actions would then treat another inventory's item as an
-object lying on the current map.
+object lying on the current map. Item-list payloads still require a nonzero
+entity id because callers retain and address those items. An action-context
+snapshot may instead represent an immutable static map item and legitimately
+carry an empty id; `ReceiveDetachedItem()` accepts that generic state, while the
+list handler enforces identity at its narrower boundary.
 
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 
@@ -19527,7 +19577,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: 489216925884819fb9eefebe8921419ab1e31eac73112f3efd45e277e9f8a8de
+Content SHA-256: a04871d6656ab4d3ba541590139cbd0a7c346581154d34255d6f0b2261c1ea87
 
 ---
 layout: default
@@ -19729,6 +19779,25 @@ Script event handlers may re-enter item movement while an item is already in its
 Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex.
 
 ## Entity synchronization and locking
+
+`Server.SingleThreadedLogic` is a fixed opt-out from the concurrent entity-cover
+contract. When enabled, `ServerEngine` pins its worker pool to one thread and
+finishes startup work before resuming that pool, so keyed player, connection,
+movement, and time-event jobs run serially. `IsEntityAccessValid()` and
+`SyncContext::ValidateAccess()` then accept every entity, while `SyncEntities()`,
+`EnsureEntitySynced()`, and `EnsureFreshEntitySynced()` acquire nothing.
+`Game.Sync` and `Game.SyncRelease` are inert; `Game.Lock` and `Game.Unlock` still
+take the engine singleton bucket, which is uncontended.
+
+The setting removes cover acquisition, not entity lifetime checks. A handle
+captured by one job can still refer to an entity destroyed before a later job
+runs, so project wrappers that combine synchronization with a destroyed-entity
+guard must keep their liveness half. Engine instances read the mode through the
+entity they operate on, allowing differently configured servers to coexist in
+one process. Disabling the setting restores the complete multithreaded cover
+contract without changing scripts that retained their ordinary synchronization
+calls. `ServerEngineSingleThreadedLogicRunsWithoutEntityCover` pins the opt-out
+path in `Source/Tests/Test_ServerEngine.cpp`.
 
 `Source/Server/EntitySync.{h,cpp}` implements the cover model. Every `ServerEntity` owns an `EntityLock`; a thread proves read access by holding that lock or an appropriate ancestor/widen-chain cover. Parentage mutations require the entity's own lock directly.
 
@@ -23660,7 +23729,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: a31fa7a114192391893c25d3a52a5073ef1c6034e33cfb4f145eeac012f32e2f
+Content SHA-256: c0ac5699f1d16d96a586269f6d779dc9b1f7eb385cfc01b9b5a07b1b83947afa
 
 ---
 title: Generated Map Format Reference
@@ -23684,14 +23753,14 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>dcfc919cf691c5a7ae01a943e42e850b9aa58f9b2ce64fc6e1b0f5a33d6d0f4f</code> |
+| Contract digest | <code>dfd4b084c30506fb490134d815f495da0843ba79733b7273e503436d909f4cf8</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Syntax](syntax.md) | 8 | Sections and control directives. |
 | [Properties](properties.md) | 108 | Engine-owned Map, Critter, and Item properties. |
 | [Baking](baking.md) | 4 | Ownership and server/client materialization. |
-| [Validation](validation.md) | 16 | Source-backed requirements and limitations. |
+| [Validation](validation.md) | 17 | Source-backed requirements and limitations. |
 
 ## Boundary
 
@@ -24844,7 +24913,7 @@ If a generated script API change is involved, inspect AngelScript-related tests 
 ===== BEGIN DOCUMENT generated-model-format-index =====
 Source: Docs/en/reference/model-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/model-format/
-Content SHA-256: 2d5341150d6879a75410b13184d59af77b119113f8d975ed2cdd3b48efe05653
+Content SHA-256: 0cbdbc6128a0bc5a1bba6b111fc8bcae8ca066d0fd6a13a82462d423c9d32483
 
 ---
 title: Generated Model Format Reference
@@ -24868,7 +24937,7 @@ This reference describes the reusable Engine-owned `.fo3d` language and the mode
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own model catalogs, layer meanings, animation enums, visual policy, and concrete assets. |
 | Source manifest | [BuildTools/ModelFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ModelFormatInterface.json) |
-| Contract digest | <code>c6a3ec054d2d0df5013725e5383d4287d45387a0ed150e562f8c17983449a7b0</code> |
+| Contract digest | <code>f6b988ffdcc8e32bca13a9318482407410733edf7ddeb44fc30a4af53e3faa84</code> |
 | Source extension | <code>.fo3d</code> |
 | Mesh inputs | <code>.fbx</code>, <code>.obj</code> |
 | Runtime side | <code>client</code> |
@@ -24953,7 +25022,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: f93862454776c78a5d78adbd67d1147fc6cf591b5744727aa22de535341fe426
+Content SHA-256: 6181ecce8047626d8406a62aeb4d8ed336bcf3c569800683a24d6552b6edb775
 
 ---
 layout: default
@@ -24984,7 +25053,8 @@ parameters or a higher owning layer. Register new implementation files in
 link at the correct dependency point rather than bypassing the layer.
 
 The exact umbrella order is `BasicCore`, `GlobalData`, `StackTrace`,
-`BaseLogging`, `FatalError`, `SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`,
+`BaseLogging`, `FatalError`, `FunctionObjects`, `SmartPointers`, `MemorySystem`,
+`StringObject`, `Containers`, `StringUtils`,
 `Platform`, `ExceptionHandling`, `Threading`, `SafeArithmetics`,
 `DataSerialization`, `HashedString`, `StrongType`, `TimeRelated`,
 `ExtendedTypes`, `Compressor`, `WorkThread`, `Logging`, `DiskFileSystem`,
@@ -25021,10 +25091,14 @@ not bypass the contract-change gate.
 - `Source/Essentials/BaseLogging.cpp`
 - `Source/Essentials/FatalError.h`
 - `Source/Essentials/FatalError.cpp`
+- `Source/Essentials/FunctionObjects.h`
+- `Source/Essentials/FunctionObjects.cpp`
 - `Source/Essentials/SmartPointers.h`
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/MemorySystem.h`
 - `Source/Essentials/MemorySystem.cpp`
+- `Source/Essentials/StringObject.h`
+- `Source/Essentials/StringObject.cpp`
 - `Source/Essentials/Containers.h`
 - `Source/Essentials/Containers.cpp`
 - `ThirdParty/small_vector/README.md`
@@ -25072,7 +25146,7 @@ not bypass the contract-change gate.
 
 `Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include and call only modules that appear earlier in the umbrella block. Declaring an API early but defining it in a later `.cpp` is still a reverse link dependency. `BuildTools/tests/test_essentials_layering.py` checks direct includes and namespace-level external-definition ownership. Do not reorder the list to hide a cycle; move data through parameters or split the responsibility at the correct layer.
 
@@ -25100,11 +25174,24 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 `MemorySystem.*` owns backup-memory chunks, bad-allocation reporting, and `SafeAllocator`. `SmartPointers.*` contains pointer wrappers used to make ownership, nullability, and raw-reference intent explicit; see [SmartPointers.md](../../contributing/coding-contracts/smart-pointers.md) for the native `ptr` / `nptr` vocabulary and migration rules. Use this layer for generic ownership utilities only; entity lifetime and holder semantics belong in [Entity Model](../../explanation/entity-and-property-model/).
 
+#### Callable vocabulary
+
+`FunctionObjects.*` replaces `std::function` with two engine-owned wrappers.
+`function<Signature>` is an alias of move-only `move_only_function<Signature>`
+and is the default. Use `copyable_function<Signature>` only when copying the
+stored target is the real ownership contract, such as a callback snapshot
+distributed to more than one owner. Both keep a small nothrow-movable target
+inline and allocate larger targets through a fail-fast path, so construction
+does not introduce a recoverable `std::bad_alloc`. If migration exposes a copy,
+first decide whether the owner should move instead. The `StackTrace.h`
+script-provider hook is the sole retained `std::function`, because it precedes
+`FunctionObjects` in the dependency order.
+
 #### Allocation vocabulary
 
 Engine code allocates through one of two surfaces, and nothing else:
 
-- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. Each is the standard container instantiated on `SafeAllocator`. Use these, never the `std::` originals.
+- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. `string` and `wstring` use the engine `basic_string` from `StringObject.h`; the remaining allocator-aware aliases use `SafeAllocator`. Use these, never the `std::` originals.
 - **`SafeAlloc`** — `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` for typed objects, and the raw tier `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` plus `MallocAlignedRaw` / `FreeAlignedRaw` for C-ABI boundaries.
 
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `SafeAllocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
@@ -25127,7 +25214,7 @@ Three distinct things are at stake when code bypasses this vocabulary, and they 
 | **Wrong out-of-memory policy** | `std::allocator` throws `std::bad_alloc` instead of following the terminate-on-OOM model in [ExceptionSafety.md](../../contributing/coding-contracts/exception-safety.md) §1. |
 | **Alignment** | `SafeAllocator` routes over-aligned element types through the aligned `operator new`/`delete` overloads. Note that the over-alignment test must stay a member *function*: `alignof(T)` needs a complete `T`, while the allocator has to remain usable with an incomplete one, since `std::vector<T>` may be declared before `T` is defined. |
 
-Known and accepted limits: `std::function`, `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
+Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. The sole `std::function` in `StackTrace.h` is also above the engine callable module. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
 
 #### Third-party allocators
 
@@ -25183,6 +25270,16 @@ For an adoption, record the measured distribution and object count, audit addres
 
 ### Serialization, values, strings, and hashes
 
+`StringObject.*` owns the engine `basic_string` implementation. Its API follows
+`std::basic_string`, while `FO_STRING_INLINE_CAPACITY` selects the compiled
+small-string buffer for both `string` and `wstring`; this is a build-wide ABI
+choice, not a per-call optimization. Three standard-library boundaries require
+explicit adapters: copy text into a standard stream with `make_stream_string`,
+construct `std::filesystem::path` through `fs_make_path`, and call `getline`
+unqualified so argument-dependent lookup selects the engine overload. String
+growth uses the same deterministic terminate-on-OOM policy as other engine
+storage.
+
 `DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `DataReader::Read<T>()` and `DataWriter::Write<T>()` copy standard-layout values through byte copies so serialized streams do not depend on buffer alignment. The zero-copy `ReadPtr<T>(size)` overload is only for raw byte/string views (`uint8_t`, `char`, or `void`); typed values that need alignment must use `Read<T>()` or `ReadPtr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives. `iround` rejects non-finite and out-of-int64-range floating-point input before rounding so no value undefined for `std::llround` can reach it. `HashStorage::SetResolveHashFailureHandler` lets higher layers observe failed hash resolution in both throwing and flagged no-throw lookup paths without teaching essentials about a specific recovery policy.
 
 ### Filesystem, compression, sockets, and work threads
@@ -25208,6 +25305,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_FunctionObjects.cpp`
 - `Source/Tests/Test_GenericUtils.cpp`
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
@@ -25218,6 +25316,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
@@ -25233,6 +25332,8 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 - Global create/delete callback registration: `Source/Essentials/GlobalData.*`.
 - Stack traces, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*`, and [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
 - Generic memory/pointer utilities: `Source/Essentials/MemorySystem.*`, `SmartPointers.*`, and [SmartPointers.md](../../contributing/coding-contracts/smart-pointers.md).
+- Callable ownership and inline targets: `Source/Essentials/FunctionObjects.*`.
+- Engine strings and the build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; aliases and stream interop: `Containers.h`.
 - File bytes and low-level writable-path composition on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources and installed-client overlays: [Configuration and Data Sources](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking](../../explanation/authority-and-networking/).
 
@@ -25617,7 +25718,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 02d124e65f7ecca2d8bcc2c6b3eaf4e67d272f75b229157ab0ef60346dd7eff6
+Content SHA-256: ac54c2d5dc9b9991165cba401173e85005ec1c70cac9fbf6e2574ba89b66784c
 
 ---
 title: Generated API Reference
@@ -25638,32 +25739,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 133 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 978 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 283 | Fixed and runtime-variable engine settings. |
+| [Engine settings](settings.md) | 284 | Fixed and runtime-variable engine settings. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2500 |
-| Symbols with descriptions | 2500 |
+| Addressable symbols | 2501 |
+| Symbols with descriptions | 2501 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2500 |
+| Explicitly classified symbols | 2501 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2499 |
+| <code>experimental</code> | 2500 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2500 stable IDs with SHA-256 <code>18d532157d973c01c0d351bd1bc51393cc29b63a97c2295090d2bd17754bdbd0</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2501 stable IDs with SHA-256 <code>6ca94ee0ce42589e1b9fdbe128e4109081cb24586ac2b0746fc375856377a3d8</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 
@@ -27625,7 +27726,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 03516dba46d095ef5b59fdcf84f9dfbd842c1561a943ce7ba11c7a8f6a74225c
+Content SHA-256: 8e8493dc53dd1a51b42413a31f6679ebd725cb82c2f515a089e5e995af41a2e6
 
 ---
 layout: default
@@ -27681,6 +27782,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_FunctionObjects.cpp`
 - `Source/Tests/Test_GenericUtils.cpp`
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
@@ -27691,6 +27793,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_SettingsStorage.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
@@ -27843,6 +27946,8 @@ Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOUR
   checkbox, selectable or folded section runs in a headless frame. Pinned by
   `ImGuiTestHarnessPressesWidgetsByLabel` in `Test_ImGui.cpp`; usage rules are in
   [../../Docs/Testing.md](../../Docs/Testing.md).
+- `Source/Tests/Test_DumpArtifacts.h` - records the `TexDump_*` directories present in the working
+  directory so a suite that triggers an atlas dump removes only the ones its own run wrote.
 
 ## Notes
 

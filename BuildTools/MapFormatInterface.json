@@ -336,6 +336,14 @@
       "source": {"path": "Source/Client/MapView.cpp", "anchors": ["Mapper item MultihexMesh field must contain x/y coordinate pairs", "fomap.append(i == 0 ? \"\\\\\\n\""]}
     },
     {
+      "id": "map-format.rule.multihex-lines-runtime",
+      "name": "Runtime multihex-line footprint",
+      "requirement": "Treat MultihexLines as part of an item's complete runtime footprint around both its anchor and every valid MultihexMesh cell.",
+      "stability": "experimental",
+      "description": "Server static and dynamic materialization index every expanded line cell to the same item and recache its blocking and interaction flags.",
+      "source": {"path": "Source/Server/Map.cpp", "anchors": ["ForEachMultihexLines(multihex_lines, hex", "SetMultihexEntries"]}
+    },
+    {
       "id": "map-format.rule.error-aggregation",
       "name": "Error aggregation",
       "requirement": "Treat any accumulated entity load or property/resource validation error as a failed map bake.",

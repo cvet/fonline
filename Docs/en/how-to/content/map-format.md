@@ -195,6 +195,15 @@ MultihexMesh = \
 
 An odd number of values fails serialization. Mapper load may also coalesce eligible items into multihex meshes according to prototype `MultihexGeneration`; saving after that operation can substantially rewrite placement layout. Review those diffs as semantic map changes.
 
+`MultihexLines` is prototype-owned directional geometry expanded around the
+placement anchor. Server materialization applies those line cells to static and
+dynamic map items, and also expands the lines around every valid
+`MultihexMesh` cell. All resulting cells point to the same item and participate
+in cached blocking/interaction flags. Runtime placement therefore treats the
+authored anchor, mesh cells, and their line expansions as one footprint; a
+project validator must check the complete expanded footprint, not only the
+anchor and explicit mesh pairs.
+
 ## Mapper Round-Trip
 
 Mapper save is deterministic normalization for the selected map, not byte-preserving serialization of that map. It:

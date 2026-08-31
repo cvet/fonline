@@ -51,6 +51,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-map-format-rule-multihex-mesh-74e1ef58a8"></a>
 - [`entry-map-format-rule-multihex-mesh-74e1ef58a8`](../../en/reference/map-format/validation.md#entry-map-format-rule-multihex-mesh-74e1ef58a8)
 
+<a id="entry-map-format-rule-multihex-lines-runtime-abb0599412"></a>
+- [`entry-map-format-rule-multihex-lines-runtime-abb0599412`](../../en/reference/map-format/validation.md#entry-map-format-rule-multihex-lines-runtime-abb0599412)
+
 <a id="entry-map-format-rule-error-aggregation-356613e4d0"></a>
 - [`entry-map-format-rule-error-aggregation-356613e4d0`](../../en/reference/map-format/validation.md#entry-map-format-rule-error-aggregation-356613e4d0)
 

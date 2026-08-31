@@ -6,7 +6,7 @@ document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
 
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"f93862454776c78a5d78adbd67d1147fc6cf591b5744727aa22de535341fe426"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"6181ecce8047626d8406a62aeb4d8ed336bcf3c569800683a24d6552b6edb775"} -->
 
 # Базовый слой Essentials
 
@@ -29,7 +29,8 @@ Essentials следует строгому dependency DAG: зависимост�
 должны линковаться в correct dependency point, не обходя слой.
 
 Точный umbrella order: `BasicCore`, `GlobalData`, `StackTrace`, `BaseLogging`,
-`FatalError`, `SmartPointers`, `MemorySystem`, `Containers`, `StringUtils`, `Platform`,
+`FatalError`, `FunctionObjects`, `SmartPointers`, `MemorySystem`, `StringObject`,
+`Containers`, `StringUtils`, `Platform`,
 `ExceptionHandling`, `Threading`, `SafeArithmetics`, `DataSerialization`,
 `HashedString`, `StrongType`, `TimeRelated`, `ExtendedTypes`, `Compressor`,
 `WorkThread`, `Logging`, `DiskFileSystem`, `CommonHelpers` и `NetSockets`.
@@ -66,10 +67,14 @@ test Essentials не обходит contract-change gate.
 - `Source/Essentials/BaseLogging.cpp`
 - `Source/Essentials/FatalError.h`
 - `Source/Essentials/FatalError.cpp`
+- `Source/Essentials/FunctionObjects.h`
+- `Source/Essentials/FunctionObjects.cpp`
 - `Source/Essentials/SmartPointers.h`
 - `Source/Essentials/SmartPointers.cpp`
 - `Source/Essentials/MemorySystem.h`
 - `Source/Essentials/MemorySystem.cpp`
+- `Source/Essentials/StringObject.h`
+- `Source/Essentials/StringObject.cpp`
 - `Source/Essentials/Containers.h`
 - `Source/Essentials/Containers.cpp`
 - `ThirdParty/small_vector/README.md`
@@ -117,7 +122,7 @@ test Essentials не обходит contract-change gate.
 
 `Source/Essentials/Essentials.h` является общим umbrella-заголовком. Его точный include order одновременно задаёт dependency order фундаментального слоя:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `SmartPointers` → `MemorySystem` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 Этот список намеренно точный, а не тематический. `Essentials.h` задаёт строгий DAG зависимостей: каждый заголовок Essentials и соответствующий `.cpp` может подключать и вызывать только modules, расположенные в umbrella-блоке выше него. Объявление API в раннем header с определением в более позднем `.cpp` всё равно создаёт обратную link dependency. `BuildTools/tests/test_essentials_layering.py` проверяет прямые includes и ownership внешних namespace-level definitions. Не меняйте порядок ради сокрытия цикла; передайте данные параметром или разделите ответственность на правильной границе слоёв.
 
@@ -148,11 +153,25 @@ Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Еди
 
 `MemorySystem.*` владеет резервными блоками памяти, отчётами о failed allocation и `SafeAllocator`. `SmartPointers.*` содержит wrappers, явно выражающие владение, nullability и назначение raw reference; словарь `ptr` / `nptr` и правила миграции приведены в разделе [Умные указатели](../../contributing/coding-contracts/smart-pointers.md). В этом слое должны находиться только общие средства владения; время жизни entity и holder semantics принадлежат [модели сущностей](../../explanation/entity-and-property-model/).
 
+#### Словарь callable
+
+`FunctionObjects.*` заменяет `std::function` двумя wrappers движка.
+`function<Signature>` является alias move-only типа
+`move_only_function<Signature>` и используется по умолчанию.
+`copyable_function<Signature>` нужен только когда копирование stored target
+действительно входит в ownership contract, например при snapshot callback для
+нескольких owners. Оба хранят небольшой nothrow-movable target inline, а крупный
+выделяют через fail-fast path, поэтому создание не вводит recoverable
+`std::bad_alloc`. Если migration обнаружил копирование, сначала проверьте, не
+должен ли owner выполнить move. Единственный оставшийся `std::function` — hook
+script provider в `StackTrace.h`, расположенный до `FunctionObjects` в порядке
+зависимостей.
+
 #### Словарь выделения памяти
 
 Код движка выделяет память только через две поверхности:
 
-- **Псевдонимы контейнеров `fo`** из `Containers.h`: `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` и связанные типы. Каждый из них является стандартным контейнером с `SafeAllocator`. Используйте их вместо вариантов из `std::`.
+- **Псевдонимы контейнеров `fo`** из `Containers.h`: `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` и связанные типы. `string` и `wstring` используют engine `basic_string` из `StringObject.h`; остальные allocator-aware aliases используют `SafeAllocator`. Используйте их вместо вариантов из `std::`.
 - **`SafeAlloc`**: `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` для типизированных объектов и raw-уровень `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw`, а также `MallocAlignedRaw` / `FreeAlignedRaw` для C ABI.
 
 Raw-уровень нужен из-за C-образных allocator hooks third-party библиотек: они требуют `realloc`, нетипизированный блок байтов или оба варианта, что невозможно выразить C++ allocator. Он сохраняет ту же политику нехватки памяти, что и `SafeAllocator`: сообщить об ошибке, освободить резервный пул, повторить попытку и детерминированно завершить процесс. Поэтому подключение библиотеки через этот путь не выводит её из общего контракта. Запрос нулевого размера передаётся нижнему allocator, а не трактуется как ошибка.
@@ -175,7 +194,7 @@ space и сорвать уже первое небольшое allocation. Span 
 | **Неверная политика нехватки памяти** | `std::allocator` бросает `std::bad_alloc` вместо terminate-on-OOM модели из раздела [Безопасность исключений](../../contributing/coding-contracts/exception-safety.md), пункт 1. |
 | **Выравнивание** | `SafeAllocator` направляет over-aligned element types через aligned-перегрузки `operator new` / `delete`. Проверка over-alignment должна оставаться member-функцией: `alignof(T)` требует полного `T`, но allocator обязан работать с неполным типом, поскольку `std::vector<T>` может быть объявлен до определения `T`. |
 
-Известные допустимые ограничения: `std::function`, `std::future` / `std::promise` / `std::packaged_task`, `std::thread`, `std::filesystem::path` и файловые streams не принимают allocator. Они попадают в engine heap через global `new`, но бросают исключение при исчерпании памяти. Отдельно `BasicCore`, `StackTrace` и `BaseLogging` расположены до `MemorySystem` в порядке `Essentials.h` и поэтому намеренно используют контейнеры `std::`: `MemorySystem.cpp` вызывает `GetStackTrace()` из `ReportBadAlloc`, и reporting path не должен зависеть от allocator, который только что отказал.
+Известные допустимые ограничения: `std::future` / `std::promise` / `std::packaged_task`, `std::thread`, `std::filesystem::path` и файловые streams не принимают allocator. Они попадают в engine heap через global `new`, но бросают исключение при исчерпании памяти. Единственный `std::function` в `StackTrace.h` также расположен до callable module движка. Отдельно `BasicCore`, `StackTrace` и `BaseLogging` расположены до `MemorySystem` в порядке `Essentials.h` и поэтому намеренно используют контейнеры `std::`: `MemorySystem.cpp` вызывает `GetStackTrace()` из `ReportBadAlloc`, и reporting path не должен зависеть от allocator, который только что отказал.
 
 <a id="third-party-allocators"></a>
 #### Allocators внешних библиотек
@@ -235,6 +254,15 @@ Hook SQLite требует callback `xSize` и передаёт функциям
 
 ### Сериализация, значения, строки и хеши
 
+`StringObject.*` владеет реализацией engine `basic_string`. API следует
+`std::basic_string`, а `FO_STRING_INLINE_CAPACITY` выбирает compiled small-string
+buffer для `string` и `wstring`; это build-wide ABI choice, а не per-call
+optimization. На трёх границах standard library нужны явные adapters: текст для
+standard stream копируется через `make_stream_string`,
+`std::filesystem::path` строится через `fs_make_path`, а `getline` вызывается
+без квалификатора, чтобы ADL выбрал overload движка. Рост строки следует тому же
+детерминированному terminate-on-OOM contract, что и остальные engine storage.
+
 `DataSerialization.*` содержит binary read/write helpers, используемые сетью, persistence, ресурсами и тестами. `DataReader::Read<T>()` и `DataWriter::Write<T>()` копируют standard-layout values через byte copies, поэтому serialized streams не зависят от выравнивания buffer. Zero-copy overload `ReadPtr<T>(size)` предназначен только для raw byte/string views (`uint8_t`, `char` или `void`); типизированные значения, которым нужно alignment, должны использовать `Read<T>()` или `ReadPtr(destination, size)`.
 
 `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` и `TimeRelated.*` предоставляют небольшие переиспользуемые значения, которые вышележащие слои считают примитивами. `iround` отвергает non-finite и выходящие за диапазон int64 floating-point values до округления, чтобы ни одно значение с неопределённым для `std::llround` поведением не достигло функции. `HashStorage::SetResolveHashFailureHandler` позволяет вышележащему слою наблюдать неудачное разрешение hash как в throwing, так и во flagged no-throw lookup path, не обучая Essentials конкретной recovery policy.
@@ -262,6 +290,7 @@ Hook SQLite требует callback `xSize` и передаёт функциям
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_FunctionObjects.cpp`
 - `Source/Tests/Test_GenericUtils.cpp`
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
@@ -272,6 +301,7 @@ Hook SQLite требует callback `xSize` и передаёт функциям
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
@@ -287,6 +317,8 @@ Hook SQLite требует callback `xSize` и передаёт функциям
 - Регистрация global create/delete callbacks: `Source/Essentials/GlobalData.*`.
 - Stack traces, журналирование и отчёты об исключениях: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*` и [Native- и AngelScript-отладка](../../troubleshooting/debugging.md).
 - Общие средства памяти и указателей: `Source/Essentials/MemorySystem.*`, `SmartPointers.*` и [Умные указатели](../../contributing/coding-contracts/smart-pointers.md).
+- Владение callable и inline targets: `Source/Essentials/FunctionObjects.*`.
+- Строки движка и build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; aliases и stream interop: `Containers.h`.
 - Байты файлов и низкоуровневая сборка writable path на диске: `Source/Essentials/DiskFileSystem.*`; смонтированные ресурсы движка и overlays установленного клиента: [Конфигурация и источники данных](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol, command и network runtime: [Сеть](../../explanation/authority-and-networking/).
 
