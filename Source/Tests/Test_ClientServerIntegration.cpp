@@ -119,6 +119,14 @@ namespace ClientServerIntegrationServer
         npc.Action(CritterAction::DropItem, 0, npcItem);
         npc.ChangeItemSlot(npcItem.Id, CritterItemSlot::Main);
 
+        // The scenery-interaction shape: a static item has no entity id, and the client must take it.
+        // A missing fixture item is not guarded here because the client-side counter is the assertion
+        StaticItem[] staticItems = map.GetStaticItemsOnHex(mpos(0, 0));
+
+        for (int i = 0; i < int(staticItems.length()); i++) {
+            npc.Action(CritterAction::PickItem, 0, staticItems[i]);
+        }
+
         cr.SendItems(cr.GetItems(), true, false);
     }
 
@@ -319,6 +327,7 @@ namespace ClientServerIntegrationClient
     int ReceivedMapOwnedItemCount = 0;
     int ActionContextItemCount = 0;
     int ActionMapOwnedContextItemCount = 0;
+    int ActionStaticContextItemCount = 0;
 
     [[ModuleInit]]
     void InitClientServerIntegrationClient()
@@ -364,6 +373,11 @@ namespace ClientServerIntegrationClient
 
         if (contextItemInstance.Ownership == ItemOwnership::MapHex) {
             ActionMapOwnedContextItemCount++;
+        }
+
+        // A static item has no entity id, so counting its arrival proves the read path accepts one
+        if (contextItemInstance.Id == ZERO_IDENT) {
+            ActionStaticContextItemCount++;
         }
     }
 
@@ -434,6 +448,11 @@ namespace ClientServerIntegrationClient
     int UnitTestGetActionMapOwnedContextItemCount()
     {
         return ActionMapOwnedContextItemCount;
+    }
+
+    int UnitTestGetActionStaticContextItemCount()
+    {
+        return ActionStaticContextItemCount;
     }
 
     string UnitTestReadCritterModelName(Critter cr)
@@ -829,6 +848,26 @@ End
         vector<uint8_t> critter_props = make_default_props_blob("Critter");
         vector<uint8_t> item_props = make_default_props_blob("Item");
 
+        // A static item is the only map object that reaches the client with no entity id, and the
+        // action path has to keep accepting it, so the fixture map carries one
+        auto make_static_item_props_blob = [&engine]() {
+            auto registrar = engine.GetPropertyRegistrar(engine.Hashes.ToHashedString("Item"));
+            REQUIRE(static_cast<bool>(registrar));
+
+            auto static_prop = registrar->FindProperty("Static");
+            REQUIRE(static_cast<bool>(static_prop));
+
+            Properties props {registrar};
+            props.SetValue<bool>(static_prop, true);
+
+            vector<uint8_t> props_data;
+            set<hstring> str_hashes;
+            props.StoreAllData(props_data, str_hashes);
+            return props_data;
+        };
+
+        vector<uint8_t> static_item_props = make_static_item_props_blob();
+
         vector<uint8_t> map_data;
         auto writer = DataWriter(map_data);
 
@@ -852,13 +891,21 @@ End
             writer.WriteBytes({critter_props.data(), critter_props.size()});
         }
 
-        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint32_t>(uint32_t {2});
         writer.Write<ident_t::underlying_type>(ident_t::underlying_type {5002});
         writer.Write<hstring::hash_t>(item_pid.as_hash());
         writer.Write<uint32_t>(numeric_cast<uint32_t>(item_props.size()));
 
         if (!item_props.empty()) {
             writer.WriteBytes({item_props.data(), item_props.size()});
+        }
+
+        writer.Write<ident_t::underlying_type>(ident_t::underlying_type {5003});
+        writer.Write<hstring::hash_t>(item_pid.as_hash());
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
+
+        if (!static_item_props.empty()) {
+            writer.WriteBytes({static_item_props.data(), static_item_props.size()});
         }
 
         return map_data;
@@ -1361,6 +1408,10 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionMapOwnedContextItemCount"), action_map_owned_context_items));
     CHECK(action_context_items > 0);
     CHECK(action_map_owned_context_items == 0);
+
+    int32_t action_static_context_items = 0;
+    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionStaticContextItemCount"), action_static_context_items));
+    CHECK(action_static_context_items > 0);
 
     // Movement and property writes from the client side enter the server through their own message
     // handlers, which nothing else in the suite reaches

@@ -1832,7 +1832,9 @@ void ClientEngine::Net_OnSomeItems()
     items.reserve(items_count);
 
     for (uint32_t i = 0; i < items_count; i++) {
-        items.emplace_back(ReceiveDetachedItem());
+        auto item = ReceiveDetachedItem();
+        FO_VERIFY_AND_THROW(item->GetId(), "Item id is empty", i, items_count);
+        items.emplace_back(std::move(item));
     }
 
     auto items2 = vec_transform(items, [](auto&& item) -> ptr<ItemView> { return item; });
@@ -1942,10 +1944,11 @@ auto ClientEngine::ReceiveDetachedItem() -> refcount_ptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 
+    // A static item carries no entity id, and it reaches this side as the context of a critter
+    // action, so an empty id is a valid state here rather than a broken message
     auto item_id = _conn.InBuf->Read<ident_t>();
     hstring pid = _conn.InBuf->Read<hstring>(Hashes);
     _conn.InBuf->ReadPropsData(_tempPropertiesData);
-    FO_VERIFY_AND_THROW(item_id, "Item id is empty");
 
     auto proto = GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
