@@ -1300,7 +1300,6 @@ void EntityManager::MakePersistentRecursive(ptr<ServerEntity> entity, unordered_
     ValidateEntityAccess(entity);
 
     if (!entity->IsPersistent()) {
-        WriteLog("Store entity {} {} in database", entity->GetTypeName(), entity->GetId());
         _engine->DbStorage.Insert(entity->GetTypeNamePlural(), entity->GetId(), StoreEntityDoc(entity));
         entity->SetPersistent(true);
     }
@@ -1323,7 +1322,6 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
     ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakeNonPersistentRecursive(child, processed); });
 
     if (entity->IsPersistent()) {
-        WriteLog("Remove entity {} {} from database", entity->GetTypeName(), entity->GetId());
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
         entity->SetPersistent(false);
     }
