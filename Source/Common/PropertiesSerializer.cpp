@@ -1578,6 +1578,25 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
     FO_UNREACHABLE_PLACE();
 }
 
+// A range-checked property clamps on every write, so a deserialized value is brought into range
+// before it reaches storage, exactly like a typed property assignment does
+static void SetRawDataInValueRange(ptr<Properties> props, ptr<const Property> prop, span<const uint8_t> raw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!prop->HasValueRange() || raw_data.empty()) {
+        props->SetRawData(prop, raw_data);
+        return;
+    }
+
+    PropertyRawData clamped_data;
+    clamped_data.Set(raw_data.data(), raw_data.size());
+    auto clamped_raw_data = span<uint8_t>(clamped_data.GetPtrAs<uint8_t>().get(), clamped_data.GetSize());
+
+    prop->ClampRawDataToValueRange(clamped_raw_data);
+    props->SetRawData(prop, clamped_raw_data);
+}
+
 void PropertiesSerializer::LoadPropertyFromValue(ptr<Properties> props, ptr<const Property> prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1585,7 +1604,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<Properties> props, ptr<cons
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
-    auto set_data = [props, prop](span<const uint8_t> raw_data) mutable { props->SetRawData(prop, raw_data); };
+    auto set_data = [props, prop](span<const uint8_t> raw_data) mutable { SetRawDataInValueRange(props, prop, raw_data); };
 
     return LoadPropertyFromValue(prop, value, set_data, hash_resolver, name_resolver);
 }
@@ -2461,7 +2480,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
-    auto set_data = [props, prop](span<const uint8_t> raw_data) mutable { props->SetRawData(prop, raw_data); };
+    auto set_data = [props, prop](span<const uint8_t> raw_data) mutable { SetRawDataInValueRange(props, prop, raw_data); };
     vector<uint8_t> data;
 
     if (prop->IsString()) {

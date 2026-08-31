@@ -310,7 +310,7 @@ struct ScriptFuncDesc
 {
     using CallType = function<void(FuncCallData&)>;
     using AttributeCheckerType = function<bool(string_view)>;
-    using ReturnValueCleanerType = function<void(ptr<void>)>;
+    using ReturnValueCleanerType = copyable_function<void(ptr<void>)>;
 
     hstring Name {};
     vector<ArgDesc> Args {};

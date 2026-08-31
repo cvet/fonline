@@ -80,7 +80,7 @@ public:
         string NewName {};
     };
 
-    using LoadFunc = function<FrameCollection(string_view, string_view, FileReader, const FileCollection&)>;
+    using LoadFunc = copyable_function<FrameCollection(string_view, string_view, FileReader, const FileCollection&)>;
 
     explicit ImageBaker(shared_ptr<BakingContext> ctx);
     ImageBaker(const ImageBaker&) = delete;

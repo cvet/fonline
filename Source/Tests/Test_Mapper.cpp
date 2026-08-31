@@ -52,6 +52,7 @@
 #include "SettingsStorage.h"
 #include "SparkParticleEditor.h"
 #include "Test_BakerHelpers.h"
+#include "Test_DumpArtifacts.h"
 #include "Test_ImGuiHarness.h"
 
 FO_BEGIN_NAMESPACE
@@ -469,8 +470,10 @@ namespace MapperMergeTest
         cr.Animate(CritterStateAnim(1), CritterActionAnim(1), null, false);
         cr.StopAnim();
 
+        if (cr.GetModelAnimDuration(CritterStateAnim(1), CritterActionAnim(1)).milliseconds != 0) return -20;
+
         ipos boneOffset;
-        cr.GetBonePos("Head".hstr(), boneOffset);
+        if (cr.GetBonePos("Head".hstr(), boneOffset)) return -21;
 
         ProtoItem tileProto = Game.GetProtoItem("MapperMergeTileA".hstr());
         if (cr.CountItem(tileProto) != 0) return -11;
@@ -832,21 +835,19 @@ namespace MapperMergeTest
             proto.SetPicMap(tile_pic);
         };
 
-        vector<pair<string, function<void(ProtoItem&)>>> tile_protos {
-            {string(TILE_A), configure_tile},
-            {string(TILE_B), configure_tile},
-            {string(TILE_U), configure_unique},
-            {string(SCENERY_A), configure_scenery},
-            {string(WALL_A), configure_wall},
-        };
+        vector<pair<string, function<void(ProtoItem&)>>> tile_protos;
+        tile_protos.emplace_back(string(TILE_A), configure_tile);
+        tile_protos.emplace_back(string(TILE_B), configure_tile);
+        tile_protos.emplace_back(string(TILE_U), configure_unique);
+        tile_protos.emplace_back(string(SCENERY_A), configure_scenery);
+        tile_protos.emplace_back(string(WALL_A), configure_wall);
 
         auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, tile_protos);
 
         // A critter proto makes the client-side critter view surface reachable from mapper scripts
         hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {
-            {string(CRITTER_A), [](ProtoCritter&) { }},
-        };
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+        critter_protos.emplace_back(string(CRITTER_A), [](ProtoCritter&) { });
         auto critter_proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
 
         auto script_blob = MakeMapperScriptBinary(compiler_resources);
@@ -2153,6 +2154,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
         ImGui::Render();
     }
 
+#if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
     // Nothing below the resource list runs until a control is pressed, so each press is queued against
     // the drawn window and consumed by the frame that follows it
     constexpr std::array PRESSED_CONTROLS = {"Refresh", "Mouse position", "View center", "Play", "Restart", "Remove"};
@@ -2165,6 +2167,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
         REQUIRE_NOTHROW(particle_editor.DrawWindows());
         ImGui::Render();
     }
+#endif
 
     // The viewer lays its controls out in child windows, so each press is addressed to the owning child
     for (string_view toggle : {"Direct draw", "Root", "Name level", "Draw rect", "View rect"}) {
@@ -2192,6 +2195,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     REQUIRE_NOTHROW(animation_viewer.Draw());
     ImGui::Render();
 
+#if FO_SPARK_PARTICLES
     // The SPARK browser sits behind a menu item, and DrawMenuItems draws into ImGui's implicit window
     // when no real menu bar hosts it - so the item is addressable there
     REQUIRE(ImGuiTestHarness::ActivateItem("Debug##Default", "SPARK particle editor"));
@@ -2228,6 +2232,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
             ImGui::Render();
         }
     }
+#endif
 
     // Switching away from the previewed map and then unloading it must take the placed sprite with it
     auto second_map = mapper->LoadMapFromText("PreviewMapB", "PreviewMapB.fomap", MakeMapText(MakeItemBlock(31, TILE_A, 6, 6)));
@@ -2254,7 +2259,11 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     REQUIRE_NOTHROW(animation_viewer.SaveSettings());
     REQUIRE_NOTHROW(particle_viewer.SaveSettings());
 
+#if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
     CHECK(ImGui::GetFrameCount() >= VIEWER_FRAMES + numeric_cast<int32_t>(PRESSED_CONTROLS.size()) + 9);
+#else
+    CHECK(ImGui::GetFrameCount() >= VIEWER_FRAMES + 9);
+#endif
 }
 
 #if FO_SPARK_PARTICLES
@@ -2381,6 +2390,12 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
     auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    // The key sweep below presses F11, which dumps the atlases, so the directories it writes are cleared
+    // once the case is done
+    const set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+
+    auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
 
     mapper->InitIface();
 

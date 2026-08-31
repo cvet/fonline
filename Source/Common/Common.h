@@ -273,7 +273,7 @@ public:
 
     [[nodiscard]] auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
-        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), cb);
+        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb));
         return EventUnsubscriberCallback([this, it]() FO_DEFERRED { _subscriberCallbacks.erase(it); });
     }
 
@@ -888,7 +888,7 @@ extern auto MakeSeededRandomGenerator() -> std::mt19937;
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
 extern mutex InterthreadListenersLocker;
-extern map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+extern map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t

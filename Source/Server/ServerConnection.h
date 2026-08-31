@@ -63,7 +63,7 @@ auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view;
 class ServerConnection final
 {
 public:
-    using DataArrivedCallback = function<void()>;
+    using DataArrivedCallback = copyable_function<void()>;
 
     class FO_TSA_SCOPED_CAPABILITY OutBufAccessor
     {

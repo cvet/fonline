@@ -65,6 +65,66 @@ static auto BaseTypeContainsFloat(const BaseTypeDesc& base_type) noexcept -> boo
     return false;
 }
 
+static auto GetBaseTypeIntRange(const BaseTypeDesc& base_type) -> pair<int64_t, int64_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (base_type.IsInt8) {
+        return {std::numeric_limits<int8_t>::lowest(), std::numeric_limits<int8_t>::max()};
+    }
+    if (base_type.IsInt16) {
+        return {std::numeric_limits<int16_t>::lowest(), std::numeric_limits<int16_t>::max()};
+    }
+    if (base_type.IsInt32) {
+        return {std::numeric_limits<int32_t>::lowest(), std::numeric_limits<int32_t>::max()};
+    }
+    if (base_type.IsInt64) {
+        return {std::numeric_limits<int64_t>::lowest(), std::numeric_limits<int64_t>::max()};
+    }
+    if (base_type.IsUInt8) {
+        return {0, std::numeric_limits<uint8_t>::max()};
+    }
+    if (base_type.IsUInt16) {
+        return {0, std::numeric_limits<uint16_t>::max()};
+    }
+    if (base_type.IsUInt32) {
+        return {0, std::numeric_limits<uint32_t>::max()};
+    }
+    if (base_type.IsUInt64) {
+        // Range tag literals are read as signed, so a uint64 bound stops at the signed ceiling
+        return {0, std::numeric_limits<int64_t>::max()};
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
+// The tag tokenizer splits '-' and '.' into their own tokens, so a numeric tag value is reassembled from up to four of them
+static auto ReadNumericTagValue(const span<const string_view>& tokens, size_t& token_index) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string value;
+
+    if (token_index < tokens.size() && (tokens[token_index] == "-" || tokens[token_index] == "+")) {
+        value += tokens[token_index];
+        token_index++;
+    }
+
+    FO_VERIFY_AND_THROW(token_index < tokens.size(), "Numeric tag value is missing", tokens.size(), token_index);
+    value += tokens[token_index];
+    token_index++;
+
+    if (token_index + 1 < tokens.size() && tokens[token_index] == ".") {
+        value += tokens[token_index];
+        token_index++;
+        value += tokens[token_index];
+        token_index++;
+    }
+
+    FO_VERIFY_AND_THROW(strvex(value).is_number(), "Numeric tag value is not a number", value);
+    return value;
+}
+
 static void ValidateFiniteRawBaseTypeValue(string_view prop_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data)
 {
     FO_STACK_TRACE_ENTRY();
@@ -86,6 +146,80 @@ static void ValidateFiniteRawBaseTypeValue(string_view prop_name, const BaseType
     else if (base_type.IsStruct) {
         for (const FieldDesc& field : base_type.StructLayout->Fields) {
             ValidateFiniteRawBaseTypeValue(prop_name, field.Type, raw_data.subspan(field.Offset, field.Type.Size));
+        }
+    }
+}
+
+template<typename T>
+static void ClampRawValueAs(span<uint8_t> raw_data, bool check_min, T min_value, bool check_max, T max_value) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<uint8_t> raw_data_ptr = raw_data.data();
+    T value = *raw_data_ptr.reinterpret_as<T>();
+
+    if (check_min && value < min_value) {
+        *raw_data_ptr.reinterpret_as<T>() = min_value;
+    }
+    else if (check_max && value > max_value) {
+        *raw_data_ptr.reinterpret_as<T>() = max_value;
+    }
+}
+
+// Registration already proved that the declared bounds fit the base type, so narrowing them back
+// to the stored width here is exact and can not trip a checked conversion on this noexcept path
+static void ClampRawBaseTypeValue(const Property& prop, span<uint8_t> raw_data) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const BaseTypeDesc& base_type = prop.GetBaseType();
+    bool check_min = prop.IsMinValueChecked();
+    bool check_max = prop.IsMaxValueChecked();
+
+    if (base_type.IsInt) {
+        int64_t min_value = prop.GetMinValueAsInt();
+        int64_t max_value = prop.GetMaxValueAsInt();
+
+        if (base_type.IsInt8) {
+            ClampRawValueAs<int8_t>(raw_data, check_min, static_cast<int8_t>(min_value), check_max, static_cast<int8_t>(max_value));
+        }
+        else if (base_type.IsInt16) {
+            ClampRawValueAs<int16_t>(raw_data, check_min, static_cast<int16_t>(min_value), check_max, static_cast<int16_t>(max_value));
+        }
+        else if (base_type.IsInt32) {
+            ClampRawValueAs<int32_t>(raw_data, check_min, static_cast<int32_t>(min_value), check_max, static_cast<int32_t>(max_value));
+        }
+        else if (base_type.IsInt64) {
+            ClampRawValueAs<int64_t>(raw_data, check_min, min_value, check_max, max_value);
+        }
+        else if (base_type.IsUInt8) {
+            ClampRawValueAs<uint8_t>(raw_data, check_min, static_cast<uint8_t>(min_value), check_max, static_cast<uint8_t>(max_value));
+        }
+        else if (base_type.IsUInt16) {
+            ClampRawValueAs<uint16_t>(raw_data, check_min, static_cast<uint16_t>(min_value), check_max, static_cast<uint16_t>(max_value));
+        }
+        else if (base_type.IsUInt32) {
+            ClampRawValueAs<uint32_t>(raw_data, check_min, static_cast<uint32_t>(min_value), check_max, static_cast<uint32_t>(max_value));
+        }
+        else if (base_type.IsUInt64) {
+            ClampRawValueAs<uint64_t>(raw_data, check_min, static_cast<uint64_t>(min_value), check_max, static_cast<uint64_t>(max_value));
+        }
+        else {
+            FO_STRONG_ASSERT(false, "Ranged integer property has an unsupported base type width", prop.GetName(), base_type.Name, base_type.Size);
+        }
+    }
+    else {
+        float64_t min_value = prop.GetMinValueAsFloat();
+        float64_t max_value = prop.GetMaxValueAsFloat();
+
+        if (base_type.IsSingleFloat) {
+            ClampRawValueAs<float32_t>(raw_data, check_min, static_cast<float32_t>(min_value), check_max, static_cast<float32_t>(max_value));
+        }
+        else if (base_type.IsDoubleFloat) {
+            ClampRawValueAs<float64_t>(raw_data, check_min, min_value, check_max, max_value);
+        }
+        else {
+            FO_STRONG_ASSERT(false, "Ranged float property has an unsupported base type width", prop.GetName(), base_type.Name, base_type.Size);
         }
     }
 }
@@ -152,6 +286,26 @@ Property::Property(ptr<const PropertyRegistrar> registrar) :
     _registrar {registrar}
 {
     FO_NO_STACK_TRACE_ENTRY();
+}
+
+void Property::ClampRawDataToValueRange(span<uint8_t> raw_data) const noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_checkMinValue && !_checkMaxValue) {
+        return;
+    }
+    if (raw_data.empty()) {
+        return;
+    }
+
+    FO_STRONG_ASSERT(_baseType.Size != 0, "Ranged property has a zero-sized base type", GetName(), _baseType.Name);
+    FO_STRONG_ASSERT(raw_data.size() % _baseType.Size == 0, "Ranged property raw data size is not aligned to base type", GetName(), raw_data.size(), _baseType.Size);
+
+    // A ranged property is either plain data or a plain array, so the payload is a packed run of base type values
+    for (size_t data_pos = 0; data_pos < raw_data.size(); data_pos += _baseType.Size) {
+        ClampRawBaseTypeValue(*this, raw_data.subspan(data_pos, _baseType.Size));
+    }
 }
 
 void Property::SetGetter(PropertyGetCallback getter) const
@@ -1724,7 +1878,7 @@ void Properties::SetValueFromData(ptr<const Property> prop, PropertyRawData& pro
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
-    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+    ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
@@ -1740,8 +1894,8 @@ void Properties::SetValueFromData(ptr<const Property> prop, PropertyRawData& pro
                 setter(_entity, prop, prop_data);
             }
 
-            // Setters can rewrite the raw payload, so the mutated data must pass validation again
-            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+            // Setters can rewrite the raw payload, so the mutated data must be validated and clamped again
+            ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
         }
 
         SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
@@ -2223,7 +2377,7 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(prop.get(), "Property pointer is null");
-    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+    ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual() && prop->_setters.empty()) {
         throw PropertiesException("Setter not set");
@@ -2243,8 +2397,8 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
 
     if (!prop->IsVirtual()) {
         if (!prop->_setters.empty()) {
-            // Setters can rewrite the raw payload, so the mutated data must pass validation again
-            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+            // Setters can rewrite the raw payload, so the mutated data must be validated and clamped again
+            ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
         }
 
         SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
@@ -2255,6 +2409,17 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
             }
         }
     }
+}
+
+void Properties::ValidateAndClampRawData(ptr<const Property> prop, span<uint8_t> raw_data)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ValidateFiniteRawData(prop, raw_data);
+
+    // Clamping runs before the incoming value is compared with the stored one, so a write that the
+    // declared range swallows entirely does not look like a change to setters and post-setters
+    prop->ClampRawDataToValueRange(raw_data);
 }
 
 void Properties::ValidateFiniteRawData(ptr<const Property> prop, span<const uint8_t> raw_data)
@@ -2496,6 +2661,47 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
     bool is_component_marker = false;
     vector<pair<string_view, int32_t>> pending_groups;
 
+    auto apply_value_limit = [&prop, this](string_view tag_name, string_view value_text, bool is_min) {
+        FO_VERIFY_AND_THROW(!prop->IsBaseTypeEnum(), "Property range tag can not be applied to an enum property", _typeName, prop->GetName(), prop->_viewTypeName, tag_name);
+        FO_VERIFY_AND_THROW(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat(), "Property range tag can only be applied to numeric properties", _typeName, prop->GetName(), prop->_viewTypeName, tag_name);
+        FO_VERIFY_AND_THROW(prop->_isPlainData || prop->_isArray, "Property range tag can only be applied to plain or array properties", _typeName, prop->GetName(), prop->_viewTypeName, tag_name);
+
+        if (prop->IsBaseTypeInt()) {
+            FO_VERIFY_AND_THROW(value_text.find('.') == string_view::npos, "Property range tag on an integer property must use an integer literal", _typeName, prop->GetName(), prop->_viewTypeName, tag_name, value_text);
+
+            int64_t value = strvex(value_text).to_int64();
+            auto [type_min_value, type_max_value] = GetBaseTypeIntRange(prop->_baseType);
+            FO_VERIFY_AND_THROW(value >= type_min_value && value <= type_max_value, "Property range tag value does not fit the property base type", _typeName, prop->GetName(), prop->_viewTypeName, tag_name, value, type_min_value, type_max_value);
+
+            if (is_min) {
+                prop->_minValueInt = value;
+            }
+            else {
+                prop->_maxValueInt = value;
+            }
+        }
+        else {
+            float64_t value = strvex(value_text).to_float64();
+            float64_t type_limit_value = prop->_baseType.IsSingleFloat ? static_cast<float64_t>(std::numeric_limits<float32_t>::max()) : std::numeric_limits<float64_t>::max();
+            FO_VERIFY_AND_THROW(std::isfinite(value), "Property range tag value must be finite", _typeName, prop->GetName(), prop->_viewTypeName, tag_name, value_text);
+            FO_VERIFY_AND_THROW(value >= -type_limit_value && value <= type_limit_value, "Property range tag value does not fit the property base type", _typeName, prop->GetName(), prop->_viewTypeName, tag_name, value, type_limit_value);
+
+            if (is_min) {
+                prop->_minValueFloat = value;
+            }
+            else {
+                prop->_maxValueFloat = value;
+            }
+        }
+
+        if (is_min) {
+            prop->_checkMinValue = true;
+        }
+        else {
+            prop->_checkMaxValue = true;
+        }
+    };
+
     for (size_t i = 3; i < tokens.size(); i++) {
         if (tokens[i] == "Group") {
             FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Group tag must be followed by '=' and a group name", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
@@ -2570,13 +2776,19 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
         }
         else if (tokens[i] == "Max") {
             FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Max tag must be followed by '=' and a value", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
-            FO_VERIFY_AND_THROW(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat(), "Property Max tag can only be applied to numeric properties", _typeName, prop->GetName(), prop->_viewTypeName);
-            i += 2;
+            FO_VERIFY_AND_THROW(!prop->_checkMaxValue, "Property declaration contains duplicate Max tag", _typeName, prop->GetName(), i);
+
+            size_t value_index = i + 2;
+            apply_value_limit(tokens[i], ReadNumericTagValue(tokens, value_index), false);
+            i = value_index - 1;
         }
         else if (tokens[i] == "Min") {
             FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Min tag must be followed by '=' and a value", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
-            FO_VERIFY_AND_THROW(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat(), "Property Min tag can only be applied to numeric properties", _typeName, prop->GetName(), prop->_viewTypeName);
-            i += 2;
+            FO_VERIFY_AND_THROW(!prop->_checkMinValue, "Property declaration contains duplicate Min tag", _typeName, prop->GetName(), i);
+
+            size_t value_index = i + 2;
+            apply_value_limit(tokens[i], ReadNumericTagValue(tokens, value_index), true);
+            i = value_index - 1;
         }
         else if (tokens[i] == "Quest") {
             FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Quest tag must be followed by '=' and a quest identifier", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
@@ -2618,6 +2830,8 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
     FO_VERIFY_AND_THROW(!prop->_isNullGetterForProto || prop->_isVirtual, "Null getter for proto is allowed only on virtual properties");
     FO_VERIFY_AND_THROW(!prop->_isPersistent || !prop->_isClientOnly, "Client-only property cannot be persistent");
     FO_VERIFY_AND_THROW(!prop->_isNullable || prop->IsBaseTypeProtoReference(), "Nullable property must reference a proto type");
+    FO_VERIFY_AND_THROW(!(prop->_checkMinValue && prop->_checkMaxValue) || !prop->IsBaseTypeInt() || prop->_minValueInt <= prop->_maxValueInt, "Property Min value is greater than its Max value", _typeName, prop->GetName(), prop->_minValueInt, prop->_maxValueInt);
+    FO_VERIFY_AND_THROW(!(prop->_checkMinValue && prop->_checkMaxValue) || !prop->IsBaseTypeFloat() || prop->_minValueFloat <= prop->_maxValueFloat, "Property Min value is greater than its Max value", _typeName, prop->GetName(), prop->_minValueFloat, prop->_maxValueFloat);
 
     auto reg_index = numeric_cast<uint16_t>(_registeredProperties.size());
 

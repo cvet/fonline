@@ -145,7 +145,7 @@ public:
         StopChain,
     };
 
-    using EventCallback = function<EventResult(FuncCallData&)>;
+    using EventCallback = copyable_function<EventResult(FuncCallData&)>;
 
     ///@ ExportEnum
     enum class EventPriority : int32_t

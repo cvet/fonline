@@ -3172,15 +3172,14 @@ void MapView::InstantScroll(fpos32 scroll)
 
         if (!scroll_area.is_zero()) {
             fpos32 screen_pos = fpos32(GeometryHelper::GetHexPos(_screenRawHex));
-            constexpr ipos32 half_hex = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
             float32_t zoom = GetSpritesZoom();
             fpos32 view_size = fpos32(numeric_cast<float32_t>(_screenSize.width), numeric_cast<float32_t>(_screenSize.height)) / zoom;
             fpos32 lt_pos = screen_pos + _scrollOffset;
             fpos32 rb_pos = screen_pos + view_size + _scrollOffset;
-            float32_t area_l = numeric_cast<float32_t>(scroll_area.x * GameSettings::MAP_HEX_WIDTH / 2 + half_hex.x);
-            float32_t area_t = numeric_cast<float32_t>(scroll_area.y * GameSettings::MAP_HEX_LINE_HEIGHT + half_hex.y);
-            float32_t area_r = numeric_cast<float32_t>((scroll_area.x + scroll_area.width) * GameSettings::MAP_HEX_WIDTH / 2 + half_hex.x);
-            float32_t area_b = numeric_cast<float32_t>((scroll_area.y + scroll_area.height) * GameSettings::MAP_HEX_LINE_HEIGHT + half_hex.y);
+            float32_t area_l = numeric_cast<float32_t>(scroll_area.x * GameSettings::MAP_HEX_WIDTH / 2 + GameSettings::MAP_HEX_WIDTH);
+            float32_t area_t = numeric_cast<float32_t>(scroll_area.y * GameSettings::MAP_HEX_LINE_HEIGHT + GameSettings::MAP_HEX_LINE_HEIGHT);
+            float32_t area_r = numeric_cast<float32_t>((scroll_area.x + scroll_area.width) * GameSettings::MAP_HEX_WIDTH / 2 + GameSettings::MAP_HEX_WIDTH);
+            float32_t area_b = numeric_cast<float32_t>((scroll_area.y + scroll_area.height) * GameSettings::MAP_HEX_LINE_HEIGHT + GameSettings::MAP_HEX_LINE_HEIGHT);
 
             if (lt_pos.x - area_l < 0.0f) {
                 _scrollOffset.x -= lt_pos.x - area_l;

@@ -55,6 +55,26 @@
     </Expand>
   </Type>
 
+  <Type Name="fo::move_only_function&lt;*&gt;">
+    <DisplayString Condition="_vtable == 0">empty</DisplayString>
+    <DisplayString Condition="_vtable-&gt;heap_allocated">move_only_function (heap)</DisplayString>
+    <DisplayString>move_only_function (inline)</DisplayString>
+    <Expand>
+      <Item Name="[target]" Condition="_vtable != 0">_invoke</Item>
+      <Item Name="[heap]" Condition="_vtable != 0 &amp;&amp; _vtable-&gt;heap_allocated">_storage.heap</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::copyable_function&lt;*&gt;">
+    <DisplayString Condition="_vtable == 0">empty</DisplayString>
+    <DisplayString Condition="_vtable-&gt;heap_allocated">copyable_function (heap)</DisplayString>
+    <DisplayString>copyable_function (inline)</DisplayString>
+    <Expand>
+      <Item Name="[target]" Condition="_vtable != 0">_invoke</Item>
+      <Item Name="[heap]" Condition="_vtable != 0 &amp;&amp; _vtable-&gt;heap_allocated">_storage.heap</Item>
+    </Expand>
+  </Type>
+
   <Type Name="fo::propagate_const&lt;*&gt;">
     <DisplayString>{_smartPtr}</DisplayString>
     <Expand>

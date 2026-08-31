@@ -139,7 +139,8 @@ struct EngineBaseData
              }}};
     }
 
-    unordered_map<string_view, function<void(BaseTypeDesc&)>> BuiltinTypes {};
+    // Plain function pointers: every entry is a captureless initializer, so the table needs no wrapper
+    unordered_map<string_view, void (*)(BaseTypeDesc&)> BuiltinTypes {};
 };
 FO_GLOBAL_DATA(EngineBaseData, Data);
 

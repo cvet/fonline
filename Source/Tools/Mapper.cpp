@@ -490,9 +490,12 @@ void MapperEngine::DrawMapperFrame()
         OnRenderIface.Fire();
         SpritesCanDraw = false;
 
-        DrawMainPanelImGui();
-        DrawConsoleImGui();
-        DrawInspectorImGui();
+        if (!InterfaceHidden) {
+            DrawMainPanelImGui();
+            DrawConsoleImGui();
+            DrawInspectorImGui();
+        }
+
         CurDraw();
 
         SprMngr.EndScene();
@@ -671,7 +674,7 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         ToggleMapVisibilityFlag(GetCurMap(), Settings->ShowFast);
         break;
     case KeyCode::F7:
-        WorkspaceWindowVisible = !WorkspaceWindowVisible;
+        InterfaceHidden = !InterfaceHidden;
         break;
     case KeyCode::F8:
         if (SprMngr.IsFullscreen()) {
@@ -953,7 +956,7 @@ auto MapperEngine::EntityBuf::operator=(const EntityBuf& other) -> EntityBuf&
     return *this;
 }
 
-MapperEngine::UndoOp::UndoOp(string label, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot) :
+MapperEngine::UndoOp::UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot) :
     Label(std::move(label)),
     IsSnapshot(is_snapshot),
     Undo(std::move(undo)),
@@ -1310,7 +1313,7 @@ auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEn
         return item;
     }
 
-    std::function<nptr<ClientEntity>(ptr<ItemView>)> find_inner_item = [&](ptr<ItemView> owner) -> nptr<ClientEntity> {
+    function<nptr<ClientEntity>(ptr<ItemView>)> find_inner_item = [&](ptr<ItemView> owner) -> nptr<ClientEntity> {
         span<refcount_ptr<ItemView>> inner_items = owner->GetInnerItems();
 
         for (size_t i = 0; i < inner_items.size(); i++) {
@@ -1461,7 +1464,7 @@ void MapperEngine::DrawMainPanelImGui()
         }
 
         if (ImGui::BeginMenu("Windows")) {
-            ImGui::MenuItem("Workspace", "F7", &WorkspaceWindowVisible);
+            ImGui::MenuItem("Workspace", nullptr, &WorkspaceWindowVisible);
             ImGui::MenuItem("Content", "Shift+F7", &ContentWindowVisible);
 
             if (ImGui::MenuItem("Console", "~", ConsoleEdit)) {
@@ -1538,6 +1541,7 @@ void MapperEngine::DrawMainPanelImGui()
             ImGui::Separator();
             ImGui::MenuItem("Axial grid selection", nullptr, &SelectAxialGrid);
             ImGui::MenuItem("Select entire entity", nullptr, &SelectEntireEntity);
+            ImGui::MenuItem("Hide interface", "F7", &InterfaceHidden);
             ImGui::EndMenu();
         }
 

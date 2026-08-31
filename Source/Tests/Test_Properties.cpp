@@ -3141,6 +3141,144 @@ TEST_CASE("PropertiesNumericRangeValidation")
     CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(1.0));
 }
 
+TEST_CASE("PropertiesValueRangeClamping")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("ValueRangeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto health_prop = registrar.RegisterProperty({"Common", "int32", "Health", "Mutable", "Persistent", "PublicSync", "Min", "=", "0", "Max", "=", "100"});
+    auto offset_prop = registrar.RegisterProperty({"Common", "int8", "Offset", "Mutable", "Persistent", "PublicSync", "Min", "=", "-", "5", "Max", "=", "5"});
+    auto level_prop = registrar.RegisterProperty({"Common", "uint8", "Level", "Mutable", "Persistent", "PublicSync", "Max", "=", "10"});
+    auto ratio_prop = registrar.RegisterProperty({"Common", "float32", "Ratio", "Mutable", "Persistent", "PublicSync", "Min", "=", "0", ".", "5", "Max", "=", "1", ".", "5"});
+    auto scores_prop = registrar.RegisterProperty({"Common", "int32[]", "Scores", "Mutable", "Persistent", "PublicSync", "Min", "=", "0", "Max", "=", "9"});
+    auto free_prop = registrar.RegisterProperty({"Common", "int32", "Free", "Mutable", "Persistent", "PublicSync"});
+
+    CHECK(health_prop->HasValueRange());
+    CHECK(health_prop->IsMinValueChecked());
+    CHECK(health_prop->IsMaxValueChecked());
+    CHECK(health_prop->GetMinValueAsInt() == 0);
+    CHECK(health_prop->GetMaxValueAsInt() == 100);
+    CHECK(offset_prop->GetMinValueAsInt() == -5);
+    CHECK(!level_prop->IsMinValueChecked());
+    CHECK(level_prop->IsMaxValueChecked());
+    CHECK(ratio_prop->GetMinValueAsFloat() == Catch::Approx(0.5));
+    CHECK(ratio_prop->GetMaxValueAsFloat() == Catch::Approx(1.5));
+    CHECK(!free_prop->HasValueRange());
+
+    Properties props(&registrar);
+
+    props.SetValue<int32_t>(health_prop, 150);
+    CHECK(props.GetValue<int32_t>(health_prop) == 100);
+    props.SetValue<int32_t>(health_prop, -20);
+    CHECK(props.GetValue<int32_t>(health_prop) == 0);
+    props.SetValue<int32_t>(health_prop, 55);
+    CHECK(props.GetValue<int32_t>(health_prop) == 55);
+
+    props.SetValue<int8_t>(offset_prop, -100);
+    CHECK(props.GetValue<int8_t>(offset_prop) == -5);
+    props.SetValue<int8_t>(offset_prop, 100);
+    CHECK(props.GetValue<int8_t>(offset_prop) == 5);
+
+    props.SetValue<uint8_t>(level_prop, 200);
+    CHECK(props.GetValue<uint8_t>(level_prop) == 10);
+
+    props.SetValue<float32_t>(ratio_prop, 5.0f);
+    CHECK(props.GetValue<float32_t>(ratio_prop) == Catch::Approx(1.5f));
+    props.SetValue<float32_t>(ratio_prop, 0.0f);
+    CHECK(props.GetValue<float32_t>(ratio_prop) == Catch::Approx(0.5f));
+
+    // Every element of an array property is clamped, not just the payload as a whole
+    props.SetValue(scores_prop, vector<int32_t> {-3, 4, 20});
+    CHECK(props.GetValue<vector<int32_t>>(scores_prop) == vector<int32_t> {0, 4, 9});
+
+    // The int/any script-facing accessors funnel into the same typed setter
+    props.SetValueAsInt(health_prop->GetRegIndex(), 999);
+    CHECK(props.GetValueAsInt(health_prop->GetRegIndex()) == 100);
+    props.SetValueAsAny(health_prop->GetRegIndex(), any_t {string {"-7"}});
+    CHECK(props.GetValueAsInt(health_prop->GetRegIndex()) == 0);
+
+    // Raw property data assignment (network property messages) clamps as well
+    PropertyRawData raw_data;
+    raw_data.SetAs<int32_t>(4242);
+    props.SetValueFromData(health_prop, raw_data);
+    CHECK(props.GetValue<int32_t>(health_prop) == 100);
+
+    // Authored text and baked value deserialization clamp before the value reaches storage
+    PropertiesSerializer::LoadPropertyFromText(&props, health_prop, "500", hashes, resolver);
+    CHECK(props.GetValue<int32_t>(health_prop) == 100);
+    PropertiesSerializer::LoadPropertyFromValue(&props, health_prop, AnyData::Value {int64_t {-9}}, hashes, resolver);
+    CHECK(props.GetValue<int32_t>(health_prop) == 0);
+    PropertiesSerializer::LoadPropertyFromText(&props, scores_prop, "-3 4 20", hashes, resolver);
+    CHECK(props.GetValue<vector<int32_t>>(scores_prop) == vector<int32_t> {0, 4, 9});
+}
+
+TEST_CASE("PropertiesValueRangeClampingWithCallbacks")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("ValueRangeCallbackEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto health_prop = registrar.RegisterProperty({"Common", "int32", "Health", "Mutable", "Persistent", "PublicSync", "Min", "=", "0", "Max", "=", "100"});
+
+    Properties props(&registrar);
+    props.SetEntity(reinterpret_cast<Entity*>(size_t {1}));
+
+    int32_t setter_calls = 0;
+    int32_t post_setter_calls = 0;
+    int32_t last_setter_value = 0;
+
+    health_prop->AddSetter([&](nptr<Entity>, ptr<const Property>, PropertyRawData& prop_data) {
+        setter_calls++;
+        last_setter_value = prop_data.GetAs<int32_t>();
+        prop_data.SetAs<int32_t>(last_setter_value + 50);
+    });
+    health_prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { post_setter_calls++; });
+
+    // Setters see the already clamped value, and their own result is clamped again before storage
+    props.SetValue<int32_t>(health_prop, 400);
+    CHECK(last_setter_value == 100);
+    CHECK(props.GetValue<int32_t>(health_prop) == 100);
+    CHECK(setter_calls == 1);
+    CHECK(post_setter_calls == 1);
+
+    // A write that the range swallows entirely is not a change, so no callback runs
+    props.SetValue<int32_t>(health_prop, 500);
+    CHECK(props.GetValue<int32_t>(health_prop) == 100);
+    CHECK(setter_calls == 1);
+    CHECK(post_setter_calls == 1);
+}
+
+TEST_CASE("PropertiesValueRangeRegistrationRejectsInvalidTags")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("ValueRangeRejectEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    // Only real int/float base types carry a range
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "PublicSync", "Min", "=", "0"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "PublicSync", "Max", "=", "1"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "string", "StringValue", "Mutable", "PublicSync", "Min", "=", "1"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "string=>int32", "DictValue", "Mutable", "PublicSync", "Max", "=", "5"}));
+
+    // The bound has to fit the stored width and stay a valid literal
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "int8", "TooBigValue", "Mutable", "PublicSync", "Max", "=", "1000"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "uint8", "NegativeValue", "Mutable", "PublicSync", "Min", "=", "-", "1"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "int32", "FractionalValue", "Mutable", "PublicSync", "Min", "=", "0", ".", "5"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "int32", "NotANumberValue", "Mutable", "PublicSync", "Min", "=", "abc"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "int32", "MissingValue", "Mutable", "PublicSync", "Min"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "int32", "MissingAssignValue", "Mutable", "PublicSync", "Min", "0", "1"}));
+
+    // Contradictory or repeated declarations
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "int32", "InvertedValue", "Mutable", "PublicSync", "Min", "=", "10", "Max", "=", "5"}));
+    CHECK_THROWS(registrar.RegisterProperty({"Common", "int32", "DuplicateValue", "Mutable", "PublicSync", "Min", "=", "1", "Min", "=", "2"}));
+
+    // A valid declaration still registers after the rejected ones
+    auto valid_prop = registrar.RegisterProperty({"Common", "int32", "ValidValue", "Mutable", "PublicSync", "Min", "=", "-", "10", "Max", "=", "10"});
+    CHECK(valid_prop->GetMinValueAsInt() == -10);
+    CHECK(valid_prop->GetMaxValueAsInt() == 10);
+}
+
 TEST_CASE("PropertiesTextScalarWidthConversions")
 {
     HashStorage hashes {};

@@ -275,7 +275,6 @@ static_assert(alignof(float64_t) <= MAX_SERIALIZED_ALIGNMENT);
 
 // Bind to global scope frequently used types
 using std::array;
-using std::function;
 using std::initializer_list;
 using std::optional;
 using std::pair;

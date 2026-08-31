@@ -77,7 +77,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
 
     uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-    function<InterthreadDataCallback(InterthreadDataCallback)> listener;
+    copyable_function<InterthreadDataCallback(InterthreadDataCallback)> listener;
 
     {
         scoped_lock locker {InterthreadListenersLocker};

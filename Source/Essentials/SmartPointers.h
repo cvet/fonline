@@ -35,6 +35,7 @@
 
 #include "BasicCore.h"
 #include "FatalError.h"
+#include "FunctionObjects.h"
 
 FO_BEGIN_NAMESPACE
 

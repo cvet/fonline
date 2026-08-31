@@ -41,7 +41,7 @@
 FO_BEGIN_NAMESPACE
 
 // Engine exception handling
-using ExceptionCallback = function<void(string_view message, const CatchedStackTraceData& st, bool fatal_error)>;
+using ExceptionCallback = copyable_function<void(string_view message, const CatchedStackTraceData& st, bool fatal_error)>;
 
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;

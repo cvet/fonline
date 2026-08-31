@@ -37,7 +37,7 @@
 FO_BEGIN_NAMESPACE
 
 mutex InterthreadListenersLocker;
-map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###"
                                                     "##############################################################################################################";

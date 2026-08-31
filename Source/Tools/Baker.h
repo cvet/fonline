@@ -51,8 +51,8 @@ inline constexpr string_view REPORT_FILE_SUFFIX = ".report.json";
 class Properties;
 class ScriptSystem;
 
-using BakeCheckerCallback = function<bool(string_view, uint64_t)>;
-using AsyncWriteDataCallback = function<BakingWriteResult(string_view, const_span<uint8_t>)>;
+using BakeCheckerCallback = copyable_function<bool(string_view, uint64_t)>;
+using AsyncWriteDataCallback = copyable_function<BakingWriteResult(string_view, const_span<uint8_t>)>;
 
 struct BakingContext
 {

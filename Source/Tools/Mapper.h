@@ -105,11 +105,11 @@ public:
     {
         string Label {};
         bool IsSnapshot {};
-        std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Undo {};
-        std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Redo {};
+        function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Undo {};
+        function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Redo {};
 
         UndoOp() = default;
-        UndoOp(string label, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot = false);
+        UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot = false);
     };
 
     struct UndoContext
@@ -355,6 +355,7 @@ public:
     vector<MoveCommandEntry> PendingSelectionMoveEntries {};
     bool SelectAxialGrid {true};
     bool SelectEntireEntity {};
+    bool InterfaceHidden {};
     bool WorkspaceWindowVisible {};
     bool ContentWindowVisible {};
     bool CritterAnimationsWindowVisible {};

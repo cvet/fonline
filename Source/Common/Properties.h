@@ -199,9 +199,19 @@ public:
     [[nodiscard]] auto IsNullable() const noexcept -> bool { return _isNullable; }
     [[nodiscard]] auto IsTemporary() const noexcept -> bool { return (_isMutable || _isCoreProperty) && !_isPersistent; }
 
+    [[nodiscard]] auto HasValueRange() const noexcept -> bool { return _checkMinValue || _checkMaxValue; }
+    [[nodiscard]] auto IsMinValueChecked() const noexcept -> bool { return _checkMinValue; }
+    [[nodiscard]] auto IsMaxValueChecked() const noexcept -> bool { return _checkMaxValue; }
+    [[nodiscard]] auto GetMinValueAsInt() const noexcept -> int64_t { return _minValueInt; }
+    [[nodiscard]] auto GetMaxValueAsInt() const noexcept -> int64_t { return _maxValueInt; }
+    [[nodiscard]] auto GetMinValueAsFloat() const noexcept -> float64_t { return _minValueFloat; }
+    [[nodiscard]] auto GetMaxValueAsFloat() const noexcept -> float64_t { return _maxValueFloat; }
+
     [[nodiscard]] auto GetGetter() const noexcept -> ptr<const PropertyGetCallback> { return &_getter; }
     [[nodiscard]] auto GetSetters() const noexcept -> ptr<const vector<PropertySetCallback>> { return &_setters; }
     [[nodiscard]] auto GetPostSetters() const noexcept -> ptr<const vector<PropertyPostSetCallback>> { return &_postSetters; }
+
+    void ClampRawDataToValueRange(span<uint8_t> raw_data) const noexcept;
 
     void SetGetter(PropertyGetCallback getter) const;
     void AddSetter(PropertySetCallback setter) const;
@@ -261,10 +271,16 @@ private:
     bool _isNullGetterForProto {};
     bool _isNullable {};
     bool _containsFloat {};
+    bool _checkMinValue {};
+    bool _checkMaxValue {};
     uint16_t _regIndex {};
     size_t _dataAlignment {1};
     optional<size_t> _podDataOffset {};
     optional<size_t> _complexDataIndex {};
+    int64_t _minValueInt {};
+    int64_t _maxValueInt {};
+    float64_t _minValueFloat {};
+    float64_t _maxValueFloat {};
 };
 
 class Properties final
@@ -411,6 +427,7 @@ private:
     auto MakeOverlayPackOrder() const noexcept -> vector<size_t>;
     auto IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool;
     static void ValidateFiniteRawData(ptr<const Property> prop, span<const uint8_t> raw_data);
+    static void ValidateAndClampRawData(ptr<const Property> prop, span<uint8_t> raw_data);
 
     ptr<const PropertyRegistrar> _registrar;
     nptr<const Properties> _baseProps {};
@@ -811,7 +828,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
     auto new_value_ptr = make_ptr(&new_value);
-    ValidateFiniteRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
+    ValidateAndClampRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
@@ -847,7 +864,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                     setter(_entity, prop, prop_data);
                 }
 
-                ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+                ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
                 SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
@@ -1031,7 +1048,7 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
         }
     }
 
-    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+    ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
@@ -1049,8 +1066,8 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
                 setter(_entity, prop, prop_data);
             }
 
-            // Setters can rewrite the raw payload, so the mutated data must pass validation again
-            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+            // Setters can rewrite the raw payload, so the mutated data must be validated and clamped again
+            ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
         }
 
         SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});

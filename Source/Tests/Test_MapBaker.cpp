@@ -114,32 +114,33 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
     hstring server_item_type = server_proto_engine.Hashes.ToHashedString("Item");
     hstring client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
 
-    rig.AddBakedFile("MapBakerCritters.fopro-bin-server",
-        BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(server_proto_engine, server_critter_type,
-            {
-                {string(critter_proto_name), [&server_proto_engine](ProtoCritter& proto) { proto.SetModelName(server_proto_engine.Hashes.ToHashedString("MapBakerCritterModel")); }},
-            }));
+    vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+    critter_protos.emplace_back(string(critter_proto_name), [&server_proto_engine](ProtoCritter& proto) { proto.SetModelName(server_proto_engine.Hashes.ToHashedString("MapBakerCritterModel")); });
+
+    rig.AddBakedFile("MapBakerCritters.fopro-bin-server", BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(server_proto_engine, server_critter_type, critter_protos));
 
     auto make_item_protos = [](auto& proto_engine, hstring item_type, string_view visible_proto, string_view hidden_proto, bool set_hidden) {
-        return BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type,
-            {
-                {string(visible_proto),
-                    [&proto_engine, set_hidden](ProtoItem& proto) {
-                        proto.SetStatic(true);
-                        if (set_hidden) {
-                            proto.SetHidden(false);
-                        }
-                        proto.SetPicMap(proto_engine.Hashes.ToHashedString("MapBakerVisibleItemPic"));
-                    }},
-                {string(hidden_proto),
-                    [&proto_engine, set_hidden](ProtoItem& proto) {
-                        proto.SetStatic(true);
-                        if (set_hidden) {
-                            proto.SetHidden(true);
-                        }
-                        proto.SetPicMap(proto_engine.Hashes.ToHashedString("MapBakerHiddenItemPic"));
-                    }},
-            });
+        vector<pair<string, function<void(ProtoItem&)>>> item_protos;
+        item_protos.emplace_back(string(visible_proto), [&proto_engine, set_hidden](ProtoItem& proto) {
+            proto.SetStatic(true);
+
+            if (set_hidden) {
+                proto.SetHidden(false);
+            }
+
+            proto.SetPicMap(proto_engine.Hashes.ToHashedString("MapBakerVisibleItemPic"));
+        });
+        item_protos.emplace_back(string(hidden_proto), [&proto_engine, set_hidden](ProtoItem& proto) {
+            proto.SetStatic(true);
+
+            if (set_hidden) {
+                proto.SetHidden(true);
+            }
+
+            proto.SetPicMap(proto_engine.Hashes.ToHashedString("MapBakerHiddenItemPic"));
+        });
+
+        return BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, item_protos);
     };
 
     rig.AddBakedFile("MapBakerItems.fopro-bin-server", make_item_protos(server_proto_engine, server_item_type, visible_item_proto_name, hidden_item_proto_name, true));

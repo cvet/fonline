@@ -145,9 +145,9 @@ FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(ptr<CritterView> self, Critter
 ///@ ExportMethod
 FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
-#if FO_ENABLE_3D
     auto hex_cr = RequireHexCritter(self);
 
+#if FO_ENABLE_3D
     if (!hex_cr->IsModel()) {
         return {};
     }
@@ -158,11 +158,11 @@ FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self
     return model->GetAnimDuration(stateAnim, actionAnim);
 
 #else
-    ignore_unused(self);
+    ignore_unused(hex_cr);
     ignore_unused(stateAnim);
     ignore_unused(actionAnim);
 
-    throw NotEnabled3DException("3D submodule not enabled");
+    return {};
 #endif
 }
 
@@ -430,10 +430,10 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, Critter
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring boneName, ipos32& boneOffset)
 {
-#if FO_ENABLE_3D
     auto hex_cr = RequireHexCritter(self);
     boneOffset = hex_cr->GetSpriteOffset();
 
+#if FO_ENABLE_3D
     if (!hex_cr->IsModel()) {
         return false;
     }
@@ -451,11 +451,9 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
     return true;
 
 #else
-    ignore_unused(self);
     ignore_unused(boneName);
-    ignore_unused(boneOffset);
 
-    throw NotEnabled3DException("3D submodule not enabled");
+    return false;
 #endif
 }
 

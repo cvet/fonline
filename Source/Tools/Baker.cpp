@@ -831,8 +831,9 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
     struct ScriptFuncValidationRule
     {
-        function<bool(hstring, ptr<const ScriptSystem>)> VerifySignature {};
-        function<bool(hstring, ptr<const ScriptSystem>)> VerifyAttribute {};
+        // Plain function pointers: every rule is a captureless check, so the table needs no wrapper
+        bool (*VerifySignature)(hstring, ptr<const ScriptSystem>) {};
+        bool (*VerifyAttribute)(hstring, ptr<const ScriptSystem>) {};
         string_view RequiredAttribute {};
     };
 

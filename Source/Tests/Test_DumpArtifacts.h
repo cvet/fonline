@@ -31,35 +31,41 @@
 // SOFTWARE.
 //
 
+
 #pragma once
 
-// Strict dependency order: each Essentials header and implementation may depend only on entries above it.
-// Pass higher-layer data downward explicitly instead of creating an include cycle
+#include "Common.h"
 
-// clang-format off
-#include "BasicCore.h"
-#include "GlobalData.h"
-#include "StackTrace.h"
-#include "BaseLogging.h"
-#include "FatalError.h"
-#include "FunctionObjects.h"
-#include "SmartPointers.h"
-#include "MemorySystem.h"
-#include "Containers.h"
-#include "StringUtils.h"
-#include "Platform.h"
-#include "ExceptionHandling.h"
-#include "Threading.h"
-#include "SafeArithmetics.h"
-#include "DataSerialization.h"
-#include "HashedString.h"
-#include "StrongType.h"
-#include "TimeRelated.h"
-#include "ExtendedTypes.h"
-#include "Compressor.h"
-#include "WorkThread.h"
-#include "Logging.h"
-#include "DiskFileSystem.h"
-#include "CommonHelpers.h"
-#include "NetSockets.h"
-// clang-format on
+FO_BEGIN_NAMESPACE
+
+// Atlas and render-target dumps land in the process working directory under a timestamped name the caller
+// cannot predict, so a test records the set present up front and drops only what its own run produced
+namespace TexDumpArtifacts
+{
+    [[nodiscard]] inline auto CollectDumpDirs() -> set<string>
+    {
+        set<string> dirs;
+        std::error_code ec;
+
+        for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(".", ec)) {
+            string name = fs_path_to_string(entry.path().filename());
+
+            if (name.starts_with("TexDump_") && entry.is_directory(ec)) {
+                dirs.emplace(std::move(name));
+            }
+        }
+
+        return dirs;
+    }
+
+    inline void RemoveNewDumpDirs(const set<string>& present_before)
+    {
+        for (const string& dir : CollectDumpDirs()) {
+            if (!present_before.contains(dir)) {
+                (void)fs_remove_dir_tree(dir);
+            }
+        }
+    }
+}
+
+FO_END_NAMESPACE
