@@ -4046,8 +4046,10 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
         nptr<Entity> entity = *static_cast<Entity**>(data);
         string managed_type_name = base_type.Name;
 
-        // Preserve the concrete runtime type when boxing an abstract entity argument
-        if (entity && base_type.IsAbstractEntity) {
+        // Preserve the concrete runtime type when boxing an abstract entity argument, and equally when the
+        // declared type is the Entity base itself: a script that receives an Entity parameter has nothing to
+        // downcast unless the wrapper carries the real type
+        if (entity && (base_type.IsAbstractEntity || base_type.Name == "Entity")) {
             const string entity_type_name = string(entity->GetTypeName());
             managed_type_name = entity.dyn_cast<const ProtoEntity>() ? strex("Proto{}", entity_type_name).str() : entity_type_name;
         }
