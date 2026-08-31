@@ -297,7 +297,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     auto fill_proto_texts = [&](hstring entity_name, string_view pack_name) {
         for (auto&& [pid, proto_texts] : all_proto_texts[entity_name]) {
-            for (const auto& proto_text : proto_texts) {
+            for (auto& proto_text : proto_texts) {
                 auto it = std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == proto_text.first; });
 
                 if (it != lang_packs.end()) {

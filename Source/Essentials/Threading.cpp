@@ -39,6 +39,12 @@
 #include "StackTrace.h"
 #include "StringUtils.h"
 
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
+
 FO_BEGIN_NAMESPACE
 
 // Lazily filled with a numeric default the first time a thread that never named itself reads it
@@ -72,6 +78,11 @@ struct Pool
 static void worker_loop(Pool* pool) noexcept;
 static void internal_shutdown(Pool& pool) noexcept;
 static void spawn_pool_worker(Pool& pool, const string& worker_name);
+static void park_until(std::chrono::steady_clock::time_point deadline) noexcept;
+
+// The OS wait overshoots its deadline by a few hundred microseconds, so the tail of a sleep is spun out
+// instead. Also the cutoff under which a whole sleep is spun, since parking that briefly is not possible
+static constexpr std::chrono::nanoseconds PRECISE_SLEEP_SPIN_BUDGET = std::chrono::milliseconds {1};
 
 struct GlobalPools
 {
@@ -310,6 +321,34 @@ extern auto get_this_thread_name() noexcept -> string_view
     return {ThreadName.data(), ThreadName.size()};
 }
 
+extern void coarse_sleep(std::chrono::nanoseconds duration) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (duration > std::chrono::nanoseconds::zero()) {
+        park_until(std::chrono::steady_clock::now() + duration);
+    }
+}
+
+extern void precise_sleep(std::chrono::nanoseconds duration) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (duration <= std::chrono::nanoseconds::zero()) {
+        return;
+    }
+
+    auto deadline = std::chrono::steady_clock::now() + duration;
+
+    if (duration > PRECISE_SLEEP_SPIN_BUDGET) {
+        park_until(deadline - PRECISE_SLEEP_SPIN_BUDGET);
+    }
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+}
+
 extern auto run_thread(string_view task_name, function<void()> task) -> thread
 {
     FO_STACK_TRACE_ENTRY();
@@ -407,6 +446,47 @@ void thread::detach() noexcept
 {
     _future = {};
     _runningThreadId.reset();
+}
+
+static void park_until(std::chrono::steady_clock::time_point deadline) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto remaining = deadline - std::chrono::steady_clock::now();
+
+    if (remaining <= std::chrono::steady_clock::duration::zero()) {
+        return;
+    }
+
+#if FO_WINDOWS
+    // std::this_thread::sleep_for rounds up to the timer tick; the waitable timer takes a relative deadline
+    // in 100 ns units and a negative value means relative. The high resolution flag needs Windows 10 1803
+    HANDLE timer = ::CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+
+    if (timer == nullptr) {
+        timer = ::CreateWaitableTimerExW(nullptr, nullptr, 0, TIMER_ALL_ACCESS);
+    }
+
+    if (timer == nullptr) {
+        std::this_thread::sleep_for(remaining);
+        return;
+    }
+
+    LARGE_INTEGER due_time;
+    due_time.QuadPart = -(std::chrono::duration_cast<std::chrono::nanoseconds>(remaining).count() / 100);
+
+    if (::SetWaitableTimer(timer, &due_time, 0, nullptr, nullptr, FALSE) != FALSE) {
+        (void)::WaitForSingleObject(timer, INFINITE);
+    }
+    else {
+        std::this_thread::sleep_for(remaining);
+    }
+
+    (void)::CloseHandle(timer);
+
+#else
+    std::this_thread::sleep_for(remaining);
+#endif
 }
 
 FO_END_NAMESPACE

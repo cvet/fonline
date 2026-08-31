@@ -141,7 +141,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
                 }
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            coarse_sleep(std::chrono::milliseconds {1});
         }
 
         auto server = GetServiceServer();

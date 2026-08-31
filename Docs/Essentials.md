@@ -131,11 +131,28 @@ Two lookup rules are load-bearing and easy to break. `operator<<` lives in the e
 
 The standard string streams are specified on `std::basic_string`, so they keep the `stream_string` alias and text handed to one is copied through `make_stream_string`. `std::filesystem::path` likewise only recognises the standard string shapes; build a path from an engine string with `fs_make_path`, which is the correct engine idiom anyway because it carries UTF-8 rather than the native narrow encoding.
 
+#### Deque vocabulary
+
+`DequeObject.*` owns `basic_deque<T, BlockBytes>`, which `Containers.h` aliases as `deque`. It exists because `std::deque` fixes its block at 16 bytes: for any element wider than a pointer that is one heap block per element, which a message or task queue pays on every push. Measured on the toolchain this engine targets, a thousand `push_back` calls of a 64-byte element cost 1008 allocations from the standard container.
+
+- The block size is the template parameter, defaulting to `DEQUE_BLOCK_BYTES` (512 bytes of elements) and never dropping below `DEQUE_MIN_BLOCK_ELEMENTS`, so a wide element still amortises its allocations. Override it per use site as with `small_vector<T, N>`; there is no build option, because unlike the string's inline capacity a block size has no single global optimum.
+- Storage is a growable array of fixed blocks plus the index of the first element, so `push_back` and `push_front` never move an existing element. That matches `std::deque`'s reference-stability guarantee, which engine queues lean on.
+- The surface is the subset the engine uses — the push/pop/emplace pairs at both ends, `front`/`back`, indexing, `size`/`empty`/`clear`/`swap`, forward and reverse iterators, and single-element `erase`. `erase` shifts toward the nearer end and invalidates from there, as the standard container does. A missing operation is a compile error, so add it when a caller needs it.
+
+#### Random vocabulary
+
+`RandomGenerator.*` owns `random_generator`, a xoshiro256++ engine that replaces `std::mt19937` everywhere in the engine. Two reasons, and the second is the important one:
+
+- **State.** 32 bytes against the 5000 the standard Mersenne engine occupies on this toolchain, and no seeding pass — that engine costs about 3.6 us to construct.
+- **Reproducibility.** `std::uniform_int_distribution` is implementation-defined, so the same seed maps to different values on a Windows client and a Linux server, and across standard-library versions. `next_below(bound)` and `next_between(min, max)` are ours, using Lemire's multiply-shift, so a seed produces one sequence everywhere. `Test_RandomGenerator` pins that sequence against fixed values.
+
+A default-constructed generator seeds itself from `std::random_device`; the `uint64_t` constructor and `seed()` expand a caller's seed through SplitMix64, so a zero seed is not the state's fixed point. `next()` returns a raw 64-bit draw, `next_normalized()` a double in `[0, 1)`. The bounded draws validate their arguments with `FO_VERIFY_AND_THROW` rather than returning a wrong answer.
+
 #### Allocation vocabulary
 
 Engine code allocates through one of two surfaces, and nothing else:
 
-- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. Use these, never the `std::` originals. `string` and `wstring` are the engine `basic_string` described above; the rest are the standard containers instantiated on `SafeAllocator`.
+- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. Use these, never the `std::` originals. `string` and `wstring` are the engine `basic_string` and `deque` the engine `basic_deque`, both described above; the rest are the standard containers instantiated on `SafeAllocator`.
 - **`SafeAlloc`** — `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` for typed objects, and the raw tier `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` plus `MallocAlignedRaw` / `FreeAlignedRaw` for C-ABI boundaries.
 
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `SafeAllocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
@@ -187,6 +204,15 @@ When vendoring or updating a library, check whether it has an allocator hook and
 `DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
 
 When a `WorkThread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
+
+#### Waiting
+
+`Threading.h` exposes `coarse_sleep` and `precise_sleep`; engine code uses those and never `std::this_thread::sleep_for`. The standard call rounds the request up to the OS timer tick, so on a default Windows configuration a 50 us request parks for **15.4 ms** — three hundred times over, which silently defeats every sub-millisecond back-off and every frame pacer. Nothing in the engine raises the process timer resolution, so this is the shipped behaviour, not a misconfiguration.
+
+- **`coarse_sleep`** parks on a high-resolution waitable timer and lands within about half a millisecond, spending no CPU. It is the right call for a polling loop that merely wants to yield the core for a while.
+- **`precise_sleep`** hits its deadline to within microseconds by spinning the last millisecond out on `yield()`. Use it where the number was chosen on purpose — lock back-off, frame pacing — and remember it burns at most one spin budget of CPU per call.
+
+A wait at or below the spin budget is spun in full, because the timer cannot be asked for less than roughly 600 us. Above it, the timer takes `duration - budget` and the tail is spun; the timer overshoots its own deadline by 0.3-0.5 ms, so in practice the tail is short or empty. The timer handle is created per call, which measured at 4.5 us and only applies to waits over a millisecond, so no thread-local handle cache is needed. `Test_Threading` pins that a sub-millisecond request returns in well under a millisecond, which the tick-rounded call cannot do.
 
 ## Build integration
 

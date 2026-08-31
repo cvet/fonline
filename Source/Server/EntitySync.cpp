@@ -709,7 +709,7 @@ static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
     }
     else {
         int32_t shift = std::min(attempt - BACKOFF_YIELD_ONLY_ATTEMPTS, BACKOFF_MAX_SHIFT);
-        std::this_thread::sleep_for(std::chrono::microseconds(int64_t {50} << shift));
+        precise_sleep(std::chrono::microseconds(int64_t {50} << shift));
     }
 }
 

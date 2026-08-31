@@ -64,10 +64,10 @@ void NetBuffer::SetEncryptKey(uint32_t seed)
         return;
     }
 
-    std::mt19937 rnd_generator {seed};
+    random_generator key_generator {seed};
 
     for (auto& key : _encryptKeys) {
-        key = numeric_cast<uint8_t>(rnd_generator() % 256);
+        key = numeric_cast<uint8_t>(key_generator.next() % 256);
     }
 
     _encryptKeyPos = 0;

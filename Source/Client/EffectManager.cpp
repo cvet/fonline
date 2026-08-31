@@ -173,12 +173,10 @@ void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTim
     if (effect->IsNeedRandomValueBuf()) {
         auto& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
 
-        std::uniform_int_distribution<int32_t> random_distribution {0, 99999};
-
-        random_value_buf->RandomValue[0] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
-        random_value_buf->RandomValue[1] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
-        random_value_buf->RandomValue[2] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
-        random_value_buf->RandomValue[3] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
+        random_value_buf->RandomValue[0] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
+        random_value_buf->RandomValue[1] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
+        random_value_buf->RandomValue[2] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
+        random_value_buf->RandomValue[3] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
     }
 }
 

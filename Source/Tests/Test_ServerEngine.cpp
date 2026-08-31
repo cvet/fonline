@@ -796,9 +796,8 @@ TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
     auto cr = server->CreateCritter(critter_pid, false);
     ident_t cr_id = cr->GetId();
 
-    // This is ServerEngineStartsAndCreatesCritter with every synchronization call removed: login work re-syncs
-    // the context onto the player, so in the multithreaded mode the critter below is uncovered and every access
-    // to it throws "Entity access without sync"
+    // ServerEngineStartsAndCreatesCritter with every synchronization call removed: login re-syncs the context
+    // onto the player, so in the multithreaded mode the critter below would be uncovered and every access throw
     auto player = CreateLoggedPlayer(server, "UnitTestSingleThreaded");
     CHECK(player->GetId() != ident_t {});
 

@@ -139,7 +139,7 @@ void FrameBalancer::EndLoop()
             std::this_thread::yield();
         }
         else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
+            coarse_sleep(std::chrono::milliseconds(_sleep));
         }
     }
     else if (_fixedFps > 0) {
@@ -149,7 +149,7 @@ void FrameBalancer::EndLoop()
         if (idle_time > timespan::zero) {
             nanotime sleep_start = nanotime::now();
 
-            std::this_thread::sleep_for(idle_time.value());
+            precise_sleep(idle_time.value());
 
             timespan sleep_duration = nanotime::now() - sleep_start;
 
@@ -163,14 +163,6 @@ void FrameBalancer::EndLoop()
             }
         }
     }
-}
-
-auto MakeSeededRandomGenerator() -> std::mt19937
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::random_device random_device;
-    return std::mt19937 {random_device()};
 }
 
 // Dummy symbols for web build to avoid linker errors

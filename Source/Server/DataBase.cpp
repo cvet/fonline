@@ -960,7 +960,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                 CommitNextChange();
             }
             else if (_backendFailed) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                coarse_sleep(std::chrono::milliseconds {10});
             }
         }
         catch (const std::exception& ex) {
@@ -1137,7 +1137,7 @@ void DataBaseImpl::StartPanic(string_view message)
     }
 
     run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
-        std::this_thread::sleep_for(timeout);
+        coarse_sleep(timeout);
         ReportFatalAndExit("Database panic shutdown timed out");
     }).detach();
 }

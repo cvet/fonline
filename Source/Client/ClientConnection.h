@@ -120,7 +120,7 @@ private:
     unordered_map<NetMessage, MessageCallback> _handlers {};
     optional<nanotime> _artificalInboundLagTime {};
     optional<nanotime> _artificalOutboundLagTime {};
-    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
+    random_generator _randomGenerator {};
     nanotime _pingTime {};
     nanotime _pingCallTime {};
     size_t _msgCount {};
