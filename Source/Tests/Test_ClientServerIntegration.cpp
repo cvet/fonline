@@ -509,6 +509,7 @@ namespace ClientServerIntegrationClient
     int UnitTestDriveChosen()
     {
         if (!HasChosen) return -1;
+        if (!HasCurMap) return -2;
 
         // Both of these travel to the server as player commands and come back as authoritative state
         Chosen.MoveToHex(mpos(12, 12), ipos(0, 0), 10);
@@ -1311,7 +1312,16 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
 
     // Player commands round-trip: the client sends move and direction, the server validates and applies them
     int32_t drive_result = -1;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestDriveChosen"), drive_result));
+
+    for (int32_t i = 0; i < 2000 && drive_result != 0; i++) {
+        client->MainLoop();
+        REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestDriveChosen"), drive_result));
+
+        if (drive_result != 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
     CHECK(drive_result == 0);
 
     for (int32_t i = 0; i < 200; i++) {
