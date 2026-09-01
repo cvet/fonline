@@ -34,16 +34,6 @@
 #include "DataBase.h"
 #include "ImGuiStuff.h"
 
-#if FO_WINDOWS
-#include <fcntl.h>
-#include <io.h>
-#include <share.h>
-#else
-#include <fcntl.h>
-#include <sys/file.h>
-#include <unistd.h>
-#endif
-
 FO_DISABLE_WARNINGS_PUSH()
 #include <bson/bson.h>
 #include <json.hpp>
@@ -55,6 +45,12 @@ FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
 FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 FO_BEGIN_NAMESPACE
+
+#if FO_WINDOWS
+namespace osfile = winapi;
+#else
+namespace osfile = posix;
+#endif
 
 static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json;
 static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document;
@@ -960,7 +956,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                 CommitNextChange();
             }
             else if (_backendFailed) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                coarse_sleep(std::chrono::milliseconds {10});
             }
         }
         catch (const std::exception& ex) {
@@ -1137,7 +1133,7 @@ void DataBaseImpl::StartPanic(string_view message)
     }
 
     run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
-        std::this_thread::sleep_for(timeout);
+        coarse_sleep(timeout);
         ReportFatalAndExit("Database panic shutdown timed out");
     }).detach();
 }
@@ -1151,34 +1147,13 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
         throw DataBaseException("Empty recovery log file path");
     }
 
-    auto path_cstr = make_ptr(_path.c_str());
-
-#if FO_WINDOWS
-    if (_sopen_s(&_fd, path_cstr.get(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
-        throw DataBaseException("Failed to open recovery oplog file", _path);
-    }
-
-#else
-    _fd = open(path_cstr.get(), O_RDWR | O_CREAT, 0666);
+    _fd = osfile::open_exclusive_file(_path);
 
     if (_fd < 0) {
-        throw DataBaseException("Failed to open recovery oplog file", _path);
+        throw DataBaseException("Failed to open recovery oplog file, it may be used by another process", _path);
     }
 
-    if (flock(_fd, LOCK_EX | LOCK_NB) != 0) {
-        close(_fd);
-        throw DataBaseException("Failed to lock recovery oplog file, it may be used by another process", _path);
-    }
-#endif
-
-    auto fd_guard = scope_fail([this]() noexcept {
-#if FO_WINDOWS
-        _close(_fd);
-#else
-        flock(_fd, LOCK_UN);
-        close(_fd);
-#endif
-    });
+    auto fd_guard = scope_fail([this]() noexcept { osfile::close_exclusive_file(_fd); });
 
     auto read_content = Read();
 
@@ -1202,37 +1177,22 @@ DataBaseImpl::RecoveryLogHandle::~RecoveryLogHandle() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_WINDOWS
-    _close(_fd);
-#else
-    flock(_fd, LOCK_UN);
-    close(_fd);
-#endif
+    osfile::close_exclusive_file(_fd);
 }
 
 auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_WINDOWS
-    auto size = _lseeki64(_fd, 0, SEEK_END);
-#else
-    auto size = lseek(_fd, 0, SEEK_END);
-#endif
+    int64_t size = osfile::seek_file_end(_fd);
 
     if (size < 0) {
         return std::nullopt;
     }
 
-#if FO_WINDOWS
-    if (_lseeki64(_fd, 0, SEEK_SET) < 0) {
+    if (!osfile::seek_file_begin(_fd)) {
         return std::nullopt;
     }
-#else
-    if (lseek(_fd, 0, SEEK_SET) < 0) {
-        return std::nullopt;
-    }
-#endif
 
     string content;
     content.resize(static_cast<size_t>(size));
@@ -1243,12 +1203,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
         auto remaining = content.size() - offset;
         auto read_pos = make_ptr(content.data() + offset);
 
-#if FO_WINDOWS
-        auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
-        int32_t read_size = _read(_fd, read_pos.get(), chunk);
-#else
-        ssize_t read_size = read(_fd, read_pos.get(), remaining);
-#endif
+        int64_t read_size = osfile::read_file_chunk(_fd, read_pos, remaining);
 
         if (read_size <= 0) {
             return std::nullopt;
@@ -1257,15 +1212,9 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
         offset += static_cast<size_t>(read_size);
     }
 
-#if FO_WINDOWS
-    if (_lseeki64(_fd, 0, SEEK_END) < 0) {
+    if (osfile::seek_file_end(_fd) < 0) {
         return std::nullopt;
     }
-#else
-    if (lseek(_fd, 0, SEEK_END) < 0) {
-        return std::nullopt;
-    }
-#endif
 
     return content;
 }
@@ -1274,27 +1223,17 @@ auto DataBaseImpl::RecoveryLogHandle::Truncate() noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_WINDOWS
-    if (_chsize_s(_fd, 0) != 0) {
+    if (!osfile::truncate_file(_fd)) {
         return false;
     }
-    if (_lseeki64(_fd, 0, SEEK_SET) < 0) {
+
+    if (!osfile::seek_file_begin(_fd)) {
         return false;
     }
-    if (_commit(_fd) != 0) {
+
+    if (!osfile::sync_file(_fd)) {
         return false;
     }
-#else
-    if (ftruncate(_fd, 0) != 0) {
-        return false;
-    }
-    if (lseek(_fd, 0, SEEK_SET) < 0) {
-        return false;
-    }
-    if (fsync(_fd) != 0) {
-        return false;
-    }
-#endif
 
     _content.clear();
     _textSize = 0;
@@ -1373,15 +1312,9 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         line_begin = line_end + 1;
     }
 
-#if FO_WINDOWS
-    if (_lseeki64(_fd, 0, SEEK_END) < 0) {
+    if (osfile::seek_file_end(_fd) < 0) {
         return false;
     }
-#else
-    if (lseek(_fd, 0, SEEK_END) < 0) {
-        return false;
-    }
-#endif
 
     size_t offset = 0;
 
@@ -1389,12 +1322,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         auto remaining = normalized_content.size() - offset;
         auto write_pos = make_ptr(normalized_content.data() + offset);
 
-#if FO_WINDOWS
-        auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
-        int32_t written_size = _write(_fd, write_pos.get(), chunk);
-#else
-        ssize_t written_size = write(_fd, write_pos.get(), remaining);
-#endif
+        int64_t written_size = osfile::write_file_chunk(_fd, write_pos, remaining);
 
         if (written_size <= 0) {
             return false;
@@ -1403,15 +1331,9 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         offset += static_cast<size_t>(written_size);
     }
 
-#if FO_WINDOWS
-    if (_commit(_fd) != 0) {
+    if (!osfile::sync_file(_fd)) {
         return false;
     }
-#else
-    if (fsync(_fd) != 0) {
-        return false;
-    }
-#endif
 
     for (auto& line : parsed_content) {
         _content.emplace_back(std::move(line));

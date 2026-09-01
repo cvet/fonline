@@ -2796,7 +2796,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
     FO_STACK_TRACE_ENTRY();
 
     optional<ModelBounds3D> active_bounds;
-    auto include_active_tracks = [this, &active_bounds](const optional<ModelAnimationController>& controller) {
+    small_vector<int32_t, 4> active_clips;
+    auto include_active_tracks = [this, &active_bounds, &active_clips](const optional<ModelAnimationController>& controller) {
         if (!controller) {
             return;
         }
@@ -2812,6 +2813,7 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
 
             const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)];
             FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, bounds), "Active animation bounds are invalid", _modelInfo->_fileName, state.ClipIndex);
+            active_clips.emplace_back(state.ClipIndex);
         }
     };
 
@@ -2838,22 +2840,40 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
         }
     }
 
-    auto include_active_links = [this, &active_bounds, &root_inverse](ptr<const ModelInstance> parent, const auto& recurse) -> bool {
+    // A rigid attachment's baked box envelops everywhere its bone travels across every parent clip, so a cap
+    // claims metres. Cover the playing clip's own box instead, and keep the envelope only when none is running
+    auto select_link_bounds = [&active_clips](const ModelAnimationData& link) -> ModelBounds3D {
+        optional<ModelBounds3D> selected;
+
+        for (int32_t clip_index : active_clips) {
+            if (clip_index >= 0 && numeric_cast<size_t>(clip_index) < link.ClipBounds.size() && link.ClipBounds[numeric_cast<size_t>(clip_index)]) {
+                FO_STRONG_ASSERT(IncludeModelBounds(selected, *link.ClipBounds[numeric_cast<size_t>(clip_index)]), "Model link clip bounds are invalid", link.ChildName, clip_index);
+            }
+        }
+
+        return selected ? *selected : *link.Bounds;
+    };
+
+    auto include_active_links = [this, &active_bounds, &root_inverse, &select_link_bounds](ptr<const ModelInstance> parent, const auto& recurse) -> bool {
         for (const auto& child : parent->_children) {
             if (child->_animLink.Bounds) {
                 bool included = false;
 
+                // Only a direct child's clip indices share the rig the active tracks are numbered in; a nested
+                // link is keyed against its own parent's rig, so it keeps the envelope rather than misreading
+                ModelBounds3D link_bounds = parent.get() == this ? select_link_bounds(child->_animLink) : *child->_animLink.Bounds;
+
                 if (parent.get() == this) {
-                    included = IncludeModelBounds(active_bounds, *child->_animLink.Bounds);
+                    included = IncludeModelBounds(active_bounds, link_bounds);
                 }
                 else if (root_inverse) {
                     mat44 relative_transform = *root_inverse * parent->_parentMatrix;
-                    included = IncludeTransformedModelBounds(active_bounds, *child->_animLink.Bounds, relative_transform);
+                    included = IncludeTransformedModelBounds(active_bounds, link_bounds, relative_transform);
                 }
                 else {
                     // Before the first pose only direct links have a resolved parent transform. The rendered bounds
                     // pass runs after posing and will add a transformed nested link before any pixels are cropped
-                    included = IncludeModelBounds(active_bounds, *child->_animLink.Bounds);
+                    included = IncludeModelBounds(active_bounds, link_bounds);
                 }
 
                 if (!included) {

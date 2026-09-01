@@ -93,12 +93,11 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
     _remoteHost = _requestHost;
     _remotePort = numeric_cast<uint16_t>(_settings->ServerPort + _settings->UdpPortOffset);
 
-    std::mt19937 random_generator {MakeSeededRandomGenerator()};
-    std::uniform_int_distribution<int32_t> random_distribution {1, 255};
-    _clientSalt = (numeric_cast<uint32_t>(random_distribution(random_generator)) << 24) | //
-        (numeric_cast<uint32_t>(random_distribution(random_generator)) << 16) | //
-        (numeric_cast<uint32_t>(random_distribution(random_generator)) << 8) | //
-        (numeric_cast<uint32_t>(random_distribution(random_generator)) << 0);
+    random_generator salt_generator;
+    _clientSalt = (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 24) | //
+        (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 16) | //
+        (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 8) | //
+        (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 0);
 
     auto packet_capacity = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 0)) * 2;
     auto net_capacity = numeric_cast<size_t>(std::max(_settings->NetBufferSize, 0));

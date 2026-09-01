@@ -38,6 +38,7 @@
 #include "Platform.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
+#include "WinApi.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -72,6 +73,11 @@ struct Pool
 static void worker_loop(Pool* pool) noexcept;
 static void internal_shutdown(Pool& pool) noexcept;
 static void spawn_pool_worker(Pool& pool, const string& worker_name);
+static void park_until(std::chrono::steady_clock::time_point deadline) noexcept;
+
+// The OS wait overshoots its deadline by a few hundred microseconds, so the tail of a sleep is spun out
+// instead. Also the cutoff under which a whole sleep is spun, since parking that briefly is not possible
+static constexpr std::chrono::nanoseconds PRECISE_SLEEP_SPIN_BUDGET = std::chrono::milliseconds {1};
 
 struct GlobalPools
 {
@@ -310,6 +316,34 @@ extern auto get_this_thread_name() noexcept -> string_view
     return {ThreadName.data(), ThreadName.size()};
 }
 
+extern void coarse_sleep(std::chrono::nanoseconds duration) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (duration > std::chrono::nanoseconds::zero()) {
+        park_until(std::chrono::steady_clock::now() + duration);
+    }
+}
+
+extern void precise_sleep(std::chrono::nanoseconds duration) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (duration <= std::chrono::nanoseconds::zero()) {
+        return;
+    }
+
+    auto deadline = std::chrono::steady_clock::now() + duration;
+
+    if (duration > PRECISE_SLEEP_SPIN_BUDGET) {
+        park_until(deadline - PRECISE_SLEEP_SPIN_BUDGET);
+    }
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+}
+
 extern auto run_thread(string_view task_name, function<void()> task) -> thread
 {
     FO_STACK_TRACE_ENTRY();
@@ -407,6 +441,41 @@ void thread::detach() noexcept
 {
     _future = {};
     _runningThreadId.reset();
+}
+
+static void park_until(std::chrono::steady_clock::time_point deadline) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto remaining = deadline - std::chrono::steady_clock::now();
+
+    if (remaining <= std::chrono::steady_clock::duration::zero()) {
+        return;
+    }
+
+#if FO_WINDOWS
+    // std::this_thread::sleep_for rounds up to the timer tick, so the wait goes through a waitable timer
+    nptr<void> timer = winapi::create_high_resolution_timer();
+
+    if (!timer) {
+        std::this_thread::sleep_for(remaining);
+        return;
+    }
+
+    int64_t delay_100ns = std::chrono::duration_cast<std::chrono::nanoseconds>(remaining).count() / 100;
+
+    if (winapi::set_relative_timer(timer, delay_100ns)) {
+        winapi::wait_for_object(timer);
+    }
+    else {
+        std::this_thread::sleep_for(remaining);
+    }
+
+    winapi::close_handle(timer);
+
+#else
+    std::this_thread::sleep_for(remaining);
+#endif
 }
 
 FO_END_NAMESPACE

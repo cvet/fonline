@@ -34,12 +34,6 @@
 #include "SettingsStorage.h"
 #include "CacheStorage.h"
 
-#if FO_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
-#include "WinApiUndef.inc"
-
 FO_BEGIN_NAMESPACE
 
 // Values are always stored as strings, so the registry and file backends behave identically: a REG_SZ under
@@ -68,90 +62,14 @@ private:
 #endif
 };
 
-#if FO_WINDOWS
-
-// Raw UTF-8 bytes go in as a REG_SZ, keeping the round-trip byte-preserving for non-ASCII text; the explicit
-// *A entry points are required because WinApiUndef.inc removes the resolver macros
-static auto RegistryReadValue(const string& sub_key, string_view name) -> optional<string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    HKEY hkey {};
-
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, sub_key.c_str(), 0, KEY_READ, &hkey) != ERROR_SUCCESS) {
-        return std::nullopt;
-    }
-
-    auto close_key = scope_exit([hkey]() noexcept { RegCloseKey(hkey); });
-    string name_str = string(name);
-    DWORD type = 0;
-    DWORD size = 0;
-
-    if (RegQueryValueExA(hkey, name_str.c_str(), nullptr, &type, nullptr, &size) != ERROR_SUCCESS || type != REG_SZ || size == 0) {
-        return std::nullopt;
-    }
-
-    string value;
-    value.resize(size);
-
-    if (RegQueryValueExA(hkey, name_str.c_str(), nullptr, nullptr, reinterpret_cast<LPBYTE>(value.data()), &size) != ERROR_SUCCESS) {
-        return std::nullopt;
-    }
-
-    // REG_SZ carries a terminating null in its byte count; drop it to recover the original string
-    if (!value.empty() && value.back() == '\0') {
-        value.pop_back();
-    }
-
-    return value;
-}
-
-static void RegistryWriteValue(const string& sub_key, string_view name, string_view value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    HKEY hkey {};
-
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, sub_key.c_str(), 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &hkey, nullptr) != ERROR_SUCCESS) {
-        WriteLog("Settings: failed to open registry key for writing - {}", sub_key);
-        return;
-    }
-
-    auto close_key = scope_exit([hkey]() noexcept { RegCloseKey(hkey); });
-    string name_str = string(name);
-    string value_str = string(value);
-    DWORD size = numeric_cast<DWORD>(value_str.size() + 1);
-
-    if (RegSetValueExA(hkey, name_str.c_str(), 0, REG_SZ, reinterpret_cast<const BYTE*>(value_str.c_str()), size) != ERROR_SUCCESS) {
-        WriteLog("Settings: failed to write registry value - {}\\{}", sub_key, name);
-    }
-}
-
-static void RegistryDeleteValue(const string& sub_key, string_view name)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    HKEY hkey {};
-
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, sub_key.c_str(), 0, KEY_WRITE, &hkey) != ERROR_SUCCESS) {
-        return;
-    }
-
-    auto close_key = scope_exit([hkey]() noexcept { RegCloseKey(hkey); });
-    string name_str = string(name);
-    (void)RegDeleteValueA(hkey, name_str.c_str());
-}
-
-#endif
-
 SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 {
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     _subKey = strex("Software\\FOnline\\{}", app_name).str();
-#else
 
+#else
     // Keep tool settings out of the resource cache: a dedicated per-application directory in the user data base.
     // No user data base (unusual sandbox) means best-effort no persistence rather than writing next to the binary
     string base = Platform::GetUserDataBase();
@@ -160,7 +78,6 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
         string dir = strex(base).combine_path("FOnline").combine_path(app_name).str();
         _cache = SafeAlloc::MakeUnique<CacheStorage>(dir);
     }
-
 #endif
 }
 
@@ -176,15 +93,14 @@ auto SettingsStorageImpl::GetEntry(string_view key) const -> optional<string>
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    return RegistryReadValue(_subKey, key);
-#else
+    return winapi::registry_read_value(_subKey, string(key));
 
+#else
     if (_cache && _cache->HasEntry(key)) {
         return _cache->GetString(key);
     }
 
     return std::nullopt;
-
 #endif
 }
 
@@ -193,13 +109,14 @@ void SettingsStorageImpl::SetEntry(string_view key, string_view value)
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    RegistryWriteValue(_subKey, key, value);
-#else
+    if (!winapi::registry_write_value(_subKey, string(key), string(value))) {
+        WriteLog("Settings: failed to write registry value - {}\\{}", _subKey, key);
+    }
 
+#else
     if (_cache) {
         _cache->SetString(key, value);
     }
-
 #endif
 }
 
@@ -208,13 +125,12 @@ void SettingsStorageImpl::RemoveEntry(string_view key)
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    RegistryDeleteValue(_subKey, key);
-#else
+    winapi::registry_delete_value(_subKey, string(key));
 
+#else
     if (_cache) {
         _cache->RemoveEntry(key);
     }
-
 #endif
 }
 

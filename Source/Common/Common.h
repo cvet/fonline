@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 44
+///@ MigrationRule Version 0 0 45
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -882,8 +882,6 @@ private:
     timespan _loopDuration {};
     timespan _idleTimeBalance {};
 };
-
-extern auto MakeSeededRandomGenerator() -> std::mt19937;
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;

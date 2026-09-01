@@ -97,7 +97,7 @@ private:
     std::atomic_bool _stopped {};
     thread _runThread {};
     mutex _connectionsLocker {};
-    std::mt19937 _randomGenerator FO_TSA_GUARDED_BY(_connectionsLocker) {MakeSeededRandomGenerator()};
+    random_generator _randomGenerator FO_TSA_GUARDED_BY(_connectionsLocker) {};
     unordered_map<uint32_t, shared_ptr<NetworkServerConnection_UdpSockets>> _sessions FO_TSA_GUARDED_BY(_connectionsLocker) {};
     unordered_map<string, uint32_t> _endpointToSession FO_TSA_GUARDED_BY(_connectionsLocker) {};
     vector<uint8_t> _packetBuf {};
@@ -282,11 +282,10 @@ uint32_t NetworkServer_UdpSockets::GenerateSessionId()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::uniform_int_distribution<int32_t> random_distribution {1, 255};
-    return (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 24) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 16) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 8) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 0);
+    return (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 24) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 16) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 8) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 0);
 }
 
 auto NetworkServer_UdpSockets::MakeEndpointKey(string_view host, uint16_t port) const -> string

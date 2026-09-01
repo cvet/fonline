@@ -42,14 +42,6 @@
 #include "ScriptSystem.h"
 #include "Server.h"
 
-// SystemCall spawns a subprocess (CreateProcessW). This file is server-only, so the process-spawning code is
-// never compiled into the client binary — keep it that way to avoid antivirus heuristics flagging the client
-#if FO_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
-#include "WinApiUndef.inc"
-
 FO_BEGIN_NAMESPACE
 
 // Script-facing lookups treat an entity inside its destroy window as already gone: its methods throw
@@ -1531,114 +1523,22 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
         }
     };
 
-#if FO_WINDOWS
-    HANDLE out_read = nullptr;
-    HANDLE out_write = nullptr;
-
-    SECURITY_ATTRIBUTES sa = {};
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = nullptr;
-
-    if (::CreatePipe(&out_read, &out_write, &sa, 0) == 0) {
-        return -1;
-    }
-
-    if (::SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0) == 0) {
-        ::CloseHandle(out_read);
-        ::CloseHandle(out_write);
-        return -1;
-    }
-
-    STARTUPINFOW si = {};
-    si.cb = sizeof(STARTUPINFO);
-    si.hStdError = out_write;
-    si.hStdOutput = out_write;
-    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-
-    PROCESS_INFORMATION pi = {};
-
-    wstring wcommand = strex(command).to_wide_char();
-    auto result = ::CreateProcessW(nullptr, wcommand.data(), nullptr, //
-        nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
-
-    if (result == 0) {
-        ::CloseHandle(out_read);
-        ::CloseHandle(out_write);
-        return -1;
-    }
-
     string log;
 
-    bool process_done = false;
-
-    while (true) {
-        while (true) {
-            DWORD bytes = 0;
-
-            if (::PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) == 0) {
-                break;
-            }
-            if (bytes == 0) {
-                break;
-            }
-
-            char buf[4096] = {};
-
-            if (::ReadFile(out_read, buf, sizeof(buf), &bytes, nullptr) != 0) {
-                log.append(buf, bytes);
-                print_log(log, false);
-            }
-        }
-
-        // Drain once more after the exit is observed: a fast command can write everything and
-        // terminate between the last peek and this check, leaving its output buffered in the pipe
-        if (process_done) {
-            break;
-        }
-
-        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
-            process_done = true;
-        }
-    }
-
-    print_log(log, true);
-
-    DWORD retval = 0;
-    ::GetExitCodeProcess(pi.hProcess, &retval);
-
-    ::CloseHandle(out_read);
-    ::CloseHandle(out_write);
-    ::CloseHandle(pi.hProcess);
-    ::CloseHandle(pi.hThread);
-
-    return std::bit_cast<int32_t>(retval);
-
-#elif !FO_WINDOWS && !FO_WEB
-    string command_str = string(command);
-    auto command_cstr = make_ptr(command_str.c_str());
-    auto in = make_nptr(popen(command_cstr.get(), "r"));
-
-    if (!in) {
-        return -1;
-    }
-
-    string log;
-    char buf[4096];
-
-    while (fgets(buf, sizeof(buf), in.get())) {
-        log += buf;
+    auto on_output = [&log, &print_log](string_view chunk) {
+        log.append(chunk);
         print_log(log, false);
-    }
+    };
+
+#if FO_WINDOWS
+    int32_t exit_code = winapi::run_process_capturing_output(string(command), on_output);
+#else
+    int32_t exit_code = posix::run_process_capturing_output(string(command), on_output);
+#endif
 
     print_log(log, true);
 
-    return pclose(in.get());
-
-#else
-    return 1;
-#endif
+    return exit_code;
 }
 
 // SyncScope: external process call only; requires no entity cover but must not run under unrelated entity locks

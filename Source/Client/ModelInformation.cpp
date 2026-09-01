@@ -52,6 +52,7 @@ static constexpr size_t BAKED_STRING_MIN_SIZE = sizeof(uint32_t);
 static constexpr size_t BAKED_MODEL_DESCRIPTION_LINK_MIN_SIZE = 2 * sizeof(int32_t) + 2 * BAKED_STRING_MIN_SIZE + 2 * sizeof(uint8_t) + 10 * sizeof(float32_t) + 5 * sizeof(uint32_t);
 static constexpr size_t BAKED_MODEL_DESCRIPTION_CUT_MIN_SIZE = BAKED_STRING_MIN_SIZE + sizeof(uint32_t) + sizeof(uint32_t) + 3 * BAKED_STRING_MIN_SIZE + sizeof(uint8_t);
 static constexpr size_t BAKED_MODEL_DESCRIPTION_ANIM_ENTRY_MIN_SIZE = 2 * sizeof(int32_t) + 2 * BAKED_STRING_MIN_SIZE;
+static constexpr size_t BAKED_MODEL_LINK_ANIMATION_BOUNDS_SIZE = 2 * sizeof(int32_t) + 6 * sizeof(float32_t);
 
 ModelInformation::ModelInformation(ptr<ModelManager> model_mngr) :
     _modelMngr {model_mngr}
@@ -306,6 +307,22 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
         for (const BakedModelDescriptionCutInfo& cut : link.CutInfo) {
             append_cut_info(link.Data, cut);
+        }
+
+        // Attachment boxes arrive keyed by state/action and are re-keyed to the clip index the runtime asks with,
+        // the same way the model's own animation bounds are, so a pose can claim its own box instead of the union
+        if (!link.AnimationBounds.empty()) {
+            link.Data.ClipBounds.resize(_animationBounds.size());
+
+            for (const auto& [state_anim, action_anim, clip_bounds] : link.AnimationBounds) {
+                nptr<const ModelAnimationRuntimeBinding> binding = animation_runtime_rig->FindBinding(state_anim, action_anim);
+
+                // Skipping an unresolved entry would silently restore the whole-animation envelope this indexing
+                // exists to avoid, so a baker/rig divergence is reported like the model's own bounds report it
+                FO_VERIFY_AND_THROW(binding, "Model link animation bounds name an animation the runtime rig has no binding for", name, link.Data.ChildName, state_anim, action_anim);
+                FO_VERIFY_AND_THROW(binding->ClipIndex >= 0 && numeric_cast<size_t>(binding->ClipIndex) < link.Data.ClipBounds.size(), "Model link animation clip index is outside the bounds table", name, link.Data.ChildName, binding->ClipIndex, link.Data.ClipBounds.size());
+                FO_VERIFY_AND_THROW(IncludeModelBounds(link.Data.ClipBounds[numeric_cast<size_t>(binding->ClipIndex)], clip_bounds), "Model link animation bounds are invalid", name, link.Data.ChildName, state_anim, action_anim);
+            }
         }
 
         _animData.emplace_back(std::move(link.Data));
@@ -590,6 +607,19 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader, string_
         FO_VERIFY_AND_THROW(IsValidModelBounds(bounds), "Model link bounds minimum exceeds maximum or contains a non-finite coordinate", context, link.Data.ChildName, bounds.Min.x, bounds.Min.y, bounds.Min.z, bounds.Max.x, bounds.Max.y, bounds.Max.z);
         FO_VERIFY_AND_THROW(HasModelBoundsExtent(bounds), "Model link bounds are degenerate", context, link.Data.ChildName);
         link.Data.Bounds = bounds;
+
+        uint32_t animation_bounds_count = reader.Read<uint32_t>();
+        VerifyModelBakedCountFitsData(reader, animation_bounds_count, BAKED_MODEL_LINK_ANIMATION_BOUNDS_SIZE, "link animation bounds", context);
+        link.AnimationBounds.reserve(animation_bounds_count);
+
+        for (uint32_t i = 0; i < animation_bounds_count; i++) {
+            int32_t state_anim = reader.Read<int32_t>();
+            int32_t action_anim = reader.Read<int32_t>();
+            ModelBounds3D clip_bounds {.Min = reader.Read<vec3>(), .Max = reader.Read<vec3>()};
+            FO_VERIFY_AND_THROW(IsValidModelBounds(clip_bounds), "Model link animation bounds minimum exceeds maximum or contains a non-finite coordinate", context, link.Data.ChildName, state_anim, action_anim);
+            FO_VERIFY_AND_THROW(HasModelBoundsExtent(clip_bounds), "Model link animation bounds are degenerate", context, link.Data.ChildName, state_anim, action_anim);
+            link.AnimationBounds.emplace_back(state_anim, action_anim, clip_bounds);
+        }
     }
 
     return link;

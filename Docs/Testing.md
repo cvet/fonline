@@ -430,6 +430,7 @@ Current count: **103** `Test_*.cpp` suites.
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
+- `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
 - `Source/Tests/Test_ExtendedTypes.cpp`
@@ -441,12 +442,14 @@ Current count: **103** `Test_*.cpp` suites.
 - `Source/Tests/Test_MemorySystem.cpp`
 - `Source/Tests/Test_NetSockets.cpp`
 - `Source/Tests/Test_Platform.cpp`
+- `Source/Tests/Test_RandomGenerator.cpp`
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
 - `Source/Tests/Test_StringObject.cpp`
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
+- `Source/Tests/Test_Threading.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
 - `Source/Tests/Test_WorkThread.cpp`
 - `Source/Tests/Test_WorkerPool.cpp`

@@ -168,7 +168,7 @@ struct SparkParticleRuntimeSystem::Impl
     mat44 ViewProjectionMatrix {};
     mat44 ViewMatrix {};
     mat44 BoundsMatrix {};
-    std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
+    random_generator RandomGenerator {};
     bool BaseSystemDetached {};
 };
 
@@ -262,7 +262,7 @@ SparkParticleRuntimeSystem::SparkParticleRuntimeSystem(ptr<SparkParticleRuntimeB
 {
     FO_STACK_TRACE_ENTRY();
 
-    RecreateRuntimeSystem(std::uniform_int_distribution<uint32_t> {}(_impl->RandomGenerator));
+    RecreateRuntimeSystem(static_cast<uint32_t>(_impl->RandomGenerator.next()));
 }
 
 SparkParticleRuntimeSystem::~SparkParticleRuntimeSystem()
@@ -425,7 +425,7 @@ void SparkParticleRuntimeSystem::Respawn(optional<int32_t> seed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    RecreateRuntimeSystem(seed ? std::bit_cast<uint32_t>(*seed) : std::uniform_int_distribution<uint32_t> {}(_impl->RandomGenerator));
+    RecreateRuntimeSystem(seed ? std::bit_cast<uint32_t>(*seed) : static_cast<uint32_t>(_impl->RandomGenerator.next()));
 }
 
 void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)

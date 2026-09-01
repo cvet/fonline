@@ -376,10 +376,10 @@ auto ClientConnection::IsArtificalLagPending(optional<nanotime>& deadline, bool 
     if (!deadline.has_value()) {
         // Both settings are free-form milliseconds, so accumulate wide enough that their sum cannot
         // overflow before the duration is built
-        int64_t lag_ms = std::uniform_int_distribution<int32_t> {_settings->ArtificalLags / 2, _settings->ArtificalLags}(_randomGenerator);
+        int64_t lag_ms = _randomGenerator.next_between(_settings->ArtificalLags / 2, _settings->ArtificalLags);
 
         if (_settings->ArtificalLagsJitter != 0) {
-            lag_ms += std::uniform_int_distribution<int32_t> {0, _settings->ArtificalLagsJitter}(_randomGenerator);
+            lag_ms += _randomGenerator.next_between(0, _settings->ArtificalLagsJitter);
         }
 
         deadline = nanotime::now() + std::chrono::milliseconds {lag_ms};
@@ -434,12 +434,11 @@ void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::uniform_int_distribution<int32_t> random_distribution {1, 255};
     uint32_t encrypt_key = //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 24) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 16) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 8) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 0);
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 24) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 16) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 8) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 0);
     uint32_t updater_version = FO_UPDATER_VERSION;
     string binary_update_target_name {GetCurrentBinaryUpdateTargetName()};
 

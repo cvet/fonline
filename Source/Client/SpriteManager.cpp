@@ -133,7 +133,7 @@ auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 
     FO_VERIFY_AND_THROW(min_value <= max_value, "Sprite random integer range has an inverted min/max", min_value, max_value);
 
-    return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
+    return _randomGenerator.next_between(min_value, max_value);
 }
 
 void SpriteManager::UnsubscribeWindowEvents() noexcept

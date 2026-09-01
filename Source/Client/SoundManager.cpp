@@ -639,7 +639,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     if (count != 0u) {
-        int32_t random_index = std::uniform_int_distribution<int32_t> {1, count}(_randomGenerator);
+        int32_t random_index = _randomGenerator.next_between(1, count);
         return Load(sound_names.find(strex("{}_{}", sound_name, random_index).str())->second, false, timespan::zero);
     }
 

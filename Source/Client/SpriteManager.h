@@ -272,7 +272,7 @@ private:
     ptr<IAppInput> _input;
     ptr<EffectManager> _effectMngr;
     ptr<HashResolver> _hashResolver;
-    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
+    random_generator _randomGenerator {};
 
     vector<unique_ptr<SpriteFactory>> _spriteFactories {};
     unordered_map<string, ptr<SpriteFactory>> _spriteFactoryMap {};

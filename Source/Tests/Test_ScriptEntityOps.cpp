@@ -917,7 +917,7 @@ namespace EntityOps
         return 0;
     }
 
-    // A prototype is an Entity to a script but a sibling of ServerEntity natively, so every position that
+    // A prototype is an Entity to a script but a sibling of ServerEntity natively, so every argument slot that
     // promotes a script Entity has to reject one instead of handing the callee a foreign object
 
     void TestPrototypeAsScalarEntityArgThrows()

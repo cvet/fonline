@@ -35,12 +35,9 @@
 
 #include <filesystem>
 
-#if FO_LINUX || FO_MAC
-#include <unistd.h>
-#endif
-
 #include "DiskFileSystem.h"
 #include "Platform.h"
+#include "Posix.h"
 #include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE
@@ -67,8 +64,7 @@ TEST_CASE("Platform")
 #if FO_WINDOWS
         CHECK(pid_str != "0");
 #elif FO_LINUX || FO_MAC
-        std::string runtime_pid = std::to_string(::getpid());
-        CHECK(pid_str == runtime_pid.c_str());
+        CHECK(pid_str == strex("{}", posix::get_current_process_id()).str());
 #else
         CHECK(pid_str == "0");
 #endif

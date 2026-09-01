@@ -80,6 +80,7 @@ struct BakerModelDescriptionLink
     vector<pair<string, string>> EffectInfo {};
     vector<BakerModelDescriptionCut> CutInfo {};
     optional<ModelBounds3D> Bounds {};
+    vector<tuple<int32_t, int32_t, ModelBounds3D>> AnimationBounds {}; // State anim, action anim, box of that clip
 };
 
 struct BakerModelDescriptionAnimationEntry
@@ -230,6 +231,7 @@ struct ModelDescriptionClip
     shared_ptr<const ModelSourceAsset> Source {};
     nptr<const ModelAnimationSource> Animation {};
     bool Reversed {};
+    vector<pair<int32_t, int32_t>> AnimPairs {}; // Every state/action pair that plays this clip
 };
 
 // Bounds view of a description's own model. A clip whose visible geometry is entirely disabled falls back to the
@@ -274,7 +276,13 @@ static auto MakeModelDescriptionLinkTransform(const BakerModelDescriptionLink& c
 static void CalculateModelDescriptionLinkBounds(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, async_launch_mode async_mode, const ModelMeshData& parent_model_mesh, BakerModelDescription& description, string_view fname);
 static auto CollectModelDescriptionClips(const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> vector<ModelDescriptionClip>;
 static auto SampleModelDescriptionLinkBoneTracks(const ModelBoundsSampler& parent_sampler, const vector<ModelDescriptionClip>& clips, const unordered_set<string>& link_bones, async_launch_mode async_mode) -> unordered_map<string, vector<optional<vector<mat44>>>>;
-static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, const vector<ModelDescriptionClip>& clips, const unordered_map<string, vector<optional<vector<mat44>>>>& link_bone_tracks, nptr<const ModelBoundsSampler> parent_sampler, const BakerModelDescriptionLink& link, string_view fname) -> optional<ModelBounds3D>;
+struct ModelDescriptionLinkBounds
+{
+    ModelBounds3D Union {};
+    vector<tuple<int32_t, int32_t, ModelBounds3D>> PerAnimation {};
+};
+
+static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, const vector<ModelDescriptionClip>& clips, const unordered_map<string, vector<optional<vector<mat44>>>>& link_bone_tracks, nptr<const ModelBoundsSampler> parent_sampler, const BakerModelDescriptionLink& link, string_view fname) -> optional<ModelDescriptionLinkBounds>;
 static auto GetModelBoundsMeasurement(const BakingSettings& settings) -> ModelBoundsMeasurement;
 static void ValidateModelDescriptionLinkData(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateModelDescriptionCut(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakerModelDescriptionCut& cut, string_view fname);
@@ -1502,7 +1510,7 @@ static void CalculateModelDescriptionLinkBounds(const FileCollection& source_fil
         link_bone_tracks = SampleModelDescriptionLinkBoneTracks(*parent_sampler, clips, link_bones, async_mode);
     }
 
-    vector<std::future<optional<ModelBounds3D>>> link_bakings;
+    vector<std::future<optional<ModelDescriptionLinkBounds>>> link_bakings;
     link_bakings.reserve(link_indices.size());
 
     nptr<const ModelBoundsSampler> parent = parent_sampler ? &*parent_sampler : nullptr;
@@ -1515,7 +1523,7 @@ static void CalculateModelDescriptionLinkBounds(const FileCollection& source_fil
 
     // Every task is awaited before the first failure is rethrown, so no link keeps running past this scope
     std::exception_ptr link_error;
-    vector<optional<ModelBounds3D>> link_bounds(link_indices.size());
+    vector<optional<ModelDescriptionLinkBounds>> link_bounds(link_indices.size());
 
     for (size_t i = 0; i < link_bakings.size(); i++) {
         try {
@@ -1537,11 +1545,13 @@ static void CalculateModelDescriptionLinkBounds(const FileCollection& source_fil
 
     for (size_t i = 0; i < link_indices.size(); i++) {
         BakerModelDescriptionLink& link = description.Links[link_indices[i]];
-        link.Bounds = link_bounds[i];
 
-        if (!link.Bounds) {
+        if (!link_bounds[i]) {
             throw ModelInfoBakerException("Model geometry link bounds could not be calculated", link.ChildName, fname);
         }
+
+        link.Bounds = link_bounds[i]->Union;
+        link.AnimationBounds = std::move(link_bounds[i]->PerAnimation);
     }
 }
 
@@ -1552,7 +1562,7 @@ static auto CollectModelDescriptionClips(const ModelSourceAssetCache& model_sour
 
     vector<ModelDescriptionClip> result;
     set<pair<int32_t, int32_t>> selected_pairs;
-    unordered_set<string> sampled_animations;
+    unordered_map<string, size_t> sampled_animations;
 
     for (const BakerModelDescriptionAnimationEntry& anim_entry : description.AnimationEntries) {
         if (!selected_pairs.emplace(anim_entry.StateAnim, anim_entry.ActionAnim).second) {
@@ -1569,13 +1579,17 @@ static auto CollectModelDescriptionClips(const ModelSourceAssetCache& model_sour
 
         string animation_key = strex("{}\n{}\n{}", anim_file, anim_name, reversed ? 1 : 0);
 
-        if (!sampled_animations.emplace(animation_key).second) {
+        // A pair that repeats an already sampled animation adds no clip, but it still has to name the clip it
+        // plays: an attachment box is looked up by the animation the parent is running
+        if (auto it = sampled_animations.find(animation_key); it != sampled_animations.end()) {
+            result[it->second].AnimPairs.emplace_back(anim_entry.StateAnim, anim_entry.ActionAnim);
             continue;
         }
 
         shared_ptr<const ModelSourceAsset> anim_source = GetModelSourceAsset(model_sources, anim_file, fname);
         const ModelAnimationSource& animation = GetModelSourceAnimation(*anim_source, anim_name);
-        result.emplace_back(ModelDescriptionClip {.Source = std::move(anim_source), .Animation = &animation, .Reversed = reversed});
+        sampled_animations.emplace(animation_key, result.size());
+        result.emplace_back(ModelDescriptionClip {.Source = std::move(anim_source), .Animation = &animation, .Reversed = reversed, .AnimPairs = {{anim_entry.StateAnim, anim_entry.ActionAnim}}});
     }
 
     return result;
@@ -1634,7 +1648,7 @@ static auto SampleModelDescriptionLinkBoneTracks(const ModelBoundsSampler& paren
     return result;
 }
 
-static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, const vector<ModelDescriptionClip>& clips, const unordered_map<string, vector<optional<vector<mat44>>>>& link_bone_tracks, nptr<const ModelBoundsSampler> parent_sampler, const BakerModelDescriptionLink& link, string_view fname) -> optional<ModelBounds3D>
+static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, const vector<ModelDescriptionClip>& clips, const unordered_map<string, vector<optional<vector<mat44>>>>& link_bone_tracks, nptr<const ModelBoundsSampler> parent_sampler, const BakerModelDescriptionLink& link, string_view fname) -> optional<ModelDescriptionLinkBounds>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1663,6 +1677,7 @@ static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& sourc
     child_description.DefaultLink.DisabledMesh = disabled_meshes;
     mat44 link_transform = MakeModelDescriptionLinkTransform(child_description.DefaultLink, link);
     optional<ModelBounds3D> result;
+    vector<optional<ModelBounds3D>> per_clip(clips.size());
 
     try {
         if (link.LinkBone.empty()) {
@@ -1673,10 +1688,11 @@ static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& sourc
                 return std::nullopt;
             }
 
-            for (const ModelDescriptionClip& clip : clips) {
+            for (size_t clip_index = 0; clip_index < clips.size(); clip_index++) {
+                const ModelDescriptionClip& clip = clips[clip_index];
                 optional<ModelBounds3D> animation_bounds = child_sampler.CalculateAnimationBounds(*clip.Animation, clip.Reversed);
 
-                if (!animation_bounds || !IncludeTransformedModelBounds(result, *animation_bounds, link_transform)) {
+                if (!animation_bounds || !IncludeTransformedModelBounds(per_clip[clip_index], *animation_bounds, link_transform) || !IncludeModelBounds(result, *per_clip[clip_index])) {
                     return std::nullopt;
                 }
             }
@@ -1717,7 +1733,7 @@ static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& sourc
 
                 optional<ModelBounds3D> animation_bounds = CalculateRigidAttachmentBounds(*tracks[clip_index], *child_bounds, link_transform);
 
-                if (!animation_bounds || !IncludeModelBounds(result, *animation_bounds)) {
+                if (!animation_bounds || !IncludeModelBounds(per_clip[clip_index], *animation_bounds) || !IncludeModelBounds(result, *animation_bounds)) {
                     return std::nullopt;
                 }
             }
@@ -1731,7 +1747,31 @@ static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& sourc
         throw ModelInfoBakerException("Model link bounds could not be calculated", link.ChildName, fname);
     }
 
-    return CalculateGuardedModelBounds(*result);
+    optional<ModelBounds3D> guarded_union = CalculateGuardedModelBounds(*result);
+
+    if (!guarded_union) {
+        return std::nullopt;
+    }
+
+    ModelDescriptionLinkBounds bounds {.Union = *guarded_union};
+
+    for (size_t clip_index = 0; clip_index < clips.size(); clip_index++) {
+        if (!per_clip[clip_index]) {
+            continue;
+        }
+
+        optional<ModelBounds3D> clip_bounds = CalculateGuardedModelBounds(*per_clip[clip_index]);
+
+        if (!clip_bounds) {
+            continue;
+        }
+
+        for (const auto& [state_anim, action_anim] : clips[clip_index].AnimPairs) {
+            bounds.PerAnimation.emplace_back(state_anim, action_anim, *clip_bounds);
+        }
+    }
+
+    return bounds;
 }
 
 static auto CalculateFo3dAggregateModelBounds(const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, const BakerModelDescription& description, string_view fname) -> ModelBounds3D
@@ -2680,6 +2720,14 @@ void BakerModelDescriptionLink::Save(DataWriter& writer) const
     if (has_geometry) {
         writer.Write<vec3>(Bounds->Min);
         writer.Write<vec3>(Bounds->Max);
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(AnimationBounds.size()));
+
+        for (const auto& [state_anim, action_anim, bounds] : AnimationBounds) {
+            writer.Write<int32_t>(state_anim);
+            writer.Write<int32_t>(action_anim);
+            writer.Write<vec3>(bounds.Min);
+            writer.Write<vec3>(bounds.Max);
+        }
     }
 }
 

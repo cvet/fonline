@@ -34,6 +34,7 @@
 #pragma once
 
 #include "BasicCore.h"
+#include "DequeObject.h"
 #include "MemorySystem.h"
 #include "StringObject.h"
 
@@ -55,8 +56,8 @@ using stream_string = std::basic_string<char, std::char_traits<char>, SafeAlloca
 
 template<typename T>
 using list = std::list<T, SafeAllocator<T>>;
-template<typename T>
-using deque = std::deque<T, SafeAllocator<T>>;
+template<typename T, size_t BlockBytes = DEQUE_BLOCK_BYTES>
+using deque = basic_deque<T, BlockBytes>;
 
 template<typename K, typename V, typename Cmp = std::less<>>
 using map = std::map<K, V, Cmp, SafeAllocator<pair<const K, V>>>;

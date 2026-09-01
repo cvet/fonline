@@ -31,53 +31,17 @@
 // SOFTWARE.
 //
 
-#include "Common.h"
+#include "RandomGenerator.h"
 
-#include "Application.h"
-#include "Server.h"
-#include "Settings.h"
+FO_BEGIN_NAMESPACE
 
-FO_USING_NAMESPACE();
-
-#if !FO_TESTING_APP
-int main(int argc, char** argv)
-#else
-[[maybe_unused]] static auto ServerDaemonApp(CommandLineArgs args) -> int
-#endif
+random_generator::random_generator()
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_TESTING_APP
-    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
-#endif
-
-    try {
-        Platform::ForkProcess();
-
-        InitApp(args, AppInitFlags::PrebakeResources);
-
-        {
-            auto settings = make_ptr(&GetApp()->Settings);
-            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
-
-            while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
-                coarse_sleep(std::chrono::milliseconds {10});
-            }
-
-            if (server->IsStartingError()) {
-                WriteLog(LogType::Error, "Server startup failed, shutting down");
-                GetApp()->RequestQuit(false);
-            }
-
-            server->Shutdown();
-        }
-
-        ExitApp(GetApp()->GetRequestedQuitSuccess());
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
-    }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
-    }
+    // std::random_device hands out 32 bits at a time, and the state wants a full word before mixing
+    std::random_device entropy;
+    seed((static_cast<uint64_t>(entropy()) << 32) | entropy());
 }
+
+FO_END_NAMESPACE
