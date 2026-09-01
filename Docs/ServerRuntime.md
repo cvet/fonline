@@ -35,6 +35,8 @@ Read this page together with:
 - `Source/Server/Critter.cpp`
 - `Source/Server/Map.h`
 - `Source/Server/Map.cpp`
+- `Source/Server/StaticMap.h`
+- `Source/Server/StaticMap.cpp`
 - `Source/Server/Location.h`
 - `Source/Server/Location.cpp`
 - `Source/Server/Item.h`
@@ -182,7 +184,7 @@ These are engine extension points. The scripts that implement actual game rules 
 
 Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map. A partial-stack `MoveItem()` splits the source before delivery, and the split's init event can re-enter scripts and destroy the destination; if it does, the helper folds the split count back into the surviving source stack and destroys the undeliverable split item, so a failed split move is lossless rather than leaving an orphaned `Nowhere` item. `ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, so handlers can destroy that detached item, but ordinary script movement APIs require a current holder and do not move `Nowhere` items.
 
-Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex.
+Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex. A static item the map instance has removed contributes no trigger at all, because `VerifyTrigger()` reads the same per-instance static overlay as the rest of the static queries.
 
 ## Entity synchronization and locking
 
@@ -402,7 +404,7 @@ The reusable geometry, path finding, blockers, line tracing, and map-loading con
 - move items between critters, maps, and containers;
 - remove item-holder relationships.
 
-`Item` owns container membership and multihex entries. `StaticItem` is the static-map specialization used by map content.
+`Item` owns container membership and multihex entries. `StaticItem` is the static-map specialization used by map content. Static items are built once per `ProtoMap` into the shared `StaticMap` (`Source/Server/StaticMap.h`), carry the `ident_t` their map file authored, and are never registered, persisted, or destroyed as runtime entities. A map instance drops individual static items through its own `RemovedStaticItemIds` list rather than by mutating that shared data; the model, the accessors it filters, and the client half are described in [MapsMovementGeometry.md](MapsMovementGeometry.md#static-item-removal).
 
 ## Map, location, item, and critter entities
 

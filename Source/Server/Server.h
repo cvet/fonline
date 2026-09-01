@@ -293,7 +293,9 @@ private:
     void OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop);
 
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
-    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, ptr<const void> new_value);
+    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
+    void OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
     void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);

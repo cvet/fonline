@@ -436,6 +436,15 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         };
     };
 
+    auto wrap_setter = [this](void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>, PropertyRawData&)) -> PropertySetCallback {
+        return [this, callback](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) FO_DEFERRED {
+            FO_VERIFY_AND_THROW(entity, "Missing entity in property setter");
+            auto entity_ptr = entity;
+            FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
+            (this->*callback)(entity_ptr, prop, data);
+        };
+    };
+
     sync_time_prop->AddPostSetter(wrap_post_setter(&ServerEngine::OnSaveSynchronizedTime));
 
     for (const auto& type_desc : GetEntityTypes() | std::views::values) {
@@ -519,12 +528,11 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         };
 
         set_post_setter(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, wrap_post_setter(&ServerEngine::OnSetCritterLookDistance));
-        set_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) FO_DEFERRED {
-            FO_VERIFY_AND_THROW(entity, "Missing entity in property setter");
-            auto entity_ptr = entity;
-            FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
-            OnSetItemCount(entity_ptr, prop, data.GetPtr());
-        });
+        // A setter runs before the value is stored, which is what makes the append-only rule a real rejection
+        // instead of a persisted list the map overlay and the loaded clients no longer agree with
+        set_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_setter(&ServerEngine::OnSetMapRemovedStaticItems));
+        set_post_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_post_setter(&ServerEngine::OnPostSetMapRemovedStaticItems));
+        set_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, wrap_setter(&ServerEngine::OnSetItemCount));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemHidden));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
@@ -3912,14 +3920,40 @@ void ServerEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Proper
     }
 }
 
-void ServerEngine::OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, ptr<const void> new_value)
+void ServerEngine::OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prop);
+
+    auto map = entity.dyn_cast<Map>();
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
+    FO_VERIFY_AND_THROW(data.GetSize() % sizeof(ident_t) == 0, "Static item removal list is not aligned to its element size", data.GetSize(), sizeof(ident_t));
+
+    auto new_ids = data.GetPtrAs<ident_t>();
+    map->VerifyStaticItemRemovalsOnlyGrow({new_ids.get(), data.GetSize() / sizeof(ident_t)});
+}
+
+void ServerEngine::OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prop);
+
+    auto map = entity.dyn_cast<Map>();
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
+
+    map->RefreshRemovedStaticItems();
+}
+
+void ServerEngine::OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(prop);
 
     auto item = entity.dyn_cast<Item>();
-    auto new_count = MemReadUnaligned<uint32_t>(new_value);
+    auto new_count = MemReadUnaligned<uint32_t>(data.GetPtr());
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (!item->GetStackable() && new_count != 1) {

@@ -116,13 +116,15 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerMapScriptMethods.cpp`
 
-- Exported methods: 73
+- Exported methods: 79
 - Prefix: `Server_Map_*`
 - Ownership: authoritative map operations.
 - Typical responsibilities:
   - script setup and location lookup;
   - item creation/query by id, hex, radius, or collection;
   - static item lookup;
+  - one-way static item removal on the map instance (`RemoveStaticItem`; the removed ids are read back
+    through the `RemovedStaticItemIds` property) — see [MapsMovementGeometry.md](MapsMovementGeometry.md#static-item-removal);
   - critter lookup by id, hex, radius, path, and visibility conditions;
   - map geometry, path, and movement-related queries.
 - Keep state-changing world operations here rather than in common/client helpers.

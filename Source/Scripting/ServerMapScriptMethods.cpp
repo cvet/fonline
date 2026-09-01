@@ -486,6 +486,30 @@ FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos 
     return items;
 }
 
+// Removal is one-way for the life of the map instance: clients already on the map are only ever told to drop
+// a static item, so taking an id back out of the list is rejected rather than silently ignored
+// SyncScope: requires self; mutates the map's own removal list, which the property sync fans out to clients
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ident_t staticItemId)
+{
+    if (!self->HasStaticItem(staticItemId)) {
+        throw ScriptException("Static item not found on map", staticItemId);
+    }
+
+    return self->RemoveStaticItem(staticItemId);
+}
+
+// SyncScope: requires self; mutates the map's own removal list, which the property sync fans out to clients
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ptr<StaticItem> staticItem)
+{
+    if (!self->HasStaticItem(staticItem->GetId())) {
+        throw ScriptException("Static item belongs to another map", staticItem->GetId(), staticItem->GetProtoId());
+    }
+
+    return self->RemoveStaticItem(staticItem->GetId());
+}
+
 // SyncScope: requires self; returned static item is map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItem(ptr<Map> self, ident_t id)
@@ -526,7 +550,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> se
         throw ScriptException("Invalid hex arg");
     }
 
-    span<ptr<StaticItem>> hex_static_items = self->GetStaticItemsOnHex(hex);
+    const_span<ptr<StaticItem>> hex_static_items = self->GetStaticItemsOnHex(hex);
     return vector<ptr<StaticItem>>(hex_static_items.begin(), hex_static_items.end());
 }
 
@@ -569,7 +593,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> se
     }
 
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    span<ptr<StaticItem>> map_static_items = self->GetStaticItemsOnHex(hex);
+    const_span<ptr<StaticItem>> map_static_items = self->GetStaticItemsOnHex(hex);
 
     vector<ptr<StaticItem>> result;
     result.reserve(map_static_items.size());
@@ -630,7 +654,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, p
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    span<ptr<StaticItem>> map_static_items = self->GetStaticItems();
+    const_span<ptr<StaticItem>> map_static_items = self->GetStaticItems();
 
     vector<ptr<StaticItem>> result;
     result.reserve(map_static_items.size());
@@ -648,7 +672,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, I
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self)
 {
-    span<ptr<StaticItem>> map_static_items = self->GetStaticItems();
+    const_span<ptr<StaticItem>> map_static_items = self->GetStaticItems();
     return vector<ptr<StaticItem>>(map_static_items.begin(), map_static_items.end());
 }
 

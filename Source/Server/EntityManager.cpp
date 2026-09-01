@@ -979,6 +979,10 @@ void EntityManager::CallInit(ptr<Map> map, bool first_time)
 
     auto map_holder = map.hold_ref();
 
+    // Static removals arrive from the database as a bare id list; the map turns them into its overlay here,
+    // before any script or visibility pass can observe a static item the instance no longer has
+    map->RefreshRemovedStaticItems();
+
     map->SetInitCalled();
 
     _engine->OnMapInit.Fire(map, first_time);

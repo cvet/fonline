@@ -267,6 +267,7 @@ the pack before this loader runs.
 `MapView` is the largest client view class because it bridges several subsystems:
 
 - map file/static-data loading through `LoadFromFile()` and `LoadStaticData()`;
+- per-instance static item removal, skipped in `LoadStaticData()` and applied live by `ApplyStaticItemRemovals()`, driven by the map's `RemovedStaticItemIds` property; removal is one-way and never reversed on a loaded map — see [MapsMovementGeometry.md](MapsMovementGeometry.md#static-item-removal);
 - map processing through `Process()`;
 - map rendering through `DrawMap()` and staged render events on `ClientEngine`;
 - field indexes for items and critters;
