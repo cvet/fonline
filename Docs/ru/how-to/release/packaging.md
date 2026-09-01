@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 
 # Упаковка и выпуск
 
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"df720f17c1275fa514dba4845b4afef12598493119c9c328a1cac51c9949b611"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"f7c4845cefc99f11770eb9daba86533d11c9a8083a16786f140e438181c4608c"} -->
 
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
@@ -358,8 +358,13 @@ clients прочитайте [Client Runtime Split and Updater](../../explanatio
 
 FOnline делает ZIP entries resource pack детерминированными: сортирует
 нормализованные paths и фиксирует timestamps и permissions ZIP. Embedded
-resource ZIP data использует то же правило. Parser package declarations и
-сгенерированный contract детерминированы и проверяются в CI.
+resource ZIP data использует то же правило. После создания resource pack
+`package.py` повторно открывает его, сравнивает точный entry list с planned
+inventory и полностью читает каждый entry через CRC-checking ZIP reader;
+embedded packs проверяются из in-memory bytes до patch binary. Это gate создания
+resource packs, но не доказательство целостности outer client/server ZIP,
+installer, delivery channel или installed filesystem. Parser package declarations
+и сгенерированный contract детерминированы и проверяются в CI.
 
 Это не делает каждый полный release бит-в-бит воспроизводимым. Linked binaries,
 debug symbols, top-level archives, toolchains MSI/APK, signing timestamps,

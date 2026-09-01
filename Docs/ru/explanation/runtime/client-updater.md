@@ -6,7 +6,7 @@ document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
 
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"4c124f94eeb2a29e1e257e15196079ccb2a174b5fef1333409082c737de3c866"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"23b287a1f723f13327a6a69dc149805319127d462ef24c905bef03f97e3e3ce7"} -->
 
 # Разделение клиентской среды выполнения и обновление
 
@@ -490,7 +490,12 @@ Resolution идемпотентен, создаёт root, `Cache` и `<ClientRes
 config), log, resource patches и self-updated native runtime. Read-only base
 `ClientResources` остаётся смонтированным, а `<root>/<ClientResources>` добавляется
 как overlay с более высоким priority. Поэтому обновлённые файлы выигрывают lookup
-без изменения install directory.
+без изменения install directory. `GetClientResources()` в `Client.cpp` является
+единственной точкой сборки этого pack set: updater использует её и для проверки
+локальной metadata version, поэтому принятая перед соединением версия совпадает
+с той, которую затем читает gameplay. Updater также монтирует writable overlay
+поверх install-dir splash pack, чтобы до начала текущего скачивания использовать
+splash, исправленный предыдущим updater run.
 
 Native runtime установленного клиента также обновляется в writable root.
 `Updater::_binaryDir` равен `<root>` для installed и exe directory для portable.
@@ -535,7 +540,12 @@ server payload остаются byte-identical при раздельной уп�
 Resource zips также используют sorted normalized paths и стабильные metadata.
 Incremental baker может touch неизменившийся output, но content-identical repack
 не должен менять FNV descriptor hash и заставлять пользователей скачивать pack
-заново. Это закрепляет
+заново. После закрытия packager повторно открывает каждый resource zip, требует
+точный ожидаемый entry list и полностью читает entries через CRC-checking ZIP
+reader. `Embedded` pack проходит ту же проверку в памяти до patch binary.
+Truncated, CRC-invalid или структурно несовпадающий resource archive поэтому
+останавливает package до публикации client payload или server updater source.
+Это закрепляет
 [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py).
 
 Internal config patch area имеет фиксированную движком ёмкость 10000 bytes;

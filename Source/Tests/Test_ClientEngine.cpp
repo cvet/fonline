@@ -127,6 +127,12 @@ namespace
         return settings;
     }
 
+    static auto MakeTempClientResourceDir(string_view name) -> string
+    {
+        auto base = std::filesystem::temp_directory_path() / std::format("lf_client_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+        return fs_path_to_string(base);
+    }
+
     static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerClientEngine compiler_engine {metadata_resources};
@@ -1940,6 +1946,36 @@ BoundsMaxZ = 1 1 1 1
     }
 
 #endif
+}
+
+TEST_CASE("ClientResourcesPreferWritableOverlay")
+{
+    if (IsPackaged()) {
+        SKIP("Directory-backed resource overlay coverage requires an unpackaged test binary");
+    }
+
+    string temp_dir = MakeTempClientResourceDir("writable_overlay");
+    (void)fs_remove_dir_tree(temp_dir);
+
+    auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+
+    string baked_dir = strex(temp_dir).combine_path("Baked").str();
+    string writable_root = strex(temp_dir).combine_path("Writable").str();
+    string client_resources = "Resources";
+    string pack_name = "ClientPack";
+
+    REQUIRE(fs_write_file(strex(baked_dir).combine_path(pack_name).combine_path("payload.txt").str(), string_view {"base-install"}));
+    REQUIRE(fs_write_file(strex(writable_root).combine_path(client_resources).combine_path(pack_name).combine_path("payload.txt").str(), string_view {"repaired-overlay"}));
+
+    GlobalSettings settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.BakeOutput, baked_dir);
+    BakerTests::OverrideSetting(settings.ClientResources, client_resources);
+    BakerTests::OverrideSetting(settings.UserWritablePath, writable_root);
+    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {pack_name});
+
+    FileSystem resources = GetClientResources(settings);
+
+    CHECK(resources.ReadFileText("payload.txt") == "repaired-overlay");
 }
 
 #if FO_ENABLE_3D

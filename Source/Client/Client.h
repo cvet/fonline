@@ -83,7 +83,7 @@ public:
     bool Stopped {};
 };
 
-auto GetClientResources(GlobalSettings& settings) -> FileSystem;
+auto GetClientResources(const ClientSettings& settings) -> FileSystem;
 
 class ClientEngine : public BaseEngine, public AnimationResolver
 {

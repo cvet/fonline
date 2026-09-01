@@ -6,7 +6,7 @@ document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
 
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"789db145f73de8c0537fb2d304b6981fc288fc081fdbaf19af1cd9212f0ae036"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"b70174ee4f79998b9be5d0a60ea3eab5fe214fa4b8a9fc84dc373b67362dfe0c"} -->
 
 # Конфигурация и источники данных
 
@@ -164,7 +164,7 @@ Cached directory mounts создают snapshot файлового индекс�
 
 Порядок mount влияет на lookup behavior. При его изменении проверяйте runtime/tool path, владеющий resource pack, а не только parser.
 
-Installed clients сохраняют read-only base resources, смонтированные из `ClientResources`, и поверх них добавляют writable resource overlay из `fs_make_writable_path(UserWritablePath, ClientResources)` в client/updater paths. Updater записывает resource patches в этот overlay, поэтому актуальные файлы выигрывают lookup/hash checks без изменения install directory. Пути обновления native runtime binaries принадлежат разделу [Разделение client runtime и updater](../../explanation/runtime/client-updater.md).
+Installed clients сохраняют read-only base resources, смонтированные из `ClientResources`, и поверх них добавляют writable resource overlay из `fs_make_writable_path(UserWritablePath, ClientResources)`. `GetClientResources()` является единственной точкой сборки, общей для gameplay и проверки локальной metadata version в updater, поэтому validation и runtime lookup не могут выбрать разные packs. Updater записывает resource patches в overlay, а для splash применяет тот же precedence до начала текущего скачивания. Ошибка чтения ZIP entry включает archive path и resource-relative entry в context `DataSourceException`; short read дополнительно сообщает expected bytes, фактический read result и close result, а CRC/close failure отдельно сохраняет close result. Пути обновления native runtime binaries принадлежат разделу [Разделение client runtime и updater](../../explanation/runtime/client-updater.md).
 
 ## Низкоуровневый доступ к диску
 

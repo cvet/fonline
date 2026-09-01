@@ -410,9 +410,13 @@ What moves to the writable root (via the free path helper `fs_make_writable_path
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
 patches** — the updater writes them under `<root>/<ClientResources>` and layers that dir on top of the
-read-only install-dir base as a higher-priority resource source (`Updater.cpp`, `Client.cpp`), so the base
-resources are read from the install dir and patches override from the user dir — and the **self-updated native
-runtime** (see below).
+read-only install-dir base as a higher-priority resource source, so the base resources are read from the
+install dir and patches override from the user dir — and the **self-updated native runtime** (see below).
+`GetClientResources()` in `Client.cpp` is the single assembly point for that gameplay pack set, and the updater
+uses it for the local metadata-version check. The version accepted before connection is therefore the version
+gameplay will read rather than a separately assembled view with potentially different precedence. The updater
+also mounts the writable overlay above its install-dir splash pack: startup can then use a splash repaired by
+an earlier updater run before the current run downloads anything.
 
 **Native binary self-update for installed builds writes the runtime into the writable root**
 (`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
@@ -450,7 +454,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py) covers the mtime/order invariant.
+Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, requires the exact expected entry list, and streams every entry through Python's CRC-checking reader. The `Embedded` pack receives the same check through its in-memory buffer before it is patched into the executable. A truncated, CRC-invalid, or structurally mismatched resource archive therefore fails packaging before it becomes a downloadable client payload or the server's updater source. [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py) covers deterministic metadata, ordering, and the post-build validation boundary.
 
 The internal config patch area has a fixed Engine-owned capacity of 10000 bytes;
 embedding projects cannot resize it. `package.py` discovers the reserved size

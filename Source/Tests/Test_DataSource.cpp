@@ -831,7 +831,17 @@ TEST_CASE("DataSource")
         CHECK(zip_pack->IsFileExists("mismatch.txt"));
         CHECK(zip_pack->GetFileInfo("mismatch.txt", size, write_time));
         CHECK(size == 32);
-        CHECK_THROWS_AS(zip_pack->OpenFile("mismatch.txt", size, write_time), DataSourceException);
+
+        try {
+            (void)zip_pack->OpenFile("mismatch.txt", size, write_time);
+            FAIL("Malformed zip entry was read without an error");
+        }
+        catch (const DataSourceException& ex) {
+            CHECK(ex.message() == "Can't read file from zip (unzCloseCurrentFile)");
+            REQUIRE(ex.params().size() == 3);
+            CHECK(ex.params()[0] == zip_path);
+            CHECK(ex.params()[1] == "mismatch.txt");
+        }
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }

@@ -27,8 +27,8 @@
       "english_path": "BuildTools/README.md",
       "english_path_state": "migrated",
       "russian_path": "BuildTools/README.ru.md",
-      "source_sha256": "5891748a94d0fc9053212ca210ceea3092f3626806289d8b855e3e8a59934ac0",
-      "source_bytes": 43792,
+      "source_sha256": "67f80b75ccbd6de7afbebd38e5978b08dffefb7f5132ef5822bf5cb9354a41d4",
+      "source_bytes": 44173,
       "status": "current"
     },
     {
@@ -391,8 +391,8 @@
       "english_path": "Docs/en/explanation/runtime/client-updater.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/client-updater.md",
-      "source_sha256": "4c124f94eeb2a29e1e257e15196079ccb2a174b5fef1333409082c737de3c866",
-      "source_bytes": 61932,
+      "source_sha256": "23b287a1f723f13327a6a69dc149805319127d462ef24c905bef03f97e3e3ce7",
+      "source_bytes": 62908,
       "status": "current"
     },
     {
@@ -404,8 +404,8 @@
       "english_path": "Docs/en/explanation/runtime/client.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/client.md",
-      "source_sha256": "6f41b643086dbf02e3759a538fa535d4b1c995766beb6e158ad2e41f12089c29",
-      "source_bytes": 44931,
+      "source_sha256": "44e2ca6c64a48f8b426f73d0784e25b1edbdcd2712e1462ebcfbd0c6896fa1e3",
+      "source_bytes": 44983,
       "status": "current"
     },
     {
@@ -781,8 +781,8 @@
       "english_path": "Docs/en/how-to/release/packaging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/packaging.md",
-      "source_sha256": "df720f17c1275fa514dba4845b4afef12598493119c9c328a1cac51c9949b611",
-      "source_bytes": 27220,
+      "source_sha256": "f7c4845cefc99f11770eb9daba86533d11c9a8083a16786f140e438181c4608c",
+      "source_bytes": 27645,
       "status": "current"
     },
     {
@@ -2211,8 +2211,8 @@
       "english_path": "Docs/en/reference/settings/configuration-and-data-sources.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/settings/configuration-and-data-sources.md",
-      "source_sha256": "789db145f73de8c0537fb2d304b6981fc288fc081fdbaf19af1cd9212f0ae036",
-      "source_bytes": 21912,
+      "source_sha256": "b70174ee4f79998b9be5d0a60ea3eab5fe214fa4b8a9fc84dc373b67362dfe0c",
+      "source_bytes": 22446,
       "status": "current"
     },
     {

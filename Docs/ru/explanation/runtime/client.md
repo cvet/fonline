@@ -6,7 +6,7 @@ document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
 
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"6f41b643086dbf02e3759a538fa535d4b1c995766beb6e158ad2e41f12089c29"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"44e2ca6c64a48f8b426f73d0784e25b1edbdcd2712e1462ebcfbd0c6896fa1e3"} -->
 
 # Клиентская среда выполнения
 
@@ -107,7 +107,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 Обычный жизненный цикл клиента состоит из следующих фаз:
 
 1. **Инициализация приложения** выполняется во frontend-слое. `Application` владеет главным окном, renderer, input и audio. См. [Frontend и рендеринг](../rendering/).
-2. **Выбор файловой системы ресурсов** начинается в `GetClientResources(GlobalSettings&)` из `Source/Client/Client.cpp`, который строит клиентское представление `FileSystem` для runtime managers. Установленные клиенты могут добавлять writable resource overlay с более высоким приоритетом над read-only base resources; см. [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md) и [Client Updater](client-updater.md).
+2. **Выбор файловой системы ресурсов** начинается в `GetClientResources(const ClientSettings&)` из `Source/Client/Client.cpp`, который строит клиентское представление `FileSystem` для runtime managers и проверки локальной metadata version в updater. Установленные клиенты добавляют writable resource overlay с более высоким приоритетом над read-only base resources; см. [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md) и [Client Updater](client-updater.md).
 3. **Создание движка** связывает settings, resources, главное окно приложения, сгенерированные метаданные, script modules и client managers.
 4. **`OnStart` и инициализация скриптов** предоставляют скриптам первую клиентскую точку входа. `Source/Tests/Test_ClientEngine.cpp` проверяет, что module init и loop calls доступны в самодостаточном client runtime.
 5. **Главный цикл** обрабатывает frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing и обновления, связанные с rendering.

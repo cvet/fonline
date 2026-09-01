@@ -2,6 +2,63 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-01 - ZIP recovery reconciliation through `e76c33f502a`
+
+Scope:
+
+- Reconciled the documentation branch after its previous Engine merge
+  `764c2e1c8cdce67892757b14e6f1af12de503b84` with `origin/master` through
+  `e76c33f502ae89f7b676df0812f674ec05346fe7`.
+- Audited the complete one-commit incoming range: deterministic post-write
+  validation for disk and embedded resource ZIPs, one shared installed-resource
+  overlay for gameplay and updater metadata, splash lookup through that overlay,
+  and archive/entry-aware ZIP read diagnostics.
+- Preserved the legacy monolithic pages as short compatibility routes and
+  reconciled the reusable behavior into canonical English/Russian owners.
+
+Documentation and contract reconciliation:
+
+- Documented that package creation reopens every resource ZIP, verifies the
+  exact ordered entry set, and streams every entry through the CRC-checking
+  reader before accepting either a disk payload or an embedded pack.
+- Documented `GetClientResources(const ClientSettings&)` as the single overlay
+  constructor used by the client runtime and updater, including writable-pack
+  precedence for metadata and updater-splash lookup.
+- Documented contextual ZIP failures: archive and entry identity plus separate
+  read and close failures. This improves recovery evidence without turning a
+  packaging check into proof of delivery, installation, or successful rollback.
+- Updated the Russian BuildTools translation, synchronized all four changed
+  page pairs, and regenerated the source inventory, snippet inventory,
+  translation status, site/search/route data, deterministic AI evaluation, and
+  AI delivery files. All 4,969 generated descriptions and all 197 translation
+  pairs are current.
+
+Validation:
+
+- Focused ZIP/package, updater, configuration, runtime, localization, generated
+  reference, inventory, site, AI, and documentation validation passed 135 tests
+  plus 28 subtests.
+- Direct generated checks report 6 package targets, 6 platforms, 19 packs;
+  957 export methods, 106 native-test files, and 284 settings; 386 public routes;
+  and 397 valid Markdown entries.
+- The external Bash parser could not run because this Windows host exposes WSL
+  without an installed Linux distribution. The direct snippet validator passed
+  310 normative snippets, 159 evidence blocks, and retained 183 external-parser
+  checks for Linux CI.
+- Deterministic AI evaluation passed 27 tasks and 65 retrieval checks at 100
+  percent success and 0.915 MRR.
+
+Disposition:
+
+- The incoming reusable ZIP validation, overlay precedence, and diagnostic
+  behavior are represented in canonical Engine docs and generated discovery
+  surfaces. No manual Engine source change was needed on the documentation
+  branch; the source and native tests come from `origin/master`.
+- A consuming project must still rebuild against the reconciled Engine and
+  exercise a genuinely damaged installed pack, updater recovery, and packaged
+  client/server payloads. Automated unit and documentation evidence does not
+  replace those project/release acceptance gates.
+
 ## 2026-09-01 - master reconciliation through `df06df50a99`
 
 Scope:

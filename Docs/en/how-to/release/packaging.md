@@ -258,7 +258,7 @@ Keep those product and infrastructure details in the embedding project. [Release
 
 ## Reproducibility and provenance
 
-FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. The package declaration parser and generated contract are deterministic and checked in CI.
+FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. After producing a resource pack, `package.py` reopens it, compares the exact entry list with the planned inventory, and streams every entry through the CRC-checking ZIP reader; embedded packs are validated from the in-memory bytes before binary patching. This is a package-construction gate for resource packs, not proof that the outer client/server ZIP, installer, delivery channel, or installed filesystem remained intact. The package declaration parser and generated contract are deterministic and checked in CI.
 
 That does not make every complete release bit-for-bit reproducible. Linked binaries, debug symbols, top-level archives, MSI/APK toolchains, signing timestamps, included files, and external SDKs may carry host- or time-dependent data. State the narrower guarantee you have actually tested.
 

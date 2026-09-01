@@ -1410,7 +1410,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: df720f17c1275fa514dba4845b4afef12598493119c9c328a1cac51c9949b611
+Content SHA-256: f7c4845cefc99f11770eb9daba86533d11c9a8083a16786f140e438181c4608c
 
 ---
 layout: default
@@ -1672,7 +1672,7 @@ Keep those product and infrastructure details in the embedding project. [Release
 
 ## Reproducibility and provenance
 
-FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. The package declaration parser and generated contract are deterministic and checked in CI.
+FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. After producing a resource pack, `package.py` reopens it, compares the exact entry list with the planned inventory, and streams every entry through the CRC-checking ZIP reader; embedded packs are validated from the in-memory bytes before binary patching. This is a package-construction gate for resource packs, not proof that the outer client/server ZIP, installer, delivery channel, or installed filesystem remained intact. The package declaration parser and generated contract are deterministic and checked in CI.
 
 That does not make every complete release bit-for-bit reproducible. Linked binaries, debug symbols, top-level archives, MSI/APK toolchains, signing timestamps, included files, and external SDKs may carry host- or time-dependent data. State the narrower guarantee you have actually tested.
 
@@ -18412,7 +18412,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: 4c124f94eeb2a29e1e257e15196079ccb2a174b5fef1333409082c737de3c866
+Content SHA-256: 23b287a1f723f13327a6a69dc149805319127d462ef24c905bef03f97e3e3ce7
 
 ---
 layout: default
@@ -18826,9 +18826,13 @@ What moves to the writable root (via the free path helper `fs_make_writable_path
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
 patches** — the updater writes them under `<root>/<ClientResources>` and layers that dir on top of the
-read-only install-dir base as a higher-priority resource source (`Updater.cpp`, `Client.cpp`), so the base
-resources are read from the install dir and patches override from the user dir — and the **self-updated native
-runtime** (see below).
+read-only install-dir base as a higher-priority resource source, so the base resources are read from the
+install dir and patches override from the user dir — and the **self-updated native runtime** (see below).
+`GetClientResources()` in `Client.cpp` is the single assembly point for that gameplay pack set, and the updater
+uses it for the local metadata-version check. The version accepted before connection is therefore the version
+gameplay will read rather than a separately assembled view with potentially different precedence. The updater
+also mounts the writable overlay above its install-dir splash pack: startup can then use a splash repaired by
+an earlier updater run before the current run downloads anything.
 
 **Native binary self-update for installed builds writes the runtime into the writable root**
 (`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
@@ -18866,7 +18870,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py) covers the mtime/order invariant.
+Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, requires the exact expected entry list, and streams every entry through Python's CRC-checking reader. The `Embedded` pack receives the same check through its in-memory buffer before it is patched into the executable. A truncated, CRC-invalid, or structurally mismatched resource archive therefore fails packaging before it becomes a downloadable client payload or the server's updater source. [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py) covers deterministic metadata, ordering, and the post-build validation boundary.
 
 The internal config patch area has a fixed Engine-owned capacity of 10000 bytes;
 embedding projects cannot resize it. `package.py` discovers the reserved size
@@ -19036,7 +19040,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 6f41b643086dbf02e3759a538fa535d4b1c995766beb6e158ad2e41f12089c29
+Content SHA-256: 44e2ca6c64a48f8b426f73d0784e25b1edbdcd2712e1462ebcfbd0c6896fa1e3
 
 ---
 layout: default
@@ -19145,7 +19149,7 @@ Major responsibilities:
 A typical client lifetime has these phases:
 
 1. **Application initialization** happens in the frontend layer. `Application` owns the main window, renderer, input, and audio. See [Frontend and Rendering](../rendering/).
-2. **Resource filesystem selection** starts through `GetClientResources(GlobalSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers. Installed clients may add a higher-priority writable resource overlay above the read-only base resources; see [Configuration and Data Sources](../../reference/settings/configuration-and-data-sources.md) and [Client Updater](client-updater.md).
+2. **Resource filesystem selection** starts through `GetClientResources(const ClientSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers and by the updater's local metadata-version check. Installed clients add a higher-priority writable resource overlay above the read-only base resources; see [Configuration and Data Sources](../../reference/settings/configuration-and-data-sources.md) and [Client Updater](client-updater.md).
 3. **Engine construction** wires settings, resources, the main application window, generated metadata, script modules, and client managers.
 4. **`OnStart`/script initialization** gives scripts their first client-side entry point. `Source/Tests/Test_ClientEngine.cpp` validates that script module init and loop calls are callable on a self-contained client runtime.
 5. **The main loop** processes frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing, and rendering-facing updates.
@@ -26115,7 +26119,7 @@ The engine-owned [minimal project](../../../../Examples/MinimalProject/README.md
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: 789db145f73de8c0537fb2d304b6981fc288fc081fdbaf19af1cd9212f0ae036
+Content SHA-256: b70174ee4f79998b9be5d0a60ea3eab5fe214fa4b8a9fc84dc373b67362dfe0c
 
 ---
 layout: default
@@ -26299,7 +26303,7 @@ Cached directory mounts snapshot their file index when mounted. Long-running too
 
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
 
-Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top in client/updater paths. The updater writes resource patches into that overlay, so current files win lookup/hash checks without modifying the install directory. Native runtime binary update paths are owned by [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
+Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` is the single assembly point used by gameplay and by the updater's local metadata-version check, so validation and runtime lookup cannot disagree about which pack wins. The updater writes resource patches into that overlay, so current or repaired files win without modifying the install directory; its splash pack applies the same precedence before the current update run starts downloading. A ZIP entry read failure includes the archive path and resource-relative entry in `DataSourceException` context. Short reads additionally report the expected byte count, the actual read result, and the close result, while a CRC/close failure records the close result separately. Native runtime binary update paths are owned by [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 
 ## Low-level disk access
 

@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"5891748a94d0fc9053212ca210ceea3092f3626806289d8b855e3e8a59934ac0"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"67f80b75ccbd6de7afbebd38e5978b08dffefb7f5132ef5822bf5cb9354a41d4"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -603,6 +603,13 @@ output tree вместо общего `~/.gradle`, поэтому паралле
 Android Wi-Fi endpoints как нумерованный список, кеширует выбранный endpoint в
 `Workspace/android-debug/device-endpoint.txt` и предлагает ручной ввод
 `IP[:port]`, если discovery ничего не вернул.
+
+После сборки каждый клиентский и серверный пакет ресурсов открывается повторно —
+как ZIP-файлы, записанные на диск, так и пакет в памяти, встраиваемый в
+исполняемый файл. Packaging проверяет точный список записей и полностью читает
+каждую из них через ZIP reader с проверкой CRC, поэтому повреждённый архив
+ресурсов останавливает сборку пакета до того, как попадёт в загружаемый клиент
+или в источник обновлений сервера.
 
 ## Packaging: изменение binary после сборки
 
