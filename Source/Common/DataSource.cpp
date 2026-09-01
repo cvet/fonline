@@ -49,6 +49,9 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
     }
 
     vector<string> result;
+    // Views into fnames, which outlives the loop. A linear scan of the result made the pass quadratic in
+    // the name count, and the whole-source case is the one every glob-filtered pack goes through
+    unordered_set<string_view> added_names;
     auto len = dir_fixed.length();
 
     for (const auto& fname : fnames) {
@@ -60,7 +63,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
             }
         }
 
-        if (add && std::ranges::find(result, fname) == result.end()) {
+        if (add && added_names.emplace(fname).second) {
             result.push_back(fname);
         }
     }
