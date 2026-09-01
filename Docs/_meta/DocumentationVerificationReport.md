@@ -2,6 +2,52 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-02 - optional-pack test-comment reconciliation
+
+Scope and source revisions:
+
+- Reconciled documentation branch head
+  `32716e3116bf5ba95e256ecd4b2189b27a771d56` with Engine
+  `origin/master` through `c36a5e3dafab97c4ab91dfcc4704dc5d26b3fe39`;
+  merge commit `f62fe9b168800e3c4486c9121325cb0c573070b1` preserves both
+  published histories.
+- Audited the complete one-commit incoming range. It only shortens the comment
+  above `FileSystemKeepsItsIndexWhenAnOptionalPackIsAbsent` so the existing
+  regression's purpose remains within the engine comment-length rule. Test
+  logic, native/public API, compatibility, DataSource behavior, resource-index
+  semantics, and generated contract models are unchanged.
+- Audited the corresponding Last Frontier `origin/main` integration through
+  project `ac7259ab064e372d746bcd081cd70c1c5db225d3`. Its ImageGenerator
+  workflow move, platform-specific assertions, UI-part manifest additions,
+  version bump, and CI investigation record are project-owned and do not add a
+  reusable Engine contract.
+
+Documentation and generated-surface disposition:
+
+- The existing configuration/data-source and baking owners already document
+  immutable pack snapshots, optional absent packs, shared indexing, mount
+  priority, and the lookup/open boundary exercised by the unchanged test.
+- No canonical English/Russian owner, contract interface, public API index,
+  translation pair, site route, search entry, or AI-evaluation answer changes.
+  This dated internal verification entry is the only Engine documentation
+  addition required by the revision audit.
+
+Validation:
+
+- The focused `DataSource` native test passes 1/1 with 273 assertions against
+  the merged Engine checkout.
+- Comparing the pre-refresh Engine head with the merge changes no path under
+  `Docs/`, `BuildTools/`, `PUBLIC_API.md`, or the AI-delivery manifests before
+  this report entry. Documentation freshness and manifest checks are rerun
+  after recording this disposition.
+
+Disposition:
+
+- The Engine change is integrated and verified without broadening the
+  documentation PR into unrelated runtime work. Current remote CI and the
+  embedding project's nightly ImageGenerator run remain publication evidence,
+  not claims established by this local comment-only merge.
+
 ## 2026-09-01 - ZIP recovery reconciliation through `e76c33f502a`
 
 Scope:
