@@ -77,8 +77,9 @@ explicit product decision, not as part of a mechanical refresh.
 
 A dependency whose vendored copy carries extensive semantic `(FOnline Patch)`
 edits (the current example is AngelScript, which embeds the engine's nullable
-`T?` type system, VM stack-alignment layout, an added bytecode instruction, and
-a modern-threads mode on top of an upstream fork) is **not** covered by the
+`T?` type system, VM stack-alignment layout, native-call argument
+normalization, an added bytecode instruction, and a modern-threads mode on top
+of an upstream fork) is **not** covered by the
 mechanical copy-then-prune workflow above. Re-vendoring it means reconciling
 every patched region against the new upstream — treat that as a dedicated task
 with its own plan and full script/VM regression validation, and skip such
