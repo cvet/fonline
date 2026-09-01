@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 # Скриптовый runtime
 
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"6ce5488c827a4878c79d88fb54bab7a6bdba46b13262a4cd359616a9de6bb011"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"d6a5936921700b287bbf61eedb62222bdfc77544246392156b217f3bfb1e7b0f"} -->
 
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
@@ -181,6 +181,8 @@ Events и remote calls являются разными понятиями. Event
 Для instance methods сущности dispatch AngelScript проверяет receiver до входа в тело нативного метода. `Entity_MethodCall` вызывает `CheckScriptEntityAccessAndNonDestroyed`, который проверяет серверный synchronization cover и destroyed state сущности `self`. Не добавляйте entry-only `ValidateEntityAccess(self)` и не повторяйте проверку receiver перед обычным чтением. Далее в теле проверяйте сущности только на реальных границах доступа или assert, например при event dispatch либо продолжении после re-entry. Если покрытая сущность должна сохранить собственный lock при detach или reparent, используйте сохраняющий cover и идемпотентный `EnsureEntitySynced(...)`: он сохраняет уже имеющийся caller cover, никогда не освобождает и не паркуется на нём и не может получить пропущенную dependency.
 
 При добавлении метода размещайте его на стороне, владеющей изменяемым состоянием. Например, авторитетное создание предмета относится к серверным методам, а sprite/UI helpers — к клиентским или общим frontend methods.
+
+AngelScript хранит значение `bool` в одном байте четырёхбайтового stack slot VM, верхние байты которого могут содержать прежние данные. Исправленные пути native-call marshalling для x64 GCC, x64 MSVC и ARM64 обнуляют destination argument slot и копируют только байты значения по его типу. Поэтому native callee может полагаться, что входной регистр `bool` нормализован к `0` или `1`; эту ABI boundary закрепляет `AngelScriptNativeCallNormalizesBoolArgument` в `Source/Tests/Test_AngelScriptAlignment.cpp`.
 
 Lookup текста следует той же модели владения. Клиентские и mapper-скрипты могут получать строки и менять язык; серверные скрипты предоставляют только проверку наличия текста и число вариантов. Полный поведенческий контракт и семантика отсутствующих данных находятся в [руководстве по тексту и локализации](../../how-to/content/text-and-localization.md).
 

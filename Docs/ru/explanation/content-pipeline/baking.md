@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"904518250c363682fbe0ee1b8a98076e1fb1b9b7e301f940f43aec655c024015"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"04a34b6a717f9ecc782138ba46eb937f3e34782ace3e0bf6aa3888291642cca0"} -->
 
 # Конвейер запекания ресурсов
 
@@ -167,6 +167,8 @@ AddBakingTarget(Game_PublicResources
 ### `MasterBaker`
 
 `MasterBaker::BakeAll()` координирует настроенный проход и используется `BakerApp.cpp` и `BakerLib.cpp`. Один экземпляр владеет одним collector-ом отчёта и завершает его как при успехе, так и при исключении.
+
+До параллельной подготовки packs метод `MountSharedInputDirs()` один раз монтирует каждый уникальный настроенный путь `InputDirs`. Каждый pack context заимствует полученный read-only source через `DataSourceRef`, а владеющий registry существует ровно один проход `BakeAllInternal()`. Packs по-прежнему применяют собственные include/exclude filters и сохраняют настроенную семантику output, но несколько packs с большим общим authored tree больше не обходят и не кэшируют этот каталог независимо. Фильтрация имён внутри source сохраняет порядок первого появления, используя set уже добавленных имён, поэтому подавление duplicates выполняется линейно вместо повторного сканирования накопленного результата.
 
 ### `BakingReport`
 

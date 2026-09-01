@@ -6,7 +6,7 @@ document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
 
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"b70174ee4f79998b9be5d0a60ea3eab5fe214fa4b8a9fc84dc373b67362dfe0c"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"4c5e66b77304abde63753e812b1b4365b5845b2835a3c4071fca158402de2d59"} -->
 
 # Конфигурация и источники данных
 
@@ -163,6 +163,14 @@ allow-list **auto-settings**. Runtime-only settings (platform/build flags, ра�
 Cached directory mounts создают snapshot файлового индекса при монтировании. Долго работающие инструменты могут вызвать `FileSystem::ReindexDataSources()`, чтобы каждый смонтированный источник обновил snapshot; метод возвращает `true`, если изменились indexed paths, sizes или write times. Источники без кэширования disk state сохраняют default no-op behavior. Custom sources могут переопределить `DataSource::Reindex()`; `BakerDataSource` использует это для перестроения input mounts и baking новых или измененных ресурсов по запросу.
 
 Порядок mount влияет на lookup behavior. При его изменении проверяйте runtime/tool path, владеющий resource pack, а не только parser.
+
+### Общий индекс смонтированных источников
+
+Точечные lookup-операции (`IsFileExists()`, `ReadFile()` и `ReadFileHeader()`) используют один общий индекс, когда каждый смонтированный источник предоставляет полный `DataSource::GetIndexSnapshot()`. Snapshot предоставляют `ZipFile`, `EmbeddedFile`, `FalloutDat` и `FilesList`; пустой `DummySpace` для отсутствующего необязательного pack возвращает пустой snapshot. Directory sources, включая `CachedDir`, сохраняют default `nullopt`, поэтому добавление любого directory или другого live source отключает индекс для этого `FileSystem` и сохраняет ordered probing. Файловые системы packaged runtime, состоящие только из packs, индексируют ресурсы, а unpacked development mounts, входные каталоги baker-а и смешанные файловые системы updater-а сохраняют live lookup behavior.
+
+Snapshot нового источника снимается до его публикации. Более поздний mount имеет больший приоритет и заменяет каждый заявленный им indexed path, что совпадает с существующим reverse-mount probe order. `ReindexDataSources()` строит новый индекс отдельно и заменяет прежний только после успешного получения всех snapshots; `CleanDataSources()` очищает и источники, и индекс. После setup точечное чтение остаётся lock-free. Если indexed source владеет путём, но не может открыть его, `ReadFile()` возвращает отсутствие файла, не переходя к lower-priority duplicate.
+
+`FilterFiles()` и `GetAllFiles()` продолжают перебирать источники по порядку даже при индексированных точечных lookup-операциях. Загрузка script modules, регистрация прототипов и другие consumers зависят от source-by-source order, который unordered index не сохраняет.
 
 Installed clients сохраняют read-only base resources, смонтированные из `ClientResources`, и поверх них добавляют writable resource overlay из `fs_make_writable_path(UserWritablePath, ClientResources)`. `GetClientResources()` является единственной точкой сборки, общей для gameplay и проверки локальной metadata version в updater, поэтому validation и runtime lookup не могут выбрать разные packs. Updater записывает resource patches в overlay, а для splash применяет тот же precedence до начала текущего скачивания. Ошибка чтения ZIP entry включает archive path и resource-relative entry в context `DataSourceException`; short read дополнительно сообщает expected bytes, фактический read result и close result, а CRC/close failure отдельно сохраняет close result. Пути обновления native runtime binaries принадлежат разделу [Разделение client runtime и updater](../../explanation/runtime/client-updater.md).
 

@@ -180,6 +180,14 @@ Cached directory mounts snapshot their file index when mounted. Long-running too
 
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
 
+### Shared index over mounted sources
+
+Point lookups (`IsFileExists()`, `ReadFile()`, and `ReadFileHeader()`) use one shared index when every mounted source can provide a complete `DataSource::GetIndexSnapshot()`. `ZipFile`, `EmbeddedFile`, `FalloutDat`, and `FilesList` provide snapshots; the empty `DummySpace` used for an absent optional pack provides an empty snapshot. Directory sources, including `CachedDir`, keep the default `nullopt`, so adding any directory or other live source disables the index for that `FileSystem` and preserves ordered probing. Pure pack-backed filesystems used by packaged runtimes therefore index their resources, while unpacked development mounts, baker input directories, and mixed updater filesystems keep live lookup behavior.
+
+The snapshot for a newly mounted source is taken before that source is published. A later mount has higher priority and replaces every indexed path it claims, matching the existing reverse-mount probe order. `ReindexDataSources()` rebuilds a replacement index separately and swaps it only after every snapshot succeeds; `CleanDataSources()` clears both sources and index. Point reads remain lock-free after setup. If an indexed source owns a path but cannot open it, `ReadFile()` returns no file instead of probing a lower-priority duplicate.
+
+`FilterFiles()` and `GetAllFiles()` continue to enumerate sources in order even when point lookup is indexed. Script module load order, prototype registration, and other consumers depend on that source-by-source order, which an unordered index does not preserve.
+
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` is the single assembly point used by gameplay and by the updater's local metadata-version check, so validation and runtime lookup cannot disagree about which pack wins. The updater writes resource patches into that overlay, so current or repaired files win without modifying the install directory; its splash pack applies the same precedence before the current update run starts downloading. A ZIP entry read failure includes the archive path and resource-relative entry in `DataSourceException` context. Short reads additionally report the expected byte count, the actual read result, and the close result, while a CRC/close failure records the close result separately. Native runtime binary update paths are owned by [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 
 ## Low-level disk access

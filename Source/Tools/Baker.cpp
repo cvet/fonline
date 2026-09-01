@@ -341,7 +341,9 @@ void MasterBaker::BakeAllInternal()
     // one produced
     FileSystem baking_output;
 
-    vector<unique_ptr<PackBakeContext>> pack_bake_contexts = PreparePackContexts(baking_output, force_baking);
+    // Outlives the pack contexts, which borrow from it rather than mounting their own copy
+    auto input_dirs = MountSharedInputDirs();
+    auto pack_bake_contexts = PreparePackContexts(input_dirs, baking_output, force_baking);
     RunPackBakers(pack_bake_contexts, baking_output, force_baking);
 
     ExpectedOutputs expected = CollectExpectedOutputs(pack_bake_contexts);
@@ -410,7 +412,26 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
     return force_baking;
 }
 
-auto MasterBaker::PreparePackContexts(FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>
+// One mount per distinct input dir: a dozen packs may share one art tree, and a private mount per pack walked
+// it a dozen times. Done here, not on demand, because mounting walks the tree while packs prepare concurrently
+auto MasterBaker::MountSharedInputDirs() const -> unordered_map<string, unique_ptr<DataSource>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_map<string, unique_ptr<DataSource>> input_dirs;
+
+    for (const auto& res_pack : _settings->GetResourcePacks()) {
+        for (const auto& input_dir : res_pack.InputDirs) {
+            if (!input_dirs.contains(input_dir)) {
+                input_dirs.emplace(input_dir, DataSource::MountDir(input_dir, true, false, false));
+            }
+        }
+    }
+
+    return input_dirs;
+}
+
+auto MasterBaker::PreparePackContexts(unordered_map<string, unique_ptr<DataSource>>& input_dirs, FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -422,7 +443,7 @@ auto MasterBaker::PreparePackContexts(FileSystem& baking_output, std::atomic_boo
     for (const auto& res_pack : res_packs) {
         auto res_pack_ptr = make_ptr(&res_pack);
         string output_path = MakeOutputPath(res_pack.Name);
-        prepare_res_bakings.emplace_back(run_async(async_mode, strex("PreparePack-{}", res_pack_ptr->Name), [this, res_pack_ptr, output_path, &baking_output, &force_baking]() FO_DEFERRED { return PreparePackContext(*res_pack_ptr, output_path, baking_output, force_baking); }));
+        prepare_res_bakings.emplace_back(run_async(async_mode, strex("PreparePack-{}", res_pack_ptr->Name), [this, res_pack_ptr, output_path, &input_dirs, &baking_output, &force_baking]() FO_DEFERRED { return PreparePackContext(*res_pack_ptr, input_dirs, output_path, baking_output, force_baking); }));
     }
 
     vector<unique_ptr<PackBakeContext>> pack_bake_contexts;
@@ -455,7 +476,7 @@ auto MasterBaker::PreparePackContexts(FileSystem& baking_output, std::atomic_boo
     return pack_bake_contexts;
 }
 
-auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>
+auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, unordered_map<string, unique_ptr<DataSource>>& input_dirs, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -468,8 +489,12 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, const str
     pack_bake_context->Report = pack_report;
     pack_bake_context->PackBakedFiles.AddDirSource(output_dir, true, true, true);
 
+    // Read-only here, as the concurrent prepare requires; the borrow is non-const only because an owner
+    // propagates const to what it owns and DataSourceRef forwards a non-const Reindex
     for (const auto& input_dir : res_pack.InputDirs) {
-        pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, true);
+        auto it = input_dirs.find(input_dir);
+        FO_VERIFY_AND_THROW(it != input_dirs.end(), "Resource pack input dir was not mounted before the prepare pass", res_pack.Name, input_dir);
+        pack_bake_context_ptr->InputFiles.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(it->second.as_ptr()));
     }
     for (const auto& input_file : res_pack.InputFiles) {
         string dir = strex(input_file).extract_dir().str();

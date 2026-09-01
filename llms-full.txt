@@ -3142,7 +3142,7 @@ Do not call the update complete while required evidence is missing. Record an un
 ===== BEGIN DOCUMENT scripting-runtime =====
 Source: Docs/en/explanation/scripting-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/scripting-runtime/
-Content SHA-256: 6ce5488c827a4878c79d88fb54bab7a6bdba46b13262a4cd359616a9de6bb011
+Content SHA-256: d6a5936921700b287bbf61eedb62222bdfc77544246392156b217f3bfb1e7b0f
 
 ---
 layout: default
@@ -3342,6 +3342,8 @@ Each exported function is marked with `///@ ExportMethod` and normally starts wi
 For entity instance methods, the AngelScript dispatch layer validates the receiver before entering the native method body. `Entity_MethodCall` calls `CheckScriptEntityAccessAndNonDestroyed`, which checks server sync coverage and destroyed state for the `self` entity. Do not add an entry-only `ValidateEntityAccess(self)` or repeat the receiver check before ordinary receiver reads. Later in the body, validate entities only at real access/assert boundaries such as event dispatch or post-reentry continuation. When a covered entity must keep its own lock across a detach or reparent, use the cover-retaining, idempotent `EnsureEntitySynced(...)`; it retains existing caller cover — never releasing or parking on it — and cannot acquire an omitted dependency.
 
 When adding a method, route it to the side that owns the state it mutates. For example, authoritative item creation belongs under server methods, while sprite/UI helpers belong under client/common frontend methods.
+
+AngelScript stores a `bool` value in one byte of a four-byte VM stack slot, whose upper bytes may retain earlier data. The patched native-call marshalling paths for x64 GCC, x64 MSVC, and ARM64 zero the destination argument slot and copy only the value type's in-memory bytes. Native callees may therefore rely on an incoming `bool` register being normalized to `0` or `1`; `AngelScriptNativeCallNormalizesBoolArgument` in `Source/Tests/Test_AngelScriptAlignment.cpp` pins this ABI boundary.
 
 Text lookup follows the same side ownership. Client/mapper scripts can retrieve
 strings and change language; server scripts expose only text presence and
@@ -14984,7 +14986,7 @@ The tests are the executable knowledge base for many engine subsystems. File nam
 ===== BEGIN DOCUMENT third-party-maintenance =====
 Source: Docs/en/contributing/third-party/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/third-party/
-Content SHA-256: db4c8102cc99a6608ccb8966f46d8ae483e11a00c8da4f4df55093fc368a8403
+Content SHA-256: 3839ff5618e027a2e0ce71b9a242381315ccd50f2f43918e65ab4feeb933ad39
 
 ---
 layout: default
@@ -15103,8 +15105,9 @@ explicit product decision, not as part of a mechanical refresh.
 
 A dependency whose vendored copy carries extensive semantic `(FOnline Patch)`
 edits (the current example is AngelScript, which embeds the engine's nullable
-`T?` type system, VM stack-alignment layout, an added bytecode instruction, and
-a modern-threads mode on top of an upstream fork) is **not** covered by the
+`T?` type system, VM stack-alignment layout, native-call argument
+normalization, an added bytecode instruction, and a modern-threads mode on top
+of an upstream fork) is **not** covered by the
 mechanical copy-then-prune workflow above. Re-vendoring it means reconciling
 every patched region against the new upstream — treat that as a dedicated task
 with its own plan and full script/VM regression validation, and skip such
@@ -15552,7 +15555,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 904518250c363682fbe0ee1b8a98076e1fb1b9b7e301f940f43aec655c024015
+Content SHA-256: 04a34b6a717f9ecc782138ba46eb937f3e34782ace3e0bf6aa3888291642cca0
 
 ---
 layout: default
@@ -15745,6 +15748,8 @@ the helpers are no-ops when no report collector is attached.
 
 `MasterBaker` also owns the one report collector for that bake attempt and
 finalizes the report after either success or failure.
+
+Before parallel pack preparation, `MountSharedInputDirs()` mounts each distinct configured `InputDirs` path once. Every pack context borrows the resulting read-only source through `DataSourceRef`, and the owning registry lives for exactly that `BakeAllInternal()` pass. Packs still apply their own include/exclude filters and preserve configured output semantics, but packs sharing a large authored tree no longer walk and cache that directory independently. Source-local name filtering preserves first-seen order while using a set of already-added names, so duplicate suppression is linear rather than repeatedly scanning the accumulated result.
 
 ### `BakingReport`
 
@@ -26119,7 +26124,7 @@ The engine-owned [minimal project](../../../../Examples/MinimalProject/README.md
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: b70174ee4f79998b9be5d0a60ea3eab5fe214fa4b8a9fc84dc373b67362dfe0c
+Content SHA-256: 4c5e66b77304abde63753e812b1b4365b5845b2835a3c4071fca158402de2d59
 
 ---
 layout: default
@@ -26302,6 +26307,14 @@ Both `/` and `\` are accepted as pattern separators and normalized to `/`. For e
 Cached directory mounts snapshot their file index when mounted. Long-running tools can call `FileSystem::ReindexDataSources()` to ask every mounted source to refresh that snapshot; the method returns `true` when indexed paths, sizes, or write times changed. Sources that do not cache disk state keep the default no-op behavior. Custom sources can override `DataSource::Reindex()`; `BakerDataSource` uses it to rebuild input mounts and bake newly added or changed resources on demand.
 
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
+
+### Shared index over mounted sources
+
+Point lookups (`IsFileExists()`, `ReadFile()`, and `ReadFileHeader()`) use one shared index when every mounted source can provide a complete `DataSource::GetIndexSnapshot()`. `ZipFile`, `EmbeddedFile`, `FalloutDat`, and `FilesList` provide snapshots; the empty `DummySpace` used for an absent optional pack provides an empty snapshot. Directory sources, including `CachedDir`, keep the default `nullopt`, so adding any directory or other live source disables the index for that `FileSystem` and preserves ordered probing. Pure pack-backed filesystems used by packaged runtimes therefore index their resources, while unpacked development mounts, baker input directories, and mixed updater filesystems keep live lookup behavior.
+
+The snapshot for a newly mounted source is taken before that source is published. A later mount has higher priority and replaces every indexed path it claims, matching the existing reverse-mount probe order. `ReindexDataSources()` rebuilds a replacement index separately and swaps it only after every snapshot succeeds; `CleanDataSources()` clears both sources and index. Point reads remain lock-free after setup. If an indexed source owns a path but cannot open it, `ReadFile()` returns no file instead of probing a lower-priority duplicate.
+
+`FilterFiles()` and `GetAllFiles()` continue to enumerate sources in order even when point lookup is indexed. Script module load order, prototype registration, and other consumers depend on that source-by-source order, which an unordered index does not preserve.
 
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` is the single assembly point used by gameplay and by the updater's local metadata-version check, so validation and runtime lookup cannot disagree about which pack wins. The updater writes resource patches into that overlay, so current or repaired files win without modifying the install directory; its splash pack applies the same precedence before the current update run starts downloading. A ZIP entry read failure includes the archive path and resource-relative entry in `DataSourceException` context. Short reads additionally report the expected byte count, the actual read result, and the close result, while a CRC/close failure records the close result separately. Native runtime binary update paths are owned by [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 

@@ -197,6 +197,8 @@ For entity instance methods, the AngelScript dispatch layer validates the receiv
 
 When adding a method, route it to the side that owns the state it mutates. For example, authoritative item creation belongs under server methods, while sprite/UI helpers belong under client/common frontend methods.
 
+AngelScript stores a `bool` value in one byte of a four-byte VM stack slot, whose upper bytes may retain earlier data. The patched native-call marshalling paths for x64 GCC, x64 MSVC, and ARM64 zero the destination argument slot and copy only the value type's in-memory bytes. Native callees may therefore rely on an incoming `bool` register being normalized to `0` or `1`; `AngelScriptNativeCallNormalizesBoolArgument` in `Source/Tests/Test_AngelScriptAlignment.cpp` pins this ABI boundary.
+
 Text lookup follows the same side ownership. Client/mapper scripts can retrieve
 strings and change language; server scripts expose only text presence and
 variant counts. The complete behavioral contract and missing-data semantics are

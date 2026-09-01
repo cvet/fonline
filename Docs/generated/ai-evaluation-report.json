@@ -64,8 +64,8 @@
             "engine-architecture",
             "baking-pipeline",
             "script-methods-map",
-            "scripting-runtime",
-            "unit-tests-readme"
+            "unit-tests-readme",
+            "testing"
           ]
         }
       ],
@@ -1062,7 +1062,8 @@
           "top_document_ids": [
             "particle-authoring-tools",
             "frontend-rendering",
-            "testing"
+            "testing",
+            "configuration-data-sources"
           ]
         }
       ],

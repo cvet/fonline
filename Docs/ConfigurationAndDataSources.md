@@ -30,6 +30,10 @@ Continue with the [canonical English reference](en/reference/settings/configurat
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md).
 
+### Shared index over mounted sources
+
+Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#shared-index-over-mounted-sources).
+
 ## Low-level disk access
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#low-level-disk-access).

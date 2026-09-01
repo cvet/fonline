@@ -190,6 +190,8 @@ the helpers are no-ops when no report collector is attached.
 `MasterBaker` also owns the one report collector for that bake attempt and
 finalizes the report after either success or failure.
 
+Before parallel pack preparation, `MountSharedInputDirs()` mounts each distinct configured `InputDirs` path once. Every pack context borrows the resulting read-only source through `DataSourceRef`, and the owning registry lives for exactly that `BakeAllInternal()` pass. Packs still apply their own include/exclude filters and preserve configured output semantics, but packs sharing a large authored tree no longer walk and cache that directory independently. Source-local name filtering preserves first-seen order while using a set of already-added names, so duplicate suppression is linear rather than repeatedly scanning the accumulated result.
+
 ### `BakingReport`
 
 `BakingReport` is defined in its own `Source/Tools/BakingReport.h` / `.cpp`

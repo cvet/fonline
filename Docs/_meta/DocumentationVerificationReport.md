@@ -8736,3 +8736,67 @@ Disposition:
 - Linux/OpenGL Content Showcase evidence is complete. Remaining example gates
   are clean pinned/current qualification, release controls, immutable
   artifacts, and owner-authorized visibility for the four private repositories.
+
+## 2026-09-01 - shared resource index and native-call ABI reconciliation
+
+Scope and source revisions:
+
+- Reconciled the documentation branch at
+  `6acbb385eaa88cfbfe5a6d435b808281bef6bc2a` with Engine `origin/master`
+  through `e7a34e81cccc902eb68f531da0d3693f755c0af6`. The incoming range fixes
+  one-byte AngelScript value arguments on native ABIs, removes quadratic baker
+  input-directory deduplication, and introduces a shared point-lookup index over
+  mounted resource packs.
+- Audited the corresponding Last Frontier integration range through project
+  `e5f5aa550c36f32f7092ee6bebb70fe0bb289c04`: it splits `CommonArt` into
+  bounded resource packs, separates sound and music, adds a resource-pack audit,
+  and pins this Engine revision. Those project-specific pack names and CI rules
+  remain owned by the project documentation.
+- The three conflicts were legacy documentation routes. Their redirect/stub
+  role was preserved while the reusable contracts were reconciled in the
+  canonical English/Russian owners; no legacy monolith was restored.
+
+Contract and documentation changes:
+
+- Configuration and data-source documentation now defines the immutable pack
+  snapshot, live-directory fallback, mount-priority winner, explicit
+  reindex/clean lifecycle, lock-free point reads, and the deliberate absence of
+  a lower-priority fallback when the indexed owner cannot open its entry.
+- Baking documentation records one mount per distinct `InputDirs` path, stable
+  first-seen ordering, `DataSourceRef` borrowing, and linear deduplication.
+- Scripting-runtime and third-party documentation records exact one-byte VM
+  argument normalization for boolean values on x64 GCC/MSVC and ARM64, including
+  the native-call regression test.
+- Generated inventory, snippets, translation status, site/search data, AI
+  evaluation, manifest, and standalone AI-delivery artifacts were regenerated
+  in dependency order. All four affected Russian owner pages carry current
+  source hashes.
+
+Validation:
+
+- `LF_UnitTests` builds cleanly and passes 583/583 test cases with 707,016
+  assertions, including the new shared-index, pack-snapshot, baker-deduplication,
+  and AngelScript boolean ABI coverage.
+- Documentation checks pass 310/310 normative snippets, 159 evidence blocks,
+  183 external-parser checks, 197/197 current locale pairs, 397 maintained
+  Markdown entries, 386 public AI-delivery documents, and all 65 retrieval checks
+  across 27 tasks at 100 percent success and 0.915 MRR.
+- Contract-diff reconciliation against
+  `6acbb385eaa88cfbfe5a6d435b808281bef6bc2a` reports zero changes across all
+  18 tracked public-contract domains and therefore requires no disposition
+  records.
+- Full `test_docs_*.py` discovery reached 548 tests. The one repository defect
+  it found, the missing shared-index anchor on the legacy configuration route,
+  was corrected and its focused five-test owner suite passes. The remaining
+  external-parser case cannot start locally because Windows has WSL enabled but
+  no installed Linux distribution; the direct 183-parser validation is green,
+  and the actual WSL/Linux invocation remains a required CI check.
+
+Disposition:
+
+- The reusable Engine contract and generated corpus are reconciled for review.
+  Publish the Engine documentation branch before the embedding project branch
+  so the root gitlink never points at an unavailable commit.
+- Merge-readiness still depends on current remote CI, including the real Linux
+  external-parser path and package/runtime acceptance; this local report does
+  not substitute for those gates.
