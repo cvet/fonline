@@ -156,6 +156,16 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 
 The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
 
+Native client hosts and runtime libraries share a platform/architecture binary
+directory. The packager copies ordinary runtime dependencies from that directory,
+but treats every engine-owned `Client`/`ClientLib` and
+`ClientHeadless`/`ClientLibHeadless` library name as an application binary rather
+than a companion dependency. It then adds only each explicitly requested client
+variant under its packaged basename. Consequently a stale or separately built
+headless runtime remains available as a build artifact without leaking into a
+normal Raw/Zip payload or the MSI derived from it; a package carrying the
+`Headless` token still receives the renamed headless host/runtime pair.
+
 When several package parts append to one `SingleZip`, byte-identical files at
 the same archive path are coalesced into one entry. Different contents at the
 same path are a packaging error; the packager never emits ambiguous duplicate
