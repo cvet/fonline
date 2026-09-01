@@ -20,7 +20,7 @@ This reference describes Engine-owned audio resource delivery, decoding, playbac
 | Stability | <code>experimental</code> |
 | Support policy | The three current decoders and client playback behavior are revision-pinned while focused native decoder fixtures and a versioned compatibility policy are still missing. |
 | Source manifest | [BuildTools/AudioInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/AudioInterface.json) |
-| Contract digest | <code>4814942cb1f64d3daaf85bf42b35a5f4782f0294f74392ced8ff4c43b147f71b</code> |
+| Contract digest | <code>8f67b9dccbaeca5c9a535d8c9d30fca97aa634bd453d5e6f354ddf1db96bfeda</code> |
 | Runtime formats | <code>.wav</code>, <code>.acm</code>, <code>.ogg</code> |
 | Default missing suffix | <code>acm</code> |
 | Runtime side | <code>client</code> |

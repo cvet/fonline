@@ -29614,14 +29614,14 @@
         },
         {
           "locator": "/syntax_rules/@id=text-format.syntax.variants/rationale",
-          "source": "Variant count and indexed selection are explicit runtime operations; duplicate cardinality is not language-normalized.",
-          "source_sha256": "089202c470e051671ac6e8e00707105c961bc0abf2c6a25faa9e24dbdf6a928a",
+          "source": "Variant count and indexed selection use one binary-search range; duplicate cardinality is not language-normalized and read paths never repair shared state.",
+          "source_sha256": "81914a4a82550155ff6384ef21e90d4fd60147a9cc348cacb0eec743b43f1465",
           "status": "current"
         },
         {
           "locator": "/syntax_rules/@id=text-format.syntax.variants/requirement",
-          "source": "Multiple entries may share the same complete TextPackKey and remain ordered variants in the baked multimap.",
-          "source_sha256": "071c6cb5337a1482b75d732d095348ad313a6befca5f8e3797b8cc792a45e729",
+          "source": "Multiple entries may share the same complete TextPackKey and remain adjacent ordered variants in the sorted backing vector.",
+          "source_sha256": "71af492d6b6565fc9f27bed9de6f72cadb05a6912e59ab97f07c185c1d11e5ae",
           "status": "current"
         },
         {

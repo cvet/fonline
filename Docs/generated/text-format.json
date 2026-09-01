@@ -152,14 +152,15 @@
     {
       "id": "text-format.syntax.variants",
       "name": "Duplicate-key variants",
-      "requirement": "Multiple entries may share the same complete TextPackKey and remain ordered variants in the baked multimap.",
-      "rationale": "Variant count and indexed selection are explicit runtime operations; duplicate cardinality is not language-normalized.",
+      "requirement": "Multiple entries may share the same complete TextPackKey and remain adjacent ordered variants in the sorted backing vector.",
+      "rationale": "Variant count and indexed selection use one binary-search range; duplicate cardinality is not language-normalized and read paths never repair shared state.",
       "stability": "experimental",
       "source": [
         {
           "path": "Source/Common/TextPack.h",
           "anchors": [
-            "multimap<TextPackKey, string> _strData {};"
+            "vector<pair<TextPackKey, string>> _strData {};",
+            "bool _strDataSorted {true};"
           ]
         },
         {
@@ -347,8 +348,8 @@
         {
           "path": "Source/Common/TextPack.cpp",
           "anchors": [
-            "bool has_same_entry = _strData.count(key) != 0;",
-            "if (!has_same_entry)"
+            "if (FindEntries(key).empty())",
+            "missing.emplace_back(key, value);"
           ]
         }
       ]
@@ -889,5 +890,5 @@
       "experimental": 40
     }
   },
-  "contract_digest": "4d0aaae7e15a9d3b07ae158a69c3d73976fd3829db9fd8d45c1356a279c52e45"
+  "contract_digest": "80ed40f35a558a8a45189c0f267066579a507a44ed72c94206ef41c83640a196"
 }

@@ -240,6 +240,11 @@ private:
 extern void set_this_thread_name(const string& name) noexcept;
 extern auto get_this_thread_name() noexcept -> string_view;
 
+// Sleep without std::this_thread::sleep_for, which rounds up to the OS timer tick and parks a sub-millisecond wait
+// for a full one. coarse_sleep parks and spends no CPU; precise_sleep hits the deadline by spinning the tail out
+extern void coarse_sleep(std::chrono::nanoseconds duration) noexcept;
+extern void precise_sleep(std::chrono::nanoseconds duration) noexcept;
+
 // Move-only run_thread completion handle exposing join, detach, and get_id without the future type.
 // Destruction detaches rather than terminating; call join when completion is required
 class thread

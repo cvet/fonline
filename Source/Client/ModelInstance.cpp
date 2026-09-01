@@ -2840,9 +2840,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
         }
     }
 
-    // A rigid attachment's baked box is the envelope of everywhere its bone travels across every clip the parent
-    // owns, so a cap claims metres and a knife over ten of them. The per-clip box of the animation actually
-    // playing is what the frame has to cover; the envelope stays only for a model that is not running one
+    // A rigid attachment's baked box envelops everywhere its bone travels across every parent clip, so a cap
+    // claims metres. Cover the playing clip's own box instead, and keep the envelope only when none is running
     auto select_link_bounds = [&active_clips](const ModelAnimationData& link) -> ModelBounds3D {
         optional<ModelBounds3D> selected;
 
@@ -2860,9 +2859,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
             if (child->_animLink.Bounds) {
                 bool included = false;
 
-                // Only a direct child's link came from this model, so only its clip indices share the rig the
-                // active tracks are numbered in; a nested link is keyed against its own parent's rig and keeps
-                // the envelope rather than reading someone else's animation box
+                // Only a direct child's clip indices share the rig the active tracks are numbered in; a nested
+                // link is keyed against its own parent's rig, so it keeps the envelope rather than misreading
                 ModelBounds3D link_bounds = parent.get() == this ? select_link_bounds(child->_animLink) : *child->_animLink.Bounds;
 
                 if (parent.get() == this) {

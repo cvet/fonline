@@ -444,7 +444,7 @@
           "path": "Source/Client/SoundManager.cpp",
           "anchors": [
             "sound_name, count + 1",
-            "uniform_int_distribution",
+            "_randomGenerator.next_between(1, count)",
             "random_index"
           ]
         }
@@ -731,5 +731,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "4814942cb1f64d3daaf85bf42b35a5f4782f0294f74392ced8ff4c43b147f71b"
+  "contract_digest": "8f67b9dccbaeca5c9a535d8c9d30fca97aa634bd453d5e6f354ddf1db96bfeda"
 }

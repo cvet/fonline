@@ -6,7 +6,7 @@ document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
 
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"07f15667fdd152af07e2a5bab53ad53fb58dec976c2c0cbe32dedfbd8b5f6699"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"4c124f94eeb2a29e1e257e15196079ccb2a174b5fef1333409082c737de3c866"} -->
 
 # Разделение клиентской среды выполнения и обновление
 
@@ -519,6 +519,7 @@ Installed mode включается marker-файлом `INSTALLED` рядом �
 [package.py](../../../../BuildTools/package.py) обслуживает обе стороны:
 
 - client package содержит host и runtime с одинаковым basename рядом, например `<client-host>.exe` и `<client-host>.dll`;
+- соседние обычные и headless client runtime не считаются dependency companions: generic DLL/DSO scan исключает все Engine-owned input и alias `Client`/`ClientLib` и `ClientHeadless`/`ClientLibHeadless`, после чего packager копирует только явно запрошенные variants под packaged basenames; оставшийся headless build output не попадает в обычный portable, ZIP или MSI payload, а token `Headless` по-прежнему добавляет явную headless-пару;
 - server package размещает доступные runtime в `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>`, чтобы клиенты других платформ могли обновиться;
 - Windows Client с `Wix` строит обязательный MSI из staged Raw payload, временно добавляет `INSTALLED`, регистрирует URI scheme через HKCU и падает при отсутствии toolset или ошибке generator;
 - Windows runtime PDB называется `<runtime_dll>.pdb`, а host PDB сохраняет `<host_name>.pdb`; package patch CodeView `RSDS` меняет embedded PDB path на итоговое имя, и отсутствие input или неудачный patch считаются ошибкой;

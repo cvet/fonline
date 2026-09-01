@@ -121,33 +121,6 @@ TEST_CASE("CommonEvents")
 
 TEST_CASE("CommonUtilities")
 {
-    SECTION("SeededRandomGeneratorProducesValues")
-    {
-        auto generator = MakeSeededRandomGenerator();
-
-        // Two generators need not differ, since random_device may be deterministic, but the engine must not walk
-        // mt19937's fixed default sequence, which would mean it was never seeded
-        std::mt19937 default_seeded;
-        bool matches_default_sequence = true;
-
-        for (int32_t i = 0; i < 4; i++) {
-            if (generator() != default_seeded()) {
-                matches_default_sequence = false;
-            }
-        }
-
-        CHECK_FALSE(matches_default_sequence);
-
-        // And that it is immediately usable by its consumers
-        std::uniform_int_distribution<int32_t> distribution {10, 20};
-
-        for (int32_t i = 0; i < 8; i++) {
-            int32_t value = distribution(generator);
-            CHECK(value >= 10);
-            CHECK(value <= 20);
-        }
-    }
-
     SECTION("PackagedBuildAccessorsAreConsistent")
     {
         // An unpackaged test build reports no runtime name; a packaged one must name it

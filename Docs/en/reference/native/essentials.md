@@ -28,8 +28,8 @@ link at the correct dependency point rather than bypassing the layer.
 
 The exact umbrella order is `BasicCore`, `GlobalData`, `StackTrace`,
 `BaseLogging`, `FatalError`, `FunctionObjects`, `SmartPointers`, `MemorySystem`,
-`StringObject`, `Containers`, `StringUtils`,
-`Platform`, `ExceptionHandling`, `Threading`, `SafeArithmetics`,
+`StringObject`, `DequeObject`, `Containers`, `StringUtils`, `WinApi`, `Posix`,
+`Platform`, `ExceptionHandling`, `RandomGenerator`, `Threading`, `SafeArithmetics`,
 `DataSerialization`, `HashedString`, `StrongType`, `TimeRelated`,
 `ExtendedTypes`, `Compressor`, `WorkThread`, `Logging`, `DiskFileSystem`,
 `CommonHelpers`, and `NetSockets`.
@@ -73,16 +73,24 @@ not bypass the contract-change gate.
 - `Source/Essentials/MemorySystem.cpp`
 - `Source/Essentials/StringObject.h`
 - `Source/Essentials/StringObject.cpp`
+- `Source/Essentials/DequeObject.h`
+- `Source/Essentials/DequeObject.cpp`
 - `Source/Essentials/Containers.h`
 - `Source/Essentials/Containers.cpp`
 - `ThirdParty/small_vector/README.md`
 - `ThirdParty/small_vector/source/include/gch/small_vector.hpp`
 - `Source/Essentials/StringUtils.h`
 - `Source/Essentials/StringUtils.cpp`
+- `Source/Essentials/WinApi.h`
+- `Source/Essentials/WinApi.cpp`
+- `Source/Essentials/Posix.h`
+- `Source/Essentials/Posix.cpp`
 - `Source/Essentials/Platform.h`
 - `Source/Essentials/Platform.cpp`
 - `Source/Essentials/ExceptionHandling.h`
 - `Source/Essentials/ExceptionHandling.cpp`
+- `Source/Essentials/RandomGenerator.h`
+- `Source/Essentials/RandomGenerator.cpp`
 - `Source/Essentials/Threading.h`
 - `Source/Essentials/Threading.cpp`
 - `Source/Essentials/SafeArithmetics.h`
@@ -120,7 +128,7 @@ not bypass the contract-change gate.
 
 `Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include and call only modules that appear earlier in the umbrella block. Declaring an API early but defining it in a later `.cpp` is still a reverse link dependency. `BuildTools/tests/test_essentials_layering.py` checks direct includes and namespace-level external-definition ownership. Do not reorder the list to hide a cycle; move data through parameters or split the responsibility at the correct layer.
 
@@ -133,6 +141,16 @@ Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Clien
 `BasicCore.h` enforces the selected OS macro (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS`, or `FO_WEB`) and requires C++20. It also binds frequently used standard types into the engine namespace and declares core macros such as `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL`, and namespace helpers. Warning-suppression helpers also live here: `FO_DISABLE_WARNINGS_PUSH/POP` silence all warnings (for wrapping third-party header includes), while the per-compiler `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP`, and `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` silence one named diagnostic and are active only on their matching compiler (so a single-toolchain false positive can be suppressed at one site without other toolchains rejecting an unknown `-W` name or warning number). Prefer fixing warnings at their root; reach for the per-compiler helpers only for documented compiler false positives.
 
 `Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` is intentionally environment-only and shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
+
+`WinApi.*` and `Posix.*` own the operating-system calls behind the `winapi::`
+and `posix::` namespaces. Their public boundaries use engine strings, optionals,
+fixed-width integers, and `nptr<void>` rather than leaking `HANDLE`, `pid_t`, or
+other OS types. `Platform` dispatches to those modules; ordinary consumers add
+or call a wrapper instead of including `<Windows.h>` or POSIX headers directly.
+The structural exceptions are lower Essentials implementations that the module
+order cannot depend on (`BasicCore.cpp`, `BaseLogging.cpp`, and
+`StringUtils.cpp`) plus `NetSockets.*` and `ServerServiceApp.cpp`, which are OS
+wrappers themselves rather than ordinary consumers.
 
 Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows build-platform registry owns the CMake architecture, toolset, and canonical packaging architecture for the regular, `-clang`, and `-win7` variants. The Win7 pair pins MSVC 14.44, while `FO_BINARY_OUTPUT_POSTFIX` remains independent of the platform. In the package DSL the corresponding `BINARY` entry can select its own postfix, for example `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting sibling binaries in the package. Compatibility checks are kept outside application targets.
 
@@ -165,7 +183,7 @@ script-provider hook is the sole retained `std::function`, because it precedes
 
 Engine code allocates through one of two surfaces, and nothing else:
 
-- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. `string` and `wstring` use the engine `basic_string` from `StringObject.h`; the remaining allocator-aware aliases use `SafeAllocator`. Use these, never the `std::` originals.
+- **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. `string` and `wstring` use the engine `basic_string` from `StringObject.h`; `deque` uses `basic_deque` from `DequeObject.h`; the remaining allocator-aware aliases use `SafeAllocator`. Use these, never the `std::` originals.
 - **`SafeAlloc`** — `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` for typed objects, and the raw tier `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` plus `MallocAlignedRaw` / `FreeAlignedRaw` for C-ABI boundaries.
 
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `SafeAllocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
@@ -242,6 +260,27 @@ Do not substitute `small_vector` across an exact-type boundary merely because th
 
 For an adoption, record the measured distribution and object count, audit address lifetime plus move/swap sites, verify complete-type and exact-interface constraints, and add focused coverage for inline operation, spill, and any generic-helper result type. Then run the complete native unit suite, the embedding project's exception-safety and smart-pointer audits when present, and representative bake/gameplay/profiling paths for the changed subsystem.
 
+#### Deque containers
+
+`DequeObject.*` owns `basic_deque<T, BlockBytes>`, exposed by `Containers.h` as
+`deque<T, BlockBytes = DEQUE_BLOCK_BYTES>`. The default block holds 512 bytes of
+elements and never fewer than four elements, while a call site may select a
+different block size when measurements justify it. Growth at either end does
+not move existing elements, preserving the reference-stability contract used
+by engine message, packet, task, input, and database queues. Do not replace it
+with `std::deque`: the standard implementation's fixed block policy is outside
+the Engine allocator and performance contract.
+
+#### Random generation
+
+`RandomGenerator.*` owns `random_generator`, the Engine's xoshiro256++ source.
+Default construction seeds it from the OS; explicit seeding expands the seed
+through SplitMix64. Use `next()` for raw bits, `next_below(bound)` for
+`[0, bound)`, `next_between(min, max)` for an inclusive signed range, and
+`next_normalized()` for `[0, 1)`. These bounded mappings are Engine-owned and
+therefore deterministic across supported standard libraries. Do not use
+`std::mt19937` or `std::uniform_int_distribution` for engine behavior.
+
 ### Serialization, values, strings, and hashes
 
 `StringObject.*` owns the engine `basic_string` implementation. Its API follows
@@ -260,6 +299,14 @@ storage.
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [Configuration and Data Sources](../settings/configuration-and-data-sources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking](../../explanation/authority-and-networking/), and `WorkThread.*` owns simple background-worker infrastructure.
 
+`Threading.h` exposes `coarse_sleep` and `precise_sleep`; Engine code does not
+use `std::this_thread::sleep_for`. `coarse_sleep` parks without consuming CPU
+and is intended for polling or other approximate waits. `precise_sleep` uses a
+high-resolution timer and spins the final short interval, so it is reserved for
+deliberate sub-millisecond deadlines such as synchronization back-off and frame
+pacing. Both functions are `noexcept`; choose by latency intent rather than
+interchanging them mechanically.
+
 When a `WorkThread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
 
 ## Build integration
@@ -275,6 +322,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
@@ -287,6 +335,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_MemorySystem.cpp`
 - `Source/Tests/Test_NetSockets.cpp`
 - `Source/Tests/Test_Platform.cpp`
+- `Source/Tests/Test_RandomGenerator.cpp`
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
@@ -294,9 +343,10 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
+- `Source/Tests/Test_Threading.cpp`
 - `Source/Tests/Test_WorkThread.cpp`
 
-`Test_Containers.cpp` pins the engine alias, allocator, inline-to-heap transition, move, swap, and formatting behavior. `Test_CommonHelpers.cpp` pins container-kind preservation through `rebind_vector_t` and the producing `vec_*` helpers. Keep both focused suites current when changing vector aliases or generic sequence helpers.
+`Test_Containers.cpp` pins the engine alias, allocator, inline-to-heap transition, move, swap, and formatting behavior. `Test_DequeObject.cpp` covers block growth, both-ended mutation, iterators, reference stability, copy/move, and destruction. `Test_RandomGenerator.cpp` pins the seeded cross-platform sequence and bounded ranges. `Test_Threading.cpp` checks the sleep primitives and their sub-millisecond behavior. `Test_CommonHelpers.cpp` pins container-kind preservation through `rebind_vector_t` and the producing `vec_*` helpers.
 
 See [Testing](../../contributing/testing/) for the complete test-suite map and target wiring.
 
@@ -307,7 +357,9 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 - Stack traces, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*`, and [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
 - Generic memory/pointer utilities: `Source/Essentials/MemorySystem.*`, `SmartPointers.*`, and [SmartPointers.md](../../contributing/coding-contracts/smart-pointers.md).
 - Callable ownership and inline targets: `Source/Essentials/FunctionObjects.*`.
-- Engine strings and the build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; aliases and stream interop: `Containers.h`.
+- Engine strings and the build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; deque storage: `DequeObject.*`; aliases and stream interop: `Containers.h`.
+- OS-call confinement and dispatch: `Source/Essentials/WinApi.*`, `Posix.*`, and `Platform.*`.
+- Cross-platform random sequences: `Source/Essentials/RandomGenerator.*`; coarse and precise waits: `Threading.*`.
 - File bytes and low-level writable-path composition on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources and installed-client overlays: [Configuration and Data Sources](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking](../../explanation/authority-and-networking/).
 

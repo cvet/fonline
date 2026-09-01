@@ -229,6 +229,17 @@ An APK produced without release keystore settings uses the Gradle development ke
 
 `package.py` currently aborts for both `macOS` and `iOS`. Do not add `DefinePackage` rows for them. The support matrix build-gates client inputs at narrower scopes, but the embedding project must supply and maintain application-bundle assembly, resources, entitlements, provisioning, signing, notarization where applicable, device/simulator checks, store metadata, and delivery. Until that route exists and is repeatable, describe Apple targets as build-gated inputs rather than packaged or release-supported products.
 
+### Client runtime variants
+
+A client package copies its selected host/runtime pairs explicitly. The generic
+companion-library pass excludes the regular and headless Engine client runtime
+input and alias names on Windows and Linux, because all of those files can
+coexist in one build-output directory. Consequently an ordinary package cannot
+inherit a stale headless runtime merely because another job built it; requesting
+the `Headless` pack token still adds the headless host/runtime under their
+packaged names. Inspect Raw and archive inventories for both the required pair
+and absence of unrequested sibling names before signing or publishing.
+
 ### Server, service, and daemon
 
 A server package includes server resources and client update resource packs. When matching client runtime libraries are available, it also stages platform runtime payloads used by the updater. Review [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md) before publishing a server whose clients self-update.

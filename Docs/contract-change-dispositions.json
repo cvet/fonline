@@ -1296,6 +1296,18 @@
       "release_note": "Document per-animation link-bound baking, direct-child runtime selection, aggregate fallback, and visible validation in the model-format, baking-pipeline, rendering, and client-runtime references.",
       "compatibility": "The baked model-info link payload changed and is revision-pinned. Runtime binaries and fully rebaked model resources must ship together; there is no fallback parser for the previous payload shape.",
       "owner": "content-rendering"
+    },
+    {
+      "domain": "text-format",
+      "change_id": "text-format-change.modified.7a7d59f9e93bcfae",
+      "baseline_contract_sha256": "0247dd776477609adcc72926475c775d86454ac48cb4ed9e2cfc13d03ce929f2",
+      "current_contract_sha256": "56e665b5f4217f1a10750c20f7753d876c37eec531003a413ceeb8ba4b7e9e5f",
+      "classification": "breaking",
+      "rationale": "The source-backed contract now reflects TextPack's sorted contiguous storage and its read-only lookup invariant instead of naming the removed multimap representation. Duplicate-key order and indexed lookup semantics remain unchanged.",
+      "migration": "Regenerate the text-format model and references with the updated source anchors. Embedding-project text content and script calls require no migration, but native consumers must rebuild with the coordinated Engine revision.",
+      "release_note": "Document sorted-vector variant storage, mutation-time sorting, and non-mutating binary-search reads in the text and localization guide.",
+      "compatibility": "The serialized text-pack format and script-visible lookup behavior are unchanged. The Engine compatibility marker already advances for the random-generator/network-key cutover in the same revision, so native binaries and baked resources still ship together.",
+      "owner": "localization"
     }
   ]
 }

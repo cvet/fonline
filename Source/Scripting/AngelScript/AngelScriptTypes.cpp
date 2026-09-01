@@ -968,8 +968,8 @@ static void Global_GetRandomHdir(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    static thread_local std::mt19937 rng {std::random_device {}()};
-    hdir dir = hdir(static_cast<int8_t>(rng() % GameSettings::MAP_DIR_COUNT));
+    auto engine = GetGameEngine(gen->GetEngine());
+    hdir dir = hdir(static_cast<int8_t>(engine->Random(0, GameSettings::MAP_DIR_COUNT - 1)));
     new (gen->GetAddressOfReturnLocation()) hdir(dir);
 }
 

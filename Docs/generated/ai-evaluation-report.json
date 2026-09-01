@@ -571,7 +571,8 @@
             "angelscript-style",
             "generated-api-metadata",
             "scripting-runtime",
-            "frontend-rendering"
+            "frontend-rendering",
+            "native-essentials"
           ]
         }
       ],

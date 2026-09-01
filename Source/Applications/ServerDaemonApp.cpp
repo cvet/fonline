@@ -61,7 +61,7 @@ int main(int argc, char** argv)
             auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
 
             while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds {10});
+                coarse_sleep(std::chrono::milliseconds {10});
             }
 
             if (server->IsStartingError()) {

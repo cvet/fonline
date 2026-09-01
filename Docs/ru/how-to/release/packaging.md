@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 
 # Упаковка и выпуск
 
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"9da1af0d23d70ad0d6015b0d5f93a5b4351b16bd93c732bbea32bdd3a6758e49"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"df720f17c1275fa514dba4845b4afef12598493119c9c328a1cac51c9949b611"} -->
 
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
@@ -319,6 +319,17 @@ application-bundle assembly, resources, entitlements, provisioning, signing,
 notarization где применимо, device/simulator checks, store metadata и delivery.
 Пока этот путь не станет существующим и повторяемым, описывайте Apple targets
 как build-gated inputs, а не packaged или release-supported products.
+
+### Варианты client runtime
+
+Client package копирует выбранные пары host/runtime явно. Generic companion
+library pass исключает обычные и headless input/alias имена Engine client на
+Windows и Linux, потому что все эти файлы могут одновременно находиться в одной
+build-output directory. Поэтому обычный package не наследует оставшийся
+headless runtime только из-за другой build job; token `Headless` по-прежнему
+добавляет headless host/runtime под packaged names. Перед signing/publication
+проверяйте Raw и archive inventories одновременно на наличие требуемой пары и
+отсутствие незапрошенных sibling names.
 
 ### Server, service и daemon
 

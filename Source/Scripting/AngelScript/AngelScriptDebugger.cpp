@@ -461,7 +461,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
     }
 
     while (IsPaused()) {
-        std::this_thread::sleep_for(ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP.value());
+        coarse_sleep(ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP.value());
     }
 
     if (HasAnyBreakpoints()) {
@@ -483,7 +483,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
             ConsumePauseStart();
 
             while (IsPaused()) {
-                std::this_thread::sleep_for(ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP.value());
+                coarse_sleep(ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP.value());
             }
 
             return;
@@ -559,7 +559,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
             emit_stopped("step", "", source_path, source_line, get_function_name());
 
             while (IsPaused()) {
-                std::this_thread::sleep_for(ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP.value());
+                coarse_sleep(ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP.value());
             }
         }
     }

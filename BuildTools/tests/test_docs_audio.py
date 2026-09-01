@@ -79,7 +79,7 @@ class AudioDocumentationTests(unittest.TestCase):
         self.assertIn("erase_file_extension().lower()", resources)
         self.assertIn("erase_file_extension().lower()", sound)
         self.assertIn("sound_name, count + 1", sound)
-        self.assertIn("uniform_int_distribution", sound)
+        self.assertIn("_randomGenerator.next_between(1, count)", sound)
         self.assertIn("return Load(fname, true, repeat_time)", sound)
 
     def test_manifest_entries_keep_live_source_anchors(self) -> None:

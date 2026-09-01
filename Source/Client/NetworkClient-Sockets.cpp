@@ -160,7 +160,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
                 throw NetworkClientException("Proxy answer timeout");
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            coarse_sleep(std::chrono::milliseconds {1});
         }
     };
 

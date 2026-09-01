@@ -6,7 +6,7 @@ document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
 
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"6181ecce8047626d8406a62aeb4d8ed336bcf3c569800683a24d6552b6edb775"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"5972c9bac3a5240bc4401ea785d7514d036247724370b7624aecfa274d810434"} -->
 
 # Базовый слой Essentials
 
@@ -30,8 +30,8 @@ Essentials следует строгому dependency DAG: зависимост�
 
 Точный umbrella order: `BasicCore`, `GlobalData`, `StackTrace`, `BaseLogging`,
 `FatalError`, `FunctionObjects`, `SmartPointers`, `MemorySystem`, `StringObject`,
-`Containers`, `StringUtils`, `Platform`,
-`ExceptionHandling`, `Threading`, `SafeArithmetics`, `DataSerialization`,
+`DequeObject`, `Containers`, `StringUtils`, `WinApi`, `Posix`, `Platform`,
+`ExceptionHandling`, `RandomGenerator`, `Threading`, `SafeArithmetics`, `DataSerialization`,
 `HashedString`, `StrongType`, `TimeRelated`, `ExtendedTypes`, `Compressor`,
 `WorkThread`, `Logging`, `DiskFileSystem`, `CommonHelpers` и `NetSockets`.
 Не меняйте этот список местами для исправления cycle. Передавайте reverse
@@ -75,16 +75,24 @@ test Essentials не обходит contract-change gate.
 - `Source/Essentials/MemorySystem.cpp`
 - `Source/Essentials/StringObject.h`
 - `Source/Essentials/StringObject.cpp`
+- `Source/Essentials/DequeObject.h`
+- `Source/Essentials/DequeObject.cpp`
 - `Source/Essentials/Containers.h`
 - `Source/Essentials/Containers.cpp`
 - `ThirdParty/small_vector/README.md`
 - `ThirdParty/small_vector/source/include/gch/small_vector.hpp`
 - `Source/Essentials/StringUtils.h`
 - `Source/Essentials/StringUtils.cpp`
+- `Source/Essentials/WinApi.h`
+- `Source/Essentials/WinApi.cpp`
+- `Source/Essentials/Posix.h`
+- `Source/Essentials/Posix.cpp`
 - `Source/Essentials/Platform.h`
 - `Source/Essentials/Platform.cpp`
 - `Source/Essentials/ExceptionHandling.h`
 - `Source/Essentials/ExceptionHandling.cpp`
+- `Source/Essentials/RandomGenerator.h`
+- `Source/Essentials/RandomGenerator.cpp`
 - `Source/Essentials/Threading.h`
 - `Source/Essentials/Threading.cpp`
 - `Source/Essentials/SafeArithmetics.h`
@@ -122,7 +130,7 @@ test Essentials не обходит contract-change gate.
 
 `Source/Essentials/Essentials.h` является общим umbrella-заголовком. Его точный include order одновременно задаёт dependency order фундаментального слоя:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `Containers` → `StringUtils` → `Platform` → `ExceptionHandling` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 Этот список намеренно точный, а не тематический. `Essentials.h` задаёт строгий DAG зависимостей: каждый заголовок Essentials и соответствующий `.cpp` может подключать и вызывать только modules, расположенные в umbrella-блоке выше него. Объявление API в раннем header с определением в более позднем `.cpp` всё равно создаёт обратную link dependency. `BuildTools/tests/test_essentials_layering.py` проверяет прямые includes и ownership внешних namespace-level definitions. Не меняйте порядок ради сокрытия цикла; передайте данные параметром или разделите ответственность на правильной границе слоёв.
 
@@ -135,6 +143,16 @@ test Essentials не обходит contract-change gate.
 `BasicCore.h` проверяет выбранный макрос ОС (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS` или `FO_WEB`) и требует C++20. Здесь же часто используемые стандартные типы вводятся в namespace движка и объявляются базовые макросы, включая `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL` и helpers для namespace. Средства подавления предупреждений также находятся здесь: `FO_DISABLE_WARNINGS_PUSH/POP` отключает все предупреждения при обёртывании third-party headers, а пары `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP` и `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` подавляют одно именованное предупреждение только в соответствующем компиляторе. Это позволяет изолировать false positive одного toolchain, не заставляя остальные отвергать неизвестный номер `-W` или warning. Сначала исправляйте причину предупреждения; per-compiler helper допустим только для документированного false positive компилятора.
 
 `Platform.h` / `.cpp` владеет небольшим набором host-specific helpers: информационным журналированием, именами потоков, поиском пути executable и пользовательского каталога данных, форматированием process id, fork там, где он доступен, использованием памяти процессом, CPU snapshots и загрузкой динамических модулей. `Platform::GetUserDataBase()` намеренно использует только окружение, без shell и SDL: Windows берёт `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS использует `$HOME/Library/Application Support`, Linux/Android/прочие платформы используют `$XDG_DATA_HOME` с fallback на `$HOME/.local/share`. Вышележащий слой добавляет имя приложения и решает, является ли отсутствие пути фатальным. `Platform::GetCpuUsageSnapshot()` возвращает накопительные системные счётчики по ядрам и CPU time текущего процесса; вызывающий код сравнивает два snapshot для вычисления процентов и хранит sampling/cache state вне Platform. `Platform` находится выше `ExceptionHandling` и использует более ранний `FO_BASIC_STRONG_ASSERT` для terminating host-API invariants, не импортируя поздние exception macros. Platform-specific поведение приложения, окна и рендеринга находится в `Source/Frontend/`.
+
+`WinApi.*` и `Posix.*` владеют вызовами операционной системы за пространствами
+имён `winapi::` и `posix::`. Их публичные границы используют строки движка,
+`optional`, целые типы фиксированной ширины и `nptr<void>`, не выпуская наружу
+`HANDLE`, `pid_t` и другие OS-типы. `Platform` диспетчеризует вызовы в эти
+модули; обычный потребитель добавляет или вызывает wrapper, а не подключает
+`<Windows.h>` либо POSIX-заголовки напрямую. Структурные исключения — нижние
+реализации Essentials, которые не могут зависеть от этих модулей из-за порядка
+слоёв (`BasicCore.cpp`, `BaseLogging.cpp`, `StringUtils.cpp`), а также
+`NetSockets.*` и `ServerServiceApp.cpp`, сами являющиеся OS wrappers.
 
 Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Единый registry Windows build platforms владеет архитектурой CMake, toolset и канонической packaging-архитектурой обычных вариантов, `-clang` и `-win7`. Пара Win7 фиксирует MSVC 14.44, а `FO_BINARY_OUTPUT_POSTFIX` остаётся независимым от платформы. В package DSL конкретная запись `BINARY` может выбрать собственный postfix, например `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, не затрагивая соседние binaries. Проверки совместимости находятся вне application targets.
 
@@ -171,7 +189,7 @@ script provider в `StackTrace.h`, расположенный до `FunctionObje
 
 Код движка выделяет память только через две поверхности:
 
-- **Псевдонимы контейнеров `fo`** из `Containers.h`: `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` и связанные типы. `string` и `wstring` используют engine `basic_string` из `StringObject.h`; остальные allocator-aware aliases используют `SafeAllocator`. Используйте их вместо вариантов из `std::`.
+- **Псевдонимы контейнеров `fo`** из `Containers.h`: `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` и связанные типы. `string` и `wstring` используют engine `basic_string` из `StringObject.h`, `deque` использует `basic_deque` из `DequeObject.h`, остальные allocator-aware aliases используют `SafeAllocator`. Используйте их вместо вариантов из `std::`.
 - **`SafeAlloc`**: `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` для типизированных объектов и raw-уровень `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw`, а также `MallocAlignedRaw` / `FreeAlignedRaw` для C ABI.
 
 Raw-уровень нужен из-за C-образных allocator hooks third-party библиотек: они требуют `realloc`, нетипизированный блок байтов или оба варианта, что невозможно выразить C++ allocator. Он сохраняет ту же политику нехватки памяти, что и `SafeAllocator`: сообщить об ошибке, освободить резервный пул, повторить попытку и детерминированно завершить процесс. Поэтому подключение библиотеки через этот путь не выводит её из общего контракта. Запрос нулевого размера передаётся нижнему allocator, а не трактуется как ошибка.
@@ -252,6 +270,28 @@ Hook SQLite требует callback `xSize` и передаёт функциям
 
 При внедрении запишите измеренное распределение и число объектов, проверьте lifetime адресов и места move/swap, подтвердите complete-type и exact-interface constraints, добавьте focused coverage для inline operation, spill и result type generic helpers. Затем запустите полный набор native unit tests, проектные audits exception safety и smart pointers, если они существуют, а также репрезентативные bake, gameplay и profiling paths изменённой подсистемы.
 
+#### Контейнеры deque
+
+`DequeObject.*` владеет `basic_deque<T, BlockBytes>`, который `Containers.h`
+экспортирует как `deque<T, BlockBytes = DEQUE_BLOCK_BYTES>`. Блок по умолчанию
+хранит 512 байт элементов и не меньше четырёх элементов; место использования
+может выбрать другой размер блока при наличии измерений. Рост с любого конца не
+перемещает существующие элементы и сохраняет стабильность ссылок, на которую
+опираются очереди сообщений, пакетов, задач, ввода и database commit. Не
+заменяйте его на `std::deque`: фиксированная политика блоков стандартной
+реализации не входит в allocator/performance-контракт движка.
+
+#### Генерация случайных чисел
+
+`RandomGenerator.*` владеет `random_generator`, источником xoshiro256++ движка.
+Конструктор по умолчанию получает seed от ОС, явный seed разворачивается через
+SplitMix64. Используйте `next()` для сырых битов, `next_below(bound)` для
+`[0, bound)`, `next_between(min, max)` для включительного знакового диапазона и
+`next_normalized()` для `[0, 1)`. Эти преобразования принадлежат движку и дают
+одинаковую последовательность на поддерживаемых стандартных библиотеках. Для
+поведения движка не используйте `std::mt19937` и
+`std::uniform_int_distribution`.
+
 ### Сериализация, значения, строки и хеши
 
 `StringObject.*` владеет реализацией engine `basic_string`. API следует
@@ -271,6 +311,14 @@ standard stream копируется через `make_stream_string`,
 
 `DiskFileSystem.*` является низкоуровневой абстракцией диска. Небольшой policy helper `fs_make_writable_path(user_writable_path, relative)` используется вышележащими слоями для writable overlay установленного клиента: пустой root или absolute input возвращает input без изменений, а relative path помещается под writable root. Вышележащее смонтированное представление ресурсов находится в `Source/Common/FileSystem.*` и описано в разделе [Конфигурация и источники данных](../settings/configuration-and-data-sources.md). `Compressor.*` владеет generic compression round trips, `NetSockets.*` содержит raw socket helpers ниже высокоуровневой модели network commands/connections из раздела [Сеть](../../explanation/authority-and-networking/), а `WorkThread.*` предоставляет простую инфраструктуру фоновых workers.
 
+`Threading.h` экспортирует `coarse_sleep` и `precise_sleep`; код движка не
+использует `std::this_thread::sleep_for`. `coarse_sleep` паркует поток без
+расхода CPU и предназначен для polling и других приблизительных ожиданий.
+`precise_sleep` использует high-resolution timer и вращает последний короткий
+интервал, поэтому предназначен для осознанных sub-millisecond deadlines —
+например, synchronization back-off и frame pacing. Обе функции `noexcept`;
+выбирайте их по требованиям к latency, а не заменяйте механически.
+
 Когда job `WorkThread` бросает исключение, поток сначала вызывает свой local exception handler, чтобы обновить worker-owned policy, например очистить очередь jobs. Затем original exception передаётся global non-fatal exception reporter уже вне worker lock.
 
 ## Интеграция сборки
@@ -286,6 +334,7 @@ standard stream копируется через `make_stream_string`,
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
@@ -298,6 +347,7 @@ standard stream копируется через `make_stream_string`,
 - `Source/Tests/Test_MemorySystem.cpp`
 - `Source/Tests/Test_NetSockets.cpp`
 - `Source/Tests/Test_Platform.cpp`
+- `Source/Tests/Test_RandomGenerator.cpp`
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
 - `Source/Tests/Test_StackTrace.cpp`
@@ -305,9 +355,10 @@ standard stream копируется через `make_stream_string`,
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
+- `Source/Tests/Test_Threading.cpp`
 - `Source/Tests/Test_WorkThread.cpp`
 
-`Test_Containers.cpp` фиксирует alias движка, allocator, переход inline-to-heap, move, swap и форматирование. `Test_CommonHelpers.cpp` фиксирует сохранение вида контейнера через `rebind_vector_t` и производящие helpers `vec_*`. При изменении vector aliases или generic sequence helpers поддерживайте оба focused suites в актуальном состоянии.
+`Test_Containers.cpp` фиксирует alias движка, allocator, переход inline-to-heap, move, swap и форматирование. `Test_DequeObject.cpp` покрывает рост блоков, изменения с обоих концов, итераторы, стабильность ссылок, copy/move и разрушение. `Test_RandomGenerator.cpp` фиксирует seeded cross-platform sequence и bounded ranges. `Test_Threading.cpp` проверяет sleep primitives и их sub-millisecond поведение. `Test_CommonHelpers.cpp` фиксирует сохранение вида контейнера через `rebind_vector_t` и производящие helpers `vec_*`.
 
 Полная карта suites и target wiring находится в разделе [Тестирование](../../contributing/testing/).
 
@@ -318,7 +369,9 @@ standard stream копируется через `make_stream_string`,
 - Stack traces, журналирование и отчёты об исключениях: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*` и [Native- и AngelScript-отладка](../../troubleshooting/debugging.md).
 - Общие средства памяти и указателей: `Source/Essentials/MemorySystem.*`, `SmartPointers.*` и [Умные указатели](../../contributing/coding-contracts/smart-pointers.md).
 - Владение callable и inline targets: `Source/Essentials/FunctionObjects.*`.
-- Строки движка и build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; aliases и stream interop: `Containers.h`.
+- Строки движка и build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; хранение deque: `DequeObject.*`; aliases и stream interop: `Containers.h`.
+- Изоляция OS-вызовов и dispatch: `Source/Essentials/WinApi.*`, `Posix.*` и `Platform.*`.
+- Cross-platform random sequences: `Source/Essentials/RandomGenerator.*`; coarse/precise waits: `Threading.*`.
 - Байты файлов и низкоуровневая сборка writable path на диске: `Source/Essentials/DiskFileSystem.*`; смонтированные ресурсы движка и overlays установленного клиента: [Конфигурация и источники данных](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol, command и network runtime: [Сеть](../../explanation/authority-and-networking/).
 

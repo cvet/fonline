@@ -84,9 +84,9 @@ struct TextPackKey
     [[nodiscard]] constexpr auto operator==(const TextPackKey& other) const noexcept -> bool = default;
     [[nodiscard]] constexpr auto operator<(const TextPackKey& other) const noexcept -> bool { return std::tie(Collection, Key1, Key2, Key3) < std::tie(other.Collection, other.Key1, other.Key2, other.Key3); }
 
-    [[nodiscard]] static auto FromParts(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
-    [[nodiscard]] static auto FromPack(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
-    [[nodiscard]] static auto Parse(HashResolver& hash_resolver, string_view str, TextPackKey& result) -> bool;
+    static auto FromParts(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
+    static auto FromPack(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
+    static auto Parse(HashResolver& hash_resolver, string_view str, TextPackKey& result) -> bool;
 
     TextPackName Collection {};
     hstring Key1 {};
@@ -138,8 +138,8 @@ public:
     [[nodiscard]] auto GetStr(TextPackKey key, size_t text_index) const -> string_view;
     [[nodiscard]] auto GetStrCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
-    [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
-    [[nodiscard]] auto GetBinaryData() const -> vector<uint8_t>;
+    [[nodiscard]] auto CheckIntersections(TextPack& other) -> bool;
+    [[nodiscard]] auto GetBinaryData() -> vector<uint8_t>;
 
     auto LoadFromBinaryData(const vector<uint8_t>& data, string_view collection = {}) -> bool;
     auto LoadFromString(const string& str, string_view collection = {}) -> bool;
@@ -149,7 +149,7 @@ public:
     void AddStr(TextPackKey key, string&& str);
     void EraseStr(TextPackKey key);
     void Merge(const TextPack& other);
-    void FixStr(const TextPack& base_pack);
+    void FixStr(TextPack& base_pack);
     void Clear();
 
     static auto ParseBakeLanguages(const_span<string> declarations) -> BakeLanguageConfig;
@@ -161,11 +161,19 @@ private:
     auto MakeKeyPart(string_view value) -> hstring;
     void WriteKeyPart(DataWriter& writer, hstring part) const;
     auto ReadKeyPart(DataReader& reader) -> hstring;
+    void EnsureSorted();
+    auto SortedEntries() const -> const_span<pair<TextPackKey, string>>;
+    auto FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey, string>>;
+    auto EqualRange(TextPackKey key) const -> pair<size_t, size_t>;
 
     ptr<HashResolver> _hashResolver;
-    multimap<TextPackKey, string> _strData {};
+
+    // Kept in key order so serialization and iteration match what the node tree produced, but as one block:
+    // a lookup is a binary search over contiguous memory rather than two walks down a tree of separate nodes
+    vector<pair<TextPackKey, string>> _strData {};
+    bool _strDataSorted {true};
     string _emptyStr {};
-    mutable std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
+    mutable random_generator _randomGenerator {};
 };
 
 FO_END_NAMESPACE

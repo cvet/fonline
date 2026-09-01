@@ -203,7 +203,7 @@ protected:
 private:
     refcount_ptr<ScriptImGui> _imgui;
     mutable mutex _randomGeneratorLocker {};
-    mutable std::mt19937 _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {MakeSeededRandomGenerator()};
+    mutable random_generator _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {};
     unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};
 };
 

@@ -1238,7 +1238,7 @@ auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
 
     scoped_lock locker {_randomGeneratorLocker};
 
-    return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
+    return _randomGenerator.next_between(min_value, max_value);
 }
 
 void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)

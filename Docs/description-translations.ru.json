@@ -6213,12 +6213,12 @@
           "translation": "Варианты повторяющегося ключа"
         },
         "/syntax_rules/@id=text-format.syntax.variants/rationale": {
-          "source_sha256": "089202c470e051671ac6e8e00707105c961bc0abf2c6a25faa9e24dbdf6a928a",
-          "translation": "Количество вариантов и выбор по индексу являются явными runtime-операциями; нормализация языков не выравнивает количество дубликатов."
+          "source_sha256": "81914a4a82550155ff6384ef21e90d4fd60147a9cc348cacb0eec743b43f1465",
+          "translation": "Количество вариантов и выбор по индексу используют один binary-search range; нормализация языков не выравнивает количество дубликатов, а read paths никогда не исправляют разделяемое состояние."
         },
         "/syntax_rules/@id=text-format.syntax.variants/requirement": {
-          "source_sha256": "071c6cb5337a1482b75d732d095348ad313a6befca5f8e3797b8cc792a45e729",
-          "translation": "Несколько записей могут использовать один полный TextPackKey и оставаться упорядоченными вариантами в запечённом multimap."
+          "source_sha256": "71af492d6b6565fc9f27bed9de6f72cadb05a6912e59ab97f07c185c1d11e5ae",
+          "translation": "Несколько записей могут использовать один полный TextPackKey и оставаться соседними упорядоченными вариантами в отсортированном backing vector."
         },
         "/validation_rules/@id=text-format.validation.empty-languages/name": {
           "source_sha256": "943645405467d854f91a78bb3838c4ff2d921ef0c81f9caaf48570000bb10c14",

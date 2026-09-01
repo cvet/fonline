@@ -47,6 +47,8 @@ class DocumentationBackupRecoveryTests(unittest.TestCase):
     def test_source_still_exposes_documented_backend_and_replay_contracts(self) -> None:
         settings = (ENGINE_ROOT / "Source/Common/Settings.inc").read_text(encoding="utf-8")
         database = (ENGINE_ROOT / "Source/Server/DataBase.cpp").read_text(encoding="utf-8")
+        posix = (ENGINE_ROOT / "Source/Essentials/Posix.cpp").read_text(encoding="utf-8")
+        winapi = (ENGINE_ROOT / "Source/Essentials/WinApi.cpp").read_text(encoding="utf-8")
         json_backend = (ENGINE_ROOT / "Source/Server/DataBase-Json.cpp").read_text(encoding="utf-8")
         sqlite_backend = (ENGINE_ROOT / "Source/Server/DataBase-SQLite.cpp").read_text(encoding="utf-8")
         mongo_backend = (ENGINE_ROOT / "Source/Server/DataBase-Mongo.cpp").read_text(encoding="utf-8")
@@ -67,9 +69,11 @@ class DocumentationBackupRecoveryTests(unittest.TestCase):
             'strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog")',
             "Pending database insert replay conflict",
             "StartPanic",
-            "fsync(_fd)",
+            "osfile::sync_file(_fd)",
         ):
             self.assertIn(marker, database)
+        self.assertIn("return ::fsync(fd) == 0;", posix)
+        self.assertIn("::_commit(fd)", winapi)
         self.assertIn('strex("{}.tmp", path)', json_backend)
         self.assertIn("fs_rename(tmp_path, path)", json_backend)
         self.assertIn('strex("{}/Storage.sqlite", _storageDir)', sqlite_backend)

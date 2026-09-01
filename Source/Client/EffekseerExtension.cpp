@@ -472,7 +472,7 @@ struct EffekseerParticleRuntimeSystem::Impl
     vec3 BakedPositionMin {};
     vec3 BakedPositionMax {};
     float32_t BakedBillboardRadius {};
-    std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
+    random_generator RandomGenerator {};
     bool Failed {};
 };
 
@@ -3276,7 +3276,7 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
         return;
     }
 
-    int32_t resolved_seed = seed ? *seed : std::uniform_int_distribution<int32_t> {std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max()}(_impl->RandomGenerator);
+    int32_t resolved_seed = seed ? *seed : std::bit_cast<int32_t>(static_cast<uint32_t>(_impl->RandomGenerator.next()));
     _impl->Runtime->Manager->SetAutoDrawing(_impl->Handle, false);
     _impl->Runtime->Manager->SetRandomSeed(_impl->Handle, resolved_seed);
     _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));

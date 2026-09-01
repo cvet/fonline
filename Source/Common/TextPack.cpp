@@ -140,52 +140,37 @@ auto TextPack::GetStr(TextPackKey key) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t str_count = _strData.count(key);
-    auto it = _strData.find(key);
+    const_span<pair<TextPackKey, string>> entries = FindEntries(key);
 
-    switch (str_count) {
-    case 0:
+    if (entries.empty()) {
         return _emptyStr;
-
-    case 1:
-        break;
-
-    default:
-        size_t random_index = numeric_cast<size_t>(std::uniform_int_distribution<size_t> {0, str_count - 1}(_randomGenerator));
-
-        for (size_t i = 0; i < random_index; i++) {
-            ++it;
-        }
-
-        break;
     }
 
-    return it->second;
+    if (entries.size() == 1) {
+        return entries.front().second;
+    }
+
+    return entries[_randomGenerator.next_below(numeric_cast<uint32_t>(entries.size()))].second;
 }
 
 auto TextPack::GetStr(TextPackKey key, size_t text_index) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t str_count = _strData.count(key);
-    auto it = _strData.find(key);
+    const_span<pair<TextPackKey, string>> entries = FindEntries(key);
 
-    if (text_index >= str_count) {
+    if (text_index >= entries.size()) {
         return _emptyStr;
     }
 
-    for (size_t i = 0; i < text_index; i++) {
-        ++it;
-    }
-
-    return it->second;
+    return entries[text_index].second;
 }
 
 auto TextPack::GetStrCount(TextPackKey key) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _strData.count(key);
+    return FindEntries(key).size();
 }
 
 auto TextPack::GetSize() const noexcept -> size_t
@@ -195,15 +180,20 @@ auto TextPack::GetSize() const noexcept -> size_t
     return _strData.size();
 }
 
-auto TextPack::CheckIntersections(const TextPack& other) const -> bool
+auto TextPack::CheckIntersections(TextPack& other) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     bool result = false;
 
-    for (auto&& [key, value] : _strData) {
-        if (other._strData.count(key) != 0) {
-            WriteLog("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other._strData.count(key), value, other._strData.find(key)->second);
+    EnsureSorted();
+    other.EnsureSorted();
+
+    for (auto&& [key, value] : SortedEntries()) {
+        const_span<pair<TextPackKey, string>> other_entries = other.FindEntries(key);
+
+        if (!other_entries.empty()) {
+            WriteLog("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other_entries.size(), value, other_entries.front().second);
             result = true;
         }
     }
@@ -211,16 +201,20 @@ auto TextPack::CheckIntersections(const TextPack& other) const -> bool
     return result;
 }
 
-auto TextPack::GetBinaryData() const -> vector<uint8_t>
+auto TextPack::GetBinaryData() -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
     auto writer = DataWriter {data};
 
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(_strData.size()));
+    EnsureSorted();
 
-    for (auto&& [key, str] : _strData) {
+    const_span<pair<TextPackKey, string>> entries = SortedEntries();
+
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
+
+    for (auto&& [key, str] : entries) {
         WriteKeyPart(writer, key.Collection.underlying_value());
         WriteKeyPart(writer, key.Key1);
         WriteKeyPart(writer, key.Key2);
@@ -240,6 +234,8 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
     auto collection_key = TextPackName {MakeKeyPart(collection)};
 
     auto count = reader.Read<uint32_t>();
+
+    _strData.reserve(_strData.size() + count);
 
     for (uint32_t i = 0; i < count; i++) {
         TextPackKey key;
@@ -267,6 +263,8 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
 
         AddStr(key, std::move(str));
     }
+
+    EnsureSorted();
 
     return true;
 }
@@ -307,6 +305,8 @@ auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
         AddStr(TextPackKey::FromParts(*_hashResolver, collection, token1, token2), std::move(token3));
     }
 
+    EnsureSorted();
+
     return !failed;
 }
 
@@ -328,6 +328,8 @@ void TextPack::LoadFromMap(const map<string, string>& kv, string_view collection
             }
         }
     }
+
+    EnsureSorted();
 }
 
 void TextPack::LoadFromResources(FileSystem& resources, string_view language)
@@ -361,21 +363,25 @@ void TextPack::AddStr(TextPackKey key, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.emplace(key, string(str));
+    _strDataSorted = _strDataSorted && (_strData.empty() || !(key < _strData.back().first));
+    _strData.emplace_back(key, string(str));
 }
 
 void TextPack::AddStr(TextPackKey key, string&& str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.emplace(key, std::move(str));
+    _strDataSorted = _strDataSorted && (_strData.empty() || !(key < _strData.back().first));
+    _strData.emplace_back(key, std::move(str));
 }
 
 void TextPack::EraseStr(TextPackKey key)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.erase(key);
+    pair<size_t, size_t> range = EqualRange(key);
+
+    _strData.erase(_strData.begin() + static_cast<ptrdiff_t>(range.first), _strData.begin() + static_cast<ptrdiff_t>(range.second));
 }
 
 void TextPack::Merge(const TextPack& other)
@@ -385,30 +391,42 @@ void TextPack::Merge(const TextPack& other)
     for (auto&& [key, value] : other._strData) {
         AddStr(key, value);
     }
+
+    EnsureSorted();
 }
 
-void TextPack::FixStr(const TextPack& base_pack)
+void TextPack::FixStr(TextPack& base_pack)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Add keys that are in the base pack but not in this pack
-    for (auto&& [key, value] : base_pack._strData) {
-        bool has_same_entry = _strData.count(key) != 0;
+    EnsureSorted();
+    base_pack.EnsureSorted();
 
-        if (!has_same_entry) {
-            AddStr(key, value);
+    // The base pack is in key order, so its several strings under one key arrive adjacently and only the
+    // first of them is taken, which is what the node tree did when its own insert was visible to the next check
+    vector<pair<TextPackKey, string>> missing;
+    TextPackKey last_key;
+
+    for (auto&& [key, value] : base_pack.SortedEntries()) {
+        if (key == last_key) {
+            continue;
+        }
+
+        last_key = key;
+
+        if (FindEntries(key).empty()) {
+            missing.emplace_back(key, value);
         }
     }
+
+    for (auto&& [key, value] : missing) {
+        AddStr(key, std::move(value));
+    }
+
+    EnsureSorted();
 
     // Remove keys that are not in the base pack
-    for (auto it = _strData.begin(); it != _strData.end();) {
-        if (base_pack._strData.count(it->first) == 0) {
-            it = _strData.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
+    (void)std::erase_if(_strData, [&base_pack](const pair<TextPackKey, string>& entry) { return base_pack.FindEntries(entry.first).empty(); });
 }
 
 void TextPack::Clear()
@@ -416,6 +434,56 @@ void TextPack::Clear()
     FO_STACK_TRACE_ENTRY();
 
     _strData.clear();
+    _strDataSorted = true;
+}
+
+// Every path that adds entries ends here, so restoring the key order is a mutation and never happens on a
+// read — several threads resolve text from one pack at once. Stable, so strings under one key keep their order
+void TextPack::EnsureSorted()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_strDataSorted) {
+        std::stable_sort(_strData.begin(), _strData.end(), [](const pair<TextPackKey, string>& left, const pair<TextPackKey, string>& right) { return left.first < right.first; });
+        _strDataSorted = true;
+    }
+}
+
+// The single read entry point, so a pack reaching a reader out of order is caught here rather than answering
+// a lookup from a binary search over unsorted data
+auto TextPack::SortedEntries() const -> const_span<pair<TextPackKey, string>>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_strDataSorted, "Text pack must be sorted before it is read", _strData.size());
+
+    return {_strData.data(), _strData.size()};
+}
+
+auto TextPack::FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey, string>>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    pair<size_t, size_t> range = EqualRange(key);
+
+    return {_strData.data() + range.first, range.second - range.first};
+}
+
+// One binary search, then a walk over the duplicates, of which a key has one or two
+auto TextPack::EqualRange(TextPackKey key) const -> pair<size_t, size_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const_span<pair<TextPackKey, string>> entries = SortedEntries();
+
+    auto first = std::lower_bound(entries.begin(), entries.end(), key, [](const pair<TextPackKey, string>& entry, const TextPackKey& probe) { return entry.first < probe; });
+    auto last = first;
+
+    while (last != entries.end() && last->first == key) {
+        ++last;
+    }
+
+    return {static_cast<size_t>(first - entries.begin()), static_cast<size_t>(last - entries.begin())};
 }
 
 auto TextPack::ParseBakeLanguages(const_span<string> declarations) -> BakeLanguageConfig

@@ -80,7 +80,7 @@
     ]
   },
   "engine_tests": {
-    "test_file_count": 103,
+    "test_file_count": 106,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -107,6 +107,7 @@
       "Source/Tests/Test_DataBase.cpp",
       "Source/Tests/Test_DataSerialization.cpp",
       "Source/Tests/Test_DataSource.cpp",
+      "Source/Tests/Test_DequeObject.cpp",
       "Source/Tests/Test_DiskFileSystem.cpp",
       "Source/Tests/Test_EffectBaker.cpp",
       "Source/Tests/Test_EffekseerParticleRuntime.cpp",
@@ -159,6 +160,7 @@
       "Source/Tests/Test_ProtoBaker.cpp",
       "Source/Tests/Test_ProtoManager.cpp",
       "Source/Tests/Test_ProtoTextBaker.cpp",
+      "Source/Tests/Test_RandomGenerator.cpp",
       "Source/Tests/Test_RawCopyBaker.cpp",
       "Source/Tests/Test_Rendering.cpp",
       "Source/Tests/Test_SafeArithmetics.cpp",
@@ -180,6 +182,7 @@
       "Source/Tests/Test_TextBaker.cpp",
       "Source/Tests/Test_TextPack.cpp",
       "Source/Tests/Test_TextureAtlas.cpp",
+      "Source/Tests/Test_Threading.cpp",
       "Source/Tests/Test_TimeRelated.cpp",
       "Source/Tests/Test_Timer.cpp",
       "Source/Tests/Test_TwoDimensionalGrid.cpp",

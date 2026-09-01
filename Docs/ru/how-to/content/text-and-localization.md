@@ -6,7 +6,7 @@ document_id: text-and-localization-guide
 permalink: /Docs/ru/how-to/content/text-and-localization.html
 ---
 
-<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"99df4185c6e0dfa3012820590924a125468f0d5a20c7386db212e652b9818682"} -->
+<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"cc1d603826f4d875e3a621bd133d327832be407bef94506d1007df9aeb342a72"} -->
 
 # Текст и локализация
 
@@ -37,8 +37,12 @@ Collection + Key1 + Key2 + Key3
 `hstring`. Язык намеренно не входит в ключ. Поэтому один ключ может
 существовать в запечённом пакете каждого языка.
 
-В основе используется multimap. Несколько значений одного полного ключа
-являются вариантами. `Game.GetTextCount(key)` возвращает их количество, а
+В основе используется vector, отсортированный по полному ключу. Несколько
+соседних значений одного ключа являются вариантами. Каждый путь загрузки,
+слияния и исправления fallback восстанавливает порядок до возврата; методы
+чтения проверяют invariant и используют один binary-search range, не изменяя и
+не исправляя разделяемое состояние. Это сохраняет безопасность concurrent
+reads. `Game.GetTextCount(key)` возвращает количество вариантов, а
 `Game.GetText(key, index)` выполняет выбор по индексу с нуля.
 
 ## Исходные файлы `.fotxt`

@@ -33,9 +33,12 @@ Collection + Key1 + Key2 + Key3
 Language is deliberately not part of the key. The same key may therefore exist
 in each baked language pack.
 
-The backing container is a multimap. Multiple values under one complete key are
-variants. `Game.GetTextCount(key)` reports their count and
-`Game.GetText(key, index)` performs zero-based indexed selection.
+The backing container is a vector sorted by the complete key. Multiple adjacent
+values under one key are variants. Every load, merge, and fallback-repair path
+restores the order before returning; read methods verify the invariant and use
+one binary-search range rather than mutating or repairing shared state. This
+keeps concurrent reads safe. `Game.GetTextCount(key)` reports the variant count
+and `Game.GetText(key, index)` performs zero-based indexed selection.
 
 ## Raw `.fotxt` files
 

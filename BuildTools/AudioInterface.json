@@ -327,7 +327,7 @@
       "source": [
         {
           "path": "Source/Client/SoundManager.cpp",
-          "anchors": ["sound_name, count + 1", "uniform_int_distribution", "random_index"]
+          "anchors": ["sound_name, count + 1", "_randomGenerator.next_between(1, count)", "random_index"]
         }
       ]
     },

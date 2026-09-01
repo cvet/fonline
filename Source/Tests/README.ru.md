@@ -6,7 +6,7 @@ locale: ru
 document_id: unit-tests-readme
 ---
 
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"8e8493dc53dd1a51b42413a31f6679ebd725cb82c2f515a089e5e995af41a2e6"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"089fdb7dd8f54a9c28f8b66b8666382ccc4e392aab72c892273e447cfa28b468"} -->
 
 # Модульные тесты
 
@@ -49,6 +49,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
@@ -60,6 +61,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_Logging.cpp`
 - `Source/Tests/Test_MemorySystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
+- `Source/Tests/Test_RandomGenerator.cpp`
 - `Source/Tests/Test_SafeArithmetics.cpp`
 - `Source/Tests/Test_SettingsStorage.cpp`
 - `Source/Tests/Test_SmartPointers.cpp`
@@ -68,6 +70,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_StringUtils.cpp`
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
+- `Source/Tests/Test_Threading.cpp`
 - `Source/Tests/Test_WorkerPool.cpp`
 - `Source/Tests/Test_WorkThread.cpp`
 

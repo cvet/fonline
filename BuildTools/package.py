@@ -583,6 +583,19 @@ class Packager:
 	def build_client_runtime_alias_name(self, variant: BinaryVariant) -> str:
 		return self.args.devname + '_Client' + variant.role
 
+	def build_client_runtime_companion_names(self, runtime_ext: str) -> set[str]:
+		# Client and ClientHeadless share one binary output directory. Package jobs can
+		# therefore see a sibling runtime left by another target/job even when that
+		# variant is not requested by the current pack. Treat all engine-owned client
+		# runtime input/alias names as application binaries, not dependency DLLs/DSOs;
+		# the selected variant is copied explicitly under its packaged output name.
+		runtime_variants = (BinaryVariant(), BinaryVariant(role='Headless'))
+		return {
+			name + runtime_ext
+			for variant in runtime_variants
+			for name in (self.build_client_runtime_input_name(variant), self.build_client_runtime_alias_name(variant))
+		}
+
 	def get_runtime_library_ext_for_platform(self, platform: str) -> str:
 		if platform == 'Windows':
 			return '.dll'
@@ -1055,6 +1068,8 @@ class Packager:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
 			self.package_all_client_runtime_update_payloads()
 
+		client_runtime_companions = self.build_client_runtime_companion_names('.dll') if self.args.target == 'Client' else set()
+
 		for arch in self.iter_arches():
 			# Mirror of the suffix appended to server-side payloads in
 			# package_all_client_runtime_update_payloads: tagging the client output
@@ -1073,17 +1088,13 @@ class Packager:
 				log('Binary input', bin_path)
 
 				additional_config_data = 'ForceOpenGL=1' if variant.graphics == 'OGL' else None
-				excluded_companions: set[str] = set()
-				if self.args.target == 'Client':
-					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.dll')
+				excluded_companions = set(client_runtime_companions)
 
 				if self.args.target == 'Client' and not is_lib:
 					runtime_input_name = self.build_client_runtime_input_name(variant)
-					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
+					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions=excluded_companions)
 					self.copy_runtime_pdb(bin_path, runtime_input_name, runtime_dll_path)
-					excluded_companions.add(runtime_input_name + '.dll')
 
 				main_binary_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
 				self.copy_pdb(bin_path, bin_name, bin_out_name)
@@ -1099,11 +1110,7 @@ class Packager:
 			self.package_all_client_runtime_update_payloads()
 
 		all_linux_variants = self.iter_linux_variants()
-		cross_variant_excluded: set[str] = set()
-		if self.args.target == 'Client':
-			for other_variant in all_linux_variants:
-				cross_variant_excluded.add(self.build_client_runtime_alias_name(other_variant) + '.so')
-				cross_variant_excluded.add(self.build_client_runtime_input_name(other_variant) + '.so')
+		cross_variant_excluded = self.build_client_runtime_companion_names('.so') if self.args.target == 'Client' else set()
 
 		# Mirrors the postfix tagging in package_all_client_runtime_update_payloads
 		# so the Linux client's PACKAGED_BUILD_NAME matches the server-staged payload
@@ -1127,11 +1134,8 @@ class Packager:
 
 				if self.args.target == 'Client':
 					runtime_input_name = self.build_client_runtime_input_name(variant)
-					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					runtime_excluded = set(cross_variant_excluded) | {runtime_alias_name + '.so'}
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions=runtime_excluded)
-					excluded_companions.add(runtime_input_name + '.so')
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions=excluded_companions)
 
 				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
 

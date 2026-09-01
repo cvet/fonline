@@ -2,6 +2,70 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-01 - master reconciliation through `df06df50a99`
+
+Scope:
+
+- Reconciled documentation branch head
+  `c9fc71b4fa6712d9280830b019b19f847fe14b57` with Engine
+  `origin/master` through `df06df50a99e13d7e2284b5f250ace67c3c58ff4`.
+- Audited the complete three-commit incoming range: client-package filtering
+  for unrequested headless runtimes, engine-owned deque/random/sleep
+  primitives with compatibility version `0.0.45`, and platform OS-call
+  isolation in the `WinApi` and `Posix` Essentials modules.
+- Preserved the legacy monolithic documentation as short compatibility routes
+  and reconciled the behavior into the canonical English/Russian owners.
+
+Documentation and contract reconciliation:
+
+- Documented `basic_deque`, `random_generator`, coarse and precise sleep,
+  platform-specific OS wrappers, the complete thirty-module Essentials source
+  order, and the associated unit-test ownership.
+- Documented the Windows/Linux client-runtime variant filter: ordinary client
+  packages exclude sibling headless libraries, explicit `Headless` packages
+  retain them, and server `PlatformBinaries` remain unchanged.
+- Corrected the reusable text-format contract after `TextPack` replaced its
+  multimap with sorted vector storage. Load, merge, fallback, serialization,
+  and script-visible behavior remain stable; native callers must allow the
+  pack to normalize its storage before read-only binary-search access.
+- Regenerated the text, audio, and map models and bilingual references,
+  source inventory, translation status, snippet inventory, site/search/route
+  data, deterministic AI evaluation, AI delivery files, screenshot inventory,
+  public API, and example configurations. All 4,969 generated descriptions are
+  current.
+- The strict comparison against `c9fc71b4f` found one required text-format
+  disposition. It is recorded as a breaking native rebuild boundary coordinated
+  with compatibility `0.0.45`; no required disposition is missing.
+
+Validation:
+
+- Focused documentation and package coverage passed 55 tests plus 3 subtests;
+  the corrected audio suite passed all 11 tests and the regenerated screenshot
+  inventory passed all 9 tests.
+- After regenerating the screenshot inventory, documentation discovery passed
+  612 tests and 133 subtests with one expected skip. The external-parser fixture
+  was deselected because this Windows host exposes WSL without an installed
+  Linux distribution; the direct snippet validator independently passed 310
+  normative snippets, 159 evidence blocks, and 183 external-parser checks.
+- Deterministic AI evaluation passed 27 tasks and 65 retrieval checks at 100
+  percent success and 0.915 MRR. The strict contract-diff gate reports zero
+  missing dispositions.
+- Last Frontier rebuilt `LF_UnitTests` against the reconciled Engine after its
+  dialog baker was adapted to the mutable normalization boundary. All 581 test
+  cases and 706,941 assertions passed.
+
+Disposition:
+
+- The incoming reusable behavior is represented in canonical Engine docs,
+  tests, and generated contract surfaces. The only Last Frontier source change
+  required by the Engine update is the narrow dialog-text integration adapter;
+  it belongs to the project repository and is not included in this Engine
+  branch.
+- Real ZIP/MSI payload inspection and visible client/updater acceptance remain
+  the project/release gates recorded by the consuming repository. Automated
+  documentation, package-unit, and native-unit evidence does not replace those
+  gates.
+
 ## 2026-08-31 - follow-up master reconciliation through `bd344844382`
 
 Scope:
