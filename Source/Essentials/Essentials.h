@@ -49,6 +49,8 @@
 #include "DequeObject.h"
 #include "Containers.h"
 #include "StringUtils.h"
+#include "WinApi.h"
+#include "Posix.h"
 #include "Platform.h"
 #include "ExceptionHandling.h"
 #include "RandomGenerator.h"

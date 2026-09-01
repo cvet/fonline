@@ -38,12 +38,7 @@
 #include "Platform.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
-
-#if FO_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
-#include "WinApiUndef.inc"
+#include "WinApi.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -459,30 +454,24 @@ static void park_until(std::chrono::steady_clock::time_point deadline) noexcept
     }
 
 #if FO_WINDOWS
-    // std::this_thread::sleep_for rounds up to the timer tick; the waitable timer takes a relative deadline
-    // in 100 ns units and a negative value means relative. The high resolution flag needs Windows 10 1803
-    HANDLE timer = ::CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    // std::this_thread::sleep_for rounds up to the timer tick, so the wait goes through a waitable timer
+    nptr<void> timer = winapi::create_high_resolution_timer();
 
-    if (timer == nullptr) {
-        timer = ::CreateWaitableTimerExW(nullptr, nullptr, 0, TIMER_ALL_ACCESS);
-    }
-
-    if (timer == nullptr) {
+    if (!timer) {
         std::this_thread::sleep_for(remaining);
         return;
     }
 
-    LARGE_INTEGER due_time;
-    due_time.QuadPart = -(std::chrono::duration_cast<std::chrono::nanoseconds>(remaining).count() / 100);
+    int64_t delay_100ns = std::chrono::duration_cast<std::chrono::nanoseconds>(remaining).count() / 100;
 
-    if (::SetWaitableTimer(timer, &due_time, 0, nullptr, nullptr, FALSE) != FALSE) {
-        (void)::WaitForSingleObject(timer, INFINITE);
+    if (winapi::set_relative_timer(timer, delay_100ns)) {
+        winapi::wait_for_object(timer);
     }
     else {
         std::this_thread::sleep_for(remaining);
     }
 
-    (void)::CloseHandle(timer);
+    winapi::close_handle(timer);
 
 #else
     std::this_thread::sleep_for(remaining);
