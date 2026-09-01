@@ -585,7 +585,7 @@ class Packager:
 		# therefore see a sibling runtime left by another target/job even when that
 		# variant is not requested by the current pack. Treat all engine-owned client
 		# runtime input/alias names as application binaries, not dependency DLLs/DSOs;
-		# the selected variant is copied explicitly under its packaged output name.
+		# the selected variant is copied explicitly under its packaged output name
 		runtime_variants = (BinaryVariant(), BinaryVariant(role='Headless'))
 		return {
 			name + runtime_ext
