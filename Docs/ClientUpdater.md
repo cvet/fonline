@@ -205,7 +205,13 @@ and enters the game without staging another update.
 > launch an `INSTALLED` host reads and validates that selector before `InitApp`, then loads the writable
 > DLL directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed,
 > names a different runtime, or points to neither a live nor staged file. Portable clients never consult
-> this selector.
+> this selector. Gameplay resources use the same overlay precedence: `GetClientResources()` mounts the
+> read-only install packs first and then mounts any per-user resource packs on top. The updater reads its
+> local metadata version through that same function rather than assembling a second pack set, so the
+> version it validates is the one gameplay will read, and a repaired overlay pack cannot pass updater
+> validation and then be bypassed in favour of a damaged install-dir copy. `Updater` layers the overlay
+> over its splash pack too — the splash is drawn before this run downloads anything, so it would
+> otherwise keep rendering an install-dir copy an earlier run already replaced.
 
 > **Deployed hosts are frozen.** The host `.exe` is never delivered by the updater (only the runtime
 > DLL is). A client built before this fix (one that attempted an in-process same-path reload) cannot be
@@ -438,7 +444,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order invariant.
+Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, verifies the exact entry list, and streams every entry through Python's CRC-checking reader; a damaged archive fails packaging before it can become the server's updater source. The `Embedded` pack goes through the same check on its in-memory buffer before it is patched into the executable, where a corrupt archive would otherwise be undetectable until a player's client failed to read it. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order and post-build validation invariants.
 
 The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data.
 

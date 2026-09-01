@@ -275,6 +275,8 @@ APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace ou
 
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.
 
+Every client/server resource pack is reopened after it is built — the zips written to disk and the in-memory pack embedded into the executable alike. Packaging verifies the exact entry list and streams every entry through the CRC-checking zip reader, so a damaged resource archive stops the package before it reaches either the downloadable client or the server updater source.
+
 ## Packaging: post-build binary patching
 
 `package.py` injects a few values into the already-linked binaries instead of recompiling per package. Each

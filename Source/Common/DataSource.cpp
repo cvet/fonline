@@ -1086,17 +1086,21 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
     unz_file_pos pos = info.Pos;
 
     if (unzGoToFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
-        throw DataSourceException("Can't read file from zip (unzGoToFilePos)", path);
+        throw DataSourceException("Can't read file from zip (unzGoToFilePos)", _fileName, path);
     }
     if (unzOpenCurrentFile(_zipHandle.get()) != UNZ_OK) {
-        throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", path);
+        throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", _fileName, path);
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
     int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
+    int32_t close_result = unzCloseCurrentFile(_zipHandle.get());
 
-    if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
-        throw DataSourceException("Can't read file from zip (unzCloseCurrentFile)", path);
+    if (read != info.UncompressedSize) {
+        throw DataSourceException("Can't read file from zip (unzReadCurrentFile)", _fileName, path, info.UncompressedSize, read, close_result);
+    }
+    if (close_result != UNZ_OK) {
+        throw DataSourceException("Can't read file from zip (unzCloseCurrentFile)", _fileName, path, close_result);
     }
 
     write_time = _writeTime;

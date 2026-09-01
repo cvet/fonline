@@ -133,7 +133,7 @@ Cached directory mounts snapshot their file index when mounted. Long-running too
 
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
 
-Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top in client/updater paths. The updater writes resource patches into that overlay, so current files win lookup/hash checks without modifying the install directory. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
+Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` is the single place that assembles this pack set; the updater calls it for its own metadata-version check instead of repeating the mount order, so validation and gameplay can never diverge. The updater writes resource patches into that overlay, so current or repaired files win gameplay lookup and hash checks without modifying the install directory. A ZIP entry read failure identifies the archive path and the resource-relative entry in `DataSourceException` context; short reads also record the expected byte count, actual read result, and close result. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
 
 ## Low-level disk access
 
