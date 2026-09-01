@@ -322,7 +322,7 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->Unprepare());
 
-        auto ctx_holder = refcount_ptr<AngelScript::asIScriptContext>::from_add_ref(ctx.get());
+        auto ctx_holder = refcount_ptr<AngelScript::asIScriptContext>::from_addref(ctx.get());
 
         if (_contextSetupCallback) {
             _contextSetupCallback(ctx_holder, AngelScriptContextSetupReason::Return);

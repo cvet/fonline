@@ -42,7 +42,7 @@ For generated metadata and registration flow, see [GeneratedApiAndMetadata.md](G
 - optional time-event data;
 - optional inner-entity holder entries;
 - destroying/destroyed state flags;
-- intrusive-style reference counting through `add_ref()` / `Release()`.
+- intrusive-style reference counting through `AddRef()` / `Release()`.
 
 Important accessors and mutation paths include:
 

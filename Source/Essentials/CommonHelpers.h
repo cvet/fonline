@@ -128,13 +128,13 @@ public:
     ~ref_hold_vector()
     {
         for (T& ref : _vec) {
-            release_ref(ref);
+            release(ref);
         }
     }
 
     void add(T ref)
     {
-        add_ref(ref);
+        addref(ref);
         _vec.emplace_back(std::move(ref));
     }
 
@@ -154,14 +154,14 @@ private:
         }
     }
 
-    static void add_ref(T& ref)
+    static void addref(T& ref)
     {
         auto ref_ptr = get_ref(ref);
         FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
-        details::call_add_ref(ref_ptr);
+        details::call_addref(ref_ptr);
     }
 
-    static void release_ref(T& ref)
+    static void release(T& ref)
     {
         auto ref_ptr = get_ref(ref);
         FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");

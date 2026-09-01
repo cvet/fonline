@@ -3015,7 +3015,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
         // The engine's only owning reference lives in LoadedMaps, so unloading destroys the view outright. Hold
         // an own reference across it, or the rejection below reads freed memory instead of exercising the guard
         ptr<MapView> other_view = other.as_ptr();
-        refcount_ptr<MapView> unloaded = refcount_ptr<MapView>::from_add_ref(other_view.get());
+        refcount_ptr<MapView> unloaded = refcount_ptr<MapView>::from_addref(other_view.get());
 
         mapper->UnloadMap(other_view);
 

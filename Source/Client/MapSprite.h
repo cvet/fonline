@@ -219,7 +219,7 @@ private:
 };
 
 ///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
-class MapSpriteHolder : public ref_counted<MapSpriteHolder>
+class MapSpriteHolder : public refcounted<MapSpriteHolder>
 {
 public:
     MapSpriteHolder() = default;

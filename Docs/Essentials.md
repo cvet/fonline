@@ -98,7 +98,7 @@ Five kinds of name stay PascalCase inside the layer, in every case because the n
 |---|---|
 | Template parameters — `CharT`, `Traits`, `Alloc`, `InlineCapacity`, `FormatContext` | The standard library's own convention; snake_case here would read as a type, not a parameter |
 | Exception type names — `BaseEngineException` and the `FO_DECLARE_EXCEPTION(...)` types | `XException` is an engine-wide convention that Essentials only seeds; renaming its share would split one vocabulary in half |
-| The ref-count protocol *as AngelScript spells it* — `AddRef`, `TryAddRef`, `Release` on `asIScriptFunction` and `asITypeInfo` | `refcountable` accepts either spelling and `refcount_ptr` dispatches on whichever the pointee declares, so `ref_counted` uses `add_ref` / `release` / `get_ref_count` while the library types keep their own |
+| The ref-count protocol *as AngelScript spells it* — `AddRef`, `TryAddRef`, `Release` on `asIScriptFunction` and `asITypeInfo` | `refcountable` accepts either spelling and `refcount_ptr` dispatches on whichever the pointee declares, so `refcounted` uses `addref` / `release` / `get_refcount` while the library types keep their own |
 | Foreign API names re-spelled in `WinApi.cpp` / `Posix.cpp` | `CloseHandle`, `RegCloseKey` and the rest are the operating system's names; only the wrappers around them are ours |
 | The global crash hooks in `ExceptionHandling.cpp` — `GetCrashStream`, `SetCrashStackTrace`, `SetCrashSignalInfo`, `SetCrashSehInfo`, `SetCrashTerminationInfo` | The vendored `backward.hpp` declares them by name at global scope (`// (FOnline Patch)`); the spelling is part of that contract, not ours |
 

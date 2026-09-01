@@ -570,7 +570,7 @@ void Critter::MoveAttachedCritters()
     }
 
     // Callbacks time
-    auto this_ref_holder = refcount_ptr<Critter>::from_add_ref(this);
+    auto this_ref_holder = refcount_ptr<Critter>::from_addref(this);
     auto map_ref_holder = map;
     auto dir = GetDir();
 

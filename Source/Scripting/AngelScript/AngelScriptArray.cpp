@@ -232,7 +232,7 @@ auto ScriptArray::Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<Scrip
 }
 
 ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) :
-    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_add_ref(ti.get())},
+    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_addref(ti.get())},
     _subTypeId {ti->GetSubTypeId()}
 {
     FO_STACK_TRACE_ENTRY();
@@ -297,7 +297,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 }
 
 ScriptArray::ScriptArray(int32_t length, ptr<AngelScript::asITypeInfo> ti) :
-    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_add_ref(ti.get())},
+    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_addref(ti.get())},
     _subTypeId {ti->GetSubTypeId()}
 {
     FO_STACK_TRACE_ENTRY();
@@ -324,7 +324,7 @@ ScriptArray::ScriptArray(int32_t length, ptr<AngelScript::asITypeInfo> ti) :
 }
 
 ScriptArray::ScriptArray(int32_t length, ptr<void> def_val, ptr<AngelScript::asITypeInfo> ti) :
-    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_add_ref(ti.get())},
+    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_addref(ti.get())},
     _subTypeId {ti->GetSubTypeId()}
 {
     FO_STACK_TRACE_ENTRY();

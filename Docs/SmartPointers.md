@@ -166,8 +166,8 @@ nptr<Entity> maybe_borrowed = maybe_held;
 When a raw pointer is unavoidable at an ABI, atomic, or allocator boundary, use the named refcount factories instead of direct construction:
 
 ```cpp
-refcount_ptr<Entity> held_from_raw = refcount_ptr<Entity>::from_add_ref(raw_entity);
-refcount_nptr<Entity> maybe_held_from_raw = refcount_ptr<Entity>::try_from_add_ref(raw_entity);
+refcount_ptr<Entity> held_from_raw = refcount_ptr<Entity>::from_addref(raw_entity);
+refcount_nptr<Entity> maybe_held_from_raw = refcount_ptr<Entity>::try_from_addref(raw_entity);
 refcount_ptr<Entity> adopted = refcount_ptr<Entity>::from_adopted_ref(raw_entity_with_existing_ref);
 ```
 

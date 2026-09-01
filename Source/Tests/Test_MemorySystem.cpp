@@ -143,7 +143,7 @@ TEST_CASE("MemorySystem")
 
     SECTION("MakeRefCountedPreservesInitialOwnership")
     {
-        struct TestRefCounted final : ref_counted<TestRefCounted>
+        struct TestRefCounted final : refcounted<TestRefCounted>
         {
             TestRefCounted(int32_t value_, ptr<int32_t> destroyed) noexcept :
                 Value {value_},

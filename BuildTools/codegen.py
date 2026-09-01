@@ -2143,7 +2143,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
         'meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {']
 
         if 'RefCounted' in ref_type_tag.flags:
-            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->add_ref(); }', is_stub)
+            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->addref(); }', is_stub)
             append_ref_call_registration(body_lines, '__Release', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->release(); }', is_stub)
 
         if 'HasFactory' in ref_type_tag.flags:

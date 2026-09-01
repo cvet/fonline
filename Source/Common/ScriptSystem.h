@@ -81,7 +81,7 @@ class Entity;
 using AbstractItem = Entity;
 using ScriptSelfEntity = Entity;
 
-class DynamicRefTypeInstance final : public ref_counted<DynamicRefTypeInstance>
+class DynamicRefTypeInstance final : public refcounted<DynamicRefTypeInstance>
 {
 public:
     explicit DynamicRefTypeInstance(ptr<const PropertyRegistrar> registrar) noexcept;

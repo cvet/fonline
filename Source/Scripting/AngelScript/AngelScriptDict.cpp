@@ -326,7 +326,7 @@ static auto GetDictSubTypeForPrecache(ptr<AngelScript::asITypeInfo> type_info, A
 }
 
 ScriptDict::ScriptDict(ptr<AngelScript::asITypeInfo> ti) :
-    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_add_ref(ti.get())},
+    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_addref(ti.get())},
     _keyTypeId {ti->GetSubTypeId(0)},
     _valueTypeId {ti->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, GetDictSubTypeForPrecache(ti, 0))},
@@ -342,7 +342,7 @@ ScriptDict::ScriptDict(ptr<AngelScript::asITypeInfo> ti) :
 }
 
 ScriptDict::ScriptDict(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) :
-    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_add_ref(ti.get())},
+    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_addref(ti.get())},
     _keyTypeId {ti->GetSubTypeId(0)},
     _valueTypeId {ti->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, GetDictSubTypeForPrecache(ti, 0))},

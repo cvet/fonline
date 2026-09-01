@@ -561,19 +561,19 @@ private:
 
 // Refcount base class
 template<typename T>
-class ref_counted
+class refcounted
 {
 public:
-    ref_counted() noexcept = default;
-    ref_counted(const ref_counted&) = delete;
-    ref_counted(ref_counted&&) noexcept = delete;
-    auto operator=(const ref_counted&) = delete;
-    auto operator=(ref_counted&&) noexcept = delete;
-    ~ref_counted() = default;
+    refcounted() noexcept = default;
+    refcounted(const refcounted&) = delete;
+    refcounted(refcounted&&) noexcept = delete;
+    auto operator=(const refcounted&) = delete;
+    auto operator=(refcounted&&) noexcept = delete;
+    ~refcounted() = default;
 
-    [[nodiscard]] auto get_ref_count() const noexcept -> int32_t { return _ref_counter.load(std::memory_order_relaxed); }
+    [[nodiscard]] auto get_refcount() const noexcept -> int32_t { return _ref_counter.load(std::memory_order_relaxed); }
 
-    void add_ref() const noexcept { _ref_counter.fetch_add(1, std::memory_order_relaxed); }
+    void addref() const noexcept { _ref_counter.fetch_add(1, std::memory_order_relaxed); }
 
     void release() const noexcept
     {

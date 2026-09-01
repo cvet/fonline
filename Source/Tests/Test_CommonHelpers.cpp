@@ -96,7 +96,7 @@ TEST_CASE("CommonHelpers")
         CHECK_THROWS_AS(require_refcount_ptr(std::move(missing)), VerificationException);
         CHECK(value.RefCount == 0);
 
-        refcount_nptr<TestRefCounter> nullable = refcount_nptr<TestRefCounter>::from_add_ref(&value);
+        refcount_nptr<TestRefCounter> nullable = refcount_nptr<TestRefCounter>::from_addref(&value);
         CHECK(value.RefCount == 1);
 
         {

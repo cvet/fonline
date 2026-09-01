@@ -2893,7 +2893,7 @@ void MapView::PrepareFogToDraw()
 
     for (auto& fog_slot : _fogs) {
         for (auto it = fog_slot.begin(); it != fog_slot.end();) {
-            if ((*it)->Disposed || (*it)->get_ref_count() == 1) {
+            if ((*it)->Disposed || (*it)->get_refcount() == 1) {
                 it = fog_slot.erase(it);
             }
             else {

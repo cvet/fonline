@@ -995,7 +995,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     Entity::EventCallbackData event_data;
 
-    event_data.Callback = [func_ = refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get())](FuncCallData& call) mutable -> Entity::EventResult FO_DEFERRED {
+    event_data.Callback = [func_ = refcount_ptr<AngelScript::asIScriptFunction>::from_addref(func.get())](FuncCallData& call) mutable -> Entity::EventResult FO_DEFERRED {
         bool event_has_result = func_->GetReturnTypeId() != AngelScript::asTYPEID_VOID;
         Entity::EventResult event_result = Entity::EventResult::ContinueChain;
         call.RetData = event_has_result ? make_nptr(&event_result).void_cast() : nullptr;

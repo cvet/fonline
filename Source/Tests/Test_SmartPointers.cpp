@@ -163,8 +163,8 @@ namespace
 
     template<typename T>
     concept has_refcount_ptr_named_factories = requires(T* raw) {
-        { refcount_ptr<T>::from_add_ref(raw) } -> std::same_as<refcount_ptr<T>>;
-        { refcount_ptr<T>::try_from_add_ref(raw) } -> std::same_as<refcount_nptr<T>>;
+        { refcount_ptr<T>::from_addref(raw) } -> std::same_as<refcount_ptr<T>>;
+        { refcount_ptr<T>::try_from_addref(raw) } -> std::same_as<refcount_nptr<T>>;
         { refcount_ptr<T>::from_adopted_ref(raw) } -> std::same_as<refcount_ptr<T>>;
     };
 }
@@ -424,7 +424,7 @@ TEST_CASE("SmartPointers")
         auto raw_ref = MakeUnreferencedRefCountedValue(66, &destroy_count);
 
         {
-            refcount_ptr<RefCountedValue> ref_owner = refcount_ptr<RefCountedValue>::from_add_ref(raw_ref.get());
+            refcount_ptr<RefCountedValue> ref_owner = refcount_ptr<RefCountedValue>::from_addref(raw_ref.get());
             refcount_nptr<RefCountedValue> maybe_ref_owner = ref_owner;
             refcount_nptr<RefCountedValue> empty_ref_owner;
 
@@ -644,7 +644,7 @@ TEST_CASE("SmartPointers")
         auto raw = MakeUnreferencedRefCountedValue(33, &destroy_count);
 
         {
-            refcount_ptr<RefCountedValue> ptr = refcount_ptr<RefCountedValue>::from_add_ref(raw.get());
+            refcount_ptr<RefCountedValue> ptr = refcount_ptr<RefCountedValue>::from_addref(raw.get());
             REQUIRE(ptr.get() != nullptr);
             CHECK(raw->RefCount == 1);
 
@@ -680,7 +680,7 @@ TEST_CASE("SmartPointers")
         CHECK_FALSE(maybe_ref);
 
         auto raw = MakeUnreferencedRefCountedValue(44, &destroy_count);
-        refcount_ptr<RefCountedValue> non_null_ptr = refcount_ptr<RefCountedValue>::from_add_ref(raw.get());
+        refcount_ptr<RefCountedValue> non_null_ptr = refcount_ptr<RefCountedValue>::from_addref(raw.get());
         maybe_ref = std::move(non_null_ptr);
 
         CHECK(non_null_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from refcount contract
@@ -752,7 +752,7 @@ TEST_CASE("SmartPointers")
         auto raw = MakeUnreferencedRefCountedPolyValue(61, 62);
 
         {
-            refcount_ptr<RefCountedPolyBase> owner = refcount_ptr<RefCountedPolyBase>::from_add_ref(raw.get());
+            refcount_ptr<RefCountedPolyBase> owner = refcount_ptr<RefCountedPolyBase>::from_addref(raw.get());
             CHECK(raw->RefCount == 1);
 
             {

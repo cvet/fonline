@@ -649,7 +649,7 @@ FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngin
 
     video->PlaybackResources.emplace(std::move(clip), std::move(tex));
 
-    video->add_ref();
+    video->addref();
     return video;
 }
 

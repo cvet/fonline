@@ -1072,7 +1072,7 @@ static void DynamicRefType_AddRef(const DynamicRefTypeInstance* self)
 
     FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
     ptr<const DynamicRefTypeInstance> self_ref = self;
-    self_ref->add_ref();
+    self_ref->addref();
 }
 
 static void DynamicRefType_Release(const DynamicRefTypeInstance* self)

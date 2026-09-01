@@ -90,7 +90,7 @@ auto ScriptDataAccessor::GetCallback(ptr<void> data) const -> unique_del_nptr<Sc
     if (func) {
         auto func_desc = IndexScriptFunc(func);
         FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
-        return MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get()));
+        return MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_addref(func.get()));
     }
 
     return nullptr;

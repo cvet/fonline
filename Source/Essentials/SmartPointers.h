@@ -45,7 +45,7 @@ FO_BEGIN_NAMESPACE
 // PascalCase from the library
 template<typename T>
 concept refcountable = requires(T t) {
-    t.add_ref();
+    t.addref();
     t.release();
 } || requires(T t) {
     t.AddRef();
@@ -54,7 +54,7 @@ concept refcountable = requires(T t) {
 
 template<typename T>
 concept try_refcountable = refcountable<T> && (requires(T t) {
-    { t.try_add_ref() } -> std::convertible_to<bool>;
+    { t.try_addref() } -> std::convertible_to<bool>;
 } || requires(T t) {
     { t.TryAddRef() } -> std::convertible_to<bool>;
 });
@@ -73,10 +73,10 @@ namespace details
     // Reaches the pointee through whichever spelling it declares. The forwarding reference keeps the
     // caller constness: bound as const, a wrapper hands out a const pointee and a non-const Release fails
     template<typename T>
-    FO_FORCE_INLINE void call_add_ref(T&& value) noexcept
+    FO_FORCE_INLINE void call_addref(T&& value) noexcept
     {
-        if constexpr (requires { value->add_ref(); }) {
-            value->add_ref();
+        if constexpr (requires { value->addref(); }) {
+            value->addref();
         }
         else {
             value->AddRef();
@@ -95,12 +95,12 @@ namespace details
     }
 
     template<typename T>
-    [[nodiscard]] FO_FORCE_INLINE auto call_try_add_ref(T&& value) noexcept -> bool
+    [[nodiscard]] FO_FORCE_INLINE auto call_try_addref(T&& value) noexcept -> bool
     {
         if constexpr (requires {
-                          { value->try_add_ref() } -> std::convertible_to<bool>;
+                          { value->try_addref() } -> std::convertible_to<bool>;
                       }) {
-            return value->try_add_ref();
+            return value->try_addref();
         }
         else {
             return value->TryAddRef();
@@ -999,16 +999,16 @@ public:
     FO_FORCE_INLINE constexpr refcount_ptr(std::nullptr_t) noexcept = delete;
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_ptr& = delete;
 
-    [[nodiscard]] FO_FORCE_INLINE static auto from_add_ref(T* p) noexcept -> refcount_ptr
+    [[nodiscard]] FO_FORCE_INLINE static auto from_addref(T* p) noexcept -> refcount_ptr
     {
         FO_BASIC_STRONG_ASSERT(p != nullptr);
         refcount_ptr result;
         result._ptr = p;
-        result.add_ref();
+        result.addref();
         return result;
     }
 
-    [[nodiscard]] FO_FORCE_INLINE static auto try_from_add_ref(T* p) noexcept -> refcount_nptr<T>;
+    [[nodiscard]] FO_FORCE_INLINE static auto try_from_addref(T* p) noexcept -> refcount_nptr<T>;
 
     [[nodiscard]] FO_FORCE_INLINE static auto from_adopted_ref(T* p) noexcept -> refcount_ptr
     {
@@ -1021,7 +1021,7 @@ public:
     FO_FORCE_INLINE refcount_ptr(const refcount_ptr& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     FO_FORCE_INLINE refcount_ptr(refcount_ptr&& other) noexcept
     {
@@ -1034,7 +1034,7 @@ public:
     FO_FORCE_INLINE refcount_ptr(const refcount_ptr<U>& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
@@ -1062,7 +1062,7 @@ public:
     FO_FORCE_INLINE auto operator=(refcount_ptr&& other) noexcept -> refcount_ptr&
     {
         if (this != &other) {
-            dec_ref();
+            decref();
             _ptr = other._ptr;
             other._ptr = nullptr;
         }
@@ -1072,13 +1072,13 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_ptr<U>&& other) noexcept -> refcount_ptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        dec_ref();
+        decref();
         _ptr = other._ptr;
         other._ptr = nullptr;
         return *this;
     }
 
-    FO_FORCE_INLINE ~refcount_ptr() { dec_ref(); }
+    FO_FORCE_INLINE ~refcount_ptr() { decref(); }
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
@@ -1111,9 +1111,9 @@ public:
     FO_FORCE_INLINE void reset(T* p) noexcept
     {
         FO_BASIC_STRONG_ASSERT(p != nullptr);
-        dec_ref();
+        decref();
         _ptr = p;
-        add_ref();
+        addref();
     }
     FO_FORCE_INLINE void reset(std::nullptr_t) noexcept = delete;
 
@@ -1134,13 +1134,13 @@ public:
     FO_FORCE_INLINE auto dyn_cast() const noexcept -> nptr<const U>;
 
 private:
-    FO_FORCE_INLINE void add_ref() noexcept
+    FO_FORCE_INLINE void addref() noexcept
     {
         if (_ptr != nullptr) {
-            details::call_add_ref(_ptr);
+            details::call_addref(_ptr);
         }
     }
-    FO_FORCE_INLINE void dec_ref() noexcept
+    FO_FORCE_INLINE void decref() noexcept
     {
         if (_ptr != nullptr) {
             details::call_release(_ptr);
@@ -1177,27 +1177,27 @@ public:
     }
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_nptr&
     {
-        dec_ref();
+        decref();
         _ptr = nullptr;
         return *this;
     }
 
-    [[nodiscard]] FO_FORCE_INLINE static auto from_add_ref(T* p) noexcept -> refcount_nptr
+    [[nodiscard]] FO_FORCE_INLINE static auto from_addref(T* p) noexcept -> refcount_nptr
     {
         refcount_nptr result;
         result._ptr = p;
-        result.add_ref();
+        result.addref();
         return result;
     }
 
-    [[nodiscard]] FO_FORCE_INLINE static auto try_from_add_ref(T* p) noexcept -> refcount_nptr
+    [[nodiscard]] FO_FORCE_INLINE static auto try_from_addref(T* p) noexcept -> refcount_nptr
     {
         if (p == nullptr) {
             return {};
         }
 
         if constexpr (try_refcountable<T>) {
-            if (!details::call_try_add_ref(p)) {
+            if (!details::call_try_addref(p)) {
                 return {};
             }
 
@@ -1206,7 +1206,7 @@ public:
             return result;
         }
         else {
-            return from_add_ref(p);
+            return from_addref(p);
         }
     }
 
@@ -1220,7 +1220,7 @@ public:
     FO_FORCE_INLINE refcount_nptr(const refcount_nptr& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     FO_FORCE_INLINE refcount_nptr(refcount_nptr&& other) noexcept
     {
@@ -1233,7 +1233,7 @@ public:
     FO_FORCE_INLINE refcount_nptr(const refcount_nptr<U>& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
@@ -1249,7 +1249,7 @@ public:
     FO_FORCE_INLINE refcount_nptr(const refcount_ptr<U>& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
@@ -1277,7 +1277,7 @@ public:
     FO_FORCE_INLINE auto operator=(refcount_nptr&& other) noexcept -> refcount_nptr&
     {
         if (this != &other) {
-            dec_ref();
+            decref();
             _ptr = other._ptr;
             other._ptr = nullptr;
         }
@@ -1287,7 +1287,7 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_nptr<U>&& other) noexcept -> refcount_nptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        dec_ref();
+        decref();
         _ptr = other._ptr;
         other._ptr = nullptr;
         return *this;
@@ -1303,13 +1303,13 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_ptr<U>&& other) noexcept -> refcount_nptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        dec_ref();
+        decref();
         _ptr = other._ptr;
         other._ptr = nullptr;
         return *this;
     }
 
-    FO_FORCE_INLINE ~refcount_nptr() { dec_ref(); }
+    FO_FORCE_INLINE ~refcount_nptr() { decref(); }
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
@@ -1351,9 +1351,9 @@ public:
 
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
     {
-        dec_ref();
+        decref();
         _ptr = p;
-        add_ref();
+        addref();
     }
 
     template<typename U>
@@ -1385,13 +1385,13 @@ public:
     }
 
 private:
-    FO_FORCE_INLINE void add_ref() noexcept
+    FO_FORCE_INLINE void addref() noexcept
     {
         if (_ptr != nullptr) {
-            details::call_add_ref(_ptr);
+            details::call_addref(_ptr);
         }
     }
-    FO_FORCE_INLINE void dec_ref() noexcept
+    FO_FORCE_INLINE void decref() noexcept
     {
         if (_ptr != nullptr) {
             details::call_release(_ptr);
@@ -1403,9 +1403,9 @@ private:
 static_assert(std::is_standard_layout_v<refcount_nptr<int32_t>>);
 
 template<typename T>
-FO_FORCE_INLINE auto refcount_ptr<T>::try_from_add_ref(T* p) noexcept -> refcount_nptr<T>
+FO_FORCE_INLINE auto refcount_ptr<T>::try_from_addref(T* p) noexcept -> refcount_nptr<T>
 {
-    return refcount_nptr<T>::try_from_add_ref(p);
+    return refcount_nptr<T>::try_from_addref(p);
 }
 
 template<typename T>
@@ -1446,7 +1446,7 @@ template<typename U>
 FO_FORCE_INLINE auto ptr<T>::hold_ref() const noexcept -> refcount_ptr<U>
 {
     static_assert(std::is_convertible_v<T*, U*>);
-    return refcount_ptr<U>::from_add_ref(static_cast<U*>(_ptr));
+    return refcount_ptr<U>::from_addref(static_cast<U*>(_ptr));
 }
 
 template<typename T>
@@ -1460,7 +1460,7 @@ FO_FORCE_INLINE auto ptr<T>::try_hold_ref() const noexcept -> refcount_nptr<U>
         return {};
     }
 
-    return refcount_ptr<U>::try_from_add_ref(static_cast<U*>(_ptr));
+    return refcount_ptr<U>::try_from_addref(static_cast<U*>(_ptr));
 }
 
 template<typename T>
@@ -1469,7 +1469,7 @@ template<typename U>
 FO_FORCE_INLINE auto nptr<T>::hold_ref() const noexcept -> refcount_ptr<U>
 {
     static_assert(std::is_convertible_v<T*, U*>);
-    return refcount_ptr<U>::from_add_ref(static_cast<U*>(_ptr));
+    return refcount_ptr<U>::from_addref(static_cast<U*>(_ptr));
 }
 
 template<typename T>
@@ -1483,7 +1483,7 @@ FO_FORCE_INLINE auto nptr<T>::try_hold_ref() const noexcept -> refcount_nptr<U>
         return {};
     }
 
-    return refcount_ptr<U>::try_from_add_ref(static_cast<U*>(_ptr));
+    return refcount_ptr<U>::try_from_addref(static_cast<U*>(_ptr));
 }
 
 FO_END_NAMESPACE
