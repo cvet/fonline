@@ -166,12 +166,16 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			}
 			else
 			{
-				allArgBuffer[dpos] = args[spos];
+				// (FOnline Patch) only the value's own bytes: a script stack DWORD keeps stale bytes above a bool,
+				// and a callee is entitled to treat a bool register as 0 or 1 and fold arithmetic on it
+				asQWORD argValue = 0;
+				memcpy(&argValue, &args[spos], dt.GetSizeInMemoryBytes());
+				allArgBuffer[dpos] = argValue;
 
 				// Float arguments are moved to a separate buffer in order to be placed in the XMM registers,
 				// though this is only done for first 4 arguments, the rest are placed on the stack
 				if( paramSize < 4 && dt.IsFloatType() )
-					floatArgBuffer[dpos] = args[spos];
+					floatArgBuffer[dpos] = argValue;
 
 				dpos++;
 				spos += 2; // (FOnline Patch) even argument slot: skip the slot padding above the value

@@ -33,6 +33,7 @@
 
 #include "Updater.h"
 #include "Application.h"
+#include "Client.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 
@@ -81,6 +82,12 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     }
     if (!_settings->DefaultSplashPack.empty()) {
         _resources.AddPackSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
+
+        // The splash is drawn before this run downloads anything, so a pack an earlier run repaired
+        // into the writable root has to win here as well
+        if (!_settings->UserWritablePath.empty()) {
+            _resources.AddPackSource(fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources), _settings->DefaultSplashPack, true);
+        }
     }
 
     _effectMngr.LoadMinimalEffects();
@@ -260,21 +267,10 @@ auto Updater::ReadLocalMetadataVersion() const -> string
         return string(_settings->ForceMetadataVersion);
     }
 
-    // Mounted separately from the updater resources, which carry directories rather than the game packs
+    // Mounted separately from the updater resources, which carry directories rather than the game packs.
+    // Built by the gameplay entry point so the version validated here is the one the game will read
     try {
-        FileSystem resources;
-        resources.AddPacksSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->ClientResourceEntries);
-
-        // Downloaded packs land under the writable root, so for an installed client they are the current ones
-        // and must win over the install-dir copies
-        if (!_settings->UserWritablePath.empty()) {
-            string writable_dir = fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources);
-
-            for (const auto& pack : _settings->ClientResourceEntries) {
-                resources.AddPackSource(writable_dir, pack, true);
-            }
-        }
-
+        FileSystem resources = GetClientResources(*_settings);
         vector<uint8_t> metadata_bin = ReadMetadataBin(&resources, "Client");
         return ReadMetadataVersion(metadata_bin);
     }

@@ -49,6 +49,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
     }
 
     vector<string> result;
+    unordered_set<string_view> added_names;
     auto len = dir_fixed.length();
 
     for (const auto& fname : fnames) {
@@ -60,7 +61,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
             }
         }
 
-        if (add && std::ranges::find(result, fname) == result.end()) {
+        if (add && added_names.emplace(fname).second) {
             result.push_back(fname);
         }
     }
@@ -95,6 +96,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override { return vector<IndexedFile> {}; }
 };
 
 class NonCachedDir final : public DataSource
@@ -168,6 +170,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
     bool ReadTree() FO_TSA_REQUIRES(_datFileLocker);
@@ -198,6 +201,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
     struct ZipFileInfo
@@ -231,6 +235,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
     struct EmbeddedFileInfo
@@ -262,6 +267,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
     struct FileEntry
@@ -810,6 +816,25 @@ auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64_t& write_tim
     return true;
 }
 
+auto FalloutDat::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<IndexedFile> files;
+    files.reserve(_filesTree.size());
+
+    for (const auto& [path, entry] : _filesTree) {
+        size_t size = 0;
+        uint64_t write_time = 0;
+        bool found = GetFileInfo(path, size, write_time);
+        FO_VERIFY_AND_THROW(found, "Dat pack file tree holds an entry its own metadata lookup misses", _fileName, path);
+
+        files.emplace_back(IndexedFile {path, size, write_time});
+    }
+
+    return files;
+}
+
 auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1070,6 +1095,20 @@ auto ZipFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) 
     return true;
 }
 
+auto ZipFile::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<IndexedFile> files;
+    files.reserve(_filesTree.size());
+
+    for (const auto& [path, info] : _filesTree) {
+        files.emplace_back(IndexedFile {path, numeric_cast<size_t>(info.UncompressedSize), _writeTime});
+    }
+
+    return files;
+}
+
 auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1086,17 +1125,21 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
     unz_file_pos pos = info.Pos;
 
     if (unzGoToFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
-        throw DataSourceException("Can't read file from zip (unzGoToFilePos)", path);
+        throw DataSourceException("Can't read file from zip (unzGoToFilePos)", _fileName, path);
     }
     if (unzOpenCurrentFile(_zipHandle.get()) != UNZ_OK) {
-        throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", path);
+        throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", _fileName, path);
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
     int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
+    int32_t close_result = unzCloseCurrentFile(_zipHandle.get());
 
-    if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
-        throw DataSourceException("Can't read file from zip (unzCloseCurrentFile)", path);
+    if (read != info.UncompressedSize) {
+        throw DataSourceException("Can't read file from zip (unzReadCurrentFile)", _fileName, path, info.UncompressedSize, read, close_result);
+    }
+    if (close_result != UNZ_OK) {
+        throw DataSourceException("Can't read file from zip (unzCloseCurrentFile)", _fileName, path, close_result);
     }
 
     write_time = _writeTime;
@@ -1299,6 +1342,26 @@ auto EmbeddedFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
     return true;
 }
 
+auto EmbeddedFile::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_zipHandleLocker};
+
+    if (!_zipHandle) {
+        return std::nullopt;
+    }
+
+    vector<IndexedFile> files;
+    files.reserve(_filesTree.size());
+
+    for (const auto& [path, info] : _filesTree) {
+        files.emplace_back(IndexedFile {path, numeric_cast<size_t>(info.UncompressedSize), _writeTime});
+    }
+
+    return files;
+}
+
 auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1402,6 +1465,20 @@ auto FilesList::GetFileInfo(string_view path, size_t& size, uint64_t& write_time
     size = fe.FileSize;
     write_time = fe.WriteTime;
     return true;
+}
+
+auto FilesList::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<IndexedFile> files;
+    files.reserve(_filesTree.size());
+
+    for (const auto& [path, entry] : _filesTree) {
+        files.emplace_back(IndexedFile {path, entry.FileSize, entry.WriteTime});
+    }
+
+    return files;
 }
 
 auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>

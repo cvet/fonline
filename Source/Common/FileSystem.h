@@ -201,7 +201,19 @@ public:
     void CleanDataSources();
 
 private:
+    struct ResourceIndexEntry
+    {
+        nptr<const DataSource> Source {};
+        size_t Size {};
+        uint64_t WriteTime {};
+    };
+
+    void IndexMountedSource(ptr<const DataSource> ds);
+    void RebuildIndex();
+
     vector<unique_ptr<DataSource>> _dataSources {};
+    unordered_map<string, ResourceIndexEntry> _index {};
+    bool _indexed {true};
 };
 
 FO_END_NAMESPACE

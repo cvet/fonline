@@ -549,6 +549,10 @@ void FileSystem::AddDirSource(string_view dir, bool recursive, bool non_cached, 
     FO_STACK_TRACE_ENTRY();
 
     auto ds = DataSource::MountDir(dir, recursive, non_cached, maybe_not_available);
+
+    // Indexed before the source is published: taking the snapshot is the only step here that can throw, so
+    // doing it first leaves the mount either complete or absent
+    IndexMountedSource(ds);
     _dataSources.emplace(_dataSources.begin(), std::move(ds));
 }
 
@@ -558,10 +562,12 @@ void FileSystem::AddPackSource(string_view dir, string_view pack, bool maybe_not
 
     if (IsPackaged()) {
         auto ds = DataSource::MountPack(dir, pack, maybe_not_available);
+        IndexMountedSource(ds);
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
     else {
         auto ds = DataSource::MountDir(strex(dir).combine_path(pack), true, false, maybe_not_available);
+        IndexMountedSource(ds);
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
 }
@@ -579,7 +585,58 @@ void FileSystem::AddCustomSource(unique_ptr<DataSource> data_source)
 {
     FO_STACK_TRACE_ENTRY();
 
+    IndexMountedSource(data_source);
     _dataSources.emplace(_dataSources.begin(), std::move(data_source));
+}
+
+// A newly mounted source goes in front of the others, so it claims every path it holds away from them
+void FileSystem::IndexMountedSource(ptr<const DataSource> ds)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_indexed) {
+        return;
+    }
+
+    auto snapshot = ds->GetIndexSnapshot();
+
+    if (!snapshot.has_value()) {
+        _indexed = false;
+        _index.clear();
+        return;
+    }
+
+    for (auto& file : snapshot.value()) {
+        _index.insert_or_assign(std::move(file.Path), ResourceIndexEntry {ds, file.Size, file.WriteTime});
+    }
+}
+
+// Lowest priority first, so a source mounted later overwrites what an earlier one claimed. Built aside and
+// swapped in, so a source that throws while handing over its content leaves the previous index in place
+void FileSystem::RebuildIndex()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_map<string, ResourceIndexEntry> index;
+    bool indexed = true;
+
+    for (size_t i = _dataSources.size(); i != 0; --i) {
+        auto ds = _dataSources[i - 1].as_ptr();
+        auto snapshot = ds->GetIndexSnapshot();
+
+        if (!snapshot.has_value()) {
+            indexed = false;
+            index.clear();
+            break;
+        }
+
+        for (auto& file : snapshot.value()) {
+            index.insert_or_assign(std::move(file.Path), ResourceIndexEntry {ds, file.Size, file.WriteTime});
+        }
+    }
+
+    _index = std::move(index);
+    _indexed = indexed;
 }
 
 auto FileSystem::ReindexDataSources() -> bool
@@ -592,6 +649,8 @@ auto FileSystem::ReindexDataSources() -> bool
         changed |= data_source->Reindex();
     }
 
+    RebuildIndex();
+
     return changed;
 }
 
@@ -600,6 +659,8 @@ void FileSystem::CleanDataSources()
     FO_STACK_TRACE_ENTRY();
 
     _dataSources.clear();
+    _index.clear();
+    _indexed = true;
 }
 
 auto FileSystem::GetAllFiles() const -> FileCollection
@@ -741,6 +802,10 @@ auto FileSystem::IsFileExists(string_view path) const -> bool
     FO_VERIFY_AND_THROW(!path.empty(), "File existence check received an empty resource path", _dataSources.size());
     FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File existence check received a non-relative resource path", path);
 
+    if (_indexed) {
+        return _index.contains(path);
+    }
+
     for (size_t i = 0; i != _dataSources.size(); ++i) {
         if (_dataSources[i]->IsFileExists(path)) {
             return true;
@@ -757,13 +822,28 @@ auto FileSystem::ReadFile(string_view path) const -> File
     FO_VERIFY_AND_THROW(!path.empty(), "File read requested an empty resource path", _dataSources.size());
     FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File read requested a non-relative resource path", path);
 
-    for (size_t i = 0; i != _dataSources.size(); ++i) {
-        auto ds = _dataSources[i].as_ptr();
-        size_t size = 0;
-        uint64_t write_time = 0;
+    if (_indexed) {
+        auto it = _index.find(path);
 
-        if (auto buf = ds->OpenFile(path, size, write_time)) {
-            return File(path, size, write_time, ds, take_not_null(buf));
+        if (it != _index.end()) {
+            auto ds = it->second.Source.as_ptr();
+            size_t size = 0;
+            uint64_t write_time = 0;
+
+            if (auto buf = ds->OpenFile(path, size, write_time)) {
+                return File(path, size, write_time, ds, take_not_null(buf));
+            }
+        }
+    }
+    else {
+        for (size_t i = 0; i != _dataSources.size(); ++i) {
+            auto ds = _dataSources[i].as_ptr();
+            size_t size = 0;
+            uint64_t write_time = 0;
+
+            if (auto buf = ds->OpenFile(path, size, write_time)) {
+                return File(path, size, write_time, ds, take_not_null(buf));
+            }
         }
     }
 
@@ -785,13 +865,22 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
     FO_VERIFY_AND_THROW(!path.empty(), "File header read requested an empty resource path", _dataSources.size());
     FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File header read requested a non-relative resource path", path);
 
-    for (size_t i = 0; i != _dataSources.size(); ++i) {
-        auto ds = _dataSources[i].as_ptr();
-        size_t size = 0;
-        uint64_t write_time = 0;
+    if (_indexed) {
+        auto it = _index.find(path);
 
-        if (ds->GetFileInfo(path, size, write_time)) {
-            return FileHeader(path, size, write_time, ds);
+        if (it != _index.end()) {
+            return FileHeader(path, it->second.Size, it->second.WriteTime, it->second.Source);
+        }
+    }
+    else {
+        for (size_t i = 0; i != _dataSources.size(); ++i) {
+            auto ds = _dataSources[i].as_ptr();
+            size_t size = 0;
+            uint64_t write_time = 0;
+
+            if (ds->GetFileInfo(path, size, write_time)) {
+                return FileHeader(path, size, write_time, ds);
+            }
         }
     }
 

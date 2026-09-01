@@ -126,8 +126,9 @@ private:
 
     void BakeAllInternal();
     auto ResolveRebuildMode(string_view build_hash_path) -> bool;
-    auto PreparePackContexts(FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>;
-    auto PreparePackContext(const ResourcePackInfo& res_pack, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>;
+    auto MountSharedInputDirs() const -> unordered_map<string, unique_ptr<DataSource>>;
+    auto PreparePackContexts(unordered_map<string, unique_ptr<DataSource>>& input_dirs, FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>;
+    auto PreparePackContext(const ResourcePackInfo& res_pack, unordered_map<string, unique_ptr<DataSource>>& input_dirs, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>;
     void RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts, FileSystem& baking_output, std::atomic_bool& force_baking);
     void ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected);
     void SweepOutdatedOutputs(const ExpectedOutputs& expected);

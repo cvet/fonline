@@ -18,7 +18,7 @@ import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Literal, Sequence
+from typing import IO, Callable, Iterable, Literal, Sequence
 
 import buildtools
 import foconfig
@@ -323,6 +323,26 @@ def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipIn
 				return False
 			if not archive_chunk:
 				return True
+
+
+def validate_resource_zip(archive_source: str | Path | IO[bytes], expected_entries: Sequence[str], description: str | None = None) -> None:
+	archive_name = description if description is not None else str(archive_source)
+	try:
+		with zipfile.ZipFile(archive_source, 'r') as archive:
+			actual_entries = [info.filename for info in archive.infolist()]
+			assert actual_entries == list(expected_entries), f'Resource pack entry list mismatch: {archive_name}'
+
+			for info in archive.infolist():
+				try:
+					with archive.open(info) as entry:
+						while entry.read(1024 * 1024):
+							pass
+				except Exception as error:
+					raise AssertionError(f'Resource pack validation failed for {archive_name}: {info.filename}: {error}') from error
+	except AssertionError:
+		raise
+	except Exception as error:
+		raise AssertionError(f'Resource pack validation failed for {archive_name}: {error}') from error
 
 
 def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
@@ -923,10 +943,13 @@ class Packager:
 			return config_name, file.read().encode()
 
 	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
+		zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+
 		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
 			for arcname, file_path in zip_entries:
 				self.write_stable_zip_entry(archive, file_path, arcname)
+
+		validate_resource_zip(archive_path, [arcname for arcname, _ in zip_entries])
 
 	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
 		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
@@ -938,11 +961,12 @@ class Packager:
 
 	def make_embedded_pack(self, files: Sequence[str], base_path: str) -> bytes:
 		embedded_buffer = io.BytesIO()
+		zip_entries = [os.path.relpath(file_path, base_path).replace(os.sep, '/') for file_path in files]
 		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for file_path in files:
-				arcname = os.path.relpath(file_path, base_path).replace(os.sep, '/')
+			for arcname, file_path in zip(zip_entries, files):
 				self.write_stable_zip_entry(archive, file_path, arcname)
 		data = embedded_buffer.getvalue()
+		validate_resource_zip(io.BytesIO(data), zip_entries, 'embedded resource pack')
 		return struct.pack('I', len(data)) + data
 
 	def ensure_resource_dirs(self) -> None:
