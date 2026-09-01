@@ -107,13 +107,13 @@ auto NetworkServer::StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, N
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Listen UDP connections on port {}", settings->ServerPort + settings->UdpPortOffset);
+    write_log("Listen UDP connections on port {}", settings->ServerPort + settings->UdpPortOffset);
 
     if (settings->RejectUdpConnections) {
-        WriteLog(LogType::Warning, "UDP connect packets are rejected, clients will fall back to TCP after timeout");
+        write_log(log_type::warning, "UDP connect packets are rejected, clients will fall back to TCP after timeout");
     }
 
-    return SafeAlloc::MakeUnique<NetworkServer_UdpSockets>(settings, std::move(callback));
+    return safe_alloc::make_unique<NetworkServer_UdpSockets>(settings, std::move(callback));
 }
 
 NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ptr<ServerNetworkSettings> settings, string host, uint16_t port, uint32_t session_id) :
@@ -310,7 +310,7 @@ void NetworkServer_UdpSockets::Run()
             TickConnections(nanotime::now());
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            report_exception_and_continue(ex);
         }
     }
 }
@@ -339,7 +339,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
 
         if (packet.Type == UdpPacketType::Connect) {
             if (_settings->RejectUdpConnections) {
-                WriteLog("Reject UDP connect packet from {}:{}", host, port);
+                write_log("Reject UDP connect packet from {}:{}", host, port);
                 continue;
             }
 
@@ -392,7 +392,7 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
                 session_id = GenerateSessionId();
             }
 
-            connection = SafeAlloc::MakeShared<NetworkServerConnection_UdpSockets>(_settings, host, port, session_id);
+            connection = safe_alloc::make_shared<NetworkServerConnection_UdpSockets>(_settings, host, port, session_id);
             _sessions.emplace(session_id, connection);
             _endpointToSession.emplace(endpoint_key, session_id);
             is_new_connection = true;

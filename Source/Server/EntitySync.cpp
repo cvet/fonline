@@ -95,7 +95,7 @@ void EntityLock::Acquire(uint64_t ticket)
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && _sharedHolders.empty() && !HasForeignDescendantHolder(this_thread)) {
         _ownerThread.store(this_thread, std::memory_order_release);
         _recursionCount = 1;
-        TSanAcquire(this);
+        tsan_acquire(this);
         return;
     }
 
@@ -129,7 +129,7 @@ void EntityLock::Acquire(uint64_t ticket)
     FO_STRONG_ASSERT(state == WaitEntry::STATE_GRANTED, "Exclusive entity lock waiter woke up in a non-granted state", ticket, state);
     auto owner_thread = _ownerThread.load(std::memory_order_acquire);
     FO_STRONG_ASSERT(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
-    TSanAcquire(this);
+    tsan_acquire(this);
 }
 
 void EntityLock::AcquireShared(uint64_t ticket)
@@ -159,7 +159,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
     // released together once the writer finishes
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && !HasWaitingExclusive()) {
         _sharedHolders.emplace(this_thread, 1);
-        TSanAcquire(this);
+        tsan_acquire(this);
         return;
     }
 
@@ -188,7 +188,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
 
     FO_VERIFY_AND_THROW(state == WaitEntry::STATE_GRANTED, "Shared entity lock waiter woke up in a non-granted state", ticket, state);
     // GrantWaiters recorded this thread in `_sharedHolders` before waking it
-    TSanAcquire(this);
+    tsan_acquire(this);
 }
 
 void EntityLock::AbortPendingWaiters() noexcept
@@ -223,7 +223,7 @@ void EntityLock::Release() noexcept
         return;
     }
 
-    TSanRelease(this);
+    tsan_release(this);
     _ownerThread.store(std::thread::id {}, std::memory_order_release);
     GrantWaiters();
 }
@@ -247,7 +247,7 @@ void EntityLock::ReleaseShared() noexcept
     FO_STRONG_ASSERT(it != _sharedHolders.end(), "Shared entity lock release without holder entry", _sharedHolders.size());
 
     if (--it->second == 0) {
-        TSanRelease(this);
+        tsan_release(this);
         _sharedHolders.erase(it);
 
         // A queued exclusive waiter can only proceed once the last reader has left
@@ -460,7 +460,7 @@ auto EntityLock::TryAcquire() -> bool
 
     _ownerThread.store(this_thread, std::memory_order_release);
     _recursionCount = 1;
-    TSanAcquire(this);
+    tsan_acquire(this);
     return true;
 }
 
@@ -513,7 +513,7 @@ void EntityLock::CommitEnsureOp(bool is_exclusive) noexcept
         else {
             _ownerThread.store(this_thread, std::memory_order_release);
             _recursionCount = 1;
-            TSanAcquire(this);
+            tsan_acquire(this);
         }
     }
     else if (owner_thread == this_thread || _descendantHolders.contains(this_thread)) {
@@ -573,21 +573,21 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
         return "not-held";
     };
 
-    WriteLog("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity != nullptr ? entity->GetName() : string_view {}, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
+    write_log("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity != nullptr ? entity->GetName() : string_view {}, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
 
     for (auto walk = try_hold_entity(entity); walk; walk = walk->GetParentRaw()) {
-        WriteLog("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
+        write_log("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
 
     auto widen = entity != nullptr ? entity->GetSyncWidenEntity() : nullptr;
 
     for (auto walk = try_hold_entity(widen); walk; walk = walk->GetParentRaw()) {
-        WriteLog("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
+        write_log("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
 
     // The offending call site. An uncovered access is always a bug to fix, and script-side catch
     // handlers otherwise swallow the exception before its stack is ever reported
-    safe_call([] { WriteLog("SyncDiag   stack:\n{}", FormatStackTrace(GetStackTrace())); });
+    safe_call([] { write_log("SyncDiag   stack:\n{}", format_stack_trace(get_stack_trace())); });
 }
 
 // Single-threaded logic runs every job on one worker, so no cover can ever be contended and the whole
@@ -1510,7 +1510,7 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
         }
 
         if (round % 10000 == 0) {
-            WriteLog("Fair lock re-acquire is spinning: round {} over {} ops", round, ops.size());
+            write_log("Fair lock re-acquire is spinning: round {} over {} ops", round, ops.size());
         }
 
         // Park on the contended op alone (blocking, FIFO ticket), holding nothing

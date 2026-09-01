@@ -72,11 +72,11 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 #else
     // Keep tool settings out of the resource cache: a dedicated per-application directory in the user data base.
     // No user data base (unusual sandbox) means best-effort no persistence rather than writing next to the binary
-    string base = Platform::GetUserDataBase();
+    string base = platform::get_user_data_base();
 
     if (!base.empty()) {
         string dir = strex(base).combine_path("FOnline").combine_path(app_name).str();
-        _cache = SafeAlloc::MakeUnique<CacheStorage>(dir);
+        _cache = safe_alloc::make_unique<CacheStorage>(dir);
     }
 #endif
 }
@@ -110,7 +110,7 @@ void SettingsStorageImpl::SetEntry(string_view key, string_view value)
 
 #if FO_WINDOWS
     if (!winapi::registry_write_value(_subKey, string(key), string(value))) {
-        WriteLog("Settings: failed to write registry value - {}\\{}", _subKey, key);
+        write_log("Settings: failed to write registry value - {}\\{}", _subKey, key);
     }
 
 #else
@@ -135,7 +135,7 @@ void SettingsStorageImpl::RemoveEntry(string_view key)
 }
 
 SettingsStorage::SettingsStorage(string_view app_name) :
-    _impl {SafeAlloc::MakeUnique<SettingsStorageImpl>(app_name)}
+    _impl {safe_alloc::make_unique<SettingsStorageImpl>(app_name)}
 {
     FO_STACK_TRACE_ENTRY();
 }

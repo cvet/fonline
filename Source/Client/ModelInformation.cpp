@@ -82,7 +82,7 @@ auto ModelInformation::Load(string_view name) -> bool
             return false;
         }
 
-        auto reader = DataReader(fo3d.GetDataSpan());
+        auto reader = data_reader(fo3d.GetDataSpan());
 
         try {
             FO_VERIFY_AND_THROW(LoadBaked(name, reader), "Failed to load baked 3D asset");
@@ -114,35 +114,35 @@ auto ModelInformation::Load(string_view name) -> bool
     return true;
 }
 
-auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
+auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<uint8_t> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
+    const_span<uint8_t> magic = reader.read_bytes(MODEL_DESCRIPTION_MAGIC.size());
     FO_VERIFY_AND_THROW(std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin()), "Invalid baked model description magic", name);
-    uint16_t schema = reader.Read<uint16_t>();
-    uint16_t flags = reader.Read<uint16_t>();
+    uint16_t schema = reader.read<uint16_t>();
+    uint16_t flags = reader.read<uint16_t>();
     FO_VERIFY_AND_THROW(schema == MODEL_DESCRIPTION_SCHEMA_VERSION, "Unsupported baked model description schema", name, schema, MODEL_DESCRIPTION_SCHEMA_VERSION);
     FO_VERIFY_AND_THROW((flags & ~MODEL_DESCRIPTION_SUPPORTED_FLAGS) == 0, "Baked model description contains unsupported flags", name, flags);
 
-    string model = reader.ReadString();
-    bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
-    _disableBackwardAnim = reader.Read<uint8_t>() != 0;
-    _shadowDisabled = reader.Read<uint8_t>() != 0;
+    string model = reader.read_string();
+    bool disable_animation_interpolation = reader.read<uint8_t>() != 0;
+    _disableBackwardAnim = reader.read<uint8_t>() != 0;
+    _shadowDisabled = reader.read<uint8_t>() != 0;
 
-    int32_t draw_width = reader.Read<int32_t>();
-    int32_t draw_height = reader.Read<int32_t>();
-    int32_t view_width = reader.Read<int32_t>();
-    int32_t view_height = reader.Read<int32_t>();
+    int32_t draw_width = reader.read<int32_t>();
+    int32_t draw_height = reader.read<int32_t>();
+    int32_t view_width = reader.read<int32_t>();
+    int32_t view_height = reader.read<int32_t>();
 
     FO_VERIFY_AND_THROW(draw_width == 0 && draw_height == 0 && view_width == 0 && view_height == 0, "Baked model description contains obsolete explicit sprite dimensions", name, draw_width, draw_height, view_width, view_height);
 
-    string rotation_bone = reader.ReadString();
+    string rotation_bone = reader.read_string();
     _rotationBone = !rotation_bone.empty() ? _modelMngr->GetBoneHashedString(rotation_bone) : hstring {};
 
     BakedModelDescriptionLink default_link = ReadBakedModelDescriptionLink(reader, name);
 
-    uint32_t links_count = reader.Read<uint32_t>();
+    uint32_t links_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, links_count, BAKED_MODEL_DESCRIPTION_LINK_MIN_SIZE, "links", name);
     vector<BakedModelDescriptionLink> links;
     links.reserve(links_count);
@@ -154,7 +154,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         links.emplace_back(std::move(link));
     }
 
-    uint32_t anim_entries_count = reader.Read<uint32_t>();
+    uint32_t anim_entries_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, anim_entries_count, BAKED_MODEL_DESCRIPTION_ANIM_ENTRY_MIN_SIZE, "animation entries", name);
     vector<BakedModelDescriptionAnimationEntry> anim_entries;
     anim_entries.reserve(anim_entries_count);
@@ -163,18 +163,18 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         anim_entries.emplace_back(ReadBakedModelDescriptionAnimationEntry(reader));
     }
 
-    uint32_t anim_speed_count = reader.Read<uint32_t>();
+    uint32_t anim_speed_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, anim_speed_count, 2 * sizeof(int32_t) + sizeof(float32_t), "animation speeds", name);
 
     for (uint32_t i = 0; i < anim_speed_count; i++) {
-        int32_t state_anim = reader.Read<int32_t>();
-        int32_t action_anim = reader.Read<int32_t>();
-        float32_t speed = reader.Read<float32_t>();
+        int32_t state_anim = reader.read<int32_t>();
+        int32_t action_anim = reader.read<int32_t>();
+        float32_t speed = reader.read<float32_t>();
         FO_VERIFY_AND_THROW(speed > 0.0f, "Baked model description contains a non-positive animation speed", state_anim, action_anim, name, speed);
         _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(state_anim), static_cast<CritterActionAnim>(action_anim)), speed);
     }
 
-    uint32_t anim_layer_values_count = reader.Read<uint32_t>();
+    uint32_t anim_layer_values_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, anim_layer_values_count, 4 * sizeof(int32_t), "animation layer values", name);
 
     for (uint32_t i = 0; i < anim_layer_values_count; i++) {
@@ -189,38 +189,38 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         _animLayerValues[index].emplace_back(value.Layer, value.LayerValue);
     }
 
-    uint32_t fast_transition_bones_count = reader.Read<uint32_t>();
+    uint32_t fast_transition_bones_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, fast_transition_bones_count, BAKED_STRING_MIN_SIZE, "fast-transition bones", name);
 
     for (uint32_t i = 0; i < fast_transition_bones_count; i++) {
-        string bone_name = reader.ReadString();
+        string bone_name = reader.read_string();
         _fastTransitionBones.insert(_modelMngr->GetBoneHashedString(bone_name));
     }
 
-    uint32_t state_anim_equals_count = reader.Read<uint32_t>();
+    uint32_t state_anim_equals_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, state_anim_equals_count, 2 * sizeof(int32_t), "state-animation aliases", name);
 
     for (uint32_t i = 0; i < state_anim_equals_count; i++) {
-        int32_t from = reader.Read<int32_t>();
-        int32_t to = reader.Read<int32_t>();
+        int32_t from = reader.read<int32_t>();
+        int32_t to = reader.read<int32_t>();
         _stateAnimEquals.emplace(static_cast<CritterStateAnim>(from), static_cast<CritterStateAnim>(to));
     }
 
-    uint32_t action_anim_equals_count = reader.Read<uint32_t>();
+    uint32_t action_anim_equals_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, action_anim_equals_count, 2 * sizeof(int32_t), "action-animation aliases", name);
 
     for (uint32_t i = 0; i < action_anim_equals_count; i++) {
-        int32_t from = reader.Read<int32_t>();
-        int32_t to = reader.Read<int32_t>();
+        int32_t from = reader.read<int32_t>();
+        int32_t to = reader.read<int32_t>();
         _actionAnimEquals.emplace(static_cast<CritterActionAnim>(from), static_cast<CritterActionAnim>(to));
     }
 
-    uint64_t animation_rig_data_size = reader.Read<uint64_t>();
+    uint64_t animation_rig_data_size = reader.read<uint64_t>();
     FO_VERIFY_AND_THROW(animation_rig_data_size != 0 && animation_rig_data_size <= std::numeric_limits<size_t>::max(), "Baked model description contains invalid animation rig-data size", name, animation_rig_data_size);
     VerifyModelBakedCountFitsData(reader, static_cast<size_t>(animation_rig_data_size), sizeof(uint8_t), "animation rig data", name);
-    unique_ptr<ModelAnimationRuntimeRig> animation_runtime_rig = LoadModelAnimationRuntimeRig(reader.ReadBytes(static_cast<size_t>(animation_rig_data_size)), name, model, disable_animation_interpolation);
+    unique_ptr<ModelAnimationRuntimeRig> animation_runtime_rig = LoadModelAnimationRuntimeRig(reader.read_bytes(static_cast<size_t>(animation_rig_data_size)), name, model, disable_animation_interpolation);
 
-    reader.VerifyEnd();
+    reader.verify_end();
 
     FO_VERIFY_AND_THROW(!model.empty(), "Baked model description has no Model section", name);
 
@@ -232,7 +232,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     _hierarchy = hierarchy;
     IndexAnimationPoseJoints(*animation_runtime_rig);
 
-    auto anim_info = _modelMngr->_engineMetadata->GetAnimationInfo(_modelMngr->_engineMetadata->Hashes.ToHashedString(name));
+    auto anim_info = _modelMngr->_engineMetadata->GetAnimationInfo(_modelMngr->_engineMetadata->Hashes.to_hashed_string(name));
     FO_VERIFY_AND_THROW(anim_info && anim_info->Model, "Baked model animation information was not found", name);
     _modelBounds = anim_info->Model->ModelBounds;
     _viewBounds = anim_info->Model->ViewBounds;
@@ -248,7 +248,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         auto area = _modelMngr->GetHierarchy(raw_cut.FileName);
         FO_VERIFY_AND_THROW(area, "Cut file was not found", raw_cut.FileName);
 
-        auto cut_holder = SafeAlloc::MakeUnique<ModelCutData>();
+        auto cut_holder = safe_alloc::make_unique<ModelCutData>();
         auto cut = cut_holder.as_ptr();
         _cutData.emplace_back(std::move(cut_holder));
 
@@ -524,68 +524,68 @@ void ModelInformation::IndexPoseJointLookups()
     }
 }
 
-auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader, string_view context) const -> ModelInformation::BakedModelDescriptionLink
+auto ModelInformation::ReadBakedModelDescriptionLink(data_reader& reader, string_view context) const -> ModelInformation::BakedModelDescriptionLink
 {
     FO_STACK_TRACE_ENTRY();
 
     BakedModelDescriptionLink link;
-    link.Data.Layer = reader.Read<int32_t>();
-    link.Data.LayerValue = reader.Read<int32_t>();
+    link.Data.Layer = reader.read<int32_t>();
+    link.Data.LayerValue = reader.read<int32_t>();
     FO_VERIFY_AND_THROW(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Model link layer is out of range", link.Data.Layer);
 
-    string link_bone = reader.ReadString();
+    string link_bone = reader.read_string();
     link.Data.LinkBone = !link_bone.empty() ? _modelMngr->GetBoneHashedString(link_bone) : hstring {};
-    link.Data.ChildName = reader.ReadString();
-    link.Data.IsParticles = reader.Read<uint8_t>() != 0;
-    link.Data.RotX = reader.Read<float32_t>();
-    link.Data.RotY = reader.Read<float32_t>();
-    link.Data.RotZ = reader.Read<float32_t>();
-    link.Data.MoveX = reader.Read<float32_t>();
-    link.Data.MoveY = reader.Read<float32_t>();
-    link.Data.MoveZ = reader.Read<float32_t>();
-    link.Data.ScaleX = reader.Read<float32_t>();
-    link.Data.ScaleY = reader.Read<float32_t>();
-    link.Data.ScaleZ = reader.Read<float32_t>();
-    link.Data.SpeedAjust = reader.Read<float32_t>();
+    link.Data.ChildName = reader.read_string();
+    link.Data.IsParticles = reader.read<uint8_t>() != 0;
+    link.Data.RotX = reader.read<float32_t>();
+    link.Data.RotY = reader.read<float32_t>();
+    link.Data.RotZ = reader.read<float32_t>();
+    link.Data.MoveX = reader.read<float32_t>();
+    link.Data.MoveY = reader.read<float32_t>();
+    link.Data.MoveZ = reader.read<float32_t>();
+    link.Data.ScaleX = reader.read<float32_t>();
+    link.Data.ScaleY = reader.read<float32_t>();
+    link.Data.ScaleZ = reader.read<float32_t>();
+    link.Data.SpeedAjust = reader.read<float32_t>();
     FO_VERIFY_AND_THROW(link.Data.SpeedAjust >= 0.0f, "Model link speed adjust is negative");
-    link.Data.DisabledLayer = reader.ReadSizedObjectVector<int32_t>();
+    link.Data.DisabledLayer = reader.read_sized_object_vector<int32_t>();
 
     for (int32_t disabled_layer : link.Data.DisabledLayer) {
         FO_VERIFY_AND_THROW(disabled_layer >= 0 && disabled_layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Disabled model layer is out of range", disabled_layer);
     }
 
-    uint32_t disabled_mesh_count = reader.Read<uint32_t>();
+    uint32_t disabled_mesh_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, disabled_mesh_count, BAKED_STRING_MIN_SIZE, "disabled meshes", context);
     link.Data.DisabledMesh.reserve(disabled_mesh_count);
 
     for (uint32_t i = 0; i < disabled_mesh_count; i++) {
-        string mesh_name = reader.ReadString();
+        string mesh_name = reader.read_string();
         link.Data.DisabledMesh.emplace_back(!mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
     }
 
-    uint32_t texture_count = reader.Read<uint32_t>();
+    uint32_t texture_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, texture_count, 2 * BAKED_STRING_MIN_SIZE + sizeof(int32_t), "texture overrides", context);
     link.Data.TextureInfo.reserve(texture_count);
 
     for (uint32_t i = 0; i < texture_count; i++) {
-        string texture_name = reader.ReadString();
-        string mesh_name = reader.ReadString();
-        int32_t texture_index = reader.Read<int32_t>();
+        string texture_name = reader.read_string();
+        string mesh_name = reader.read_string();
+        int32_t texture_index = reader.read<int32_t>();
         FO_VERIFY_AND_THROW(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", texture_index);
         link.Data.TextureInfo.emplace_back(std::move(texture_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {}, texture_index);
     }
 
-    uint32_t effect_count = reader.Read<uint32_t>();
+    uint32_t effect_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, effect_count, 2 * BAKED_STRING_MIN_SIZE, "effect overrides", context);
     link.Data.EffectInfo.reserve(effect_count);
 
     for (uint32_t i = 0; i < effect_count; i++) {
-        string effect_name = reader.ReadString();
-        string mesh_name = reader.ReadString();
+        string effect_name = reader.read_string();
+        string mesh_name = reader.read_string();
         link.Data.EffectInfo.emplace_back(std::move(effect_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
     }
 
-    uint32_t cut_count = reader.Read<uint32_t>();
+    uint32_t cut_count = reader.read<uint32_t>();
     VerifyModelBakedCountFitsData(reader, cut_count, BAKED_MODEL_DESCRIPTION_CUT_MIN_SIZE, "cut entries", context);
     link.CutInfo.reserve(cut_count);
 
@@ -593,7 +593,7 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader, string_
         link.CutInfo.emplace_back(ReadBakedModelDescriptionCutInfo(reader));
     }
 
-    uint8_t has_geometry_value = reader.Read<uint8_t>();
+    uint8_t has_geometry_value = reader.read<uint8_t>();
     FO_VERIFY_AND_THROW(has_geometry_value <= uint8_t {1}, "Baked model link geometry flag is not 0 or 1", context, link.Data.ChildName, has_geometry_value);
     bool has_geometry = has_geometry_value != 0;
     bool expected_geometry = !link.Data.ChildName.empty() && !link.Data.IsParticles;
@@ -601,21 +601,21 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader, string_
 
     if (has_geometry) {
         ModelBounds3D bounds {
-            .Min = reader.Read<vec3>(),
-            .Max = reader.Read<vec3>(),
+            .Min = reader.read<vec3>(),
+            .Max = reader.read<vec3>(),
         };
         FO_VERIFY_AND_THROW(IsValidModelBounds(bounds), "Model link bounds minimum exceeds maximum or contains a non-finite coordinate", context, link.Data.ChildName, bounds.Min.x, bounds.Min.y, bounds.Min.z, bounds.Max.x, bounds.Max.y, bounds.Max.z);
         FO_VERIFY_AND_THROW(HasModelBoundsExtent(bounds), "Model link bounds are degenerate", context, link.Data.ChildName);
         link.Data.Bounds = bounds;
 
-        uint32_t animation_bounds_count = reader.Read<uint32_t>();
+        uint32_t animation_bounds_count = reader.read<uint32_t>();
         VerifyModelBakedCountFitsData(reader, animation_bounds_count, BAKED_MODEL_LINK_ANIMATION_BOUNDS_SIZE, "link animation bounds", context);
         link.AnimationBounds.reserve(animation_bounds_count);
 
         for (uint32_t i = 0; i < animation_bounds_count; i++) {
-            int32_t state_anim = reader.Read<int32_t>();
-            int32_t action_anim = reader.Read<int32_t>();
-            ModelBounds3D clip_bounds {.Min = reader.Read<vec3>(), .Max = reader.Read<vec3>()};
+            int32_t state_anim = reader.read<int32_t>();
+            int32_t action_anim = reader.read<int32_t>();
+            ModelBounds3D clip_bounds {.Min = reader.read<vec3>(), .Max = reader.read<vec3>()};
             FO_VERIFY_AND_THROW(IsValidModelBounds(clip_bounds), "Model link animation bounds minimum exceeds maximum or contains a non-finite coordinate", context, link.Data.ChildName, state_anim, action_anim);
             FO_VERIFY_AND_THROW(HasModelBoundsExtent(clip_bounds), "Model link animation bounds are degenerate", context, link.Data.ChildName, state_anim, action_anim);
             link.AnimationBounds.emplace_back(state_anim, action_anim, clip_bounds);
@@ -625,42 +625,42 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader, string_
     return link;
 }
 
-auto ModelInformation::ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> ModelInformation::BakedModelDescriptionCutInfo
+auto ModelInformation::ReadBakedModelDescriptionCutInfo(data_reader& reader) const -> ModelInformation::BakedModelDescriptionCutInfo
 {
     FO_STACK_TRACE_ENTRY();
 
     BakedModelDescriptionCutInfo cut;
-    cut.FileName = reader.ReadString();
-    cut.Layers = reader.ReadSizedObjectVector<int32_t>();
-    cut.Shapes = reader.ReadStringVector();
-    cut.UnskinBone1 = reader.ReadString();
-    cut.UnskinBone2 = reader.ReadString();
-    cut.UnskinShape = reader.ReadString();
-    cut.RevertUnskinShape = reader.Read<uint8_t>() != 0;
+    cut.FileName = reader.read_string();
+    cut.Layers = reader.read_sized_object_vector<int32_t>();
+    cut.Shapes = reader.read_string_vector();
+    cut.UnskinBone1 = reader.read_string();
+    cut.UnskinBone2 = reader.read_string();
+    cut.UnskinShape = reader.read_string();
+    cut.RevertUnskinShape = reader.read<uint8_t>() != 0;
     return cut;
 }
 
-auto ModelInformation::ReadBakedModelDescriptionAnimationEntry(DataReader& reader) const -> ModelInformation::BakedModelDescriptionAnimationEntry
+auto ModelInformation::ReadBakedModelDescriptionAnimationEntry(data_reader& reader) const -> ModelInformation::BakedModelDescriptionAnimationEntry
 {
     FO_STACK_TRACE_ENTRY();
 
     BakedModelDescriptionAnimationEntry anim_entry;
-    anim_entry.StateAnim = reader.Read<int32_t>();
-    anim_entry.ActionAnim = reader.Read<int32_t>();
-    anim_entry.FileName = reader.ReadString();
-    anim_entry.Name = reader.ReadString();
+    anim_entry.StateAnim = reader.read<int32_t>();
+    anim_entry.ActionAnim = reader.read<int32_t>();
+    anim_entry.FileName = reader.read_string();
+    anim_entry.Name = reader.read_string();
     return anim_entry;
 }
 
-auto ModelInformation::ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> ModelInformation::BakedModelDescriptionAnimLayerValue
+auto ModelInformation::ReadBakedModelDescriptionAnimLayerValue(data_reader& reader) const -> ModelInformation::BakedModelDescriptionAnimLayerValue
 {
     FO_STACK_TRACE_ENTRY();
 
     BakedModelDescriptionAnimLayerValue value;
-    value.StateAnim = reader.Read<int32_t>();
-    value.ActionAnim = reader.Read<int32_t>();
-    value.Layer = reader.Read<int32_t>();
-    value.LayerValue = reader.Read<int32_t>();
+    value.StateAnim = reader.read<int32_t>();
+    value.ActionAnim = reader.read<int32_t>();
+    value.Layer = reader.read<int32_t>();
+    value.LayerValue = reader.read<int32_t>();
     FO_VERIFY_AND_THROW(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Animation layer is out of range", value.Layer);
     return value;
 }
@@ -676,7 +676,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     }
 
     // Find substitute animation
-    hstring base_model_name = _modelMngr->_engineMetadata->Hashes.ToHashedString(_fileName);
+    hstring base_model_name = _modelMngr->_engineMetadata->Hashes.to_hashed_string(_fileName);
     auto base_state_anim = state_anim;
     auto base_action_anim = action_anim;
 
@@ -841,10 +841,10 @@ auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
     FO_VERIFY_AND_THROW(!_animController || _animationRuntimeRig, "Animated model has no animation runtime rig", _fileName);
     FO_VERIFY_AND_THROW(!_animController || _animIndexes.size() == numeric_cast<size_t>(_animController->GetAnimationsCount()), "Animation controller metadata count differs from its state/action index", _fileName, _animIndexes.size(), _animController ? _animController->GetAnimationsCount() : 0);
 
-    auto model = SafeAlloc::MakeUnique<ModelInstance>(_modelMngr, this);
+    auto model = safe_alloc::make_unique<ModelInstance>(_modelMngr, this);
 
     if (_animationRuntimeRig) {
-        model->_animationRuntimePose = SafeAlloc::MakeUnique<ModelAnimationRuntimePose>(_animationRuntimeRig);
+        model->_animationRuntimePose = safe_alloc::make_unique<ModelAnimationRuntimePose>(_animationRuntimeRig);
     }
 
     if (_animController) {

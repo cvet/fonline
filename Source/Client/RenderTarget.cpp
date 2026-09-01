@@ -94,7 +94,7 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool
 
     _flush();
 
-    auto rt = SafeAlloc::MakeUnique<RenderTarget>(size, CreateRenderTargetTexture(size, linear_filtered, with_depth));
+    auto rt = safe_alloc::make_unique<RenderTarget>(size, CreateRenderTargetTexture(size, linear_filtered, with_depth));
     rt->_lastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
 
     _rtAll.push_back(std::move(rt));

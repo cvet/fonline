@@ -117,10 +117,10 @@ void ImageWriter::WriteSimplePng(string_view fname, isize32 size, const_span<uco
     for (int32_t y = 0; y < size.height; y++) {
         size_t row_start = numeric_cast<size_t>(y) * (row_bytes + 1);
         scanlines[row_start] = 0;
-        MemCopy(scanlines_data.get() + row_start + 1, pixels_data.get() + numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width), row_bytes);
+        mem_copy(scanlines_data.get() + row_start + 1, pixels_data.get() + numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width), row_bytes);
     }
 
-    WritePngChunk(file, "IDAT", Compressor::Compress(scanlines));
+    WritePngChunk(file, "IDAT", compressor::compress(scanlines));
     WritePngChunk(file, "IEND", {});
 
     FO_VERIFY_AND_THROW(file, "Failed while writing PNG image file", fname, size, data.size());

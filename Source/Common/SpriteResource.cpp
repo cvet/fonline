@@ -145,7 +145,7 @@ auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteRes
     for (int32_t y = 0; y < copy_height; y++) {
         size_t frame_offset = numeric_cast<size_t>(frame_begin_y + y) * frame.Size.width + frame_begin_x;
         size_t image_offset = numeric_cast<size_t>(source_begin_y + y) * image.Size.width + source_begin_x;
-        MemCopy(image.Pixels.data() + image_offset, frame.Pixels.data() + frame_offset, numeric_cast<size_t>(copy_width) * sizeof(ucolor));
+        mem_copy(image.Pixels.data() + image_offset, frame.Pixels.data() + frame_offset, numeric_cast<size_t>(copy_width) * sizeof(ucolor));
     }
 
     return image;

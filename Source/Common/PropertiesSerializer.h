@@ -42,20 +42,17 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(PropertySerializationException);
 
-class PropertiesSerializer final
+namespace PropertiesSerializer
 {
-public:
-    PropertiesSerializer() = delete;
-
-    [[nodiscard]] static auto SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document;
-    [[nodiscard]] static auto LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool;
-    [[nodiscard]] static auto SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
-    [[nodiscard]] static auto SavePropertyToValue(ptr<const Property> prop, const_span<uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
-    [[nodiscard]] static auto SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> string;
-    [[nodiscard]] static auto SavePropertyToText(ptr<const Property> prop, const_span<uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string;
-    static void LoadPropertyFromValue(ptr<Properties> props, ptr<const Property> prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver);
-    static void LoadPropertyFromValue(ptr<const Property> prop, const AnyData::Value& value, const function<void(const_span<uint8_t>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver);
-    static void LoadPropertyFromText(ptr<Properties> props, ptr<const Property> prop, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
-};
+    [[nodiscard]] auto SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Document;
+    [[nodiscard]] auto LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, hash_resolver& hashes, NameResolver& name_resolver) noexcept -> bool;
+    [[nodiscard]] auto SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value;
+    [[nodiscard]] auto SavePropertyToValue(ptr<const Property> prop, const_span<uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value;
+    [[nodiscard]] auto SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> string;
+    [[nodiscard]] auto SavePropertyToText(ptr<const Property> prop, const_span<uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> string;
+    void LoadPropertyFromValue(ptr<Properties> props, ptr<const Property> prop, const AnyData::Value& value, hash_resolver& hashes, NameResolver& name_resolver);
+    void LoadPropertyFromValue(ptr<const Property> prop, const AnyData::Value& value, const function<void(const_span<uint8_t>)>& set_data, hash_resolver& hashes, NameResolver& name_resolver);
+    void LoadPropertyFromText(ptr<Properties> props, ptr<const Property> prop, string_view text, hash_resolver& hashes, NameResolver& name_resolver);
+}
 
 FO_END_NAMESPACE

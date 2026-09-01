@@ -51,16 +51,16 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ENABLE_3D
 
-static void WriteTestModelBone(DataWriter& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names, float32_t vertex_scale = 1.0f)
+static void WriteTestModelBone(data_writer& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names, float32_t vertex_scale = 1.0f)
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.WriteString(name);
+    writer.write_string(name);
 
     mat44 matrix {1.0f};
-    writer.Write<mat44>(matrix);
-    writer.Write<mat44>(matrix);
-    writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
+    writer.write<mat44>(matrix);
+    writer.write<mat44>(matrix);
+    writer.write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
 
     if (attached_mesh) {
         array<ModelMeshVertexData, 3> vertices {};
@@ -73,74 +73,74 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
         }
 
         constexpr array<ModelMeshIndexData, 3> indices {0, 1, 2};
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size())); // Vertices
-        writer.WriteObjectArray(const_span<ModelMeshVertexData> {vertices});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size())); // Indices
-        writer.WriteObjectArray(const_span<ModelMeshIndexData> {indices});
-        writer.WriteString(diffuse_texture);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size())); // Vertices
+        writer.write_object_array(const_span<ModelMeshVertexData> {vertices});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(indices.size())); // Indices
+        writer.write_object_array(const_span<ModelMeshIndexData> {indices});
+        writer.write_string(diffuse_texture);
 
         vector<string_view> effective_skin_bone_names(skin_bone_names);
 
         if (effective_skin_bone_names.empty()) {
             effective_skin_bone_names.emplace_back();
         }
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(effective_skin_bone_names.size())); // Skin bones
+        writer.write<uint32_t>(numeric_cast<uint32_t>(effective_skin_bone_names.size())); // Skin bones
         for (string_view skin_bone_name : effective_skin_bone_names) {
-            writer.WriteString(skin_bone_name);
+            writer.write_string(skin_bone_name);
         }
 
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(effective_skin_bone_names.size())); // Skin bone offsets
+        writer.write<uint32_t>(numeric_cast<uint32_t>(effective_skin_bone_names.size())); // Skin bone offsets
         for (size_t i = 0; i < effective_skin_bone_names.size(); i++) {
-            writer.Write<mat44>(matrix);
+            writer.write<mat44>(matrix);
         }
     }
 
-    writer.Write<uint32_t>(uint32_t {0}); // Children
+    writer.write<uint32_t>(uint32_t {0}); // Children
 }
 
-static void WriteTestModelSourceVec3Track(DataWriter& writer, const ModelAnimationVec3Track& track)
+static void WriteTestModelSourceVec3Track(data_writer& writer, const ModelAnimationVec3Track& track)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(track.Times.size() == track.Values.size(), "Test model source vec3 track sizes differ");
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(track.Times.size()));
-    writer.WriteObjectArray(const_span<float32_t> {track.Times});
-    writer.WriteObjectArray(const_span<vec3> {track.Values});
+    writer.write<uint32_t>(numeric_cast<uint32_t>(track.Times.size()));
+    writer.write_object_array(const_span<float32_t> {track.Times});
+    writer.write_object_array(const_span<vec3> {track.Values});
 }
 
-static void WriteTestModelSourceQuaternionTrack(DataWriter& writer, const ModelAnimationQuaternionTrack& track)
+static void WriteTestModelSourceQuaternionTrack(data_writer& writer, const ModelAnimationQuaternionTrack& track)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(track.Times.size() == track.Values.size(), "Test model source quaternion track sizes differ");
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(track.Times.size()));
-    writer.WriteObjectArray(const_span<float32_t> {track.Times});
-    writer.WriteObjectArray(const_span<quaternion> {track.Values});
+    writer.write<uint32_t>(numeric_cast<uint32_t>(track.Times.size()));
+    writer.write_object_array(const_span<float32_t> {track.Times});
+    writer.write_object_array(const_span<quaternion> {track.Values});
 }
 
-static auto ReadTestModelSourceVec3Track(DataReader& reader) -> ModelAnimationVec3Track
+static auto ReadTestModelSourceVec3Track(data_reader& reader) -> ModelAnimationVec3Track
 {
     FO_STACK_TRACE_ENTRY();
 
     ModelAnimationVec3Track track;
-    uint32_t count = reader.Read<uint32_t>();
+    uint32_t count = reader.read<uint32_t>();
     track.Times.resize(count);
     track.Values.resize(count);
-    reader.ReadObjectArray(span<float32_t> {track.Times});
-    reader.ReadObjectArray(span<vec3> {track.Values});
+    reader.read_object_array(span<float32_t> {track.Times});
+    reader.read_object_array(span<vec3> {track.Values});
     return track;
 }
 
-static auto ReadTestModelSourceQuaternionTrack(DataReader& reader) -> ModelAnimationQuaternionTrack
+static auto ReadTestModelSourceQuaternionTrack(data_reader& reader) -> ModelAnimationQuaternionTrack
 {
     FO_STACK_TRACE_ENTRY();
 
     ModelAnimationQuaternionTrack track;
-    uint32_t count = reader.Read<uint32_t>();
+    uint32_t count = reader.read<uint32_t>();
     track.Times.resize(count);
     track.Values.resize(count);
-    reader.ReadObjectArray(span<float32_t> {track.Times});
-    reader.ReadObjectArray(span<quaternion> {track.Values});
+    reader.read_object_array(span<float32_t> {track.Times});
+    reader.read_object_array(span<quaternion> {track.Values});
     return track;
 }
 
@@ -149,26 +149,26 @@ static auto WriteTestModelSourceFixture(const ModelSourceAsset& asset) -> vector
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
-    DataWriter writer {data};
-    writer.WriteString("LF_TEST_MODEL_SOURCE");
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(asset.Skeleton.Joints.size()));
+    data_writer writer {data};
+    writer.write_string("LF_TEST_MODEL_SOURCE");
+    writer.write<uint32_t>(numeric_cast<uint32_t>(asset.Skeleton.Joints.size()));
 
     for (const ModelSkeletonJoint& joint : asset.Skeleton.Joints) {
-        writer.WriteString(joint.Name);
-        writer.WriteStringVector(joint.Hierarchy);
-        writer.Write<mat44>(joint.RestLocalTransform);
+        writer.write_string(joint.Name);
+        writer.write_string_vector(joint.Hierarchy);
+        writer.write<mat44>(joint.RestLocalTransform);
     }
 
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(asset.Animations.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(asset.Animations.size()));
 
     for (const ModelAnimationSource& animation : asset.Animations) {
-        writer.WriteString(animation.Name);
-        writer.Write<float32_t>(animation.Duration);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(animation.Joints.size()));
+        writer.write_string(animation.Name);
+        writer.write<float32_t>(animation.Duration);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(animation.Joints.size()));
 
         for (const ModelAnimationJointSource& joint : animation.Joints) {
-            writer.WriteString(joint.OutputName);
-            writer.WriteStringVector(joint.Hierarchy);
+            writer.write_string(joint.OutputName);
+            writer.write_string_vector(joint.Hierarchy);
             WriteTestModelSourceVec3Track(writer, joint.Translation);
             WriteTestModelSourceQuaternionTrack(writer, joint.Rotation);
             WriteTestModelSourceVec3Track(writer, joint.Scale);
@@ -182,39 +182,39 @@ static auto LoadTestModelSourceFixture(string_view path, const File& file) -> Mo
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto reader = DataReader(file.GetDataSpan());
-    FO_VERIFY_AND_THROW(reader.ReadString() == "LF_TEST_MODEL_SOURCE", "Unexpected test model source fixture", path);
+    auto reader = data_reader(file.GetDataSpan());
+    FO_VERIFY_AND_THROW(reader.read_string() == "LF_TEST_MODEL_SOURCE", "Unexpected test model source fixture", path);
 
     ModelSourceAsset asset;
     asset.FileName = path;
     asset.WriteTime = file.GetWriteTime();
     asset.Skeleton.FileName = path;
-    asset.Skeleton.Joints.resize(reader.Read<uint32_t>());
+    asset.Skeleton.Joints.resize(reader.read<uint32_t>());
 
     for (ModelSkeletonJoint& joint : asset.Skeleton.Joints) {
-        joint.Name = reader.ReadString();
-        joint.Hierarchy = reader.ReadStringVector();
-        joint.RestLocalTransform = reader.Read<mat44>();
+        joint.Name = reader.read_string();
+        joint.Hierarchy = reader.read_string_vector();
+        joint.RestLocalTransform = reader.read<mat44>();
     }
 
-    asset.Animations.resize(reader.Read<uint32_t>());
+    asset.Animations.resize(reader.read<uint32_t>());
 
     for (ModelAnimationSource& animation : asset.Animations) {
         animation.FileName = path;
-        animation.Name = reader.ReadString();
-        animation.Duration = reader.Read<float32_t>();
-        animation.Joints.resize(reader.Read<uint32_t>());
+        animation.Name = reader.read_string();
+        animation.Duration = reader.read<float32_t>();
+        animation.Joints.resize(reader.read<uint32_t>());
 
         for (ModelAnimationJointSource& joint : animation.Joints) {
-            joint.OutputName = reader.ReadString();
-            joint.Hierarchy = reader.ReadStringVector();
+            joint.OutputName = reader.read_string();
+            joint.Hierarchy = reader.read_string_vector();
             joint.Translation = ReadTestModelSourceVec3Track(reader);
             joint.Rotation = ReadTestModelSourceQuaternionTrack(reader);
             joint.Scale = ReadTestModelSourceVec3Track(reader);
         }
     }
 
-    reader.VerifyEnd();
+    reader.verify_end();
     return asset;
 }
 
@@ -283,7 +283,7 @@ static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
-    DataWriter writer {data};
+    data_writer writer {data};
     WriteModelMeshHeader(writer);
     WriteTestModelBone(writer, root_bone, attached_mesh, diffuse_texture, skin_bone_names, vertex_scale);
     return data;
@@ -302,15 +302,15 @@ static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view c
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
-    auto writer = DataWriter(data);
+    auto writer = data_writer(data);
 
     WriteModelMeshHeader(writer);
-    writer.WriteString(root_bone);
+    writer.write_string(root_bone);
 
     mat44 matrix {1.0f};
-    writer.Write<mat44>(matrix);
-    writer.Write<mat44>(matrix);
-    writer.Write<uint8_t>(uint8_t {1});
+    writer.write<mat44>(matrix);
+    writer.write<mat44>(matrix);
+    writer.write<uint8_t>(uint8_t {1});
 
     array<ModelMeshVertexData, 3> vertices {};
     vertices[0].Position = vec3 {-0.5f, 0.0f, 0.0f};
@@ -322,16 +322,16 @@ static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view c
     }
 
     constexpr array<ModelMeshIndexData, 3> indices {0, 1, 2};
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size())); // Vertices
-    writer.WriteObjectArray(const_span<ModelMeshVertexData> {vertices});
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size())); // Indices
-    writer.WriteObjectArray(const_span<ModelMeshIndexData> {indices});
-    writer.WriteString({});
-    writer.Write<uint32_t>(uint32_t {1}); // Skin bones
-    writer.WriteString({});
-    writer.Write<uint32_t>(uint32_t {1}); // Skin bone offsets
-    writer.Write<mat44>(matrix);
-    writer.Write<uint32_t>(uint32_t {1}); // Children
+    writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size())); // Vertices
+    writer.write_object_array(const_span<ModelMeshVertexData> {vertices});
+    writer.write<uint32_t>(numeric_cast<uint32_t>(indices.size())); // Indices
+    writer.write_object_array(const_span<ModelMeshIndexData> {indices});
+    writer.write_string({});
+    writer.write<uint32_t>(uint32_t {1}); // Skin bones
+    writer.write_string({});
+    writer.write<uint32_t>(uint32_t {1}); // Skin bone offsets
+    writer.write<mat44>(matrix);
+    writer.write<uint32_t>(uint32_t {1}); // Children
 
     WriteTestModelBone(writer, child_bone, false, {}, {});
 
@@ -344,15 +344,15 @@ static auto MakeTestBakedModelChain(size_t joint_count) -> vector<uint8_t>
 
     FO_VERIFY_AND_THROW(joint_count != 0, "Test baked model chain requires at least one joint");
     vector<uint8_t> data;
-    DataWriter writer {data};
+    data_writer writer {data};
     WriteModelMeshHeader(writer);
 
     for (size_t joint_index = 0; joint_index < joint_count; joint_index++) {
-        writer.WriteString(strex("Bone{}", joint_index));
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<uint8_t>(uint8_t {0});
-        writer.Write<uint32_t>(joint_index + 1 < joint_count ? uint32_t {1} : uint32_t {0});
+        writer.write_string(strex("Bone{}", joint_index));
+        writer.write<mat44>(mat44 {1.0f});
+        writer.write<mat44>(mat44 {1.0f});
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<uint32_t>(joint_index + 1 < joint_count ? uint32_t {1} : uint32_t {0});
     }
 
     return data;
@@ -363,23 +363,23 @@ static auto MakeTestBakedAnimationModelWithChild(string_view root_bone, string_v
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
-    auto writer = DataWriter(data);
+    auto writer = data_writer(data);
 
     WriteModelMeshHeader(writer);
     mat44 root_matrix {1.0f};
-    writer.WriteString(root_bone);
-    writer.Write<mat44>(root_matrix);
-    writer.Write<mat44>(root_matrix);
-    writer.Write<uint8_t>(uint8_t {0});
-    writer.Write<uint32_t>(uint32_t {1}); // Children
+    writer.write_string(root_bone);
+    writer.write<mat44>(root_matrix);
+    writer.write<mat44>(root_matrix);
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<uint32_t>(uint32_t {1}); // Children
 
     mat44 child_matrix {1.0f};
     child_matrix[3][0] = child_translation_x;
-    writer.WriteString(child_bone);
-    writer.Write<mat44>(child_matrix);
-    writer.Write<mat44>(child_matrix);
-    writer.Write<uint8_t>(uint8_t {0});
-    writer.Write<uint32_t>(uint32_t {0}); // Children
+    writer.write_string(child_bone);
+    writer.write<mat44>(child_matrix);
+    writer.write<mat44>(child_matrix);
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<uint32_t>(uint32_t {0}); // Children
     return data;
 }
 
@@ -404,22 +404,22 @@ static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, s
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
-    auto writer = DataWriter(data);
+    auto writer = data_writer(data);
 
     WriteModelMeshHeader(writer);
-    writer.WriteString(root_bone);
+    writer.write_string(root_bone);
 
     mat44 matrix {1.0f};
-    writer.Write<mat44>(matrix);
-    writer.Write<mat44>(matrix);
-    writer.Write<uint8_t>(uint8_t {1});
-    writer.Write<uint32_t>(uint32_t {0}); // Vertices
-    writer.Write<uint32_t>(uint32_t {0}); // Indices
-    writer.WriteString({});
-    writer.Write<uint32_t>(uint32_t {1}); // Skin bones
-    writer.WriteString(skin_bone);
-    writer.Write<uint32_t>(uint32_t {0}); // Skin bone offsets
-    writer.Write<uint32_t>(uint32_t {0}); // Children
+    writer.write<mat44>(matrix);
+    writer.write<mat44>(matrix);
+    writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint32_t>(uint32_t {0}); // Vertices
+    writer.write<uint32_t>(uint32_t {0}); // Indices
+    writer.write_string({});
+    writer.write<uint32_t>(uint32_t {1}); // Skin bones
+    writer.write_string(skin_bone);
+    writer.write<uint32_t>(uint32_t {0}); // Skin bone offsets
+    writer.write<uint32_t>(uint32_t {0}); // Children
 
     return data;
 }
@@ -444,8 +444,8 @@ static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig, string_view ta
     FO_STACK_TRACE_ENTRY();
 
     vector<string> captured_messages;
-    SetLogCallback("model-info-animation-geometry-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-    auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-info-animation-geometry-test", {}); });
+    set_log_callback("model-info-animation-geometry-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
+    auto remove_callback = scope_exit([]() noexcept { set_log_callback("model-info-animation-geometry-test", {}); });
     CHECK_THROWS_AS(BakeModelInfoFiles(rig, target_path), ModelInfoBakerException);
 
     auto diagnostic = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Model description baking error:") != string::npos; });
@@ -479,35 +479,35 @@ struct SavedModelInfoLink
     vector<tuple<int32_t, int32_t, ModelBounds3D>> AnimationBounds {};
 };
 
-static auto ReadSavedModelInfoString(DataReader& reader) -> string
+static auto ReadSavedModelInfoString(data_reader& reader) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32_t len = reader.Read<uint32_t>();
-    const_span<uint8_t> str_bytes = reader.ReadBytes(len);
+    uint32_t len = reader.read<uint32_t>();
+    const_span<uint8_t> str_bytes = reader.read_bytes(len);
     return !str_bytes.empty() ? string(reinterpret_cast<const char*>(str_bytes.data()), len) : string {};
 }
 
-static void ReadSavedModelInfoHeader(DataReader& reader)
+static void ReadSavedModelInfoHeader(data_reader& reader)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<uint8_t> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
+    const_span<uint8_t> magic = reader.read_bytes(MODEL_DESCRIPTION_MAGIC.size());
     REQUIRE(std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin()));
-    CHECK(reader.Read<uint16_t>() == MODEL_DESCRIPTION_SCHEMA_VERSION);
-    CHECK(reader.Read<uint16_t>() == MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+    CHECK(reader.read<uint16_t>() == MODEL_DESCRIPTION_SCHEMA_VERSION);
+    CHECK(reader.read<uint16_t>() == MODEL_DESCRIPTION_SUPPORTED_FLAGS);
 }
 
-static void SkipSavedModelInfoCut(DataReader& reader)
+static void SkipSavedModelInfoCut(data_reader& reader)
 {
     FO_STACK_TRACE_ENTRY();
 
     (void)ReadSavedModelInfoString(reader);
 
-    uint32_t layer_count = reader.Read<uint32_t>();
-    (void)reader.ReadBytes(numeric_cast<size_t>(layer_count) * sizeof(int32_t));
+    uint32_t layer_count = reader.read<uint32_t>();
+    (void)reader.read_bytes(numeric_cast<size_t>(layer_count) * sizeof(int32_t));
 
-    uint32_t shape_count = reader.Read<uint32_t>();
+    uint32_t shape_count = reader.read<uint32_t>();
     for (uint32_t i = 0; i < shape_count; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
@@ -515,57 +515,57 @@ static void SkipSavedModelInfoCut(DataReader& reader)
     (void)ReadSavedModelInfoString(reader);
     (void)ReadSavedModelInfoString(reader);
     (void)ReadSavedModelInfoString(reader);
-    (void)reader.Read<uint8_t>();
+    (void)reader.read<uint8_t>();
 }
 
-static auto ReadSavedModelInfoLink(DataReader& reader) -> SavedModelInfoLink
+static auto ReadSavedModelInfoLink(data_reader& reader) -> SavedModelInfoLink
 {
     FO_STACK_TRACE_ENTRY();
 
     SavedModelInfoLink link;
-    link.Layer = reader.Read<int32_t>();
-    link.LayerValue = reader.Read<int32_t>();
+    link.Layer = reader.read<int32_t>();
+    link.LayerValue = reader.read<int32_t>();
     link.LinkBone = ReadSavedModelInfoString(reader);
     link.ChildName = ReadSavedModelInfoString(reader);
-    link.IsParticles = reader.Read<uint8_t>() != 0;
-    link.RotX = reader.Read<float32_t>();
-    link.RotY = reader.Read<float32_t>();
-    link.RotZ = reader.Read<float32_t>();
-    link.MoveX = reader.Read<float32_t>();
-    link.MoveY = reader.Read<float32_t>();
-    link.MoveZ = reader.Read<float32_t>();
-    link.ScaleX = reader.Read<float32_t>();
-    link.ScaleY = reader.Read<float32_t>();
-    link.ScaleZ = reader.Read<float32_t>();
-    link.SpeedAdjust = reader.Read<float32_t>();
+    link.IsParticles = reader.read<uint8_t>() != 0;
+    link.RotX = reader.read<float32_t>();
+    link.RotY = reader.read<float32_t>();
+    link.RotZ = reader.read<float32_t>();
+    link.MoveX = reader.read<float32_t>();
+    link.MoveY = reader.read<float32_t>();
+    link.MoveZ = reader.read<float32_t>();
+    link.ScaleX = reader.read<float32_t>();
+    link.ScaleY = reader.read<float32_t>();
+    link.ScaleZ = reader.read<float32_t>();
+    link.SpeedAdjust = reader.read<float32_t>();
 
-    link.DisabledLayerCount = reader.Read<uint32_t>();
-    (void)reader.ReadBytes(numeric_cast<size_t>(link.DisabledLayerCount) * sizeof(int32_t));
+    link.DisabledLayerCount = reader.read<uint32_t>();
+    (void)reader.read_bytes(numeric_cast<size_t>(link.DisabledLayerCount) * sizeof(int32_t));
 
-    link.DisabledMeshCount = reader.Read<uint32_t>();
+    link.DisabledMeshCount = reader.read<uint32_t>();
     for (uint32_t i = 0; i < link.DisabledMeshCount; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
 
-    link.TextureInfoCount = reader.Read<uint32_t>();
+    link.TextureInfoCount = reader.read<uint32_t>();
     for (uint32_t i = 0; i < link.TextureInfoCount; i++) {
         (void)ReadSavedModelInfoString(reader);
         (void)ReadSavedModelInfoString(reader);
-        (void)reader.Read<int32_t>();
+        (void)reader.read<int32_t>();
     }
 
-    link.EffectInfoCount = reader.Read<uint32_t>();
+    link.EffectInfoCount = reader.read<uint32_t>();
     for (uint32_t i = 0; i < link.EffectInfoCount; i++) {
         (void)ReadSavedModelInfoString(reader);
         (void)ReadSavedModelInfoString(reader);
     }
 
-    link.CutInfoCount = reader.Read<uint32_t>();
+    link.CutInfoCount = reader.read<uint32_t>();
     for (uint32_t i = 0; i < link.CutInfoCount; i++) {
         SkipSavedModelInfoCut(reader);
     }
 
-    uint8_t has_geometry_value = reader.Read<uint8_t>();
+    uint8_t has_geometry_value = reader.read<uint8_t>();
     CHECK(has_geometry_value <= uint8_t {1});
     bool has_geometry = has_geometry_value != 0;
     bool expected_geometry = !link.ChildName.empty() && !link.IsParticles;
@@ -573,16 +573,16 @@ static auto ReadSavedModelInfoLink(DataReader& reader) -> SavedModelInfoLink
 
     if (has_geometry) {
         link.Bounds = ModelBounds3D {
-            .Min = reader.Read<vec3>(),
-            .Max = reader.Read<vec3>(),
+            .Min = reader.read<vec3>(),
+            .Max = reader.read<vec3>(),
         };
 
-        uint32_t animation_bounds_count = reader.Read<uint32_t>();
+        uint32_t animation_bounds_count = reader.read<uint32_t>();
 
         for (uint32_t i = 0; i < animation_bounds_count; i++) {
-            int32_t state_anim = reader.Read<int32_t>();
-            int32_t action_anim = reader.Read<int32_t>();
-            ModelBounds3D clip_bounds {.Min = reader.Read<vec3>(), .Max = reader.Read<vec3>()};
+            int32_t state_anim = reader.read<int32_t>();
+            int32_t action_anim = reader.read<int32_t>();
+            ModelBounds3D clip_bounds {.Min = reader.read<vec3>(), .Max = reader.read<vec3>()};
             link.AnimationBounds.emplace_back(state_anim, action_anim, clip_bounds);
         }
     }
@@ -603,53 +603,53 @@ struct BakedModelMeshSummary
     vector<vindex_t> IndexData {};
 };
 
-static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary& summary)
+static void SkipBakedModelMeshPayload(data_reader& reader, BakedModelMeshSummary& summary)
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32_t vertex_count = reader.Read<uint32_t>();
+    uint32_t vertex_count = reader.read<uint32_t>();
     summary.Vertices += vertex_count;
     size_t vertex_offset = summary.VertexData.size();
     summary.VertexData.resize(vertex_offset + vertex_count);
-    reader.ReadObjectArray(span<Vertex3D> {summary.VertexData}.subspan(vertex_offset, vertex_count));
+    reader.read_object_array(span<Vertex3D> {summary.VertexData}.subspan(vertex_offset, vertex_count));
     if (vertex_count != 0 && !summary.FirstVertex) {
         summary.FirstVertex = summary.VertexData[vertex_offset];
     }
 
-    uint32_t index_count = reader.Read<uint32_t>();
+    uint32_t index_count = reader.read<uint32_t>();
     summary.Indices += index_count;
     size_t index_offset = summary.IndexData.size();
     summary.IndexData.resize(index_offset + index_count);
-    reader.ReadObjectArray(span<vindex_t> {summary.IndexData}.subspan(index_offset, index_count));
+    reader.read_object_array(span<vindex_t> {summary.IndexData}.subspan(index_offset, index_count));
 
     summary.DiffuseTexture = ReadSavedModelInfoString(reader);
 
-    uint32_t skin_bone_count = reader.Read<uint32_t>();
+    uint32_t skin_bone_count = reader.read<uint32_t>();
     summary.SkinBones += skin_bone_count;
     for (uint32_t i = 0; i < skin_bone_count; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
 
-    uint32_t skin_bone_offset_count = reader.Read<uint32_t>();
-    (void)reader.ReadBytes(numeric_cast<size_t>(skin_bone_offset_count) * sizeof(mat44));
+    uint32_t skin_bone_offset_count = reader.read<uint32_t>();
+    (void)reader.read_bytes(numeric_cast<size_t>(skin_bone_offset_count) * sizeof(mat44));
 }
 
-static void ReadBakedModelMeshSummaryBone(DataReader& reader, BakedModelMeshSummary& summary)
+static void ReadBakedModelMeshSummaryBone(data_reader& reader, BakedModelMeshSummary& summary)
 {
     FO_STACK_TRACE_ENTRY();
 
     (void)ReadSavedModelInfoString(reader);
     summary.Bones++;
 
-    (void)reader.ReadBytes(sizeof(mat44));
-    (void)reader.ReadBytes(sizeof(mat44));
+    (void)reader.read_bytes(sizeof(mat44));
+    (void)reader.read_bytes(sizeof(mat44));
 
-    if (reader.Read<uint8_t>() != 0) {
+    if (reader.read<uint8_t>() != 0) {
         summary.AttachedMeshes++;
         SkipBakedModelMeshPayload(reader, summary);
     }
 
-    uint32_t children_count = reader.Read<uint32_t>();
+    uint32_t children_count = reader.read<uint32_t>();
     for (uint32_t i = 0; i < children_count; i++) {
         ReadBakedModelMeshSummaryBone(reader, summary);
     }
@@ -659,13 +659,13 @@ static auto ReadBakedModelMeshSummary(const vector<uint8_t>& data) -> BakedModel
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto reader = DataReader({data.data(), data.size()});
+    auto reader = data_reader({data.data(), data.size()});
     BakedModelMeshSummary summary;
 
     ReadModelMeshHeader(reader, "test baked model mesh");
     ReadBakedModelMeshSummaryBone(reader, summary);
 
-    CHECK_NOTHROW(reader.VerifyEnd());
+    CHECK_NOTHROW(reader.verify_end());
     return summary;
 }
 
@@ -959,12 +959,12 @@ TEST_CASE("ModelBakers")
 
     REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
-    auto reader = DataReader({rig.Outputs.at("Critters/Test.fo3d").data(), rig.Outputs.at("Critters/Test.fo3d").size()});
+    auto reader = data_reader({rig.Outputs.at("Critters/Test.fo3d").data(), rig.Outputs.at("Critters/Test.fo3d").size()});
     ReadSavedModelInfoHeader(reader);
-    uint32_t model_name_len = reader.Read<uint32_t>();
+    uint32_t model_name_len = reader.read<uint32_t>();
     string model_name;
     model_name.resize(model_name_len);
-    reader.ReadStringBytes(model_name);
+    reader.read_string_bytes(model_name);
     CHECK(model_name == "Critters/Body.fbx");
     CHECK(rig.Outputs.count("Critters/TEMPLATE_Test.fo3d") == 0);
 
@@ -994,14 +994,14 @@ TEST_CASE("ModelBakers")
 TEST_CASE("ModelBoneLookup")
 {
 #if FO_ENABLE_3D
-    HashStorage hash_storage;
-    hstring root_name = hash_storage.ToHashedString("Root");
-    hstring child_name = hash_storage.ToHashedString("Child");
-    hstring missing_name = hash_storage.ToHashedString("Missing");
+    hash_storage hash_storage;
+    hstring root_name = hash_storage.to_hashed_string("Root");
+    hstring child_name = hash_storage.to_hashed_string("Child");
+    hstring missing_name = hash_storage.to_hashed_string("Missing");
 
     ModelBone root;
     root.Name = root_name;
-    root.Children.emplace_back(SafeAlloc::MakeUnique<ModelBone>());
+    root.Children.emplace_back(safe_alloc::make_unique<ModelBone>());
     root.Children.back()->Name = child_name;
 
     ptr<ModelBone> root_ptr = &root;
@@ -1214,8 +1214,8 @@ TEST_CASE("ModelMeshBakerOrchestration")
         rig.AddSourceFile("Models/UnweightedVertex.fbx", MakeMinimalSkinnedAsciiFbx("BrokenSkin", cluster_weights), 9);
 
         vector<string> captured_messages;
-        SetLogCallback("model-mesh-unweighted-vertex-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-unweighted-vertex-test", {}); });
+        set_log_callback("model-mesh-unweighted-vertex-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
+        auto remove_callback = scope_exit([]() noexcept { set_log_callback("model-mesh-unweighted-vertex-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/UnweightedVertex.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
@@ -1243,8 +1243,8 @@ TEST_CASE("ModelMeshBakerOrchestration")
         rig.AddSourceFile("Models/TooWide.fbx", MakeWideHierarchyAsciiFbx("WideNode", MODEL_ANIMATION_RIG_MAX_JOINTS), 9);
 
         vector<string> captured_messages;
-        SetLogCallback("model-mesh-wide-hierarchy-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-wide-hierarchy-test", {}); });
+        set_log_callback("model-mesh-wide-hierarchy-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
+        auto remove_callback = scope_exit([]() noexcept { set_log_callback("model-mesh-wide-hierarchy-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/TooWide.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
@@ -1265,8 +1265,8 @@ f 1 2 3
             9);
 
         vector<string> captured_messages;
-        SetLogCallback("model-mesh-non-finite-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("model-mesh-non-finite-test", {}); });
+        set_log_callback("model-mesh-non-finite-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
+        auto remove_callback = scope_exit([]() noexcept { set_log_callback("model-mesh-non-finite-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/NonFinite.obj"), ModelMeshBakerException);
@@ -1481,20 +1481,20 @@ TEST_CASE("ModelInfoBakerOrchestration")
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = DataReader({output.data(), output.size()});
+        auto reader = data_reader({output.data(), output.size()});
         ReadSavedModelInfoHeader(reader);
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
-        (void)reader.Read<uint8_t>(); // DisableAnimationInterpolation
-        (void)reader.Read<uint8_t>(); // DisableBackwardAnim
-        (void)reader.Read<uint8_t>(); // ShadowDisabled
-        (void)reader.Read<int32_t>(); // DrawWidth
-        (void)reader.Read<int32_t>(); // DrawHeight
-        (void)reader.Read<int32_t>(); // ViewWidth
-        (void)reader.Read<int32_t>(); // ViewHeight
+        (void)reader.read<uint8_t>(); // DisableAnimationInterpolation
+        (void)reader.read<uint8_t>(); // DisableBackwardAnim
+        (void)reader.read<uint8_t>(); // ShadowDisabled
+        (void)reader.read<int32_t>(); // DrawWidth
+        (void)reader.read<int32_t>(); // DrawHeight
+        (void)reader.read<int32_t>(); // ViewWidth
+        (void)reader.read<int32_t>(); // ViewHeight
         (void)ReadSavedModelInfoString(reader); // RotationBone
         CHECK_FALSE(ReadSavedModelInfoLink(reader).Bounds);
 
-        REQUIRE(reader.Read<uint32_t>() == 1);
+        REQUIRE(reader.read<uint32_t>() == 1);
         SavedModelInfoLink equipment_link = ReadSavedModelInfoLink(reader);
         CHECK(equipment_link.LinkBone == "Hand");
         REQUIRE(equipment_link.Bounds);
@@ -1594,20 +1594,20 @@ ActionAnimEqual 4 6
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = DataReader({output.data(), output.size()});
+        auto reader = data_reader({output.data(), output.size()});
         ReadSavedModelInfoHeader(reader);
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
-        (void)reader.Read<uint8_t>(); // DisableAnimationInterpolation
-        (void)reader.Read<uint8_t>(); // DisableBackwardAnim
-        (void)reader.Read<uint8_t>(); // ShadowDisabled
-        (void)reader.Read<int32_t>(); // DrawWidth
-        (void)reader.Read<int32_t>(); // DrawHeight
-        (void)reader.Read<int32_t>(); // ViewWidth
-        (void)reader.Read<int32_t>(); // ViewHeight
+        (void)reader.read<uint8_t>(); // DisableAnimationInterpolation
+        (void)reader.read<uint8_t>(); // DisableBackwardAnim
+        (void)reader.read<uint8_t>(); // ShadowDisabled
+        (void)reader.read<int32_t>(); // DrawWidth
+        (void)reader.read<int32_t>(); // DrawHeight
+        (void)reader.read<int32_t>(); // ViewWidth
+        (void)reader.read<int32_t>(); // ViewHeight
         CHECK(ReadSavedModelInfoString(reader).empty());
         (void)ReadSavedModelInfoLink(reader);
 
-        REQUIRE(reader.Read<uint32_t>() == 1);
+        REQUIRE(reader.read<uint32_t>() == 1);
         SavedModelInfoLink root_link = ReadSavedModelInfoLink(reader);
         CHECK(root_link.Layer == 1);
         CHECK(root_link.LayerValue == 2);
@@ -2249,17 +2249,17 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = DataReader({output.data(), output.size()});
+        auto reader = data_reader({output.data(), output.size()});
         ReadSavedModelInfoHeader(reader);
 
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
-        CHECK(reader.Read<uint8_t>() == 1);
-        CHECK(reader.Read<uint8_t>() == 1);
-        CHECK(reader.Read<uint8_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 0);
-        CHECK(reader.Read<int32_t>() == 0);
-        CHECK(reader.Read<int32_t>() == 0);
-        CHECK(reader.Read<int32_t>() == 0);
+        CHECK(reader.read<uint8_t>() == 1);
+        CHECK(reader.read<uint8_t>() == 1);
+        CHECK(reader.read<uint8_t>() == 1);
+        CHECK(reader.read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 0);
         CHECK(ReadSavedModelInfoString(reader) == "Body");
 
         SavedModelInfoLink default_link = ReadSavedModelInfoLink(reader);
@@ -2280,7 +2280,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         CHECK(default_link.EffectInfoCount == 1);
         CHECK(default_link.CutInfoCount == 1);
 
-        REQUIRE(reader.Read<uint32_t>() == 3);
+        REQUIRE(reader.read<uint32_t>() == 3);
         SavedModelInfoLink root_link = ReadSavedModelInfoLink(reader);
         CHECK(root_link.Layer == 1);
         CHECK(root_link.LayerValue == 2);
@@ -2301,49 +2301,49 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         CHECK(attached_link.TextureInfoCount == 1);
         CHECK(attached_link.EffectInfoCount == 1);
 
-        REQUIRE(reader.Read<uint32_t>() == 4);
-        CHECK(reader.Read<int32_t>() == 0);
-        CHECK(reader.Read<int32_t>() == 1);
+        REQUIRE(reader.read<uint32_t>() == 4);
+        CHECK(reader.read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 1);
         CHECK(ReadSavedModelInfoString(reader) == "ModelFile");
         CHECK(ReadSavedModelInfoString(reader) == "~iDlE");
-        CHECK(reader.Read<int32_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 0);
         CHECK(ReadSavedModelInfoString(reader) == "ModelFile");
         CHECK(ReadSavedModelInfoString(reader) == "Base");
-        CHECK(reader.Read<int32_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 1);
         CHECK(ReadSavedModelInfoString(reader) == "ModelFile");
         CHECK(ReadSavedModelInfoString(reader) == "IDLE");
-        CHECK(reader.Read<int32_t>() == 0);
-        CHECK(reader.Read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 0);
         CHECK(ReadSavedModelInfoString(reader) == "Anims/Extra.fbx");
         CHECK(ReadSavedModelInfoString(reader) == "eXtErNaL");
 
-        REQUIRE(reader.Read<uint32_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 0);
-        CHECK(reader.Read<int32_t>() == 1);
-        CHECK(reader.Read<float32_t>() == Catch::Approx(2.0f));
+        REQUIRE(reader.read<uint32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 1);
+        CHECK(reader.read<float32_t>() == Catch::Approx(2.0f));
 
-        REQUIRE(reader.Read<uint32_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 0);
-        CHECK(reader.Read<int32_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 2);
-        CHECK(reader.Read<int32_t>() == 7);
+        REQUIRE(reader.read<uint32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 2);
+        CHECK(reader.read<int32_t>() == 7);
 
-        REQUIRE(reader.Read<uint32_t>() == 1);
+        REQUIRE(reader.read<uint32_t>() == 1);
         CHECK(ReadSavedModelInfoString(reader) == "Body");
 
-        REQUIRE(reader.Read<uint32_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 0);
-        CHECK(reader.Read<int32_t>() == 0);
+        REQUIRE(reader.read<uint32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 0);
+        CHECK(reader.read<int32_t>() == 0);
 
-        REQUIRE(reader.Read<uint32_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 1);
+        REQUIRE(reader.read<uint32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 1);
+        CHECK(reader.read<int32_t>() == 1);
 
-        uint64_t animation_rig_data_size = reader.Read<uint64_t>();
+        uint64_t animation_rig_data_size = reader.read<uint64_t>();
         REQUIRE(animation_rig_data_size != 0);
-        unique_ptr<ModelAnimationRuntimeRig> animation_rig = LoadModelAnimationRuntimeRig(reader.ReadBytes(numeric_cast<size_t>(animation_rig_data_size)), "Critters/Test.fo3d", "Critters/Body.fbx", true);
+        unique_ptr<ModelAnimationRuntimeRig> animation_rig = LoadModelAnimationRuntimeRig(reader.read_bytes(numeric_cast<size_t>(animation_rig_data_size)), "Critters/Test.fo3d", "Critters/Body.fbx", true);
         CHECK(animation_rig->GetJointCount() == 1);
         REQUIRE(animation_rig->GetBaseJointMapping().size() == 1);
         CHECK(animation_rig->GetBaseJointMapping()[0] == 0);
@@ -2368,7 +2368,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         CHECK_FALSE(base_binding->Reversed);
         CHECK_FALSE(case_binding->Reversed);
 
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("Rejects parser-only model description errors")
@@ -2420,7 +2420,7 @@ static auto MakeBoundsPlanTestModel() -> ModelMeshData
     FO_STACK_TRACE_ENTRY();
 
     ModelMeshData data;
-    data.RootBone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+    data.RootBone = safe_alloc::make_unique<ModelMeshBoneData>();
     data.RootBone->Name = "Root";
     data.RootBone->TransformationMatrix = mat44 {1.0f};
     data.RootBone->GlobalTransformationMatrix = mat44 {1.0f};
@@ -2443,7 +2443,7 @@ static auto MakeBoundsPlanTestModel() -> ModelMeshData
 
     mesh.Indices = {0, 1, 0};
 
-    auto arm = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+    auto arm = safe_alloc::make_unique<ModelMeshBoneData>();
     arm->Name = "Arm";
     arm->TransformationMatrix = mat44 {1.0f};
     arm->GlobalTransformationMatrix = mat44 {1.0f};

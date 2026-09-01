@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-using FsFileVisitor = function<void(string_view, size_t, uint64_t)>;
+using fs_file_visitor = function<void(string_view, size_t, uint64_t)>;
 
 // Filesystem helpers
 auto fs_make_path(string_view path) -> std::u8string;
@@ -68,7 +68,7 @@ auto fs_remove_dir_tree(string_view dir) noexcept -> bool;
 auto fs_touch_file(string_view path) noexcept -> bool;
 auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool;
 auto fs_open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
-void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visitor);
+void fs_iterate_dir(string_view dir, bool recursive, const fs_file_visitor& visitor);
 
 // Stream helpers
 auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool;

@@ -324,7 +324,7 @@ static VKAPI_ATTR auto VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverit
     string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"};
     const char* message_id = data != nullptr && data->pMessageIdName != nullptr ? data->pMessageIdName : "?";
     const char* message = data != nullptr && data->pMessage != nullptr ? data->pMessage : "?";
-    WriteLog("[VkLayer/{}] {}: {}", sev, message_id, message);
+    write_log("[VkLayer/{}] {}: {}", sev, message_id, message);
     return VK_FALSE;
 }
 
@@ -918,7 +918,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     auto map_data = make_nptr(map_data_raw);
     FO_VERIFY_AND_THROW(map_data, "Mapped memory data pointer is null");
     tex_region.resize(size.square());
-    MemCopy(tex_region.data(), map_data, region_data_size);
+    mem_copy(tex_region.data(), map_data, region_data_size);
     vkUnmapMemory(_ctx->Device, staging_mem);
 
     // Swizzle B↔R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
@@ -1157,7 +1157,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             // pending draws' snapshots intact)
             auto& pooled = AcquireRingBuffer(_ctx, VertexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], vert_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
             FO_VERIFY_AND_THROW(pooled.Mapped, "Mapped memory data pointer is null");
-            MemCopy(pooled.Mapped, vert_data.get(), vert_size);
+            mem_copy(pooled.Mapped, vert_data.get(), vert_size);
             CurrentVertexBuffer = pooled.Buffer;
         }
         else {
@@ -1173,7 +1173,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             VerifyVkResult(vk_result);
             auto mapped_data = make_nptr(mapped_data_raw);
             FO_VERIFY_AND_THROW(mapped_data, "Mapped memory data pointer is null");
-            MemCopy(mapped_data, vert_data.get(), vert_size);
+            mem_copy(mapped_data, vert_data.get(), vert_size);
             vkUnmapMemory(_ctx->Device, staging_vert_mem);
 
             VkBuffer new_static_buf {};
@@ -1209,7 +1209,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             // Dynamic geometry: same ring scheme as the vertex path
             auto& pooled = AcquireRingBuffer(_ctx, IndexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], idx_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
             FO_VERIFY_AND_THROW(pooled.Mapped, "Mapped memory data pointer is null");
-            MemCopy(pooled.Mapped, Indices.data(), idx_size);
+            mem_copy(pooled.Mapped, Indices.data(), idx_size);
             CurrentIndexBuffer = pooled.Buffer;
         }
         else {
@@ -1224,7 +1224,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             VerifyVkResult(vk_result);
             auto mapped_data = make_nptr(mapped_data_raw);
             FO_VERIFY_AND_THROW(mapped_data, "Mapped memory data pointer is null");
-            MemCopy(mapped_data, Indices.data(), idx_size);
+            mem_copy(mapped_data, Indices.data(), idx_size);
             vkUnmapMemory(_ctx->Device, staging_idx_mem);
 
             VkBuffer new_static_buf {};
@@ -1321,14 +1321,14 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
-        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        mem_copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         auto main_texture_size = main_tex_buf->MainTexSize;
         auto main_texture_size_data = main_tex->SizeData;
-        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
+        mem_copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     // Default-initialize every required-but-unset uniform: descriptor sets are fresh per draw,
@@ -1509,7 +1509,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
                 // Copy data
                 FO_VERIFY_AND_THROW(_ctx->FrameUniformBufferMapped, "Mapped memory data pointer is null");
                 auto mapped_bytes = _ctx->FrameUniformBufferMapped.reinterpret_as<uint8_t>();
-                MemCopy(mapped_bytes.offset(_ctx->FrameUniformOffset), src_data.data(), src_size);
+                mem_copy(mapped_bytes.offset(_ctx->FrameUniformOffset), src_data.data(), src_size);
 
                 auto& buffer_info = buffer_infos[write_count];
                 buffer_info.buffer = _ctx->FrameUniformBuffer;
@@ -1775,7 +1775,7 @@ auto Vulkan_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto tex = SafeAlloc::MakeUnique<Vulkan_Texture>(size, linear_filtered, with_depth, _ctx);
+    auto tex = safe_alloc::make_unique<Vulkan_Texture>(size, linear_filtered, with_depth, _ctx);
 
     return std::move(tex);
 }
@@ -1785,7 +1785,7 @@ auto Vulkan_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto dbuf = SafeAlloc::MakeUnique<Vulkan_DrawBuffer>(is_static, _ctx);
+    auto dbuf = safe_alloc::make_unique<Vulkan_DrawBuffer>(is_static, _ctx);
 
     return std::move(dbuf);
 }
@@ -1795,7 +1795,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto vk_effect = SafeAlloc::MakeUnique<Vulkan_Effect>(usage, name, loader, _ctx);
+    auto vk_effect = safe_alloc::make_unique<Vulkan_Effect>(usage, name, loader, _ctx);
 
     for (size_t pass = 0; pass < vk_effect->_passCount; pass++) {
         // Load vertex shader SPIR-V
@@ -2130,12 +2130,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = SafeAlloc::MakeUnique<Context>(&settings, window.reinterpret_as<SDL_Window>());
+    _ctx = safe_alloc::make_unique<Context>(&settings, window.reinterpret_as<SDL_Window>());
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
-    WriteLog("Used Vulkan rendering");
+    write_log("Used Vulkan rendering");
 
-    WriteLog("[VkInit] FO_DEBUG={} settings.RenderDebug={}", FO_DEBUG, settings.RenderDebug ? "Y" : "n");
+    write_log("[VkInit] FO_DEBUG={} settings.RenderDebug={}", FO_DEBUG, settings.RenderDebug ? "Y" : "n");
 
     // Load the Vulkan loader through SDL (dynamic, at selection time) instead of a link-time
     // vulkan-1.dll import, then bootstrap the entry-point table from it
@@ -2212,12 +2212,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             }
         }
 
-        WriteLog("[VkInit] validation layer probe: count={} available={}", layer_count, validation_available ? "Y" : "n");
+        write_log("[VkInit] validation layer probe: count={} available={}", layer_count, validation_available ? "Y" : "n");
 
         if (validation_available) {
             create_info.enabledLayerCount = 1;
             create_info.ppEnabledLayerNames = validation_layers;
-            WriteLog("[VkInit] Vulkan validation layers enabled");
+            write_log("[VkInit] Vulkan validation layers enabled");
         }
     }
 
@@ -2241,14 +2241,14 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             vk_result = vkCreateDebugUtilsMessengerEXT_fn(_ctx->Instance, &msg_ci, nullptr, &_ctx->DebugMessenger);
 
             if (vk_result == VK_SUCCESS) {
-                WriteLog("[VkLayer] debug messenger attached");
+                write_log("[VkLayer] debug messenger attached");
             }
             else {
-                WriteLog("[VkLayer] vkCreateDebugUtilsMessengerEXT failed: {}", static_cast<int32_t>(vk_result));
+                write_log("[VkLayer] vkCreateDebugUtilsMessengerEXT failed: {}", static_cast<int32_t>(vk_result));
             }
         }
         else {
-            WriteLog("[VkLayer] VK_EXT_debug_utils not available — layer messages will be silenced");
+            write_log("[VkLayer] VK_EXT_debug_utils not available — layer messages will be silenced");
         }
     }
 
@@ -2652,7 +2652,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         }
     }
 
-    WriteLog("Vulkan swapchain present mode: {}", present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : (present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo (vsync)"));
+    write_log("Vulkan swapchain present mode: {}", present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : (present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo (vsync)"));
 
     VkSwapchainCreateInfoKHR sci {};
     sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;

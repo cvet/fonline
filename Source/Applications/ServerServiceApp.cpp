@@ -80,14 +80,14 @@ static void ServerEntry()
 
     try {
         auto settings = make_ptr(&GetApp()->Settings);
-        Data->Server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+        Data->Server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
         auto server = GetServiceServer();
         GetApp()->WaitForRequestedQuit();
         server->Shutdown();
         Data->Server.reset();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        report_exception_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -153,7 +153,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        report_exception_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -278,7 +278,7 @@ int main(int argc, char** argv)
 #endif
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        report_exception_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -307,7 +307,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        report_exception_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

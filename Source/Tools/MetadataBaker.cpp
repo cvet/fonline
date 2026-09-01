@@ -124,7 +124,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
                 throw;
             }
 
-            WriteLog("Metadata error: {}", ex.what());
+            write_log("Metadata error: {}", ex.what());
             errors++;
         }
     }
@@ -205,7 +205,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
                     normalized_line += ch;
                 }
 
-                ctx.NormalizedLines.emplace_back(SafeAlloc::MakeUnique<string>(std::move(normalized_line)));
+                ctx.NormalizedLines.emplace_back(safe_alloc::make_unique<string>(std::move(normalized_line)));
                 line = *ctx.NormalizedLines.back();
             }
 
@@ -267,21 +267,21 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
     // Serialize data behind the fixed header, so the layout version is readable without walking the sections
     vector<uint8_t> data = MakeMetadataHeader(MakeMetadataVersion(ctx));
-    DataWriter writer(data);
+    data_writer writer(data);
 
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(ctx.ResultTags.size()));
+    writer.write<uint16_t>(numeric_cast<uint16_t>(ctx.ResultTags.size()));
 
     for (const auto& [tag_name, tag_values] : ctx.ResultTags) {
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(tag_name.size()));
-        writer.WriteStringBytes(tag_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(tag_values.size()));
+        writer.write<uint16_t>(numeric_cast<uint16_t>(tag_name.size()));
+        writer.write_string_bytes(tag_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(tag_values.size()));
 
         for (const auto& tag_value : tag_values) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(tag_value.size()));
+            writer.write<uint32_t>(numeric_cast<uint32_t>(tag_value.size()));
 
             for (const auto& tag_value_part : tag_value) {
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(tag_value_part.size()));
-                writer.WriteStringBytes(tag_value_part);
+                writer.write<uint16_t>(numeric_cast<uint16_t>(tag_value_part.size()));
+                writer.write_string_bytes(tag_value_part);
             }
         }
     }
@@ -568,7 +568,7 @@ void MetadataBaker::ParseEntity(TagsParsingContext& ctx) const
             continue;
         }
 
-        hstring hname = ctx.Meta.Hashes.ToHashedString(name);
+        hstring hname = ctx.Meta.Hashes.to_hashed_string(name);
         auto flags = span(tag_desc.Tokens).subspan(2);
         bool is_global = std::ranges::any_of(flags, [](auto&& f) { return f == "Global"; });
         bool has_protos = std::ranges::any_of(flags, [](auto&& f) { return f == "HasProtos"; });
@@ -618,9 +618,9 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
         auto target = tag_desc.Tokens[0];
 
         auto holder_entity_name = tag_desc.Tokens[1];
-        hstring holder_entity_hname = ctx.Meta.Hashes.ToHashedString(holder_entity_name);
+        hstring holder_entity_hname = ctx.Meta.Hashes.to_hashed_string(holder_entity_name);
         auto target_entity_name = tag_desc.Tokens[2];
-        hstring target_entity_hname = ctx.Meta.Hashes.ToHashedString(target_entity_name);
+        hstring target_entity_hname = ctx.Meta.Hashes.to_hashed_string(target_entity_name);
         auto entry_name = tag_desc.Tokens[3];
         auto flags = span(tag_desc.Tokens).subspan(4);
         bool has_no_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "NoSync"; });
@@ -702,7 +702,7 @@ void MetadataBaker::ParseFixedType(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid FixedType codegen tag: flags are not supported", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
-        hstring hname = ctx.Meta.Hashes.ToHashedString(name);
+        hstring hname = ctx.Meta.Hashes.to_hashed_string(name);
 
         if (ctx.Meta.IsValidEntityType(hname) || ctx.Meta.IsFixedType(hname)) {
             throw MetadataBakerException("Invalid FixedType codegen tag: duplicate fixed type", tag_desc.SourceFile, tag_desc.LineNumber, name);
@@ -961,7 +961,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
 
         auto ref_type_it = ctx.RefTypes.find(string(entity_name));
 
-        if (ref_type_it == ctx.RefTypes.end() && !ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.ToHashedString(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
+        if (ref_type_it == ctx.RefTypes.end() && !ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.to_hashed_string(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
             if (ctx.Meta.IsValidBaseType(entity_name)) {
                 throw MetadataBakerException("Invalid Property codegen tag: only RefType supports script metadata properties", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
             }
@@ -1101,7 +1101,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             continue;
         }
 
-        if (!ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.ToHashedString(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
+        if (!ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.to_hashed_string(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
             throw MetadataBakerException("Invalid Property codegen tag: unknown entity type", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
         }
 
@@ -1265,7 +1265,7 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
         }
 
         auto entity_name = tokens[1];
-        hstring entity_hname = ctx.Meta.Hashes.ToHashedString(entity_name);
+        hstring entity_hname = ctx.Meta.Hashes.to_hashed_string(entity_name);
 
         if (!ctx.Meta.IsValidEntityType(entity_hname)) {
             throw MetadataBakerException("Invalid Event codegen tag: invalid entity type", tag_desc.SourceFile, tag_desc.LineNumber, entity_hname);
@@ -1273,7 +1273,7 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 
         EntityEventDesc event_desc;
         auto event_name = tokens[2];
-        event_desc.Name = ctx.Meta.Hashes.ToHashedString(event_name);
+        event_desc.Name = ctx.Meta.Hashes.to_hashed_string(event_name);
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(entity_name);
@@ -1367,7 +1367,7 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
         }
 
         RemoteCallDesc recote_call_desc;
-        recote_call_desc.Name = ctx.Meta.Hashes.ToHashedString(remote_call_name);
+        recote_call_desc.Name = ctx.Meta.Hashes.to_hashed_string(remote_call_name);
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(remote_call_name);

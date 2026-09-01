@@ -39,65 +39,63 @@
 
 FO_BEGIN_NAMESPACE
 
-struct Platform
+namespace platform
 {
-    Platform() = delete;
-
-    struct CpuUsageCoreSnapshot
+    struct cpu_usage_core_snapshot
     {
-        uint64_t IdleTime {};
-        uint64_t TotalTime {};
+        uint64_t idle_time {};
+        uint64_t total_time {};
     };
 
-    struct CpuUsageSnapshot
+    struct cpu_usage_snapshot
     {
-        vector<CpuUsageCoreSnapshot> Cores {};
-        uint64_t ProcessTimeNs {};
-        uint32_t LogicalCoreCount {};
+        vector<cpu_usage_core_snapshot> cores {};
+        uint64_t process_time_ns {};
+        uint32_t logical_core_count {};
     };
 
     // Windows: OutputDebugStringW; Android: __android_log_write; other: no-op
-    static void InfoLog(const string& str) noexcept;
+    void info_log(const string& str) noexcept;
 
     // Windows (>= 10): SetThreadDescription
     // Other: none
-    static void SetThreadName(const string& str) noexcept;
+    void set_thread_name(const string& str) noexcept;
 
     // Windows: GetModuleFileNameW; Linux: /proc/self/exe; macOS: proc_pidpath; other: nullopt
-    static auto GetExePath() noexcept -> optional<string>;
+    auto get_exe_path() noexcept -> optional<string>;
 
     // Per-user writable data root from environment only: LOCALAPPDATA/APPDATA, Library/Application Support, or XDG_DATA_HOME.
     // Return an empty string when no platform path is available
-    static auto GetUserDataBase() noexcept -> string;
+    auto get_user_data_base() noexcept -> string;
 
     // Linux & Mac: fork
     // Other: warning log message
-    static auto ForkProcess() noexcept -> bool;
+    auto fork_process() noexcept -> bool;
 
     // Windows: GetCurrentProcessId; Linux and macOS: getpid; other: "0"
-    static auto GetCurrentProcessIdStr() noexcept -> string;
+    auto get_current_process_id_str() noexcept -> string;
 
     // Resident process bytes from WorkingSetSize, /proc/self/statm, or MACH_TASK_BASIC_INFO.
     // Return zero when unsupported
-    static auto GetProcessMemoryUsage() noexcept -> size_t;
+    auto get_process_memory_usage() noexcept -> size_t;
 
     // Private process bytes from PrivateUsage or /proc/self/status VmData.
     // Return zero when unsupported
-    static auto GetProcessPrivateMemoryUsage() noexcept -> size_t;
+    auto get_process_private_memory_usage() noexcept -> size_t;
 
     // Cumulative process and available per-core CPU counters; compare snapshots to derive usage.
-    // LogicalCoreCount is always populated for normalization
-    static auto GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot;
+    // logical_core_count is always populated for normalization
+    auto get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot;
 
     // Windows: LoadLibraryW family; Linux and macOS: dlopen family; other: nullptr
-    static auto LoadModule(const string& module_name) noexcept -> nptr<void>;
-    static void UnloadModule(nptr<void> module_handle) noexcept;
-    static auto GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
+    auto load_module(const string& module_name) noexcept -> nptr<void>;
+    void unload_module(nptr<void> module_handle) noexcept;
+    auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
     template<typename T>
-    static auto GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> T
+    auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> T
     {
-        return reinterpret_cast<T>(GetFuncAddr(module_handle, func_name));
+        return reinterpret_cast<T>(get_func_addr(module_handle, func_name));
     }
-};
+}
 
 FO_END_NAMESPACE

@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 template<typename T>
 consteval auto IsZeroCopyReadPtrAvailable() -> bool
 {
-    return requires(DataReader& reader) { reader.template ReadPtr<T>(0); };
+    return requires(data_reader& reader) { reader.template read_ptr<T>(0); };
 }
 
 static_assert(IsZeroCopyReadPtrAvailable<uint8_t>());
@@ -129,187 +129,187 @@ TEST_CASE("DataSerialization")
     SECTION("ReadWriteRoundtrip")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
+        data_writer writer {buf};
 
-        writer.Write<uint32_t>(0xAABBCCDDu);
-        writer.Write<int16_t>(static_cast<int16_t>(-1234));
+        writer.write<uint32_t>(0xAABBCCDDu);
+        writer.write<int16_t>(static_cast<int16_t>(-1234));
 
         array<uint8_t, 3> raw = {1, 2, 3};
-        writer.WriteBytes({raw.data(), raw.size()});
+        writer.write_bytes({raw.data(), raw.size()});
 
-        DataReader reader {span {buf}};
-        CHECK(reader.Read<uint32_t>() == 0xAABBCCDDu);
-        CHECK(reader.Read<int16_t>() == static_cast<int16_t>(-1234));
+        data_reader reader {span {buf}};
+        CHECK(reader.read<uint32_t>() == 0xAABBCCDDu);
+        CHECK(reader.read<int16_t>() == static_cast<int16_t>(-1234));
 
-        auto raw_read = reader.ReadPtr<uint8_t>(raw.size());
+        auto raw_read = reader.read_ptr<uint8_t>(raw.size());
         CHECK(static_cast<bool>(raw_read));
         CHECK(raw_read[0] == 1);
         CHECK(raw_read[1] == 2);
         CHECK(raw_read[2] == 3);
 
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("DataReaderBounds")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint8_t>(static_cast<uint8_t>(10));
+        data_writer writer {buf};
+        writer.write<uint8_t>(static_cast<uint8_t>(10));
 
-        DataReader reader {span {buf}};
-        CHECK(reader.GetUnreadSize() == sizeof(uint8_t));
-        CHECK(reader.Read<uint8_t>() == 10);
-        CHECK(reader.GetUnreadSize() == 0);
-        CHECK_THROWS_AS(reader.Read<uint8_t>(), DataReadingException);
+        data_reader reader {span {buf}};
+        CHECK(reader.get_unread_size() == sizeof(uint8_t));
+        CHECK(reader.read<uint8_t>() == 10);
+        CHECK(reader.get_unread_size() == 0);
+        CHECK_THROWS_AS(reader.read<uint8_t>(), DataReadingException);
     }
 
     SECTION("ReaderRejectsLengthAndCountBombsBeforeAllocation")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        data_writer writer {buf};
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
 
-        DataReader string_view_reader {span {buf}};
-        uint32_t hostile_string_size = string_view_reader.Read<uint32_t>();
-        CHECK_THROWS_AS(string_view_reader.ReadStringView(hostile_string_size), DataReadingException);
+        data_reader string_view_reader {span {buf}};
+        uint32_t hostile_string_size = string_view_reader.read<uint32_t>();
+        CHECK_THROWS_AS(string_view_reader.read_string_view(hostile_string_size), DataReadingException);
 
-        DataReader payload_count_reader {span {buf}};
-        uint32_t hostile_count = payload_count_reader.Read<uint32_t>();
-        CHECK_THROWS_AS(payload_count_reader.VerifyPayloadCount(numeric_cast<size_t>(hostile_count), sizeof(uint32_t)), DataReadingException);
+        data_reader payload_count_reader {span {buf}};
+        uint32_t hostile_count = payload_count_reader.read<uint32_t>();
+        CHECK_THROWS_AS(payload_count_reader.verify_payload_count(numeric_cast<size_t>(hostile_count), sizeof(uint32_t)), DataReadingException);
 
-        DataReader string_reader {span {buf}};
-        CHECK_THROWS_AS(string_reader.ReadString(), DataReadingException);
+        data_reader string_reader {span {buf}};
+        CHECK_THROWS_AS(string_reader.read_string(), DataReadingException);
 
-        DataReader string_vector_reader {span {buf}};
-        CHECK_THROWS_AS(string_vector_reader.ReadStringVector(), DataReadingException);
+        data_reader string_vector_reader {span {buf}};
+        CHECK_THROWS_AS(string_vector_reader.read_string_vector(), DataReadingException);
 
-        DataReader object_vector_reader {span {buf}};
-        CHECK_THROWS_AS(object_vector_reader.ReadSizedObjectVector<uint32_t>(), DataReadingException);
+        data_reader object_vector_reader {span {buf}};
+        CHECK_THROWS_AS(object_vector_reader.read_sized_object_vector<uint32_t>(), DataReadingException);
 
-        DataReader empty_reader {const_span<uint8_t> {}};
-        CHECK_THROWS_AS(empty_reader.VerifyPayloadCount(0, 0), VerificationException);
+        data_reader empty_reader {const_span<uint8_t> {}};
+        CHECK_THROWS_AS(empty_reader.verify_payload_count(0, 0), VerificationException);
     }
 
     SECTION("VerifyEnd")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint16_t>(static_cast<uint16_t>(55));
-        writer.Write<uint16_t>(static_cast<uint16_t>(66));
+        data_writer writer {buf};
+        writer.write<uint16_t>(static_cast<uint16_t>(55));
+        writer.write<uint16_t>(static_cast<uint16_t>(66));
 
-        DataReader reader {span {buf}};
-        CHECK(reader.Read<uint16_t>() == 55);
-        CHECK_THROWS_AS(reader.VerifyEnd(), DataReadingException);
+        data_reader reader {span {buf}};
+        CHECK(reader.read<uint16_t>() == 55);
+        CHECK_THROWS_AS(reader.verify_end(), DataReadingException);
     }
 
     SECTION("EmptyReadersAcceptVerifyEndAndZeroSizePointers")
     {
         vector<uint8_t> buf;
 
-        DataReader reader {span {buf}};
-        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
-        CHECK_NOTHROW(reader.VerifyEnd());
+        data_reader reader {span {buf}};
+        CHECK_FALSE(static_cast<bool>(reader.read_ptr<uint8_t>(0)));
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("ZeroSizePointers")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
+        data_writer writer {buf};
 
-        writer.Write<uint8_t>(static_cast<uint8_t>(77));
-        writer.WritePtr(nullptr, 0);
+        writer.write<uint8_t>(static_cast<uint8_t>(77));
+        writer.write_ptr(nullptr, 0);
 
-        DataReader reader {span {buf}};
-        CHECK(reader.Read<uint8_t>() == 77);
-        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
-        CHECK_NOTHROW(reader.VerifyEnd());
+        data_reader reader {span {buf}};
+        CHECK(reader.read<uint8_t>() == 77);
+        CHECK_FALSE(static_cast<bool>(reader.read_ptr<uint8_t>(0)));
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("ReadPtrToBuffer")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
+        data_writer writer {buf};
 
         array<uint8_t, 4> source = {9, 8, 7, 6};
-        writer.WriteBytes({source.data(), source.size()});
+        writer.write_bytes({source.data(), source.size()});
 
-        DataReader reader {span {buf}};
+        data_reader reader {span {buf}};
         array<uint8_t, 4> target = {0, 0, 0, 0};
-        reader.ReadPtr(target.data(), target.size());
+        reader.read_ptr(target.data(), target.size());
 
         CHECK(target == source);
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("ZeroSizeBufferedReadDoesNotModifyTargetOrAdvance")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint16_t>(static_cast<uint16_t>(0xABCD));
+        data_writer writer {buf};
+        writer.write<uint16_t>(static_cast<uint16_t>(0xABCD));
 
-        DataReader reader {span {buf}};
+        data_reader reader {span {buf}};
         array<uint8_t, 3> target = {7, 8, 9};
 
-        reader.ReadPtr(target.data(), 0);
+        reader.read_ptr(target.data(), 0);
         CHECK(target == array<uint8_t, 3> {7, 8, 9});
-        CHECK(reader.Read<uint16_t>() == static_cast<uint16_t>(0xABCD));
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK(reader.read<uint16_t>() == static_cast<uint16_t>(0xABCD));
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("ReadPtrToBufferThrowsWithoutModifyingTargetWhenOutOfBounds")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint16_t>(static_cast<uint16_t>(0xCAFE));
+        data_writer writer {buf};
+        writer.write<uint16_t>(static_cast<uint16_t>(0xCAFE));
 
-        DataReader reader {span {buf}};
+        data_reader reader {span {buf}};
         array<uint8_t, 4> target = {1, 2, 3, 4};
 
-        CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
+        CHECK_THROWS_AS(reader.read_ptr(target.data(), target.size()), DataReadingException);
         CHECK(target == array<uint8_t, 4> {1, 2, 3, 4});
     }
 
     SECTION("ZeroSizeWritePtrDoesNotGrowBuffer")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
-        writer.Write<uint32_t>(0x11223344u);
+        data_writer writer {buf};
+        writer.write<uint32_t>(0x11223344u);
 
         size_t initial_size = buf.size();
         array<uint8_t, 3> source = {5, 6, 7};
 
-        writer.WritePtr(source.data(), 0);
+        writer.write_ptr(source.data(), 0);
 
         CHECK(buf.size() == initial_size);
 
-        DataReader reader {span {buf}};
-        CHECK(reader.Read<uint32_t>() == 0x11223344u);
-        CHECK_NOTHROW(reader.VerifyEnd());
+        data_reader reader {span {buf}};
+        CHECK(reader.read<uint32_t>() == 0x11223344u);
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("LargeWriteBytesGrowsBufferAndPreservesData")
     {
         vector<uint8_t> buf;
-        DataWriter writer {buf};
+        data_writer writer {buf};
 
-        vector<uint8_t> source(DataWriter::BUF_RESERVE_SIZE + 17, static_cast<uint8_t>(0x5A));
+        vector<uint8_t> source(data_writer::BUF_RESERVE_SIZE + 17, static_cast<uint8_t>(0x5A));
         source.front() = 1;
         source.back() = 2;
 
-        writer.Write<uint8_t>(static_cast<uint8_t>(0x11));
-        writer.WriteBytes({source.data(), source.size()});
+        writer.write<uint8_t>(static_cast<uint8_t>(0x11));
+        writer.write_bytes({source.data(), source.size()});
 
         CHECK(buf.size() == source.size() + sizeof(uint8_t));
 
-        DataReader reader {span {buf}};
-        CHECK(reader.Read<uint8_t>() == static_cast<uint8_t>(0x11));
+        data_reader reader {span {buf}};
+        CHECK(reader.read<uint8_t>() == static_cast<uint8_t>(0x11));
 
-        auto raw = reader.ReadPtr<uint8_t>(source.size());
+        auto raw = reader.read_ptr<uint8_t>(source.size());
         REQUIRE(static_cast<bool>(raw));
         CHECK(raw[0] == 1);
         CHECK(raw[source.size() - 1] == 2);
         CHECK(raw[source.size() / 2] == static_cast<uint8_t>(0x5A));
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK_NOTHROW(reader.verify_end());
     }
 }
 

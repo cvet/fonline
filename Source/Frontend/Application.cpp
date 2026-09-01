@@ -304,34 +304,34 @@ static void UpdateMonitorSettings(GlobalSettings& settings, ptr<const SDL_Displa
     *const_cast<std::remove_cvref_t<decltype(settings.MonitorHeight)>*>(&settings.MonitorHeight) = display_mode->h;
 }
 
-// Routed through the SafeAlloc raw tier rather than the bare Mem* primitives so SDL gets the same
+// Routed through the safe_alloc raw tier rather than the bare Mem* primitives so SDL gets the same
 // out-of-memory handling as ImGui, AngelScript, zlib and ozz instead of silently receiving null
 static auto SdlMemMalloc(size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MallocRaw(size).get();
+    return safe_alloc::malloc_raw(size).get();
 }
 
 static auto SdlMemCalloc(size_t num, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::CallocRaw(num, size).get();
+    return safe_alloc::calloc_raw(num, size).get();
 }
 
 static auto SdlMemRealloc(void* mem, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::ReallocRaw(mem, size).get();
+    return safe_alloc::realloc_raw(mem, size).get();
 }
 
 static void SdlMemFree(void* mem) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    SafeAlloc::FreeRaw(mem);
+    safe_alloc::free_raw(mem);
 }
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
@@ -340,7 +340,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Render {make_ptr(this)},
     Input {make_ptr(this)},
     Audio {make_ptr(this)},
-    _ctx {SafeAlloc::MakeUnique<Context>()}
+    _ctx {safe_alloc::make_unique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -373,7 +373,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     if (!Settings.DisableGamepad && SDL_WasInit(SDL_INIT_GAMEPAD) == 0 && !SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
-        WriteLog("SDL_InitSubSystem SDL_INIT_GAMEPAD failed: {}", SDL_GetError());
+        write_log("SDL_InitSubSystem SDL_INIT_GAMEPAD failed: {}", SDL_GetError());
     }
 
     if (!Settings.DisableGamepad) {
@@ -399,7 +399,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                     auto silence = numeric_cast<uint8_t>(SDL_GetSilenceValueForFormat(app->_ctx->AudioSpec.format));
                     auto audio_stream_data = app->_ctx->AudioStreamBuf.data();
 
-                    MemFill(audio_stream_data, silence, numeric_cast<size_t>(additional_amount));
+                    mem_fill(audio_stream_data, silence, numeric_cast<size_t>(additional_amount));
 
                     if (app->_ctx->AudioStreamWriter) {
                         span<uint8_t> audio_stream_span = {audio_stream_data, numeric_cast<size_t>(additional_amount)};
@@ -425,38 +425,38 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                         _ctx->AudioStream = std::move(audio_stream);
                     }
                     else {
-                        WriteLog("SDL resume audio device failed, error {}", SDL_GetError());
+                        write_log("SDL resume audio device failed, error {}", SDL_GetError());
                     }
                 }
                 else {
-                    WriteLog("SDL get audio device format failed, error {}", SDL_GetError());
+                    write_log("SDL get audio device format failed, error {}", SDL_GetError());
                 }
             }
             else {
-                WriteLog("SDL open audio device stream failed, error {}", SDL_GetError());
+                write_log("SDL open audio device stream failed, error {}", SDL_GetError());
             }
         }
         else {
-            WriteLog("SDL init audio subsystem failed, error {}", SDL_GetError());
+            write_log("SDL init audio subsystem failed, error {}", SDL_GetError());
         }
     }
 
     // First choose render type by user preference
     if (Settings.NullRenderer) {
         _ctx->ActiveRendererType = RenderType::Null;
-        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
+        _ctx->ActiveRenderer = safe_alloc::make_unique<Null_Renderer>();
     }
 #if FO_HAVE_OPENGL
     else if (Settings.ForceOpenGL) {
         _ctx->ActiveRendererType = RenderType::OpenGL;
-        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
+        _ctx->ActiveRenderer = safe_alloc::make_unique<OpenGL_Renderer>();
     }
 #endif
 
 #if FO_HAVE_DIRECT_3D
     else if (Settings.ForceDirect3D) {
         _ctx->ActiveRendererType = RenderType::Direct3D;
-        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
+        _ctx->ActiveRenderer = safe_alloc::make_unique<Direct3D_Renderer>();
     }
 #endif
 
@@ -470,13 +470,13 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_VULKAN
     else if (Settings.ForceVulkan) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
-        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
+        _ctx->ActiveRenderer = safe_alloc::make_unique<Vulkan_Renderer>();
     }
 #endif
 #if FO_HAVE_SDL_GPU
     else if (Settings.ForceSDLGpu) {
         _ctx->ActiveRendererType = RenderType::SDLGpu;
-        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<SDLGpu_Renderer>();
+        _ctx->ActiveRenderer = safe_alloc::make_unique<SDLGpu_Renderer>();
     }
 #endif
 
@@ -484,7 +484,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_DIRECT_3D
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::Direct3D;
-        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
+        _ctx->ActiveRenderer = safe_alloc::make_unique<Direct3D_Renderer>();
     }
 #endif
 
@@ -497,14 +497,14 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_VULKAN
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
-        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
+        _ctx->ActiveRenderer = safe_alloc::make_unique<Vulkan_Renderer>();
     }
 #endif
 
 #if FO_HAVE_OPENGL
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::OpenGL;
-        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
+        _ctx->ActiveRenderer = safe_alloc::make_unique<OpenGL_Renderer>();
     }
 #endif
 
@@ -524,13 +524,13 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
     }
 
-    _clientMode = IsEnumSet(flags, AppInitFlags::ClientMode);
+    _clientMode = is_enum_set(flags, AppInitFlags::ClientMode);
 
-    if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
+    if (is_enum_set(flags, AppInitFlags::ClientMode)) {
         SDL_DisableScreenSaver();
     }
 
-    if (IsEnumSet(flags, AppInitFlags::ClientMode) && (Settings.HideNativeCursor || !Input.IsMouseAvailable())) {
+    if (is_enum_set(flags, AppInitFlags::ClientMode) && (Settings.HideNativeCursor || !Input.IsMouseAvailable())) {
         SDL_HideCursor();
         _nativeCursorHidden = true;
     }
@@ -548,7 +548,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         Settings.Fullscreen = true;
     }
 
-    if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
+    if (is_enum_set(flags, AppInitFlags::ClientMode)) {
         _ctx->ClearColor = {0, 0, 0, 255};
     }
 
@@ -577,7 +577,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         }
     }
 
-    if (_ctx->ActiveRendererType != RenderType::Null && IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
+    if (_ctx->ActiveRendererType != RenderType::Null && is_enum_set(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
         auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
         FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
 
@@ -594,7 +594,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         SyncMainWindowBackbufferSize();
     }
 
-    if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.AlwaysOnTop) {
+    if (is_enum_set(flags, AppInitFlags::ClientMode) && Settings.AlwaysOnTop) {
         MainWindow.AlwaysOnTop(true);
     }
 
@@ -759,7 +759,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
         size = {Settings.ScreenWidth, Settings.ScreenHeight};
     }
 
-    auto window = SafeAlloc::MakeUnique<AppWindow>(this);
+    auto window = safe_alloc::make_unique<AppWindow>(this);
     window->_isVirtual = true;
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
@@ -1106,7 +1106,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
     FO_STACK_TRACE_ENTRY();
 
     if (_ctx->ActiveRendererType == RenderType::Null) {
-        auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
+        auto handle = safe_alloc::make_unique<HeadlessWindowStub>();
         handle->Size = size;
 
         auto headless_window = handle.as_ptr();
@@ -2159,7 +2159,7 @@ void Application::BeginFrame()
             RequestQuit();
         } break;
         case SDL_EVENT_TERMINATING: {
-            ExitApp(true);
+            exit_app(true);
         }
         default:
             break;
@@ -2405,7 +2405,7 @@ void Application::RequestQuit(bool success) noexcept
     }
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
-        WriteLog("Quit requested");
+        write_log("Quit requested");
 
         _onQuitDispatcher();
         _quitEvent.notify_all();
@@ -3094,7 +3094,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
         buf.resize(numeric_cast<size_t>(dst_len));
 
         if (!buf.empty()) {
-            MemCopy(buf.data(), converted_data, buf.size());
+            mem_copy(buf.data(), converted_data, buf.size());
         }
     }
 
@@ -3136,7 +3136,7 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IsRunInDebugger()) {
+    if (is_run_in_debugger()) {
         return;
     }
 
@@ -3337,7 +3337,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
 
                 for (SDL_Event sdl_event; SDL_PollEvent(&sdl_event);) {
                     if (sdl_event.type == SDL_EVENT_QUIT) {
-                        ExitApp(true);
+                        exit_app(true);
                     }
                     else if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                         int32_t mx = iround<int32_t>(sdl_event.button.x);
@@ -3361,7 +3361,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
                             running = false;
                         }
                         else if (sdl_event.key.key == SDLK_ESCAPE) {
-                            ExitApp(true);
+                            exit_app(true);
                         }
                         else if (sdl_event.key.key >= SDLK_1 && sdl_event.key.key <= SDLK_9) {
                             toggle_index(numeric_cast<int32_t>(sdl_event.key.key - SDLK_1));

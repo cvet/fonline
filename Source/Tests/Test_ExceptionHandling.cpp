@@ -71,17 +71,17 @@ TEST_CASE("ExceptionHandling")
     {
         // Order matches the unified trace contract: provider emits most-recent first, so
         // SecondFunc (the deeper call) appears before FirstFunc (its caller)
-        ScriptStackTraceLayer layer;
-        layer.ScriptFrames.push_back({StackTraceFrame::FrameType::Script, "SecondFunc", "/tmp/second.cpp", 22});
-        layer.ScriptFrames.push_back({StackTraceFrame::FrameType::Script, "FirstFunc", "/tmp/first.cpp", 11});
+        script_stack_trace_layer layer;
+        layer.script_frames.push_back({stack_trace_frame::frame_type::script, "SecondFunc", "/tmp/second.cpp", 22});
+        layer.script_frames.push_back({stack_trace_frame::frame_type::script, "FirstFunc", "/tmp/first.cpp", 11});
 
-        std::vector<ScriptStackTraceLayer> layers;
+        std::vector<script_stack_trace_layer> layers;
         layers.push_back(std::move(layer));
 
-        StackTraceData st {};
-        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+        stack_trace_data st {};
+        st.script_layers = std::make_shared<const std::vector<script_stack_trace_layer>>(std::move(layers));
 
-        auto formatted = FormatStackTrace(st);
+        auto formatted = format_stack_trace(st);
 
         CHECK(formatted.find("Stack trace (most recent call first):") == 0);
         CHECK(formatted.find("- [Script] SecondFunc (second.cpp line 22)") != string::npos);
@@ -91,40 +91,40 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("FormatStackTraceWithNoCallsReturnsHeaderOnly")
     {
-        StackTraceData st {};
+        stack_trace_data st {};
 
-        auto formatted = FormatStackTrace(st);
+        auto formatted = format_stack_trace(st);
 
         CHECK(formatted == "Stack trace (most recent call first):");
     }
 
     SECTION("SetExceptionCallbackReplacesAndClearsCallback")
     {
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = get_exception_callback();
 
         string message;
         bool has_origin = false;
         bool fatal = false;
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
+        set_exception_callback([&](string_view msg, const catched_stack_trace_data& st, bool is_fatal) {
             message = string(msg);
-            has_origin = st.Origin.has_value();
+            has_origin = st.origin.has_value();
             fatal = is_fatal;
         });
 
-        auto callback = GetExceptionCallback();
+        auto callback = get_exception_callback();
         REQUIRE(callback);
-        CatchedStackTraceData st {std::nullopt, {}};
+        catched_stack_trace_data st {std::nullopt, {}};
         callback("Msg", st, true);
 
         CHECK(message == "Msg");
         CHECK_FALSE(has_origin);
         CHECK(fatal);
 
-        SetExceptionCallback({});
-        CHECK_FALSE(GetExceptionCallback());
+        set_exception_callback({});
+        CHECK_FALSE(get_exception_callback());
 
-        SetExceptionCallback(std::move(prev_callback));
+        set_exception_callback(std::move(prev_callback));
     }
 
     SECTION("DerivedExceptionPreservesOwnNameMessageAndParams")
@@ -161,29 +161,29 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("ReportExceptionAndContinueInvokesNonFatalCallback")
     {
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = get_exception_callback();
 
         string message;
         bool trace_received = false;
         bool trace_has_origin = false;
         bool fatal = true;
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
+        set_exception_callback([&](string_view msg, const catched_stack_trace_data& st, bool is_fatal) {
             message = string(msg);
             trace_received = true;
-            trace_has_origin = st.Origin.has_value();
+            trace_has_origin = st.origin.has_value();
             fatal = is_fatal;
         });
 
         GenericException ex {"Continue please"};
-        ReportExceptionAndContinue(ex);
+        report_exception_and_continue(ex);
 
         CHECK(message == ex.what());
         CHECK(trace_received);
         CHECK(trace_has_origin);
         CHECK_FALSE(fatal);
 
-        SetExceptionCallback(std::move(prev_callback));
+        set_exception_callback(std::move(prev_callback));
     }
 
     SECTION("VerifyAndThrowUsesVerificationExceptionWithSeparateParams")
@@ -204,11 +204,11 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("VerifyAndContinueSupportsMessageForm")
     {
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = get_exception_callback();
 
         vector<string> messages;
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool is_fatal) {
+        set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool is_fatal) {
             messages.emplace_back(msg);
             CHECK_FALSE(is_fatal);
         });
@@ -219,16 +219,16 @@ TEST_CASE("ExceptionHandling")
         CHECK(messages[0].find("VerificationException: Continue context") != string::npos);
         CHECK(messages[0].find("- 42") != string::npos);
 
-        SetExceptionCallback(std::move(prev_callback));
+        set_exception_callback(std::move(prev_callback));
     }
 
     SECTION("VerifyAndReturnSupportsMessageForms")
     {
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = get_exception_callback();
 
         vector<string> messages;
 
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool is_fatal) {
+        set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool is_fatal) {
             messages.emplace_back(msg);
             CHECK_FALSE(is_fatal);
         });
@@ -251,57 +251,57 @@ TEST_CASE("ExceptionHandling")
         CHECK(messages[1].find("VerificationException: Return value context") != string::npos);
         CHECK(messages[1].find("- 43") != string::npos);
 
-        SetExceptionCallback(std::move(prev_callback));
+        set_exception_callback(std::move(prev_callback));
     }
 
     SECTION("CatchedStackTraceDataIncludesOriginForEngineExceptions")
     {
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = get_exception_callback();
 
         bool trace_received = false;
         bool trace_has_origin = false;
 
-        SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
+        set_exception_callback([&](string_view, const catched_stack_trace_data& st, bool) { //
             trace_received = true;
-            trace_has_origin = st.Origin.has_value();
+            trace_has_origin = st.origin.has_value();
         });
 
         try {
             throw GenericException("Boom");
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            report_exception_and_continue(ex);
         }
 
         CHECK(trace_received);
         CHECK(trace_has_origin);
 
-        SetExceptionCallback(std::move(prev_callback));
+        set_exception_callback(std::move(prev_callback));
     }
 
     SECTION("CatchedStackTraceDataForNonEngineExceptionPrefixesCatchedAt")
     {
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = get_exception_callback();
 
         bool trace_received = false;
         bool trace_has_origin = true;
 
-        SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
+        set_exception_callback([&](string_view, const catched_stack_trace_data& st, bool) { //
             trace_received = true;
-            trace_has_origin = st.Origin.has_value();
+            trace_has_origin = st.origin.has_value();
         });
 
         try {
             throw std::runtime_error("plain");
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            report_exception_and_continue(ex);
         }
 
         CHECK(trace_received);
         CHECK_FALSE(trace_has_origin);
 
-        SetExceptionCallback(std::move(prev_callback));
+        set_exception_callback(std::move(prev_callback));
     }
 }
 
@@ -319,10 +319,10 @@ TEST_CASE("CrashReporterHooks")
     auto log_path = std::filesystem::temp_directory_path() / std::format("lf_crash_report_{}.log", std::chrono::steady_clock::now().time_since_epoch().count());
     string log_file = fs_path_to_string(log_path);
 
-    LogToFile(log_file);
+    log_to_file(log_file);
     auto restore_log = scope_exit([&log_file]() noexcept {
         safe_call([&log_file] {
-            LogToFile(NULL_LOG_PATH);
+            log_to_file(NULL_LOG_PATH);
             (void)fs_remove_file(log_file);
         });
     });
@@ -420,12 +420,12 @@ TEST_CASE("CrashReporterHooks")
     {
         // The handler runs on its own stack so a stack-overflow crash can still be reported; a repeat
         // call on an already-equipped thread must be a no-op rather than a second reservation
-        CHECK_NOTHROW(InstallCrashHandlerStackForThisThread());
-        CHECK_NOTHROW(InstallCrashHandlerStackForThisThread());
+        CHECK_NOTHROW(install_crash_handler_stack_for_this_thread());
+        CHECK_NOTHROW(install_crash_handler_stack_for_this_thread());
 
         bool installed_on_worker = false;
         std::thread worker {[&installed_on_worker] {
-            InstallCrashHandlerStackForThisThread();
+            install_crash_handler_stack_for_this_thread();
             installed_on_worker = true;
         }};
         worker.join();

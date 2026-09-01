@@ -168,16 +168,16 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 }
 
                 if (!is_server_setting && !is_client_setting && !is_game_setting) {
-                    WriteLog("Unknown setting {} = {}", key, value);
+                    write_log("Unknown setting {} = {}", key, value);
                 }
             }
 
             for (const auto& key : server_settings) {
-                WriteLog("Uninitialized server setting {}", key);
+                write_log("Uninitialized server setting {}", key);
                 settings_errors++;
             }
             for (const auto& key : client_settings) {
-                WriteLog("Uninitialized client setting {}", key);
+                write_log("Uninitialized client setting {}", key);
                 settings_errors++;
             }
 

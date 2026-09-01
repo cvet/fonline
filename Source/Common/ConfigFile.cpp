@@ -52,7 +52,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
 
     string section_content;
 
-    if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
+    if (is_enum_set(_options, ConfigFileOption::CollectContent)) {
         section_content.reserve(input.length());
     }
 
@@ -114,7 +114,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
             }
 
             // Store current section content
-            if (IsEnumSet(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
+            if (is_enum_set(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
                 (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
                 section_content.clear();
             }
@@ -122,7 +122,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
             // A name with a separator is a nested section; what its prefix means is up to the consumer
             bool nested_section = raw_section_name.find('/') != string_view::npos;
 
-            if (nested_section && IsEnumSet(_options, ConfigFileOption::SkipNestedSections)) {
+            if (nested_section && is_enum_set(_options, ConfigFileOption::SkipNestedSections)) {
                 skip_cur_section = true;
                 section_content.clear();
                 continue;
@@ -144,7 +144,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
             }
 
             // Store raw content
-            if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
+            if (is_enum_set(_options, ConfigFileOption::CollectContent)) {
                 section_content.append(line.data(), line.size()).append("\n");
             }
 
@@ -183,7 +183,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
     }
 
     // Store current section content
-    if (IsEnumSet(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
+    if (is_enum_set(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
         (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
     }
 }
@@ -427,7 +427,7 @@ auto ConfigFile::GetSectionContent(string_view section_name) const -> string_vie
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(IsEnumSet(_options, ConfigFileOption::CollectContent), "Config file content collection was not enabled");
+    FO_VERIFY_AND_THROW(is_enum_set(_options, ConfigFileOption::CollectContent), "Config file content collection was not enabled");
 
     auto it_section = _sectionKeyValues.find(section_name);
 

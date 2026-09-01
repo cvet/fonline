@@ -91,21 +91,21 @@ int main(int argc, char** argv) // Handled by SDL
         bool os_size_saved = false;
         isize32 os_size_before_first_child {};
 
-        list<pair<vector<string>, CatchedStackTraceData>> log_buffer;
+        list<pair<vector<string>, catched_stack_trace_data>> log_buffer;
         mutex log_buffer_locker;
         int32_t exception_count = 0;
 
-        SetLogCallback("ServerApp", [&](LogType type, string_view str, nptr<const CatchedStackTraceData> st) FO_DEFERRED {
+        set_log_callback("ServerApp", [&](log_type type, string_view str, nptr<const catched_stack_trace_data> st) FO_DEFERRED {
             scoped_lock locker {log_buffer_locker};
 
             auto lines = strex(str).split('\n');
-            log_buffer.emplace_back(std::move(lines), st ? *st : CatchedStackTraceData {std::nullopt, GetStackTrace()});
+            log_buffer.emplace_back(std::move(lines), st ? *st : catched_stack_trace_data {std::nullopt, get_stack_trace()});
 
             if (log_buffer.size() > numeric_cast<size_t>(GetApp()->Settings.MaxServerLogLines)) {
                 log_buffer.pop_front();
             }
 
-            if (type == LogType::Error) {
+            if (type == log_type::error) {
                 exception_count++;
             }
         });
@@ -119,7 +119,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         auto start_server = [&server] {
             auto settings = make_ptr(&GetApp()->Settings);
-            server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+            server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
         };
         auto stop_server = [&server, &get_server] {
             auto running_server = get_server();
@@ -149,14 +149,14 @@ int main(int argc, char** argv) // Handled by SDL
                 auto window = GetApp()->CreateChildWindow(client_size, title);
 
                 int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
-                auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
+                auto settings = safe_alloc::make_unique<GlobalSettings>(false);
                 settings->CopyFrom(GetApp()->Settings);
                 ClientStartupSettingsHook(*settings, client_index, true);
                 settings->ScreenWidth = client_size.width;
                 settings->ScreenHeight = client_size.height;
 
                 ptr<GlobalSettings> settings_ptr = settings.get();
-                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, GetClientResources(*settings), window);
+                auto client = safe_alloc::make_refcounted<ClientEngine>(settings_ptr, GetClientResources(*settings), window);
                 client_settings.emplace_back(std::move(settings));
                 clients.emplace_back(std::move(client));
                 client_windows.emplace_back(window);
@@ -169,7 +169,7 @@ int main(int argc, char** argv) // Handled by SDL
                 }
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                report_exception_and_continue(ex);
             }
             catch (...) {
                 FO_UNKNOWN_EXCEPTION();
@@ -177,7 +177,7 @@ int main(int argc, char** argv) // Handled by SDL
         };
 
         if (!GetApp()->Settings.NoStart) {
-            WriteLog("Auto start server");
+            write_log("Auto start server");
         }
 
         // Gui loop
@@ -192,7 +192,7 @@ int main(int argc, char** argv) // Handled by SDL
 
             if (server && get_server()->IsStarted() && GetApp()->Settings.AutoStartClientOnServer > 0 && !start_client_triggered) {
                 start_client_triggered = true;
-                WriteLog("Auto start embedded client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
+                write_log("Auto start embedded client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
 
                 for (int32_t i = 0; i < GetApp()->Settings.AutoStartClientOnServer; i++) {
                     start_client();
@@ -513,7 +513,7 @@ int main(int argc, char** argv) // Handled by SDL
                                 running_server->DrawGui();
                             }
                             catch (const std::exception& ex) {
-                                ReportExceptionAndContinue(ex);
+                                report_exception_and_continue(ex);
                             }
                             catch (...) {
                                 FO_UNKNOWN_EXCEPTION();
@@ -534,7 +534,7 @@ int main(int argc, char** argv) // Handled by SDL
                                             ImGuiTextUnformatted(lines[i]);
                                         }
 
-                                        auto formatted = st.Origin.has_value() ? FormatStackTrace(st) : FormatStackTrace(st.Catched);
+                                        auto formatted = st.origin.has_value() ? format_stack_trace(st) : format_stack_trace(st.catched);
 
                                         for (const auto& st_line : strex(formatted).split('\n')) {
                                             ImGuiTextUnformatted(st_line);
@@ -690,7 +690,7 @@ int main(int argc, char** argv) // Handled by SDL
                 }
                 catch (const std::exception& ex) {
                     exception_count++;
-                    ReportExceptionAndContinue(ex);
+                    report_exception_and_continue(ex);
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();
@@ -722,14 +722,14 @@ int main(int argc, char** argv) // Handled by SDL
         FO_VERIFY_AND_THROW(!server, "Server is already set");
         FO_VERIFY_AND_THROW(clients.empty(), "Clients must be empty before this operation");
         FO_VERIFY_AND_THROW(client_settings.empty(), "Client settings must be empty before this operation");
-        ExitApp(GetApp()->GetRequestedQuitSuccess());
+        exit_app(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
-        SetLogCallback("", nullptr);
-        ReportExceptionAndExit(ex);
+        set_log_callback("", nullptr);
+        report_exception_and_exit(ex);
     }
     catch (...) {
-        SetLogCallback("", nullptr);
+        set_log_callback("", nullptr);
         FO_UNKNOWN_EXCEPTION();
     }
 }

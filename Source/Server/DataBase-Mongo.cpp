@@ -451,7 +451,7 @@ protected:
             bson_destroy(&reply);
         }
         else {
-            WriteLog("Mongo reconnect probe failed: {}", error.message);
+            write_log("Mongo reconnect probe failed: {}", error.message);
         }
 
         return ok;
@@ -534,7 +534,7 @@ private:
 auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     InitializeBsonMemory();
-    return SafeAlloc::MakeUnique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
+    return safe_alloc::make_unique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
 }
 
 FO_GCC_IGNORE_WARNINGS_POP()

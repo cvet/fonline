@@ -46,28 +46,28 @@ namespace
     // RAII helper so each section starts with a clean provider regardless of the previous one
     struct ScopedScriptStackTraceProvider
     {
-        explicit ScopedScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept { SetScriptStackTraceProvider(std::move(provider)); }
+        explicit ScopedScriptStackTraceProvider(script_stack_trace_provider provider) noexcept { set_script_stack_trace_provider(std::move(provider)); }
         ScopedScriptStackTraceProvider(const ScopedScriptStackTraceProvider&) = delete;
         ScopedScriptStackTraceProvider(ScopedScriptStackTraceProvider&&) noexcept = delete;
         auto operator=(const ScopedScriptStackTraceProvider&) -> ScopedScriptStackTraceProvider& = delete;
         auto operator=(ScopedScriptStackTraceProvider&&) noexcept -> ScopedScriptStackTraceProvider& = delete;
-        ~ScopedScriptStackTraceProvider() noexcept { SetScriptStackTraceProvider({}); }
+        ~ScopedScriptStackTraceProvider() noexcept { set_script_stack_trace_provider({}); }
     };
 
-    auto MakeScriptFrame(std::string function, std::string file, uint32_t line) -> StackTraceFrame
+    auto MakeScriptFrame(std::string function, std::string file, uint32_t line) -> stack_trace_frame
     {
-        StackTraceFrame frame;
-        frame.Type = StackTraceFrame::FrameType::Script;
-        frame.Function = std::move(function);
-        frame.File = std::move(file);
-        frame.Line = line;
+        stack_trace_frame frame;
+        frame.type = stack_trace_frame::frame_type::script;
+        frame.function = std::move(function);
+        frame.file = std::move(file);
+        frame.line = line;
         return frame;
     }
 
-    auto MakeLayer(std::initializer_list<StackTraceFrame> frames) -> ScriptStackTraceLayer
+    auto MakeLayer(std::initializer_list<stack_trace_frame> frames) -> script_stack_trace_layer
     {
-        ScriptStackTraceLayer layer;
-        layer.ScriptFrames.assign(frames);
+        script_stack_trace_layer layer;
+        layer.script_frames.assign(frames);
         return layer;
     }
 }
@@ -75,47 +75,47 @@ namespace
 TEST_CASE("StackTrace")
 {
     // Make sure no leaked provider from a prior test pollutes the suite
-    SetScriptStackTraceProvider({});
-    ClearResolvedStackTraceCache();
+    set_script_stack_trace_provider({});
+    clear_resolved_stack_trace_cache();
 
     SECTION("ProviderRegistrationIsObservable")
     {
-        CHECK_FALSE(HasScriptStackTraceProvider());
+        CHECK_FALSE(has_script_stack_trace_provider());
 
-        SetScriptStackTraceProvider([](std::vector<ScriptStackTraceLayer>&) { });
-        CHECK(HasScriptStackTraceProvider());
+        set_script_stack_trace_provider([](std::vector<script_stack_trace_layer>&) { });
+        CHECK(has_script_stack_trace_provider());
 
-        SetScriptStackTraceProvider({});
-        CHECK_FALSE(HasScriptStackTraceProvider());
+        set_script_stack_trace_provider({});
+        CHECK_FALSE(has_script_stack_trace_provider());
     }
 
     SECTION("SingleLayerCapturesScriptFramesInProvidedOrder")
     {
-        ScopedScriptStackTraceProvider scope([](std::vector<ScriptStackTraceLayer>& layers) {
+        ScopedScriptStackTraceProvider scope([](std::vector<script_stack_trace_layer>& layers) {
             layers.push_back(MakeLayer({
                 MakeScriptFrame("InnerFunc", "Scripts/Inner.fos", 17),
                 MakeScriptFrame("OuterFunc", "Scripts/Outer.fos", 5),
             }));
         });
 
-        auto st = GetStackTrace();
+        auto st = get_stack_trace();
 
-        REQUIRE(st.ScriptLayers);
-        REQUIRE(st.ScriptLayers->size() == 1);
+        REQUIRE(st.script_layers);
+        REQUIRE(st.script_layers->size() == 1);
 
-        const auto& frames = (*st.ScriptLayers)[0].ScriptFrames;
+        const auto& frames = (*st.script_layers)[0].script_frames;
         REQUIRE(frames.size() == 2);
-        CHECK(frames[0].Function == "InnerFunc");
-        CHECK(frames[0].File == "Scripts/Inner.fos");
-        CHECK(frames[0].Line == 17);
-        CHECK(frames[0].Type == StackTraceFrame::FrameType::Script);
-        CHECK(frames[1].Function == "OuterFunc");
+        CHECK(frames[0].function == "InnerFunc");
+        CHECK(frames[0].file == "Scripts/Inner.fos");
+        CHECK(frames[0].line == 17);
+        CHECK(frames[0].type == stack_trace_frame::frame_type::script);
+        CHECK(frames[1].function == "OuterFunc");
     }
 
     SECTION("MultiContextChainProducesMultipleLayersInnermostFirst")
     {
         // Two layers: child (active) on top, parent below. No native anchors set
-        ScopedScriptStackTraceProvider scope([](std::vector<ScriptStackTraceLayer>& layers) {
+        ScopedScriptStackTraceProvider scope([](std::vector<script_stack_trace_layer>& layers) {
             layers.push_back(MakeLayer({
                 MakeScriptFrame("ChildCtx_Top", "Scripts/Child.fos", 42),
                 MakeScriptFrame("ChildCtx_Bottom", "Scripts/Child.fos", 1),
@@ -125,7 +125,7 @@ TEST_CASE("StackTrace")
             }));
         });
 
-        auto formatted = FormatStackTrace(GetStackTrace());
+        auto formatted = format_stack_trace(get_stack_trace());
 
         auto child_top_pos = formatted.find("ChildCtx_Top");
         auto child_bottom_pos = formatted.find("ChildCtx_Bottom");
@@ -140,30 +140,30 @@ TEST_CASE("StackTrace")
 
     SECTION("FormatTagsScriptFrames")
     {
-        ScopedScriptStackTraceProvider scope([](std::vector<ScriptStackTraceLayer>& layers) { layers.push_back(MakeLayer({MakeScriptFrame("Boss", "Scripts/Boss.fos", 7)})); });
+        ScopedScriptStackTraceProvider scope([](std::vector<script_stack_trace_layer>& layers) { layers.push_back(MakeLayer({MakeScriptFrame("Boss", "Scripts/Boss.fos", 7)})); });
 
-        auto formatted = FormatStackTrace(GetStackTrace());
+        auto formatted = format_stack_trace(get_stack_trace());
 
         CHECK(formatted.find("- [Script] Boss (Boss.fos line 7)") != std::string::npos);
     }
 
     SECTION("ResolveStackTracePlacesScriptBeforeNativeWhenNoBirthAnchor")
     {
-        ScopedScriptStackTraceProvider scope([](std::vector<ScriptStackTraceLayer>& layers) {
+        ScopedScriptStackTraceProvider scope([](std::vector<script_stack_trace_layer>& layers) {
             layers.push_back(MakeLayer({
                 MakeScriptFrame("ScriptA", "Scripts/A.fos", 1),
                 MakeScriptFrame("ScriptB", "Scripts/B.fos", 2),
             }));
         });
 
-        auto resolved = ResolveStackTrace(GetStackTrace());
+        auto resolved = resolve_stack_trace(get_stack_trace());
 
         REQUIRE(resolved.size() >= 2);
-        CHECK(resolved[0].Type == StackTraceFrame::FrameType::Script);
-        CHECK(resolved[1].Type == StackTraceFrame::FrameType::Script);
+        CHECK(resolved[0].type == stack_trace_frame::frame_type::script);
+        CHECK(resolved[1].type == stack_trace_frame::frame_type::script);
 
         for (size_t i = 2; i < resolved.size(); i++) {
-            CHECK(resolved[i].Type == StackTraceFrame::FrameType::Native);
+            CHECK(resolved[i].type == stack_trace_frame::frame_type::native);
         }
     }
 
@@ -171,66 +171,66 @@ TEST_CASE("StackTrace")
     {
         // Hand-built so the layers bottom-align with the trace, which is what production produces: birth frames are
         // captured at RequestContext and share their bottom with any later trace inside the launched Execute()
-        StackTraceData st {};
+        stack_trace_data st {};
         // Pretend native frames addresses 0xA0, 0xB0, ..., 0xA0 = top, 0x80 = main
-        std::array<NativeStackFrameAddress, 5> pcs {
-            static_cast<NativeStackFrameAddress>(0xA0), // child's native bridge code
-            static_cast<NativeStackFrameAddress>(0xA1), // child's Execute()
-            static_cast<NativeStackFrameAddress>(0xB0), // parent's native bridge code (= anchor for child layer)
-            static_cast<NativeStackFrameAddress>(0xB1), // parent's Execute()         (= anchor for parent layer)
-            static_cast<NativeStackFrameAddress>(0x80), // main()
+        std::array<native_stack_frame_address, 5> pcs {
+            static_cast<native_stack_frame_address>(0xA0), // child's native bridge code
+            static_cast<native_stack_frame_address>(0xA1), // child's Execute()
+            static_cast<native_stack_frame_address>(0xB0), // parent's native bridge code (= anchor for child layer)
+            static_cast<native_stack_frame_address>(0xB1), // parent's Execute()         (= anchor for parent layer)
+            static_cast<native_stack_frame_address>(0x80), // main()
         };
         for (size_t i = 0; i < pcs.size(); i++) {
-            st.NativeFrames[i] = pcs[i];
+            st.native_frames[i] = pcs[i];
         }
-        st.NativeFrameCount = static_cast<uint32_t>(pcs.size());
+        st.native_frame_count = static_cast<uint32_t>(pcs.size());
 
-        ScriptStackTraceLayer child;
-        child.ScriptFrames.push_back(MakeScriptFrame("ChildScript", "Scripts/Child.fos", 10));
+        script_stack_trace_layer child;
+        child.script_frames.push_back(MakeScriptFrame("ChildScript", "Scripts/Child.fos", 10));
         // Child layer was launched at the 0xB0 frame; its birth stack matches the trace
         // bottom from 0xB0 down through main
-        child.BirthNativeFrames[0] = static_cast<NativeStackFrameAddress>(0xB0);
-        child.BirthNativeFrames[1] = static_cast<NativeStackFrameAddress>(0xB1);
-        child.BirthNativeFrames[2] = static_cast<NativeStackFrameAddress>(0x80);
-        child.BirthNativeFrameCount = 3;
+        child.birth_native_frames[0] = static_cast<native_stack_frame_address>(0xB0);
+        child.birth_native_frames[1] = static_cast<native_stack_frame_address>(0xB1);
+        child.birth_native_frames[2] = static_cast<native_stack_frame_address>(0x80);
+        child.birth_native_frame_count = 3;
 
-        ScriptStackTraceLayer parent;
-        parent.ScriptFrames.push_back(MakeScriptFrame("ParentScript", "Scripts/Parent.fos", 20));
+        script_stack_trace_layer parent;
+        parent.script_frames.push_back(MakeScriptFrame("ParentScript", "Scripts/Parent.fos", 20));
         // Parent layer was launched at 0xB1; its birth stack matches the trace bottom
         // from 0xB1 down through main
-        parent.BirthNativeFrames[0] = static_cast<NativeStackFrameAddress>(0xB1);
-        parent.BirthNativeFrames[1] = static_cast<NativeStackFrameAddress>(0x80);
-        parent.BirthNativeFrameCount = 2;
+        parent.birth_native_frames[0] = static_cast<native_stack_frame_address>(0xB1);
+        parent.birth_native_frames[1] = static_cast<native_stack_frame_address>(0x80);
+        parent.birth_native_frame_count = 2;
 
-        std::vector<ScriptStackTraceLayer> layers;
+        std::vector<script_stack_trace_layer> layers;
         layers.push_back(std::move(child));
         layers.push_back(std::move(parent));
-        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+        st.script_layers = std::make_shared<const std::vector<script_stack_trace_layer>>(std::move(layers));
 
-        auto resolved = ResolveStackTrace(st);
+        auto resolved = resolve_stack_trace(st);
 
         // Most-recent first, so each script layer sits directly below the natives it called and above the frames
         // between its own anchor and the next one out
         REQUIRE(resolved.size() == 7);
-        CHECK(resolved[0].Type == StackTraceFrame::FrameType::Native);
-        CHECK(resolved[1].Type == StackTraceFrame::FrameType::Native);
-        CHECK(resolved[2].Type == StackTraceFrame::FrameType::Script);
-        CHECK(resolved[2].Function == "ChildScript");
-        CHECK(resolved[3].Type == StackTraceFrame::FrameType::Native);
-        CHECK(resolved[4].Type == StackTraceFrame::FrameType::Script);
-        CHECK(resolved[4].Function == "ParentScript");
-        CHECK(resolved[5].Type == StackTraceFrame::FrameType::Native);
-        CHECK(resolved[6].Type == StackTraceFrame::FrameType::Native);
+        CHECK(resolved[0].type == stack_trace_frame::frame_type::native);
+        CHECK(resolved[1].type == stack_trace_frame::frame_type::native);
+        CHECK(resolved[2].type == stack_trace_frame::frame_type::script);
+        CHECK(resolved[2].function == "ChildScript");
+        CHECK(resolved[3].type == stack_trace_frame::frame_type::native);
+        CHECK(resolved[4].type == stack_trace_frame::frame_type::script);
+        CHECK(resolved[4].function == "ParentScript");
+        CHECK(resolved[5].type == stack_trace_frame::frame_type::native);
+        CHECK(resolved[6].type == stack_trace_frame::frame_type::native);
     }
 
     SECTION("DeepNativeStackAtCapacityAnchorsLayerCorrectly")
     {
         // The trace fills the cap exactly, so anchoring has to hold at the edge without an off-by-one
-        StackTraceData st {};
-        st.NativeFrameCount = STACK_TRACE_MAX_NATIVE_FRAMES;
+        stack_trace_data st {};
+        st.native_frame_count = STACK_TRACE_MAX_NATIVE_FRAMES;
 
         for (uint32_t i = 0; i < STACK_TRACE_MAX_NATIVE_FRAMES; i++) {
-            st.NativeFrames[i] = static_cast<NativeStackFrameAddress>(0x1000 + i);
+            st.native_frames[i] = static_cast<native_stack_frame_address>(0x1000 + i);
         }
 
         // Pretend the script layer was launched 50 frames into the trace, so its birth
@@ -238,87 +238,87 @@ TEST_CASE("StackTrace")
         constexpr uint32_t launch_index = 50;
         constexpr uint32_t birth_count = STACK_TRACE_MAX_NATIVE_FRAMES - launch_index;
 
-        ScriptStackTraceLayer layer;
-        layer.ScriptFrames.push_back(MakeScriptFrame("DeepScript", "Scripts/Deep.fos", 99));
-        layer.BirthNativeFrameCount = birth_count;
+        script_stack_trace_layer layer;
+        layer.script_frames.push_back(MakeScriptFrame("DeepScript", "Scripts/Deep.fos", 99));
+        layer.birth_native_frame_count = birth_count;
 
         for (uint32_t i = 0; i < birth_count; i++) {
-            layer.BirthNativeFrames[i] = st.NativeFrames[launch_index + i];
+            layer.birth_native_frames[i] = st.native_frames[launch_index + i];
         }
 
-        std::vector<ScriptStackTraceLayer> layers;
+        std::vector<script_stack_trace_layer> layers;
         layers.push_back(std::move(layer));
-        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+        st.script_layers = std::make_shared<const std::vector<script_stack_trace_layer>>(std::move(layers));
 
-        auto resolved = ResolveStackTrace(st);
+        auto resolved = resolve_stack_trace(st);
 
         // Expected: 50 deeper natives -> the script -> 78 tail natives
         REQUIRE(resolved.size() == STACK_TRACE_MAX_NATIVE_FRAMES + 1);
 
         for (uint32_t i = 0; i < launch_index; i++) {
-            CHECK(resolved[i].Type == StackTraceFrame::FrameType::Native);
+            CHECK(resolved[i].type == stack_trace_frame::frame_type::native);
         }
 
-        CHECK(resolved[launch_index].Type == StackTraceFrame::FrameType::Script);
-        CHECK(resolved[launch_index].Function == "DeepScript");
+        CHECK(resolved[launch_index].type == stack_trace_frame::frame_type::script);
+        CHECK(resolved[launch_index].function == "DeepScript");
 
         for (uint32_t i = launch_index + 1; i < resolved.size(); i++) {
-            CHECK(resolved[i].Type == StackTraceFrame::FrameType::Native);
+            CHECK(resolved[i].type == stack_trace_frame::frame_type::native);
         }
     }
 
     SECTION("FormatStackTraceMarksTruncationInHeader")
     {
-        StackTraceData st {};
-        st.NativeFrames[0] = static_cast<NativeStackFrameAddress>(0xCAFE);
-        st.NativeFrameCount = 1;
-        st.NativeTruncated = true;
+        stack_trace_data st {};
+        st.native_frames[0] = static_cast<native_stack_frame_address>(0xCAFE);
+        st.native_frame_count = 1;
+        st.native_truncated = true;
 
-        auto formatted = FormatStackTrace(st);
+        auto formatted = format_stack_trace(st);
 
         // Only the header changes when truncated; the rest of the rendering is unaffected
         CHECK(formatted.find("Stack trace (most recent call first, truncated at ") == 0);
         CHECK(formatted.find("128 frames):") != std::string::npos);
 
-        st.NativeTruncated = false;
-        auto formatted_clean = FormatStackTrace(st);
+        st.native_truncated = false;
+        auto formatted_clean = format_stack_trace(st);
         CHECK(formatted_clean.find("Stack trace (most recent call first):") == 0);
         CHECK(formatted_clean.find("truncated") == std::string::npos);
     }
 
     SECTION("ResolvedNativeFramesAreCachedGlobally")
     {
-        StackTraceData st {};
-        st.NativeFrames[0] = static_cast<NativeStackFrameAddress>(0xCAFE);
-        st.NativeFrames[1] = static_cast<NativeStackFrameAddress>(0xBABE);
-        st.NativeFrames[2] = static_cast<NativeStackFrameAddress>(0xCAFE);
-        st.NativeFrameCount = 3;
+        stack_trace_data st {};
+        st.native_frames[0] = static_cast<native_stack_frame_address>(0xCAFE);
+        st.native_frames[1] = static_cast<native_stack_frame_address>(0xBABE);
+        st.native_frames[2] = static_cast<native_stack_frame_address>(0xCAFE);
+        st.native_frame_count = 3;
 
-        REQUIRE(GetResolvedStackTraceCacheSize() == 0);
+        REQUIRE(get_resolved_stack_trace_cache_size() == 0);
 
-        auto resolved_first = ResolveStackTrace(st);
+        auto resolved_first = resolve_stack_trace(st);
 
         REQUIRE(resolved_first.size() == 3);
-        CHECK(GetResolvedStackTraceCacheSize() == 2);
+        CHECK(get_resolved_stack_trace_cache_size() == 2);
 
-        auto resolved_second = ResolveStackTrace(st);
+        auto resolved_second = resolve_stack_trace(st);
 
         REQUIRE(resolved_second.size() == 3);
-        CHECK(GetResolvedStackTraceCacheSize() == 2);
-        CHECK(resolved_second[0].Function == resolved_first[0].Function);
-        CHECK(resolved_second[1].Function == resolved_first[1].Function);
-        CHECK(resolved_second[2].Function == resolved_first[2].Function);
+        CHECK(get_resolved_stack_trace_cache_size() == 2);
+        CHECK(resolved_second[0].function == resolved_first[0].function);
+        CHECK(resolved_second[1].function == resolved_first[1].function);
+        CHECK(resolved_second[2].function == resolved_first[2].function);
     }
 
     SECTION("CaptureNativeStackFramesReportsNoTruncationForShallowStack")
     {
         // A normal capture inside a unit test thread is well below the 128-frame cap,
         // so the truncation flag must come back clean
-        std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> frames {};
+        std::array<native_stack_frame_address, STACK_TRACE_MAX_NATIVE_FRAMES> frames {};
         uint32_t count = 0;
         bool truncated = true; // start with the wrong value to make sure capture clears it
 
-        CaptureNativeStackFrames(frames, count, truncated, 0);
+        capture_native_stack_frames(frames, count, truncated, 0);
 
         CHECK_FALSE(truncated);
 #if FO_MEMORY_SANITIZER || FO_THREAD_SANITIZER
@@ -333,34 +333,34 @@ TEST_CASE("StackTrace")
     {
         // Both traces fill the cap from the top of deeper stacks, so they share no bottom and anchoring honestly
         // fails; the degraded output is deliberate rather than a guessed anchor
-        StackTraceData st {};
-        st.NativeFrameCount = STACK_TRACE_MAX_NATIVE_FRAMES;
+        stack_trace_data st {};
+        st.native_frame_count = STACK_TRACE_MAX_NATIVE_FRAMES;
 
         for (uint32_t i = 0; i < STACK_TRACE_MAX_NATIVE_FRAMES; i++) {
-            st.NativeFrames[i] = static_cast<NativeStackFrameAddress>(0x2000 + i);
+            st.native_frames[i] = static_cast<native_stack_frame_address>(0x2000 + i);
         }
 
-        ScriptStackTraceLayer layer;
-        layer.ScriptFrames.push_back(MakeScriptFrame("OrphanedScript", "Scripts/Orphan.fos", 1));
-        layer.BirthNativeFrameCount = STACK_TRACE_MAX_NATIVE_FRAMES;
+        script_stack_trace_layer layer;
+        layer.script_frames.push_back(MakeScriptFrame("OrphanedScript", "Scripts/Orphan.fos", 1));
+        layer.birth_native_frame_count = STACK_TRACE_MAX_NATIVE_FRAMES;
 
         // Birth uses a disjoint address range -> nothing aligns at the bottom
         for (uint32_t i = 0; i < STACK_TRACE_MAX_NATIVE_FRAMES; i++) {
-            layer.BirthNativeFrames[i] = static_cast<NativeStackFrameAddress>(0x9000 + i);
+            layer.birth_native_frames[i] = static_cast<native_stack_frame_address>(0x9000 + i);
         }
 
-        std::vector<ScriptStackTraceLayer> layers;
+        std::vector<script_stack_trace_layer> layers;
         layers.push_back(std::move(layer));
-        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+        st.script_layers = std::make_shared<const std::vector<script_stack_trace_layer>>(std::move(layers));
 
-        auto resolved = ResolveStackTrace(st);
+        auto resolved = resolve_stack_trace(st);
 
         REQUIRE(resolved.size() == STACK_TRACE_MAX_NATIVE_FRAMES + 1);
-        CHECK(resolved[0].Type == StackTraceFrame::FrameType::Script);
-        CHECK(resolved[0].Function == "OrphanedScript");
+        CHECK(resolved[0].type == stack_trace_frame::frame_type::script);
+        CHECK(resolved[0].function == "OrphanedScript");
 
         for (uint32_t i = 1; i < resolved.size(); i++) {
-            CHECK(resolved[i].Type == StackTraceFrame::FrameType::Native);
+            CHECK(resolved[i].type == stack_trace_frame::frame_type::native);
         }
     }
 
@@ -368,73 +368,73 @@ TEST_CASE("StackTrace")
     {
         // BirthNativeFrameCount == 0: layer is recorded but the resolver can't anchor it in
         // the native trace, so all native frames go after every script layer
-        StackTraceData st {};
-        st.NativeFrames[0] = static_cast<NativeStackFrameAddress>(0xCAFE);
-        st.NativeFrames[1] = static_cast<NativeStackFrameAddress>(0xBABE);
-        st.NativeFrameCount = 2;
+        stack_trace_data st {};
+        st.native_frames[0] = static_cast<native_stack_frame_address>(0xCAFE);
+        st.native_frames[1] = static_cast<native_stack_frame_address>(0xBABE);
+        st.native_frame_count = 2;
 
-        std::vector<ScriptStackTraceLayer> layers;
+        std::vector<script_stack_trace_layer> layers;
         layers.push_back(MakeLayer({MakeScriptFrame("OnlyScript", "Scripts/Only.fos", 1)}));
         // No BirthNativeFrameCount set - left at default 0
-        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+        st.script_layers = std::make_shared<const std::vector<script_stack_trace_layer>>(std::move(layers));
 
-        auto resolved = ResolveStackTrace(st);
+        auto resolved = resolve_stack_trace(st);
 
         REQUIRE(resolved.size() == 3);
-        CHECK(resolved[0].Type == StackTraceFrame::FrameType::Script);
-        CHECK(resolved[1].Type == StackTraceFrame::FrameType::Native);
-        CHECK(resolved[2].Type == StackTraceFrame::FrameType::Native);
+        CHECK(resolved[0].type == stack_trace_frame::frame_type::script);
+        CHECK(resolved[1].type == stack_trace_frame::frame_type::native);
+        CHECK(resolved[2].type == stack_trace_frame::frame_type::native);
     }
 
     SECTION("GetStackTraceEntryReturnsFramesByDepth")
     {
-        ScopedScriptStackTraceProvider scope([](std::vector<ScriptStackTraceLayer>& layers) {
+        ScopedScriptStackTraceProvider scope([](std::vector<script_stack_trace_layer>& layers) {
             layers.push_back(MakeLayer({
                 MakeScriptFrame("DepthZero", "Scripts/Z.fos", 1),
                 MakeScriptFrame("DepthOne", "Scripts/O.fos", 2),
             }));
         });
 
-        auto top = GetStackTraceEntry(0);
-        auto next = GetStackTraceEntry(1);
+        auto top = get_stack_trace_entry(0);
+        auto next = get_stack_trace_entry(1);
 
         REQUIRE(top.has_value());
         REQUIRE(next.has_value());
-        CHECK(top->Function == "DepthZero");
-        CHECK(next->Function == "DepthOne");
+        CHECK(top->function == "DepthZero");
+        CHECK(next->function == "DepthOne");
     }
 
     SECTION("GetStackTraceEntryReturnsNulloptForOutOfRange")
     {
-        ScopedScriptStackTraceProvider scope([](std::vector<ScriptStackTraceLayer>& layers) { layers.push_back(MakeLayer({MakeScriptFrame("Only", "Scripts/Only.fos", 1)})); });
+        ScopedScriptStackTraceProvider scope([](std::vector<script_stack_trace_layer>& layers) { layers.push_back(MakeLayer({MakeScriptFrame("Only", "Scripts/Only.fos", 1)})); });
 
-        auto missing = GetStackTraceEntry(10000);
+        auto missing = get_stack_trace_entry(10000);
         CHECK_FALSE(missing.has_value());
     }
 
     SECTION("FormatStackTraceWithNoFramesReturnsHeaderOnly")
     {
-        StackTraceData st {};
+        stack_trace_data st {};
 
-        auto formatted = FormatStackTrace(st);
+        auto formatted = format_stack_trace(st);
 
         CHECK(formatted == "Stack trace (most recent call first):");
     }
 
     SECTION("SafeWriteStackTraceWritesScriptAndNativeSections")
     {
-        StackTraceData st {};
-        std::vector<ScriptStackTraceLayer> layers;
+        stack_trace_data st {};
+        std::vector<script_stack_trace_layer> layers;
         layers.push_back(MakeLayer({
             MakeScriptFrame("FuncA", "/tmp/a.fos", 11),
             MakeScriptFrame("FuncB", "/tmp/b.fos", 22),
         }));
-        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+        st.script_layers = std::make_shared<const std::vector<script_stack_trace_layer>>(std::move(layers));
 
         std::ostringstream captured;
         std::streambuf* prev_buf = std::cout.rdbuf(captured.rdbuf());
 
-        SafeWriteStackTrace(st);
+        safe_write_stack_trace(st);
         std::cout.rdbuf(prev_buf);
 
         std::string log_contents = captured.str();
@@ -447,20 +447,20 @@ TEST_CASE("StackTrace")
 
     SECTION("ProviderExceptionsDoNotEscape")
     {
-        ScopedScriptStackTraceProvider scope([](std::vector<ScriptStackTraceLayer>&) {
+        ScopedScriptStackTraceProvider scope([](std::vector<script_stack_trace_layer>&) {
             // A misbehaving provider must not crash the capture path even if it throws —
-            // GetStackTrace defensively swallows the exception so the contract is preserved
+            // get_stack_trace defensively swallows the exception so the contract is preserved
             throw std::runtime_error("provider failure");
         });
 
-        auto st = GetStackTrace();
-        // Capture survived and produced a valid object. ScriptLayers stays null because the
+        auto st = get_stack_trace();
+        // Capture survived and produced a valid object. script_layers stays null because the
         // provider didn't append anything before throwing
-        CHECK_FALSE(st.ScriptLayers);
+        CHECK_FALSE(st.script_layers);
     }
 
-    SetScriptStackTraceProvider({});
-    ClearResolvedStackTraceCache();
+    set_script_stack_trace_provider({});
+    clear_resolved_stack_trace_cache();
 }
 
 FO_END_NAMESPACE

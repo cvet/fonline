@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 static constexpr string_view MAP_ANCHOR_SECTION = "ProtoMap";
 static constexpr string_view CONTEXT_PREFIX = "$Name";
 
-void MapLoader::Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
+void MapLoader::Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, hash_resolver& hashes, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -154,7 +154,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
-            WriteLog(LogType::Warning, "Proto critter invalid data");
+            write_log(log_type::warning, "Proto critter invalid data");
             errors++;
             continue;
         }
@@ -162,11 +162,11 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         auto id_it = kv->find("$Id");
         ident_t id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
-        hstring hashed_proto_name = hash_resolver.ToHashedString(proto_name);
+        hstring hashed_proto_name = hashes.to_hashed_string(proto_name);
         auto proto = meta.GetProtoCritter(hashed_proto_name);
 
         if (!proto) {
-            WriteLog(LogType::Warning, "Proto critter '{}' not found", proto_name);
+            write_log(log_type::warning, "Proto critter '{}' not found", proto_name);
             errors++;
         }
         else {
@@ -174,8 +174,8 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
                 cr_load(id, proto, kv);
             }
             catch (const std::exception& ex) {
-                WriteLog(LogType::Warning, "Unable to load critter '{}'", proto_name);
-                ReportExceptionAndContinue(ex);
+                write_log(log_type::warning, "Unable to load critter '{}'", proto_name);
+                report_exception_and_continue(ex);
                 errors++;
             }
         }
@@ -187,7 +187,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
-            WriteLog(LogType::Warning, "Proto item invalid data");
+            write_log(log_type::warning, "Proto item invalid data");
             errors++;
             continue;
         }
@@ -195,11 +195,11 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         auto id_it = kv->find("$Id");
         ident_t id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
-        hstring hashed_proto_name = hash_resolver.ToHashedString(proto_name);
+        hstring hashed_proto_name = hashes.to_hashed_string(proto_name);
         auto proto = meta.GetProtoItem(hashed_proto_name);
 
         if (!proto) {
-            WriteLog(LogType::Warning, "Proto item '{}' not found", proto_name);
+            write_log(log_type::warning, "Proto item '{}' not found", proto_name);
             errors++;
         }
         else {
@@ -207,8 +207,8 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
                 item_load(id, proto, kv);
             }
             catch (const std::exception& ex) {
-                WriteLog(LogType::Warning, "Unable to load item '{}'", proto_name);
-                ReportExceptionAndContinue(ex);
+                write_log(log_type::warning, "Unable to load item '{}'", proto_name);
+                report_exception_and_continue(ex);
                 errors++;
             }
         }
@@ -245,17 +245,17 @@ auto MapLoader::EnumerateMaps(string_view file_name, const string& buf) -> vecto
     return map_names;
 }
 
-void MapLoader::ReadBakedFileHeader(DataReader& reader, string_view map_name)
+void MapLoader::ReadBakedFileHeader(data_reader& reader, string_view map_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32_t magic = reader.Read<uint32_t>();
+    uint32_t magic = reader.read<uint32_t>();
 
     if (magic != BAKED_MAP_FILE_MAGIC) {
         throw MapLoaderException("Baked map file is not a map binary", map_name, magic, BAKED_MAP_FILE_MAGIC);
     }
 
-    uint32_t version = reader.Read<uint32_t>();
+    uint32_t version = reader.read<uint32_t>();
 
     // A version mismatch means the baked resources were produced by another layout, so they have to be rebaked
     if (version != BAKED_MAP_FILE_VERSION) {

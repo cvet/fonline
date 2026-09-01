@@ -125,14 +125,14 @@ auto NetworkServer::StartWebSocketsServer(ptr<ServerNetworkSettings> settings, N
     uint16_t ws_port = numeric_cast<uint16_t>(settings->WebSocketPort);
 
     if (settings->SecuredWebSockets) {
-        WriteLog("Listen WebSockets (with TLS) connections on port {}", ws_port);
+        write_log("Listen WebSockets (with TLS) connections on port {}", ws_port);
 
-        return SafeAlloc::MakeUnique<NetworkServer_WebSockets<true>>(settings, std::move(callback));
+        return safe_alloc::make_unique<NetworkServer_WebSockets<true>>(settings, std::move(callback));
     }
     else {
-        WriteLog("Listen WebSockets (no TLS) connections on port {}", ws_port);
+        write_log("Listen WebSockets (no TLS) connections on port {}", ws_port);
 
-        return SafeAlloc::MakeUnique<NetworkServer_WebSockets<false>>(settings, std::move(callback));
+        return safe_alloc::make_unique<NetworkServer_WebSockets<false>>(settings, std::move(callback));
     }
 }
 
@@ -217,10 +217,10 @@ void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
+        write_log(log_type::warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
     }
     else {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
+        write_log(log_type::warning, "WebSocket socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
     }
 }
 
@@ -239,7 +239,7 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        report_exception_and_continue(ex);
     }
 }
 
@@ -306,7 +306,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
             DispatchImpl();
         }
         else {
-            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, GetAsioErrorText(error));
+            write_log(log_type::warning, "WebSocket send failed to {}:{}: {}", _host, _port, GetAsioErrorText(error));
             Disconnect();
         }
     }
@@ -387,7 +387,7 @@ void NetworkServer_WebSockets<Secured>::Run()
             break;
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            report_exception_and_continue(ex);
         }
     }
 }
@@ -401,7 +401,7 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         auto connection = _server.get_con_from_hdl(hdl);
 
         try {
-            auto ws_connection = SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
+            auto ws_connection = safe_alloc::make_shared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
             ws_connection->Start();
 
             if (TrackConnection(ws_connection)) {
@@ -409,14 +409,14 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            report_exception_and_continue(ex);
 
             asio::error_code terminate_error;
             connection->terminate(terminate_error);
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        report_exception_and_continue(ex);
     }
 }
 
@@ -428,7 +428,7 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
     auto remote_endpoint = connection->get_remote_endpoint();
-    WriteLog(LogType::Warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), GetAsioErrorText(ec));
+    write_log(log_type::warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), GetAsioErrorText(ec));
 }
 
 template<bool Secured>

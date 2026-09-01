@@ -211,14 +211,14 @@ auto ScriptDict::Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<Script
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeRefCounted<ScriptDict>(ti);
+    return safe_alloc::make_refcounted<ScriptDict>(ti);
 }
 
 auto ScriptDict::Create(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) -> refcount_ptr<ScriptDict>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeRefCounted<ScriptDict>(ti, init_list);
+    return safe_alloc::make_refcounted<ScriptDict>(ti, init_list);
 }
 
 auto ScriptDict::GetDictTypeId() const -> int32_t
@@ -437,7 +437,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
         return cached_sub_type_data;
     }
 
-    auto sub_type_data = SafeAlloc::MakeUnique<ScriptDictTypeData>();
+    auto sub_type_data = safe_alloc::make_unique<ScriptDictTypeData>();
 
     bool must_be_const = (type_id & AngelScript::asTYPEID_HANDLETOCONST) != 0;
     ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
@@ -888,8 +888,8 @@ static auto CreateObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_typ
         element_size = engine->GetSizeOfPrimitiveType(sub_type_id);
     }
 
-    ptr<void> obj = SafeAlloc::MakeRawArr<uint8_t>(element_size);
-    MemFill(obj, 0, element_size);
+    ptr<void> obj = safe_alloc::make_raw_arr<uint8_t>(element_size);
+    mem_fill(obj, 0, element_size);
     return obj;
 }
 
@@ -917,8 +917,8 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
         element_size = engine->GetSizeOfPrimitiveType(sub_type_id);
     }
 
-    ptr<void> copied = SafeAlloc::MakeRawArr<uint8_t>(element_size);
-    MemFill(copied, 0, element_size);
+    ptr<void> copied = safe_alloc::make_raw_arr<uint8_t>(element_size);
+    mem_fill(copied, 0, element_size);
 
     if ((sub_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
         auto copied_obj = NativeDataProvider::ReadHandleSlot(value);
@@ -942,7 +942,7 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
         *cast_from_void<int64_t*>(copied.get()) = *cast_from_void<const int64_t*>(value.get());
     }
     else if (sub_type_id > AngelScript::asTYPEID_DOUBLE) { // Enums - copy actual size
-        MemCopy(copied, value, element_size);
+        mem_copy(copied, value, element_size);
     }
 
     return copied;

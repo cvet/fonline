@@ -37,44 +37,44 @@
 
 FO_BEGIN_NAMESPACE
 
-struct StackTraceFrame
+struct stack_trace_frame
 {
-    enum class FrameType : uint8_t
+    enum class frame_type : uint8_t
     {
-        Native,
-        Script,
+        native,
+        script,
     };
 
-    FrameType Type {FrameType::Native};
-    std::string Function {};
-    std::string File {};
-    uint32_t Line {};
+    frame_type type {frame_type::native};
+    std::string function {};
+    std::string file {};
+    uint32_t line {};
 };
 
 inline constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 128;
 inline constexpr size_t STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES = 4096;
-using NativeStackFrameAddress = uintptr_t;
+using native_stack_frame_address = uintptr_t;
 
-struct ScriptStackTraceLayer
+struct script_stack_trace_layer
 {
-    std::vector<StackTraceFrame> ScriptFrames {};
-    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
-    uint32_t BirthNativeFrameCount {};
-    bool BirthNativeTruncated {};
+    std::vector<stack_trace_frame> script_frames {};
+    std::array<native_stack_frame_address, STACK_TRACE_MAX_NATIVE_FRAMES> birth_native_frames {};
+    uint32_t birth_native_frame_count {};
+    bool birth_native_truncated {};
 };
 
-struct StackTraceData
+struct stack_trace_data
 {
-    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> NativeFrames {};
-    uint32_t NativeFrameCount {};
-    bool NativeTruncated {};
-    std::shared_ptr<const std::vector<ScriptStackTraceLayer>> ScriptLayers {};
+    std::array<native_stack_frame_address, STACK_TRACE_MAX_NATIVE_FRAMES> native_frames {};
+    uint32_t native_frame_count {};
+    bool native_truncated {};
+    std::shared_ptr<const std::vector<script_stack_trace_layer>> script_layers {};
 };
 
-struct CatchedStackTraceData
+struct catched_stack_trace_data
 {
-    optional<StackTraceData> Origin {};
-    StackTraceData Catched {};
+    optional<stack_trace_data> origin {};
+    stack_trace_data catched {};
 };
 
 #if FO_TRACY
@@ -86,17 +86,17 @@ struct CatchedStackTraceData
 #endif
 #define FO_NO_STACK_TRACE_ENTRY()
 
-using ScriptStackTraceProvider = std::function<void(std::vector<ScriptStackTraceLayer>& out_layers)>;
+using script_stack_trace_provider = std::function<void(std::vector<script_stack_trace_layer>& out_layers)>;
 
-extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept;
-extern auto HasScriptStackTraceProvider() noexcept -> bool;
-extern auto GetStackTrace() noexcept -> StackTraceData;
-extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
-extern void ClearResolvedStackTraceCache() noexcept;
-extern auto GetResolvedStackTraceCacheSize() noexcept -> size_t;
-extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>;
-extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTraceFrame>;
-extern auto FormatStackTrace(const StackTraceData& st) -> std::string;
-extern auto FormatStackTrace(const CatchedStackTraceData& st) -> std::string;
+extern void set_script_stack_trace_provider(script_stack_trace_provider provider) noexcept;
+extern auto has_script_stack_trace_provider() noexcept -> bool;
+extern auto get_stack_trace() noexcept -> stack_trace_data;
+extern void capture_native_stack_frames(std::array<native_stack_frame_address, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
+extern void clear_resolved_stack_trace_cache() noexcept;
+extern auto get_resolved_stack_trace_cache_size() noexcept -> size_t;
+extern auto resolve_stack_trace(const stack_trace_data& st) -> std::vector<stack_trace_frame>;
+extern auto get_stack_trace_entry(uint32_t deep) noexcept -> std::optional<stack_trace_frame>;
+extern auto format_stack_trace(const stack_trace_data& st) -> std::string;
+extern auto format_stack_trace(const catched_stack_trace_data& st) -> std::string;
 
 FO_END_NAMESPACE

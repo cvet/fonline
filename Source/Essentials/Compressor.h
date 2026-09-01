@@ -42,50 +42,47 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(CompressionException);
 FO_DECLARE_EXCEPTION(DecompressException);
 
-class Compressor final
+namespace compressor
+{
+    auto calculate_max_compressed_buf_size(size_t initial_size) noexcept -> size_t;
+    auto compress(const_span<uint8_t> data) -> vector<uint8_t>;
+    auto decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>;
+}
+
+class stream_compressor final
 {
 public:
-    Compressor() = delete;
+    stream_compressor() noexcept;
+    stream_compressor(const stream_compressor&) = delete;
+    stream_compressor(stream_compressor&&) noexcept;
+    auto operator=(const stream_compressor&) = delete;
+    auto operator=(stream_compressor&&) noexcept -> stream_compressor&;
+    ~stream_compressor();
 
-    [[nodiscard]] static auto CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t;
-    [[nodiscard]] static auto Compress(const_span<uint8_t> data) -> vector<uint8_t>;
-    [[nodiscard]] static auto Decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>;
-};
-
-class StreamCompressor final
-{
-public:
-    StreamCompressor() noexcept;
-    StreamCompressor(const StreamCompressor&) = delete;
-    StreamCompressor(StreamCompressor&&) noexcept;
-    auto operator=(const StreamCompressor&) = delete;
-    auto operator=(StreamCompressor&&) noexcept -> StreamCompressor&;
-    ~StreamCompressor();
-
-    void Compress(const_span<uint8_t> buf, vector<uint8_t>& result);
-    void Reset() noexcept;
+    void compress(const_span<uint8_t> buf, vector<uint8_t>& result);
+    void reset() noexcept;
 
 private:
-    struct Impl;
-    unique_nptr<Impl> _impl {};
+    struct impl;
+    unique_nptr<impl> _impl {};
 };
 
-class StreamDecompressor final
+class stream_decompressor final
 {
 public:
-    StreamDecompressor() noexcept;
-    StreamDecompressor(const StreamDecompressor&) = delete;
-    StreamDecompressor(StreamDecompressor&&) noexcept;
-    auto operator=(const StreamDecompressor&) = delete;
-    auto operator=(StreamDecompressor&&) noexcept -> StreamDecompressor&;
-    ~StreamDecompressor();
+    stream_decompressor() noexcept;
+    stream_decompressor(const stream_decompressor&) = delete;
+    stream_decompressor(stream_decompressor&&) noexcept;
+    auto operator=(const stream_decompressor&) = delete;
+    auto operator=(stream_decompressor&&) noexcept -> stream_decompressor&;
+    ~stream_decompressor();
 
-    void Decompress(const_span<uint8_t> buf, vector<uint8_t>& result);
-    void Reset() noexcept;
+    void decompress(const_span<uint8_t> buf, vector<uint8_t>& result);
+    void reset() noexcept;
 
 private:
-    struct Impl;
-    unique_nptr<Impl> _impl {};
+    struct impl;
+    unique_nptr<impl> _impl {};
 };
 
 FO_END_NAMESPACE

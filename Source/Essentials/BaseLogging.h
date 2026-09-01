@@ -38,10 +38,10 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void LogToFile(string_view path, bool append = false);
-extern void SetAsyncLogWriting(bool enabled);
-extern void SuspendAsyncLogWriting() noexcept;
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st = nullptr) noexcept;
-extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
+extern void log_to_file(string_view path, bool append = false);
+extern void set_async_log_writing(bool enabled);
+extern void suspend_async_log_writing() noexcept;
+extern void write_base_log(string_view message, const catched_stack_trace_data* st = nullptr) noexcept;
+extern void safe_write_stack_trace(const stack_trace_data& st) noexcept;
 
 FO_END_NAMESPACE

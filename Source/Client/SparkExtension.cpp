@@ -190,7 +190,7 @@ static auto SetupSparkSystemRenderers(string_view path, const SPK::Ref<SPK::Syst
 }
 
 SparkParticleRuntimeBackend::SparkParticleRuntimeBackend(const ParticleRuntimeServices& services) :
-    _impl {SafeAlloc::MakeUnique<Impl>(services)}
+    _impl {safe_alloc::make_unique<Impl>(services)}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -238,7 +238,7 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
         }
 
         if (base_system && !SetupSparkSystemRenderers(path, base_system, this)) {
-            WriteLog("SPARK particle '{}' has a missing render effect or texture", path);
+            write_log("SPARK particle '{}' has a missing render effect or texture", path);
             base_system = SPK::Ref<SPK::System>();
         }
 
@@ -254,11 +254,11 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
         return nullptr;
     }
 
-    return SafeAlloc::MakeUnique<SparkParticleRuntimeSystem>(this, path, std::move(base_system));
+    return safe_alloc::make_unique<SparkParticleRuntimeSystem>(this, path, std::move(base_system));
 }
 
 SparkParticleRuntimeSystem::SparkParticleRuntimeSystem(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system) :
-    _impl {SafeAlloc::MakeUnique<Impl>(Impl {.Runtime = runtime, .Path = string {path}, .BaseSystem = std::move(base_system)})}
+    _impl {safe_alloc::make_unique<Impl>(Impl {.Runtime = runtime, .Path = string {path}, .BaseSystem = std::move(base_system)})}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -793,7 +793,7 @@ namespace SPK::FO
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         ptr<float32_t> projection_matrix = _effect->ProjBuf->ProjMatrix;
         ptr<const float32_t> projection_matrix_values = glm::value_ptr(_runtime->_impl->ViewProjectionMatrix);
-        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        mem_copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
         _effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         _effect->MainTex = _texture;
 

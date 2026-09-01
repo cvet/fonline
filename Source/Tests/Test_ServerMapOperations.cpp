@@ -4713,12 +4713,12 @@ namespace MapOpsTest
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.Write<uint32_t>(uint32_t {0}); // hashes_count
-        writer.Write<uint32_t>(uint32_t {0}); // cr_count
-        writer.Write<uint32_t>(uint32_t {0}); // item_count
+        auto writer = data_writer(map_data);
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {0}); // hashes_count
+        writer.write<uint32_t>(uint32_t {0}); // cr_count
+        writer.write<uint32_t>(uint32_t {0}); // item_count
         return map_data;
     }
 
@@ -4730,24 +4730,24 @@ namespace MapOpsTest
         auto registrar = proto_engine.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -4761,24 +4761,24 @@ namespace MapOpsTest
         auto registrar = proto_engine.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+        ProtoItem proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -4857,7 +4857,7 @@ namespace MapOpsTest
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapOpsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
         compiler_resources_source->AddFile("Metadata.fometa-client", metadata_blob);
 
@@ -4866,12 +4866,12 @@ namespace MapOpsTest
 
         BakerServerEngine proto_engine {compiler_resources};
         BakerClientEngine client_proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
-        hstring client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
-        hstring client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
+        hstring client_item_type = client_proto_engine.Hashes.to_hashed_string("Item");
+        hstring client_map_type = client_proto_engine.Hashes.to_hashed_string("Map");
 
         auto critter_registrar = proto_engine.GetPropertyRegistrar(critter_type);
         REQUIRE(static_cast<bool>(critter_registrar));
@@ -4894,7 +4894,7 @@ namespace MapOpsTest
         auto static_fomap_blob = MakeStaticMapBlob(metadata_blob, static_critter_blob, static_item_blob, static_item_client_blob, static_map_proto_blob, static_map_client_proto_blob);
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapOpsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("MapOpsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("MapOpsStaticCritter.fopro-bin-server", static_critter_blob);
@@ -4932,7 +4932,7 @@ namespace MapOpsTest
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -4951,7 +4951,7 @@ namespace MapOpsTest
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
 
 #define RUN_FUNC(func_name) \
     { \
@@ -4965,10 +4965,10 @@ namespace MapOpsTest
     { \
         auto func = server->FindFunc<void>(get_func(func_name)); \
         REQUIRE(func); \
-        auto prev_callback = GetExceptionCallback(); \
+        auto prev_callback = get_exception_callback(); \
         string message; \
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
+        set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool) { message = string(msg); }); \
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); }); \
         CHECK_FALSE(func.Call()); \
         CHECK(message.find(expected_message) != string::npos); \
     }
@@ -5266,7 +5266,7 @@ TEST_CASE("MapStaticItems")
 TEST_CASE("MapManagerLoadsStaticMapEntities")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -5280,10 +5280,10 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    hstring static_map_pid = server->Hashes.ToHashedString("StaticMap");
-    hstring static_critter_pid = server->Hashes.ToHashedString("TestStaticCritter");
-    hstring visible_item_pid = server->Hashes.ToHashedString("TestStaticItem");
-    hstring hidden_item_pid = server->Hashes.ToHashedString("TestStaticHiddenItem");
+    hstring static_map_pid = server->Hashes.to_hashed_string("StaticMap");
+    hstring static_critter_pid = server->Hashes.to_hashed_string("TestStaticCritter");
+    hstring visible_item_pid = server->Hashes.to_hashed_string("TestStaticItem");
+    hstring hidden_item_pid = server->Hashes.to_hashed_string("TestStaticHiddenItem");
     auto map_proto = server->GetProtoMap(static_map_pid);
     REQUIRE(map_proto);
 

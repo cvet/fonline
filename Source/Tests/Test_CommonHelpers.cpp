@@ -80,7 +80,7 @@ TEST_CASE("CommonHelpers")
 
     SECTION("DynamicPtrCastShared")
     {
-        auto derived = SafeAlloc::MakeShared<TestDerived>(77);
+        auto derived = safe_alloc::make_shared<TestDerived>(77);
         shared_ptr<TestBase> base = derived;
 
         auto casted = base.dyn_cast<TestDerived>();
@@ -182,8 +182,8 @@ TEST_CASE("CommonHelpers")
     SECTION("VecTransformSupportsPointerLikeValues")
     {
         vector<unique_ptr<TestDerived>> values;
-        values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(4));
-        values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(9));
+        values.emplace_back(safe_alloc::make_unique<TestDerived>(4));
+        values.emplace_back(safe_alloc::make_unique<TestDerived>(9));
 
         auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
         CHECK(transformed == vector<int32_t> {4, 9});

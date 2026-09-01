@@ -78,7 +78,7 @@ namespace details
         bool heap_allocated;
     };
 
-    // This module sits above SmartPointers and MemorySystem in the Essentials order, so SafeAlloc is not
+    // This module sits above SmartPointers and MemorySystem in the Essentials order, so safe_alloc is not
     // reachable; the globally replaced operator new still routes to the engine allocator and OOM exits
     [[nodiscard]] inline auto function_alloc_target(size_t size, size_t alignment) noexcept -> void*
     {
@@ -92,7 +92,7 @@ namespace details
         }
 
         if (mem == nullptr) {
-            ReportFatalAndExit("Failed to allocate function target");
+            report_fatal_and_exit("Failed to allocate function target");
         }
 
         return mem;

@@ -453,7 +453,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                 }
                 catch (const std::exception& ex) {
                     if (!_shutdownFlag->load(std::memory_order_acquire)) {
-                        ReportExceptionAndContinue(ex);
+                        report_exception_and_continue(ex);
                     }
                 }
                 catch (...) {

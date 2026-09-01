@@ -61,7 +61,7 @@ class SparkParticleRuntimeBackend;
 class SparkParticleRuntimeSystem final : public ParticleRuntimeSystem
 {
     friend class SparkParticleRuntimeBackend;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     SparkParticleRuntimeSystem(const SparkParticleRuntimeSystem&) = delete;

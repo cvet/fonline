@@ -169,7 +169,7 @@ TEST_CASE("ImageWriter")
 
         auto image_data = chunks["IDAT"];
         auto compressed = const_span<uint8_t>(file_data).subspan(image_data.first, image_data.second);
-        vector<uint8_t> scanlines = Compressor::Decompress(compressed, 4);
+        vector<uint8_t> scanlines = compressor::decompress(compressed, 4);
 
         // Each scanline is its filter byte followed by the pixels in R, G, B, A order, unswapped
         REQUIRE(scanlines.size() == (2 * sizeof(ucolor) + 1) * 2);

@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 
         {
             auto server_settings = make_ptr(&GetApp()->Settings);
-            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
+            auto server = safe_alloc::make_refcounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
             vector<unique_ptr<GlobalSettings>> client_settings;
             vector<refcount_ptr<ClientEngine>> clients;
 
@@ -77,7 +77,7 @@ int main(int argc, char** argv)
             }
 
             if (server->IsStartingError()) {
-                WriteLog(LogType::Error, "Server startup failed, shutting down");
+                write_log(log_type::error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
 
@@ -89,10 +89,10 @@ int main(int argc, char** argv)
             server->Shutdown();
         }
 
-        ExitApp(GetApp()->GetRequestedQuitSuccess());
+        exit_app(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        report_exception_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -103,7 +103,7 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Auto start embedded headless client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
+    write_log("Auto start embedded headless client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
 
     FrameBalancer balancer {false, 0, 100}; // 100 fps
 
@@ -115,12 +115,12 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
 
         while (server->IsStarted() && clients.size() < numeric_cast<size_t>(target_client_count)) {
             int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
-            auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
+            auto settings = safe_alloc::make_unique<GlobalSettings>(false);
             settings->CopyFrom(GetApp()->Settings);
             ClientStartupSettingsHook(*settings, client_index, true);
 
             ptr<GlobalSettings> settings_ptr = settings.get();
-            auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, GetClientResources(*settings), &GetApp()->MainWindow);
+            auto client = safe_alloc::make_refcounted<ClientEngine>(settings_ptr, GetClientResources(*settings), &GetApp()->MainWindow);
             client->Connect();
             client_settings.emplace_back(std::move(settings));
             clients.emplace_back(std::move(client));

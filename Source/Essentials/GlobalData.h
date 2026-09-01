@@ -37,8 +37,8 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void CreateGlobalData();
-extern void DeleteGlobalData();
+extern void create_global_data();
+extern void delete_global_data();
 
 #define FO_GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \
@@ -56,18 +56,18 @@ extern void DeleteGlobalData();
     { \
         FO_CONCAT(Register_, class_name)() \
         { \
-            assert(FO_NAMESPACE GlobalDataCallbacksCount < FO_NAMESPACE MAX_GLOBAL_DATA_CALLBACKS); \
-            FO_NAMESPACE CreateGlobalDataCallbacks[FO_NAMESPACE GlobalDataCallbacksCount] = FO_CONCAT(Create_, class_name); \
-            FO_NAMESPACE DeleteGlobalDataCallbacks[FO_NAMESPACE GlobalDataCallbacksCount] = FO_CONCAT(Delete_, class_name); \
-            FO_NAMESPACE GlobalDataCallbacksCount++; \
+            assert(FO_NAMESPACE global_data_callbacks_count < FO_NAMESPACE MAX_GLOBAL_DATA_CALLBACKS); \
+            FO_NAMESPACE create_global_data_callbacks[FO_NAMESPACE global_data_callbacks_count] = FO_CONCAT(Create_, class_name); \
+            FO_NAMESPACE delete_global_data_callbacks[FO_NAMESPACE global_data_callbacks_count] = FO_CONCAT(Delete_, class_name); \
+            FO_NAMESPACE global_data_callbacks_count++; \
         } \
     }; \
     static FO_CONCAT(Register_, class_name) FO_CONCAT(Register_Instance_, class_name)
 
 constexpr auto MAX_GLOBAL_DATA_CALLBACKS = 40;
-using GlobalDataCallback = void (*)();
-extern GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-extern GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-extern int32_t GlobalDataCallbacksCount;
+using global_data_callback = void (*)();
+extern global_data_callback create_global_data_callbacks[MAX_GLOBAL_DATA_CALLBACKS];
+extern global_data_callback delete_global_data_callbacks[MAX_GLOBAL_DATA_CALLBACKS];
+extern int32_t global_data_callbacks_count;
 
 FO_END_NAMESPACE

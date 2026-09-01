@@ -58,7 +58,7 @@ static auto MakeDictOfArrayArg(const BaseTypeDesc& key_type, const BaseTypeDesc&
 static auto MakeRemoteCall(EngineMetadata& meta, std::initializer_list<ArgDesc> args) -> RemoteCallDesc
 {
     RemoteCallDesc call {};
-    call.Name = meta.Hashes.ToHashedString("TestCall");
+    call.Name = meta.Hashes.to_hashed_string("TestCall");
     call.Args.assign(args.begin(), args.end());
     return call;
 }
@@ -74,12 +74,12 @@ static auto MakeRefTypeRawData(EngineMetadata& meta, string_view ref_type_name, 
     return {raw_data.begin(), raw_data.end()};
 }
 
-static void WriteRefTypePayload(DataWriter& writer, const vector<uint8_t>& raw_data)
+static void WriteRefTypePayload(data_writer& writer, const vector<uint8_t>& raw_data)
 {
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
     if (!raw_data.empty()) {
-        writer.WriteBytes({raw_data.data(), raw_data.size()});
+        writer.write_bytes({raw_data.data(), raw_data.size()});
     }
 }
 
@@ -110,7 +110,7 @@ TEST_CASE("ClientDataValidation")
     const BaseTypeDesc& ref_type = meta.GetBaseType("TestRefType");
     const BaseTypeDesc& enum_ref_type = meta.GetBaseType("EnumRefType");
     const BaseTypeDesc& nested_ref_type = meta.GetBaseType("NestedRefType");
-    hstring known_hash = meta.Hashes.ToHashedString("KnownHash");
+    hstring known_hash = meta.Hashes.to_hashed_string("KnownHash");
 
     SECTION("Calculates minimum remote call wire sizes")
     {
@@ -126,27 +126,27 @@ TEST_CASE("ClientDataValidation")
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeSimpleArg(enum_type, "enum_value"), MakeSimpleArg(float_type, "float_value"), MakeSimpleArg(hstring_type, "hash_value"), MakeArrayArg(int_type, "numbers"), MakeDictOfArrayArg(hstring_type, uint16_type, "mapped_values"), MakeSimpleArg(struct_type, "packed_struct")});
 
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         string text = "text";
         uint16_t first_uint16 = 7;
         uint16_t second_uint16 = 8;
         uint8_t true_bool = 1;
 
-        writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
-        writer.WriteStringBytes(text);
-        writer.Write<int32_t>(1);
-        writer.Write<float32_t>(42.0f);
-        writer.Write<hstring::hash_t>(known_hash.as_hash());
-        writer.Write<int32_t>(2);
-        writer.Write<int32_t>(10);
-        writer.Write<int32_t>(20);
-        writer.Write<int32_t>(1);
-        writer.Write<hstring::hash_t>(known_hash.as_hash());
-        writer.Write<int32_t>(2);
-        writer.Write<uint16_t>(first_uint16);
-        writer.Write<uint16_t>(second_uint16);
-        writer.Write<float32_t>(3.5f);
-        writer.Write<uint8_t>(true_bool);
+        writer.write<int32_t>(numeric_cast<int32_t>(text.length()));
+        writer.write_string_bytes(text);
+        writer.write<int32_t>(1);
+        writer.write<float32_t>(42.0f);
+        writer.write<hstring::hash_t>(known_hash.as_hash());
+        writer.write<int32_t>(2);
+        writer.write<int32_t>(10);
+        writer.write<int32_t>(20);
+        writer.write<int32_t>(1);
+        writer.write<hstring::hash_t>(known_hash.as_hash());
+        writer.write<int32_t>(2);
+        writer.write<uint16_t>(first_uint16);
+        writer.write<uint16_t>(second_uint16);
+        writer.write<float32_t>(3.5f);
+        writer.write<uint8_t>(true_bool);
 
         CHECK_NOTHROW(ValidateInboundRemoteCallData(call, data, meta));
     }
@@ -156,18 +156,18 @@ TEST_CASE("ClientDataValidation")
         RemoteCallDesc payload_limited_call = MakeRemoteCall(meta, {MakeSimpleArg(int_type)});
         payload_limited_call.MaxPayloadSize = sizeof(int32_t) - 1;
         vector<uint8_t> scalar_data;
-        DataWriter scalar_writer(scalar_data);
-        scalar_writer.Write<int32_t>(42);
+        data_writer scalar_writer(scalar_data);
+        scalar_writer.write<int32_t>(42);
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(payload_limited_call, scalar_data, meta), ClientDataValidationException);
 
         RemoteCallDesc collection_limited_call = MakeRemoteCall(meta, {MakeArrayArg(int_type)});
         collection_limited_call.MaxCollectionSize = 2;
         vector<uint8_t> array_data;
-        DataWriter array_writer(array_data);
-        array_writer.Write<int32_t>(3);
-        array_writer.Write<int32_t>(1);
-        array_writer.Write<int32_t>(2);
-        array_writer.Write<int32_t>(3);
+        data_writer array_writer(array_data);
+        array_writer.write<int32_t>(3);
+        array_writer.write<int32_t>(1);
+        array_writer.write<int32_t>(2);
+        array_writer.write<int32_t>(3);
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(collection_limited_call, array_data, meta), ClientDataValidationException);
     }
 
@@ -175,11 +175,11 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         const uint8_t bytes[] = {0xC3, 0x28};
 
-        writer.Write<int32_t>(2);
-        writer.WriteBytes({bytes, std::size(bytes)});
+        writer.write<int32_t>(2);
+        writer.write_bytes({bytes, std::size(bytes)});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -189,11 +189,11 @@ TEST_CASE("ClientDataValidation")
         // 'a','b','\0','c' is valid UTF-8 but an embedded NUL is never legitimate client text
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         const uint8_t bytes[] = {'a', 'b', 0x00, 'c'};
 
-        writer.Write<int32_t>(4);
-        writer.WriteBytes({bytes, std::size(bytes)});
+        writer.write<int32_t>(4);
+        writer.write_bytes({bytes, std::size(bytes)});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -205,8 +205,8 @@ TEST_CASE("ClientDataValidation")
         {
             RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
             vector<uint8_t> data;
-            DataWriter writer(data);
-            writer.Write<int32_t>(hostile_size);
+            data_writer writer(data);
+            writer.write<int32_t>(hostile_size);
 
             CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
         }
@@ -214,8 +214,8 @@ TEST_CASE("ClientDataValidation")
         {
             RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(int_type)});
             vector<uint8_t> data;
-            DataWriter writer(data);
-            writer.Write<int32_t>(hostile_size);
+            data_writer writer(data);
+            writer.write<int32_t>(hostile_size);
 
             CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
         }
@@ -225,8 +225,8 @@ TEST_CASE("ClientDataValidation")
             BaseTypeDesc empty_struct_type {.Name = "EmptyStruct", .IsStruct = true, .StructLayout = &empty_layout};
             RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(empty_struct_type)});
             vector<uint8_t> data;
-            DataWriter writer(data);
-            writer.Write<int32_t>(hostile_size);
+            data_writer writer(data);
+            writer.write<int32_t>(hostile_size);
 
             CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
         }
@@ -235,8 +235,8 @@ TEST_CASE("ClientDataValidation")
             ArgDesc dict_arg {.Name = "values", .Type = ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = int_type, .KeyType = int_type}};
             RemoteCallDesc call = MakeRemoteCall(meta, {dict_arg});
             vector<uint8_t> data;
-            DataWriter writer(data);
-            writer.Write<int32_t>(hostile_size);
+            data_writer writer(data);
+            writer.write<int32_t>(hostile_size);
 
             CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
         }
@@ -244,10 +244,10 @@ TEST_CASE("ClientDataValidation")
         {
             RemoteCallDesc call = MakeRemoteCall(meta, {MakeDictOfArrayArg(int_type, int_type)});
             vector<uint8_t> data;
-            DataWriter writer(data);
-            writer.Write<int32_t>(1);
-            writer.Write<int32_t>(10);
-            writer.Write<int32_t>(hostile_size);
+            data_writer writer(data);
+            writer.write<int32_t>(1);
+            writer.write<int32_t>(10);
+            writer.write<int32_t>(hostile_size);
 
             CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
         }
@@ -257,9 +257,9 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
 
-        writer.Write<int32_t>(77);
+        writer.write<int32_t>(77);
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -271,10 +271,10 @@ TEST_CASE("ClientDataValidation")
 
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16, "u16"), MakeSimpleArg(enum_u8, "u8")});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
 
-        writer.Write<uint16_t>(uint16_t {65535});
-        writer.Write<uint8_t>(uint8_t {255});
+        writer.write<uint16_t>(uint16_t {65535});
+        writer.write<uint8_t>(uint8_t {255});
 
         CHECK_NOTHROW(ValidateInboundRemoteCallData(call, data, meta));
     }
@@ -284,9 +284,9 @@ TEST_CASE("ClientDataValidation")
         const BaseTypeDesc& enum_u16 = meta.GetBaseType("TestEnumU16");
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
 
-        writer.Write<uint16_t>(uint16_t {7777});
+        writer.write<uint16_t>(uint16_t {7777});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -296,9 +296,9 @@ TEST_CASE("ClientDataValidation")
         const BaseTypeDesc& enum_u16 = meta.GetBaseType("TestEnumU16");
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
 
-        writer.Write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -307,11 +307,11 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(float_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
 
-        writer.Write<int32_t>(2);
-        writer.Write<float32_t>(1.0f);
-        writer.Write<float32_t>(std::numeric_limits<float32_t>::infinity());
+        writer.write<int32_t>(2);
+        writer.write<float32_t>(1.0f);
+        writer.write<float32_t>(std::numeric_limits<float32_t>::infinity());
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -320,10 +320,10 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(hstring_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         hstring::hash_t unknown_hash = hashing_ex::hash("MissingHash", 11);
 
-        writer.Write<hstring::hash_t>(unknown_hash);
+        writer.write<hstring::hash_t>(unknown_hash);
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -332,10 +332,10 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(bool_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         uint8_t invalid_bool = 2;
 
-        writer.Write<uint8_t>(invalid_bool);
+        writer.write<uint8_t>(invalid_bool);
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -344,13 +344,13 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeDictOfArrayArg(hstring_type, uint16_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         uint16_t first_uint16 = 7;
 
-        writer.Write<int32_t>(1);
-        writer.Write<hstring::hash_t>(known_hash.as_hash());
-        writer.Write<int32_t>(2);
-        writer.Write<uint16_t>(first_uint16);
+        writer.write<int32_t>(1);
+        writer.write<hstring::hash_t>(known_hash.as_hash());
+        writer.write<int32_t>(2);
+        writer.write<uint16_t>(first_uint16);
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -381,17 +381,17 @@ TEST_CASE("ClientDataValidation")
         auto sparse_raw = MakeRefTypeRawData(meta, "TestRefType", make_sparse_snapshot());
 
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
 
         WriteRefTypePayload(writer, full_raw);
 
-        writer.Write<int32_t>(2);
+        writer.write<int32_t>(2);
         WriteRefTypePayload(writer, full_raw);
         WriteRefTypePayload(writer, sparse_raw);
 
-        writer.Write<int32_t>(1);
-        writer.Write<int32_t>(7);
-        writer.Write<int32_t>(2);
+        writer.write<int32_t>(1);
+        writer.write<int32_t>(7);
+        writer.write<int32_t>(2);
         WriteRefTypePayload(writer, sparse_raw);
         WriteRefTypePayload(writer, full_raw);
 
@@ -438,17 +438,17 @@ TEST_CASE("ClientDataValidation")
         auto sparse_raw = MakeRefTypeRawData(meta, "NestedRefType", make_sparse_snapshot());
 
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
 
         WriteRefTypePayload(writer, full_raw);
 
-        writer.Write<int32_t>(2);
+        writer.write<int32_t>(2);
         WriteRefTypePayload(writer, full_raw);
         WriteRefTypePayload(writer, sparse_raw);
 
-        writer.Write<int32_t>(1);
-        writer.Write<int32_t>(7);
-        writer.Write<int32_t>(2);
+        writer.write<int32_t>(1);
+        writer.write<int32_t>(7);
+        writer.write<int32_t>(2);
         WriteRefTypePayload(writer, sparse_raw);
         WriteRefTypePayload(writer, full_raw);
 
@@ -459,10 +459,10 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(ref_type, "history"), MakeDictOfArrayArg(int_type, ref_type, "groups")});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
 
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
 
         CHECK_NOTHROW(ValidateInboundRemoteCallData(call, data, meta));
     }
@@ -471,14 +471,14 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_ref_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         uint32_t raw_size = sizeof(uint32_t) + sizeof(int32_t);
         uint32_t field_size = sizeof(int32_t);
         int32_t invalid_enum = 77;
 
-        writer.Write<uint32_t>(raw_size);
-        writer.Write<uint32_t>(field_size);
-        writer.Write<int32_t>(invalid_enum);
+        writer.write<uint32_t>(raw_size);
+        writer.write<uint32_t>(field_size);
+        writer.write<int32_t>(invalid_enum);
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -487,15 +487,15 @@ TEST_CASE("ClientDataValidation")
     {
         RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(ref_type)});
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         AnyData::Dict snapshot;
         snapshot.Emplace("Label", AnyData::Value {string {"one"}});
         auto full_raw = MakeRefTypeRawData(meta, "TestRefType", AnyData::Value {std::move(snapshot)});
 
-        writer.Write<int32_t>(2);
+        writer.write<int32_t>(2);
         WriteRefTypePayload(writer, full_raw);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(full_raw.size()));
-        writer.WriteBytes({full_raw.data(), full_raw.size() - 1});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(full_raw.size()));
+        writer.write_bytes({full_raw.data(), full_raw.size() - 1});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -582,17 +582,17 @@ TEST_CASE("ClientDataValidationFuzz")
         auto ref_raw = MakeRefTypeRawData(meta, "TestRefType", AnyData::Value {std::move(snapshot)});
 
         vector<uint8_t> data;
-        DataWriter writer(data);
+        data_writer writer(data);
         string text = "hello";
-        writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
-        writer.WriteStringBytes(text);
-        writer.Write<int32_t>(3); // int array element count
-        writer.Write<int32_t>(1);
-        writer.Write<int32_t>(2);
-        writer.Write<int32_t>(3);
-        writer.Write<int32_t>(1); // enum value "Value"
-        writer.Write<float32_t>(2.5f); // struct Number
-        writer.Write<uint8_t>(uint8_t {1}); // struct Flag
+        writer.write<int32_t>(numeric_cast<int32_t>(text.length()));
+        writer.write_string_bytes(text);
+        writer.write<int32_t>(3); // int array element count
+        writer.write<int32_t>(1);
+        writer.write<int32_t>(2);
+        writer.write<int32_t>(3);
+        writer.write<int32_t>(1); // enum value "Value"
+        writer.write<float32_t>(2.5f); // struct Number
+        writer.write<uint8_t>(uint8_t {1}); // struct Flag
         WriteRefTypePayload(writer, ref_raw);
         return data;
     };

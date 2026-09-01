@@ -258,7 +258,7 @@ public:
     ~thread() noexcept = default;
 
     [[nodiscard]] auto joinable() const noexcept -> bool { return _future.valid(); }
-    [[nodiscard]] auto get_id() const noexcept -> std::thread::id { return _runningThreadId ? _runningThreadId->load(std::memory_order_acquire) : std::thread::id {}; }
+    [[nodiscard]] auto get_id() const noexcept -> std::thread::id { return _running_thread_id ? _running_thread_id->load(std::memory_order_acquire) : std::thread::id {}; }
 
     void join();
     void detach() noexcept;
@@ -268,12 +268,12 @@ private:
 
     thread(std::future<void> fut, shared_ptr<std::atomic<std::thread::id>> running_thread_id) noexcept :
         _future {std::move(fut)},
-        _runningThreadId {std::move(running_thread_id)}
+        _running_thread_id {std::move(running_thread_id)}
     {
     }
 
     std::future<void> _future {};
-    shared_ptr<std::atomic<std::thread::id>> _runningThreadId {};
+    shared_ptr<std::atomic<std::thread::id>> _running_thread_id {};
 };
 
 // Submit to the unbounded run-thread pool and return a joinable or discardable handle.
@@ -304,7 +304,7 @@ extern auto try_submit_async(string_view task_name, function<void()> task) -> bo
 template<typename Func>
 [[nodiscard]] auto run_async(async_launch_mode mode, string_view task_name, Func&& task) -> std::future<std::invoke_result_t<std::decay_t<Func>>>
 {
-    using ResultType = std::invoke_result_t<std::decay_t<Func>>;
+    using result_type = std::invoke_result_t<std::decay_t<Func>>;
 
     // Pure deferred: skip the pool entirely. std::async(std::launch::deferred, ...) returns a future whose .get()
     // invokes the task on the calling thread — lazy synchronous, exactly what launch_deferred_only specifies
@@ -312,7 +312,7 @@ template<typename Func>
         return std::async(std::launch::deferred, std::forward<Func>(task));
     }
 
-    auto packaged = SafeAlloc::MakeShared<std::packaged_task<ResultType()>>(std::forward<Func>(task));
+    auto packaged = safe_alloc::make_shared<std::packaged_task<result_type()>>(std::forward<Func>(task));
     auto future = packaged->get_future();
 
     if (mode.use_deferred) {

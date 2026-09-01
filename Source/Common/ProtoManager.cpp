@@ -40,11 +40,11 @@ FO_BEGIN_NAMESPACE
 
 ProtoManager::ProtoManager(ptr<EngineMetadata> meta) :
     _meta {meta},
-    _migrationRuleName {_meta->Hashes.ToHashedString("Proto")},
-    _itemTypeName {_meta->Hashes.ToHashedString(ProtoItem::ENTITY_TYPE_NAME)},
-    _crTypeName {_meta->Hashes.ToHashedString(ProtoCritter::ENTITY_TYPE_NAME)},
-    _mapTypeName {_meta->Hashes.ToHashedString(ProtoMap::ENTITY_TYPE_NAME)},
-    _locTypeName {_meta->Hashes.ToHashedString(ProtoLocation::ENTITY_TYPE_NAME)}
+    _migrationRuleName {_meta->Hashes.to_hashed_string("Proto")},
+    _itemTypeName {_meta->Hashes.to_hashed_string(ProtoItem::ENTITY_TYPE_NAME)},
+    _crTypeName {_meta->Hashes.to_hashed_string(ProtoCritter::ENTITY_TYPE_NAME)},
+    _mapTypeName {_meta->Hashes.to_hashed_string(ProtoMap::ENTITY_TYPE_NAME)},
+    _locTypeName {_meta->Hashes.to_hashed_string(ProtoLocation::ENTITY_TYPE_NAME)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -85,19 +85,19 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Proper
         FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrar, props);
+            return safe_alloc::make_refcounted<ProtoLocation>(pid, registrar, props);
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrar, props);
+            return safe_alloc::make_refcounted<ProtoMap>(pid, registrar, props);
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrar, props);
+            return safe_alloc::make_refcounted<ProtoCritter>(pid, registrar, props);
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrar, props);
+            return safe_alloc::make_refcounted<ProtoItem>(pid, registrar, props);
         }
         else {
-            return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrar, props);
+            return safe_alloc::make_refcounted<ProtoCustomEntity>(pid, registrar, props);
         }
     };
 
@@ -128,57 +128,57 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
     for (const auto& proto_file_header : proto_files) {
         auto proto_file = File::Load(proto_file_header);
-        auto reader = DataReader(proto_file.GetDataSpan());
+        auto reader = data_reader(proto_file.GetDataSpan());
 
         // Hashes
         {
-            auto hashes_count = reader.Read<uint32_t>();
+            auto hashes_count = reader.read<uint32_t>();
             string str;
 
             for (uint32_t i = 0; i < hashes_count; i++) {
-                auto str_len = reader.Read<uint32_t>();
+                auto str_len = reader.read<uint32_t>();
                 str.resize(str_len);
-                reader.ReadStringBytes(str);
-                hstring hstr = _meta->Hashes.ToHashedString(str);
+                reader.read_string_bytes(str);
+                hstring hstr = _meta->Hashes.to_hashed_string(str);
                 ignore_unused(hstr);
             }
         }
 
         // Protos
         {
-            auto types_count = reader.Read<uint32_t>();
+            auto types_count = reader.read<uint32_t>();
             vector<uint8_t> props_data;
 
             for (uint32_t i = 0; i < types_count; i++) {
-                auto protos_count = reader.Read<uint32_t>();
+                auto protos_count = reader.read<uint32_t>();
 
-                auto type_name_len = reader.Read<uint16_t>();
+                auto type_name_len = reader.read<uint16_t>();
                 string type_name_str;
                 type_name_str.resize(type_name_len);
-                reader.ReadStringBytes(type_name_str);
-                hstring type_name = _meta->Hashes.ToHashedString(type_name_str);
+                reader.read_string_bytes(type_name_str);
+                hstring type_name = _meta->Hashes.to_hashed_string(type_name_str);
 
                 FO_VERIFY_AND_THROW(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name), "Proto file references unknown entity or fixed type");
 
                 for (uint32_t j = 0; j < protos_count; j++) {
-                    auto proto_name_len = reader.Read<uint16_t>();
+                    auto proto_name_len = reader.read<uint16_t>();
                     string proto_name;
                     proto_name.resize(proto_name_len);
-                    reader.ReadStringBytes(proto_name);
-                    hstring proto_id = _meta->Hashes.ToHashedString(proto_name);
+                    reader.read_string_bytes(proto_name);
+                    hstring proto_id = _meta->Hashes.to_hashed_string(proto_name);
 
                     auto proto = CreateProto(type_name, proto_id, nullptr);
 
-                    auto data_size = reader.Read<uint32_t>();
+                    auto data_size = reader.read<uint32_t>();
                     props_data.resize(data_size);
                     span<uint8_t> props_data_span = props_data;
-                    reader.ReadBytes(props_data_span);
+                    reader.read_bytes(props_data_span);
                     proto->GetPropertiesForEdit()->RestoreAllData(props_data);
                 }
             }
         }
 
-        reader.VerifyEnd();
+        reader.verify_end();
     }
 }
 

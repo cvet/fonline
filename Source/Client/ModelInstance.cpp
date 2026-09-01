@@ -457,7 +457,7 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
 
     if (auto target_joint = FindPoseJoint(bone_name); target_joint) {
         if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
-            _modelParticles.emplace_back(ModelParticleSystem {0, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, move, _lookDirAngle, string(particle_name), bone_name});
+            _modelParticles.emplace_back(ModelParticleSystem {0, safe_alloc::make_unique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, move, _lookDirAngle, string(particle_name), bone_name});
         }
     }
 }
@@ -473,7 +473,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     _curActionAnim = action_anim;
 
     // Restore rotation
-    if (bool no_rotate = IsEnumSet(flags, ModelAnimFlags::NoRotate); no_rotate != _noRotate) {
+    if (bool no_rotate = is_enum_set(flags, ModelAnimFlags::NoRotate); no_rotate != _noRotate) {
         _noRotate = no_rotate;
 
         if (_noRotate) {
@@ -490,7 +490,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     float32_t speed = 1.0f;
     int32_t anim_index = 0;
 
-    if (!IsEnumSet(flags, ModelAnimFlags::Init)) {
+    if (!is_enum_set(flags, ModelAnimFlags::Init)) {
         anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
     }
 
@@ -498,10 +498,10 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     int32_t new_layers[MODEL_LAYERS_COUNT];
 
     if (layers) {
-        MemCopy(new_layers, layers, sizeof(_curLayers));
+        mem_copy(new_layers, layers, sizeof(_curLayers));
     }
     else {
-        MemCopy(new_layers, _curLayers, sizeof(_curLayers));
+        mem_copy(new_layers, _curLayers, sizeof(_curLayers));
     }
 
     // Animation layers
@@ -511,21 +511,21 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
     }
 
-    bool layers_changed = !MemCompare(new_layers, _curLayers, sizeof(new_layers));
+    bool layers_changed = !mem_compare(new_layers, _curLayers, sizeof(new_layers));
 
     // Try skip redundant calls
-    bool may_skip_redundant = !IsEnumSet(flags, ModelAnimFlags::Init) && !IsEnumSet(flags, ModelAnimFlags::PlayOnce);
+    bool may_skip_redundant = !is_enum_set(flags, ModelAnimFlags::Init) && !is_enum_set(flags, ModelAnimFlags::PlayOnce);
 
     if (may_skip_redundant && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layers_changed) {
         return false;
     }
 
-    MemCopy(_curLayers, new_layers, sizeof(_curLayers));
+    mem_copy(_curLayers, new_layers, sizeof(_curLayers));
 
     bool mesh_changed = false;
     vector<hstring> fast_transition_bones;
 
-    if (layers_changed || IsEnumSet(flags, ModelAnimFlags::Init)) {
+    if (layers_changed || is_enum_set(flags, ModelAnimFlags::Init)) {
         // Store data to compare later
         auto old_cuts = _allCuts;
 
@@ -606,7 +606,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
                             optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
                             FO_VERIFY_AND_THROW(particle, "Particle was not found for a model link", link.ChildName);
-                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY, link.ChildName, link.LinkBone});
+                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, safe_alloc::make_unique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY, link.ChildName, link.LinkBone});
                         }
 
                         keep_alive_particles.insert(link.Id);
@@ -720,7 +720,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     }
 
     if (_bodyAnimController && anim_index >= 0) {
-        _playOnceAnimPlaying = IsEnumSet(flags, ModelAnimFlags::PlayOnce);
+        _playOnceAnimPlaying = is_enum_set(flags, ModelAnimFlags::PlayOnce);
     }
 
     RefreshMoveAnimation();
@@ -736,10 +736,10 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         _bodyAnimController->ResetEvents();
 
-        bool no_smooth = IsEnumSet(flags, ModelAnimFlags::NoSmooth) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init);
+        bool no_smooth = is_enum_set(flags, ModelAnimFlags::NoSmooth) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init);
         float32_t smooth_time = no_smooth ? 0.0f : _modelMngr->_moveTransitionTime;
         float32_t anim_start_time = std::min(_animDuration * ntime, _animDuration - 0.001f);
-        float32_t anim_duration = IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init) ? 0.0f : _animDuration - anim_start_time;
+        float32_t anim_duration = is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? 0.0f : _animDuration - anim_start_time;
 
         // Disable current track
         if (no_smooth) {
@@ -760,7 +760,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         _bodyAnimController->SetTrackPosition(new_track, anim_start_time);
         _bodyAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, 0.0f);
 
-        if (IsEnumSet(flags, ModelAnimFlags::PlayOnce) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init)) {
+        if (is_enum_set(flags, ModelAnimFlags::PlayOnce) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init)) {
             _bodyAnimController->AddEventSpeed(new_track, 0.0f, anim_duration, 0.0f);
         }
 
@@ -789,7 +789,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
     // The Init pass runs before the caller assigns _parent, so an attachment would be laid out as a root: its
     // bounds and shadow start at the joint it hangs from. A real root gets the layout the constructor left dirty
-    if (!_parent && !IsEnumSet(flags, ModelAnimFlags::Init)) {
+    if (!_parent && !is_enum_set(flags, ModelAnimFlags::Init)) {
         RefreshFrameLayout();
     }
 
@@ -1806,7 +1806,7 @@ auto ModelInstance::CreateCombinedMesh() -> unique_ptr<CombinedMesh>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<CombinedMesh>(CombinedMesh {
+    return safe_alloc::make_unique<CombinedMesh>(CombinedMesh {
         .MeshBuf = _modelMngr->_render->CreateDrawBuffer(true),
         .SkinBindings = vector<SkinBinding>(MODEL_MAX_BONES),
     });
@@ -2622,7 +2622,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
     ptr<float32_t> proj_matrix = proj_buf->ProjMatrix;
     auto draw_projection_values = make_ptr(glm::value_ptr(_drawProj));
-    MemCopy(proj_matrix, draw_projection_values, 16 * sizeof(float32_t));
+    mem_copy(proj_matrix, draw_projection_values, 16 * sizeof(float32_t));
 
     if (combined_mesh->Textures[0]) {
         effect->MainTex = combined_mesh->Textures[0]->MainTex;
@@ -2652,12 +2652,12 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 
     ptr<float32_t> ground_position = model_buf->GroundPosition;
     auto ground_position_values = make_ptr(glm::value_ptr(_groundPos));
-    MemCopy(ground_position, ground_position_values, 3 * sizeof(float32_t));
+    mem_copy(ground_position, ground_position_values, 3 * sizeof(float32_t));
     model_buf->GroundPosition[3] = 0.0f;
 
     ptr<float32_t> light_color = model_buf->LightColor;
     auto light_color_values = make_ptr(glm::value_ptr(_modelMngr->_lightColor));
-    MemCopy(light_color, light_color_values, 4 * sizeof(float32_t));
+    mem_copy(light_color, light_color_values, 4 * sizeof(float32_t));
 
     if (effect->IsNeedModelTexBuf()) {
         auto& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
@@ -2666,11 +2666,11 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
             if (combined_mesh->Textures[i]) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
                 size_t texture_uniform_offset = i * 4 * sizeof(float32_t);
-                MemCopy(&custom_tex_buf->TexAtlasOffset[texture_uniform_offset], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
+                mem_copy(&custom_tex_buf->TexAtlasOffset[texture_uniform_offset], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
 
                 auto texture_size = make_ptr(&custom_tex_buf->TexSize[texture_uniform_offset]);
                 ptr<const float32_t> texture_size_data = combined_mesh->Textures[i]->MainTex->SizeData;
-                MemCopy(texture_size, texture_size_data, 4 * sizeof(float32_t));
+                mem_copy(texture_size, texture_size_data, 4 * sizeof(float32_t));
             }
             else {
                 effect->ModelTex[i] = nullptr;

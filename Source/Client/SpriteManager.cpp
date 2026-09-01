@@ -77,7 +77,7 @@ void Sprite::StartUpdate()
     _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
-SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<HashResolver> hash_resolver) :
+SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes) :
     _settings {settings},
     _window {window},
     _resources {resources},
@@ -87,7 +87,7 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
     _render {window->GetRender()},
     _input {window->GetInput()},
     _effectMngr {effect_mngr},
-    _hashResolver {hash_resolver},
+    _hashResolver {hashes},
     _spritesDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _primitiveDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _flushDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
@@ -605,7 +605,7 @@ auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type, bool no_w
 {
     FO_STACK_TRACE_ENTRY();
 
-    return LoadSprite(_hashResolver->ToHashedString(path), atlas_type, no_warn_if_not_exists);
+    return LoadSprite(_hashResolver->to_hashed_string(path), atlas_type, no_warn_if_not_exists);
 }
 
 auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
@@ -627,8 +627,8 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
     string ext = strex(path).get_file_extension();
 
     if (ext.empty()) {
-        BreakIntoDebugger();
-        WriteLog("Extension not found, file '{}'", path);
+        break_into_debugger();
+        write_log("Extension not found, file '{}'", path);
         _nonFoundSprites.emplace(path);
         return nullptr;
     }
@@ -636,8 +636,8 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
     auto it = _spriteFactoryMap.find(ext);
 
     if (it == _spriteFactoryMap.end()) {
-        BreakIntoDebugger();
-        WriteLog("Unknown extension, file '{}'", path);
+        break_into_debugger();
+        write_log("Unknown extension, file '{}'", path);
         _nonFoundSprites.emplace(path);
         return nullptr;
     }
@@ -646,8 +646,8 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
 
     if (!spr) {
         if (!no_warn_if_not_exists) {
-            BreakIntoDebugger();
-            WriteLog("Sprite not found: '{}'", path);
+            break_into_debugger();
+            write_log("Sprite not found: '{}'", path);
         }
 
         _nonFoundSprites.emplace(path);
@@ -665,14 +665,14 @@ void SpriteManager::ForgetFailedSprite(string_view path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _nonFoundSprites.erase(_hashResolver->ToHashedString(path));
+    _nonFoundSprites.erase(_hashResolver->to_hashed_string(path));
 }
 
 void SpriteManager::InvalidateSpriteResource(string_view path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    hstring hashed_path = _hashResolver->ToHashedString(path);
+    hstring hashed_path = _hashResolver->to_hashed_string(path);
     _nonFoundSprites.erase(hashed_path);
 
     for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {

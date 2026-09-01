@@ -508,9 +508,9 @@ void BinaryWriter::WriteUtf16(string_view value)
     for (size_t i = 0; i < value.length();) {
         size_t length = value.length() - i;
         auto text_pos = make_ptr(value.data() + i);
-        uint32_t codepoint = utf8::Decode(text_pos, length);
+        uint32_t codepoint = utf8::decode(text_pos, length);
 
-        if (!utf8::IsValid(codepoint)) {
+        if (!utf8::is_valid(codepoint)) {
             throw EffekseerCompilerException("Effekseer dependency path is not valid UTF-8", value);
         }
 

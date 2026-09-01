@@ -107,11 +107,11 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     }
 
     auto engine = BakerServerEngine(*_context->BakedFiles);
-    hstring proto_rule_name = engine.Hashes.ToHashedString("Proto");
-    hstring item_type_name = engine.Hashes.ToHashedString("Item");
-    hstring critter_type_name = engine.Hashes.ToHashedString("Critter");
-    hstring map_type_name = engine.Hashes.ToHashedString("Map");
-    hstring location_type_name = engine.Hashes.ToHashedString("Location");
+    hstring proto_rule_name = engine.Hashes.to_hashed_string("Proto");
+    hstring item_type_name = engine.Hashes.to_hashed_string("Item");
+    hstring critter_type_name = engine.Hashes.to_hashed_string("Critter");
+    hstring map_type_name = engine.Hashes.to_hashed_string("Map");
+    hstring location_type_name = engine.Hashes.to_hashed_string("Location");
 
     // Collect data
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
@@ -129,9 +129,9 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             hstring type_name;
 
             if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
-                type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
+                type_name = engine.Hashes.to_hashed_string(section_name.substr("Proto"_len));
             }
-            else if (hstring section_type = engine.Hashes.ToHashedString(section_name); engine.IsFixedType(section_type)) {
+            else if (hstring section_type = engine.Hashes.to_hashed_string(section_name); engine.IsFixedType(section_type)) {
                 type_name = section_type;
             }
             else {
@@ -159,7 +159,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             }
 
             auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
-            hstring pid = engine.Hashes.ToHashedString(name);
+            hstring pid = engine.Hashes.to_hashed_string(name);
             pid = engine.CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
 
             auto& file_protos = all_file_protos[type_name];
@@ -203,7 +203,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                 auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
 
                 for (auto& parent_name : strex(parent_name_line).split(' ')) {
-                    hstring parent_pid = engine.Hashes.ToHashedString(parent_name);
+                    hstring parent_pid = engine.Hashes.to_hashed_string(parent_name);
                     parent_pid = engine.CheckMigrationRule(proto_rule_name, type_name, parent_pid).value_or(parent_pid);
 
                     auto it_parent = file_proto_pids.find(parent_pid);
@@ -304,14 +304,14 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                     auto& text_pack = it->second.at(string(pack_name));
 
                     if (text_pack.CheckIntersections(proto_text.second)) {
-                        WriteLog("Proto text intersection detected for proto {} and pack {}", pid, pack_name);
+                        write_log("Proto text intersection detected for proto {} and pack {}", pid, pack_name);
                         errors++;
                     }
 
                     text_pack.Merge(proto_text.second);
                 }
                 else {
-                    WriteLog(LogType::Warning, "Unsupported language {} in proto {}", proto_text.first, pid);
+                    write_log(log_type::warning, "Unsupported language {} in proto {}", proto_text.first, pid);
                 }
             }
         }

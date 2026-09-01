@@ -134,21 +134,21 @@ namespace BakerTests
         // Registration reads the fixed header first, so a test blob has to carry one even when the test only
         // cares about the sections behind it
         vector<uint8_t> metadata = MakeMetadataHeader(metadata_version);
-        auto writer = DataWriter(metadata);
+        auto writer = data_writer(metadata);
 
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
+        writer.write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
 
         for (const auto& [section_name, entries] : sections) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
-            writer.WriteStringBytes(section_name);
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
+            writer.write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
+            writer.write_string_bytes(section_name);
+            writer.write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
 
             for (const auto& tokens : entries) {
-                writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
+                writer.write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
 
                 for (string_view token : tokens) {
-                    writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-                    writer.WriteStringBytes(token);
+                    writer.write<uint16_t>(numeric_cast<uint16_t>(token.length()));
+                    writer.write_string_bytes(token);
                 }
             }
         }
@@ -186,23 +186,23 @@ namespace BakerTests
         auto registrar = meta.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoType proto {meta.Hashes.ToHashedString(proto_name), registrar};
+        ProtoType proto {meta.Hashes.to_hashed_string(proto_name), registrar};
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -214,16 +214,16 @@ namespace BakerTests
     inline auto MakeMultiProtoResourceBlob(EngineMetadata& meta, hstring type_name, const vector<pair<string, function<void(ProtoType&)>>>& protos) -> vector<uint8_t>
     {
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(protos.size()));
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(protos.size()));
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
 
         for (const auto& [proto_name, configure] : protos) {
-            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrar(type_name)};
+            ProtoType proto {meta.Hashes.to_hashed_string(proto_name), meta.GetPropertyRegistrar(type_name)};
 
             if (configure) {
                 configure(proto);
@@ -234,10 +234,10 @@ namespace BakerTests
             proto.GetProperties()->StoreAllData(props_data, str_hashes);
             ignore_unused(str_hashes);
 
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-            writer.WriteStringBytes(proto_name);
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-            writer.WriteBytes(props_data);
+            writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+            writer.write_string_bytes(proto_name);
+            writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+            writer.write_bytes(props_data);
         }
 
         return protos_data;
@@ -248,37 +248,37 @@ namespace BakerTests
     inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint16_t ticks = 100) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
-        auto writer = DataWriter(sprite_data);
+        auto writer = data_writer(sprite_data);
 
-        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-        writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.Write<uint16_t>(frame_count);
-        writer.Write<uint16_t>(ticks);
-        writer.Write<uint8_t>(uint8_t {1}); // Directions
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.write<uint16_t>(frame_count);
+        writer.write<uint16_t>(ticks);
+        writer.write<uint8_t>(uint8_t {1}); // Directions
 
         auto pixel_count = numeric_cast<size_t>(width) * height;
 
         for (uint16_t frame = 0; frame < frame_count; frame++) {
-            writer.Write<uint8_t>(uint8_t {0}); // Not a sprite reference
-            writer.Write<int16_t>(int16_t {0}); // Offset x
-            writer.Write<int16_t>(int16_t {0}); // Offset y
-            writer.Write<uint16_t>(width);
-            writer.Write<uint16_t>(height);
-            writer.Write<int16_t>(int16_t {0}); // Frame x
-            writer.Write<int16_t>(int16_t {0}); // Frame y
+            writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
+            writer.write<int16_t>(int16_t {0}); // Offset x
+            writer.write<int16_t>(int16_t {0}); // Offset y
+            writer.write<uint16_t>(width);
+            writer.write<uint16_t>(height);
+            writer.write<int16_t>(int16_t {0}); // Frame x
+            writer.write<int16_t>(int16_t {0}); // Frame y
 
             for (size_t i = 0; i < pixel_count; i++) {
-                writer.Write<uint8_t>(uint8_t {255});
-                writer.Write<uint8_t>(uint8_t {255});
-                writer.Write<uint8_t>(uint8_t {255});
-                writer.Write<uint8_t>(uint8_t {255});
+                writer.write<uint8_t>(uint8_t {255});
+                writer.write<uint8_t>(uint8_t {255});
+                writer.write<uint8_t>(uint8_t {255});
+                writer.write<uint8_t>(uint8_t {255});
             }
 
             // The mesh descriptor belongs to the frame, so it is written per frame rather than once
-            writer.Write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+            writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
         }
 
-        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         return sprite_data;
     }
 
@@ -287,51 +287,51 @@ namespace BakerTests
     inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
-        auto writer = DataWriter(sprite_data);
+        auto writer = data_writer(sprite_data);
 
-        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-        writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.Write<uint16_t>(uint16_t {1}); // Frames count
-        writer.Write<uint16_t>(uint16_t {0}); // Ticks
-        writer.Write<uint8_t>(uint8_t {1}); // Directions
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.write<uint16_t>(uint16_t {1}); // Frames count
+        writer.write<uint16_t>(uint16_t {0}); // Ticks
+        writer.write<uint8_t>(uint8_t {1}); // Directions
 
-        writer.Write<uint8_t>(uint8_t {0}); // Not a sprite reference
-        writer.Write<int16_t>(int16_t {0}); // Offset x
-        writer.Write<int16_t>(int16_t {0}); // Offset y
-        writer.Write<uint16_t>(width);
-        writer.Write<uint16_t>(height);
-        writer.Write<int16_t>(int16_t {0}); // Frame x
-        writer.Write<int16_t>(int16_t {0}); // Frame y
+        writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
+        writer.write<int16_t>(int16_t {0}); // Offset x
+        writer.write<int16_t>(int16_t {0}); // Offset y
+        writer.write<uint16_t>(width);
+        writer.write<uint16_t>(height);
+        writer.write<int16_t>(int16_t {0}); // Frame x
+        writer.write<int16_t>(int16_t {0}); // Frame y
 
         auto pixel_count = numeric_cast<size_t>(width) * height;
 
         for (size_t i = 0; i < pixel_count; i++) {
-            writer.Write<uint8_t>(uint8_t {255}); // R
-            writer.Write<uint8_t>(uint8_t {255}); // G
-            writer.Write<uint8_t>(uint8_t {255}); // B
-            writer.Write<uint8_t>(uint8_t {255}); // A
+            writer.write<uint8_t>(uint8_t {255}); // R
+            writer.write<uint8_t>(uint8_t {255}); // G
+            writer.write<uint8_t>(uint8_t {255}); // B
+            writer.write<uint8_t>(uint8_t {255}); // A
         }
 
-        writer.Write<uint8_t>(static_cast<uint8_t>(mesh_kind));
+        writer.write<uint8_t>(static_cast<uint8_t>(mesh_kind));
 
         if (mesh_kind == SpriteMeshKind::Mesh) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Vertices.size()));
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(mesh.Indices.size()));
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.width > 0 ? mesh.SourceSize.width : width));
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.height > 0 ? mesh.SourceSize.height : height));
-            writer.Write<int32_t>(mesh.SourceOffset.x);
-            writer.Write<int32_t>(mesh.SourceOffset.y);
+            writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.Vertices.size()));
+            writer.write<uint32_t>(numeric_cast<uint32_t>(mesh.Indices.size()));
+            writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.width > 0 ? mesh.SourceSize.width : width));
+            writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.height > 0 ? mesh.SourceSize.height : height));
+            writer.write<int32_t>(mesh.SourceOffset.x);
+            writer.write<int32_t>(mesh.SourceOffset.y);
 
             for (ipos32 vertex : mesh.Vertices) {
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
+                writer.write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
+                writer.write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
             }
             for (uint16_t index : mesh.Indices) {
-                writer.Write<uint16_t>(index);
+                writer.write<uint16_t>(index);
             }
         }
 
-        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
         return sprite_data;
     }
@@ -386,11 +386,11 @@ namespace BakerTests
             size = it->second.Data.size();
             write_time = it->second.WriteTime;
 
-            auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+            auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
 
             if (size != 0u) {
                 ptr<uint8_t> buf_ptr = buf.get();
-                MemCopy(buf_ptr, it->second.Data.data(), size);
+                mem_copy(buf_ptr, it->second.Data.data(), size);
             }
 
             return MakeMemoryDataSourceFileBufferHolder(std::move(buf));
@@ -437,7 +437,7 @@ namespace BakerTests
     public:
         explicit MemoryFileSet(string pack_name)
         {
-            auto ds = SafeAlloc::MakeUnique<MemoryDataSource>(std::move(pack_name));
+            auto ds = safe_alloc::make_unique<MemoryDataSource>(std::move(pack_name));
             _dataSource = ds.get();
             _fileSystem.AddCustomSource(std::move(ds));
         }
@@ -501,11 +501,11 @@ namespace BakerTests
             // as the compile-time ones; the gate-test re-overrides this on its own rig
             OverrideSetting(Settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
 
-            auto source_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Tests");
+            auto source_ds = safe_alloc::make_unique<MemoryDataSource>("Tests");
             _sourceData = source_ds.get();
             SourceFiles.AddCustomSource(std::move(source_ds));
 
-            auto baked_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Baked");
+            auto baked_ds = safe_alloc::make_unique<MemoryDataSource>("Baked");
             _bakedData = baked_ds.get();
             BakedFiles.AddCustomSource(std::move(baked_ds));
         }
@@ -533,7 +533,7 @@ namespace BakerTests
             auto settings_ptr = make_nptr(&Settings);
             auto baked_files_ptr = make_nptr(&BakedFiles);
 
-            return SafeAlloc::MakeShared<BakingContext>(BakingContext {
+            return safe_alloc::make_shared<BakingContext>(BakingContext {
                 .Settings = settings_ptr,
                 .PackName = string(pack_name),
                 .BakeChecker = std::move(bake_checker),

@@ -58,7 +58,7 @@ public:
     using const_reference = const T&;
     using pointer = T*;
     using const_pointer = const T*;
-    using allocator_type = SafeAllocator<T>;
+    using allocator_type = safe_allocator<T>;
 
     static constexpr size_type block_elements = BlockBytes / sizeof(T) > DEQUE_MIN_BLOCK_ELEMENTS ? BlockBytes / sizeof(T) : DEQUE_MIN_BLOCK_ELEMENTS;
 
@@ -169,14 +169,14 @@ public:
 
     basic_deque(basic_deque&& other) noexcept :
         _blocks {other._blocks},
-        _blockCount {other._blockCount},
-        _blockCapacity {other._blockCapacity},
+        _block_count {other._block_count},
+        _block_capacity {other._block_capacity},
         _first {other._first},
         _size {other._size}
     {
         other._blocks = nullptr;
-        other._blockCount = 0;
-        other._blockCapacity = 0;
+        other._block_count = 0;
+        other._block_capacity = 0;
         other._first = 0;
         other._size = 0;
     }
@@ -197,14 +197,14 @@ public:
             release_storage();
 
             _blocks = other._blocks;
-            _blockCount = other._blockCount;
-            _blockCapacity = other._blockCapacity;
+            _block_count = other._block_count;
+            _block_capacity = other._block_capacity;
             _first = other._first;
             _size = other._size;
 
             other._blocks = nullptr;
-            other._blockCount = 0;
-            other._blockCapacity = 0;
+            other._block_count = 0;
+            other._block_capacity = 0;
             other._first = 0;
             other._size = 0;
         }
@@ -316,8 +316,8 @@ public:
     void swap(basic_deque& other) noexcept
     {
         std::swap(_blocks, other._blocks);
-        std::swap(_blockCount, other._blockCount);
-        std::swap(_blockCapacity, other._blockCapacity);
+        std::swap(_block_count, other._block_count);
+        std::swap(_block_capacity, other._block_capacity);
         std::swap(_first, other._first);
         std::swap(_size, other._size);
     }
@@ -329,20 +329,20 @@ private:
 
     void reserve_back()
     {
-        if (_first + _size == _blockCount * block_elements) {
-            reserve_blocks(_blockCount + 1);
-            _blocks[_blockCount] = allocator_type().allocate(block_elements);
-            _blockCount++;
+        if (_first + _size == _block_count * block_elements) {
+            reserve_blocks(_block_count + 1);
+            _blocks[_block_count] = allocator_type().allocate(block_elements);
+            _block_count++;
         }
     }
 
     void reserve_front()
     {
         if (_first == 0) {
-            reserve_blocks(_blockCount + 1);
-            std::copy_backward(_blocks, _blocks + _blockCount, _blocks + _blockCount + 1);
+            reserve_blocks(_block_count + 1);
+            std::copy_backward(_blocks, _blocks + _block_count, _blocks + _block_count + 1);
             _blocks[0] = allocator_type().allocate(block_elements);
-            _blockCount++;
+            _block_count++;
             _first += block_elements;
         }
     }
@@ -351,41 +351,41 @@ private:
     {
         if (_first >= block_elements) {
             allocator_type().deallocate(_blocks[0], block_elements);
-            std::copy(_blocks + 1, _blocks + _blockCount, _blocks);
-            _blockCount--;
+            std::copy(_blocks + 1, _blocks + _block_count, _blocks);
+            _block_count--;
             _first -= block_elements;
         }
     }
 
     void trim_back_block() noexcept
     {
-        if (_blockCount != 0 && _first + _size <= (_blockCount - 1) * block_elements) {
-            _blockCount--;
-            allocator_type().deallocate(_blocks[_blockCount], block_elements);
+        if (_block_count != 0 && _first + _size <= (_block_count - 1) * block_elements) {
+            _block_count--;
+            allocator_type().deallocate(_blocks[_block_count], block_elements);
         }
     }
 
     void reserve_blocks(size_type required)
     {
-        if (required <= _blockCapacity) {
+        if (required <= _block_capacity) {
             return;
         }
 
-        size_type new_capacity = _blockCapacity != 0 ? _blockCapacity * 2 : 4;
+        size_type new_capacity = _block_capacity != 0 ? _block_capacity * 2 : 4;
 
         if (new_capacity < required) {
             new_capacity = required;
         }
 
-        T** new_blocks = SafeAllocator<T*>().allocate(new_capacity);
-        std::copy(_blocks, _blocks + _blockCount, new_blocks);
+        T** new_blocks = safe_allocator<T*>().allocate(new_capacity);
+        std::copy(_blocks, _blocks + _block_count, new_blocks);
 
         if (_blocks != nullptr) {
-            SafeAllocator<T*>().deallocate(_blocks, _blockCapacity);
+            safe_allocator<T*>().deallocate(_blocks, _block_capacity);
         }
 
         _blocks = new_blocks;
-        _blockCapacity = new_capacity;
+        _block_capacity = new_capacity;
     }
 
     void destroy_elements() noexcept
@@ -399,11 +399,11 @@ private:
 
     void release_blocks() noexcept
     {
-        for (size_type i = 0; i < _blockCount; i++) {
+        for (size_type i = 0; i < _block_count; i++) {
             allocator_type().deallocate(_blocks[i], block_elements);
         }
 
-        _blockCount = 0;
+        _block_count = 0;
     }
 
     void release_storage() noexcept
@@ -412,17 +412,17 @@ private:
         release_blocks();
 
         if (_blocks != nullptr) {
-            SafeAllocator<T*>().deallocate(_blocks, _blockCapacity);
+            safe_allocator<T*>().deallocate(_blocks, _block_capacity);
             _blocks = nullptr;
-            _blockCapacity = 0;
+            _block_capacity = 0;
         }
 
         _first = 0;
     }
 
     T** _blocks {};
-    size_type _blockCount {};
-    size_type _blockCapacity {};
+    size_type _block_count {};
+    size_type _block_capacity {};
     size_type _first {};
     size_type _size {};
 };

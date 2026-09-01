@@ -117,7 +117,7 @@ TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
 {
     auto settings = MakeServerNetworkSettings();
 
-    auto conn = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
+    auto conn = safe_alloc::make_shared<SendProbeConnection>(&settings);
     size_t send_calls = 0;
     vector<uint8_t> payload {7, 8, 9};
 
@@ -162,8 +162,8 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
     SECTION("a live connection has no reason yet")
     {
         auto settings = MakeServerNetworkSettings();
-        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+        auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
 
         CHECK(connection->GetDisconnectReason() == DisconnectReason::None);
     }
@@ -171,8 +171,8 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
     SECTION("the peer going away on its own is recorded as a client-side close")
     {
         auto settings = MakeServerNetworkSettings();
-        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+        auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
 
         net_connection->Disconnect();
 
@@ -182,8 +182,8 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
     SECTION("the deciding path wins over the transport teardown that follows it")
     {
         auto settings = MakeServerNetworkSettings();
-        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+        auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
 
         // The transport close callback records ClientClosed of its own accord; without first-wins that
         // generic cause would bury the real one and the logout would read as a player who simply left
@@ -204,8 +204,8 @@ TEST_CASE("ServerConnectionLatchesInputOverflowForItsOwningWorker")
     BakerTests::OverrideSetting(settings.MaxMessageSize, 64);
     BakerTests::OverrideSetting(settings.MaxBufferedInputSize, 64);
 
-    auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-    auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+    auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
+    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
 
     CHECK_FALSE(connection->IsInputOverflowed());
 
@@ -221,8 +221,8 @@ TEST_CASE("ServerConnectionLatchesInputOverflowForItsOwningWorker")
 TEST_CASE("ServerConnectionDestructionWaitsForRunningNetworkCallback")
 {
     auto settings = MakeServerNetworkSettings();
-    auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-    auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+    auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
+    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
     std::promise<void> callback_entered_promise;
     std::future<void> callback_entered = callback_entered_promise.get_future();
     std::promise<void> release_callback_promise;

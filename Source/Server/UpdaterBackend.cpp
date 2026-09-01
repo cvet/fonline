@@ -48,7 +48,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Load client data packs for synchronization");
+    write_log("Load client data packs for synchronization");
 
     // Built into locals and swapped in by a no-throw tail, so a throw mid-load leaves every member untouched
     // instead of half-rebuilt
@@ -139,16 +139,16 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     }
 
     auto build_update_desc = [&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
-        auto writer = DataWriter(desc);
+        auto writer = data_writer(desc);
 
         auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
             const auto& data = update_files[info.FileIndex];
-            writer.Write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
-            writer.WriteStringBytes(info.ClientPath);
-            writer.Write<uint64_t>(data.Size);
-            writer.Write<uint64_t>(data.Hash);
-            writer.Write<UpdateFileTarget>(info.Target);
-            writer.Write<uint32_t>(info.FileIndex);
+            writer.write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
+            writer.write_string_bytes(info.ClientPath);
+            writer.write<uint64_t>(data.Size);
+            writer.write<uint64_t>(data.Hash);
+            writer.write<UpdateFileTarget>(info.Target);
+            writer.write<uint32_t>(info.FileIndex);
         };
 
         for (const auto& info : common_update_files) {
@@ -161,7 +161,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
             }
         }
 
-        writer.Write<int16_t>(const_numeric_cast<int16_t>(-1));
+        writer.write<int16_t>(const_numeric_cast<int16_t>(-1));
     };
 
     build_update_desc(common_update_files_desc, nullptr);
@@ -196,7 +196,7 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
         throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.ClientResources, client_metadata_version, settings.ServerResources, server_metadata_version);
     }
 
-    WriteLog("Client data packs match the server metadata version {}", client_metadata_version);
+    write_log("Client data packs match the server metadata version {}", client_metadata_version);
 }
 
 auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>
@@ -220,13 +220,13 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     in_buf.Unlock();
 
     if (file_index >= _updateFiles.size()) {
-        WriteLog(LogType::Warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
+        write_log(log_type::warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
     if (update_file_max_portion_size <= 0) {
-        WriteLog(LogType::Warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
+        write_log(log_type::warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
@@ -235,7 +235,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     uint64_t file_size = update_file.Size;
 
     if (start_offset > file_size) {
-        WriteLog(LogType::Warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
+        write_log(log_type::warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
@@ -253,7 +253,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         auto current_disk_size = fs_file_size(update_file.DiskPath);
 
         if (!current_disk_size.has_value() || *current_disk_size != update_file.Size) {
-            WriteLog(LogType::Warning, "Update file '{}' changed on disk since startup, announced size {}, current size {}, client host '{}'", update_file.DiskPath, update_file.Size, current_disk_size.value_or(0), connection->GetHost());
+            write_log(log_type::warning, "Update file '{}' changed on disk since startup, announced size {}, current size {}, client host '{}'", update_file.DiskPath, update_file.Size, current_disk_size.value_or(0), connection->GetHost());
             connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }
@@ -279,7 +279,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         };
 
         if (!read_update_file_portion(update_file.DiskPath, start_offset, disk_update_data)) {
-            WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
+            write_log(log_type::warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
             connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }

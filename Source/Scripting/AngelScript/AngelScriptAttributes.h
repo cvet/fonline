@@ -79,8 +79,8 @@ auto FindFunctionAttribute(ptr<const AngelScript::asIScriptFunction> func, strin
 auto HasFunctionAttribute(ptr<const AngelScript::asIScriptFunction> func, string_view attribute) noexcept -> bool;
 void SetFunctionAttributes(ptr<AngelScript::asIScriptFunction> func, const vector<string>& attributes);
 auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocessor::LexemList& lexems, string& errors) -> vector<ParsedFunctionAttributeRecord>;
-void SerializeFunctionAttributeRecords(DataWriter& writer, const vector<ParsedFunctionAttributeRecord>& records);
-auto DeserializeFunctionAttributeRecords(DataReader& reader) -> vector<ParsedFunctionAttributeRecord>;
+void SerializeFunctionAttributeRecords(data_writer& writer, const vector<ParsedFunctionAttributeRecord>& records);
+auto DeserializeFunctionAttributeRecords(data_reader& reader) -> vector<ParsedFunctionAttributeRecord>;
 auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const vector<ParsedFunctionAttributeRecord>& records, nptr<const vector<string>> project_blocking_extras = nullptr) -> string;
 auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr<const Preprocessor::LineNumberTranslator> lnt = nullptr, nptr<const vector<string>> allowed_namespaces = nullptr, nptr<const vector<string>> project_blocking_extras = nullptr) -> string;
 auto ValidateSpecialFunctionAttributes(ptr<AngelScript::asIScriptModule> mod, nptr<const Preprocessor::LineNumberTranslator> lnt = nullptr) -> string;

@@ -62,22 +62,22 @@ namespace
 
     struct GlobalDataCallbacksGuard final
     {
-        std::array<GlobalDataCallback, MAX_GLOBAL_DATA_CALLBACKS> SavedCreate {};
-        std::array<GlobalDataCallback, MAX_GLOBAL_DATA_CALLBACKS> SavedDelete {};
+        std::array<global_data_callback, MAX_GLOBAL_DATA_CALLBACKS> SavedCreate {};
+        std::array<global_data_callback, MAX_GLOBAL_DATA_CALLBACKS> SavedDelete {};
         int32_t SavedCount {};
 
         GlobalDataCallbacksGuard()
         {
-            std::copy(std::begin(CreateGlobalDataCallbacks), std::end(CreateGlobalDataCallbacks), SavedCreate.begin());
-            std::copy(std::begin(DeleteGlobalDataCallbacks), std::end(DeleteGlobalDataCallbacks), SavedDelete.begin());
-            SavedCount = GlobalDataCallbacksCount;
+            std::copy(std::begin(create_global_data_callbacks), std::end(create_global_data_callbacks), SavedCreate.begin());
+            std::copy(std::begin(delete_global_data_callbacks), std::end(delete_global_data_callbacks), SavedDelete.begin());
+            SavedCount = global_data_callbacks_count;
         }
 
         ~GlobalDataCallbacksGuard()
         {
-            std::copy(SavedCreate.begin(), SavedCreate.end(), std::begin(CreateGlobalDataCallbacks));
-            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(DeleteGlobalDataCallbacks));
-            GlobalDataCallbacksCount = SavedCount;
+            std::copy(SavedCreate.begin(), SavedCreate.end(), std::begin(create_global_data_callbacks));
+            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(delete_global_data_callbacks));
+            global_data_callbacks_count = SavedCount;
         }
     };
 }
@@ -89,28 +89,28 @@ TEST_CASE("GlobalData")
     DeleteCallCount = 0;
     DeleteCallOrder.clear();
 
-    std::fill(std::begin(CreateGlobalDataCallbacks), std::end(CreateGlobalDataCallbacks), nullptr);
-    std::fill(std::begin(DeleteGlobalDataCallbacks), std::end(DeleteGlobalDataCallbacks), nullptr);
+    std::fill(std::begin(create_global_data_callbacks), std::end(create_global_data_callbacks), nullptr);
+    std::fill(std::begin(delete_global_data_callbacks), std::end(delete_global_data_callbacks), nullptr);
 
     SECTION("DeleteGlobalDataCallsRegisteredCallbacksInOrder")
     {
-        GlobalDataCallbacksCount = 3;
-        DeleteGlobalDataCallbacks[0] = &DeleteCallbackA;
-        DeleteGlobalDataCallbacks[1] = &DeleteCallbackB;
-        DeleteGlobalDataCallbacks[2] = &DeleteCallbackC;
+        global_data_callbacks_count = 3;
+        delete_global_data_callbacks[0] = &DeleteCallbackA;
+        delete_global_data_callbacks[1] = &DeleteCallbackB;
+        delete_global_data_callbacks[2] = &DeleteCallbackC;
 
-        DeleteGlobalData();
+        delete_global_data();
 
         CHECK(DeleteCallCount == 3);
         CHECK(DeleteCallOrder == vector<int32_t> {1, 2, 3});
-        CHECK(GlobalDataCallbacksCount == 3);
+        CHECK(global_data_callbacks_count == 3);
     }
 
     SECTION("DeleteGlobalDataWithNoCallbacksIsNoop")
     {
-        GlobalDataCallbacksCount = 0;
+        global_data_callbacks_count = 0;
 
-        DeleteGlobalData();
+        delete_global_data();
 
         CHECK(DeleteCallCount == 0);
         CHECK(DeleteCallOrder.empty());

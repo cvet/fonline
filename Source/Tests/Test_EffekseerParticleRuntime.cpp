@@ -238,7 +238,7 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
 }
 
 CapturingAppRender::CapturingAppRender(ptr<GlobalSettings> settings) :
-    _capture {SafeAlloc::MakeShared<EffekseerDrawCapture>()}
+    _capture {safe_alloc::make_shared<EffekseerDrawCapture>()}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -270,7 +270,7 @@ auto CapturingAppRender::CreateEffect(EffectUsage usage, string_view name, const
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<CapturingRenderEffect>(usage, name, loader, _capture);
+    return safe_alloc::make_unique<CapturingRenderEffect>(usage, name, loader, _capture);
 }
 
 auto CapturingAppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
@@ -384,7 +384,7 @@ static auto MakeEffekseerRuntimeTestResources(string_view effect_path, vector<ui
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EffekseerRuntimeTests");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EffekseerRuntimeTests");
     AddEffekseerRuntimeTestResources(*source, effect_path, std::move(effect_data));
 
     for (const auto& [path, data] : dependencies) {
@@ -411,13 +411,13 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
 EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies, bool provide_texture) :
     _effectPath {effect_path},
     _resources {MakeEffekseerRuntimeTestResources(effect_path, std::move(effect_data), dependencies)},
-    _render {SafeAlloc::MakeUnique<CapturingAppRender>(&_settings)},
-    _effectManager {SafeAlloc::MakeUnique<EffectManager>(&_settings, &_resources, _render.as_ptr())},
+    _render {safe_alloc::make_unique<CapturingAppRender>(&_settings)},
+    _effectManager {safe_alloc::make_unique<EffectManager>(&_settings, &_resources, _render.as_ptr())},
     _texture {_render->CreateTexture({8, 8}, true, false)},
     _sceneBackground {_render->CreateTexture({16, 16}, true, false)},
     _provideTexture {provide_texture},
-    _gameTimer {SafeAlloc::MakeUnique<GameTimer>(&_settings)},
-    _particleManager {SafeAlloc::MakeUnique<ParticleManager>(
+    _gameTimer {safe_alloc::make_unique<GameTimer>(&_settings)},
+    _particleManager {safe_alloc::make_unique<ParticleManager>(
         &_settings, _effectManager.as_ptr(), _render.as_ptr(), &_resources, _gameTimer.as_ptr(),
         [this](string_view path) -> pair<nptr<RenderTexture>, frect32> {
             _textureRequests.emplace_back(path);
@@ -429,7 +429,7 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
             return {_texture.as_nptr(), EffekseerFixtureAtlasRect};
         },
         [this]() { return ProvideSceneBackground(); })},
-    _backend {SafeAlloc::MakeUnique<EffekseerParticleRuntimeBackend>(ParticleRuntimeServices {
+    _backend {safe_alloc::make_unique<EffekseerParticleRuntimeBackend>(ParticleRuntimeServices {
         .EffectMngr = _effectManager.as_ptr(),
         .Render = _render.as_ptr(),
         .Resources = &_resources,
@@ -1013,7 +1013,7 @@ static auto MakeStripFixtureRig(string_view project) -> unique_ptr<EffekseerRunt
 
     EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/Strip.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
 
-    return SafeAlloc::MakeUnique<EffekseerRuntimeTestRig>(EffekseerStripFixturePath, std::move(compiled.Binary));
+    return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerStripFixturePath, std::move(compiled.Binary));
 }
 
 static auto DrawStripFixture(EffekseerRuntimeTestRig& rig, const ParticleRuntimeSetup& setup) -> vector<CapturedEffekseerDraw>
@@ -1198,7 +1198,7 @@ static auto MakeModelFixtureRig(int32_t culling, vector<uint8_t> model_payload) 
     map<string, vector<uint8_t>> dependencies;
     dependencies.emplace("Particles/EffekseerTests/Model/Fixture.efkmodel", std::move(model_payload));
 
-    return SafeAlloc::MakeUnique<EffekseerRuntimeTestRig>(EffekseerModelFixturePath, std::move(compiled.Binary), dependencies);
+    return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerModelFixturePath, std::move(compiled.Binary), dependencies);
 }
 
 static auto MakeModelFixtureRig(int32_t culling) -> unique_ptr<EffekseerRuntimeTestRig>
@@ -1326,7 +1326,7 @@ static auto MakeDistortionFixtureRig(float32_t intensity, int32_t alpha_blend) -
 
     EffekseerCompilerOutput compiled = CompileEffekseerProject(project_path, {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
 
-    return SafeAlloc::MakeUnique<EffekseerRuntimeTestRig>(EffekseerDistortionFixturePath, std::move(compiled.Binary));
+    return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerDistortionFixturePath, std::move(compiled.Binary));
 }
 
 static auto DrawDistortionFixture(EffekseerRuntimeTestRig& rig) -> vector<CapturedEffekseerDraw>
@@ -1521,7 +1521,7 @@ TEST_CASE("Effekseer capability census", "[.census]")
         }
 
         accepted++;
-        WriteLog("CENSUSPASS\tParticles/{}", relative_path);
+        write_log("CENSUSPASS\tParticles/{}", relative_path);
 
         // Play it for a few frames so the node renderers run: a rejection that only a real draw can reach retires the
         // handle, which the runtime reports as the system going inactive
@@ -1539,11 +1539,11 @@ TEST_CASE("Effekseer capability census", "[.census]")
         }
         else {
             retired_while_drawing++;
-            WriteLog("CENSUSRETIRED\tParticles/{}", relative_path);
+            write_log("CENSUSRETIRED\tParticles/{}", relative_path);
         }
     }
 
-    WriteLog("CENSUSDONE\twalked={}\taccepted={}\tdrewToCompletion={}\tretiredWhileDrawing={}", walked, accepted, drawn, retired_while_drawing);
+    write_log("CENSUSDONE\twalked={}\taccepted={}\tdrewToCompletion={}\tretiredWhileDrawing={}", walked, accepted, drawn, retired_while_drawing);
     CHECK(walked != 0);
 }
 

@@ -46,10 +46,10 @@
 
 FO_BEGIN_NAMESPACE
 
-static bool RunInDebugger = false;
-static std::once_flag RunInDebuggerOnce;
+static bool run_in_debugger = false;
+static std::once_flag run_in_debugger_once;
 
-void ExitApp(bool success) noexcept
+void exit_app(bool success) noexcept
 {
     int32_t code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 
@@ -64,13 +64,13 @@ void ExitApp(bool success) noexcept
     }
 }
 
-extern auto IsRunInDebugger() noexcept -> bool
+extern auto is_run_in_debugger() noexcept -> bool
 {
 #if FO_WINDOWS
-    std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
+    std::call_once(run_in_debugger_once, [] { run_in_debugger = ::IsDebuggerPresent() != FALSE; });
 
 #elif FO_LINUX
-    std::call_once(RunInDebuggerOnce, [] {
+    std::call_once(run_in_debugger_once, [] {
         std::ifstream status("/proc/self/status");
         if (status.is_open()) {
             std::string line;
@@ -80,7 +80,7 @@ extern auto IsRunInDebugger() noexcept -> bool
                     std::string value;
                     iss >> value;
                     if (!value.empty() && std::all_of(value.begin(), value.end(), ::isdigit)) {
-                        RunInDebugger = value != "0";
+                        run_in_debugger = value != "0";
                     }
                     break;
                 }
@@ -89,25 +89,25 @@ extern auto IsRunInDebugger() noexcept -> bool
     });
 
 #elif FO_MAC
-    std::call_once(RunInDebuggerOnce, [] {
+    std::call_once(run_in_debugger_once, [] {
         int32_t mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
         struct kinfo_proc info = {};
         size_t size = sizeof(info);
         if (::sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) == 0) {
-            RunInDebugger = (info.kp_proc.p_flag & P_TRACED) != 0;
+            run_in_debugger = (info.kp_proc.p_flag & P_TRACED) != 0;
         }
     });
 
 #else
-    ignore_unused(RunInDebuggerOnce);
+    ignore_unused(run_in_debugger_once);
 #endif
 
-    return RunInDebugger;
+    return run_in_debugger;
 }
 
-extern auto BreakIntoDebugger() noexcept -> bool
+extern auto break_into_debugger() noexcept -> bool
 {
-    if (IsRunInDebugger()) {
+    if (is_run_in_debugger()) {
 #if FO_WINDOWS
         ::DebugBreak();
         return true;
@@ -131,7 +131,7 @@ extern auto BreakIntoDebugger() noexcept -> bool
     return false;
 }
 
-extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char*
+extern auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*
 {
     int32_t i = 0;
     bool is_negative = false;

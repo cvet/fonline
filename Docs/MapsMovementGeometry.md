@@ -243,7 +243,7 @@ static void Load(
     string_view name,
     const string& buf,
     const EngineMetadata& meta,
-    HashResolver& hash_resolver,
+    hash_resolver& hash_resolver,
     const CrLoadFunc& cr_load,
     const ItemLoadFunc& item_load);
 ```

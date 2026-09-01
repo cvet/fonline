@@ -148,11 +148,11 @@ private:
     };
 
     [[nodiscard]] auto Load(string_view name) -> bool;
-    [[nodiscard]] auto LoadBaked(string_view name, DataReader& reader) -> bool;
-    [[nodiscard]] auto ReadBakedModelDescriptionLink(DataReader& reader, string_view context) const -> BakedModelDescriptionLink;
-    [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimationEntry(DataReader& reader) const -> BakedModelDescriptionAnimationEntry;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
+    [[nodiscard]] auto LoadBaked(string_view name, data_reader& reader) -> bool;
+    [[nodiscard]] auto ReadBakedModelDescriptionLink(data_reader& reader, string_view context) const -> BakedModelDescriptionLink;
+    [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(data_reader& reader) const -> BakedModelDescriptionCutInfo;
+    [[nodiscard]] auto ReadBakedModelDescriptionAnimationEntry(data_reader& reader) const -> BakedModelDescriptionAnimationEntry;
+    [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(data_reader& reader) const -> BakedModelDescriptionAnimLayerValue;
 
     void IndexDirectPoseJoints();
     void IndexAnimationPoseJoints(const ModelAnimationRuntimeRig& rig);

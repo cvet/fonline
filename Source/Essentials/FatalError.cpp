@@ -37,47 +37,47 @@
 
 FO_BEGIN_NAMESPACE
 
-[[noreturn]] extern void ReportFatalAndExit(string_view message) noexcept
+[[noreturn]] extern void report_fatal_and_exit(string_view message) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    SuspendAsyncLogWriting();
+    suspend_async_log_writing();
 
-    WriteBaseLog("\nFATAL ERROR!\n");
-    WriteBaseLog(message);
-    WriteBaseLog("\n\n");
+    write_base_log("\nFATAL ERROR!\n");
+    write_base_log(message);
+    write_base_log("\n\n");
 
-    StackTraceData st;
-    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 2);
-    SafeWriteStackTrace(st);
+    stack_trace_data st;
+    capture_native_stack_frames(st.native_frames, st.native_frame_count, st.native_truncated, 2);
+    safe_write_stack_trace(st);
 
-    BreakIntoDebugger();
-    ExitApp(false);
+    break_into_debugger();
+    exit_app(false);
 }
 
-[[noreturn]] extern void ReportStrongAssertAndExit(string_view expression, string_view file, int32_t line) noexcept
+[[noreturn]] extern void report_strong_assert_and_exit(string_view expression, string_view file, int32_t line) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    SuspendAsyncLogWriting();
+    suspend_async_log_writing();
 
     char line_buf[64] = {};
 
-    WriteBaseLog("\nSTRONG ASSERTION FAILED!\n");
-    WriteBaseLog("Expression: ");
-    WriteBaseLog(expression);
-    WriteBaseLog("\nFile: ");
-    WriteBaseLog(file);
-    WriteBaseLog("\nLine: ");
-    WriteBaseLog(ItoA(line, line_buf, 10));
-    WriteBaseLog("\n\n");
+    write_base_log("\nSTRONG ASSERTION FAILED!\n");
+    write_base_log("Expression: ");
+    write_base_log(expression);
+    write_base_log("\nFile: ");
+    write_base_log(file);
+    write_base_log("\nLine: ");
+    write_base_log(itoa(line, line_buf, 10));
+    write_base_log("\n\n");
 
-    StackTraceData st;
-    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 2);
-    SafeWriteStackTrace(st);
+    stack_trace_data st;
+    capture_native_stack_frames(st.native_frames, st.native_frame_count, st.native_truncated, 2);
+    safe_write_stack_trace(st);
 
-    BreakIntoDebugger();
-    ExitApp(false);
+    break_into_debugger();
+    exit_app(false);
 }
 
 FO_END_NAMESPACE

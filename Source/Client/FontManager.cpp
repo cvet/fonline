@@ -472,9 +472,9 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
             size_t letter_len = letter_buf.length() - utf8_letter_begin;
             FO_STRONG_ASSERT(utf8_letter_begin <= letter_buf.size(), "String offset is past the end of the string");
             auto letter_pos = make_ptr(letter_buf.c_str() + utf8_letter_begin);
-            uint32_t letter = utf8::Decode(letter_pos, letter_len);
+            uint32_t letter = utf8::decode(letter_pos, letter_len);
 
-            if (!utf8::IsValid(letter)) {
+            if (!utf8::is_valid(letter)) {
                 throw FontManagerException("Invalid UTF-8 letter", font_path, letter_buf);
             }
 
@@ -521,7 +521,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     {
         image_name = strex(font_path).extract_dir().combine_path(image_name);
 
-        font_data.ImageNormal = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type);
+        font_data.ImageNormal = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
 
         if (!font_data.ImageNormal) {
             throw FontManagerException("Font image file not found", font_path, image_name);
@@ -530,7 +530,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
     // Create bordered instance
     if (!not_bordered) {
-        font_data.ImageBordered = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type);
+        font_data.ImageBordered = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
 
         if (!font_data.ImageBordered) {
             throw FontManagerException("Can't load font image twice", font_path, image_name);
@@ -632,7 +632,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Load image
     {
-        font_data.ImageNormal = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type);
+        font_data.ImageNormal = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
 
         if (!font_data.ImageNormal) {
             throw FontManagerException("Font image file not found", font_path, image_name);
@@ -641,7 +641,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Create bordered instance
     {
-        font_data.ImageBordered = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type);
+        font_data.ImageBordered = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
 
         if (!font_data.ImageBordered) {
             throw FontManagerException("Can't load font image twice", font_path, image_name);
@@ -671,7 +671,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     string buf;
     buf.reserve(str.size());
 
-    if (mode == FormatMode::Draw && !IsEnumSet(flags, FontFlag::NoColorize)) {
+    if (mode == FormatMode::Draw && !is_enum_set(flags, FontFlag::NoColorize)) {
         dots = fi.TextColor.data();
     }
 
@@ -720,7 +720,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     str = std::move(buf);
 
     // Single SkipLines counter — its meaning flips between "from top" and "from bottom" based on FontFlag::AlignBottom
-    bool skip_from_bottom = IsEnumSet(flags, FontFlag::AlignBottom);
+    bool skip_from_bottom = is_enum_set(flags, FontFlag::AlignBottom);
     int32_t skip_line = skip_from_bottom ? 0 : fi.Format.SkipLines;
     int32_t skip_line_end = skip_from_bottom ? fi.Format.SkipLines : 0;
 
@@ -729,9 +729,9 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     cury = r.y;
 
     for (int32_t i = 0, i_advance = 1; i < numeric_cast<int32_t>(str.size()); i += i_advance) {
-        size_t letter_len = utf8::DecodeStrNtLen(&str[numeric_cast<size_t>(i)]);
-        uint32_t letter = utf8::Decode(&str[numeric_cast<size_t>(i)], letter_len);
-        letter = utf8::IsValid(letter) ? letter : 0;
+        size_t letter_len = utf8::decode_str_nt_len(&str[numeric_cast<size_t>(i)]);
+        uint32_t letter = utf8::decode(&str[numeric_cast<size_t>(i)], letter_len);
+        letter = utf8::is_valid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
         int32_t x_advance = 0;
@@ -759,12 +759,12 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         if (!infinity_w && curx + x_advance > r.x + r.width) {
             fi.MaxCurX = std::max(curx, fi.MaxCurX);
 
-            if (mode == FormatMode::Draw && IsEnumSet(flags, FontFlag::NoWrap)) {
+            if (mode == FormatMode::Draw && is_enum_set(flags, FontFlag::NoWrap)) {
                 str.resize(numeric_cast<size_t>(i));
                 break;
             }
 
-            if (IsEnumSet(flags, FontFlag::TruncateLine)) {
+            if (is_enum_set(flags, FontFlag::TruncateLine)) {
                 int32_t j = i;
 
                 while (j < numeric_cast<int32_t>(str.size()) && str[j] != '\n') {
@@ -813,7 +813,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
                     }
                 }
 
-                if (IsEnumSet(flags, FontFlag::Justify) && skip_line == 0) {
+                if (is_enum_set(flags, FontFlag::Justify) && skip_line == 0) {
                     fi.LineSpaceWidth[fi.LinesAll - 1] = 1;
 
                     // Erase next first spaces
@@ -850,7 +850,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
                 }
 
                 if (mode == FormatMode::Draw) {
-                    if (fi.LinesInRect != 0 && !IsEnumSet(flags, FontFlag::KeepTail)) {
+                    if (fi.LinesInRect != 0 && !is_enum_set(flags, FontFlag::KeepTail)) {
                         str.resize(numeric_cast<size_t>(i));
                         break;
                     }
@@ -925,7 +925,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     }
 
     // Up text
-    if (IsEnumSet(flags, FontFlag::KeepTail) && fi.LinesAll > fi.LinesInRect) {
+    if (is_enum_set(flags, FontFlag::KeepTail) && fi.LinesAll > fi.LinesInRect) {
         int32_t j = 0;
         int32_t line_cur = 0;
         ucolor last_color;
@@ -945,7 +945,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             }
         }
 
-        if (!IsEnumSet(flags, FontFlag::NoColorize)) {
+        if (!is_enum_set(flags, FontFlag::NoColorize)) {
             color_offset += j + 1;
 
             if (last_color != ucolor::clear && fi.TextColor[j + 1] == ucolor::clear) {
@@ -985,9 +985,9 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             break;
         }
 
-        size_t letter_len = utf8::DecodeStrNtLen(&str[numeric_cast<size_t>(i)]);
-        uint32_t letter = utf8::Decode(&str[numeric_cast<size_t>(i)], letter_len);
-        letter = utf8::IsValid(letter) ? letter : 0;
+        size_t letter_len = utf8::decode_str_nt_len(&str[numeric_cast<size_t>(i)]);
+        uint32_t letter = utf8::decode(&str[numeric_cast<size_t>(i)], letter_len);
+        letter = utf8::is_valid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
         switch (letter) {
@@ -1035,18 +1035,18 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     fi.CurY = r.y;
 
     // Align X
-    if (IsEnumSet(flags, FontFlag::CenterX)) {
+    if (is_enum_set(flags, FontFlag::CenterX)) {
         fi.CurX += ((r.x + r.width) - fi.LineWidth[0]) / 2;
     }
-    else if (IsEnumSet(flags, FontFlag::AlignRight)) {
+    else if (is_enum_set(flags, FontFlag::AlignRight)) {
         fi.CurX += (r.x + r.width) - fi.LineWidth[0];
     }
 
     // Align Y
-    if (IsEnumSet(flags, FontFlag::CenterY)) {
+    if (is_enum_set(flags, FontFlag::CenterY)) {
         fi.CurY = r.y + (r.height + 1 - fi.LinesInRect * font->LineHeight - (fi.LinesInRect - 1) * font->YAdvance) / 2;
     }
-    else if (IsEnumSet(flags, FontFlag::AlignBottom)) {
+    else if (is_enum_set(flags, FontFlag::AlignBottom)) {
         fi.CurY = (r.y + r.height) - (fi.LinesInRect * font->LineHeight + (fi.LinesInRect - 1) * font->YAdvance);
     }
 }
@@ -1128,7 +1128,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     FO_VERIFY_AND_THROW(rect.height >= 0, "Text layout rectangle height must not be negative", rect.height);
 
     std::array<uint64_t, 8> key_parts {
-        HashStorage::DefaultHash(make_const_span(str)),
+        hash_storage::default_hash(make_const_span(str)),
         static_cast<uint32_t>(font),
         static_cast<uint32_t>(format.Flags),
         static_cast<uint32_t>(format.SkipLines),
@@ -1138,7 +1138,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
         static_cast<uint32_t>(mode),
     };
 
-    uint64_t key = HashStorage::DefaultHash(make_span(key_parts));
+    uint64_t key = hash_storage::default_hash(make_span(key_parts));
 
     if (auto it = _formatCache.find(key); it != _formatCache.end()) {
         it->second->LastUsedFrame = _frameIndex;
@@ -1149,7 +1149,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
     auto max_lines = std::max<size_t>(str_len + 1, 1);
 
-    auto fi = SafeAlloc::MakeUnique<FontFormatInfo>();
+    auto fi = safe_alloc::make_unique<FontFormatInfo>();
     FO_VERIFY_AND_THROW(_allFonts[static_cast<size_t>(font)], "Requested font is not loaded");
     fi->CurFont = &*_allFonts[static_cast<size_t>(font)];
     fi->Format = format;
@@ -1186,9 +1186,9 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
     int32_t curx = rect.x + fi->CurX;
     int32_t cury = rect.y + fi->CurY;
     int32_t curstr = 0;
-    const auto& texture = IsEnumSet(flags, FontFlag::Bordered) && font->FontTexBordered ? font->FontTexBordered : font->FontTex;
+    const auto& texture = is_enum_set(flags, FontFlag::Bordered) && font->FontTexBordered ? font->FontTexBordered : font->FontTex;
 
-    if (!IsEnumSet(flags, FontFlag::NoColorize)) {
+    if (!is_enum_set(flags, FontFlag::NoColorize)) {
         for (int32_t i = color_offset; i >= 0; i--) {
             if (fi->TextColor[i] != ucolor::clear) {
                 if (fi->TextColor[i].comp.a != 0) {
@@ -1218,7 +1218,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
     int32_t i_advance;
 
     for (int32_t i = 0; i < numeric_cast<int32_t>(format_str.size()); i += i_advance) {
-        if (!IsEnumSet(flags, FontFlag::NoColorize)) {
+        if (!is_enum_set(flags, FontFlag::NoColorize)) {
             auto new_color = fi->TextColor[i + color_offset];
 
             if (new_color != ucolor::clear) {
@@ -1233,9 +1233,9 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             }
         }
 
-        size_t letter_len = utf8::DecodeStrNtLen(&format_str[numeric_cast<size_t>(i)]);
-        uint32_t letter = utf8::Decode(&format_str[numeric_cast<size_t>(i)], letter_len);
-        letter = utf8::IsValid(letter) ? letter : 0;
+        size_t letter_len = utf8::decode_str_nt_len(&format_str[numeric_cast<size_t>(i)]);
+        uint32_t letter = utf8::decode(&format_str[numeric_cast<size_t>(i)], letter_len);
+        letter = utf8::is_valid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
         switch (letter) {
@@ -1251,10 +1251,10 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             curstr++;
             variable_space = false;
 
-            if (IsEnumSet(flags, FontFlag::CenterX)) {
+            if (is_enum_set(flags, FontFlag::CenterX)) {
                 curx += (rect.width - fi->LineWidth[curstr]) / 2;
             }
-            else if (IsEnumSet(flags, FontFlag::AlignRight)) {
+            else if (is_enum_set(flags, FontFlag::AlignRight)) {
                 curx += rect.width - fi->LineWidth[curstr];
             }
             continue;
@@ -1274,7 +1274,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             float32_t w = numeric_cast<float32_t>(l.Size.width + 2);
             float32_t h = numeric_cast<float32_t>(l.Size.height + 2);
 
-            const frect32& texture_uv = IsEnumSet(flags, FontFlag::Bordered) ? l.TexBorderedPos : l.TexPos;
+            const frect32& texture_uv = is_enum_set(flags, FontFlag::Bordered) ? l.TexBorderedPos : l.TexPos;
             float32_t x1 = texture_uv.x;
             float32_t y1 = texture_uv.y;
             float32_t x2 = texture_uv.x + texture_uv.width;

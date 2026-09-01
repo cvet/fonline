@@ -69,7 +69,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ServerHost, _settings->ServerPort, _settings->CompatibilityVersion, _binaryDir, _settings->ClientResources);
+    write_log("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ServerHost, _settings->ServerPort, _settings->CompatibilityVersion, _binaryDir, _settings->ClientResources);
 
     _startTime = nanotime::now();
 
@@ -85,9 +85,9 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _effectMngr.LoadMinimalEffects();
 
-    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&_sprMngr));
+    _sprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprMngr));
 
-    // Wait screen
+    // wait screen
     if (!_settings->DefaultSplash.empty()) {
         _splashPic = _sprMngr.LoadSprite(_settings->DefaultSplash, AtlasType::OneImage);
 
@@ -131,7 +131,7 @@ auto Updater::Process() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    _gameTime.FrameAdvance(IsRunInDebugger());
+    _gameTime.FrameAdvance(is_run_in_debugger());
 
     InputEvent ev;
     while (_sprMngr.GetInput()->PollEvent(ev)) {
@@ -186,7 +186,7 @@ auto Updater::Process() -> bool
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {
-        auto text_format = TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
+        auto text_format = TextFormat {.Font = FontType::Default, .Flags = combine_enum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
 
         if (_settings->UpdaterInfoPos < 0) {
             _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
@@ -241,12 +241,12 @@ void Updater::FinishResourcesUpdate()
     string local_metadata_version = ReadLocalMetadataVersion();
 
     if (local_metadata_version != _serverMetadataVersion) {
-        WriteLog("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, IsPackaged() ? _settings->ClientResources : _settings->BakeOutput);
+        write_log("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, IsPackaged() ? _settings->ClientResources : _settings->BakeOutput);
         _result = UpdaterResult::MetadataMismatch;
         return;
     }
 
-    WriteLog("Client updater: resources ready, metadata version {}", local_metadata_version);
+    write_log("Client updater: resources ready, metadata version {}", local_metadata_version);
     _result = UpdaterResult::ResourcesReady;
 }
 
@@ -279,7 +279,7 @@ auto Updater::ReadLocalMetadataVersion() const -> string
         return ReadMetadataVersion(metadata_bin);
     }
     catch (const std::exception& ex) {
-        WriteLog("Client updater: can't read local metadata version, {}", ex.what());
+        write_log("Client updater: can't read local metadata version, {}", ex.what());
         return {};
     }
 }
@@ -315,18 +315,18 @@ void Updater::GetNextFile()
         string temp_path_str = make_temp_path(prev_update_file);
 
         if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
-            WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
+            write_log("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
             Abort(StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
-            WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
+            write_log("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
             Abort(StrFilesystemError);
             return;
         }
 
-        WriteLog("Client updater: promoted downloaded file to {}, binary {}", prev_path_str, prev_update_file.IsClientBinary ? "yes" : "no");
+        write_log("Client updater: promoted downloaded file to {}, binary {}", prev_path_str, prev_update_file.IsClientBinary ? "yes" : "no");
         try_promote_staged_binary(prev_update_file, prev_path_str);
         _filesToUpdate.erase(_filesToUpdate.begin());
     }
@@ -339,24 +339,24 @@ void Updater::GetNextFile()
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
-                WriteLog("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
+                write_log("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
                 fs_remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDiskFileHashMatch(temp_path, next_update_file.Size, next_update_file.Hash)) {
-                    WriteLog("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
+                    write_log("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
                     fs_remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
-                        WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
+                        write_log("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
                         Abort(StrFilesystemError);
                         return;
                     }
 
-                    WriteLog("Client updater: promoted existing temp file to {}, binary {}", prev_path_str, next_update_file.IsClientBinary ? "yes" : "no");
+                    write_log("Client updater: promoted existing temp file to {}, binary {}", prev_path_str, next_update_file.IsClientBinary ? "yes" : "no");
                     try_promote_staged_binary(next_update_file, prev_path_str);
                     _filesToUpdate.erase(_filesToUpdate.begin());
                     GetNextFile();
@@ -365,7 +365,7 @@ void Updater::GetNextFile()
             }
             else {
                 next_update_file.RemaningSize = next_update_file.Size - *temp_file_size;
-                WriteLog("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
+                write_log("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
             }
         }
 
@@ -382,17 +382,17 @@ void Updater::GetNextFile()
         _tempFile.open(std::filesystem::path {fs_make_path(temp_path)}, open_mode);
 
         if (!_tempFile) {
-            WriteLog("Client updater: failed to open temp file {}", temp_path);
+            write_log("Client updater: failed to open temp file {}", temp_path);
             Abort(StrFilesystemError);
             return;
         }
 
-        WriteLog("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, prev_path_str);
+        write_log("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, prev_path_str);
         RequestUpdateFile(next_update_file);
     }
     else {
         if (_binariesMode) {
-            WriteLog("Client updater: finished binary update, binaries staged for reload");
+            write_log("Client updater: finished binary update, binaries staged for reload");
             _result = UpdaterResult::BinariesStaged;
 
             // Headless clients have no UI / no user to dismiss it, so they finish immediately (no hold)
@@ -402,7 +402,7 @@ void Updater::GetNextFile()
             }
         }
         else {
-            WriteLog("Client updater: finished resource update");
+            write_log("Client updater: finished resource update");
             FinishResourcesUpdate();
         }
     }
@@ -450,20 +450,20 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
     }
 
     _serverMetadataVersion = string(_conn.GetServerMetadataVersion());
-    WriteLog("Client updater: server answered {}, client compatibility {}, server metadata version {}", result_str, _settings->CompatibilityVersion, _serverMetadataVersion);
+    write_log("Client updater: server answered {}, client compatibility {}, server metadata version {}", result_str, _settings->CompatibilityVersion, _serverMetadataVersion);
 
     if (result == ClientConnection::ConnectResult::Success || result == ClientConnection::ConnectResult::MetadataOutdated) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
         _binariesMode = false;
-        WriteLog("Client updater: client is compatible, checking resources");
+        write_log("Client updater: client is compatible, checking resources");
     }
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
 
         bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
-        WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", can_self_update_binaries ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
+        write_log("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", can_self_update_binaries ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
 
         if (!can_self_update_binaries) {
             _result = UpdaterResult::PlatformUnsupported;
@@ -473,15 +473,15 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         }
 
         _binariesMode = true;
-        WriteLog("Client updater: switched to native binary update mode");
+        write_log("Client updater: switched to native binary update mode");
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
         _result = UpdaterResult::UpdaterOutdated;
-        WriteLog("Client updater: protocol is outdated, aborting");
+        write_log("Client updater: protocol is outdated, aborting");
         Abort(StrUpdaterOutdated);
     }
     else {
-        WriteLog("Client updater: connection failed");
+        write_log("Client updater: connection failed");
         Abort(StrCantConnectToServer);
     }
 }
@@ -517,15 +517,15 @@ void Updater::Net_OnInitData()
     _fileListReceived = true;
 
     auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
-    WriteLog("Client updater: received update list, bytes {}, mode {}, target {}", data_size, _binariesMode ? "binaries" : "resources", _binariesMode ? "ClientBinaries" : "ClientResources");
+    write_log("Client updater: received update list, bytes {}, mode {}, target {}", data_size, _binariesMode ? "binaries" : "resources", _binariesMode ? "ClientBinaries" : "ClientResources");
 
     if (data.empty()) {
         if (_binariesMode) {
-            WriteLog("Client updater: native update list is empty");
+            write_log("Client updater: native update list is empty");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
         else {
-            WriteLog("Client updater: resource update list is empty");
+            write_log("Client updater: resource update list is empty");
             FinishResourcesUpdate();
         }
 
@@ -542,7 +542,7 @@ void Updater::Net_OnInitData()
         }
     }
 
-    auto reader = DataReader(data);
+    auto reader = data_reader(data);
     bool accept_binaries = _binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
     string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
 
@@ -555,7 +555,7 @@ void Updater::Net_OnInitData()
             runtime_server_prefix = runtime_local_prefix;
         }
 
-        WriteLog("Client updater: binary name remap from server prefix {} to local prefix {}", runtime_server_prefix, runtime_local_prefix);
+        write_log("Client updater: binary name remap from server prefix {} to local prefix {}", runtime_server_prefix, runtime_local_prefix);
     }
 
     auto remap_runtime_name = [&](const string& fname_basename) -> optional<string> {
@@ -573,7 +573,7 @@ void Updater::Net_OnInitData()
     };
 
     while (true) {
-        int16_t name_len = reader.Read<int16_t>();
+        int16_t name_len = reader.read<int16_t>();
 
         if (name_len == -1) {
             break;
@@ -583,11 +583,11 @@ void Updater::Net_OnInitData()
         size_t fname_size = numeric_cast<size_t>(name_len);
         string fname;
         fname.resize(fname_size);
-        reader.ReadStringBytes(fname);
-        auto size = reader.Read<uint64_t>();
-        auto hash = reader.Read<uint64_t>();
-        auto target = reader.Read<UpdateFileTarget>();
-        auto data_index = reader.Read<uint32_t>();
+        reader.read_string_bytes(fname);
+        auto size = reader.read<uint64_t>();
+        auto hash = reader.read<uint64_t>();
+        auto target = reader.read<UpdateFileTarget>();
+        auto data_index = reader.read<uint32_t>();
 
         string local_name = fname;
         bool is_client_binary = false;
@@ -621,13 +621,13 @@ void Updater::Net_OnInitData()
                 }
 
                 _hasMatchingEntries = true;
-                WriteLog("Client updater: matched binary entry {}, local {}, size {}, hash {}", fname, local_name, size, hash);
+                write_log("Client updater: matched binary entry {}, local {}, size {}, hash {}", fname, local_name, size, hash);
             }
 
             is_client_binary = true;
 
             if (IsDiskFileHashMatch(file_path, size, hash)) {
-                WriteLog("Client updater: binary already matches {}", file_path);
+                write_log("Client updater: binary already matches {}", file_path);
                 continue;
             }
         }
@@ -662,24 +662,24 @@ void Updater::Net_OnInitData()
         _filesToUpdate.emplace_back(std::move(update_file));
     }
 
-    reader.VerifyEnd();
+    reader.verify_end();
 
     if (!_filesToUpdate.empty()) {
-        WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
+        write_log("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
         GetNextFile();
     }
     else if (_binariesMode) {
         if (_hasMatchingEntries) {
-            WriteLog("Client updater: binaries already match, requesting reload");
+            write_log("Client updater: binaries already match, requesting reload");
             _result = UpdaterResult::BinariesStaged;
         }
         else {
-            WriteLog("Client updater: server has no matching native update payload");
+            write_log("Client updater: server has no matching native update payload");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
     }
     else {
-        WriteLog("Client updater: no files to update");
+        write_log("Client updater: no files to update");
         FinishResourcesUpdate();
     }
 }
@@ -701,11 +701,11 @@ void Updater::Net_OnHashList()
     for (uint32_t i = 0; i < count; i++) {
         string str = _conn.InBuf->Read<string>();
 
-        _hashStorage.ToHashedString(str);
+        _hashStorage.to_hashed_string(str);
     }
 
     if (count != 0) {
-        WriteLog("Client updater: learned {} previously unresolved hash(es) from server", count);
+        write_log("Client updater: learned {} previously unresolved hash(es) from server", count);
     }
 }
 
@@ -796,7 +796,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
             auto target = make_ptr(&cached).reinterpret_as<uint8_t>();
-            MemCopy(target, data.data(), sizeof(cached));
+            mem_copy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
                 return cached.Hash == expected_hash;
@@ -874,7 +874,7 @@ auto Updater::GetClientBinaryDir() -> string
         return "/";
     }
     else {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
         return strex(exe_path.value()).extract_dir().str();
     }
@@ -1029,7 +1029,7 @@ auto GetClientRuntimeLivePath() -> string
         binary_dir = "/";
     }
     else {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
         binary_dir = strex(exe_path.value()).extract_dir().str();
     }
@@ -1150,7 +1150,7 @@ void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        report_exception_and_continue(ex);
     }
 }
 
@@ -1158,7 +1158,7 @@ auto GetCurrentClientRuntimeLibraryName() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
+    if (auto exe_path = platform::get_exe_path(); exe_path.has_value()) {
         string name = strex(exe_path.value()).extract_file_name().erase_file_extension().str();
 
         if (!name.empty()) {

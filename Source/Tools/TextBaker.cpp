@@ -131,7 +131,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
         if (all_languages.emplace(lang_name).second) {
             if (std::ranges::find(bake_languages.Languages, lang_name) == bake_languages.Languages.end()) {
-                WriteLog(LogType::Warning, "Unsupported language: {}. Skip", lang_name);
+                write_log(log_type::warning, "Unsupported language: {}. Skip", lang_name);
             }
             else {
                 languages.emplace(lang_name);
@@ -145,7 +145,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
     // Parse texts
     vector<pair<string, map<string, TextPack>>> lang_packs;
-    HashStorage hashes {};
+    hash_storage hashes {};
 
     for (const auto& target_lang : languages) {
         map<string, TextPack> lang_pack;

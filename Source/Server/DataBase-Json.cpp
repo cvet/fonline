@@ -309,7 +309,7 @@ private:
 auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     InitializeBsonMemory();
-    return SafeAlloc::MakeUnique<DbJson>(db_settings, storage_dir, std::move(panic_callback));
+    return safe_alloc::make_unique<DbJson>(db_settings, storage_dir, std::move(panic_callback));
 }
 
 FO_END_NAMESPACE

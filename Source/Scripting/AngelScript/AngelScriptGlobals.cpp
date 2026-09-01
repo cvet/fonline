@@ -185,7 +185,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {
-            indirect_args[index] = MemReadUnaligned<void*>(arg_data);
+            indirect_args[index] = mem_read_unaligned<void*>(arg_data);
             args_data.emplace_back(make_ptr(indirect_args[index].get_pp()).void_cast());
         }
         else {
@@ -202,7 +202,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         return true;
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        report_exception_and_continue(ex);
         return false;
     }
 }
@@ -255,7 +255,7 @@ static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
     auto func_name = GetGenericAddressArgAs<const string>(gen, 0);
-    hstring hashed_func_name = engine->Hashes.ToHashedString(*func_name);
+    hstring hashed_func_name = engine->Hashes.to_hashed_string(*func_name);
     ptr<AngelScript::asIScriptGeneric> generic = gen;
     auto arg_types = ResolveInvokeArgTypes(generic, 1);
     auto func_desc = engine->FindFunc(hashed_func_name, span(arg_types));
@@ -331,8 +331,8 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     if (!failed) {
         const auto& enum_type = meta->GetBaseType(*enum_name);
         auto result_arg = GetGenericArgAddress(gen, 1);
-        MemFill(result_arg, 0, enum_type.Size);
-        MemCopy(result_arg, &enum_value, enum_type.Size);
+        mem_fill(result_arg, 0, enum_type.Size);
+        mem_copy(result_arg, &enum_value, enum_type.Size);
     }
 
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
@@ -348,7 +348,7 @@ static void Game_TryEnumToString(AngelScript::asIScriptGeneric* gen)
     int32_t enum_index = 0;
     const auto& enum_type = meta->GetBaseType(*enum_name);
     auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
-    MemCopy(&enum_index, enum_arg, enum_type.Size);
+    mem_copy(&enum_index, enum_arg, enum_type.Size);
 
     bool failed = false;
     string enum_value_name {meta->ResolveEnumValueName(*enum_name, enum_index, &failed)};
@@ -371,7 +371,7 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
     int32_t enum_index = 0;
     const auto& enum_type = meta->GetBaseType(*enum_name);
     auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
-    MemCopy(&enum_index, enum_arg, enum_type.Size);
+    mem_copy(&enum_index, enum_arg, enum_type.Size);
     bool full_spec = *GetGenericAddressArgAs<bool>(gen, 1);
 
     bool failed = false;

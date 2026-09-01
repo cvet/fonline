@@ -37,12 +37,12 @@
 
 FO_BEGIN_NAMESPACE
 
-[[noreturn]] extern void ReportFatalAndExit(string_view message) noexcept;
-[[noreturn]] extern void ReportStrongAssertAndExit(string_view expression, string_view file, int32_t line) noexcept;
+[[noreturn]] extern void report_fatal_and_exit(string_view message) noexcept;
+[[noreturn]] extern void report_strong_assert_and_exit(string_view expression, string_view file, int32_t line) noexcept;
 
 #define FO_BASIC_STRONG_ASSERT(expr) \
     if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+        FO_NAMESPACE report_strong_assert_and_exit(#expr, __FILE__, __LINE__); \
     }
 
 FO_END_NAMESPACE

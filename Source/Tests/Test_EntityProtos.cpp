@@ -78,8 +78,8 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        hstring knife_pid = meta.Hashes.ToHashedString("Knife");
-        hstring raider_pid = meta.Hashes.ToHashedString("Raider");
+        hstring knife_pid = meta.Hashes.to_hashed_string("Knife");
+        hstring raider_pid = meta.Hashes.to_hashed_string("Raider");
         auto item_registrar = meta.GetPropertyRegistrar("Item");
         auto critter_registrar = meta.GetPropertyRegistrar("Critter");
 
@@ -90,11 +90,11 @@ TEST_CASE("EntityProtos")
         ProtoCritter critter_proto {raider_pid, critter_registrar};
 
         CHECK(item_proto.GetProtoId() == knife_pid);
-        CHECK(item_proto.GetTypeName() == meta.Hashes.ToHashedString("Item"));
+        CHECK(item_proto.GetTypeName() == meta.Hashes.to_hashed_string("Item"));
         CHECK(item_proto.GetName() == string_view {"Knife"});
 
         CHECK(critter_proto.GetProtoId() == raider_pid);
-        CHECK(critter_proto.GetTypeName() == meta.Hashes.ToHashedString("Critter"));
+        CHECK(critter_proto.GetTypeName() == meta.Hashes.to_hashed_string("Critter"));
         CHECK(critter_proto.GetName() == string_view {"Raider"});
     }
 
@@ -106,11 +106,11 @@ TEST_CASE("EntityProtos")
         auto registrar = meta.GetPropertyRegistrar("TestEntity");
         REQUIRE(static_cast<bool>(registrar));
 
-        hstring custom_pid = meta.Hashes.ToHashedString("TestProto");
+        hstring custom_pid = meta.Hashes.to_hashed_string("TestProto");
         ProtoCustomEntity proto {custom_pid, registrar};
 
         CHECK(proto.GetProtoId() == custom_pid);
-        CHECK(proto.GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+        CHECK(proto.GetTypeName() == meta.Hashes.to_hashed_string("TestEntity"));
         CHECK(proto.GetName() == string_view {"TestProto"});
     }
 
@@ -119,14 +119,14 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        hstring custom_pid = meta.Hashes.ToHashedString("HeldProto");
+        hstring custom_pid = meta.Hashes.to_hashed_string("HeldProto");
         auto registrar = meta.GetPropertyRegistrar("TestEntity");
         REQUIRE(static_cast<bool>(registrar));
 
         optional<TestEntityHolder> holder;
 
         {
-            refcount_ptr<ProtoEntity> proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(custom_pid, registrar);
+            refcount_ptr<ProtoEntity> proto = safe_alloc::make_refcounted<ProtoCustomEntity>(custom_pid, registrar);
             holder.emplace(proto);
         }
 
@@ -135,7 +135,7 @@ TEST_CASE("EntityProtos")
         auto held_proto = holder->GetProto();
         CHECK(holder->GetProtoId() == custom_pid);
         CHECK(held_proto->GetName() == string_view {"HeldProto"});
-        CHECK(held_proto->GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+        CHECK(held_proto->GetTypeName() == meta.Hashes.to_hashed_string("TestEntity"));
     }
 
     SECTION("LifecycleLatchesAreVisibleAcrossThreads")
@@ -146,7 +146,7 @@ TEST_CASE("EntityProtos")
         auto registrar = meta.GetPropertyRegistrar("TestEntity");
         REQUIRE(static_cast<bool>(registrar));
 
-        refcount_ptr<TestLifecycleEntity> entity = SafeAlloc::MakeRefCounted<TestLifecycleEntity>(registrar);
+        refcount_ptr<TestLifecycleEntity> entity = safe_alloc::make_refcounted<TestLifecycleEntity>(registrar);
         std::atomic_bool reader_started {false};
         std::atomic_bool saw_destroying {false};
         std::atomic_bool saw_destroyed {false};

@@ -84,7 +84,7 @@ private:
 };
 
 CacheStorage::CacheStorage(string_view path) :
-    _impl {SafeAlloc::MakeUnique<FileCacheStorage>(path)}
+    _impl {safe_alloc::make_unique<FileCacheStorage>(path)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -170,7 +170,7 @@ auto FileCacheStorage::CreateCacheStorage() const -> bool
         fs_create_directories(_workPath);
 
         if (!fs_is_dir(_workPath)) {
-            WriteLog(LogType::Warning, "Can't create dir for cache '{}'", _workPath);
+            write_log(log_type::warning, "Can't create dir for cache '{}'", _workPath);
             return false;
         }
     }
@@ -249,7 +249,7 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
 
     if (!fs_write_file(path, str)) {
         fs_remove_file(path);
-        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
+        write_log(log_type::warning, "Can't write cache at '{}'", path);
     }
 }
 
@@ -272,7 +272,7 @@ auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t
 
     if (!fs_write_file(path, data)) {
         fs_remove_file(path);
-        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
+        write_log(log_type::warning, "Can't write cache at '{}'", path);
         return false;
     }
 

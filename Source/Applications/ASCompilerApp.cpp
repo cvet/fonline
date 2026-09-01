@@ -61,7 +61,7 @@ int main(int argc, char** argv)
 
         FO_VERIFY_AND_THROW(!GetApp()->Settings.BakeOutput.empty(), "AngelScript compiler cannot prepare metadata without a bake output directory", GetApp()->Settings.GetResourcePacks().size());
 
-        WriteLog("Prepare metadata");
+        write_log("Prepare metadata");
         FileSystem metadata_files;
 
         for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
             };
 
             auto settings_ptr = make_nptr(&GetApp()->Settings);
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
+            auto baking_ctx = safe_alloc::make_shared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
@@ -108,23 +108,23 @@ int main(int argc, char** argv)
                 const_span<string> params = ex.params();
 
                 if (params.size() >= 2 && !params.front().empty()) {
-                    WriteLog("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
+                    write_log("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
                 }
                 else {
-                    WriteLog("{}", ex.what());
+                    write_log("{}", ex.what());
                 }
 
-                WriteLog("Metadata preparing failed!");
-                ExitApp(false);
+                write_log("Metadata preparing failed!");
+                exit_app(false);
             }
             catch (const std::exception& ex) {
-                WriteLog("{}", ex.what());
-                WriteLog("Metadata preparing failed!");
-                ExitApp(false);
+                write_log("{}", ex.what());
+                write_log("Metadata preparing failed!");
+                exit_app(false);
             }
         }
 
-        WriteLog("Compile scripts");
+        write_log("Compile scripts");
 
         for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
             if (!vec_exists(res_pack.Bakers, AngelScriptBaker::NAME)) {
@@ -160,24 +160,24 @@ int main(int argc, char** argv)
 
             auto settings_ptr = make_nptr(&GetApp()->Settings);
             auto metadata_files_ptr = make_nptr(&metadata_files);
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
+            auto baking_ctx = safe_alloc::make_shared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
             auto scripts_baker = AngelScriptBaker(std::move(baking_ctx));
 
             try {
                 scripts_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
             }
             catch (const std::exception& ex) {
-                WriteLog("AngelScript compile error: {}", ex.what());
-                WriteLog("Scripts compilation failed!");
-                ExitApp(false);
+                write_log("AngelScript compile error: {}", ex.what());
+                write_log("Scripts compilation failed!");
+                exit_app(false);
             }
         }
 
-        WriteLog("Scripts compilation succeeded!");
-        ExitApp(true);
+        write_log("Scripts compilation succeeded!");
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        report_exception_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

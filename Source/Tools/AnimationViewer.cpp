@@ -494,7 +494,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
         auto sep = pair_text.find('=');
 
         if (sep == string::npos) {
-            WriteLog("Animation viewer: bad Render.ModelLayerProperties entry, expected <PropertyName>=<LayerIndex>: {}", pair_text);
+            write_log("Animation viewer: bad Render.ModelLayerProperties entry, expected <PropertyName>=<LayerIndex>: {}", pair_text);
             continue;
         }
 
@@ -507,7 +507,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
         }
 
         if (!strex(index_text).is_number()) {
-            WriteLog("Animation viewer: bad layer index in Render.ModelLayerProperties: {}", pair_text);
+            write_log("Animation viewer: bad layer index in Render.ModelLayerProperties: {}", pair_text);
             continue;
         }
 
@@ -575,12 +575,12 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
     if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
         auto model = model_spr->GetModel();
 
-        auto flags = looped ? ModelAnimFlags::None : CombineEnum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
+        auto flags = looped ? ModelAnimFlags::None : combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
 
         // Instant playback drops the cross-fade, which is what lets the prewarm open on the idle pose
         // instead of a blend from the bind pose
         if (instant) {
-            flags = CombineEnum(flags, ModelAnimFlags::NoSmooth);
+            flags = combine_enum(flags, ModelAnimFlags::NoSmooth);
         }
 
         auto layers = _modelLayers.empty() ? nptr<const int32_t> {} : nptr<const int32_t> {_modelLayers.data()};
@@ -593,7 +593,7 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
     ignore_unused(looped, instant);
 #endif
 
-    auto frames = _resMngr->GetCritterAnimFrames(_engine->Hashes.ToHashedString(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));
+    auto frames = _resMngr->GetCritterAnimFrames(_engine->Hashes.to_hashed_string(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));
 
     if (frames) {
         _previewSprite = frames->MakeCopy();

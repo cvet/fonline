@@ -35,25 +35,25 @@
 
 FO_BEGIN_NAMESPACE
 
-GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-int32_t GlobalDataCallbacksCount;
+global_data_callback create_global_data_callbacks[MAX_GLOBAL_DATA_CALLBACKS];
+global_data_callback delete_global_data_callbacks[MAX_GLOBAL_DATA_CALLBACKS];
+int32_t global_data_callbacks_count;
 
-extern void CreateGlobalData()
+extern void create_global_data()
 {
     static std::once_flag once;
 
     std::call_once(once, [] {
-        for (int32_t i = 0; i < GlobalDataCallbacksCount; i++) {
-            CreateGlobalDataCallbacks[i]();
+        for (int32_t i = 0; i < global_data_callbacks_count; i++) {
+            create_global_data_callbacks[i]();
         }
     });
 }
 
-extern void DeleteGlobalData()
+extern void delete_global_data()
 {
-    for (int32_t i = 0; i < GlobalDataCallbacksCount; i++) {
-        DeleteGlobalDataCallbacks[i]();
+    for (int32_t i = 0; i < global_data_callbacks_count; i++) {
+        delete_global_data_callbacks[i]();
     }
 }
 

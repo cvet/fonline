@@ -74,7 +74,7 @@ struct VideoPlaybackResources
 };
 
 ///@ ExportRefType Client RefCounted Export = Stopped
-class VideoPlayback : public RefCounted<VideoPlayback>
+class VideoPlayback : public ref_counted<VideoPlayback>
 {
 public:
     optional<VideoPlaybackResources> PlaybackResources {};

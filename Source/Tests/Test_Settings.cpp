@@ -168,8 +168,8 @@ TEST_CASE("Settings")
     {
         // Capture the "Set <name> to <value>" lines emitted by the logging pass
         string captured;
-        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured += message; });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
+        set_log_callback("settings_secret_redaction_test", [&captured](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured += message; });
+        auto remove_callback = scope_exit([]() noexcept { set_log_callback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
         // Real flow logs command-line overrides only after defaults (and the config) are applied, so the

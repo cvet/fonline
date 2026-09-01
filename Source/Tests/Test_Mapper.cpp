@@ -802,18 +802,18 @@ namespace MapperMergeTest
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapperMergeCompilerResources");
+        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperMergeCompilerResources");
         compiler_source->AddFile("Metadata.fometa-mapper", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerMapperEngine proto_engine {compiler_resources};
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
 
         // A real map picture gives placed items sprite geometry, without which the editor's screen hit tests
         // can never find anything under the cursor
-        hstring tile_pic = proto_engine.Hashes.ToHashedString(TILE_PICTURE);
+        hstring tile_pic = proto_engine.Hashes.to_hashed_string(TILE_PICTURE);
 
         auto configure_tile = [tile_pic](ProtoItem& proto) {
             proto.SetMultihexGeneration(MultihexGenerationType::SameSibling);
@@ -845,14 +845,14 @@ namespace MapperMergeTest
         auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, tile_protos);
 
         // A critter proto makes the client-side critter view surface reachable from mapper scripts
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
         critter_protos.emplace_back(string(CRITTER_A), [](ProtoCritter&) { });
         auto critter_proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
 
         auto script_blob = MakeMapperScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapperMergeRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperMergeRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-mapper", metadata_blob);
         runtime_source->AddFile("MapperMergeTiles.fopro-bin-mapper", proto_blob);
         runtime_source->AddFile("MapperMergeCritters.fopro-bin-mapper", critter_proto_blob);
@@ -955,12 +955,12 @@ namespace MapperMergeTest
 TEST_CASE("MapperMultihexMeshMerge")
 {
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
-    hstring tile_a = mapper->Hashes.ToHashedString(TILE_A);
-    hstring tile_b = mapper->Hashes.ToHashedString(TILE_B);
+    hstring tile_a = mapper->Hashes.to_hashed_string(TILE_A);
+    hstring tile_b = mapper->Hashes.to_hashed_string(TILE_B);
 
     REQUIRE(mapper->GetProtoItem(tile_a) != nullptr);
     REQUIRE(mapper->GetProtoItem(tile_b) != nullptr);
@@ -1272,11 +1272,11 @@ TEST_CASE("MapperMultihexMeshMerge")
 TEST_CASE("MapperAnyUniqueMeshMerge")
 {
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
-    hstring tile_u = mapper->Hashes.ToHashedString(TILE_U);
+    hstring tile_u = mapper->Hashes.to_hashed_string(TILE_U);
 
     REQUIRE(mapper->GetProtoItem(tile_u) != nullptr);
     REQUIRE(mapper->GetProtoItem(tile_u)->GetMultihexGeneration() == MultihexGenerationType::AnyUnique);
@@ -1354,7 +1354,7 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
     SECTION("Different protos and a SameSibling tile never merge into an AnyUnique mesh")
     {
-        hstring tile_a = mapper->Hashes.ToHashedString(TILE_A);
+        hstring tile_a = mapper->Hashes.to_hashed_string(TILE_A);
 
         string body;
         body += MakeItemBlock(340, TILE_U, 3, 3);
@@ -1400,18 +1400,18 @@ TEST_CASE("MapperLoadMapResolvesNameAndPath")
     // That ordering is what let a same-stem location file shadow the map file during discovery
     BakerTests::OverrideSetting(settings.ProtoFileExtensions, vector<string> {"foinfo", "fopro", "foloc", "fomap", "focr", "foitem"});
 
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
     // A single-map .fomap and a same-stem .foloc live side by side under a subdirectory, mirroring the
     // real content layout. The .foloc must not shadow the .fomap for either lookup form
-    auto maps_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("MapperLoadMapTestMaps");
+    auto maps_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperLoadMapTestMaps");
     maps_source->AddFile("Gambell/ShadowedMap.foloc", "[ProtoLocation]\n$Name = ShadowedMap\nMapProtos = ShadowedMap\n");
     maps_source->AddFile("Gambell/ShadowedMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 5, 5)));
     mapper->MapsFileSys.AddCustomSource(std::move(maps_source));
 
-    hstring expected_proto = mapper->Hashes.ToHashedString("ShadowedMap");
+    hstring expected_proto = mapper->Hashes.to_hashed_string("ShadowedMap");
 
     SECTION("Loads by directory-qualified path despite a same-stem location sibling")
     {
@@ -1431,7 +1431,7 @@ TEST_CASE("MapperLoadMapResolvesNameAndPath")
 TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
 {
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -1590,7 +1590,7 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
     // Select-all admits each placed entity by its own kind, so the map carries one of every kind and the layers
     // are switched off one at a time to reach each arm
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -1607,8 +1607,8 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
 
     // Tiles are not authored in map text - the mapper places them, which is also what marks them as roof
     ptr<MapView> map_ptr = map.as_ptr();
-    REQUIRE_NOTHROW(ignore_unused(map_ptr->AddMapperTile(mapper->Hashes.ToHashedString(TILE_A), mpos {6, 8}, 0, false).get()));
-    REQUIRE_NOTHROW(ignore_unused(map_ptr->AddMapperTile(mapper->Hashes.ToHashedString(TILE_B), mpos {8, 8}, 0, true).get()));
+    REQUIRE_NOTHROW(ignore_unused(map_ptr->AddMapperTile(mapper->Hashes.to_hashed_string(TILE_A), mpos {6, 8}, 0, false).get()));
+    REQUIRE_NOTHROW(ignore_unused(map_ptr->AddMapperTile(mapper->Hashes.to_hashed_string(TILE_B), mpos {8, 8}, 0, true).get()));
 
     SECTION("EveryLayerContributesItsOwnEntities")
     {
@@ -1670,7 +1670,7 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
         // Dropping an AnyUnique item out of the selection re-merges it through the per-step driver rather than the
         // whole-map coalescer, a path no other fixture reaches
         ptr<MapView> selection_map = mapper->GetCurMap().as_ptr();
-        hstring unique_pid = mapper->Hashes.ToHashedString(TILE_U);
+        hstring unique_pid = mapper->Hashes.to_hashed_string(TILE_U);
 
         auto first_unique = selection_map->AddMapperItem(unique_pid, mpos {4, 12}, nullptr);
         auto second_unique = selection_map->AddMapperItem(unique_pid, mpos {16, 18}, nullptr);
@@ -1749,7 +1749,7 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
     auto pack_config = ConfigFile(strex("[ResourcePack]\nName = MapperControlsTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str());
     settings.ApplyConfigFile(pack_config, "");
 
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -1974,7 +1974,7 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
 TEST_CASE("MapperEditorOperations")
 {
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -2061,7 +2061,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 
     // Every particle renderer draws a wireframe overlay on top of its geometry when this is on
     BakerTests::OverrideSetting(settings.DrawWireframe, true);
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -2274,7 +2274,7 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
 
     string asset_path = "Particles/MapperEditorTest.spark";
 
-    auto raw_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SparkEditorRawResources");
+    auto raw_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SparkEditorRawResources");
     raw_source->AddFile(asset_path, vector<uint8_t>(MAPPER_TEST_SPARK_ASSET.begin(), MAPPER_TEST_SPARK_ASSET.end()));
 
     FileSystem raw_resources;
@@ -2302,7 +2302,7 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
     effect_baker.BakeFiles(effect_rig.GetAllSourceFiles(), "");
     REQUIRE(effect_rig.Outputs.contains("Effects/Particles_ColorAdd.fofx"));
 
-    auto baked_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SparkEditorBakedResources");
+    auto baked_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SparkEditorBakedResources");
     baked_source->AddFile(baked_path, rig.Outputs.at(baked_path));
 
     for (const auto& [output_path, output_data] : effect_rig.Outputs) {
@@ -2387,7 +2387,7 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
 TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 {
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -2708,7 +2708,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 TEST_CASE("MapViewItemHitTestingUsesActiveItemSprites")
 {
     GlobalSettings settings = MakeMapperTestSettings();
-    refcount_ptr<MapperEngine> mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    refcount_ptr<MapperEngine> mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -2750,7 +2750,7 @@ TEST_CASE("MapViewItemHitTestingUsesActiveItemSprites")
 TEST_CASE("MapViewLightingAndViewportOperations")
 {
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -2949,7 +2949,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     auto pack_config = ConfigFile(strex("[ResourcePack]\nName = MapperSaveTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str());
     settings.ApplyConfigFile(pack_config, "");
 
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -3026,7 +3026,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 TEST_CASE("MapperConsoleCommands")
 {
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -3095,7 +3095,7 @@ TEST_CASE("MapperConsoleCommands")
 TEST_CASE("MapperScriptApiCoverage")
 {
     auto settings = MakeMapperTestSettings();
-    auto mapper = SafeAlloc::MakeRefCounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
 
@@ -3109,7 +3109,7 @@ TEST_CASE("MapperScriptApiCoverage")
     auto run_script = [&mapper](string_view name) {
         int32_t result = -1;
         INFO(name);
-        REQUIRE(mapper->CallFunc(mapper->Hashes.ToHashedString(name), result));
+        REQUIRE(mapper->CallFunc(mapper->Hashes.to_hashed_string(name), result));
         CHECK(result == 0);
     };
 

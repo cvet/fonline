@@ -303,7 +303,7 @@ void BakingReport::Complete(bool success, string_view failure_message)
     scoped_lock lock {_locker};
     _status = success ? "success" : "failed";
     _failureMessage = failure_message;
-    _completedDurationMs = _duration.GetDuration().milliseconds();
+    _completedDurationMs = _duration.get_duration().milliseconds();
 }
 
 auto BakingReport::IsFullRebuild() const -> bool
@@ -953,7 +953,7 @@ auto BakingReport::Serialize() const -> string
         {"failureMessage", _failureMessage},
         {"buildHash", FO_BUILD_HASH},
         {"bakeOutput", _bakeOutput},
-        {"durationMs", _status == "running" ? _duration.GetDuration().milliseconds() : _completedDurationMs},
+        {"durationMs", _status == "running" ? _duration.get_duration().milliseconds() : _completedDurationMs},
         {"mode", {{"forceRequested", _forceRequested}, {"fullRebuild", _fullRebuild}, {"rebuildReason", _rebuildReason}, {"singleThread", _singleThread}}},
         {"measurementScope",
             {

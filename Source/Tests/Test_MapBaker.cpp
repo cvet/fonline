@@ -49,24 +49,24 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     auto registrar = proto_engine.GetPropertyRegistrar(type_name);
     REQUIRE(static_cast<bool>(registrar));
 
-    ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+    ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
     proto.SetSize(msize {50, 50});
     proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
     vector<uint8_t> protos_data;
-    auto writer = DataWriter(protos_data);
+    auto writer = data_writer(protos_data);
 
-    writer.Write<uint32_t>(uint32_t {0});
+    writer.write<uint32_t>(uint32_t {0});
     ignore_unused(str_hashes);
-    writer.Write<uint32_t>(uint32_t {1});
-    writer.Write<uint32_t>(uint32_t {1});
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-    writer.WriteStringBytes(type_name.as_str());
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-    writer.WriteStringBytes(proto_name);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+    writer.write<uint32_t>(uint32_t {1});
+    writer.write<uint32_t>(uint32_t {1});
+    writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+    writer.write_string_bytes(type_name.as_str());
+    writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+    writer.write_string_bytes(proto_name);
+    writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
     if (!props_data.empty()) {
-        writer.WriteBytes({props_data.data(), props_data.size()});
+        writer.write_bytes({props_data.data(), props_data.size()});
     }
 
     return protos_data;
@@ -82,8 +82,8 @@ static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view pr
 
     BakerServerEngine server_proto_engine {rig.BakedFiles};
     BakerClientEngine client_proto_engine {rig.BakedFiles};
-    hstring server_map_type = server_proto_engine.Hashes.ToHashedString("Map");
-    hstring client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
+    hstring server_map_type = server_proto_engine.Hashes.to_hashed_string("Map");
+    hstring client_map_type = client_proto_engine.Hashes.to_hashed_string("Map");
 
     rig.AddBakedFile("MapBakerTest.fopro-bin-server", MakeMapProtoBlob(server_proto_engine, server_map_type, proto_name));
     rig.AddBakedFile("MapBakerTest.fopro-bin-client", MakeMapProtoBlob(client_proto_engine, client_map_type, proto_name));
@@ -110,12 +110,12 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
     BakerServerEngine server_proto_engine {rig.BakedFiles};
     BakerClientEngine client_proto_engine {rig.BakedFiles};
 
-    hstring server_critter_type = server_proto_engine.Hashes.ToHashedString("Critter");
-    hstring server_item_type = server_proto_engine.Hashes.ToHashedString("Item");
-    hstring client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
+    hstring server_critter_type = server_proto_engine.Hashes.to_hashed_string("Critter");
+    hstring server_item_type = server_proto_engine.Hashes.to_hashed_string("Item");
+    hstring client_item_type = client_proto_engine.Hashes.to_hashed_string("Item");
 
     vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
-    critter_protos.emplace_back(string(critter_proto_name), [&server_proto_engine](ProtoCritter& proto) { proto.SetModelName(server_proto_engine.Hashes.ToHashedString("MapBakerCritterModel")); });
+    critter_protos.emplace_back(string(critter_proto_name), [&server_proto_engine](ProtoCritter& proto) { proto.SetModelName(server_proto_engine.Hashes.to_hashed_string("MapBakerCritterModel")); });
 
     rig.AddBakedFile("MapBakerCritters.fopro-bin-server", BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(server_proto_engine, server_critter_type, critter_protos));
 
@@ -128,7 +128,7 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
                 proto.SetHidden(false);
             }
 
-            proto.SetPicMap(proto_engine.Hashes.ToHashedString("MapBakerVisibleItemPic"));
+            proto.SetPicMap(proto_engine.Hashes.to_hashed_string("MapBakerVisibleItemPic"));
         });
         item_protos.emplace_back(string(hidden_proto), [&proto_engine, set_hidden](ProtoItem& proto) {
             proto.SetStatic(true);
@@ -137,7 +137,7 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
                 proto.SetHidden(true);
             }
 
-            proto.SetPicMap(proto_engine.Hashes.ToHashedString("MapBakerHiddenItemPic"));
+            proto.SetPicMap(proto_engine.Hashes.to_hashed_string("MapBakerHiddenItemPic"));
         });
 
         return BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, item_protos);
@@ -167,25 +167,25 @@ struct BakedMapClientSummary
     uint32_t Items {};
 };
 
-static void SkipBakedMapStrings(DataReader& reader, uint32_t count)
+static void SkipBakedMapStrings(data_reader& reader, uint32_t count)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (uint32_t i = 0; i < count; i++) {
-        uint32_t len = reader.Read<uint32_t>();
-        (void)reader.ReadBytes(len);
+        uint32_t len = reader.read<uint32_t>();
+        (void)reader.read_bytes(len);
     }
 }
 
-static void SkipBakedMapEntities(DataReader& reader, uint32_t count)
+static void SkipBakedMapEntities(data_reader& reader, uint32_t count)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (uint32_t i = 0; i < count; i++) {
-        (void)reader.Read<ident_t::underlying_type>();
-        (void)reader.Read<hstring::hash_t>();
-        uint32_t props_size = reader.Read<uint32_t>();
-        (void)reader.ReadBytes(props_size);
+        (void)reader.read<ident_t::underlying_type>();
+        (void)reader.read<hstring::hash_t>();
+        uint32_t props_size = reader.read<uint32_t>();
+        (void)reader.read_bytes(props_size);
     }
 }
 
@@ -193,17 +193,17 @@ static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view m
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto reader = DataReader {data};
+    auto reader = data_reader {data};
     auto summary = BakedMapServerSummary {};
 
     MapLoader::ReadBakedFileHeader(reader, map_name);
-    summary.Hashes = reader.Read<uint32_t>();
+    summary.Hashes = reader.read<uint32_t>();
     SkipBakedMapStrings(reader, summary.Hashes);
-    summary.Critters = reader.Read<uint32_t>();
+    summary.Critters = reader.read<uint32_t>();
     SkipBakedMapEntities(reader, summary.Critters);
-    summary.Items = reader.Read<uint32_t>();
+    summary.Items = reader.read<uint32_t>();
     SkipBakedMapEntities(reader, summary.Items);
-    reader.VerifyEnd();
+    reader.verify_end();
 
     return summary;
 }
@@ -212,15 +212,15 @@ static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view m
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto reader = DataReader {data};
+    auto reader = data_reader {data};
     auto summary = BakedMapClientSummary {};
 
     MapLoader::ReadBakedFileHeader(reader, map_name);
-    summary.Hashes = reader.Read<uint32_t>();
+    summary.Hashes = reader.read<uint32_t>();
     SkipBakedMapStrings(reader, summary.Hashes);
-    summary.Items = reader.Read<uint32_t>();
+    summary.Items = reader.read<uint32_t>();
     SkipBakedMapEntities(reader, summary.Items);
-    reader.VerifyEnd();
+    reader.verify_end();
 
     return summary;
 }

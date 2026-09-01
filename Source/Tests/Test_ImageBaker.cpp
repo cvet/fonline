@@ -838,15 +838,15 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     bytes.resize(data.size());
 
     if (!data.empty()) {
-        MemCopy(bytes.data(), data.data(), data.size());
+        mem_copy(bytes.data(), data.data(), data.size());
     }
 
     rig.AddSourceFile(path, bytes, write_time);
 }
 
-static void ReadSpriteMesh(DataReader& reader, BakedImageFrame& frame)
+static void ReadSpriteMesh(data_reader& reader, BakedImageFrame& frame)
 {
-    uint8_t mesh_kind = reader.Read<uint8_t>();
+    uint8_t mesh_kind = reader.read<uint8_t>();
     REQUIRE(mesh_kind <= static_cast<uint8_t>(SpriteMeshKind::Mesh));
     frame.MeshKind = static_cast<SpriteMeshKind>(mesh_kind);
 
@@ -854,26 +854,26 @@ static void ReadSpriteMesh(DataReader& reader, BakedImageFrame& frame)
         return;
     }
 
-    uint16_t vertex_count = reader.Read<uint16_t>();
-    uint32_t index_count = reader.Read<uint32_t>();
-    frame.Mesh.SourceSize.width = reader.Read<uint16_t>();
-    frame.Mesh.SourceSize.height = reader.Read<uint16_t>();
-    frame.Mesh.SourceOffset.x = reader.Read<int32_t>();
-    frame.Mesh.SourceOffset.y = reader.Read<int32_t>();
+    uint16_t vertex_count = reader.read<uint16_t>();
+    uint32_t index_count = reader.read<uint32_t>();
+    frame.Mesh.SourceSize.width = reader.read<uint16_t>();
+    frame.Mesh.SourceSize.height = reader.read<uint16_t>();
+    frame.Mesh.SourceOffset.x = reader.read<int32_t>();
+    frame.Mesh.SourceOffset.y = reader.read<int32_t>();
     frame.Mesh.Vertices.reserve(vertex_count);
     frame.Mesh.Indices.reserve(index_count);
 
     for (uint16_t i = 0; i < vertex_count; i++) {
-        uint16_t x = reader.Read<uint16_t>();
-        uint16_t y = reader.Read<uint16_t>();
+        uint16_t x = reader.read<uint16_t>();
+        uint16_t y = reader.read<uint16_t>();
         frame.Mesh.Vertices.emplace_back(x, y);
     }
     for (uint32_t i = 0; i < index_count; i++) {
-        frame.Mesh.Indices.emplace_back(reader.Read<uint16_t>());
+        frame.Mesh.Indices.emplace_back(reader.read<uint16_t>());
     }
 }
 
-static void SkipSpriteMesh(DataReader& reader)
+static void SkipSpriteMesh(data_reader& reader)
 {
     BakedImageFrame frame;
     ReadSpriteMesh(reader, frame);
@@ -881,66 +881,66 @@ static void SkipSpriteMesh(DataReader& reader)
 
 [[nodiscard]] static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFrame
 {
-    DataReader reader {baked_data};
+    data_reader reader {baked_data};
 
-    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-    CHECK(reader.Read<uint16_t>() == 1);
-    CHECK(reader.Read<uint16_t>() == 100);
-    CHECK(reader.Read<uint8_t>() == 1);
-    CHECK_FALSE(reader.Read<bool>());
+    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+    CHECK(reader.read<uint16_t>() == 1);
+    CHECK(reader.read<uint16_t>() == 100);
+    CHECK(reader.read<uint8_t>() == 1);
+    CHECK_FALSE(reader.read<bool>());
 
     BakedImageFrame frame;
-    frame.Offset.x = reader.Read<int16_t>();
-    frame.Offset.y = reader.Read<int16_t>();
-    frame.Width = reader.Read<uint16_t>();
-    frame.Height = reader.Read<uint16_t>();
-    frame.NextX = reader.Read<int16_t>();
-    frame.NextY = reader.Read<int16_t>();
+    frame.Offset.x = reader.read<int16_t>();
+    frame.Offset.y = reader.read<int16_t>();
+    frame.Width = reader.read<uint16_t>();
+    frame.Height = reader.read<uint16_t>();
+    frame.NextX = reader.read<int16_t>();
+    frame.NextY = reader.read<int16_t>();
 
     size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-    auto frame_data = reader.ReadBytes(data_size);
+    auto frame_data = reader.read_bytes(data_size);
     frame.Data.assign(frame_data.begin(), frame_data.end());
     ReadSpriteMesh(reader, frame);
 
-    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-    CHECK_NOTHROW(reader.VerifyEnd());
+    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+    CHECK_NOTHROW(reader.verify_end());
 
     return frame;
 }
 
 [[nodiscard]] static auto ReadSingleDirSequence(const vector<uint8_t>& baked_data) -> BakedImageSequence
 {
-    DataReader reader {baked_data};
+    data_reader reader {baked_data};
 
-    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
 
     BakedImageSequence sequence;
-    sequence.SequenceSize = reader.Read<uint16_t>();
-    sequence.AnimTicks = reader.Read<uint16_t>();
-    CHECK(reader.Read<uint8_t>() == 1);
+    sequence.SequenceSize = reader.read<uint16_t>();
+    sequence.AnimTicks = reader.read<uint16_t>();
+    CHECK(reader.read<uint8_t>() == 1);
     sequence.Frames.reserve(sequence.SequenceSize);
 
     for (uint16_t i = 0; i < sequence.SequenceSize; i++) {
-        CHECK_FALSE(reader.Read<bool>());
+        CHECK_FALSE(reader.read<bool>());
 
         auto& frame = sequence.Frames.emplace_back();
-        frame.Offset.x = reader.Read<int16_t>();
-        frame.Offset.y = reader.Read<int16_t>();
-        frame.Width = reader.Read<uint16_t>();
-        frame.Height = reader.Read<uint16_t>();
-        frame.NextX = reader.Read<int16_t>();
-        frame.NextY = reader.Read<int16_t>();
+        frame.Offset.x = reader.read<int16_t>();
+        frame.Offset.y = reader.read<int16_t>();
+        frame.Width = reader.read<uint16_t>();
+        frame.Height = reader.read<uint16_t>();
+        frame.NextX = reader.read<int16_t>();
+        frame.NextY = reader.read<int16_t>();
 
         size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-        const_span<uint8_t> frame_data = reader.ReadBytes(data_size);
+        const_span<uint8_t> frame_data = reader.read_bytes(data_size);
         frame.Data.assign(frame_data.begin(), frame_data.end());
         ReadSpriteMesh(reader, frame);
     }
 
-    CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-    CHECK_NOTHROW(reader.VerifyEnd());
+    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+    CHECK_NOTHROW(reader.verify_end());
 
     return sequence;
 }
@@ -1603,31 +1603,31 @@ TEST_CASE("ImageBaker")
             {"toy"});
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/shared-mesh.toy");
 
-        DataReader reader {rig.Outputs.at("gfx/shared-mesh.toy")};
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.Read<uint16_t>() == 2);
-        CHECK(reader.Read<uint16_t>() == 100);
-        CHECK(reader.Read<uint8_t>() == 1);
-        CHECK_FALSE(reader.Read<bool>());
+        data_reader reader {rig.Outputs.at("gfx/shared-mesh.toy")};
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+        CHECK(reader.read<uint16_t>() == 2);
+        CHECK(reader.read<uint16_t>() == 100);
+        CHECK(reader.read<uint8_t>() == 1);
+        CHECK_FALSE(reader.read<bool>());
 
         BakedImageFrame first_frame;
-        first_frame.Offset.x = reader.Read<int16_t>();
-        first_frame.Offset.y = reader.Read<int16_t>();
-        first_frame.Width = reader.Read<uint16_t>();
-        first_frame.Height = reader.Read<uint16_t>();
-        (void)reader.Read<int16_t>();
-        (void)reader.Read<int16_t>();
-        (void)reader.ReadBytes(numeric_cast<size_t>(first_frame.Width) * first_frame.Height * 4);
+        first_frame.Offset.x = reader.read<int16_t>();
+        first_frame.Offset.y = reader.read<int16_t>();
+        first_frame.Width = reader.read<uint16_t>();
+        first_frame.Height = reader.read<uint16_t>();
+        (void)reader.read<int16_t>();
+        (void)reader.read<int16_t>();
+        (void)reader.read_bytes(numeric_cast<size_t>(first_frame.Width) * first_frame.Height * 4);
         ReadSpriteMesh(reader, first_frame);
         CHECK(first_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(first_frame.Offset.x == numeric_cast<int32_t>(first_frame.Width) / 2 - 5 / 2 + first_frame.Mesh.SourceOffset.x);
         CHECK(first_frame.Offset.y == numeric_cast<int32_t>(first_frame.Height) - 5 + first_frame.Mesh.SourceOffset.y);
 
-        CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint16_t>() == 0);
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK(reader.read<bool>());
+        CHECK(reader.read<uint16_t>() == 0);
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("SpriteMeshRejectsInvalidSettings")
@@ -1832,23 +1832,23 @@ TEST_CASE("ImageBaker")
         CHECK_FALSE(rig.Outputs.contains("art/critters/RAT.fr0"));
         REQUIRE(rig.Outputs.contains("art/critters/rat.fofrm"));
 
-        DataReader reader {rig.Outputs.at("art/critters/rat.fofrm")};
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.Read<uint16_t>() == 1);
-        CHECK(reader.Read<uint16_t>() == 200);
-        CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+        data_reader reader {rig.Outputs.at("art/critters/rat.fofrm")};
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+        CHECK(reader.read<uint16_t>() == 1);
+        CHECK(reader.read<uint16_t>() == 200);
+        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.Read<bool>());
-            CHECK(reader.Read<int16_t>() == 10 + dir);
-            CHECK(reader.Read<int16_t>() == -20 - dir);
-            CHECK(reader.Read<uint16_t>() == 1);
-            CHECK(reader.Read<uint16_t>() == 1);
-            CHECK(reader.Read<int16_t>() == dir + 1);
-            CHECK(reader.Read<int16_t>() == -dir - 1);
+            CHECK_FALSE(reader.read<bool>());
+            CHECK(reader.read<int16_t>() == 10 + dir);
+            CHECK(reader.read<int16_t>() == -20 - dir);
+            CHECK(reader.read<uint16_t>() == 1);
+            CHECK(reader.read<uint16_t>() == 1);
+            CHECK(reader.read<int16_t>() == dir + 1);
+            CHECK(reader.read<int16_t>() == -dir - 1);
 
-            const_span<uint8_t> data = reader.ReadBytes(4);
+            const_span<uint8_t> data = reader.read_bytes(4);
             uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
             vector<uint8_t> expected_data {
                 numeric_cast<uint8_t>(color_base * 4),
@@ -1860,8 +1860,8 @@ TEST_CASE("ImageBaker")
             SkipSpriteMesh(reader);
         }
 
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("BakesFrmEmbeddedDirectionsAndReportsTruncatedDirTable")
@@ -1884,34 +1884,34 @@ TEST_CASE("ImageBaker")
 
         REQUIRE(dirs.Outputs.contains("gfx/directional.frm"));
 
-        DataReader reader {dirs.Outputs.at("gfx/directional.frm")};
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.Read<uint16_t>() == 1);
-        CHECK(reader.Read<uint16_t>() == 200);
-        CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+        data_reader reader {dirs.Outputs.at("gfx/directional.frm")};
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+        CHECK(reader.read<uint16_t>() == 1);
+        CHECK(reader.read<uint16_t>() == 200);
+        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.Read<bool>());
+            CHECK_FALSE(reader.read<bool>());
             if (dir == 0) {
-                CHECK(reader.Read<int16_t>() == 1);
-                CHECK(reader.Read<int16_t>() == -1);
+                CHECK(reader.read<int16_t>() == 1);
+                CHECK(reader.read<int16_t>() == -1);
             }
             else {
-                CHECK(reader.Read<int16_t>() == 10 + dir);
-                CHECK(reader.Read<int16_t>() == -10 - dir);
+                CHECK(reader.read<int16_t>() == 10 + dir);
+                CHECK(reader.read<int16_t>() == -10 - dir);
             }
 
-            CHECK(reader.Read<uint16_t>() == 1);
-            CHECK(reader.Read<uint16_t>() == 1);
-            CHECK(reader.Read<int16_t>() == 2);
-            CHECK(reader.Read<int16_t>() == 3);
-            CHECK(reader.ReadBytes(4).size() == 4);
+            CHECK(reader.read<uint16_t>() == 1);
+            CHECK(reader.read<uint16_t>() == 1);
+            CHECK(reader.read<int16_t>() == 2);
+            CHECK(reader.read<int16_t>() == 3);
+            CHECK(reader.read_bytes(4).size() == 4);
             SkipSpriteMesh(reader);
         }
 
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK_NOTHROW(reader.verify_end());
 
         TestRig truncated;
         AddSourceBinaryFile(truncated, "gfx/truncated-dirs.frm", MakeFrmWithDirTable(5, frames, 2));
@@ -2244,25 +2244,25 @@ TEST_CASE("ImageBaker")
 
         REQUIRE(rig.Outputs.contains("gfx/repeated.spr"));
 
-        DataReader reader {rig.Outputs.at("gfx/repeated.spr")};
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.Read<uint16_t>() == 2);
-        CHECK(reader.Read<uint16_t>() == 200);
-        CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+        data_reader reader {rig.Outputs.at("gfx/repeated.spr")};
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+        CHECK(reader.read<uint16_t>() == 2);
+        CHECK(reader.read<uint16_t>() == 200);
+        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.Read<bool>());
-            CHECK(reader.Read<int16_t>() == 0);
-            CHECK(reader.Read<int16_t>() == 0);
+            CHECK_FALSE(reader.read<bool>());
+            CHECK(reader.read<int16_t>() == 0);
+            CHECK(reader.read<int16_t>() == 0);
 
-            auto width = reader.Read<uint16_t>();
-            auto height = reader.Read<uint16_t>();
-            int16_t next_x = reader.Read<int16_t>();
-            int16_t next_y = reader.Read<int16_t>();
+            auto width = reader.read<uint16_t>();
+            auto height = reader.read<uint16_t>();
+            int16_t next_x = reader.read<int16_t>();
+            int16_t next_y = reader.read<int16_t>();
 
             size_t data_size = numeric_cast<size_t>(width) * height * 4;
-            const_span<uint8_t> data = reader.ReadBytes(data_size);
+            const_span<uint8_t> data = reader.read_bytes(data_size);
 
             if (width == 3) {
                 CHECK(width == 3);
@@ -2280,12 +2280,12 @@ TEST_CASE("ImageBaker")
             }
 
             SkipSpriteMesh(reader);
-            CHECK(reader.Read<bool>());
-            CHECK(reader.Read<uint16_t>() == 0);
+            CHECK(reader.read<bool>());
+            CHECK(reader.read<uint16_t>() == 0);
         }
 
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("BakesFofrmSequenceThroughNestedImages")
@@ -2466,17 +2466,17 @@ Frm=one.toy
         REQUIRE_FALSE(rig.Outputs.contains("gfx/custom.toy"));
         REQUIRE(rig.Outputs.contains("gfx/custom.baked"));
 
-        DataReader reader {rig.Outputs.at("gfx/custom.baked")};
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.Read<uint16_t>() == 2);
-        CHECK(reader.Read<uint16_t>() == 77);
-        CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+        data_reader reader {rig.Outputs.at("gfx/custom.baked")};
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+        CHECK(reader.read<uint16_t>() == 2);
+        CHECK(reader.read<uint16_t>() == 77);
+        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.Read<bool>());
-            int16_t offs_x = reader.Read<int16_t>();
-            int16_t offs_y = reader.Read<int16_t>();
+            CHECK_FALSE(reader.read<bool>());
+            int16_t offs_x = reader.read<int16_t>();
+            int16_t offs_y = reader.read<int16_t>();
 
             if (dir == 0) {
                 CHECK(offs_x == 1);
@@ -2487,19 +2487,19 @@ Frm=one.toy
                 CHECK(offs_y == 19 + dir);
             }
 
-            CHECK(reader.Read<uint16_t>() == 1);
-            CHECK(reader.Read<uint16_t>() == 1);
-            (void)reader.Read<int16_t>();
-            (void)reader.Read<int16_t>();
-            (void)reader.ReadBytes(4);
+            CHECK(reader.read<uint16_t>() == 1);
+            CHECK(reader.read<uint16_t>() == 1);
+            (void)reader.read<int16_t>();
+            (void)reader.read<int16_t>();
+            (void)reader.read_bytes(4);
             SkipSpriteMesh(reader);
 
-            CHECK(reader.Read<bool>());
-            CHECK(reader.Read<uint16_t>() == 0);
+            CHECK(reader.read<bool>());
+            CHECK(reader.read<uint16_t>() == 0);
         }
 
-        CHECK(reader.Read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.VerifyEnd());
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK_NOTHROW(reader.verify_end());
     }
 
     SECTION("BakeCheckerSkipsTarget")

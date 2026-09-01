@@ -318,16 +318,16 @@ auto Critter::CheckFind(CritterFindType find_type) const noexcept -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::NonDead) && IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::NonDead) && IsDead()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::Dead) && !IsDead()) {
         return false;
     }
 

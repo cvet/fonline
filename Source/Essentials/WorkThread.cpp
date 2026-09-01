@@ -37,25 +37,25 @@
 
 FO_BEGIN_NAMESPACE
 
-WorkThread::WorkThread(string_view name)
+work_thread::work_thread(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
     _name = name;
-    _worker = run_thread(name, [this] { ThreadEntry(); });
+    _worker = run_thread(name, [this] { thread_entry(); });
 }
 
-WorkThread::~WorkThread()
+work_thread::~work_thread()
 {
     FO_STACK_TRACE_ENTRY();
 
     {
-        scoped_lock locker {_dataLocker};
+        scoped_lock locker {_data_locker};
 
         _finish = true;
     }
 
-    _workSignal.notify_one();
+    _work_signal.notify_one();
 
     try {
         if (_worker.joinable()) {
@@ -63,74 +63,74 @@ WorkThread::~WorkThread()
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        report_exception_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
     }
 }
 
-auto WorkThread::GetJobsCount() const -> size_t
+auto work_thread::get_jobs_count() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    scoped_lock locker {_dataLocker};
+    scoped_lock locker {_data_locker};
 
-    return _jobs.size() + (_jobActive ? 1 : 0);
+    return _jobs.size() + (_job_active ? 1 : 0);
 }
 
-auto WorkThread::GetDiagnostics() const -> Diagnostics
+auto work_thread::get_diagnostics() const -> diagnostics
 {
     FO_STACK_TRACE_ENTRY();
 
-    scoped_lock locker {_dataLocker};
+    scoped_lock locker {_data_locker};
 
-    return Diagnostics {
-        .QueuedJobs = _jobs.size(),
-        .JobActive = _jobActive,
-        .CompletedJobs = _completedJobs,
+    return diagnostics {
+        .queued_jobs = _jobs.size(),
+        .job_active = _job_active,
+        .completed_jobs = _completed_jobs,
     };
 }
 
-void WorkThread::SetExceptionHandler(ExceptionHandler handler)
+void work_thread::set_exception_handler(exception_handler handler)
 {
     FO_STACK_TRACE_ENTRY();
 
-    scoped_lock locker {_dataLocker};
+    scoped_lock locker {_data_locker};
 
-    _exceptionHandler = std::move(handler);
+    _exception_handler = std::move(handler);
 }
 
-void WorkThread::AddJob(Job job)
+void work_thread::add_job(job next_job)
 {
     FO_STACK_TRACE_ENTRY();
 
-    AddJobInternal(std::chrono::milliseconds {0}, std::move(job), false);
+    add_job_internal(std::chrono::milliseconds {0}, std::move(next_job), false);
 }
 
-void WorkThread::AddJob(timespan delay, Job job)
+void work_thread::add_job(timespan delay, job next_job)
 {
     FO_STACK_TRACE_ENTRY();
 
-    AddJobInternal(delay, std::move(job), false);
+    add_job_internal(delay, std::move(next_job), false);
 }
 
-void WorkThread::AddJobInternal(timespan delay, Job job, bool no_notify)
+void work_thread::add_job_internal(timespan delay, job next_job, bool no_notify)
 {
     FO_STACK_TRACE_ENTRY();
 
     {
-        scoped_lock locker {_dataLocker};
+        scoped_lock locker {_data_locker};
 
         nanotime fire_time = nanotime::now() + delay;
 
         if (_jobs.empty() || fire_time >= _jobs.back().first) {
-            _jobs.emplace_back(fire_time, std::move(job));
+            _jobs.emplace_back(fire_time, std::move(next_job));
         }
         else {
             for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
                 if (fire_time < it->first) {
-                    _jobs.emplace(it, fire_time, std::move(job));
+                    _jobs.emplace(it, fire_time, std::move(next_job));
                     break;
                 }
             }
@@ -138,112 +138,112 @@ void WorkThread::AddJobInternal(timespan delay, Job job, bool no_notify)
     }
 
     if (!no_notify) {
-        _workSignal.notify_one();
+        _work_signal.notify_one();
     }
 }
 
-void WorkThread::Clear()
+void work_thread::clear()
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_lock locker(_dataLocker);
+    unique_lock locker(_data_locker);
 
-    _clearJobs = true;
+    _clear_jobs = true;
 
     locker.unlock();
-    _workSignal.notify_one();
+    _work_signal.notify_one();
     locker.lock();
 
-    while (_clearJobs) {
-        _doneSignal.wait(locker);
+    while (_clear_jobs) {
+        _done_signal.wait(locker);
     }
 }
 
-void WorkThread::Wait() const
+void work_thread::wait() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_lock locker(_dataLocker);
+    unique_lock locker(_data_locker);
 
-    while (!_jobs.empty() || _jobActive) {
-        _doneSignal.wait(locker);
+    while (!_jobs.empty() || _job_active) {
+        _done_signal.wait(locker);
     }
 }
 
-void WorkThread::Pause()
+void work_thread::pause()
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_lock locker(_dataLocker);
+    unique_lock locker(_data_locker);
 
     _paused = true;
 
-    while (_jobActive) {
-        _doneSignal.wait(locker);
+    while (_job_active) {
+        _done_signal.wait(locker);
     }
 }
 
-void WorkThread::Resume()
+void work_thread::resume()
 {
     FO_STACK_TRACE_ENTRY();
 
     {
-        scoped_lock locker {_dataLocker};
+        scoped_lock locker {_data_locker};
 
         _paused = false;
     }
 
-    _workSignal.notify_one();
+    _work_signal.notify_one();
 }
 
-void WorkThread::ThreadEntry() noexcept
+void work_thread::thread_entry() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    InstallCrashHandlerStackForThisThread();
+    install_crash_handler_stack_for_this_thread();
 
     try {
         while (true) {
-            Job job;
+            job next_job;
 
             {
-                unique_lock locker(_dataLocker);
+                unique_lock locker(_data_locker);
 
-                _jobActive = false;
+                _job_active = false;
 
-                if (_clearJobs) {
+                if (_clear_jobs) {
                     _jobs.clear();
-                    _clearJobs = false;
+                    _clear_jobs = false;
                 }
 
                 locker.unlock();
-                _doneSignal.notify_all();
+                _done_signal.notify_all();
                 locker.lock();
 
                 while (_paused && !_finish) {
-                    if (_clearJobs) {
+                    if (_clear_jobs) {
                         _jobs.clear();
-                        _clearJobs = false;
+                        _clear_jobs = false;
 
                         locker.unlock();
-                        _doneSignal.notify_all();
+                        _done_signal.notify_all();
                         locker.lock();
                     }
                     else {
-                        _workSignal.wait(locker);
+                        _work_signal.wait(locker);
                     }
                 }
 
                 if (_jobs.empty()) {
-                    if (_clearJobs) {
-                        _clearJobs = false;
+                    if (_clear_jobs) {
+                        _clear_jobs = false;
                     }
 
                     if (_finish) {
                         break;
                     }
 
-                    _workSignal.wait(locker);
+                    _work_signal.wait(locker);
                     continue;
                 }
 
@@ -254,9 +254,9 @@ void WorkThread::ThreadEntry() noexcept
 
                     for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
                         if (cur_time >= it->first) {
-                            job = std::move(it->second);
+                            next_job = std::move(it->second);
                             _jobs.erase(it);
-                            _jobActive = true;
+                            _job_active = true;
                             break;
                         }
 
@@ -266,56 +266,56 @@ void WorkThread::ThreadEntry() noexcept
                         }
                     }
 
-                    // Nothing is due yet — sleep until the soonest deadline instead of spinning. AddJob /
-                    // Wake / Clear / Pause notify _workSignal, so a new or earlier job breaks the wait
-                    if (!job && has_pending) {
-                        _workSignal.wait_until(locker, soonest_fire.value());
+                    // Nothing is due yet — sleep until the soonest deadline instead of spinning. add_job /
+                    // Wake / Clear / Pause notify _work_signal, so a new or earlier job breaks the wait
+                    if (!next_job && has_pending) {
+                        _work_signal.wait_until(locker, soonest_fire.value());
                         continue;
                     }
                 }
             }
 
-            if (job) {
+            if (next_job) {
                 try {
-                    auto next_call_delay = job();
+                    auto next_call_delay = next_job();
 
                     // Schedule repeat
                     if (next_call_delay.has_value()) {
-                        AddJobInternal(next_call_delay.value(), std::move(job), true);
+                        add_job_internal(next_call_delay.value(), std::move(next_job), true);
                     }
                 }
                 catch (const std::exception& ex) {
                     // Exception handling
                     {
-                        scoped_lock locker {_dataLocker};
+                        scoped_lock locker {_data_locker};
 
-                        if (_exceptionHandler) {
+                        if (_exception_handler) {
                             try {
-                                if (_exceptionHandler(ex)) {
+                                if (_exception_handler(ex)) {
                                     _jobs.clear();
                                 }
                             }
                             catch (const std::exception& ex2) {
-                                ReportExceptionAndContinue(ex2);
+                                report_exception_and_continue(ex2);
                             }
                         }
                     }
 
-                    ReportExceptionAndContinue(ex);
+                    report_exception_and_continue(ex);
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();
                 }
 
                 {
-                    scoped_lock locker {_dataLocker};
-                    _completedJobs++;
+                    scoped_lock locker {_data_locker};
+                    _completed_jobs++;
                 }
             }
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        report_exception_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

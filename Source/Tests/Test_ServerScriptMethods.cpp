@@ -2796,13 +2796,13 @@ namespace ScriptMethodsTest
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
+        auto writer = data_writer(map_data);
 
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.Write<uint32_t>(uint32_t {0}); // hashes_count
-        writer.Write<uint32_t>(uint32_t {0}); // cr_count
-        writer.Write<uint32_t>(uint32_t {0}); // item_count
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {0}); // hashes_count
+        writer.write<uint32_t>(uint32_t {0}); // cr_count
+        writer.write<uint32_t>(uint32_t {0}); // item_count
 
         return map_data;
     }
@@ -2812,23 +2812,23 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WriteBytes(props_data);
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write_bytes(props_data);
 
         return protos_data;
     }
@@ -2838,23 +2838,23 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
+        ProtoItem proto {proto_engine.Hashes.to_hashed_string(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WriteBytes(props_data);
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write_bytes(props_data);
 
         return protos_data;
     }
@@ -2863,17 +2863,17 @@ namespace ScriptMethodsTest
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
@@ -2883,7 +2883,7 @@ namespace ScriptMethodsTest
         auto fomap_blob = MakeEmptyMapBlob();
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptMethodsItem.fopro-bin-server", item_blob);
@@ -2918,7 +2918,7 @@ namespace ScriptMethodsTest
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -2943,7 +2943,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("AddAndCountItems")
     {
@@ -3007,7 +3007,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("StateQueries")
     {
@@ -3103,7 +3103,7 @@ TEST_CASE("ServerGameCritterQueries")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GetCritterById")
     {
@@ -3151,7 +3151,7 @@ TEST_CASE("ServerGameItemOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("ItemSetupScriptMethods")
     {
@@ -3255,7 +3255,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("Persistence")
     {
@@ -3375,15 +3375,15 @@ TEST_CASE("ServerMiscScriptOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
     auto run_throwing_func = [&server, &get_func](string_view func_name, string_view expected_message) {
         auto func = server->FindFunc<void>(get_func(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = get_exception_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(message);

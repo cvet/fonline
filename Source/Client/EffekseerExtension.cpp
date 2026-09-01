@@ -57,7 +57,7 @@ static auto EffekseerMalloc(uint32_t size) -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MallocRaw(size).get();
+    return safe_alloc::malloc_raw(size).get();
 }
 
 static void EffekseerFree(void* mem, uint32_t size)
@@ -65,14 +65,14 @@ static void EffekseerFree(void* mem, uint32_t size)
     FO_NO_STACK_TRACE_ENTRY();
 
     ignore_unused(size);
-    SafeAlloc::FreeRaw(mem);
+    safe_alloc::free_raw(mem);
 }
 
 static auto EffekseerAlignedMalloc(uint32_t size, uint32_t alignment) -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+    return safe_alloc::malloc_aligned_raw(size, alignment).get();
 }
 
 static void EffekseerAlignedFree(void* mem, uint32_t size)
@@ -82,7 +82,7 @@ static void EffekseerAlignedFree(void* mem, uint32_t size)
     // Effekseer hands back the size but not the alignment, which is why the aligned tier releases a block
     // without needing it
     ignore_unused(size);
-    SafeAlloc::FreeAlignedRaw(mem);
+    safe_alloc::free_aligned_raw(mem);
 }
 
 void InitializeEffekseerMemory() noexcept
@@ -102,7 +102,7 @@ static void LogEffekseerRejection(string_view path, string_view reason)
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog(LogType::Warning, "Effekseer particle '{}' rejected: {}", path, reason);
+    write_log(log_type::warning, "Effekseer particle '{}' rejected: {}", path, reason);
 }
 
 static auto ToUtf8(const char16_t* value) -> string
@@ -346,14 +346,14 @@ public:
 
         // A distortion map is an ordinary image in the atlas; what differs is how the shader reads it, not how it loads
         if (texture_type != Effekseer::TextureType::Color && texture_type != Effekseer::TextureType::Distortion) {
-            WriteLog(LogType::Warning, "Effekseer texture '{}' rejected: only color and distortion textures are supported", ToUtf8(path));
+            write_log(log_type::warning, "Effekseer texture '{}' rejected: only color and distortion textures are supported", ToUtf8(path));
             return nullptr;
         }
 
         string texture_path = strex(ToUtf8(path)).format_path().str();
         auto [render_texture, atlas_rect] = _textureLoader(texture_path);
         if (!render_texture) {
-            WriteLog(LogType::Warning, "Effekseer texture '{}' is missing", texture_path);
+            write_log(log_type::warning, "Effekseer texture '{}' is missing", texture_path);
             return nullptr;
         }
 
@@ -386,18 +386,18 @@ public:
         File file = _resources->ReadFile(model_path);
 
         if (!file) {
-            WriteLog(LogType::Warning, "Effekseer model '{}' is missing", model_path);
+            write_log(log_type::warning, "Effekseer model '{}' is missing", model_path);
             return nullptr;
         }
 
         const_span<uint8_t> data = file.GetDataSpan();
 
         if (data.empty() || data.size() > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-            WriteLog(LogType::Warning, "Effekseer model '{}' has an unusable size", model_path, data.size());
+            write_log(log_type::warning, "Effekseer model '{}' has an unusable size", model_path, data.size());
             return nullptr;
         }
         if (optional<string> error = ValidateEffekseerModelPayload(data)) {
-            WriteLog(LogType::Warning, "Effekseer model '{}' is invalid: {}", model_path, *error);
+            write_log(log_type::warning, "Effekseer model '{}' is invalid: {}", model_path, *error);
             return nullptr;
         }
 
@@ -1301,7 +1301,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = CullModeType::None;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture->Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture->PointSampled ? 1.0f : 0.0f;
@@ -1406,7 +1406,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = CullModeType::None;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
         effect->BackgroundTex = background.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
@@ -1800,7 +1800,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = CullModeType::None;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
@@ -2152,7 +2152,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = CullModeType::None;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
@@ -2906,7 +2906,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = _node->CullMode;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
@@ -3075,7 +3075,7 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
 struct EffekseerRuntimeState
 {
     EffekseerRuntimeState(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, ptr<FileSystem> resources, ParticleTextureLoader texture_loader, ParticleSceneBackgroundProvider scene_background_provider) :
-        Binding {SafeAlloc::MakeShared<EffekseerDrawBinding>()},
+        Binding {safe_alloc::make_shared<EffekseerDrawBinding>()},
         SceneBackgroundProvider {std::move(scene_background_provider)},
         Setting {Effekseer::Setting::Create()},
         Manager {Effekseer::Manager::Create(EFFEKSEER_INSTANCE_MAX)},
@@ -3144,7 +3144,7 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
 struct EffekseerParticleRuntimeBackend::Impl
 {
     explicit Impl(const ParticleRuntimeServices& services) :
-        Runtime {SafeAlloc::MakeShared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.Settings, services.Resources, services.TextureLoader, services.SceneBackgroundProvider)},
+        Runtime {safe_alloc::make_shared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.Settings, services.Resources, services.TextureLoader, services.SceneBackgroundProvider)},
         Resources {services.Resources}
     {
         FO_STACK_TRACE_ENTRY();
@@ -3342,7 +3342,7 @@ void EffekseerParticleRuntimeSystem::Draw()
 }
 
 EffekseerParticleRuntimeBackend::EffekseerParticleRuntimeBackend(const ParticleRuntimeServices& services) :
-    _impl {SafeAlloc::MakeUnique<Impl>(services)}
+    _impl {safe_alloc::make_unique<Impl>(services)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -3420,7 +3420,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
         return {};
     }
 
-    auto system = SafeAlloc::MakeUnique<EffekseerParticleRuntimeSystem>(SafeAlloc::MakeUnique<EffekseerParticleRuntimeSystem::Impl>(_impl->Runtime, std::move(effect), string {path}, bounds_trailer.PositionMin, bounds_trailer.PositionMax, bounds_trailer.BillboardRadius));
+    auto system = safe_alloc::make_unique<EffekseerParticleRuntimeSystem>(safe_alloc::make_unique<EffekseerParticleRuntimeSystem::Impl>(_impl->Runtime, std::move(effect), string {path}, bounds_trailer.PositionMin, bounds_trailer.PositionMax, bounds_trailer.BillboardRadius));
     system->Respawn(0);
 
     if (!system->IsActive()) {

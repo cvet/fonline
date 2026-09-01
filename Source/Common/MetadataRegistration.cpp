@@ -46,14 +46,14 @@ static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector
 static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
-static auto ReadMetadataHeader(DataReader& reader) -> string_view;
-static auto ReadMetadataSections(DataReader& reader) -> map<string_view, vector<vector<string_view>>>;
+static auto ReadMetadataHeader(data_reader& reader) -> string_view;
+static auto ReadMetadataSections(data_reader& reader) -> map<string_view, vector<vector<string_view>>>;
 
 void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto reader = DataReader(metadata_bin);
+    auto reader = data_reader(metadata_bin);
 
     meta->RegisterMetadataVersion(ReadMetadataHeader(reader));
 
@@ -72,23 +72,23 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
     RegisterDynamicMetadataMigrationRules(meta, engine_data[METADATA_MIGRATION_RULE_SECTION]);
 }
 
-static auto ReadMetadataHeader(DataReader& reader) -> string_view
+static auto ReadMetadataHeader(data_reader& reader) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto magic = reader.Read<uint32_t>();
+    auto magic = reader.read<uint32_t>();
     FO_VERIFY_AND_THROW(magic == METADATA_FILE_MAGIC, "Baked metadata does not start with the metadata file marker", magic, METADATA_FILE_MAGIC);
 
     // A bake of another file version cannot be trusted field by field, and a bake with no layout version cannot be
     // verified against a peer at all - both mean the resources have to be rebaked
-    auto file_version = reader.Read<uint16_t>();
+    auto file_version = reader.read<uint16_t>();
 
     if (file_version != METADATA_FILE_VERSION) {
         throw MetadataOutdatedException("Baked metadata file version does not match the engine, resources must be rebaked", file_version, METADATA_FILE_VERSION);
     }
 
-    auto metadata_version_size = reader.Read<uint16_t>();
-    string_view metadata_version = reader.ReadStringView(metadata_version_size);
+    auto metadata_version_size = reader.read<uint16_t>();
+    string_view metadata_version = reader.read_string_view(metadata_version_size);
 
     if (metadata_version.empty()) {
         throw MetadataOutdatedException("Baked metadata carries no version, resources must be rebaked");
@@ -97,28 +97,28 @@ static auto ReadMetadataHeader(DataReader& reader) -> string_view
     return metadata_version;
 }
 
-static auto ReadMetadataSections(DataReader& reader) -> map<string_view, vector<vector<string_view>>>
+static auto ReadMetadataSections(data_reader& reader) -> map<string_view, vector<vector<string_view>>>
 {
     FO_STACK_TRACE_ENTRY();
 
     map<string_view, vector<vector<string_view>>> engine_data;
-    auto sections_count = reader.Read<uint16_t>();
+    auto sections_count = reader.read<uint16_t>();
 
     for (uint16_t i = 0; i < sections_count; i++) {
-        auto section_name_size = reader.Read<uint16_t>();
-        string_view section_name = reader.ReadStringView(section_name_size);
+        auto section_name_size = reader.read<uint16_t>();
+        string_view section_name = reader.read_string_view(section_name_size);
 
-        auto entries_count = reader.Read<uint32_t>();
+        auto entries_count = reader.read<uint32_t>();
         vector<vector<string_view>> entries;
         entries.reserve(entries_count);
 
         for (uint32_t j = 0; j < entries_count; j++) {
             auto& cur_entry = entries.emplace_back();
-            auto tokens_count = reader.Read<uint32_t>();
+            auto tokens_count = reader.read<uint32_t>();
 
             for (uint32_t k = 0; k < tokens_count; k++) {
-                auto token_size = reader.Read<uint16_t>();
-                string_view token = reader.ReadStringView(token_size);
+                auto token_size = reader.read<uint16_t>();
+                string_view token = reader.read_string_view(token_size);
 
                 cur_entry.emplace_back(token);
             }
@@ -127,7 +127,7 @@ static auto ReadMetadataSections(DataReader& reader) -> map<string_view, vector<
         engine_data.emplace(section_name, std::move(entries));
     }
 
-    reader.VerifyEnd();
+    reader.verify_end();
 
     return engine_data;
 }
@@ -341,7 +341,7 @@ static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const v
         size_t args_end = tokens.size() - 3;
         FO_VERIFY_AND_THROW((args_end - 3) % 3 == 0, "RemoteCall metadata arguments must be encoded as type/nullability/name triples", tokens[0], tokens[1], tokens[2], tokens.size());
         RemoteCallDesc remote_call;
-        remote_call.Name = meta->Hashes.ToHashedString(tokens[0]);
+        remote_call.Name = meta->Hashes.to_hashed_string(tokens[0]);
         remote_call.SubsystemHint = tokens[1];
         remote_call.MaxPayloadSize = numeric_cast<size_t>(strvex(tokens[tokens.size() - 2]).to_int64());
         remote_call.MaxCollectionSize = numeric_cast<size_t>(strvex(tokens[tokens.size() - 1]).to_int64());
@@ -409,7 +409,7 @@ auto ReadMetadataVersion(const_span<uint8_t> metadata_bin) -> string
 
     // Header only: the updater compares its own resource pack against the server before any engine exists, and it
     // has no reason to walk the sections to do that
-    auto reader = DataReader(metadata_bin);
+    auto reader = data_reader(metadata_bin);
 
     return string(ReadMetadataHeader(reader));
 }
@@ -421,12 +421,12 @@ auto MakeMetadataHeader(string_view metadata_version) -> vector<uint8_t>
     FO_VERIFY_AND_THROW(!metadata_version.empty(), "Metadata version is empty");
 
     vector<uint8_t> metadata_bin;
-    auto writer = DataWriter(metadata_bin);
+    auto writer = data_writer(metadata_bin);
 
-    writer.Write<uint32_t>(METADATA_FILE_MAGIC);
-    writer.Write<uint16_t>(METADATA_FILE_VERSION);
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(metadata_version.length()));
-    writer.WriteStringBytes(metadata_version);
+    writer.write<uint32_t>(METADATA_FILE_MAGIC);
+    writer.write<uint16_t>(METADATA_FILE_VERSION);
+    writer.write<uint16_t>(numeric_cast<uint16_t>(metadata_version.length()));
+    writer.write_string_bytes(metadata_version);
 
     return metadata_bin;
 }

@@ -471,7 +471,7 @@ class AppWindow final : public IAppWindow
 {
     friend class Application;
     friend class AppInput;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     [[nodiscard]] auto GetSize() const -> isize32 override;
@@ -640,7 +640,7 @@ enum class AppInitFlags : uint8_t
 class Application final
 {
     friend void InitApp(CommandLineArgs args, AppInitFlags flags);
-    friend class SafeAlloc;
+    friend class safe_alloc;
     friend class AppWindow;
     friend class AppRender;
     friend class AppInput;

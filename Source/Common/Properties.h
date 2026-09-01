@@ -82,7 +82,7 @@ public:
 
         if (size != 0) {
             FO_VERIFY_AND_THROW(value, "Source value pointer is null");
-            MemCopy(data, value, size);
+            mem_copy(data, value, size);
         }
     }
 
@@ -90,7 +90,7 @@ public:
     void SetAs(T value)
     {
         auto target = Alloc(sizeof(T));
-        MemCopy(target, &value, sizeof(T));
+        mem_copy(target, &value, sizeof(T));
     }
 
     void Pass(span<const uint8_t> value);
@@ -115,7 +115,7 @@ class Property final
 {
     friend class PropertyRegistrar;
     friend class Properties;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     Property(const Property&) = delete;
@@ -454,7 +454,7 @@ class PropertyRegistrar final
 
 public:
     PropertyRegistrar() = delete;
-    PropertyRegistrar(string_view type_name, EngineSideKind side, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver);
+    PropertyRegistrar(string_view type_name, EngineSideKind side, ptr<hash_resolver> hashes, ptr<NameResolver> name_resolver);
     PropertyRegistrar(const PropertyRegistrar&) = delete;
     PropertyRegistrar(PropertyRegistrar&&) noexcept = default;
     auto operator=(const PropertyRegistrar&) = delete;
@@ -471,7 +471,7 @@ public:
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
     [[nodiscard]] auto GetPropertyGroups() const noexcept -> map<string, vector<ptr<const Property>>>;
     [[nodiscard]] auto GetComponents() const noexcept -> const unordered_map<string, ptr<const Property>>& { return _registeredComponents; }
-    [[nodiscard]] auto GetHashResolver() const noexcept -> ptr<HashResolver> { return _hashResolver; }
+    [[nodiscard]] auto GetHashResolver() const noexcept -> ptr<hash_resolver> { return _hashResolver; }
     [[nodiscard]] auto GetNameResolver() const noexcept -> ptr<NameResolver> { return _nameResolver; }
 
     auto RegisterProperty(const initializer_list<string_view>& tokens) -> ptr<const Property> { return RegisterProperty({tokens.begin(), tokens.end()}); }
@@ -490,7 +490,7 @@ private:
     const hstring _typeNamePlural;
     const EngineSideKind _side;
     const hstring _propMigrationRuleName;
-    mutable ptr<HashResolver> _hashResolver;
+    mutable ptr<hash_resolver> _hashResolver;
     mutable ptr<NameResolver> _nameResolver;
     vector<unique_nptr<Property>> _registeredProperties {};
     vector<DataPropertyEntry> _dataProperties {};
@@ -674,7 +674,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
             size_t arr_size = data.size() / prop->GetBaseSize();
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
-            MemCopy(result.data(), data.data(), data.size());
+            mem_copy(result.data(), data.data(), data.size());
         }
     }
 
@@ -802,7 +802,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
             size_t arr_size = data.size() / prop->GetBaseSize();
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
-            MemCopy(result.data(), data.data(), data.size());
+            mem_copy(result.data(), data.data(), data.size());
         }
     }
 
@@ -997,7 +997,7 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
             }
 
             auto buf = prop_data.Alloc(data_size);
-            MemFill(buf, 0, data_size);
+            mem_fill(buf, 0, data_size);
             size_t data_pos = 0;
 
             uint32_t arr_size = static_cast<uint32_t>(new_value.size());
@@ -1011,7 +1011,7 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
                 data_pos += sizeof(str_size);
 
                 if (str_size != 0) {
-                    MemCopy(buf.offset(data_pos), str.data(), str_size);
+                    mem_copy(buf.offset(data_pos), str.data(), str_size);
                     data_pos += str_size;
                 }
             }

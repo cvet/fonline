@@ -66,7 +66,7 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
             },
     };
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SpriteInfoTestPack");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteInfoTestPack");
     source->AddFile("SpriteInfo/TestPack.foinfo", WriteSpriteInfoFile({entry}));
 
     FileSystem resources;
@@ -138,7 +138,7 @@ static auto MakeModelAnimationInfoResources(string_view content) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AnimationInfoTestPack");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationInfoTestPack");
     source->AddFile("ModelAnimationInfo.foinfo", content);
 
     FileSystem resources;
@@ -187,7 +187,7 @@ static void AddTestMigrationRule(EngineMetadata& meta, string_view target, strin
 
 static auto HashTestMigrationToken(EngineMetadata& meta, string_view value) -> hstring
 {
-    return meta.Hashes.ToHashedString(value);
+    return meta.Hashes.to_hashed_string(value);
 }
 
 static auto ResolveTestMigrationRule(EngineMetadata& meta, string_view target) -> optional<hstring>
@@ -307,7 +307,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         FileSystem resources = MakeSpriteAnimationInfoResources();
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Art/Test.png"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Art/Test.png"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Sprite.has_value());
         const SpriteInfo& sprite_info = *info->Sprite;
@@ -318,7 +318,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         CHECK(sprite_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
         REQUIRE(sprite_info.Directions.front().Frames.back().SharedFrameIndex.has_value());
         CHECK(*sprite_info.Directions.front().Frames.back().SharedFrameIndex == 0);
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Art/Missing.png"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Art/Missing.png"))));
     }
 
     SECTION("RejectsUnsupportedSpriteInfoVersion")
@@ -328,7 +328,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         string invalid_info = info_file.GetStr();
         invalid_info = strex(invalid_info).replace("InfoVersion = 1", "InfoVersion = 2").str();
 
-        auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
+        auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
         source->AddFile("SpriteInfo/TestPack.foinfo", invalid_info);
         FileSystem invalid_resources;
         invalid_resources.AddCustomSource(std::move(source));
@@ -348,7 +348,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
         meta.RegisterAnimationInfo(resources);
 
-        hstring model_name = meta.Hashes.ToHashedString("Critters/Test.fo3d");
+        hstring model_name = meta.Hashes.to_hashed_string("Critters/Test.fo3d");
         auto info = meta.GetAnimationInfo(model_name);
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
@@ -397,7 +397,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
         meta.RegisterAnimationInfo(resources);
 
-        auto static_info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Static.fo3d"));
+        auto static_info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Static.fo3d"));
         REQUIRE(static_cast<bool>(static_info));
         REQUIRE(static_info->Model.has_value());
         const ModelAnimationInfo& static_model_info = *static_info->Model;
@@ -406,7 +406,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         CHECK(static_model_info.ModelBounds.Min.x == -4.0f);
         CHECK(static_model_info.ViewBounds.Max.z == 1.5f);
 
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Missing.fo3d"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Missing.fo3d"))));
     }
 
     SECTION("MissingResourceLeavesLookupEmpty")
@@ -414,7 +414,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         EngineMetadata meta {[] { }};
         FileSystem resources;
         CHECK_NOTHROW(meta.RegisterAnimationInfo(resources));
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"))));
     }
 
     SECTION("RejectsPresentEmptyResource")
@@ -486,7 +486,7 @@ BoundsMaxZ = 2 2
         FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_DURATIONS));
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
         const ModelAnimationInfo& model_info = *info->Model;
@@ -501,7 +501,7 @@ BoundsMaxZ = 2 2
         FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_BOUNDS));
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
         const ModelAnimationInfo& model_info = *info->Model;

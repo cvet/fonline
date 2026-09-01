@@ -233,7 +233,7 @@ public:
                 cb._unsubscribeCallback();
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                report_exception_and_continue(ex);
             }
         }
     }
@@ -266,7 +266,7 @@ public:
                 throw GenericException("Some of subscriber still subscribed", _subscriberCallbacks.size());
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                report_exception_and_continue(ex);
             }
         }
     }

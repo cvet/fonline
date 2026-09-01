@@ -214,7 +214,7 @@ TEST_CASE("CommonRemoteCallWireSizes")
 
     SECTION("StructSizesAreTheSumOfTheirFields")
     {
-        auto layout = SafeAlloc::MakeShared<StructLayoutDesc>();
+        auto layout = safe_alloc::make_shared<StructLayoutDesc>();
         layout->Fields.emplace_back();
         layout->Fields.back().Type = make_primitive("int32", sizeof(int32_t));
         layout->Fields.emplace_back();
@@ -249,43 +249,43 @@ TEST_CASE("CommonRemoteCallWireSizes")
 TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
 {
     vector<uint8_t> data;
-    DataWriter writer {data};
+    data_writer writer {data};
     vector<ucolor> pixels {ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}};
 
-    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-    writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
-    writer.Write<uint16_t>(uint16_t {2});
-    writer.Write<uint16_t>(uint16_t {75});
-    writer.Write<uint8_t>(uint8_t {1});
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {75});
+    writer.write<uint8_t>(uint8_t {1});
 
-    writer.Write<uint8_t>(uint8_t {0});
-    writer.Write<int16_t>(int16_t {-3});
-    writer.Write<int16_t>(int16_t {4});
-    writer.Write<uint16_t>(uint16_t {2});
-    writer.Write<uint16_t>(uint16_t {1});
-    writer.Write<int16_t>(int16_t {5});
-    writer.Write<int16_t>(int16_t {-6});
-    writer.WriteObjectVector(pixels);
-    writer.Write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
-    writer.Write<uint16_t>(uint16_t {3});
-    writer.Write<uint32_t>(uint32_t {3});
-    writer.Write<uint16_t>(uint16_t {2});
-    writer.Write<uint16_t>(uint16_t {1});
-    writer.Write<int32_t>(int32_t {0});
-    writer.Write<int32_t>(int32_t {0});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {2});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {1});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {1});
-    writer.Write<uint16_t>(uint16_t {2});
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<int16_t>(int16_t {-3});
+    writer.write<int16_t>(int16_t {4});
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<int16_t>(int16_t {5});
+    writer.write<int16_t>(int16_t {-6});
+    writer.write_object_vector(pixels);
+    writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
+    writer.write<uint16_t>(uint16_t {3});
+    writer.write<uint32_t>(uint32_t {3});
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {2});
 
-    writer.Write<uint8_t>(uint8_t {1});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
     vector<uint8_t> containing_data {0xAA, 0xBB, 0xCC};
     containing_data.insert(containing_data.end(), data.begin(), data.end());

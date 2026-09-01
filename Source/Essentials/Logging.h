@@ -41,38 +41,38 @@
 
 FO_BEGIN_NAMESPACE
 
-enum class LogType : uint8_t
+enum class log_type : uint8_t
 {
-    Info,
-    InfoSection,
-    Warning,
-    Error,
+    info,
+    info_section,
+    warning,
+    error,
 };
 
-using LogFunc = function<void(LogType, string_view, nptr<const CatchedStackTraceData>)>;
+using log_func = function<void(log_type, string_view, nptr<const catched_stack_trace_data>)>;
 
 // Write formatted text
-extern void WriteLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st = nullptr) noexcept;
+extern void write_log_message(log_type type, string_view message, nptr<const catched_stack_trace_data> st = nullptr) noexcept;
 
 template<typename... Args>
-void WriteLog(std::format_string<Args...>&& format, Args&&... args) noexcept
+void write_log(std::format_string<Args...>&& format, Args&&... args) noexcept
 {
-    WriteLogMessage(LogType::Info, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
+    write_log_message(log_type::info, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
 }
 
 template<typename... Args>
-void WriteLog(LogType type, std::format_string<Args...>&& format, Args&&... args) noexcept
+void write_log(log_type type, std::format_string<Args...>&& format, Args&&... args) noexcept
 {
-    WriteLogMessage(type, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
+    write_log_message(type, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
 }
 
-inline void WriteLog(string_view str) noexcept
+inline void write_log(string_view str) noexcept
 {
-    WriteLogMessage(LogType::Info, strex(strex::safe_format, "{}", str));
+    write_log_message(log_type::info, strex(strex::safe_format, "{}", str));
 }
 
 // Control
-extern void SetLogCallback(string_view key, LogFunc callback);
-extern void LogDisableTags();
+extern void set_log_callback(string_view key, log_func callback);
+extern void log_disable_tags();
 
 FO_END_NAMESPACE

@@ -49,7 +49,7 @@ FO_SCRIPT_API void Common_Game_BreakIntoDebugger(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
-    BreakIntoDebugger();
+    break_into_debugger();
 }
 
 ///@ ExportMethod
@@ -57,7 +57,7 @@ FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
 {
     ignore_unused(engine);
 
-    WriteLog("{}", text);
+    write_log("{}", text);
 }
 
 ///@ ExportMethod
@@ -134,7 +134,7 @@ FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, string_vie
     ignore_unused(engine);
 
     size_t decode_length = text.length();
-    uint32_t ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    uint32_t ch = utf8::decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
 
     length = numeric_cast<int32_t>(decode_length);
     return ch;
@@ -146,7 +146,7 @@ FO_SCRIPT_API string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t ucs
     ignore_unused(engine);
 
     char buf[4];
-    size_t len = utf8::Encode(ucs, buf);
+    size_t len = utf8::encode(ucs, buf);
     return {buf, len};
 }
 
@@ -627,7 +627,7 @@ FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timesp
 ///@ ExportMethod
 FO_SCRIPT_API LanguageName Common_Game_GetLanguage(ptr<BaseEngine> engine)
 {
-    return LanguageName {engine->Hashes.ToHashedString(engine->Settings->Language)};
+    return LanguageName {engine->Hashes.to_hashed_string(engine->Settings->Language)};
 }
 
 ///@ ExportMethod

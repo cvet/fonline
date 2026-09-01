@@ -249,7 +249,7 @@ auto ScriptType::GetBaseType() const -> refcount_nptr<ScriptType>
         return nullptr;
     }
 
-    return SafeAlloc::MakeRefCounted<ScriptType>(base);
+    return safe_alloc::make_refcounted<ScriptType>(base);
 }
 
 auto ScriptType::GetInterfaceCount() const -> int32_t
@@ -266,7 +266,7 @@ auto ScriptType::GetInterface(int32_t index) const -> refcount_nptr<ScriptType>
     if (index >= 0 && index < numeric_cast<int32_t>(_typeInfo->GetInterfaceCount())) {
         nptr<AngelScript::asITypeInfo> type_info = _typeInfo->GetInterface(index);
         FO_VERIFY_AND_THROW(type_info, "Missing interface type info");
-        return SafeAlloc::MakeRefCounted<ScriptType>(type_info);
+        return safe_alloc::make_refcounted<ScriptType>(type_info);
     }
 
     return nullptr;
@@ -474,7 +474,7 @@ static auto ScriptTypeOfFactory(AngelScript::asITypeInfo* raw_ot) -> ScriptTypeO
     auto ot = make_ptr(raw_ot);
     nptr<AngelScript::asITypeInfo> sub_type = ot->GetSubType();
     FO_VERIFY_AND_THROW(sub_type, "Template sub type info is null");
-    auto script_type = SafeAlloc::MakeRefCounted<ScriptTypeOf>(sub_type);
+    auto script_type = safe_alloc::make_refcounted<ScriptTypeOf>(sub_type);
     return script_type.release_ownership();
 }
 
@@ -488,7 +488,7 @@ static auto ScriptTypeOfFactory2(AngelScript::asITypeInfo* raw_ot, void* raw_ref
     FO_VERIFY_AND_THROW(sub_type, "Template sub type info is null");
 
     if (sub_type->GetTypeId() <= AngelScript::asTYPEID_DOUBLE) {
-        auto script_type = SafeAlloc::MakeRefCounted<ScriptTypeOf>(nullptr);
+        auto script_type = safe_alloc::make_refcounted<ScriptTypeOf>(nullptr);
         return script_type.release_ownership();
     }
 
@@ -497,7 +497,7 @@ static auto ScriptTypeOfFactory2(AngelScript::asITypeInfo* raw_ot, void* raw_ref
     auto ref_object = NativeDataProvider::ReadHandleSlot(ref);
     FO_VERIFY_AND_THROW(ref_object, "Reference handle object is null");
     auto ref_obj = ref_object.reinterpret_as<const AngelScript::asIScriptObject>();
-    auto script_type = SafeAlloc::MakeRefCounted<ScriptTypeOf>(ref_obj->GetObjectType());
+    auto script_type = safe_alloc::make_refcounted<ScriptTypeOf>(ref_obj->GetObjectType());
     return script_type.release_ownership();
 }
 
@@ -531,7 +531,7 @@ auto ScriptTypeOf::ConvertToType() -> refcount_nptr<ScriptType>
         return nullptr;
     }
 
-    return SafeAlloc::MakeRefCounted<ScriptType>(_typeInfo);
+    return safe_alloc::make_refcounted<ScriptType>(_typeInfo);
 }
 
 static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
@@ -611,7 +611,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
             nptr<AngelScript::asITypeInfo> enum_type = engine->GetEnumByIndex(i);
             FO_VERIFY_AND_THROW(enum_type, "Missing global enum type at index");
 
-            auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type);
+            auto type = safe_alloc::make_refcounted<ScriptType>(enum_type);
             auto value = make_ptr(type.get_pp()).reinterpret_as<void>();
             enums->InsertLast(value);
         }
@@ -629,7 +629,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
             nptr<AngelScript::asITypeInfo> enum_type = module->GetEnumByIndex(i);
             FO_VERIFY_AND_THROW(enum_type, "Missing module enum type at index");
 
-            auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type);
+            auto type = safe_alloc::make_refcounted<ScriptType>(enum_type);
             auto value = make_ptr(type.get_pp()).reinterpret_as<void>();
             enums->InsertLast(value);
         }

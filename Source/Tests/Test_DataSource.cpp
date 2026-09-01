@@ -349,7 +349,7 @@ static auto MakeArcanumDat(string_view file_name, string_view file_content) -> s
         plain_content.emplace_back(numeric_cast<uint8_t>(ch));
     }
 
-    auto packed_content = Compressor::Compress(plain_content);
+    auto packed_content = compressor::compress(plain_content);
     string dat {reinterpret_cast<const char*>(packed_content.data()), packed_content.size()};
     string tree;
     auto name_size = numeric_cast<uint32_t>(file_name.size());

@@ -196,7 +196,7 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("StagingPathDerivesFromLivePath")
     {
-        // Both helpers depend on Platform::GetExePath, so the test only validates the
+        // Both helpers depend on platform::get_exe_path, so the test only validates the
         // structural contract: staging is the live path with a non-empty suffix appended
         string live = GetClientRuntimeLivePath();
         string staging = MakeClientRuntimeStagingPath(live);

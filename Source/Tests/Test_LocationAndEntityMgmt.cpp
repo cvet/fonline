@@ -759,12 +759,12 @@ namespace LocEntity
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
+        auto writer = data_writer(map_data);
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         return map_data;
     }
 
@@ -776,24 +776,24 @@ namespace LocEntity
         auto registrar = proto_engine.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -817,17 +817,17 @@ namespace LocEntity
     {
         auto metadata_blob = MakeLocEntityMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("LocEntityCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
 
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
@@ -836,7 +836,7 @@ namespace LocEntity
         auto fomap_blob = MakeEmptyMapBlob();
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("LocEntityRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("LocEntityCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("LocEntityItem.fopro-bin-server", item_blob);
@@ -869,7 +869,7 @@ namespace LocEntity
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -888,7 +888,7 @@ namespace LocEntity
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
 
 #define RUN_LEM_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("LocEntity::" func_name)); \
@@ -1664,11 +1664,11 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("TestLocation"));
+            auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"));
             server->EntityMngr.MakePersistent(location, true, true);
             location_id = location->GetId();
 
-            auto custom = server->EntityMngr.CreateCustomInnerEntity(location, server->Hashes.ToHashedString("CoverageLocItems"), {});
+            auto custom = server->EntityMngr.CreateCustomInnerEntity(location, server->Hashes.to_hashed_string("CoverageLocItems"), {});
             REQUIRE(custom->IsPersistent());
             custom_id = custom->GetId();
         }
@@ -1698,7 +1698,7 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 
         auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-        hstring custom_type = server->Hashes.ToHashedString("CoverageTarget");
+        hstring custom_type = server->Hashes.to_hashed_string("CoverageTarget");
 
         // Only registry lookups are asserted, because reading properties needs the entity covered and a test
         // holding just the engine lock cannot take a pre-existing one into its context
@@ -1930,13 +1930,13 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
     auto clear_dispatcher_hooks = scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); });
 
     size_t cancellation_exception_reports = 0;
-    auto previous_exception_callback = GetExceptionCallback();
-    SetExceptionCallback([&cancellation_exception_reports](string_view message, const CatchedStackTraceData&, bool) {
+    auto previous_exception_callback = get_exception_callback();
+    set_exception_callback([&cancellation_exception_reports](string_view message, const catched_stack_trace_data&, bool) {
         if (message.find("Injected time-event cancellation notification failure") != string_view::npos) {
             cancellation_exception_reports++;
         }
     });
-    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { SetExceptionCallback(std::move(previous)); });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { set_exception_callback(std::move(previous)); });
 
     REQUIRE_NOTHROW(server->TimeEventMngr.CancelAllForEntity(cr));
     CHECK(cancel_calls == event_count);
@@ -2154,7 +2154,7 @@ TEST_CASE("TimeEventManagerFiresScriptCallbacks")
     auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
 
     auto start_self_event = [&server, &cr](string_view func_name, timespan repeat) {
-        auto timer_func = server->FindFunc<void, ptr<ScriptSelfEntity>>(server->Hashes.ToHashedString(func_name));
+        auto timer_func = server->FindFunc<void, ptr<ScriptSelfEntity>>(server->Hashes.to_hashed_string(func_name));
         REQUIRE(timer_func);
         return server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, repeat, {});
     };
@@ -2202,9 +2202,9 @@ TEST_CASE("TimeEventManagerFiresScriptCallbacks")
     {
         (void)start_self_event("LocEntity::OnCritterThrowingTimer", timespan {std::chrono::seconds {5}});
 
-        auto prev_callback = GetExceptionCallback();
-        SetExceptionCallback([](string_view, const CatchedStackTraceData&, bool) { });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        auto prev_callback = get_exception_callback();
+        set_exception_callback([](string_view, const catched_stack_trace_data&, bool) { });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
 
         backdate_all_events();
         server->TimeEventMngr.ProcessTimeEvents();

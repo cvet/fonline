@@ -359,19 +359,19 @@ struct std::formatter<FO_NAMESPACE synctime> : formatter<FO_NAMESPACE timespan>
 FO_BEGIN_NAMESPACE
 
 // Time measuring
-class [[nodiscard]] TimeMeter
+class [[nodiscard]] time_meter
 {
 public:
-    TimeMeter() noexcept;
+    time_meter() noexcept;
 
-    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return _paused ? _pausedDuration : nanotime::now() - _startTime; }
+    [[nodiscard]] auto get_duration() const noexcept -> timespan { return _paused ? _paused_duration : nanotime::now() - _start_time; }
 
-    void Pause() noexcept;
-    void Resume() noexcept;
+    void pause() noexcept;
+    void resume() noexcept;
 
 private:
-    nanotime _startTime;
-    timespan _pausedDuration {};
+    nanotime _start_time;
+    timespan _paused_duration {};
     bool _paused {};
 };
 

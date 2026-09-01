@@ -174,7 +174,7 @@ TEST_CASE("WorkerPoolKeyed")
             return std::nullopt;
         });
 
-        // Wait until the first job is actually running before pushing replacements; otherwise the
+        // wait until the first job is actually running before pushing replacements; otherwise the
         // replacements would hit the queued-dedup branch (no-op) instead of the running branch
         REQUIRE(WaitFor([&] { return run_count.load() == 1; }));
 
@@ -403,7 +403,7 @@ TEST_CASE("WorkerPoolCancel")
         CHECK(pool.Cancel(key));
 
         first_release.store(1);
-        // Wait for the in-flight run to finalize. After that, no rerun should happen
+        // wait for the in-flight run to finalize. After that, no rerun should happen
         std::this_thread::sleep_for(std::chrono::milliseconds {50});
         pool.WaitIdle();
         CHECK(runs.load() == 1);

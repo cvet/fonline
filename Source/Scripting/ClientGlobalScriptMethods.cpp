@@ -645,11 +645,11 @@ FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngin
 
     clip.SetLooped(looped);
 
-    auto video = SafeAlloc::MakeRefCounted<VideoPlayback>();
+    auto video = safe_alloc::make_refcounted<VideoPlayback>();
 
     video->PlaybackResources.emplace(std::move(clip), std::move(tex));
 
-    video->AddRef();
+    video->add_ref();
     return video;
 }
 
@@ -908,7 +908,7 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, K
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::IfaceSprites);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::IfaceSprites);
 }
 
 ///@ ExportMethod
@@ -920,7 +920,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, hstring 
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::MapSprites);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::MapSprites);
 }
 
 ///@ ExportMethod
@@ -932,7 +932,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, hstri
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::OneImage);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::OneImage);
 }
 
 ///@ ExportMethod
@@ -1302,7 +1302,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
         }
     });
 
-    MemFill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
+    mem_fill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
 
     for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
         client->DrawCritterModelLayers[i] = layers[i];
@@ -1561,9 +1561,9 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
             for (int32_t y = 0; y < size.height / 2; y++) {
                 auto top = numeric_cast<size_t>(y) * width;
                 auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                MemCopy(row_buf_data, pixels_data.get() + top, row_bytes);
-                MemCopy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
-                MemCopy(pixels_data.get() + bottom, row_buf_data, row_bytes);
+                mem_copy(row_buf_data, pixels_data.get() + top, row_bytes);
+                mem_copy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
+                mem_copy(pixels_data.get() + bottom, row_buf_data, row_bytes);
             }
         }
     }

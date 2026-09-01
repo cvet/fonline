@@ -114,7 +114,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> 
         throw ItemManagerException("Item proto not found", pid);
     }
 
-    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, proto, props);
+    auto item = safe_alloc::make_refcounted<Item>(_engine, ident_t {}, proto, props);
     _engine->EntityMngr.RegisterItem(item);
 
     item->SetStatic(false);
@@ -244,7 +244,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            report_exception_and_continue(ex);
         }
 
         // Each teardown pass must strictly reduce the item's remaining dependencies; a non-converging

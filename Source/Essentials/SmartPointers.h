@@ -40,16 +40,24 @@
 FO_BEGIN_NAMESPACE
 
 // Template helpers
+
+// Either spelling counts: engine types write the protocol in snake_case, AngelScript's own types bring
+// PascalCase from the library
 template<typename T>
 concept refcountable = requires(T t) {
+    t.add_ref();
+    t.release();
+} || requires(T t) {
     t.AddRef();
     t.Release();
 };
 
 template<typename T>
-concept try_refcountable = refcountable<T> && requires(T t) {
+concept try_refcountable = refcountable<T> && (requires(T t) {
+    { t.try_add_ref() } -> std::convertible_to<bool>;
+} || requires(T t) {
     { t.TryAddRef() } -> std::convertible_to<bool>;
-};
+});
 
 template<typename From, typename To>
 concept dynamically_castable_to = requires(From& from) { dynamic_cast<To&>(from); };
@@ -60,6 +68,43 @@ namespace details
     [[nodiscard]] auto make_void_ptr(T* value) noexcept -> void*
     {
         return const_cast<void*>(static_cast<const void*>(value));
+    }
+
+    // Reaches the pointee through whichever spelling it declares. The forwarding reference keeps the
+    // caller constness: bound as const, a wrapper hands out a const pointee and a non-const Release fails
+    template<typename T>
+    FO_FORCE_INLINE void call_add_ref(T&& value) noexcept
+    {
+        if constexpr (requires { value->add_ref(); }) {
+            value->add_ref();
+        }
+        else {
+            value->AddRef();
+        }
+    }
+
+    template<typename T>
+    FO_FORCE_INLINE void call_release(T&& value) noexcept
+    {
+        if constexpr (requires { value->release(); }) {
+            value->release();
+        }
+        else {
+            value->Release();
+        }
+    }
+
+    template<typename T>
+    [[nodiscard]] FO_FORCE_INLINE auto call_try_add_ref(T&& value) noexcept -> bool
+    {
+        if constexpr (requires {
+                          { value->try_add_ref() } -> std::convertible_to<bool>;
+                      }) {
+            return value->try_add_ref();
+        }
+        else {
+            return value->TryAddRef();
+        }
     }
 }
 
@@ -1092,13 +1137,13 @@ private:
     FO_FORCE_INLINE void add_ref() noexcept
     {
         if (_ptr != nullptr) {
-            _ptr->AddRef();
+            details::call_add_ref(_ptr);
         }
     }
     FO_FORCE_INLINE void dec_ref() noexcept
     {
         if (_ptr != nullptr) {
-            _ptr->Release();
+            details::call_release(_ptr);
         }
     }
 
@@ -1152,7 +1197,7 @@ public:
         }
 
         if constexpr (try_refcountable<T>) {
-            if (!p->TryAddRef()) {
+            if (!details::call_try_add_ref(p)) {
                 return {};
             }
 
@@ -1343,13 +1388,13 @@ private:
     FO_FORCE_INLINE void add_ref() noexcept
     {
         if (_ptr != nullptr) {
-            _ptr->AddRef();
+            details::call_add_ref(_ptr);
         }
     }
     FO_FORCE_INLINE void dec_ref() noexcept
     {
         if (_ptr != nullptr) {
-            _ptr->Release();
+            details::call_release(_ptr);
         }
     }
 
@@ -1468,13 +1513,13 @@ public:
     auto operator=(shared_ptr_control_block&&) noexcept = delete;
     virtual ~shared_ptr_control_block() = default;
 
-    FO_FORCE_INLINE void add_strong_ref() noexcept { _strongRefs.fetch_add(1, std::memory_order_relaxed); }
+    FO_FORCE_INLINE void add_strong_ref() noexcept { _strong_refs.fetch_add(1, std::memory_order_relaxed); }
     [[nodiscard]] FO_FORCE_INLINE auto add_strong_ref_if_alive() noexcept -> bool
     {
-        int64_t refs = _strongRefs.load(std::memory_order_relaxed);
+        int64_t refs = _strong_refs.load(std::memory_order_relaxed);
 
         while (refs > 0) {
-            if (_strongRefs.compare_exchange_weak(refs, refs + 1, std::memory_order_acquire, std::memory_order_relaxed)) {
+            if (_strong_refs.compare_exchange_weak(refs, refs + 1, std::memory_order_acquire, std::memory_order_relaxed)) {
                 return true;
             }
         }
@@ -1483,32 +1528,32 @@ public:
     }
     FO_FORCE_INLINE void release_strong_ref() noexcept
     {
-        if (_strongRefs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        if (_strong_refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             destroy_object();
             release_weak_ref();
         }
     }
-    FO_FORCE_INLINE void add_weak_ref() noexcept { _weakRefs.fetch_add(1, std::memory_order_relaxed); }
+    FO_FORCE_INLINE void add_weak_ref() noexcept { _weak_refs.fetch_add(1, std::memory_order_relaxed); }
     FO_FORCE_INLINE void release_weak_ref() noexcept
     {
-        if (_weakRefs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        if (_weak_refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             delete this;
         }
     }
     [[nodiscard]] FO_FORCE_INLINE auto strong_ref_count() const noexcept -> size_t
     {
-        int64_t refs = _strongRefs.load(std::memory_order_relaxed);
+        int64_t refs = _strong_refs.load(std::memory_order_relaxed);
         return refs > 0 ? static_cast<size_t>(refs) : 0;
     }
 
 private:
     virtual void destroy_object() noexcept = 0;
 
-    std::atomic<int64_t> _strongRefs {1};
-    std::atomic<int64_t> _weakRefs {1}; // one weak ref is held collectively by all strong refs
+    std::atomic<int64_t> _strong_refs {1};
+    std::atomic<int64_t> _weak_refs {1}; // one weak ref is held collectively by all strong refs
 };
 
-// Control block with the object embedded in the same allocation (what SafeAlloc::MakeShared creates)
+// Control block with the object embedded in the same allocation (what safe_alloc::make_shared creates)
 template<typename T>
 class shared_ptr_storage_block final : public shared_ptr_control_block
 {
@@ -1527,7 +1572,7 @@ private:
     alignas(T) uint8_t _storage[sizeof(T)];
 };
 
-class SafeAlloc;
+class safe_alloc;
 
 template<typename T>
 class shared_ptr;
@@ -1545,7 +1590,7 @@ class shared_ptr
     friend class shared_ptr;
     template<typename U>
     friend class weak_ptr;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     using element_type = T;
@@ -1868,18 +1913,18 @@ class enable_shared_from_this
 public:
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() -> shared_ptr<T>
     {
-        auto locked = _weakThis.lock();
+        auto locked = _weak_this.lock();
         FO_BASIC_STRONG_ASSERT(locked);
         return locked;
     }
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() const -> shared_ptr<const T>
     {
-        shared_ptr<const T> locked = _weakThis.lock();
+        shared_ptr<const T> locked = _weak_this.lock();
         FO_BASIC_STRONG_ASSERT(locked);
         return locked;
     }
-    [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() noexcept -> weak_ptr<T> { return _weakThis; }
-    [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() const noexcept -> weak_ptr<const T> { return weak_ptr<const T>(_weakThis); }
+    [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() noexcept -> weak_ptr<T> { return _weak_this; }
+    [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() const noexcept -> weak_ptr<const T> { return weak_ptr<const T>(_weak_this); }
 
 protected:
     FO_FORCE_INLINE constexpr enable_shared_from_this() noexcept = default;
@@ -1892,15 +1937,15 @@ protected:
     FO_FORCE_INLINE ~enable_shared_from_this() = default;
 
 private:
-    weak_ptr<T> _weakThis {};
+    weak_ptr<T> _weak_this {};
 };
 
-// Called by SafeAlloc::MakeShared right after construction; the second overload is the no-op fallback
+// Called by safe_alloc::make_shared right after construction; the second overload is the no-op fallback
 // for types that do not derive from enable_shared_from_this
 template<typename T, typename X>
 FO_FORCE_INLINE void init_shared_from_this_weak(const shared_ptr<T>& owner, enable_shared_from_this<X>* base) noexcept
 {
-    base->_weakThis = owner;
+    base->_weak_this = owner;
 }
 
 template<typename T>

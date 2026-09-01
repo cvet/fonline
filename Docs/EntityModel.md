@@ -42,7 +42,7 @@ For generated metadata and registration flow, see [GeneratedApiAndMetadata.md](G
 - optional time-event data;
 - optional inner-entity holder entries;
 - destroying/destroyed state flags;
-- intrusive-style reference counting through `AddRef()` / `Release()`.
+- intrusive-style reference counting through `add_ref()` / `Release()`.
 
 Important accessors and mutation paths include:
 
@@ -118,7 +118,7 @@ width, an integer bound written as a fractional literal, a duplicated tag, and `
 Trusted binary restore (`RestoreData()` / `RestoreAllData()`) does not re-clamp: persisted values that
 fall outside a newly tightened range belong to the migration layer, not to per-write clamping.
 
-Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
+Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`mem_compare`): the total byte length of a payload does not raise its alignment requirement.
 
 ## Property runtime
 

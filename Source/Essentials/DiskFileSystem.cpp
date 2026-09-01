@@ -203,7 +203,7 @@ auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> b
         return true;
     }
 
-    return MemCompare((*existing_content).data(), content.data(), content.size());
+    return mem_compare((*existing_content).data(), content.data(), content.size());
 }
 
 auto fs_write_file(string_view path, string_view content) -> bool
@@ -376,7 +376,7 @@ auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
     return step(offset, data.data(), data.size());
 }
 
-static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, const FsFileVisitor& visitor)
+static void recursive_dir_look(string_view base_dir, string_view cur_dir, bool recursive, const fs_file_visitor& visitor)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -390,7 +390,7 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
         if (!path.empty() && path.front() != '.' && path.front() != '~') {
             if (dir_entry.is_directory()) {
                 if (path.front() != '_' && recursive) {
-                    RecursiveDirLook(base_dir, strex(cur_dir).combine_path(path), recursive, visitor);
+                    recursive_dir_look(base_dir, strex(cur_dir).combine_path(path), recursive, visitor);
                 }
             }
             else {
@@ -402,11 +402,11 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
     }
 }
 
-void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visitor)
+void fs_iterate_dir(string_view dir, bool recursive, const fs_file_visitor& visitor)
 {
     FO_STACK_TRACE_ENTRY();
 
-    RecursiveDirLook(dir, "", recursive, visitor);
+    recursive_dir_look(dir, "", recursive, visitor);
 }
 
 auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool

@@ -50,7 +50,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        auto pstr = SafeAlloc::MakeUnique<string>(data, length);
+        auto pstr = safe_alloc::make_unique<string>(data, length);
         auto released_string = pstr.release();
         return released_string.void_cast();
     }
@@ -77,7 +77,7 @@ public:
             *raw_length = numeric_cast<AngelScript::asUINT>(pstr->size());
         }
         if (raw_data != nullptr && !pstr->empty()) {
-            MemCopy(raw_data, pstr->data(), pstr->size());
+            mem_copy(raw_data, pstr->data(), pstr->size());
         }
 
         return 0;
@@ -368,7 +368,7 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
                 if (!str.empty()) {
                     size_t decode_length = str.length();
                     auto str_begin = ScriptStringCStrAt(str, 0);
-                    utf8::Decode(str_begin.get(), decode_length);
+                    utf8::decode(str_begin.get(), decode_length);
                     *length = numeric_cast<int32_t>(decode_length);
                 }
                 else {
@@ -387,7 +387,7 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
     while (raw_offset < str.length()) {
         auto char_begin = ScriptStringCStrAt(str, raw_offset);
         size_t decode_length = str.length() - raw_offset;
-        utf8::Decode(char_begin.get(), decode_length);
+        utf8::decode(char_begin.get(), decode_length);
 
         if (index > 0) {
             raw_offset += decode_length;
@@ -422,7 +422,7 @@ static auto IndexRawToUtf8(const string& str, int32_t index) -> int32_t
     for (size_t i = 0; i < str.length() && index > 0;) {
         auto char_begin = ScriptStringCStrAt(str, i);
         size_t decode_length = str.length() - i;
-        utf8::Decode(char_begin.get(), decode_length);
+        utf8::decode(char_begin.get(), decode_length);
         i += decode_length;
         index -= numeric_cast<int32_t>(decode_length);
         result++;
@@ -937,7 +937,7 @@ void RegisterAngelScriptString(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_STACK_TRACE_ENTRY();
 
     auto backend = GetScriptBackend(as_engine);
-    auto string_factory = SafeAlloc::MakeUnique<ScriptStringFactory>();
+    auto string_factory = safe_alloc::make_unique<ScriptStringFactory>();
 
     int32_t as_result = 0;
 

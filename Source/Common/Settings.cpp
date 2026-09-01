@@ -261,7 +261,7 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
                 string shown = IsSecretSettingName(key) ? string("***") : value;
-                WriteLog(LogType::Info, "Set {} to {}", key, shown);
+                write_log(log_type::info, "Set {} to {}", key, shown);
                 SetValue(key, value);
             }
         }
@@ -479,7 +479,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                             end_pos++;
                         }
                         else {
-                            WriteLog(LogType::Warning, "Environment variable {} for setting {} is not found", name, setting_name);
+                            write_log(log_type::warning, "Environment variable {} for setting {} is not found", name, setting_name);
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
                         }
                     }
@@ -492,7 +492,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                             end_pos++;
                         }
                         else {
-                            WriteLog(LogType::Warning, "File {} for setting {} is not found", file_path, setting_name);
+                            write_log(log_type::warning, "File {} for setting {} is not found", file_path, setting_name);
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
                         }
                     }

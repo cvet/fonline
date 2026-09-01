@@ -71,7 +71,7 @@ auto NetworkClientConnection::CreateSocketsConnection(ptr<ClientNetworkSettings>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<NetworkClientConnection_Sockets>(settings);
+    return safe_alloc::make_unique<NetworkClientConnection_Sockets>(settings);
 }
 
 NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetworkSettings> settings) :
@@ -83,7 +83,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     string_view host = _settings->ServerHost;
     uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-    WriteLog("Connecting to server '{}:{}'", host, port);
+    write_log("Connecting to server '{}:{}'", host, port);
 
 #else
     const string_view host = _settings->WebSocketHost;
@@ -91,11 +91,11 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
 
     if (!_settings->SecuredWebSockets) {
         WebRelated::SetWebSocketScheme(false);
-        WriteLog("Connecting to server 'ws://{}:{}'", host, port);
+        write_log("Connecting to server 'ws://{}:{}'", host, port);
     }
     else {
         WebRelated::SetWebSocketScheme(true);
-        WriteLog("Connecting to server 'wss://{}:{}'", host, port);
+        write_log("Connecting to server 'wss://{}:{}'", host, port);
     }
 #endif
 
@@ -111,7 +111,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
 
 #if !FO_WEB
         if (_settings->DisableTcpNagle && !_sock.set_nodelay(true)) {
-            WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
+            write_log("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
         }
 #endif
 
@@ -136,7 +136,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     }
 
     if (_settings->DisableTcpNagle && !_sock.set_nodelay(true)) {
-        WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
+        write_log("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
     }
 
     // After proxy connect succeeds, the network layer expects the same notion of "connected"
@@ -173,18 +173,18 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     // Authentication
     if (_settings->ProxyType == PROXY_SOCKS4) {
         // Connect
-        auto writer = DataWriter(send_buf);
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(4)); // Socks version
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
-        writer.Write<uint16_t>(net_sockets::host_to_net_u16(_gameAddrPort));
-        writer.Write<uint32_t>(_gameAddrIp);
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(0));
+        auto writer = data_writer(send_buf);
+        writer.write<uint8_t>(numeric_cast<uint8_t>(4)); // Socks version
+        writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
+        writer.write<uint16_t>(net_sockets::host_to_net_u16(_gameAddrPort));
+        writer.write<uint32_t>(_gameAddrIp);
+        writer.write<uint8_t>(numeric_cast<uint8_t>(0));
 
         recv_buf = send_recv(send_buf);
 
-        auto reader = DataReader(recv_buf);
-        b1 = reader.Read<uint8_t>(); // Null byte
-        b2 = reader.Read<uint8_t>(); // Answer code
+        auto reader = data_reader(recv_buf);
+        b1 = reader.read<uint8_t>(); // Null byte
+        b2 = reader.read<uint8_t>(); // Answer code
 
         if (b2 != 0x5A) {
             switch (b2) {
@@ -200,34 +200,34 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         }
     }
     else if (_settings->ProxyType == PROXY_SOCKS5) {
-        auto writer = DataWriter(send_buf);
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Count methods
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(2)); // Method
+        auto writer = data_writer(send_buf);
+        writer.write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
+        writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Count methods
+        writer.write<uint8_t>(numeric_cast<uint8_t>(2)); // Method
 
         recv_buf = send_recv(send_buf);
 
-        auto reader = DataReader(recv_buf);
-        b1 = reader.Read<uint8_t>(); // Socks version
-        b2 = reader.Read<uint8_t>(); // Method
+        auto reader = data_reader(recv_buf);
+        b1 = reader.read<uint8_t>(); // Socks version
+        b2 = reader.read<uint8_t>(); // Method
 
         if (b2 == 2) { // User/Password
             send_buf.clear();
 
             {
-                auto auth_writer = DataWriter(send_buf);
-                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Subnegotiation version
-                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyUser.length())); // Name length
-                auth_writer.WriteStringBytes(_settings->ProxyUser); // Name
-                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyPass.length())); // Pass length
-                auth_writer.WriteStringBytes(_settings->ProxyPass); // Pass
+                auto auth_writer = data_writer(send_buf);
+                auth_writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Subnegotiation version
+                auth_writer.write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyUser.length())); // Name length
+                auth_writer.write_string_bytes(_settings->ProxyUser); // Name
+                auth_writer.write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyPass.length())); // Pass length
+                auth_writer.write_string_bytes(_settings->ProxyPass); // Pass
             }
 
             recv_buf = send_recv(send_buf);
 
-            reader = DataReader(recv_buf);
-            b1 = reader.Read<uint8_t>(); // Subnegotiation version
-            b2 = reader.Read<uint8_t>(); // Status
+            reader = data_reader(recv_buf);
+            b1 = reader.read<uint8_t>(); // Subnegotiation version
+            b2 = reader.read<uint8_t>(); // Status
 
             if (b2 != 0) {
                 throw NetworkClientException("Invalid proxy user or password");
@@ -241,20 +241,20 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         send_buf.clear();
 
         {
-            auto connect_writer = DataWriter(send_buf);
-            connect_writer.Write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
-            connect_writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
-            connect_writer.Write<uint8_t>(numeric_cast<uint8_t>(0)); // Reserved
-            connect_writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // IP v4 address
-            connect_writer.Write<uint32_t>(_gameAddrIp);
-            connect_writer.Write<uint16_t>(net_sockets::host_to_net_u16(_gameAddrPort));
+            auto connect_writer = data_writer(send_buf);
+            connect_writer.write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
+            connect_writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
+            connect_writer.write<uint8_t>(numeric_cast<uint8_t>(0)); // Reserved
+            connect_writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // IP v4 address
+            connect_writer.write<uint32_t>(_gameAddrIp);
+            connect_writer.write<uint16_t>(net_sockets::host_to_net_u16(_gameAddrPort));
         }
 
         recv_buf = send_recv(send_buf);
 
-        reader = DataReader(recv_buf);
-        b1 = reader.Read<uint8_t>(); // Socks version
-        b2 = reader.Read<uint8_t>(); // Answer code
+        reader = data_reader(recv_buf);
+        b1 = reader.read<uint8_t>(); // Socks version
+        b2 = reader.read<uint8_t>(); // Answer code
 
         if (b2 != 0) {
             switch (b2) {
@@ -310,7 +310,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
                 throw NetworkClientException("Socket error during async connect", sock_error);
             }
 
-            WriteLog("Connection established");
+            write_log("Connection established");
 
             _isConnecting = false;
             _isConnected = true;

@@ -282,17 +282,17 @@ auto DataSource::MountDir(string_view dir, bool recursive, bool non_cached, bool
 
     if (!fs_is_dir(dir)) {
         if (maybe_not_available) {
-            return SafeAlloc::MakeUnique<DummySpace>();
+            return safe_alloc::make_unique<DummySpace>();
         }
 
         throw DataSourceException("Directory not found", dir);
     }
 
     if (non_cached) {
-        return SafeAlloc::MakeUnique<NonCachedDir>(dir, recursive);
+        return safe_alloc::make_unique<NonCachedDir>(dir, recursive);
     }
     else {
-        return SafeAlloc::MakeUnique<CachedDir>(dir, recursive);
+        return safe_alloc::make_unique<CachedDir>(dir, recursive);
     }
 }
 
@@ -307,23 +307,23 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
     string path = strex(dir).combine_path(name);
 
     if (name == "Embedded") {
-        return SafeAlloc::MakeUnique<EmbeddedFile>();
+        return safe_alloc::make_unique<EmbeddedFile>();
     }
     else if (name == "FilesList") {
-        return SafeAlloc::MakeUnique<FilesList>();
+        return safe_alloc::make_unique<FilesList>();
     }
     else if (is_file_present(strex("{}.zip", path))) {
-        return SafeAlloc::MakeUnique<ZipFile>(strex("{}.zip", path));
+        return safe_alloc::make_unique<ZipFile>(strex("{}.zip", path));
     }
     else if (is_file_present(strex("{}.bos", path))) {
-        return SafeAlloc::MakeUnique<ZipFile>(strex("{}.bos", path));
+        return safe_alloc::make_unique<ZipFile>(strex("{}.bos", path));
     }
     else if (is_file_present(strex("{}.dat", path))) {
-        return SafeAlloc::MakeUnique<FalloutDat>(strex("{}.dat", path));
+        return safe_alloc::make_unique<FalloutDat>(strex("{}.dat", path));
     }
 
     if (maybe_not_available) {
-        return SafeAlloc::MakeUnique<DummySpace>();
+        return safe_alloc::make_unique<DummySpace>();
     }
 
     throw DataSourceException("Data pack not found", path);
@@ -427,7 +427,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
     }
 
     size = stream_get_size(file);
-    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
     if (!stream_read_exact(file, make_span(buf_data, size))) {
@@ -548,7 +548,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     }
 
     size = fe.FileSize;
-    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
     if (!stream_read_exact(file, make_span(buf_data, size))) {
@@ -632,8 +632,8 @@ bool FalloutDat::ReadTree()
         }
 
         tree_size -= 28 + 4; // Subtract information block and files total
-        _memTree = SafeAlloc::MakeUniqueArr<uint8_t>(tree_size);
-        MemFill(_memTree, 0, tree_size);
+        _memTree = safe_alloc::make_unique_arr<uint8_t>(tree_size);
+        mem_fill(_memTree, 0, tree_size);
         ptr<uint8_t> tree_data = _memTree.get();
 
         if (!stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
@@ -649,19 +649,19 @@ bool FalloutDat::ReadTree()
             uint32_t fnsz = 0;
             auto fnsz_target = make_ptr(&fnsz).reinterpret_as<uint8_t>();
             ptr<const uint8_t> fnsz_source = tree_entry;
-            MemCopy(fnsz_target, fnsz_source, sizeof(fnsz));
+            mem_copy(fnsz_target, fnsz_source, sizeof(fnsz));
 
             uint32_t type = 0;
             auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
             auto type_source = tree_entry.offset(4 + fnsz + 4);
-            MemCopy(type_target, type_source, sizeof(type));
+            mem_copy(type_target, type_source, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
                 string raw_name;
                 raw_name.resize(numeric_cast<size_t>(fnsz));
                 auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
                 auto raw_name_source = tree_entry.offset(4);
-                MemCopy(raw_name_target, raw_name_source, raw_name.size());
+                mem_copy(raw_name_target, raw_name_source, raw_name.size());
                 string name = strex(raw_name).normalize_path_slashes();
 
                 if (type == 2) {
@@ -735,7 +735,7 @@ bool FalloutDat::ReadTree()
     }
 
     tree_size -= 4;
-    _memTree = SafeAlloc::MakeUniqueArr<uint8_t>(tree_size);
+    _memTree = safe_alloc::make_unique_arr<uint8_t>(tree_size);
     ptr<uint8_t> tree_data = _memTree.get();
 
     if (!stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
@@ -751,7 +751,7 @@ bool FalloutDat::ReadTree()
         uint32_t name_len = 0;
         auto name_len_target = make_ptr(&name_len).reinterpret_as<uint8_t>();
         ptr<const uint8_t> name_len_source = tree_entry;
-        MemCopy(name_len_target, name_len_source, sizeof(name_len));
+        mem_copy(name_len_target, name_len_source, sizeof(name_len));
 
         if (tree_pos + 4 + name_len > tree_size) {
             return false;
@@ -762,7 +762,7 @@ bool FalloutDat::ReadTree()
             raw_name.resize(numeric_cast<size_t>(name_len));
             auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
             auto raw_name_source = tree_entry.offset(4);
-            MemCopy(raw_name_target, raw_name_source, raw_name.size());
+            mem_copy(raw_name_target, raw_name_source, raw_name.size());
             string name = strex(raw_name).normalize_path_slashes();
 
             auto file_info = tree_entry.offset(4 + name_len);
@@ -803,7 +803,7 @@ auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64_t& write_tim
     uint32_t real_size = 0;
     auto real_size_target = make_ptr(&real_size).reinterpret_as<uint8_t>();
     auto real_size_source = file_info.offset(1);
-    MemCopy(real_size_target, real_size_source, sizeof(real_size));
+    mem_copy(real_size_target, real_size_source, sizeof(real_size));
 
     size = real_size;
     write_time = _writeTime;
@@ -826,29 +826,29 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
     uint8_t type = 0;
     auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
     auto type_source = file_info;
-    MemCopy(type_target, type_source, sizeof(type));
+    mem_copy(type_target, type_source, sizeof(type));
 
     uint32_t real_size = 0;
     auto real_size_target = make_ptr(&real_size).reinterpret_as<uint8_t>();
     auto real_size_source = file_info.offset(1);
-    MemCopy(real_size_target, real_size_source, sizeof(real_size));
+    mem_copy(real_size_target, real_size_source, sizeof(real_size));
 
     uint32_t packed_size = 0;
     auto packed_size_target = make_ptr(&packed_size).reinterpret_as<uint8_t>();
     auto packed_size_source = file_info.offset(5);
-    MemCopy(packed_size_target, packed_size_source, sizeof(packed_size));
+    mem_copy(packed_size_target, packed_size_source, sizeof(packed_size));
 
     int32_t offset = 0;
     auto offset_target = make_ptr(&offset).reinterpret_as<uint8_t>();
     auto offset_source = file_info.offset(9);
-    MemCopy(offset_target, offset_source, sizeof(offset));
+    mem_copy(offset_target, offset_source, sizeof(offset));
 
     if (!stream_set_read_pos(_datFile, offset, std::ios_base::beg)) {
         throw DataSourceException("Can't read file from fallout dat (1)", path);
     }
 
     size = real_size;
-    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
     if (type == 0) {
@@ -861,11 +861,11 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         // Packed data
         z_stream stream = {};
         stream.zalloc = [](voidpf, uInt items, uInt size_) -> void* {
-            constexpr SafeAllocator<uint8_t> allocator;
+            constexpr safe_allocator<uint8_t> allocator;
             return allocator.allocate(numeric_cast<size_t>(items) * size_);
         };
         stream.zfree = [](voidpf, voidpf address) {
-            constexpr SafeAllocator<uint8_t> allocator;
+            constexpr safe_allocator<uint8_t> allocator;
             allocator.deallocate(cast_from_void<uint8_t*>(address).get(), 0);
         };
 
@@ -919,7 +919,7 @@ struct EmbeddedZipMemStream
 
 ZipFile::ZipFile(string_view fname) :
     _fileName {fname},
-    _fileStream {SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName))}
+    _fileStream {safe_alloc::make_unique<std::ifstream>(fs_open_ifstream(_fileName))}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1092,7 +1092,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
         throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", path);
     }
 
-    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
+    auto buf = safe_alloc::make_unique_arr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
     int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
@@ -1122,7 +1122,7 @@ EmbeddedFile::EmbeddedFile()
     }
 
     if (default_array) {
-        WriteLog("Embedded resources not really embed");
+        write_log("Embedded resources not really embed");
         return;
     }
 
@@ -1136,9 +1136,9 @@ EmbeddedFile::EmbeddedFile()
         uint32_t embedded_size = 0;
 
         auto embedded_size_target = make_ptr(&embedded_size).reinterpret_as<uint8_t>();
-        MemCopy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
+        mem_copy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
 
-        auto mem_stream = SafeAlloc::MakeUnique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
+        auto mem_stream = safe_alloc::make_unique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
 
         return mem_stream.release().void_cast();
     };
@@ -1325,7 +1325,7 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
         throw DataSourceException("Can't read embedded file (unzOpenCurrentFile)", path);
     }
 
-    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
+    auto buf = safe_alloc::make_unique_arr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
     int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
@@ -1422,7 +1422,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     }
 
     size = fe.FileSize;
-    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
     if (!stream_read_exact(file, make_span(buf_data, size))) {

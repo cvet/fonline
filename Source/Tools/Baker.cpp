@@ -86,7 +86,7 @@ BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name)
     FO_VERIFY_AND_THROW(ctx->WriteData, "Baker context has no output writer");
     FO_VERIFY_AND_THROW(!baker_name.empty(), "Baker name is empty");
 
-    _context = SafeAlloc::MakeShared<BakingContext>(*ctx);
+    _context = safe_alloc::make_shared<BakingContext>(*ctx);
     _context->BakerName = baker_name;
 
     if (_context->Report) {
@@ -118,49 +118,49 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files, .PackBakedFiles = pack_baked_files, .Report = std::move(report), .OutputDiscovery = output_discovery});
+    auto ctx = safe_alloc::make_shared<BakingContext>(BakingContext {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files, .PackBakedFiles = pack_baked_files, .Report = std::move(report), .OutputDiscovery = output_discovery});
 
     if (vec_exists(request_bakers, MetadataBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<MetadataBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<MetadataBaker>(ctx));
     }
     if (vec_exists(request_bakers, ConfigBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ConfigBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<ConfigBaker>(ctx));
     }
     if (vec_exists(request_bakers, RawCopyBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<RawCopyBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<RawCopyBaker>(ctx));
     }
     if (vec_exists(request_bakers, ImageBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<ImageBaker>(ctx));
     }
     if (vec_exists(request_bakers, EffectBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<EffectBaker>(ctx));
     }
     if (vec_exists(request_bakers, ParticleBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ParticleBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<ParticleBaker>(ctx));
     }
     if (vec_exists(request_bakers, ProtoBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ProtoBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<ProtoBaker>(ctx));
     }
     if (vec_exists(request_bakers, MapBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<MapBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<MapBaker>(ctx));
     }
     if (vec_exists(request_bakers, TextBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<TextBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<TextBaker>(ctx));
     }
     if (vec_exists(request_bakers, ProtoTextBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ProtoTextBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<ProtoTextBaker>(ctx));
     }
 #if FO_ENABLE_3D
     if (vec_exists(request_bakers, ModelMeshBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ModelMeshBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<ModelMeshBaker>(ctx));
     }
     if (vec_exists(request_bakers, ModelInfoBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ModelInfoBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<ModelInfoBaker>(ctx));
     }
 #endif
 #if FO_ANGELSCRIPT_SCRIPTING
     if (vec_exists(request_bakers, AngelScriptBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<AngelScriptBaker>(ctx));
+        bakers.emplace_back(safe_alloc::make_unique<AngelScriptBaker>(ctx));
     }
 #endif
 
@@ -234,7 +234,7 @@ auto MasterBaker::BakeAll() noexcept -> bool
     string report_path;
 
     try {
-        _report = SafeAlloc::MakeShared<BakingReport>(_settings);
+        _report = safe_alloc::make_shared<BakingReport>(_settings);
         report_path = GetBakingReportPath(_settings->BakeOutput);
 
         if (!report_path.empty()) {
@@ -246,7 +246,7 @@ auto MasterBaker::BakeAll() noexcept -> bool
         success = true;
     }
     catch (const std::exception& ex) {
-        WriteLog("Baking error: {}", ex.what());
+        write_log("Baking error: {}", ex.what());
         failure_message = ex.what();
     }
     catch (...) {
@@ -267,17 +267,17 @@ auto MasterBaker::BakeAll() noexcept -> bool
                 string report_data = _report->Serialize();
                 bool write_report_ok = fs_write_file(report_path, report_data);
                 FO_VERIFY_AND_THROW(write_report_ok, "Unable to write the baking report", report_path);
-                WriteLog("Baking report saved to {}", report_path);
+                write_log("Baking report saved to {}", report_path);
 
                 if (success && _report->IsFullRebuild()) {
                     string full_report_path = GetFullBakingReportPath(_settings->BakeOutput);
                     bool write_full_report_ok = fs_write_file(full_report_path, report_data);
                     FO_VERIFY_AND_THROW(write_full_report_ok, "Unable to write the full baking report", full_report_path);
-                    WriteLog("Full baking report saved to {}", full_report_path);
+                    write_log("Full baking report saved to {}", full_report_path);
                 }
             }
             catch (const std::exception& ex) {
-                WriteLog("Baking report error: {}", ex.what());
+                write_log("Baking report error: {}", ex.what());
                 success = false;
             }
         }
@@ -301,7 +301,7 @@ struct MasterBaker::PackBakeContext
     unordered_set<string> BakedFilePaths FO_TSA_GUARDED_BY(BakedFilePathsLocker) {};
     bool FirstBake {};
     bool OutputAdded {};
-    TimeMeter BakingTime {};
+    time_meter BakingTime {};
     bool Done {};
 };
 
@@ -328,9 +328,9 @@ void MasterBaker::BakeAllInternal()
 {
     FO_STACK_TRACE_ENTRY();
 
-    TimeMeter backing_time;
+    time_meter backing_time;
 
-    WriteLog("Start baking");
+    write_log("Start baking");
 
     FO_VERIFY_AND_THROW(!_settings->BakeOutput.empty(), "Resource baker cannot write outputs because BakeOutput is empty", _settings->GetResourcePacks().size());
 
@@ -349,8 +349,8 @@ void MasterBaker::BakeAllInternal()
     SweepOutdatedOutputs(expected);
     SweepOutdatedBakerCache(expected);
 
-    WriteLog("Time {}", backing_time.GetDuration());
-    WriteLog("Baking complete!");
+    write_log("Time {}", backing_time.get_duration());
+    write_log("Baking complete!");
 
     bool build_hash_write_ok = fs_write_file(build_hash_path, FO_BUILD_HASH);
     FO_VERIFY_AND_THROW(build_hash_write_ok, "Unable to write the build hash file", build_hash_path);
@@ -377,12 +377,12 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
     string rebuild_reason = "incremental";
 
     if (_settings->ForceBaking) {
-        WriteLog("Force rebuild all resources");
+        write_log("Force rebuild all resources");
         force_baking = true;
         rebuild_reason = "requested";
     }
     else if (prev_build_hash.has_value() && prev_build_hash.value() != FO_BUILD_HASH) {
-        WriteLog("Force rebuild all resources due to build hash changed");
+        write_log("Force rebuild all resources due to build hash changed");
         force_baking = true;
         rebuild_reason = "build_hash_changed";
     }
@@ -435,7 +435,7 @@ auto MasterBaker::PreparePackContexts(FileSystem& baking_output, std::atomic_boo
             pack_bake_contexts.emplace_back(std::move(pack_bake_context));
         }
         catch (const std::exception& ex) {
-            WriteLog("Resource pack prepare for baking error: {}", ex.what());
+            write_log("Resource pack prepare for baking error: {}", ex.what());
 
             if (first_prepare_error.empty()) {
                 first_prepare_error = ex.what();
@@ -459,7 +459,7 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, const str
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
+    auto pack_bake_context = safe_alloc::make_unique<PackBakeContext>();
     auto pack_bake_context_ptr = pack_bake_context.as_ptr();
     shared_ptr<BakingReport> pack_report = _report;
 
@@ -524,7 +524,7 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, const str
         pack_report->RecordBakerRegistration(res_pack.Name, baker->GetName(), baker->GetOrder());
     }
 
-    pack_bake_context->BakingTime.Pause();
+    pack_bake_context->BakingTime.pause();
     return pack_bake_context;
 }
 
@@ -554,7 +554,7 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
                 res_baking.get();
             }
             catch (const std::exception& ex) {
-                WriteLog("Resource pack baking error: {}", ex.what());
+                write_log("Resource pack baking error: {}", ex.what());
 
                 if (first_bake_error.empty()) {
                     first_bake_error = ex.what();
@@ -601,26 +601,26 @@ void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_
 
         if (baker->GetOrder() == bake_order) {
             if (!bake_context->FirstBake) {
-                WriteLog("Bake {}", bake_context->PackName);
+                write_log("Bake {}", bake_context->PackName);
                 bake_context->FirstBake = true;
 
-                bake_context->BakingTime.Resume();
+                bake_context->BakingTime.resume();
                 bool make_res_output_ok = fs_create_directories(bake_context->OutputDir);
                 FO_VERIFY_AND_THROW(make_res_output_ok, "Unable to create the resource pack output directory", bake_context->OutputDir);
-                bake_context->BakingTime.Pause();
+                bake_context->BakingTime.pause();
             }
 
-            bake_context->BakingTime.Resume();
-            TimeMeter baker_time;
+            bake_context->BakingTime.resume();
+            time_meter baker_time;
 
             try {
                 baker->BakeFiles(bake_context->FilteredFiles);
-                bake_context->BakingTime.Pause();
-                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.GetDuration().milliseconds(), true, {});
+                bake_context->BakingTime.pause();
+                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.get_duration().milliseconds(), true, {});
             }
             catch (const std::exception& ex) {
-                bake_context->BakingTime.Pause();
-                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.GetDuration().milliseconds(), false, ex.what());
+                bake_context->BakingTime.pause();
+                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.get_duration().milliseconds(), false, ex.what());
                 throw;
             }
             catch (...) {
@@ -636,9 +636,9 @@ void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_
         int32_t max_order = (*it)->GetOrder();
 
         if (bake_order == max_order) {
-            WriteLog("Baking of {} complete in {}, baked {} file{}", bake_context->PackName, //
-                bake_context->BakingTime.GetDuration(), bake_context->BakedFiles, bake_context->BakedFiles != 1 ? "s" : "");
-            bake_context->Report->RecordPackDuration(bake_context->PackName, bake_context->BakingTime.GetDuration().milliseconds());
+            write_log("Baking of {} complete in {}, baked {} file{}", bake_context->PackName, //
+                bake_context->BakingTime.get_duration(), bake_context->BakedFiles, bake_context->BakedFiles != 1 ? "s" : "");
+            bake_context->Report->RecordPackDuration(bake_context->PackName, bake_context->BakingTime.get_duration().milliseconds());
             bake_context->Done = true;
         }
     }
@@ -723,13 +723,13 @@ void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
         if (expected_name_present) {
             bool remove_stale_ok = fs_remove_dir_tree(strex(parent_dir).combine_path(stale_name));
             FO_VERIFY_AND_THROW(remove_stale_ok, "Unable to delete the stale-cased duplicate baked output dir", parent_dir, stale_name, expected_name);
-            WriteLog("Delete stale-cased duplicate dir {}, kept {}", strex(parent_dir).combine_path(stale_name), expected_dir);
+            write_log("Delete stale-cased duplicate dir {}, kept {}", strex(parent_dir).combine_path(stale_name), expected_dir);
             continue;
         }
 
         bool rename_ok = fs_rename(strex(parent_dir).combine_path(stale_name), strex(parent_dir).combine_path(expected_name));
         FO_VERIFY_AND_THROW(rename_ok, "Unable to rename the stale-cased baked output dir", parent_dir, stale_name, expected_name);
-        WriteLog("Rename stale-cased dir {} to {}", strex(parent_dir).combine_path(stale_name), expected_dir);
+        write_log("Rename stale-cased dir {} to {}", strex(parent_dir).combine_path(stale_name), expected_dir);
     }
 }
 
@@ -762,7 +762,7 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
             bool remove_outdated_ok = fs_remove_file(MakeOutputPath(path));
             FO_VERIFY_AND_THROW(remove_outdated_ok, "Unable to delete outdated baked resource", path);
             _report->RecordOutdatedFile(path);
-            WriteLog("Delete outdated file {}", path);
+            write_log("Delete outdated file {}", path);
             return;
         }
 
@@ -782,13 +782,13 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
             bool remove_stale_ok = fs_remove_file(MakeOutputPath(stale_path));
             FO_VERIFY_AND_THROW(remove_stale_ok, "Unable to delete the stale-cased duplicate baked resource", stale_path, expected_path);
             _report->RecordOutdatedFile(stale_path);
-            WriteLog("Delete stale-cased duplicate file {}, kept {}", stale_path, expected_path);
+            write_log("Delete stale-cased duplicate file {}, kept {}", stale_path, expected_path);
             continue;
         }
 
         bool rename_ok = fs_rename(MakeOutputPath(stale_path), MakeOutputPath(expected_path));
         FO_VERIFY_AND_THROW(rename_ok, "Unable to rename the stale-cased baked resource", stale_path, expected_path);
-        WriteLog("Rename stale-cased file {} to {}", stale_path, expected_path);
+        write_log("Rename stale-cased file {} to {}", stale_path, expected_path);
     }
 }
 
@@ -813,7 +813,7 @@ void MasterBaker::SweepOutdatedBakerCache(const ExpectedOutputs& expected)
 
             if (expected.ResourceNames.count(ExcludeAllExt(cached_output_path)) == 0) {
                 fs_remove_file(strex(effekseer_cache_dir).combine_path(path));
-                WriteLog("Delete outdated baker cache {}", path);
+                write_log("Delete outdated baker cache {}", path);
             }
         }
     });
@@ -876,7 +876,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
                 auto res_name = props.GetValue<hstring>(prop);
 
                 if (res_name && !_context->BakedFiles->IsFileExists(res_name)) {
-                    WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
+                    write_log("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                     errors++;
                 }
             }
@@ -889,13 +889,13 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
                 for (auto res_name : res_names) {
                     if (res_name && !_context->BakedFiles->IsFileExists(res_name)) {
-                        WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
+                        write_log("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                         errors++;
                     }
                 }
             }
             else {
-                WriteLog("Resource {} can be as standalone or in array in {}", prop->GetName(), context_str);
+                write_log("Resource {} can be as standalone or in array in {}", prop->GetName(), context_str);
                 errors++;
             }
         }
@@ -907,20 +907,20 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
                 auto rule_it = script_func_verify.find(prop->GetBaseScriptFuncType());
 
                 if (rule_it == script_func_verify.end()) {
-                    WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                    write_log("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
                 else if (func_name && !rule_it->second.VerifySignature(func_name, script_sys)) {
-                    WriteLog("Script function signature does not match property binding: func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                    write_log("Script function signature does not match property binding: func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
                 else if (func_name && !rule_it->second.RequiredAttribute.empty() && !rule_it->second.VerifyAttribute(func_name, script_sys)) {
-                    WriteLog("Function {} assigned to property {} in {} must be marked [[{}]]", func_name, prop->GetName(), context_str, rule_it->second.RequiredAttribute);
+                    write_log("Function {} assigned to property {} in {} must be marked [[{}]]", func_name, prop->GetName(), context_str, rule_it->second.RequiredAttribute);
                     errors++;
                 }
             }
             else {
-                WriteLog("Script {} must be as standalone (not in array or dict) in {}", prop->GetName(), context_str);
+                write_log("Script {} must be as standalone (not in array or dict) in {}", prop->GetName(), context_str);
                 errors++;
             }
         }
@@ -934,7 +934,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    _outputResources.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(this));
+    _outputResources.AddCustomSource(safe_alloc::make_unique<DataSourceRef>(this));
 
     ignore_unused(Reindex());
 }
@@ -1182,10 +1182,10 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_t
     FO_VERIFY_AND_THROW(output_data, "Unable to read the baked output file", *output_path);
 
     size = output_data->size();
-    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
 
     if (size != 0u) {
-        MemCopy(buf, output_data->data(), size);
+        mem_copy(buf, output_data->data(), size);
     }
 
     auto released_buf = make_ptr<const uint8_t*>(buf.release());

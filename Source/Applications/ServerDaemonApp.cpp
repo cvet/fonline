@@ -52,30 +52,30 @@ int main(int argc, char** argv)
 #endif
 
     try {
-        Platform::ForkProcess();
+        platform::fork_process();
 
         InitApp(args, AppInitFlags::PrebakeResources);
 
         {
             auto settings = make_ptr(&GetApp()->Settings);
-            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+            auto server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
 
             while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
                 coarse_sleep(std::chrono::milliseconds {10});
             }
 
             if (server->IsStartingError()) {
-                WriteLog(LogType::Error, "Server startup failed, shutting down");
+                write_log(log_type::error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
 
             server->Shutdown();
         }
 
-        ExitApp(GetApp()->GetRequestedQuitSuccess());
+        exit_app(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        report_exception_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

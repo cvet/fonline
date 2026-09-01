@@ -141,7 +141,7 @@ private:
     FileSystem _resources {};
     GameTimer _gameTime;
     EffectManager _effectMngr;
-    HashStorage _hashStorage {};
+    hash_storage _hashStorage {};
     SpriteManager _sprMngr;
     FontManager _fontMngr;
     nanotime _startTime {};

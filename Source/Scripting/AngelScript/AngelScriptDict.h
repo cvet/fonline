@@ -52,7 +52,7 @@ struct ScriptDictTypeData;
 
 class ScriptDict
 {
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
     template<typename T>
     static constexpr bool IsHandleAsType = std::is_same_v<T, void> || std::is_same_v<std::remove_cv_t<T>, Entity> || //

@@ -46,7 +46,7 @@ TEST_CASE("Platform")
 {
     SECTION("GetExePathReturnsExistingPath")
     {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
 
         REQUIRE(exe_path.has_value());
         CHECK_FALSE(exe_path->empty());
@@ -56,7 +56,7 @@ TEST_CASE("Platform")
 
     SECTION("CurrentProcessIdStringMatchesRuntime")
     {
-        string pid_str = Platform::GetCurrentProcessIdStr();
+        string pid_str = platform::get_current_process_id_str();
 
         CHECK_FALSE(pid_str.empty());
         CHECK(pid_str.find_first_not_of("0123456789") == std::string::npos);
@@ -73,7 +73,7 @@ TEST_CASE("Platform")
     SECTION("GetFuncAddrCanResolveProcessSymbols")
     {
         using FuncPtr = void (*)();
-        FuncPtr func = Platform::GetFuncAddr<FuncPtr>(nullptr, "getpid");
+        FuncPtr func = platform::get_func_addr<FuncPtr>(nullptr, "getpid");
 
 #if FO_LINUX || FO_MAC
         CHECK(func != nullptr);
@@ -84,28 +84,28 @@ TEST_CASE("Platform")
 
     SECTION("GetFuncAddrReturnsNullForMissingSymbol")
     {
-        const void* func = Platform::GetFuncAddr(nullptr, "lf_missing_platform_symbol_for_tests");
+        const void* func = platform::get_func_addr(nullptr, "lf_missing_platform_symbol_for_tests");
         CHECK(func == nullptr);
     }
 
     SECTION("LoadModuleReturnsNullForMissingLibrary")
     {
-        nptr<void> module = Platform::LoadModule("lf_missing_platform_module_for_tests");
+        nptr<void> module = platform::load_module("lf_missing_platform_module_for_tests");
         CHECK_FALSE(static_cast<bool>(module));
-        Platform::UnloadModule(module);
+        platform::unload_module(module);
     }
 
     SECTION("InfoHelpersAreSafeToCall")
     {
-        Platform::InfoLog("platform test log");
-        Platform::SetThreadName("platform-test-thread");
+        platform::info_log("platform test log");
+        platform::set_thread_name("platform-test-thread");
         SUCCEED();
     }
 
     SECTION("ProcessMemoryUsageIsReported")
     {
-        size_t working_set = Platform::GetProcessMemoryUsage();
-        size_t private_usage = Platform::GetProcessPrivateMemoryUsage();
+        size_t working_set = platform::get_process_memory_usage();
+        size_t private_usage = platform::get_process_private_memory_usage();
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
         // A live process always occupies memory, so both readings must be non-zero on a real platform
@@ -120,32 +120,32 @@ TEST_CASE("Platform")
     SECTION("ModuleLifecycleResolvesAndReleases")
     {
         // The already-loaded process image is the one module every platform can name without a fixture
-        nptr<void> self_module = Platform::LoadModule({});
+        nptr<void> self_module = platform::load_module({});
 
         if (self_module) {
-            CHECK(Platform::GetFuncAddr(self_module, "malloc") != nullptr);
-            CHECK(Platform::GetFuncAddr(self_module, "no_such_symbol_for_test") == nullptr);
-            Platform::UnloadModule(self_module);
+            CHECK(platform::get_func_addr(self_module, "malloc") != nullptr);
+            CHECK(platform::get_func_addr(self_module, "no_such_symbol_for_test") == nullptr);
+            platform::unload_module(self_module);
         }
 
         // Unloading nothing is a no-op rather than a failure
-        Platform::UnloadModule(nullptr);
+        platform::unload_module(nullptr);
     }
 
     SECTION("CpuUsageSnapshotIsWellFormed")
     {
-        Platform::CpuUsageSnapshot snapshot = Platform::GetCpuUsageSnapshot();
+        platform::cpu_usage_snapshot snapshot = platform::get_cpu_usage_snapshot();
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
-        REQUIRE_FALSE(snapshot.Cores.empty());
-        CHECK(snapshot.LogicalCoreCount > 0);
+        REQUIRE_FALSE(snapshot.cores.empty());
+        CHECK(snapshot.logical_core_count > 0);
 
-        for (const Platform::CpuUsageCoreSnapshot& core : snapshot.Cores) {
-            CHECK(core.TotalTime >= core.IdleTime);
+        for (const platform::cpu_usage_core_snapshot& core : snapshot.cores) {
+            CHECK(core.total_time >= core.idle_time);
         }
 #else
-        CHECK(snapshot.Cores.empty());
-        CHECK(snapshot.ProcessTimeNs == 0);
+        CHECK(snapshot.cores.empty());
+        CHECK(snapshot.process_time_ns == 0);
 #endif
     }
 
@@ -181,11 +181,11 @@ TEST_CASE("Platform")
         string roaming_dir = strex("C:").combine_path("AppData/Roaming").str();
 
         set_env("LOCALAPPDATA", local_dir.c_str());
-        string from_local = Platform::GetUserDataBase();
+        string from_local = platform::get_user_data_base();
 
         set_env("LOCALAPPDATA", "");
         set_env("APPDATA", roaming_dir.c_str());
-        string from_roaming = Platform::GetUserDataBase();
+        string from_roaming = platform::get_user_data_base();
 
         restore_env("LOCALAPPDATA", saved_local);
         restore_env("APPDATA", saved_roaming);
@@ -197,7 +197,7 @@ TEST_CASE("Platform")
         const auto home_dir = strex("/Users").combine_path("test").str();
 
         set_env("HOME", home_dir.c_str());
-        const auto from_home = Platform::GetUserDataBase();
+        const auto from_home = platform::get_user_data_base();
 
         restore_env("HOME", saved_home);
 
@@ -210,11 +210,11 @@ TEST_CASE("Platform")
         string home_dir = strex("/home").combine_path("test").str();
 
         set_env("XDG_DATA_HOME", xdg_dir.c_str());
-        string from_xdg = Platform::GetUserDataBase();
+        string from_xdg = platform::get_user_data_base();
 
         set_env("XDG_DATA_HOME", "");
         set_env("HOME", home_dir.c_str());
-        string from_home = Platform::GetUserDataBase();
+        string from_home = platform::get_user_data_base();
 
         restore_env("XDG_DATA_HOME", saved_xdg);
         restore_env("HOME", saved_home);

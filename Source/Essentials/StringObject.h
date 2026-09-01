@@ -60,7 +60,7 @@ class basic_string
 public:
     using traits_type = std::char_traits<CharT>;
     using value_type = CharT;
-    using allocator_type = SafeAllocator<CharT>;
+    using allocator_type = safe_allocator<CharT>;
     using size_type = size_t;
     using difference_type = ptrdiff_t;
     using reference = CharT&;
@@ -1046,7 +1046,7 @@ FO_END_NAMESPACE
 template<typename CharT, typename Traits, size_t InlineCapacity>
 auto operator>>(std::basic_istream<CharT, Traits>& stream, FO_NAMESPACE basic_string<CharT, InlineCapacity>& value) -> std::basic_istream<CharT, Traits>&
 {
-    std::basic_string<CharT, Traits, FO_NAMESPACE SafeAllocator<CharT>> extracted;
+    std::basic_string<CharT, Traits, FO_NAMESPACE safe_allocator<CharT>> extracted;
     stream >> extracted;
     (void)value.assign(extracted.data(), extracted.size());
     return stream;
@@ -1057,7 +1057,7 @@ FO_BEGIN_NAMESPACE
 template<typename CharT, typename Traits, size_t InlineCapacity>
 auto getline(std::basic_istream<CharT, Traits>& stream, basic_string<CharT, InlineCapacity>& value, CharT delimiter) -> std::basic_istream<CharT, Traits>&
 {
-    std::basic_string<CharT, Traits, SafeAllocator<CharT>> extracted;
+    std::basic_string<CharT, Traits, safe_allocator<CharT>> extracted;
     (void)std::getline(stream, extracted, delimiter);
     (void)value.assign(extracted.data(), extracted.size());
     return stream;

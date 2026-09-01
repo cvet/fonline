@@ -345,7 +345,7 @@ auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<StubAppWindow>(&settings);
+    return safe_alloc::make_unique<StubAppWindow>(&settings);
 }
 
 FO_END_NAMESPACE
