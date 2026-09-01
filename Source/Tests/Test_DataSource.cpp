@@ -36,6 +36,7 @@
 #include "Compressor.h"
 #include "DataSource.h"
 #include "DiskFileSystem.h"
+#include "FileSystem.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -859,6 +860,130 @@ TEST_CASE("DataSource")
         CHECK_FALSE(embedded->GetFileInfo("missing.txt", size, write_time));
         CHECK_FALSE(embedded->OpenFile("missing.txt", size, write_time));
         CHECK(embedded->GetFileNames("", true, "txt").empty());
+    }
+
+    // The snapshot is what a file system indexes instead of probing, so it must agree with the metadata the
+    // same source answers with, and a source whose content can move under it must offer none
+    SECTION("IndexSnapshotIsOfferedByPacksAndWithheldByLiveSources")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_index_snapshot");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs_create_directories(temp_dir));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("Archive.zip").str(), MakeStoredZip({{.FileName = "first.txt", .FileContent = "one"}, {.FileName = "nested/second.txt", .FileContent = "second"}})));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("plain.txt").str(), string_view {"plain"}));
+
+        auto zip_pack = DataSource::MountPack(temp_dir, "Archive", false);
+        auto snapshot = zip_pack->GetIndexSnapshot();
+
+        REQUIRE(snapshot.has_value());
+        CHECK(snapshot->size() == 2);
+
+        for (const auto& file : *snapshot) {
+            size_t size = 0;
+            uint64_t write_time = 0;
+            CHECK(zip_pack->GetFileInfo(file.Path, size, write_time));
+            CHECK(file.Size == size);
+            CHECK(file.WriteTime == write_time);
+        }
+
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("DatArchive.dat").str(), MakeFallout2Dat("dat-entry.txt", "dat-data")));
+        auto dat_pack = DataSource::MountPack(temp_dir, "DatArchive", false);
+        auto dat_snapshot = dat_pack->GetIndexSnapshot();
+
+        REQUIRE(dat_snapshot.has_value());
+        REQUIRE(dat_snapshot->size() == 1);
+        CHECK(dat_snapshot->front().Path == "dat-entry.txt");
+
+        for (const auto& file : *dat_snapshot) {
+            size_t dat_size = 0;
+            uint64_t dat_write_time = 0;
+            CHECK(dat_pack->GetFileInfo(file.Path, dat_size, dat_write_time));
+            CHECK(file.Size == dat_size);
+            CHECK(file.WriteTime == dat_write_time);
+        }
+
+        // A pack that is allowed to be absent mounts an empty stand-in, and an empty snapshot is the honest
+        // answer for it - withholding one would take the index away from every file system that mounts one
+        auto missing_pack = DataSource::MountPack(temp_dir, "NotThere", true);
+        auto missing_snapshot = missing_pack->GetIndexSnapshot();
+        REQUIRE(missing_snapshot.has_value());
+        CHECK(missing_snapshot->empty());
+
+        auto cached_dir = DataSource::MountDir(temp_dir, true, false, false);
+        auto non_cached_dir = DataSource::MountDir(temp_dir, true, true, false);
+        CHECK_FALSE(cached_dir->GetIndexSnapshot().has_value());
+        CHECK_FALSE(non_cached_dir->GetIndexSnapshot().has_value());
+
+        auto wrapped = SafeAlloc::MakeUnique<DataSourceRef>(zip_pack.as_ptr());
+        CHECK(wrapped->GetIndexSnapshot().has_value());
+
+        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+    }
+
+    // The combination that actually ships: a file system built from packs alone indexes itself, so this is
+    // the shadowing and the metadata a packaged client resolves through
+    SECTION("FileSystemIndexesPackSourcesAndKeepsTheirShadowing")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_indexed_packs");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs_create_directories(temp_dir));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("Lower.zip").str(), MakeStoredZip({{.FileName = "shared.txt", .FileContent = "lower"}, {.FileName = "only-lower.txt", .FileContent = "kept"}})));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("Upper.zip").str(), MakeStoredZip({{.FileName = "shared.txt", .FileContent = "upper-wins"}})));
+
+        {
+            FileSystem resources;
+            resources.AddCustomSource(DataSource::MountPack(temp_dir, "Lower", false));
+            resources.AddCustomSource(DataSource::MountPack(temp_dir, "Upper", false));
+
+            CHECK(resources.IsFileExists("shared.txt"));
+            CHECK(resources.IsFileExists("only-lower.txt"));
+            CHECK_FALSE(resources.IsFileExists("missing.txt"));
+
+            CHECK(resources.ReadFileText("shared.txt") == "upper-wins");
+            CHECK(resources.ReadFileText("only-lower.txt") == "kept");
+            CHECK(resources.ReadFileText("missing.txt").empty());
+
+            auto header = resources.ReadFileHeader("shared.txt");
+            REQUIRE(header);
+            CHECK(header.GetSize() == 10);
+            CHECK(header.GetDataSource()->GetPackName() == strex(temp_dir).combine_path("Upper.zip").str());
+            CHECK(resources.GetAllFiles().GetFilesCount() == 2);
+        }
+
+        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+    }
+
+    // The installed client mounts every pack name against its writable overlay, where most of them are
+    // absent; if an absent pack withheld a snapshot, one missing optional pack would silently take the whole
+    // client off the index
+    SECTION("FileSystemKeepsItsIndexWhenAnOptionalPackIsAbsent")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_absent_pack");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs_create_directories(temp_dir));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("Present.zip").str(), MakeStoredZip("present.txt", "here")));
+
+        {
+            FileSystem resources;
+            resources.AddCustomSource(DataSource::MountPack(temp_dir, "Present", false));
+            resources.AddCustomSource(DataSource::MountPack(temp_dir, "Absent", true));
+
+            CHECK(resources.ReadFileText("present.txt") == "here");
+            CHECK(resources.IsFileExists("present.txt"));
+            CHECK_FALSE(resources.IsFileExists("absent.txt"));
+
+            auto header = resources.ReadFileHeader("present.txt");
+            REQUIRE(header);
+            CHECK(header.GetDataSource()->GetPackName() == strex(temp_dir).combine_path("Present.zip").str());
+        }
+
+        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
 
     SECTION("MaybeNotAvailableReturnsDummySources")

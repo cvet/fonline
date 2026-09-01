@@ -49,8 +49,6 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
     }
 
     vector<string> result;
-    // Views into fnames, which outlives the loop. A linear scan of the result made the pass quadratic in
-    // the name count, and the whole-source case is the one every glob-filtered pack goes through
     unordered_set<string_view> added_names;
     auto len = dir_fixed.length();
 
@@ -98,6 +96,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override { return vector<IndexedFile> {}; }
 };
 
 class NonCachedDir final : public DataSource
@@ -171,6 +170,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
     bool ReadTree() FO_TSA_REQUIRES(_datFileLocker);
@@ -201,6 +201,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
     struct ZipFileInfo
@@ -234,6 +235,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
     struct EmbeddedFileInfo
@@ -265,6 +267,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
     struct FileEntry
@@ -813,6 +816,25 @@ auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64_t& write_tim
     return true;
 }
 
+auto FalloutDat::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<IndexedFile> files;
+    files.reserve(_filesTree.size());
+
+    for (const auto& [path, entry] : _filesTree) {
+        size_t size = 0;
+        uint64_t write_time = 0;
+        bool found = GetFileInfo(path, size, write_time);
+        FO_VERIFY_AND_THROW(found, "Dat pack file tree holds an entry its own metadata lookup misses", _fileName, path);
+
+        files.emplace_back(IndexedFile {path, size, write_time});
+    }
+
+    return files;
+}
+
 auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1073,6 +1095,20 @@ auto ZipFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) 
     return true;
 }
 
+auto ZipFile::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<IndexedFile> files;
+    files.reserve(_filesTree.size());
+
+    for (const auto& [path, info] : _filesTree) {
+        files.emplace_back(IndexedFile {path, numeric_cast<size_t>(info.UncompressedSize), _writeTime});
+    }
+
+    return files;
+}
+
 auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1306,6 +1342,26 @@ auto EmbeddedFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
     return true;
 }
 
+auto EmbeddedFile::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_zipHandleLocker};
+
+    if (!_zipHandle) {
+        return std::nullopt;
+    }
+
+    vector<IndexedFile> files;
+    files.reserve(_filesTree.size());
+
+    for (const auto& [path, info] : _filesTree) {
+        files.emplace_back(IndexedFile {path, numeric_cast<size_t>(info.UncompressedSize), _writeTime});
+    }
+
+    return files;
+}
+
 auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1409,6 +1465,20 @@ auto FilesList::GetFileInfo(string_view path, size_t& size, uint64_t& write_time
     size = fe.FileSize;
     write_time = fe.WriteTime;
     return true;
+}
+
+auto FilesList::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<IndexedFile> files;
+    files.reserve(_filesTree.size());
+
+    for (const auto& [path, entry] : _filesTree) {
+        files.emplace_back(IndexedFile {path, entry.FileSize, entry.WriteTime});
+    }
+
+    return files;
 }
 
 auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>

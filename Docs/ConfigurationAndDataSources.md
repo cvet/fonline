@@ -133,6 +133,41 @@ Cached directory mounts snapshot their file index when mounted. Long-running too
 
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
 
+### Shared index over mounted sources
+
+A point lookup (`ReadFile()`, `ReadFileHeader()`, `IsFileExists()`) is answered from one shared index when every
+mounted source could hand its content over; otherwise the sources are probed in mount order as before.
+`DataSource::GetIndexSnapshot()` is that hand-over: a source whose content is fixed until it is remounted returns
+all of it, and a source whose answer depends on the world at call time returns `nullopt`. The default is `nullopt`,
+so a source that says nothing keeps being probed - a missed override costs a lookup, a wrong one serves a file that
+has since moved.
+
+Every pack-backed source offers a snapshot - `ZipFile`, `EmbeddedFile`, `FalloutDat`, `FilesList` - and so does the
+empty stand-in a `maybe_not_available` mount produces when its pack is absent. That last one is not a detail:
+`GetClientResources()` mounts every pack name a second time against the writable overlay so a downloaded pack wins
+over the installed copy, and on a client that has downloaded nothing yet every one of those is absent. If an absent
+pack withheld a snapshot, the file system the game actually plays on would be off the index by default.
+
+Directory sources offer none, cached or otherwise. `CachedDir` could - its file tree is already a snapshot refreshed
+only by `Reindex`, so indexing it would add no staleness of its own - and it is withheld by decision rather than by
+capability: unpacked mounts go through `CachedDir`, and development runs are meant to keep the probe loop. A file
+system mounted entirely from packs - what a packaged client, server, mapper and viewer use - therefore resolves a
+path with a single hash lookup, while a development run over directories, the baker's live input dirs and the
+on-demand baker data source keep probing. Mixing needs no configuration: one source without a snapshot
+disables the index for that file system. The decision is per instance rather than per build, because a packaged
+client also builds mixed file systems: the updater's own resources, and the file system that checks a pushed file
+list, both mount the resource directory as a non-cached dir to size the pack files while the updater is rewriting
+them, and that directory must not be answered from a snapshot.
+
+The index is filled as sources are mounted. A new source goes in front of the others and claims every path it holds
+away from them, which is the shadowing the probe loop already produced; `ReindexDataSources()` rebuilds it. It is
+never populated from a lookup: the read path takes no lock, because the source list is only mutated during setup,
+and filling an index lazily from a `const` lookup would either race or put a mutex on every read.
+
+`FilterFiles()` and `GetAllFiles()` stay on the source loop even where the index exists. Their output order is
+source by source, and consumers depend on it - script module load order, prototype registration - which a hash
+container does not preserve.
+
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` is the single place that assembles this pack set; the updater calls it for its own metadata-version check instead of repeating the mount order, so validation and gameplay can never diverge. The updater writes resource patches into that overlay, so current or repaired files win gameplay lookup and hash checks without modifying the install directory. A ZIP entry read failure identifies the archive path and the resource-relative entry in `DataSourceException` context; short reads also record the expected byte count, actual read result, and close result. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
 
 ## Low-level disk access
