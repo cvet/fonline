@@ -2201,6 +2201,37 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     CHECK_FALSE(updater.IsAborted());
 }
 
+TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
+{
+    using namespace TestClientServerIntegration;
+
+    uint16_t port = IntegrationTestPort.fetch_add(1);
+    GlobalSettings client_settings = MakeClientTestSettings(port);
+    string updater_bake_output = PrepareClientUpdaterBakeOutput();
+    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs_remove_dir_tree(updater_bake_output); });
+    string pack_name = "OutdatedClientPack";
+    string metadata_path = strex(updater_bake_output).combine_path(pack_name).combine_path("Metadata.fometa-client").str();
+
+    STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
+    constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
+    vector<uint8_t> outdated_metadata;
+    DataWriter outdated_writer {outdated_metadata};
+    outdated_writer.Write<uint32_t>(METADATA_FILE_MAGIC);
+    outdated_writer.Write<uint16_t>(outdated_file_version);
+    outdated_writer.Write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
+    outdated_writer.WriteStringBytes(BakerTests::TEST_METADATA_VERSION);
+    outdated_writer.Write<uint16_t>(uint16_t {0});
+
+    REQUIRE(fs_write_file(metadata_path, outdated_metadata));
+    BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
+    BakerTests::OverrideSetting(client_settings.ClientResourceEntries, vector<string> {pack_name});
+
+    CHECK_NOTHROW([&client_settings] {
+        Updater updater {&client_settings, &GetApp()->MainWindow};
+        ignore_unused(updater);
+    }());
+}
+
 TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
 {
     using namespace TestClientServerIntegration;

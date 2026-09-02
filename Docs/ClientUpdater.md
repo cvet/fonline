@@ -211,7 +211,13 @@ and enters the game without staging another update.
 > version it validates is the one gameplay will read, and a repaired overlay pack cannot pass updater
 > validation and then be bypassed in favour of a damaged install-dir copy. `Updater` layers the overlay
 > over its splash pack too — the splash is drawn before this run downloads anything, so it would
-> otherwise keep rendering an install-dir copy an earlier run already replaced.
+> otherwise keep rendering an install-dir copy an earlier run already replaced. This precedence is also
+> the recovery path after `METADATA_FILE_VERSION` changes: a new runtime treats an unreadable old install
+> pack as having no local metadata version, downloads the current pack into the writable overlay, re-reads
+> that overlay successfully, and only then constructs `ClientEngine`. The strict old-layout rejection is
+> not relaxed. If the updater cannot complete that repair, the client exits with `Client update failed.
+> Please install the latest full client package.` instead of surfacing `MetadataOutdatedException` from
+> gameplay startup or misidentifying a resource failure as a native-module failure.
 
 > **Deployed hosts are frozen.** The host `.exe` is never delivered by the updater (only the runtime
 > DLL is). A client built before this fix (one that attempted an in-process same-path reload) cannot be
@@ -505,14 +511,14 @@ instead of looping back to the game which would only reject the connection again
 
 | Symptom | First signal |
 |---------|--------------|
-| Host can't find runtime, no fallback possible | embedded host's resource updater fails to download anything; client message box `Failed to update native client modules for binary target <target>` |
+| Host can't find runtime, no fallback possible, or resource repair cannot complete | client message box `Client update failed. Please install the latest full client package.` |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
 | Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `LogType::Warning`), client gets disconnected |
 | Client data does not match the server data | server log `Connected client X runs metadata version A while the server runs B`; updater log `synced resources run metadata version A while the server runs B, resources <dir>`. Both name the two versions - find which resource directory came from a different bake |
 | Server distributing resources it does not run on | server startup fails with `Distributed client resources were baked apart from the server resources`, naming both resource directories and both layout versions |
-| Baked resources predate the current metadata format | startup fails at the metadata header: `does not start with the metadata file marker`, `file version does not match the engine`, or `carries no version` - run a full rebake |
+| Server or unpackaged development resources predate the current metadata format | startup fails at the metadata header: `does not start with the metadata file marker`, `file version does not match the engine`, or `carries no version` - run a full rebake. A packaged client with an old install pack recovers through the writable updater overlay before gameplay startup; if that repair fails, install the latest full client package |
 | Server has no native update for this target | message box `Server doesn't provide a native client update for binary target <target>` |
 | Stale staging file | `<live>-staging` survived a previous failed swap; the next `LF_Client.exe` startup promotes it via `ApplyStagedBinaryUpdate` before loading the runtime |
 | Linux host logs `LoadModule failed` for a present, valid runtime `.so`, then `trying embedded fallback` on every launch | `dlopen` rejected the module. Two engine build rules must hold (see "Linux module isolation" above): the module is linked with `-Wl,-Bsymbolic` (`AddSharedApplication`), and no vendored code forces initial-exec TLS on Linux — an IE-model TLS relocation fails `dlopen` with `cannot allocate memory in static TLS block` (diagnose with a standalone `dlopen` of the `.so`, e.g. via `python3 -c "import ctypes; ctypes.CDLL('./<runtime>.so')"`). A silently-engaged embedded fallback makes a native self-update loop: the downloaded `.so` is promoted on disk but never executed |

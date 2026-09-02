@@ -48,6 +48,7 @@
 #include "DefaultSprites.h"
 #include "EffectBaker.h"
 #include "ImGuiStuff.h"
+#include "MetadataRegistration.h"
 #include "ModelAnimationData.h"
 #include "ModelInfoBaker.h"
 #include "ModelManager.h"
@@ -1948,7 +1949,7 @@ BoundsMaxZ = 1 1 1 1
 #endif
 }
 
-TEST_CASE("ClientResourcesPreferWritableOverlay")
+TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
 {
     if (IsPackaged()) {
         SKIP("Directory-backed resource overlay coverage requires an unpackaged test binary");
@@ -1963,9 +1964,26 @@ TEST_CASE("ClientResourcesPreferWritableOverlay")
     string writable_root = strex(temp_dir).combine_path("Writable").str();
     string client_resources = "Resources";
     string pack_name = "ClientPack";
+    string metadata_file = "Metadata.fometa-client";
 
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path(pack_name).combine_path("payload.txt").str(), string_view {"base-install"}));
-    REQUIRE(fs_write_file(strex(writable_root).combine_path(client_resources).combine_path(pack_name).combine_path("payload.txt").str(), string_view {"repaired-overlay"}));
+    STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
+    constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
+    vector<uint8_t> outdated_metadata;
+    DataWriter outdated_writer {outdated_metadata};
+    outdated_writer.Write<uint32_t>(METADATA_FILE_MAGIC);
+    outdated_writer.Write<uint16_t>(outdated_file_version);
+    outdated_writer.Write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
+    outdated_writer.WriteStringBytes(BakerTests::TEST_METADATA_VERSION);
+    outdated_writer.Write<uint16_t>(uint16_t {0});
+
+    vector<uint8_t> current_metadata = BakerTests::MakeEmptyMetadataBlob();
+    REQUIRE(fs_write_file(strex(baked_dir).combine_path(pack_name).combine_path(metadata_file).str(), outdated_metadata));
+    REQUIRE(fs_write_file(strex(writable_root).combine_path(client_resources).combine_path(pack_name).combine_path(metadata_file).str(), current_metadata));
+
+    FileSystem install_resources;
+    install_resources.AddPacksSource(baked_dir, {pack_name});
+    vector<uint8_t> installed_metadata = ReadMetadataBin(&install_resources, "Client");
+    CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
 
     GlobalSettings settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.BakeOutput, baked_dir);
@@ -1974,8 +1992,13 @@ TEST_CASE("ClientResourcesPreferWritableOverlay")
     BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {pack_name});
 
     FileSystem resources = GetClientResources(settings);
+    vector<uint8_t> recovered_metadata = ReadMetadataBin(&resources, "Client");
 
-    CHECK(resources.ReadFileText("payload.txt") == "repaired-overlay");
+    CHECK(ReadMetadataVersion(recovered_metadata) == BakerTests::TEST_METADATA_VERSION);
+
+    EngineMetadata metadata {[] { }};
+    metadata.RegisterSide(EngineSideKind::ClientSide);
+    CHECK_NOTHROW(RegisterDynamicMetadata(&metadata, recovered_metadata));
 }
 
 #if FO_ENABLE_3D

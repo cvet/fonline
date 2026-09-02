@@ -48,7 +48,7 @@ static constexpr string_view StrFilesystemError = "File system error!";
 static constexpr string_view StrServerMissingNativeUpdate = "Server doesn't provide a native client update for binary target {}. Please update the client manually";
 static constexpr string_view StrUpdaterOutdated = "Client updater is incompatible with this server. Please install the latest full client package.";
 static constexpr string_view StrPlatformUnsupported = "Client outdated, please update via your app store";
-static constexpr string_view StrNativeUpdateFailed = "Failed to update native client modules for binary target {}. Please update the client manually";
+static constexpr string_view StrUpdateFailed = "Client update failed. Please install the latest full client package.";
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 static constexpr string_view StrMetadataMismatch = "Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later.";
 static constexpr string_view StrErrorMessageCaption = "";
@@ -1185,7 +1185,7 @@ void ShowUpdaterFailure(UpdaterResult result)
         Application::ShowErrorMessage(StrMetadataMismatch, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::Failed:
-        Application::ShowErrorMessage(strex(strex::dynamic_format, StrNativeUpdateFailed, target_name).str(), StrErrorMessageCaption, true);
+        Application::ShowErrorMessage(StrUpdateFailed, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:
