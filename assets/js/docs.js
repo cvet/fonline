@@ -218,6 +218,12 @@
     });
   }
 
+  // The index is a plain JSON object, so the lowercased query "__proto__" or "constructor" would
+  // otherwise resolve to an Object.prototype member and fail as a non-array posting list
+  function termPostings(terms, token) {
+    return Object.prototype.hasOwnProperty.call(terms, token) ? terms[token] : null;
+  }
+
   function searchDocuments(index, query) {
     var tokens = tokenize(query);
     if (!tokens.length) {
@@ -230,14 +236,15 @@
 
     tokens.forEach(function (token) {
       var tokenScores = new Map();
-      if (index.terms[token]) {
-        collectPostingScores(tokenScores, index.terms[token], 1);
+      var exactPostings = termPostings(index.terms, token);
+      if (exactPostings) {
+        collectPostingScores(tokenScores, exactPostings, 1);
       } else if (token.length >= 3) {
         var prefixMatches = 0;
         for (var termIndex = 0; termIndex < allTerms.length && prefixMatches < 32; termIndex += 1) {
           var term = allTerms[termIndex];
           if (term.indexOf(token) === 0) {
-            collectPostingScores(tokenScores, index.terms[term], 0.55);
+            collectPostingScores(tokenScores, termPostings(index.terms, term), 0.55);
             prefixMatches += 1;
           }
         }

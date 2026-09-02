@@ -87,6 +87,19 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
         ):
             self.assertIn(marker, script)
 
+    def test_search_reads_the_term_index_only_through_the_own_property_guard(self) -> None:
+        # The search index is parsed from JSON, so its object inherits Object.prototype. A raw
+        # terms[token] lookup answers a query of "__proto__" with Object.prototype itself, which
+        # is truthy and has no forEach, and the whole search UI reports itself unavailable
+        script = (ROOT / "assets/js/docs.js").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "Object.prototype.hasOwnProperty.call(terms, token) ? terms[token] : null",
+            script,
+        )
+        unguarded = re.findall(r"(?<!Object\.keys\()index\.terms\[", script)
+        self.assertEqual([], unguarded)
+
     def test_migrated_locale_pages_declare_stable_rendering_contract(self) -> None:
         for relative_path, locale, document_id, permalink in (
             (
