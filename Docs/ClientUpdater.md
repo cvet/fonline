@@ -409,10 +409,13 @@ bad install config never bricks startup.
 What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
-patches** — the updater writes them under `<root>/<ClientResources>` and layers that dir on top of the
-read-only install-dir base as a higher-priority resource source (`Updater.cpp`, `Client.cpp`), so the base
-resources are read from the install dir and patches override from the user dir — and the **self-updated native
-runtime** (see below).
+patches** — the updater writes them under `<root>/<ClientResources>`, while both the updater's post-sync
+metadata check and `ClientEngine` obtain their identically ordered pack view from `GetClientResources()`.
+That view layers the writable packs on top of the read-only install-dir base, so the files the updater
+validated are exactly the files gameplay opens — and the **self-updated native runtime** (see below).
+The updater's packaged-mode gates and resource-root choices use the already loaded read-only
+`Common.Packaged` snapshot; direct executable-marker checks are limited to the pre-settings bootstrap and
+the filesystem's physical archive-versus-directory selection.
 
 **Native binary self-update for installed builds writes the runtime into the writable root**
 (`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
@@ -538,7 +541,7 @@ Local validation steps:
 8. Interrupt a client mid-download (kill the network) and reconnect â€” the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 â†’ restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `LF_Client.exe`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
-11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and not show the same update prompt again. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
+11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
 
 ## See Also
 

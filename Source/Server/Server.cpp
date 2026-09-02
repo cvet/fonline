@@ -55,7 +55,7 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(IsPackaged() ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
+    resources.AddPacksSource(settings.Packaged ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
     return resources;
 }
 
@@ -571,7 +571,7 @@ auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IsPackaged()) {
+    if (Settings->Packaged) {
         WriteLog("Initialize updater backend with client resources using {} storage", Settings->UpdateFilesInMemory ? "memory" : "disk");
 
         _updaterBackend.emplace();

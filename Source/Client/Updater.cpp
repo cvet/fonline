@@ -74,18 +74,18 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _startTime = nanotime::now();
 
-    _resources.AddPackSource(IsPackaged() ? settings->ClientResources : settings->BakeOutput, "Embedded");
+    _resources.AddPackSource(settings->Packaged ? settings->ClientResources : settings->BakeOutput, "Embedded");
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
     if (!settings->UserWritablePath.empty()) {
         _resources.AddDirSource(fs_make_writable_path(settings->UserWritablePath, settings->ClientResources), false, true, true);
     }
     if (!_settings->DefaultSplashPack.empty()) {
-        _resources.AddPackSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
+        _resources.AddPackSource(_settings->Packaged ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
 
         // The splash is drawn before this run downloads anything, so a pack an earlier run repaired
         // into the writable root has to win here as well
-        if (!_settings->UserWritablePath.empty()) {
+        if (_settings->Packaged && !_settings->UserWritablePath.empty()) {
             _resources.AddPackSource(fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources), _settings->DefaultSplashPack, true);
         }
     }
@@ -248,7 +248,7 @@ void Updater::FinishResourcesUpdate()
     string local_metadata_version = ReadLocalMetadataVersion();
 
     if (local_metadata_version != _serverMetadataVersion) {
-        WriteLog("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, IsPackaged() ? _settings->ClientResources : _settings->BakeOutput);
+        WriteLog("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Packaged ? _settings->ClientResources : _settings->BakeOutput);
         _result = UpdaterResult::MetadataMismatch;
         return;
     }

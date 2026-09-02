@@ -47,14 +47,14 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    resources.AddPacksSource(settings.Packaged ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
 
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
-    if (!settings.UserWritablePath.empty()) {
+    if (settings.Packaged && !settings.UserWritablePath.empty()) {
         string writable_dir = fs_make_writable_path(settings.UserWritablePath, settings.ClientResources);
 
-        for (const auto& pack : settings.ClientResourceEntries) {
+        for (const string& pack : settings.ClientResourceEntries) {
             resources.AddPackSource(writable_dir, pack, true);
         }
     }
@@ -845,7 +845,7 @@ void ClientEngine::Net_OnInitData()
                 }
             }
 
-            if (IsPackaged()) {
+            if (Settings->Packaged) {
                 throw ResourcesOutdatedException("Resource pack outdated", fname);
             }
         }
