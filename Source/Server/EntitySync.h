@@ -202,6 +202,7 @@ public:
     [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
     [[nodiscard]] auto GetHeldEntities() -> vector<ptr<ServerEntity>>;
+    [[nodiscard]] auto GetLockWaitDuration() const noexcept -> timespan { return _lockWaitDuration; }
 
     void Activate() noexcept;
     void Deactivate() noexcept;
@@ -216,8 +217,13 @@ public:
     void UnlockSingleton(ptr<EntityLock> lock);
 
 private:
+    friend class EntityLock;
     friend class EntityManager;
     friend class ServerEngine;
+
+    // A parked wait belongs to every active script context in the synchronous call chain: the outer
+    // context's wall time includes waits performed by a nested script callback too
+    static void RecordLockWait(timespan duration) noexcept;
 
     // The trusted creation boundary, and the only path that may capture an unpublished parentless entity with
     // no caller cover, so its C++ surface stays restricted to the two audited owners
@@ -249,6 +255,7 @@ private:
     // Saved on Activate, restored on Deactivate. Lets contexts stack per-thread so that an
     // event-callback's nested context can pop back to the dispatcher's primary context cleanly
     nptr<SyncContext> _previousContext {};
+    timespan _lockWaitDuration {};
 };
 
 class ScopedSyncContext final

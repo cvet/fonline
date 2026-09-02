@@ -269,6 +269,13 @@ together but stops at the first exclusive one, so readers batch without starving
 lock and force-aborts its parked waiters, and rejects later acquisitions so a tick firing after shutdown cannot
 deadlock on an empty owner field.
 
+Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside
+`EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer
+context in the synchronous call chain, because an outer script's wall time includes a nested script callback's
+wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not
+counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting
+backend so diagnostics can separate contention from execution cost.
+
 A multi-lock `Ensure` is all-or-nothing: it validates compatibility for the whole batch under the state mutexes
 and only then commits ownership, and it escalates in a global order, releasing an already-held ancestor down to
 zero and re-taking it the same number of times so the parent context's recursion and intention counters are

@@ -1250,11 +1250,12 @@ void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
     throw InvalidCallException("ScheduleDelayedCallback not supported on this engine");
 }
 
-void BaseEngine::RunScriptContext(const function<void()>& callback)
+auto BaseEngine::RunScriptContext(const function<void()>& callback) -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
     callback();
+    return timespan::zero;
 }
 
 void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)

@@ -108,13 +108,14 @@ auto ServerEngine::RequireCurrentSyncContext() const -> ptr<SyncContext>
     return ctx;
 }
 
-void ServerEngine::RunScriptContext(const function<void()>& callback)
+auto ServerEngine::RunScriptContext(const function<void()>& callback) -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
     ScopedSyncContext nested;
 
     callback();
+    return nested.GetContext().GetLockWaitDuration();
 }
 
 auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
