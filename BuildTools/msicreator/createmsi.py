@@ -75,14 +75,13 @@ class PackageGenerator:
             else:
                 self.arch = 32 if '32' in platform.architecture()[0] else 64
         self.final_output = '%s-%s-%d.msi' % (self.basename, self.version, self.arch)
+        self.install_root_dir = 'LocalAppDataFolder'
         if self.arch == 64:
-            self.progfile_dir = 'ProgramFiles64Folder'
             if platform.system() == "Windows":
                 redist_glob = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Redist\\MSVC\\*\\MergeModules\\Microsoft_VC141_CRT_x64.msm'
             else:
                 redist_glob = '/usr/share/msicreator/Microsoft_VC141_CRT_x64.msm'
         else:
-            self.progfile_dir = 'ProgramFilesFolder'
             if platform.system() == "Windows":
                 redist_glob = 'C:\\Program Files\\Microsoft Visual Studio\\2017\\Community\\VC\\Redist\\MSVC\\*\\MergeModules\\Microsoft_VC141_CRT_x86.msm'
             else:
@@ -148,8 +147,8 @@ class PackageGenerator:
             'Id': 'TARGETDIR',
             'Name': 'SourceDir',
         })
-        progfiledir = ET.SubElement(targetdir, 'Directory', {
-            'Id': self.progfile_dir,
+        installrootdir = ET.SubElement(targetdir, 'Directory', {
+            'Id': self.install_root_dir,
         })
         pmf = ET.SubElement(targetdir, 'Directory', {'Id': 'ProgramMenuFolder'},)
         if self.startmenu_shortcut is not None:
@@ -161,7 +160,7 @@ class PackageGenerator:
             ET.SubElement(pmf, 'Directory', {'Id': 'DesktopFolder',
                                              'Name': 'Desktop',
             })
-        installdir = ET.SubElement(progfiledir, 'Directory', {
+        installdir = ET.SubElement(installrootdir, 'Directory', {
             'Id': 'INSTALLDIR',
             'Name': self.installdir,
         })

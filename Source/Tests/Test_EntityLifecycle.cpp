@@ -78,6 +78,9 @@ namespace
             _sentPacketCount.store(0, std::memory_order_relaxed);
             _sentAddCritterCount.store(0, std::memory_order_relaxed);
             _sentRemoveCritterCount.store(0, std::memory_order_relaxed);
+            _sentInfoMessageCount.store(0, std::memory_order_relaxed);
+            _sentDisconnectCount.store(0, std::memory_order_relaxed);
+            _lastSentInfoMessage.store(EngineInfoMessage::None, std::memory_order_relaxed);
             _sentTrackedMessageCount.store(0, std::memory_order_relaxed);
         }
 
@@ -97,6 +100,8 @@ namespace
                 return _sentAddCritterCount.load(std::memory_order_relaxed);
             case NetMessage::RemoveCritter:
                 return _sentRemoveCritterCount.load(std::memory_order_relaxed);
+            case NetMessage::Disconnect:
+                return _sentDisconnectCount.load(std::memory_order_relaxed);
             default:
                 return 0;
             }
@@ -107,6 +112,20 @@ namespace
             FO_NO_STACK_TRACE_ENTRY();
 
             return _sentTrackedMessageCount.load(std::memory_order_relaxed);
+        }
+
+        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return _sentInfoMessageCount.load(std::memory_order_relaxed);
+        }
+
+        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return _lastSentInfoMessage.load(std::memory_order_relaxed);
         }
 
         [[nodiscard]] auto GetSentTrackedMessage(size_t index) const -> NetMessage
@@ -155,6 +174,17 @@ namespace
                     else if (message == NetMessage::RemoveCritter) {
                         _sentRemoveCritterCount.fetch_add(1, std::memory_order_relaxed);
                     }
+                    else if (message == NetMessage::InfoMessage) {
+                        FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(EngineInfoMessage), "Truncated outgoing info message", message_size);
+
+                        EngineInfoMessage info_message {};
+                        memory::copy(&info_message, data.data() + offset + header_size, sizeof(info_message));
+                        _lastSentInfoMessage.store(info_message, std::memory_order_relaxed);
+                        _sentInfoMessageCount.fetch_add(1, std::memory_order_relaxed);
+                    }
+                    else if (message == NetMessage::Disconnect) {
+                        _sentDisconnectCount.fetch_add(1, std::memory_order_relaxed);
+                    }
 
                     if (message == NetMessage::AddCritter || message == NetMessage::RemoveCritter) {
                         size_t tracked_index = _sentTrackedMessageCount.fetch_add(1, std::memory_order_relaxed);
@@ -177,6 +207,9 @@ namespace
         std::atomic<size_t> _sentPacketCount {};
         std::atomic<size_t> _sentAddCritterCount {};
         std::atomic<size_t> _sentRemoveCritterCount {};
+        std::atomic<size_t> _sentInfoMessageCount {};
+        std::atomic<size_t> _sentDisconnectCount {};
+        std::atomic<EngineInfoMessage> _lastSentInfoMessage {};
         stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
         std::atomic<size_t> _sentTrackedMessageCount {};
@@ -461,6 +494,9 @@ namespace EntityLifecycle
         if (PlayerEventMode == 5) {
             return EventResult::StopChain;
         }
+        if (PlayerEventMode == 6) {
+            throw("Deliberate login event failure");
+        }
 
         return EventResult::ContinueChain;
     }
@@ -615,15 +651,20 @@ namespace EntityLifecycle
         return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 
-    static auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
+    static auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>
     {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
         auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
 
         not_logged_in_player->SetName(name);
         not_logged_in_player->SetLastControlledCritterId(ident_t {1});
 
         return not_logged_in_player;
+    }
+
+    static auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
+    {
+        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        return CreatePreparedNotLoggedInPlayer(server, std::move(net_connection), name);
     }
 
     // A map spectator is an ordinary Player entity, so the fixture only needs the connection shell — not a
@@ -1843,6 +1884,46 @@ TEST_CASE("PlayerRegistrationCppApi")
         small_vector<ptr<ServerEntity>, 2> reconnect_cover {player, not_logged_in_player};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
         CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(not_logged_in_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
+    }
+
+    SECTION("LoginPlayerToExistentRecordReportsFailureWhenPlayerLoginThrows")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto player = CreateLoggedPlayer(server, "FailingReconnect");
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(6));
+
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
+        auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, test_connection, "FailingReconnectNext");
+        small_vector<ptr<ServerEntity>, 2> reconnect_cover {player, not_logged_in_player};
+        server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
+
+        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(not_logged_in_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
+
+        test_connection->Dispatch();
+        CHECK(test_connection->GetSentInfoMessageCount() == 1);
+        CHECK(test_connection->GetLastSentInfoMessage() == EngineInfoMessage::NetLoginScriptFail);
+        CHECK(test_connection->GetSentMessageCount(NetMessage::Disconnect) == 1);
+        CHECK_FALSE(test_connection->IsDisconnected());
+    }
+
+    SECTION("LoginPlayerToExistentRecordKeepsHardDisconnectForCompletionFailure")
+    {
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
+        auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, test_connection, "MissingRecord");
+
+        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(not_logged_in_player, ident_t {999999}), Catch::Matchers::ContainsSubstring("Player data not found"));
+
+        test_connection->Dispatch();
+
+        CHECK(test_connection->GetSentInfoMessageCount() == 0);
+        CHECK(test_connection->GetSentMessageCount(NetMessage::Disconnect) == 0);
+        CHECK(test_connection->IsDisconnected());
     }
 
     SECTION("LoginPlayerToExistentRecordUsesCallerProvidedLocalMapCover")

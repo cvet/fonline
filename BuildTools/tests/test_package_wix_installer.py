@@ -131,7 +131,7 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     assert config["version"] == "0.3.422"
     assert config["upgrade_guid"] == "B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D"
     assert config["product_name"] == "Last Frontier"
-    assert config["installdir"] == "LastFrontier"
+    assert config["installdir"] == "Last Frontier"
     assert config["startmenu_shortcut"] == "LastFrontier.exe"
     assert config["desktop_shortcut"] == "LastFrontier.exe"
     assert os.path.basename(str(config["addremove_icon"])) == "app.ico"
@@ -161,6 +161,9 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     assert 'Property Id="PREVIOUSINSTALLDIR"' in wxs
     assert r'Value="[PREVIOUSINSTALLDIR]"' in wxs
     assert "NOT Installed AND NOT INSTALLDIR AND PREVIOUSINSTALLDIR" in wxs
+    assert 'Directory Id="LocalAppDataFolder"' in wxs
+    assert 'Directory Id="INSTALLDIR" Name="Last Frontier"' in wxs
+    assert 'Directory Id="ProgramFiles64Folder"' not in wxs
     assert "Valve\\Steam" not in wxs
     assert "STEAMINSTALLROOT" not in wxs
     assert 'Indirect="yes"' not in wxs
@@ -199,6 +202,7 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
     packager = _make_packager(tmp_path, fomain_lines, arch="win32-win7", binary_output_postfix="Win7")
     packager.target_output_path = str(staged)
     monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: None)
+    monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
 
     captured: dict[str, object] = {}
 
@@ -206,6 +210,12 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
         captured["cmd"] = cmd
         captured["cwd"] = cwd
         assert (staged / "INSTALLED").is_file()
+        previous = os.getcwd()
+        os.chdir(cwd)
+        try:
+            createmsi.PackageGenerator(cmd[-1]).generate_files()
+        finally:
+            os.chdir(previous)
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(_package.subprocess, "run", fake_run)
@@ -215,8 +225,13 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
     assert captured["cmd"][-1] == "LastFrontier_Win7.wix.json"
     config = json.loads((output_dir / "LastFrontier_Win7.wix.json").read_text(encoding="utf-8"))
     assert config["name_base"] == "LastFrontier_Win7"
+    assert config["installdir"] == "Last Frontier"
     assert config["arch"] == 32
     assert config["startmenu_shortcut"] == "LastFrontier_Win7.exe"
+    wxs = (output_dir / "LastFrontier_Win7.wxs").read_text(encoding="utf-8")
+    assert 'Directory Id="LocalAppDataFolder"' in wxs
+    assert 'Directory Id="INSTALLDIR" Name="Last Frontier"' in wxs
+    assert 'Directory Id="ProgramFilesFolder"' not in wxs
 
 
 def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

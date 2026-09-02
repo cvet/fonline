@@ -154,7 +154,9 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 - Add/Remove Programs icon ← `Packaging.AppIcon` (optional)
 - install directory name and MSI base name ← the package nice name
 
-An explicit `INSTALLDIR` passed to `msiexec` has highest priority. Otherwise, a first-time interactive install prefers the path remembered by an earlier MSI, then the normal `Program Files\<nice-name>` fallback. The selected path is stored under `HKCU\Software\<nice-name>\InstallLocation` and the directory screen always permits direct editing or browsing. The standalone MSI does not inspect or target Steam or another store's installation infrastructure.
+An explicit `INSTALLDIR` passed to `msiexec` has highest priority. Otherwise, a first-time interactive install prefers the path remembered by an earlier MSI, then the per-user writable `%LOCALAPPDATA%\<Common.GameName>` fallback. The selected path is stored under `HKCU\Software\<nice-name>\InstallLocation` and the directory screen always permits direct editing or browsing, including an explicit `Program Files` choice. The standalone MSI does not inspect or target Steam or another store's installation infrastructure.
+
+An MSI upgrade deliberately keeps a remembered `Program Files` path instead of moving an existing tree. The refreshed `INSTALLED` marker still routes cache, logs, resources, and native runtime updates to the per-user writable overlay described in [ClientUpdater.md](ClientUpdater.md), so the retained executable location does not block later self-updates.
 
 The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
 
