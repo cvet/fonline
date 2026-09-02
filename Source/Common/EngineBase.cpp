@@ -1093,7 +1093,7 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
         result = it_target2->second;
     }
 
-    return result;
+    return result.as_str() != "__remove__" ? result : hstring {};
 }
 
 auto EngineMetadata::GetProtoItem(hstring proto_id) const noexcept -> nptr<const ProtoItem>

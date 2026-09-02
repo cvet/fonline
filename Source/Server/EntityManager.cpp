@@ -54,8 +54,7 @@ EntityManager::EntityManager(ptr<ServerEngine> engine) :
     _mapCollectionName {engine->Hashes.ToHashedString(strex("{}s", Map::ENTITY_TYPE_NAME))},
     _critterCollectionName {engine->Hashes.ToHashedString(strex("{}s", Critter::ENTITY_TYPE_NAME))},
     _itemCollectionName {engine->Hashes.ToHashedString(strex("{}s", Item::ENTITY_TYPE_NAME))},
-    _protoMigrationRuleName {engine->Hashes.ToHashedString("Proto")},
-    _removeMigrationReplacement {engine->Hashes.ToHashedString("Remove")}
+    _protoMigrationRuleName {engine->Hashes.ToHashedString("Proto")}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -921,7 +920,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
 
         // A proto removed on purpose by a migration rule skips cleanly so callers drop the entity, while a
         // genuinely missing one keeps its id and surfaces later as proto-not-found
-        if (auto migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && migrated.value() == _removeMigrationReplacement) {
+        if (optional<hstring> migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && !migrated.value()) {
             WriteLog(LogType::Info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
             return {};
         }
