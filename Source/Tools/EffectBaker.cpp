@@ -48,7 +48,7 @@ FO_DISABLE_WARNINGS_POP()
 FO_BEGIN_NAMESPACE
 
 // SDL_GPU mandates its own per-stage descriptor sets, so `-spv_sdl` rewrites the decorations of the native
-// SPIR-V and leaves the native `-spv` that Rendering-Vulkan consumes untouched (Docs/FrontendAndRendering.md)
+// SPIR-V and leaves the native `-spv` that Rendering-Vulkan consumes untouched
 static constexpr int32_t SDLGPU_MAX_SAMPLERS_PER_STAGE = 16;
 static constexpr int32_t SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE = 4;
 

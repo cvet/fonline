@@ -131,6 +131,25 @@ class DocumentationNativeCodingContractsTests(unittest.TestCase):
         self.assertIn("-Wthread-safety -Werror=thread-safety", cmake)
         self.assertIn("/clang:-Wthread-safety /clang:-Werror=thread-safety", cmake)
 
+    def test_engine_source_comments_name_no_documentation_page(self) -> None:
+        # A comment outlives the page it names: the docs move, the path stays, and the reader follows it into
+        # nothing. Engine comments point at code only, and the guide is reached from Docs/en/index.md
+        source_root = ENGINE_ROOT / "Source"
+        suffixes = {".cpp", ".h", ".hpp", ".inc", ".fos"}
+        comment = re.compile(r"(?://|/\*|^\s*\*)")
+        page = re.compile(r"[\w./-]+\.md\b")
+
+        offenders: list[str] = []
+        for path in sorted(source_root.rglob("*")):
+            if path.suffix not in suffixes or not path.is_file():
+                continue
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                match = comment.search(line)
+                if match is not None and page.search(line, match.end()) is not None:
+                    offenders.append(f"{path.relative_to(ENGINE_ROOT).as_posix()}:{number}")
+
+        self.assertEqual([], offenders)
+
     def test_manifest_owns_canonical_and_legacy_routes(self) -> None:
         manifest = json.loads(
             self._read("Docs/documentation-manifest.json")

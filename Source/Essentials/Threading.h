@@ -73,7 +73,7 @@
 FO_BEGIN_NAMESPACE
 
 // std-compatible primitives annotated for Clang Thread Safety Analysis; the platform STL types are not capabilities
-// Method names mirror std, and fo::unique_lock works with condition_variable_any; see Docs/en/contributing/coding-contracts/thread-safety-analysis.md
+// Method names mirror std, and fo::unique_lock works with condition_variable_any
 
 class FO_TSA_CAPABILITY("mutex") mutex
 {

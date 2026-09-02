@@ -481,7 +481,7 @@ void ParticleBaker::BakeSparkFile(const File& file) const
     ValidateSparkTexturePaths(file, system);
 
     // Use a deterministic run of a throwaway copy to bake emitter-local positions separately from the absolute billboard radius
-    // Runtime transforms only the positions; see Docs/en/how-to/content/particle-format.md#resource-pipeline
+    // Runtime transforms only the positions
     {
         SPK::Ref<SPK::System> simulation = SPK::SPKObject::copy(system);
 

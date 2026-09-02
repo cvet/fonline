@@ -56,8 +56,8 @@ extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
 
-// Every entity method declares its call-time preconditions with FO_VALIDATE_ENTITY(<flags>); the flags and
-// what each one does on violation: Docs/ServerRuntime.md, entity-access validation
+// Every entity method declares its call-time preconditions with FO_VALIDATE_ENTITY(<flags>); the FO_VE_CHECK_*
+// macros below name each flag and what it does on violation
 class Entity;
 inline void ValidateEntityAccess(nptr<const Entity> entity);
 

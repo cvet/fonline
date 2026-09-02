@@ -689,7 +689,7 @@ auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pa
 }
 
 // Directories go stale by letter case exactly like files, and nothing else repairs them. Directories before files
-// and shallowest first, so every rename lands inside a parent already spelled right (Docs/BakingPipeline.md)
+// and shallowest first, so every rename lands inside a parent already spelled right
 void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
 {
     FO_STACK_TRACE_ENTRY();
@@ -759,7 +759,7 @@ void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
 }
 
 // Drops outputs no baker claims any more and re-spells the ones still wanted but sitting under a stale name; one
-// pass because both decisions read the same directory (Docs/BakingPipeline.md)
+// pass because both decisions read the same directory
 void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
 {
     FO_STACK_TRACE_ENTRY();

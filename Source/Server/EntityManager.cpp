@@ -367,7 +367,7 @@ auto EntityManager::GetItemsCount() const noexcept -> size_t
 }
 
 // LoadEntities runs before workers and cannot hold _registryLock while callbacks re-lock the registry
-// Thread-safety analysis is disabled for this startup-only path; see Docs/en/contributing/coding-contracts/thread-safety-analysis.md
+// Thread-safety analysis is disabled for this startup-only path
 void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
