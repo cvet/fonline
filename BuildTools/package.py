@@ -1626,7 +1626,7 @@ class Packager:
 			'name_base': name_base,
 			'version': version,
 			'comments': game_name + ' game client',
-			'installdir': self.args.nicename,
+			'installdir': game_name,
 			'license_file': '',
 			'upgrade_guid': upgrade_code,
 			'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
