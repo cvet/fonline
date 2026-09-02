@@ -821,6 +821,22 @@ static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, HashRes
     return name_resolver.ResolveEnumValue(base_type.Name, value_name);
 }
 
+static auto IsProtoReferenceRemovedByMigration(const BaseTypeDesc& base_type, hstring proto_id, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string_view migration_type_name = base_type.Name;
+
+    if (base_type.IsEntityProto) {
+        constexpr string_view proto_prefix = "Proto";
+        FO_VERIFY_AND_THROW(migration_type_name.starts_with(proto_prefix), "Entity proto type has no Proto prefix", migration_type_name);
+        migration_type_name.remove_prefix(proto_prefix.size());
+    }
+
+    optional<hstring> migrated = name_resolver.CheckMigrationRule(hash_resolver.ToHashedString("Proto"), hash_resolver.ToHashedString(migration_type_name), proto_id);
+    return migrated.has_value() && !migrated.value();
+}
+
 static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -850,7 +866,14 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> pr
             }
         }
         else if (!proto) {
-            throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+            if (!IsProtoReferenceRemovedByMigration(base_type, resolved_value, hash_resolver, name_resolver)) {
+                throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+            }
+            if (!prop->IsNullable()) {
+                throw PropertySerializationException("Proto reference property requires non-null proto, add Nullable or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
+            }
+
+            resolved_value = {};
         }
 
         auto hash = resolved_value.as_hash();
@@ -1948,7 +1971,14 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
                 }
             }
             else if (!proto) {
-                throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+                if (!IsProtoReferenceRemovedByMigration(base_type, resolved_value, hash_resolver, name_resolver)) {
+                    throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+                }
+                if (!prop->IsNullable()) {
+                    throw PropertySerializationException("Proto reference property requires non-null proto, add Nullable or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
+                }
+
+                resolved_value = {};
             }
 
             hash = resolved_value.as_hash();

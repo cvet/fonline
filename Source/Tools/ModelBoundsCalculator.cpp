@@ -64,7 +64,7 @@ ModelBoundsSampler::ModelBoundsSampler(const ModelMeshData& model_data, const ve
         throw;
     }
     catch (const std::exception& ex) {
-        throw ModelBoundsException(strex("Invalid baked model data while preparing bounds: {}", ex.what()));
+        throw ModelBoundsException("Invalid baked model data while preparing bounds", ex.what());
     }
 }
 
@@ -128,7 +128,7 @@ auto ModelBoundsSampler::CalculateAnimationBounds(const ModelAnimationSource& an
         throw;
     }
     catch (const std::exception& ex) {
-        throw ModelBoundsException(strex("Invalid baked model data while calculating animation bounds: {}", ex.what()));
+        throw ModelBoundsException("Invalid baked model data while calculating animation bounds", ex.what());
     }
 }
 
@@ -194,7 +194,7 @@ auto ModelBoundsSampler::SampleBoneTransforms(const ModelAnimationSource& animat
         throw;
     }
     catch (const std::exception& ex) {
-        throw ModelBoundsException(strex("Invalid baked model data while sampling a link bone: {}", ex.what()));
+        throw ModelBoundsException("Invalid baked model data while sampling a link bone", ex.what());
     }
 }
 
@@ -253,7 +253,7 @@ void ModelBoundsSampler::AppendBone(const ModelMeshBoneData& bone, optional<size
         mesh.SkinBoneOffsets = source.SkinBoneOffsets;
 
         if (mesh.SkinBoneNames.size() != mesh.SkinBoneOffsets.size()) {
-            throw ModelBoundsException(strex("Skin bone count {} does not match inverse-bind offset count {}", mesh.SkinBoneNames.size(), mesh.SkinBoneOffsets.size()));
+            throw ModelBoundsException("Skin bone count does not match inverse-bind offset count", mesh.SkinBoneNames.size(), mesh.SkinBoneOffsets.size());
         }
 
         for (const mat44& offset : mesh.SkinBoneOffsets) {
@@ -471,7 +471,7 @@ auto ModelBoundsSampler::BuildSampleTimes(const ModelAnimationSource& animation,
     constexpr float64_t GRID_SAMPLES_PER_SECOND = 60.0;
 
     if (!std::isfinite(animation.Duration) || animation.Duration <= 0.0f) {
-        throw ModelBoundsException(strex("Animation '{}' has invalid duration {}", animation.Name, animation.Duration));
+        throw ModelBoundsException("Animation has invalid duration", animation.Name, animation.Duration);
     }
 
     vector<float32_t> result;

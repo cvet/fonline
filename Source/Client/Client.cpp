@@ -48,14 +48,14 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    resources.AddPacksSource(settings.Packaged ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
 
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
-    if (!settings.UserWritablePath.empty()) {
+    if (settings.Packaged && !settings.UserWritablePath.empty()) {
         string writable_dir = fs_make_writable_path(settings.UserWritablePath, settings.ClientResources);
 
-        for (const auto& pack : settings.ClientResourceEntries) {
+        for (const string& pack : settings.ClientResourceEntries) {
             resources.AddPackSource(writable_dir, pack, true);
         }
     }
@@ -203,6 +203,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
             prop->AddPostSetter(std::move(callback));
         };
 
+        set_callback(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), MapView::RemovedStaticItemIds_RegIndex, wrap_post_setter(&ClientEngine::OnSetMapRemovedStaticItems));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLookDistance));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterModelName));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterHideSprite));
@@ -851,7 +852,7 @@ void ClientEngine::Net_OnInitData()
                 }
             }
 
-            if (IsPackaged()) {
+            if (Settings->Packaged) {
                 throw ResourcesOutdatedException("Resource pack outdated", fname);
             }
         }
@@ -2367,6 +2368,18 @@ void ClientEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> p
     else {
         throw GenericException("Unable to send location modifiable property", prop->GetName());
     }
+}
+
+void ClientEngine::OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prop);
+
+    auto map = entity.dyn_cast<MapView>();
+    FO_VERIFY_AND_THROW(map, "Missing map view instance");
+
+    map->ApplyStaticItemRemovals();
 }
 
 void ClientEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop)

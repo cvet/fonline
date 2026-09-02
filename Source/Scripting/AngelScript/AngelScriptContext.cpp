@@ -461,15 +461,24 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
             }
         };
 
-        _engine->RunScriptContext(execute_context);
+        timespan lock_wait_duration = _engine->RunScriptContext(execute_context);
 
-        if (_overrunTimeout) {
-            timespan execution_duration = execution_time.GetDuration();
+        if (_overrunTimeout && !IsRunInDebugger()) {
+            timespan total_duration = execution_time.GetDuration();
+            timespan execution_duration = total_duration >= lock_wait_duration ? total_duration - lock_wait_duration : timespan::zero;
+            bool execution_overrun = execution_duration >= _overrunTimeout;
+            bool lock_wait_overrun = lock_wait_duration >= _overrunTimeout;
 
-            if (execution_duration >= _overrunTimeout && !IsRunInDebugger()) {
+            if (execution_overrun || lock_wait_overrun) {
                 if constexpr (!FO_DEBUG) {
                     string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
-                    WriteLog("Script execution overrun: {} ({})", func_decl, execution_duration);
+
+                    if (execution_overrun) {
+                        WriteLog("Script execution overrun: {} (execution: {}, lock wait: {}, total: {})", func_decl, execution_duration, lock_wait_duration, total_duration);
+                    }
+                    if (lock_wait_overrun) {
+                        WriteLog("Script lock wait overrun: {} (lock wait: {}, execution: {}, total: {})", func_decl, lock_wait_duration, execution_duration, total_duration);
+                    }
                 }
             }
         }

@@ -405,6 +405,13 @@ content generator instead of skipping it.
 The client-side `.fomap-bin-client` blob is a different, shorter layout (header,
 hash table and static items only).
 
+A per-map static item removal is only observable end to end when the *same* static
+item id appears in both blobs: the server needs it in `StaticItemsById` to remove
+it, and the client needs a view built from it to drop. `Test_ClientServerIntegration`
+carries one such item (props with `Static`, `Ownership = MapHex` and a `Hex`) in both
+map blobs, so a server-side `Map.RemoveStaticItem` is checked against the live client's
+`MapView::GetItem`.
+
 ### Writing into a real Maps root from the mapper
 
 `SaveMap` / `SaveMapToDir` resolve the on-disk Maps root from an existing map

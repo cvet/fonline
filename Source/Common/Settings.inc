@@ -54,7 +54,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(ScriptSettings, virtual BaseSettings);
-FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
+FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script execution or entity-lock wait overrun, 0 to disable
 FIXED_SETTING(bool, Script, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
 FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1"); // Debugger TCP bind host
 FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)

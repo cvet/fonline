@@ -957,8 +957,8 @@ TEST_CASE("DataSource")
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
 
-    // The installed client mounts every pack name against its writable overlay, where most are absent;
-    // an absent pack withholding a snapshot would take the whole client off the index
+    // The installed client mounts every pack name against its writable overlay, where most of them are absent;
+    // an absent pack that withheld its snapshot would silently take the whole client off the index
     SECTION("FileSystemKeepsItsIndexWhenAnOptionalPackIsAbsent")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_absent_pack");

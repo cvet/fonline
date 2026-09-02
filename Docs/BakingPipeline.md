@@ -1050,7 +1050,7 @@ the actual baker-resolved source/name, so `Base`, case-insensitive authored
 names, relative paths, and multiple animation pairs sharing one clip do not need
 to be resolved again by the client.
 
-Schema 2 appends an optional AABB to every serialized link. A non-particle link
+Schema 2 appends an optional union AABB to every serialized link. A non-particle link
 with a child model must carry a finite, non-degenerate bound; default/root-edit and
 particle links must not. For an empty `Link` bone, `ModelInfoBaker` skins the child
 mesh with the parent description's static pose and every unique mapped animation.
@@ -1061,6 +1061,14 @@ calculations are submitted as bounded nested jobs from the ordinary per-descript
 bake task. They reuse the bake pool and fall back to inline execution when it is
 full, so changing one attachment invalidates and recalculates its owning `.fo3d` without serially
 rebuilding a global equipment-configuration table.
+
+Schema 3 extends every geometry-link payload after that union AABB with a counted,
+`(StateAnim, ActionAnim)`-keyed set of per-animation AABBs. The client maps those keys
+to runtime clip indices and uses the active clip's envelope instead of keeping the
+union envelope for every pose. This is an incompatible binary layout: any future
+field added to `LFMODINF` must bump `MODEL_DESCRIPTION_SCHEMA_VERSION` in the same
+change. The schema-3 transition also uses compatibility marker `0.0.46`, forcing a
+new runtime and a full resource bake to travel together.
 
 Each rig archive manifest repeats the caller-owned source signature and
 source/object identity before its nested `LFOZZARC`. The reader constructs its

@@ -48,7 +48,7 @@ static constexpr string_view StrFilesystemError = "File system error!";
 static constexpr string_view StrServerMissingNativeUpdate = "Server doesn't provide a native client update for binary target {}. Please update the client manually";
 static constexpr string_view StrUpdaterOutdated = "Client updater is incompatible with this server. Please install the latest full client package.";
 static constexpr string_view StrPlatformUnsupported = "Client outdated, please update via your app store";
-static constexpr string_view StrNativeUpdateFailed = "Failed to update native client modules for binary target {}. Please update the client manually";
+static constexpr string_view StrUpdateFailed = "Client update failed. Please install the latest full client package.";
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 static constexpr string_view StrMetadataMismatch = "Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later.";
 static constexpr string_view StrErrorMessageCaption = "";
@@ -74,18 +74,18 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _startTime = nanotime::now();
 
-    _resources.AddPackSource(IsPackaged() ? settings->ClientResources : settings->BakeOutput, "Embedded");
+    _resources.AddPackSource(settings->Packaged ? settings->ClientResources : settings->BakeOutput, "Embedded");
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
     if (!settings->UserWritablePath.empty()) {
         _resources.AddDirSource(fs_make_writable_path(settings->UserWritablePath, settings->ClientResources), false, true, true);
     }
     if (!_settings->DefaultSplashPack.empty()) {
-        _resources.AddPackSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
+        _resources.AddPackSource(_settings->Packaged ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
 
         // The splash is drawn before this run downloads anything, so a pack an earlier run repaired
         // into the writable root has to win here as well
-        if (!_settings->UserWritablePath.empty()) {
+        if (_settings->Packaged && !_settings->UserWritablePath.empty()) {
             _resources.AddPackSource(fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources), _settings->DefaultSplashPack, true);
         }
     }
@@ -248,7 +248,7 @@ void Updater::FinishResourcesUpdate()
     string local_metadata_version = ReadLocalMetadataVersion();
 
     if (local_metadata_version != _serverMetadataVersion) {
-        WriteLog("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, IsPackaged() ? _settings->ClientResources : _settings->BakeOutput);
+        WriteLog("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Packaged ? _settings->ClientResources : _settings->BakeOutput);
         _result = UpdaterResult::MetadataMismatch;
         return;
     }
@@ -1185,7 +1185,7 @@ void ShowUpdaterFailure(UpdaterResult result)
         Application::ShowErrorMessage(StrMetadataMismatch, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::Failed:
-        Application::ShowErrorMessage(strex(strex::dynamic_format, StrNativeUpdateFailed, target_name).str(), StrErrorMessageCaption, true);
+        Application::ShowErrorMessage(StrUpdateFailed, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:

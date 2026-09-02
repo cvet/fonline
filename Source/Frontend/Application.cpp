@@ -659,8 +659,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     // Default effect
     FileSystem base_fs;
-    base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Embedded", true);
-    base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Core", true);
+    base_fs.AddPackSource(Settings.Packaged ? Settings.ClientResources : Settings.BakeOutput, "Embedded", true);
+    base_fs.AddPackSource(Settings.Packaged ? Settings.ClientResources : Settings.BakeOutput, "Core", true);
     LoadImGuiEffect(base_fs);
 
     _imguiDrawBuf = active_renderer->CreateDrawBuffer(false);

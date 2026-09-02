@@ -1464,8 +1464,8 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, 
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Game_GetStaticItemsForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)
 {
     auto static_map = server->MapMngr.GetStaticMap(proto);
-    const vector<ptr<StaticItem>>& static_items = static_map->StaticItems;
-    return static_items;
+    auto static_items = static_map->GetStaticItems();
+    return {static_items.begin(), static_items.end()};
 }
 
 // SyncScope: static proto-map read only; no live entity cover is required
@@ -1474,9 +1474,10 @@ FO_SCRIPT_API vector<ptr<ProtoCritter>> Server_Game_GetProtoCrittersForProtoMap(
 {
     auto static_map = server->MapMngr.GetStaticMap(proto);
     vector<ptr<const ProtoCritter>> proto_critters;
-    proto_critters.reserve(static_map->CritterBillets.size());
+    auto critter_billets = static_map->GetCritterBillets();
+    proto_critters.reserve(critter_billets.size());
 
-    for (const pair<ident_t, refcount_ptr<Critter>>& billet : static_map->CritterBillets) {
+    for (const StaticMap::CritterBillet& billet : critter_billets) {
         auto proto_cr = billet.second->GetProto().dyn_cast<const ProtoCritter>();
         FO_VERIFY_AND_THROW(proto_cr, "Missing required prototype critter");
         proto_critters.emplace_back(proto_cr);

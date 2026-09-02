@@ -181,7 +181,7 @@ public:
     void FrameAdvance();
 
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
-    virtual void RunScriptContext(const function<void()>& callback);
+    virtual auto RunScriptContext(const function<void()>& callback) -> timespan;
 
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
     [[nodiscard]] auto HasRemoteCallHandler(hstring name) const -> bool;

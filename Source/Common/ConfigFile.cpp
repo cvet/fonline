@@ -81,7 +81,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
 
         if (!accum_line.empty()) {
             accum_line.append(line);
-            merged_line = std::move(accum_line);
+            merged_line = accum_line;
             line = merged_line;
             line_stable = false;
         }
@@ -115,7 +115,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
 
             // Store current section content
             if (IsEnumSet(_options, ConfigFileOption::CollectContent) && !skip_cur_section) {
-                (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
+                (*cur_section)[string_view {}] = StoreOwnedString(section_content);
                 section_content.clear();
             }
 

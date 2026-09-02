@@ -53,6 +53,10 @@ namespace TestClientServerIntegration
 {
     static std::atomic_uint16_t IntegrationTestPort {46000};
 
+    // The baked static item shared by the server map and the client map, addressed by both sides
+    static constexpr ident_t STATIC_ITEM_ID {5003};
+    static constexpr mpos STATIC_ITEM_HEX {20, 20};
+
     static auto MakeServerScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
@@ -205,6 +209,17 @@ namespace ClientServerIntegrationServer
                     Critter npc = npcHandle;
                     Game.Sync(npc);
                     npc.UnitTestClientMark = 8;
+                }
+            }
+        }
+        else if (step == 6) {
+            // Dropping the map's one baked static item; the client watching the map must lose it too
+            if (crMapCover !is null) {
+                Map crMap = crMapCover;
+                StaticItem[] statics = crMap.GetStaticItems();
+
+                if (!statics.isEmpty()) {
+                    crMap.RemoveStaticItem(statics[0]);
                 }
             }
         }
@@ -806,8 +821,34 @@ End
         return bake_dir;
     }
 
+    // Properties of the one baked static item both map blobs carry, so a server-side removal of it is
+    // observable in the client's map view
+    template<typename TEngine>
+    static auto MakeStaticItemPropsBlob(TEngine& engine) -> vector<uint8_t>
+    {
+        auto registrar = engine.GetPropertyRegistrar(engine.Hashes.ToHashedString("Item"));
+        REQUIRE(static_cast<bool>(registrar));
+
+        auto static_prop = registrar->FindProperty("Static");
+        auto ownership_prop = registrar->FindProperty("Ownership");
+        auto hex_prop = registrar->FindProperty("Hex");
+        REQUIRE(static_cast<bool>(static_prop));
+        REQUIRE(static_cast<bool>(ownership_prop));
+        REQUIRE(static_cast<bool>(hex_prop));
+
+        Properties props {registrar};
+        props.SetValue<bool>(static_prop, true);
+        props.SetValue<ItemOwnership>(ownership_prop, ItemOwnership::MapHex);
+        props.SetValue<mpos>(hex_prop, STATIC_ITEM_HEX);
+
+        vector<uint8_t> props_data;
+        set<hstring> str_hashes;
+        props.StoreAllData(props_data, str_hashes);
+        return props_data;
+    }
+
     // Authored content, so map creation runs the content generator instead of skipping it. Layout is the hash
-    // table, then critter records, then item records; each record is an id, a proto hash and an empty props blob
+    // table, then critter records, then item records; each record is an id, a proto hash and a props blob
     template<typename TEngine>
     static auto MakeStaticServerMapBlob(TEngine& engine) -> vector<uint8_t>
     {
@@ -853,7 +894,9 @@ End
             writer.WriteBytes({critter_props.data(), critter_props.size()});
         }
 
-        writer.Write<uint32_t>(uint32_t {1});
+        vector<uint8_t> static_item_props = MakeStaticItemPropsBlob(engine);
+
+        writer.Write<uint32_t>(uint32_t {2});
         writer.Write<ident_t::underlying_type>(ident_t::underlying_type {5002});
         writer.Write<hstring::hash_t>(item_pid.as_hash());
         writer.Write<uint32_t>(numeric_cast<uint32_t>(item_props.size()));
@@ -862,17 +905,35 @@ End
             writer.WriteBytes({item_props.data(), item_props.size()});
         }
 
+        writer.Write<ident_t::underlying_type>(STATIC_ITEM_ID.underlying_value());
+        writer.Write<hstring::hash_t>(item_pid.as_hash());
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
+        writer.WriteBytes({static_item_props.data(), static_item_props.size()});
+
         return map_data;
     }
 
-    static auto MakeEmptyClientMapBlob() -> vector<uint8_t>
+    template<typename TEngine>
+    static auto MakeStaticClientMapBlob(TEngine& engine) -> vector<uint8_t>
     {
+        hstring item_pid = engine.Hashes.ToHashedString("UnitTestSharedItem");
+        vector<uint8_t> static_item_props = MakeStaticItemPropsBlob(engine);
+
         vector<uint8_t> map_data;
         auto writer = DataWriter(map_data);
         writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
+
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(item_pid.as_str().length()));
+        writer.WriteStringBytes(item_pid.as_str());
+
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<ident_t::underlying_type>(STATIC_ITEM_ID.underlying_value());
+        writer.Write<hstring::hash_t>(item_pid.as_hash());
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
+        writer.WriteBytes({static_item_props.data(), static_item_props.size()});
+
         return map_data;
     }
 
@@ -1011,7 +1072,7 @@ End
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
         auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
-        auto fomap_blob = MakeEmptyClientMapBlob();
+        auto fomap_blob = MakeStaticClientMapBlob(proto_engine);
 
         auto script_blob = MakeClientScriptBinary(compiler_resources);
 
@@ -1490,6 +1551,58 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
             REQUIRE_NOTHROW(map_view->DrawMap());
             ImGui::Render();
         }
+    }
+
+    // A static item the server drops from this map instance has to leave the client's map view without a reload
+    {
+        auto session_map = client->GetCurMap();
+        REQUIRE(session_map);
+        ptr<MapView> map_view = session_map.as_ptr();
+
+        REQUIRE(static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID)));
+
+        auto drive_world_step = [&client](int32_t step) {
+            REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
+
+            for (int32_t i = 0; i < 200; i++) {
+                client->MainLoop();
+                std::this_thread::sleep_for(std::chrono::milliseconds {2});
+            }
+        };
+
+        drive_world_step(6);
+        CHECK_FALSE(static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID)));
+        CHECK(map_view->GetItemsOnHex(STATIC_ITEM_HEX).empty());
+
+        // Removal is one-way: nothing the server can say afterwards puts it back on this loaded map
+        drive_world_step(6);
+        CHECK_FALSE(static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID)));
+        CHECK(map_view->GetItemsOnHex(STATIC_ITEM_HEX).empty());
+    }
+
+    // The other half of the contract: a client that loads the map while the item is already removed must
+    // never build it into the view, rather than building it and taking it out again
+    {
+        auto map_proto = client->GetProtoMap(client->Hashes.ToHashedString("UnitTestSharedMap"));
+        REQUIRE(map_proto);
+
+        isize32 screen_size {client->Settings->ScreenWidth, client->Settings->ScreenHeight};
+
+        auto load_view = [&](bool with_removal) {
+            auto map_view = SafeAlloc::MakeRefCounted<MapView>(client.as_ptr(), ident_t {9001}, map_proto.as_ptr(), screen_size);
+            auto destroy_view = scope_exit([&map_view]() noexcept { safe_call([&map_view] { map_view->DestroySelf(); }); });
+
+            if (with_removal) {
+                map_view->SetRemovedStaticItemIds(vector<ident_t> {STATIC_ITEM_ID});
+            }
+
+            REQUIRE_NOTHROW(map_view->LoadStaticData());
+            return static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID));
+        };
+
+        // Without the removal the same load does produce the view, so the check above is not vacuous
+        CHECK(load_view(false));
+        CHECK_FALSE(load_view(true));
     }
 
     // The server diagnostic panels only have real rows to render once a world exists, which is exactly the
@@ -2086,6 +2199,37 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     REQUIRE(WaitForUpdaterResult(updater));
     CHECK(updater.GetResult() == UpdaterResult::ResourcesReady);
     CHECK_FALSE(updater.IsAborted());
+}
+
+TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
+{
+    using namespace TestClientServerIntegration;
+
+    uint16_t port = IntegrationTestPort.fetch_add(1);
+    GlobalSettings client_settings = MakeClientTestSettings(port);
+    string updater_bake_output = PrepareClientUpdaterBakeOutput();
+    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs_remove_dir_tree(updater_bake_output); });
+    string pack_name = "OutdatedClientPack";
+    string metadata_path = strex(updater_bake_output).combine_path(pack_name).combine_path("Metadata.fometa-client").str();
+
+    STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
+    constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
+    vector<uint8_t> outdated_metadata;
+    DataWriter outdated_writer {outdated_metadata};
+    outdated_writer.Write<uint32_t>(METADATA_FILE_MAGIC);
+    outdated_writer.Write<uint16_t>(outdated_file_version);
+    outdated_writer.Write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
+    outdated_writer.WriteStringBytes(BakerTests::TEST_METADATA_VERSION);
+    outdated_writer.Write<uint16_t>(uint16_t {0});
+
+    REQUIRE(fs_write_file(metadata_path, outdated_metadata));
+    BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
+    BakerTests::OverrideSetting(client_settings.ClientResourceEntries, vector<string> {pack_name});
+
+    CHECK_NOTHROW([&client_settings] {
+        Updater updater {&client_settings, &GetApp()->MainWindow};
+        ignore_unused(updater);
+    }());
 }
 
 TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")

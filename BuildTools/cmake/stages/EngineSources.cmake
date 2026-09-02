@@ -218,6 +218,8 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.h"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.h"
+    "${FO_ENGINE_ROOT}/Source/Server/StaticMap.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/StaticMap.h"
     "${FO_ENGINE_ROOT}/Source/Server/UpdaterBackend.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/UpdaterBackend.h"
     "${FO_ENGINE_ROOT}/Source/Server/WorkerPool.cpp"
