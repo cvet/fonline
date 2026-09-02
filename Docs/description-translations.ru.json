@@ -4213,6 +4213,10 @@
           "translation": "temporary",
           "preserve_source": true
         },
+        "/properties/@id=map-format.property.Map.RemovedStaticItemIds/description": {
+          "source_sha256": "49a1ee9fe20d15b9d40b0d203e96fe7ebb5f5778dacb0d4040c06a9905bcbf62",
+          "translation": "Идентификаторы запечённых статических предметов, которые убрал этот экземпляр карты; удаление одностороннее на всё время жизни экземпляра."
+        },
         "/properties/@id=map-format.property.Map.ScrollAxialArea/description": {
           "source_sha256": "3fb7d9fad48530dfbee5033003b3f7dd91722398dbfc2d05d543e6ba43a2fc8f",
           "translation": "Прямоугольник в аксиальных координатах, ограничивающий прокрутку карты; нулевой прямоугольник оставляет доступной всю карту."
@@ -5545,6 +5549,10 @@
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
           "translation": "temporary",
           "preserve_source": true
+        },
+        "/properties/@id=prototype-format.property.Map.RemovedStaticItemIds/description": {
+          "source_sha256": "49a1ee9fe20d15b9d40b0d203e96fe7ebb5f5778dacb0d4040c06a9905bcbf62",
+          "translation": "Идентификаторы запечённых статических предметов, которые убрал этот экземпляр карты; удаление одностороннее на всё время жизни экземпляра."
         },
         "/properties/@id=prototype-format.property.Map.ScrollAxialArea/description": {
           "source_sha256": "3fb7d9fad48530dfbee5033003b3f7dd91722398dbfc2d05d543e6ba43a2fc8f",
@@ -10476,6 +10484,10 @@
         "/symbols/@id=script.entity.Player/description": {
           "source_sha256": "aec350e8e89734765aa13bbfa920e2b5c4fc27bca3394663d3a84599261f7125",
           "translation": "Сущность учётной записи и сеанса подключения игрока, отдельная от управляемого ею Critter; клиенты получают её реплицированный PlayerView."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.RemovedStaticItemIds/description": {
+          "source_sha256": "49a1ee9fe20d15b9d40b0d203e96fe7ebb5f5778dacb0d4040c06a9905bcbf62",
+          "translation": "Идентификаторы запечённых статических предметов, которые убрал этот экземпляр карты; удаление одностороннее на всё время жизни экземпляра."
         },
         "/symbols/@id=script.enum.CornerType/description": {
           "source_sha256": "ab6cfd8992a5bd11798629ede9e52933a0124a03188f2c24b8c839c8959bd89a",
@@ -15653,6 +15665,14 @@
           "source_sha256": "385f054228016fd8739d6a9dbbf0ef15c40ff15d20f6f331794395b53892a15b",
           "translation": "SyncScope: требует self; перегенерирует содержимое карты и кеши размещения."
         },
+        "/symbols/@id=script.method.server.Map.RemoveStaticItem%237b30d7a907ece580/description": {
+          "source_sha256": "b71b2dedf7de69eefb1a02f90c4ef8f3faf3d3574dcb72fa8b3c1cf8d0cf93b1",
+          "translation": "Удаление одностороннее на всё время жизни экземпляра карты: клиентам, уже находящимся на карте, сообщается только об исчезновении статического предмета, поэтому попытка вынуть id обратно из списка отклоняется, а не игнорируется молча"
+        },
+        "/symbols/@id=script.method.server.Map.RemoveStaticItem%23a89f4bb2ef62c35a/description": {
+          "source_sha256": "eb4f1f62d700eb201e01f2c5223e001f9bc4a03382bf5214fb8875834d2b0188",
+          "translation": "SyncScope: requires self; изменяет собственный список удалений карты, который property sync рассылает клиентам"
+        },
         "/symbols/@id=script.method.server.Map.SetupScript/description": {
           "source_sha256": "834a6f6d0882c8a4240b31bc41c1f21e10c123a6ae4ae02ebe741a9cec7b034e",
           "translation": "SyncScope: требует self; callback инициализации выполняется в том же покрытии и должен расширить его перед обращением к другим сущностям."
@@ -16204,6 +16224,10 @@
         "/symbols/@id=script.property.Map.MapDayLightCapacity/description": {
           "source_sha256": "58f86c929d236b2daafebaa75cd8b93dfa7d41284e13ba1f6e631c2f2b2e592f",
           "translation": "Текущая дневная ёмкость обычных источников света карты в процентах, ограниченная диапазоном от 0 до 100."
+        },
+        "/symbols/@id=script.property.Map.RemovedStaticItemIds/description": {
+          "source_sha256": "49a1ee9fe20d15b9d40b0d203e96fe7ebb5f5778dacb0d4040c06a9905bcbf62",
+          "translation": "Идентификаторы запечённых статических предметов, которые убрал этот экземпляр карты; удаление одностороннее на всё время жизни экземпляра."
         },
         "/symbols/@id=script.property.Map.ScrollAxialArea/description": {
           "source_sha256": "3fb7d9fad48530dfbee5033003b3f7dd91722398dbfc2d05d543e6ba43a2fc8f",
@@ -16938,8 +16962,8 @@
           "translation": "Позиция информации updater-а (<1 — сверху, 0 — по центру, >1 — снизу)"
         },
         "/symbols/@id=setting.client.Client.UserWritablePath/description": {
-          "source_sha256": "dde7a7fa6a5d6ac396efc523825549b5f7f5a7cb045209faf25cf700f70a7c15",
-          "translation": "Доступный для записи корень данных установленного клиента (кеш, логи, оверлей самообновления), когда каталог установки доступен только для чтения. Пустое значение включает переносной режим с записью рядом с exe (по умолчанию). \"*\" выбирает системный каталог данных пользователя (Windows: %LOCALAPPDATA%, иначе %APPDATA%; macOS: ~/Library/Application Support; Linux/Android: $XDG_DATA_HOME, иначе ~/.local/share). Иное значение должно быть явным абсолютным путем. При запуске путь разрешается в абсолютный и каталог создается; базовые ресурсы только для чтения остаются в каталоге установки, а этот каталог накладывается поверх них. Значение задает установщик; см. Docs/ClientUpdater.md"
+          "source_sha256": "9561bd5765990fe937254211aa4f246714c62864ef1f0d8cd6d67b6d201422cc",
+          "translation": "Доступный для записи корень данных установленного клиента (кеш, логи, оверлей самообновления), когда каталог установки доступен только для чтения. Пустое значение включает переносной режим с записью рядом с exe (по умолчанию). \"*\" выбирает системный каталог данных пользователя (Windows: %LOCALAPPDATA%, иначе %APPDATA%; macOS: ~/Library/Application Support; Linux/Android: $XDG_DATA_HOME, иначе ~/.local/share). Иное значение должно быть явным абсолютным путем. При запуске путь разрешается в абсолютный и каталог создается; базовые ресурсы только для чтения остаются в каталоге установки, а этот каталог накладывается поверх них. Значение задает установщик"
         },
         "/symbols/@id=setting.client.Client.WinNotify/description": {
           "source_sha256": "ef1f1f1697c049fd3b7a14127f138967527f6eaf3b71505f41222a5f6fc9f7d7",
@@ -17742,8 +17766,8 @@
           "translation": "Пространства имен скриптов, сопоставляемые как префиксы, в которых глобальные переменные модуля могут быть изменяемыми; во всех остальных разрешены только const-глобалы"
         },
         "/symbols/@id=setting.common.Script.OverrunReportTime/description": {
-          "source_sha256": "7efc6705f895239f98bdcbea0270ec7e89e7d24886566ce5e236391820f0b899",
-          "translation": "Время в миллисекундах, после которого сообщается о превышении времени выполнения скрипта; 0 отключает"
+          "source_sha256": "c1cf25bb80c155d52cd1558fe28a0a71152a9b138cf0a69d2731b46f25671a7c",
+          "translation": "Время в миллисекундах, после которого сообщается о превышении времени выполнения скрипта или ожидания блокировки сущности; 0 отключает"
         },
         "/symbols/@id=setting.common.SpriteMesh.AlphaThreshold/description": {
           "source_sha256": "e7599cc283b523d8f063a402dac1f53cb6b340f7b1e79268a2a101e0eb23ce33",

@@ -116,6 +116,9 @@ The prefix is part of the ownership contract. Do not move a method to a more con
   - script setup and location lookup;
   - item creation/query by id, hex, radius, or collection;
   - static item lookup;
+  - one-way static item removal on the map instance (`RemoveStaticItem`; the removed ids are read back through
+    the `RemovedStaticItemIds` property) — see
+    [Maps and Movement](../../explanation/maps-and-movement.md#static-item-removal);
   - critter lookup by id, hex, radius, path, and visibility conditions;
   - map geometry, path, and movement-related queries.
 - Keep state-changing world operations here rather than in common/client helpers.

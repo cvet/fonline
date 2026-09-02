@@ -6,7 +6,7 @@ document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
 
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"23b287a1f723f13327a6a69dc149805319127d462ef24c905bef03f97e3e3ce7"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"5dcb4608d949a04b87ec58da304474a8bbf48e1bed3983bde59103ff66fdb10a"} -->
 
 # Разделение клиентской среды выполнения и обновление
 
@@ -470,9 +470,10 @@ version с версией, загруженной server. Server исполня�
 ## Writable data установленного и portable-клиента
 
 Portable build хранит cache, log и self-update рядом с executable. Это подходит
-для zip, распакованного пользователем в writable directory. Installed build в
-`Program Files` или `/usr/...` может быть read-only, поэтому записи должны уйти
-в per-user root.
+для zip, распакованного пользователем в writable directory. Windows MSI по умолчанию
+ставится в `%LOCALAPPDATA%`, но installed build всё ещё может оказаться в read-only
+каталоге после явного выбора `Program Files` или под `/usr/...`, поэтому записи
+должны уйти в per-user root.
 
 `ResolveUserWritablePath(settings)` из `ApplicationInit.cpp` интерпретирует
 `Client.UserWritablePath`:
@@ -495,7 +496,18 @@ config), log, resource patches и self-updated native runtime. Read-only base
 локальной metadata version, поэтому принятая перед соединением версия совпадает
 с той, которую затем читает gameplay. Updater также монтирует writable overlay
 поверх install-dir splash pack, чтобы до начала текущего скачивания использовать
-splash, исправленный предыдущим updater run.
+splash, исправленный предыдущим updater run. Packaged-режим и выбор resource root
+в updater читают уже загруженный снимок `Common.Packaged`; прямые проверки marker
+исполняемого файла остаются только в bootstrap до настроек и в физическом выборе
+архива против каталога в файловой системе.
+
+Этот же precedence является путём восстановления после смены `METADATA_FILE_VERSION`:
+новый runtime считает нечитаемый старый install pack не имеющим локальной metadata
+version, скачивает текущий pack в writable overlay, успешно перечитывает overlay и
+только затем строит `ClientEngine`. Строгий отказ от старого layout не ослабляется.
+Если updater не может завершить починку, клиент выходит с сообщением `Client update
+failed. Please install the latest full client package.` вместо `MetadataOutdatedException`
+из старта gameplay или ошибочного отчёта о сбое native-модулей.
 
 Native runtime установленного клиента также обновляется в writable root.
 `Updater::_binaryDir` равен `<root>` для installed и exe directory для portable.
@@ -682,7 +694,7 @@ compatibility на этих платформах updater возвращает `P
 
 | Симптом | Первый сигнал и действие |
 |---------|--------------------------|
-| Host не находит runtime и fallback невозможен | embedded updater не может получить module; message box сообщает `Failed to update native client modules for binary target <target>` |
+| Host не находит runtime и fallback невозможен либо не удалась починка ресурсов | message box сообщает `Client update failed. Please install the latest full client package.` |
 | Поколение updater не совпадает | server log `Connected client X has outdated updater version Y`; старый client требует base package, generation 2+ просит latest full client package |
 | Gameplay version outdated на self-update platform | resource pass сообщает compatibility outdated, binaries mode stages runtime, показывает restart prompt, возвращает `ReloadRequested`; host продвигает файл и выходит |
 | Gameplay version outdated в Web/iOS/Android | message box `Client outdated, please update via your app store`, затем exit без native self-update |
@@ -709,7 +721,7 @@ compatibility на этих платформах updater возвращает `P
 8. Прервите network mid-download и подключитесь снова: `GetUpdateFile` должен продолжить с temp-file size без полной загрузки.
 9. Соедините client со старой `FO_COMPATIBILITY_VERSION` и новый server. После prompt закройте client: host должен заменить `<live>-staging`, выйти без load и загрузить promoted runtime только при следующем запуске.
 10. Убейте host во время binary download. При restart полный staging продвигается, а неполный temp продолжается обычным updater session.
-11. Для installed smoke добавьте `INSTALLED`, оставьте `Client.UserWritablePath` empty и проверьте per-OS root, cache/log/overlay, selector и повторный launch. Затем испортите selector и подтвердите fallback к install-dir runtime.
+11. Для installed smoke добавьте `INSTALLED`, оставьте `Client.UserWritablePath` empty и проверьте per-OS root, cache/log/overlay, selector и повторный launch. Прогоните и обновление resource pack, и обновление native runtime: после перезапуска gameplay обязан читать обновлённый writable pack, а не замороженный аналог из install directory. Затем испортите selector и подтвердите fallback к install-dir runtime.
 
 Project release gate должен дополнительно запускать точные updater pipeline tests
 для распространяемых package profiles: missing/corrupt packs, binary corruption,

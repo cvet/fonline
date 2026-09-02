@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/testing/
 
 # Тестирование
 
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"be4f8add5bb817cfa7d9d083c099c0f331ed4c946231042e070aaad78a6a53aa"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"b8a5a8eac73a777f3b31f8ffc9006b7360e46fcd19388fbb0cf9c5e2e5af51e8"} -->
 
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
@@ -173,7 +173,7 @@ Coverage зависит от platform и environment. Sources, не скомпи
 - **Logged-in client/server:** login remote calls объявляются в обоих metadata blobs в противоположных направлениях с правильным subsystem/namespace. До login insertion добавьте хотя бы одно project-owned persistent `Player` property, затем создайте и переключите critter и перенесите его в location/map. Оба `.fomap-bin-*` blob начинаются с `BAKED_MAP_FILE_MAGIC` и `BAKED_MAP_FILE_VERSION`; после header client layout заканчивается после counts hash table и static items.
 - **World reload:** используйте file-backed JSON, отметьте ожидаемые entities persistent, остановите один server и запустите второй на том же каталоге. Critter восстанавливается через owning map или global-map membership; off-map runtime critter не reload-ится.
 - **Headless 3D:** запеките недегенеративный triangle, создайте description настоящим `ModelInfoBaker`, предоставьте source и baked mesh, `Metadata.fometa-client` и `ModelAnimationInfo.foinfo`, затем создайте instance через null renderer. Fixture metadata создавайте через `BakerTests::MakeMetadataBlob` или `MakeEmptyMetadataBlob`: registration отклоняет blob без обязательной metadata version.
-- **Static maps и disk writes Mapper:** сначала запишите baked-map format header, затем настоящий payload `Properties::StoreAllData()` для server map records; zero length недопустим. Server payload продолжается hashes, critters и items, а более короткий client payload содержит hashes и static items. Mapper save tests требуют настоящий Maps root через `InputDirs` с reference `.fomap`; предпочитайте `SaveMapToDir`, потому что plain `SaveMap` иначе может записать в working directory процесса.
+- **Static maps и disk writes Mapper:** сначала запишите baked-map format header, затем настоящий payload `Properties::StoreAllData()` для server map records; zero length недопустим. Server payload продолжается hashes, critters и items, а более короткий client payload содержит hashes и static items. Mapper save tests требуют настоящий Maps root через `InputDirs` с reference `.fomap`; предпочитайте `SaveMapToDir`, потому что plain `SaveMap` иначе может записать в working directory процесса. Удаление статического предмета на карте наблюдаемо от начала до конца только тогда, когда *один и тот же* id статического предмета есть в обоих payload — серверу он нужен в `StaticItemsById`, чтобы удалить, а клиенту нужен построенный из него view, чтобы убрать, — поэтому `Test_ClientServerIntegration` держит такой предмет в обоих map blobs.
 
 ## Текущий набор тестов
 

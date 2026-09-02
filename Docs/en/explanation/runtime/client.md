@@ -309,6 +309,7 @@ Moving 2D critters keep logical path/hex progress in `MovingContext` while `Crit
 `MapView` is the largest client view class because it bridges several subsystems:
 
 - map file/static-data loading through `LoadFromFile()` and `LoadStaticData()`;
+- per-instance static item removal, skipped in `LoadStaticData()` and applied live by `ApplyStaticItemRemovals()`, driven by the map's `RemovedStaticItemIds` property; removal is one-way and never reversed on a loaded map — see [Maps and Movement](../maps-and-movement.md#static-item-removal);
 - map processing through `Process()`;
 - map rendering through `DrawMap()` and staged render events on `ClientEngine`;
 - field indexes for items and critters;

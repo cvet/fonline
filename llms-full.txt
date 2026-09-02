@@ -360,7 +360,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 27766486b5c4cce6f4d1f8623e2cc26aa5abfd4c7fdcdfdab3a34baf81893e08
+Content SHA-256: 4753dce1bc040eb4398feb9e109f87c0bec8f69c2dc536ee7466c3922a9a4075
 
 ---
 title: FOnline Public Contract Index
@@ -408,10 +408,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2501**
-- Symbols with source-backed descriptions: **2501**
+- Discovered symbols: **2505**
+- Symbols with source-backed descriptions: **2505**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2501**
+- Explicitly classified symbols: **2505**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -3142,7 +3142,7 @@ Do not call the update complete while required evidence is missing. Record an un
 ===== BEGIN DOCUMENT scripting-runtime =====
 Source: Docs/en/explanation/scripting-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/scripting-runtime/
-Content SHA-256: d6a5936921700b287bbf61eedb62222bdfc77544246392156b217f3bfb1e7b0f
+Content SHA-256: 3a85b54cc74f281136b582feeccfafce495b376fb33dd78c98c849e46bd97c2b
 
 ---
 layout: default
@@ -3249,6 +3249,8 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 - cleanup callbacks and post-cleanup callbacks release backend-owned resources in a controlled order.
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
+
+Runtime overrun diagnostics use `Script.OverrunReportTime` as an independent threshold for two measurements. `Script execution overrun` reports wall time after subtracting the server synchronization context's accumulated entity-lock wait, while `Script lock wait overrun` reports the contention component itself. Both messages include execution, lock-wait, and total wall durations, so a compute-heavy function and a wait-heavy function stay separately searchable without losing the full latency picture. Non-server engines return zero lock wait. A value of zero still disables both diagnostics, and an attached debugger still suppresses them.
 
 AngelScript assigns registered object type IDs lazily. Separate script contexts may request the same fresh type concurrently, so the vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine reader/writer lock and refreshes the value after acquiring exclusive access. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads` drives 16 native workers over 128 new types through public `asITypeInfo::GetTypeId()` and requires one identical valid ID per type.
 
@@ -4170,7 +4172,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: be4f8add5bb817cfa7d9d083c099c0f331ed4c946231042e070aaad78a6a53aa
+Content SHA-256: b8a5a8eac73a777f3b31f8ffc9006b7360e46fcd19388fbb0cf9c5e2e5af51e8
 
 ---
 layout: default
@@ -4356,7 +4358,7 @@ Coverage is platform- and environment-specific. Sources not compiled in the curr
 - **Logged-in client/server:** declare login remote calls in both metadata blobs with opposite directions and the correct subsystem/namespace, add at least one project-owned persistent `Player` property before login insertion, then create/switch a critter and transfer it into a location/map to reach world-entry replication. Both `.fomap-bin-*` blobs start with `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION`; after the header, the client layout ends after the hash-table and static-item counts.
 - **World reload:** use file-backed JSON, mark expected entities persistent, shut down one server, and start another on the same directory. Reload reaches critters through their owning map or global-map membership; an off-map runtime critter is not restored.
 - **Headless 3D:** bake a non-degenerate triangle, build the description with `ModelInfoBaker`, provide both source and baked mesh entries plus `Metadata.fometa-client` and `ModelAnimationInfo.foinfo`, then instantiate through the null renderer. Build fixture metadata with `BakerTests::MakeMetadataBlob` or `MakeEmptyMetadataBlob`; registration rejects a blob without the required metadata version.
-- **Static maps and mapper disk writes:** write the baked-map format header first, then serialize real `Properties::StoreAllData()` payloads for server map records; zero length is invalid. The server payload continues with hashes, critters, and items, while the shorter client payload contains hashes and static items. Mapper save tests need an actual `InputDirs` Maps root containing a reference `.fomap`; prefer `SaveMapToDir`, because plain `SaveMap` may otherwise write into the process working directory.
+- **Static maps and mapper disk writes:** write the baked-map format header first, then serialize real `Properties::StoreAllData()` payloads for server map records; zero length is invalid. The server payload continues with hashes, critters, and items, while the shorter client payload contains hashes and static items. Mapper save tests need an actual `InputDirs` Maps root containing a reference `.fomap`; prefer `SaveMapToDir`, because plain `SaveMap` may otherwise write into the process working directory. A per-map static item removal is only observable end to end when the *same* static item id appears in both payloads — the server needs it in `StaticItemsById` to remove and the client needs a view built from it to drop — so `Test_ClientServerIntegration` carries one such item in both map blobs.
 
 ## Current test inventory
 
@@ -5799,7 +5801,7 @@ fixture.
 ===== BEGIN DOCUMENT prototype-format-guide =====
 Source: Docs/en/how-to/content/prototype-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/prototype-format.html
-Content SHA-256: 2ae02b21d2cd4df7a923757a830f3064b48cc91f86650f24040863e2690cc321
+Content SHA-256: 723765e21d6625cdadb17b0eced485514c9a14d98c054ae93db5dfe452395ec6
 
 ---
 layout: default
@@ -5998,7 +6000,7 @@ Declare:
 
 ```cpp
 ///@ MigrationRule Proto Item OldContainer NewContainer
-///@ MigrationRule Proto Item RemovedContainer Remove
+///@ MigrationRule Proto Item RemovedContainer __remove__
 ```
 
 The owning project decides where project metadata declarations live and how long rules are retained. A rename target must exist at the receiving revision. A removal is valid only when loading policy can safely discard the reference or entity; otherwise migrate to a compatible replacement.
@@ -10963,7 +10965,7 @@ python BuildTools\docs_validate.py
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: 735b61bf7cd2b22183048d507b2b932010c20cb08b440d0ab9914e30a68ddfda
+Content SHA-256: 3e42910bef2747392f66fbd763871e1c69efb853d76932721c34c38cf31e6367
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11136,7 +11138,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 
 - Prefer existing engine idioms over new local abstractions.
 - Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface. Do not mark such structs `final` — a plain data aggregate needs no inheritance guard, the keyword only complicates it.
-- **The code is the documentation; a comment carries only what the code cannot.** Names, types, and structure already state *what* happens, so a comment that re-tells them is deleted, not shortened — and the default state of a line of engine code is *no* comment. Write one only for what the reader cannot see: why the code sits here rather than elsewhere, why this approach instead of the obvious alternative, the gist of a genuinely dense block, or a contract that is not derivable from the code (sentinel meanings and units, threshold calibration, concurrency/ownership/lifetime requirements, edge-case exemptions, why a plausible alternative is unsafe). **One line is the default and two is the ceiling** — no multi-line essays. When the explanation genuinely needs more room, it belongs in the owning `Docs/` page with a short link from the code; never link a temporary plan. Do not narrate the next statement, restate a signature or parameter list, enumerate steps the code already spells out, or record history, fixed-bug stories, or benchmark numbers (those belong in commit messages and docs). **A comment points at code, never at bookkeeping**: no task, ticket, issue, or PR numbers, no dates or "as of" wording, no version or release markers, no author names — that metadata lives in the commit and the tracker, and in code it only rots. Refer to a symbol, a function, a file, or the test that pins the behavior; the sole non-code target is the owning `Docs/` page named above. Short structural headings are allowed when they materially improve navigation in long flat code. Only the concluding sentence of a comment drops its period (the single line of a one-line comment, the final line of a two-line block, or a trailing comment); every preceding sentence keeps its period. Capitalize prose, not symbols (a leading lowercase code identifier stays as written). Fixed-text banners such as the license header, and commented-out code, are exempt.
+- **The code is the documentation; a comment carries only what the code cannot.** Names, types, and structure already state *what* happens, so a comment that re-tells them is deleted, not shortened — and the default state of a line of engine code is *no* comment. Write one only for what the reader cannot see: why the code sits here rather than elsewhere, why this approach instead of the obvious alternative, the gist of a genuinely dense block, or a contract that is not derivable from the code (sentinel meanings and units, threshold calibration, concurrency/ownership/lifetime requirements, edge-case exemptions, why a plausible alternative is unsafe). **One line is the default and two is the ceiling** — no multi-line essays. When the explanation genuinely needs more room, it belongs in the owning `Docs/` page — and the code does not link to it: engine source carries no documentation paths at all, because a path in a comment outlives the page it names, and a reader who needs the guide reaches it from `Docs/en/index.md`. Do not narrate the next statement, restate a signature or parameter list, enumerate steps the code already spells out, or record history, fixed-bug stories, or benchmark numbers (those belong in commit messages and docs). **A comment points at code, never at bookkeeping**: no task, ticket, issue, or PR numbers, no dates or "as of" wording, no version or release markers, no author names — that metadata lives in the commit and the tracker, and in code it only rots. Refer to a symbol, a function, a file, or the test that pins the behavior — never to a documentation page, a plan, or any other target outside the code. Short structural headings are allowed when they materially improve navigation in long flat code. Only the concluding sentence of a comment drops its period (the single line of a one-line comment, the final line of a two-line block, or a trailing comment); every preceding sentence keeps its period. Capitalize prose, not symbols (a leading lowercase code identifier stays as written). Fixed-text banners such as the license header, and commented-out code, are exempt.
 - Reuse the existing MIT source-file header and `#pragma once`; match the surrounding module-level layout.
 - Module layout: put class definitions and static-function forward declarations near the top of the translation unit, then implementations ordered from high-level entry points down to low-level helpers, so a reader meets the public/orchestrating code first.
 - Every standalone native module must be created as a complete `.h` + `.cpp` pair and both files must be registered in the owning build source list. A named subsystem/module must never be introduced as a lone header; keep the translation unit as the module anchor even when all current declarations are passive data and no out-of-line implementation is needed yet. Pure template/constexpr/umbrella headers are not standalone modules.
@@ -15555,7 +15557,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 04a34b6a717f9ecc782138ba46eb937f3e34782ace3e0bf6aa3888291642cca0
+Content SHA-256: d58c529ce1368d1051edb641bb86bf75053eb5112ed77e20352f56c595da2d43
 
 ---
 layout: default
@@ -16610,8 +16612,15 @@ animation-only tracks are identity, while a separate presence byte remains
 zero.
 
 The baked `.fo3d` contract is now explicitly versioned. Every description starts
-with `LFMODINF`, schema `1`, and zero flags, followed by the existing positional
-description and one required length-prefixed `LFOZZRIG` schema-1 payload. The rig
+with `LFMODINF`, schema `3`, and zero flags, followed by the existing positional
+description and one required length-prefixed `LFOZZRIG` schema-1 payload. Schema 2
+appended the union AABB to every geometry link and schema 3 appended the counted,
+`(StateAnim, ActionAnim)`-keyed per-animation boxes described above, so the client
+uses the active clip's envelope instead of the union for every pose. Each step is an
+incompatible binary layout: any further `LFMODINF` field bumps
+`MODEL_DESCRIPTION_SCHEMA_VERSION` in the same change, and the schema-3 transition
+uses compatibility marker `0.0.46` so a new runtime and a full resource bake travel
+together. The rig
 payload stores the canonical rig/cache signatures, canonical skeleton, base
 remap, each unique resolved animation/remap pair, and a sorted
 `(StateAnim, ActionAnim) -> (clip index, reversed)` table. Clip identities are
@@ -16966,7 +16975,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 9f957593c0936b000fedad6034f434bda1b5e7bbcc43e643deedeabfd1591560
+Content SHA-256: f0422fc0390b1453f5a5cc5de4c5ff3342086419f91c8c70e3de256ae7f7fdd1
 
 ---
 layout: default
@@ -17151,6 +17160,28 @@ authority stop at the same continuous point and there is no protocol change.
 For multihex actors, `CheckHexWithMultihex()` checks the directional front arc and returns the worst blocker result across checked hexes.
 
 When gameplay code changes blocker semantics, update the callback provider and tests; do not bake game-specific blocking rules into the generic path algorithm.
+
+Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
+
+## Static item removal
+
+Baked static items live in `StaticMap` (`Source/Server/StaticMap.h`), which `MapManager` keys by `ProtoMap` and shares across **every** live instance of that map. A map instance can still drop individual static items, and it does so without touching that shared data.
+
+**Removal is one-way for the life of the map instance.** `RemovedStaticItemIds` only ever grows: taking an id back out is refused by a property *setter*, which runs before the value is stored, so the write fails and both the stored list and the overlay stand unchanged. Do not expect an item to reappear on maps players already have loaded — the live client path is only ever told to drop a static item, never to build one back, and a rejection after the store would have persisted a shrunk list that silently undid the removal on the next server start. `MapManager::RegenerateMap()` regenerates map *content* and leaves removals in place; a map that needs its static layer whole again is a new map instance.
+
+The mechanics:
+
+- `Map::RemovedStaticItemIds` (`Common Mutable PublicSync Persistent`) is the stored list. It is the whole contract: persistence, client sync, and script visibility all follow from the property.
+- `Map` derives three caches from it in `RefreshRemovedStaticItems()` → `RebuildStaticOverlay()`: the removed-id set, a `vector` of the surviving static items, and a `StaticMap::Field` override for each hex a removed item covered. All three stay empty while the map keeps every baked item, so an untouched map reads the shared grid with no extra indirection.
+- `Map::VerifyStaticItemRemovalsOnlyGrow()` is the append-only guard, reached through the `ServerEngine::OnSetMapRemovedStaticItems` setter. It mutates nothing and only throws, so a refused write leaves the map exactly as it was.
+- `Map::GetStaticField()` returns the override when one exists and the shared cell otherwise. Every static query (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) and both blocking queries go through it, so a removed item is gone from movement, shooting, triggers, and lookup alike.
+- `StaticMap::ForEachItemHex()` and `StaticMap::ApplyItemToField()` are shared by the loader and by the overlay rebuild, so the two can never disagree about which hexes an item contributes to or what blocking it implies.
+- `StaticMap::Field::ScrollBlocked` exists for this rebuild. The loader's scroll-block pass writes `MoveBlocked` with no owning item, so an override rebuilt purely from the surviving items would silently open the map border; the rebuild seeds `MoveBlocked` from `ScrollBlocked` first.
+- Static items carry the `ident_t` their map file authored (`MapManager::LoadFromResources`), which is what `GetStaticItem()` looks up, what the client's `ItemHexView` carries, and what the removal list records.
+
+`EntityManager::CallInit(Map, bool)` builds the overlay once per map — that hook covers both a freshly created map and one restored from the database. Runtime changes come through the `ServerEngine::OnPostSetMapRemovedStaticItems` property post-setter, so a script that writes the property directly gets the same rebuild as one that calls `RemoveStaticItem()`.
+
+On the client there are exactly two paths, and the map view holds no state of its own for this. `LoadStaticData()` skips an id in the removed list outright, so the item is never constructed, fielded, drawn, or indexed — the record is still walked past, because the baked entries are variable length and the reader has no index to seek with. `ClientEngine::OnSetMapRemovedStaticItems` calls `MapView::ApplyStaticItemRemovals()`, which destroys the now-removed views through the ordinary `DestroyItems()` path. There is no third path: nothing on the client ever rebuilds a static item on a loaded map.
 
 ## Line tracing
 
@@ -18417,7 +18448,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: 23b287a1f723f13327a6a69dc149805319127d462ef24c905bef03f97e3e3ce7
+Content SHA-256: 5dcb4608d949a04b87ec58da304474a8bbf48e1bed3983bde59103ff66fdb10a
 
 ---
 layout: default
@@ -18814,7 +18845,7 @@ There is no auto-detection of memory vs disk mode in C++. Choose explicitly per 
 ## Installed vs portable writable data
 
 A **portable** build writes its cache, log, and self-update files next to the exe — fine for a zip the
-user unpacks anywhere. An **installed** build (MSI in `Program Files`, a package under `/usr/...`) sits
+user unpacks anywhere. The Windows MSI defaults to `%LOCALAPPDATA%`, but an **installed** build may still sit
 in a read-only directory, so those writes must go to a per-user writable location instead.
 
 `Client.UserWritablePath` selects the model, resolved at startup by `ResolveUserWritablePath(settings)` (`Source/Frontend/ApplicationInit.cpp`, called from `LoadAppSettings`):
@@ -18837,7 +18868,16 @@ install dir and patches override from the user dir — and the **self-updated na
 uses it for the local metadata-version check. The version accepted before connection is therefore the version
 gameplay will read rather than a separately assembled view with potentially different precedence. The updater
 also mounts the writable overlay above its install-dir splash pack: startup can then use a splash repaired by
-an earlier updater run before the current run downloads anything.
+an earlier updater run before the current run downloads anything. The updater's packaged-mode gates and
+resource-root choices read the already loaded `Common.Packaged` snapshot; direct executable-marker checks are
+limited to the pre-settings bootstrap and the filesystem's physical archive-versus-directory selection.
+
+This precedence is also the recovery path after `METADATA_FILE_VERSION` changes: a new runtime treats an
+unreadable old install pack as having no local metadata version, downloads the current pack into the writable
+overlay, re-reads that overlay successfully, and only then constructs `ClientEngine`. The strict old-layout
+rejection is not relaxed. If the updater cannot complete that repair, the client exits with `Client update
+failed. Please install the latest full client package.` instead of surfacing `MetadataOutdatedException` from
+gameplay startup or misreporting a resource failure as a native-module failure.
 
 **Native binary self-update for installed builds writes the runtime into the writable root**
 (`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
@@ -18869,7 +18909,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **Client packages** include the host executable and the matching runtime library renamed to the same basename next to it (for example, `<client-host>.exe` and `<client-host>.dll`). The host derives the library name from its own executable basename at startup, so no config patching is required to point one at the other.
 - **Sibling client variants are not dependency companions.** Regular and headless hosts/runtimes share a build-output directory, so the generic DLL/DSO companion scan excludes every Engine-owned `Client`/`ClientLib` and `ClientHeadless`/`ClientLibHeadless` input and alias. The packager then copies only the variants explicitly requested by the package under their packaged basenames. A stale headless build output therefore cannot leak into an ordinary portable, ZIP, or MSI client payload, while a package with the `Headless` token still receives its explicit headless host/runtime pair.
 - **Server packages** also stage every available client runtime library under `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) so a different-platform client connecting to this server can self-update its native modules.
-- **Windows Client packages with the `Wix` pack** build a required MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config, adds the `INSTALLED` marker only while the MSI payload is generated, and registers the product URI scheme through HKCU registry entries. A missing WiX/wixl toolset or a generator failure fails the package instead of silently publishing only the Raw/Zip siblings.
+- **Windows Client packages with the `Wix` pack** build a required MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or an explicit command-line/UI choice still overrides that default. A missing WiX/wixl toolset or a generator failure fails the package instead of silently publishing only the Raw/Zip siblings.
 - **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (for example, `<client-host>.dll.pdb`) — both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp / `backward-cpp` resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging — symbol gaps are never silently tolerated.
 - **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
 
@@ -19003,7 +19043,7 @@ instead of looping back to the game which would only reject the connection again
 
 | Symptom | First signal |
 |---------|--------------|
-| Host can't find runtime, no fallback possible | embedded host's resource updater fails to download anything; client message box `Failed to update native client modules for binary target <target>` |
+| Host can't find runtime, no fallback possible, or resource repair cannot complete | client message box `Client update failed. Please install the latest full client package.` |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
@@ -19030,7 +19070,7 @@ Local validation steps:
 8. Interrupt a client mid-download (kill the network) and reconnect — the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 → restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `<client-host>`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
-11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and not show the same update prompt again. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
+11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
 
 ## See Also
 
@@ -19045,7 +19085,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 44e2ca6c64a48f8b426f73d0784e25b1edbdcd2712e1462ebcfbd0c6896fa1e3
+Content SHA-256: 5c45304840459cf4b02d07feff20ca0887a7cf1f6b3b0a47334d0b6aafd5275a
 
 ---
 layout: default
@@ -19358,6 +19398,7 @@ Moving 2D critters keep logical path/hex progress in `MovingContext` while `Crit
 `MapView` is the largest client view class because it bridges several subsystems:
 
 - map file/static-data loading through `LoadFromFile()` and `LoadStaticData()`;
+- per-instance static item removal, skipped in `LoadStaticData()` and applied live by `ApplyStaticItemRemovals()`, driven by the map's `RemovedStaticItemIds` property; removal is one-way and never reversed on a loaded map — see [Maps and Movement](../maps-and-movement.md#static-item-removal);
 - map processing through `Process()`;
 - map rendering through `DrawMap()` and staged render events on `ClientEngine`;
 - field indexes for items and critters;
@@ -19604,7 +19645,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: a04871d6656ab4d3ba541590139cbd0a7c346581154d34255d6f0b2261c1ea87
+Content SHA-256: f2117d5615cfadc631ab3f2904d9ab4f39f4c6ed23971b18cf5d64d762727ed0
 
 ---
 layout: default
@@ -19652,6 +19693,8 @@ Read this page together with:
 - `Source/Server/Critter.cpp`
 - `Source/Server/Map.h`
 - `Source/Server/Map.cpp`
+- `Source/Server/StaticMap.h`
+- `Source/Server/StaticMap.cpp`
 - `Source/Server/Location.h`
 - `Source/Server/Location.cpp`
 - `Source/Server/Item.h`
@@ -19797,13 +19840,15 @@ The stat fields are updated on `_mainWorker` (inside `SyncPointJob`) and read on
 
 These are engine extension points. The scripts that implement actual game rules belong to the embedding project.
 
+All three login entrypoints (`LoginPlayerToNewRecord`, `LoginPlayerToExistentRecord`, and `LoginPlayerToTempSession`) preserve a client-visible failure boundary specifically for `OnPlayerLogin`: if the event chain stops (including because a subscriber throws), the server queues `EngineInfoMessage::NetLoginScriptFail` on the connection that owns the active attempt before requesting its graceful disconnect. Other exceptions still unwind through the entrypoint's rollback guard and retain the existing hard `DisconnectReason::LoginFailed` path. The embedding client is responsible for turning an unexpected connection failure during an unfinished login attempt into a general localized error; exception text and stack details are never sent to the client.
+
 `OnCritterPreLoad` is the persistence-migration boundary. `EntityManager::LoadCritter()` fires it once after the critter properties, inventory, and inner entities have been restored, while the critter is registered but still detached from any map. The event precedes map/global-map entry, `OnCritterInit(cr, false)`, visibility processing, and `OnCritterLoad`. New critters do not receive it. Player-bound loads mark the critter `ControlledByPlayer` before the event, so handlers observe the real controllable state. Map transfers are locked for the callback, so handlers can normalize persisted state and inventory without relocating the critter. The critter has no global-map group yet, and during world startup the rest of the world may be only partially restored, so handlers must confine themselves to the critter's own persisted state and inventory — resolving, loading, or relocating other persisted entities is not supported at this boundary. A handler may explicitly destroy the restored critter as a clean migration drop: successful destruction returns null without setting the load-error flag, allowing an owning map to remove the stale id and continue startup; dropping a player-bound critter makes the direct-load wrapper throw, and pruning outside references to the dropped id (rosters, follower links) stays with the embedding project. An exception thrown by a handler stops the event chain, and `EntityManager::LoadCritter()` converts that stopped chain into a load error, so the database load fails instead of exposing partly migrated state; the persisted record itself is kept.
 
 `MapManager::Transfer()` emits `OnCritterTransfer` only after the critter transfer, attached-critter transfers, and final visibility refresh finish. Nested event paths may destroy the transferred critter or previous-map argument before that final notification attempt; `ValidateEntityAccess()` accepts that state and event dispatch suppresses script callbacks whose entity arguments are already destroyed. While the transfer lock is held, the critter's target map/global ownership remains an asserted invariant rather than a recoverable branch.
 
 Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map. A partial-stack `MoveItem()` splits the source before delivery, and the split's init event can re-enter scripts and destroy the destination; if it does, the helper folds the split count back into the surviving source stack and destroys the undeliverable split item, so a failed split move is lossless rather than leaving an orphaned `Nowhere` item. `ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, so handlers can destroy that detached item, but ordinary script movement APIs require a current holder and do not move `Nowhere` items.
 
-Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex.
+Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex. A static item the map instance has removed contributes no trigger at all, because `VerifyTrigger()` reads the same per-instance static overlay as the rest of the static queries.
 
 ## Entity synchronization and locking
 
@@ -19860,6 +19905,8 @@ coverage is in `ServerEngineSyncContextWidenAndAncestorCover`,
 
 Waiters are FIFO. A per-waiter atomic state distinguishes waiting, granted, and aborted during shutdown; shared waiters batch until the first exclusive waiter. Multi-lock `Ensure` is all-or-nothing and escalates in global order, restoring any released ancestor recursion and descendant-hold counts exactly. Shutdown aborts parked waiters and rejects new acquisitions.
 
+Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside `EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer context in the synchronous call chain, because an outer script's wall time includes a nested script callback's wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting backend so diagnostics can separate contention from execution cost.
+
 Holder counts use an inline linear vector because millions of entity locks usually have only a few concurrent holders and must allocate nothing while idle. Per-sync cover and held-lock lists use `small_vector` sized to measured common paths; owner collections remain `vector` where incomplete `ServerEntity` types prevent inline storage.
 
 ## Entity ownership and persistence
@@ -19879,7 +19926,9 @@ Custom entities held directly by the global game object share its singleton `Ent
 
 Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializer`. The database facade and backends are documented in [Persistence](../persistence/).
 
-A persisted entity whose proto resolves through a `Proto <Type> <Name> Remove` migration rule is **dropped** on load: `LoadEntityDoc()` detects that the proto migration rule maps the saved proto to the `Remove` sentinel and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. `OnCritterPreLoad` destruction is the script-controlled equivalent for a fully restored critter and also returns null without a load error after `DestroyCritter()` removes its persistent graph. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A dropped critter requested directly through `ServerEngine::LoadCritter()` is not silently returned — the wrapper raises so a player login cannot continue without its character.
+A persisted entity whose proto resolves through a `Proto <Type> <Name> __remove__` migration rule is **dropped** on load: `CheckMigrationRule()` represents the `__remove__` deletion token as an engaged `optional` containing an empty hash, while `nullopt` continues to mean that no rule exists. `LoadEntityDoc()` detects that empty replacement and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. `OnCritterPreLoad` destruction is the script-controlled equivalent for a fully restored critter and also returns null without a load error after `DestroyCritter()` removes its persistent graph. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A dropped critter requested directly through `ServerEngine::LoadCritter()` is not silently returned — the wrapper raises so a player login cannot continue without its character.
+
+Persisted properties whose base type is a proto reference use the same distinction while their owning entity is restored. A rename stores the replacement proto id in memory. An empty replacement produced by the `__remove__` deletion token clears the value only when the property is `Nullable`; a non-nullable property still rejects it because the embedding project must provide a valid replacement. An unknown proto with no migration rule remains an error. This conversion happens before script load events, so a script migration can repair related nullable fields after the entity is structurally loadable.
 
 ## Player and connection flow
 
@@ -19971,7 +20020,7 @@ The reusable geometry, path finding, blockers, line tracing, and map-loading con
 - move items between critters, maps, and containers;
 - remove item-holder relationships.
 
-`Item` owns container membership and multihex entries. `StaticItem` is the static-map specialization used by map content.
+`Item` owns container membership and multihex entries. `StaticItem` is the static-map specialization used by map content. Static items are built once per `ProtoMap` into the shared `StaticMap` (`Source/Server/StaticMap.h`), carry the `ident_t` their map file authored, and are never registered, persisted, or destroyed as runtime entities. A map instance drops individual static items through its own `RemovedStaticItemIds` list rather than by mutating that shared data; the model, the accessors it filters, and the client half are described in [Maps and Movement](../maps-and-movement.md#static-item-removal).
 
 ## Map, location, item, and critter entities
 
@@ -23117,7 +23166,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: e57908d1abe04b5e519ec1a569c344f518695f2df89eb6845b44858ff5b50e73
+Content SHA-256: 3b79b4e72227c4798de907e4658e8d7dda89c7193bf6a5656ed5ade8acc8de95
 
 ---
 layout: default
@@ -23280,14 +23329,18 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 
 `POSTFIX <value>` follows a single `BINARY` clause and is never inherited by sibling entries. It must match the `FO_BINARY_OUTPUT_POSTFIX` used when that binary was built, because both sides participate in the input-directory name and packaged runtime identity. The `win32-win7` and `win64-win7` package architecture keys resolve to canonical `win32` and `win64` binary architectures; their legacy toolset choice comes from `buildtools.py`, while an explicit postfix such as `POSTFIX Win7` keeps the produced Raw/Zip/Wix names distinct. Run `BuildTools/check_windows7_imports.py` against every linked Win7 PE before packaging or publication.
 
-`package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, and creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` on POSIX hosts — on Debian/Ubuntu it ships in its own `wixl` apt package, not in `msitools`; WiX `candle`/`light` on Windows) or a generator/build error fails the package (it is not a silent best-effort step). All installer values are read from the embedding project's config, so the packager stays game-agnostic:
+`package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. Both supported build hosts use the same inline dialog authoring, so the dialog does not disappear when production runs `wixl` on Linux. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` 0.102 or newer on POSIX hosts, with its bundled `ui` extension; WiX `candle`/`light` on Windows) or a generator/build error fails the package (it is not a silent best-effort step). On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
 - `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)
 - deep-link URI scheme ← `Auth.UriScheme`
 - stable WiX `UpgradeCode` ← `Packaging.MsiUpgradeCode` (required; must never change once an MSI has shipped)
 - Add/Remove Programs icon ← `Packaging.AppIcon` (optional)
-- install directory and MSI base name ← the package nice name
+- install directory name and MSI base name ← the package nice name
+
+An explicit `INSTALLDIR` passed to `msiexec` has highest priority. Otherwise a first-time interactive install prefers the path remembered by an earlier MSI, then the per-user writable `%LOCALAPPDATA%\<Common.GameName>` fallback. The selected path is stored under `HKCU\Software\<nice-name>\InstallLocation`, and the directory screen always permits direct editing or browsing, including an explicit `Program Files` choice. The standalone MSI does not inspect or target Steam or another store's installation infrastructure.
+
+An MSI upgrade deliberately keeps a remembered `Program Files` path instead of moving an existing tree. The refreshed `INSTALLED` marker still routes cache, logs, resources, and native runtime updates to the per-user writable overlay described in [Client Updater](../../explanation/runtime/client-updater.md), so the retained executable location does not block later self-updates.
 
 The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
 
@@ -23756,7 +23809,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: 9c68d475134e03513e23d6ace74a73c969fad5b599aa0ffba821055ecf801a57
+Content SHA-256: 407f276376b2c634ef0ad3361178b82f861257e9d49d5057af9292936965088f
 
 ---
 title: Generated Map Format Reference
@@ -23780,12 +23833,12 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>23c9c12db22439f8479471356859df53e7e0adce1c8686c4bbe17d0f300dd0ef</code> |
+| Contract digest | <code>a5519a40b27afe1b5fe885d1c3580adf8e48bc72233cb73644c918782ffc3bf1</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Syntax](syntax.md) | 8 | Sections and control directives. |
-| [Properties](properties.md) | 108 | Engine-owned Map, Critter, and Item properties. |
+| [Properties](properties.md) | 109 | Engine-owned Map, Critter, and Item properties. |
 | [Baking](baking.md) | 4 | Ownership and server/client materialization. |
 | [Validation](validation.md) | 17 | Source-backed requirements and limitations. |
 
@@ -25560,7 +25613,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-prototype-format-index =====
 Source: Docs/en/reference/prototype-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/prototype-format/
-Content SHA-256: 1d48ed36944b5c90f7867dcf0b9712d6058dc0c76d9e8bdcf7e0bc8a675d3536
+Content SHA-256: 1fc5ee9cccf4a90b87a5e593de932697d04afff6dfc9056fa3e9aa27c0380bb4
 
 ---
 title: Generated Prototype Format Reference
@@ -25584,12 +25637,12 @@ This reference describes the engine-owned prototype grammar and the built-in met
 | Stability | <code>experimental</code> |
 | Support policy | The grammar is documented for a pinned engine revision. Concrete project entity types, properties, file extensions, ids, and gameplay semantics remain project-owned. |
 | Source manifest | [BuildTools/PrototypeFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PrototypeFormatInterface.json) |
-| Contract digest | <code>d3442585ca19b63d98f6232626dcf99ee4dc840fda2c0c058f8887ac63975804</code> |
+| Contract digest | <code>2f0bb524bd581b6607981761778d98178f933de670c018522e1738cbdb340a84</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Syntax](syntax.md) | 5 | Discovery, sections, identity, and inheritance. |
-| [Properties](properties.md) | 113 | Built-in HasProtos types and engine-owned property keys. |
+| [Properties](properties.md) | 114 | Built-in HasProtos types and engine-owned property keys. |
 | [Validation](validation.md) | 14 | Source-backed bake and migration requirements. |
 
 ## Boundary
@@ -25797,7 +25850,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: ac54c2d5dc9b9991165cba401173e85005ec1c70cac9fbf6e2574ba89b66784c
+Content SHA-256: 5254dffa509fb493bb3d8f4b58c54f14bbf2734adb6ff0792e7b0d9ffdb0378d
 
 ---
 title: Generated API Reference
@@ -25814,10 +25867,10 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 957 | Native methods exported to scripts. |
-| [Entity properties](properties.md) | 133 | Generated entity property contracts. |
+| [Native script methods](methods.md) | 959 | Native methods exported to scripts. |
+| [Entity properties](properties.md) | 134 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
-| [Script types](types.md) | 978 | Entities, enums, value types, reference types, fields, and methods. |
+| [Script types](types.md) | 979 | Entities, enums, value types, reference types, fields, and methods. |
 | [Engine settings](settings.md) | 284 | Fixed and runtime-variable engine settings. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
@@ -25825,25 +25878,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2501 |
-| Symbols with descriptions | 2501 |
+| Addressable symbols | 2505 |
+| Symbols with descriptions | 2505 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2501 |
+| Explicitly classified symbols | 2505 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2500 |
+| <code>experimental</code> | 2504 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2501 stable IDs with SHA-256 <code>6ca94ee0ce42589e1b9fdbe128e4109081cb24586ac2b0746fc375856377a3d8</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2505 stable IDs with SHA-256 <code>8e6bab6b90f8b56b1826e42a0abb85dff087bbf9666a5a157e617a80ddd175a3</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 
@@ -26124,7 +26177,7 @@ The engine-owned [minimal project](../../../../Examples/MinimalProject/README.md
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: 4c5e66b77304abde63753e812b1b4365b5845b2835a3c4071fca158402de2d59
+Content SHA-256: 9b0ad62af49c90d55e6de8b9e5e0e2a0c250483a61df6bcc9f4316fc7a074ff8
 
 ---
 layout: default
@@ -26315,6 +26368,8 @@ Point lookups (`IsFileExists()`, `ReadFile()`, and `ReadFileHeader()`) use one s
 The snapshot for a newly mounted source is taken before that source is published. A later mount has higher priority and replaces every indexed path it claims, matching the existing reverse-mount probe order. `ReindexDataSources()` rebuilds a replacement index separately and swaps it only after every snapshot succeeds; `CleanDataSources()` clears both sources and index. Point reads remain lock-free after setup. If an indexed source owns a path but cannot open it, `ReadFile()` returns no file instead of probing a lower-priority duplicate.
 
 `FilterFiles()` and `GetAllFiles()` continue to enumerate sources in order even when point lookup is indexed. Script module load order, prototype registration, and other consumers depend on that source-by-source order, which an unordered index does not preserve.
+
+`Common.Packaged` is a fixed auto-setting populated from the executable's packaged marker by `GlobalSettings::ApplyAutoSettings()`. After settings are loaded, runtime policy must read that snapshot (`settings.Packaged`) so copied or injected settings stay internally consistent and testable. Direct `IsPackaged()` checks are reserved for pre-settings bootstrap decisions and `FileSystem::AddPackSource()`, where the physical executable marker deliberately selects archive-versus-directory mounting; tests may also inspect that marker when choosing compatible fixtures.
 
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` is the single assembly point used by gameplay and by the updater's local metadata-version check, so validation and runtime lookup cannot disagree about which pack wins. The updater writes resource patches into that overlay, so current or repaired files win without modifying the install directory; its splash pack applies the same precedence before the current update run starts downloading. A ZIP entry read failure includes the archive path and resource-relative entry in `DataSourceException` context. Short reads additionally report the expected byte count, the actual read result, and the close result, while a CRC/close failure records the close result separately. Native runtime binary update paths are owned by [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 

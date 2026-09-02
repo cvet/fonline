@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/script-api/method-ownership.html
 
 # Карта методов скриптового API
 
-<!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"e240ac109744ff14e4f684625845644732bd4776bf61c6f13c221d7276e9bc36"} -->
+<!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"b6c90ffeebeb1098a6f9e52e719a81735379319a7ca54be7921714d20b5d19ec"} -->
 
 > Документация движка. Эта страница сопоставляет нативные файлы `///@ ExportMethod` в `Source/Scripting/` с их обязанностями в скриптовом интерфейсе. Она дополняет страницу [Скриптовый runtime](../../explanation/scripting-runtime/), но не является полным сгенерированным справочником API.
 
@@ -118,6 +118,9 @@ python BuildTools/docs_inventory.py --check
   - настройка скрипта и получение локации;
   - создание и поиск предметов по id, гексу, радиусу или коллекции;
   - поиск статических предметов;
+  - одностороннее удаление статического предмета на экземпляре карты (`RemoveStaticItem`; удалённые id читаются
+    обратно через свойство `RemovedStaticItemIds`) — см.
+    [Карты, движение и геометрия](../../explanation/maps-and-movement.md#удаление-статических-предметов);
   - поиск криттеров по id, гексу, радиусу, пути и условиям видимости;
   - запросы геометрии карты, пути и движения.
 - Изменяющие мир операции должны оставаться здесь, а не в общих или клиентских helpers.

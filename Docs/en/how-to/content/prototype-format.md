@@ -195,7 +195,7 @@ Declare:
 
 ```cpp
 ///@ MigrationRule Proto Item OldContainer NewContainer
-///@ MigrationRule Proto Item RemovedContainer Remove
+///@ MigrationRule Proto Item RemovedContainer __remove__
 ```
 
 The owning project decides where project metadata declarations live and how long rules are retained. A rename target must exist at the receiving revision. A removal is valid only when loading policy can safely discard the reference or entity; otherwise migrate to a compatible replacement.

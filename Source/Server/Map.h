@@ -42,53 +42,16 @@
 #include "MapLoader.h"
 #include "ScriptSystem.h"
 #include "ServerEntity.h"
+#include "StaticMap.h"
 #include "TwoDimensionalGrid.h"
 
 FO_BEGIN_NAMESPACE
 
 class Item;
-class StaticItem;
 class Critter;
 class Map;
 class Location;
 class Player;
-
-struct StaticMap
-{
-    struct Field
-    {
-        bool MoveBlocked {};
-        bool ShootBlocked {};
-        vector<ptr<StaticItem>> StaticItems {};
-        vector<ptr<StaticItem>> TriggerItems {};
-    };
-
-    StaticMap() = delete;
-    StaticMap(msize map_size, bool static_grid) :
-        HexField {CreateHexField(map_size, static_grid)}
-    {
-        FO_STACK_TRACE_ENTRY();
-    }
-
-    [[nodiscard]] static auto CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        if (static_grid) {
-            return SafeAlloc::MakeUnique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
-        }
-
-        return SafeAlloc::MakeUnique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
-    }
-
-    unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> HexField;
-    vector<pair<ident_t, refcount_ptr<Critter>>> CritterBillets {};
-    vector<pair<ident_t, refcount_ptr<StaticItem>>> ItemBillets {};
-    vector<pair<ident_t, ptr<StaticItem>>> HexItemBillets {};
-    vector<pair<ident_t, ptr<StaticItem>>> ChildItemBillets {};
-    vector<ptr<StaticItem>> StaticItems {};
-    unordered_map<ident_t, ptr<StaticItem>> StaticItemsById {};
-};
 
 class Map final : public ServerEntity, public EntityWithProto, public MapProperties
 {
@@ -137,23 +100,25 @@ public:
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<ptr<Critter>>;
     [[nodiscard]] auto GetNonPlayerCritters() const noexcept -> const_span<ptr<Critter>>;
     [[nodiscard]] auto IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool;
-    // Entity cover excludes spectator mutation for these getters, but TSA cannot express the leaked span.
-    // Lock-free recipient snapshots use GetSpectatorPlayersForSend instead
     [[nodiscard]] bool HasSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] span<ptr<Player>> GetSpectatorPlayers() noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] const_span<ptr<Player>> GetSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] auto GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>;
-    [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> nptr<StaticItem>;
-    [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> nptr<StaticItem>;
-    [[nodiscard]] auto GetStaticItems() noexcept -> span<ptr<StaticItem>>;
+    [[nodiscard]] auto GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>;
+    [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>;
-    [[nodiscard]] auto GetStaticItems(hstring pid) -> vector<ptr<StaticItem>>;
-    [[nodiscard]] auto GetStaticItemsOnHex(mpos hex) noexcept -> span<ptr<StaticItem>>;
-    [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vector<ptr<StaticItem>>;
-    [[nodiscard]] auto GetTriggerStaticItemsOnHex(mpos hex) noexcept -> span<ptr<StaticItem>>;
+    [[nodiscard]] auto GetStaticItems(hstring pid) const -> vector<ptr<StaticItem>>;
+    [[nodiscard]] auto GetStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticItem>>;
+    [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) const -> vector<ptr<StaticItem>>;
+    [[nodiscard]] auto GetTriggerStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticItem>>;
+    [[nodiscard]] auto HasStaticItem(ident_t static_item_id) const noexcept -> bool;
+    [[nodiscard]] auto HasRemovedStaticItems() const noexcept -> bool;
     [[nodiscard]] auto IsOutsideArea(mpos hex) const noexcept -> bool;
 
     void SetLocation(nptr<Location> loc) noexcept;
+    auto RemoveStaticItem(ident_t static_item_id) -> bool;
+    void RefreshRemovedStaticItems();
+    void VerifyStaticItemRemovalsOnlyGrow(const_span<ident_t> new_ids) const;
     void AddCritter(ptr<Critter> cr);
     void RemoveCritter(ptr<Critter> cr);
     void RefreshCritterPlayerState(ptr<Critter> cr);
@@ -200,6 +165,9 @@ private:
 
     static auto CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
 
+    auto GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&;
+    void RebuildStaticOverlay();
+
     void SetMultihexCritter(ptr<Critter> cr, bool set);
     void RecacheHexFlags(ptr<Field> field);
     auto IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex) const -> bool;
@@ -214,6 +182,11 @@ private:
     vector<ptr<Critter>> _nonPlayerCritters {};
     vector<ptr<Item>> _items {};
     unordered_map<ident_t, ptr<Item>> _itemsMap {};
+    // Per-instance view over the proto-shared StaticMap. All three stay empty while the map keeps
+    // every baked static item, and the accessors then read the shared data with no extra indirection
+    unordered_set<ident_t> _removedStaticItems {};
+    unordered_map<mpos, StaticMap::Field> _staticFieldOverrides {};
+    vector<ptr<StaticItem>> _visibleStaticItems {};
     nptr<Location> _mapLocation {};
     // Declared before _spectatorPlayers so it outlives the data it guards
     shared_mutex _spectatorLock {};

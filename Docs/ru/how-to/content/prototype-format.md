@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
 
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"2ae02b21d2cd4df7a923757a830f3064b48cc91f86650f24040863e2690cc321"} -->
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"723765e21d6625cdadb17b0eced485514c9a14d98c054ae93db5dfe452395ec6"} -->
 
 # Формат прототипов
 
@@ -197,7 +197,7 @@ ID прототипов встречаются в объявлениях, спи
 
 ```cpp
 ///@ MigrationRule Proto Item OldContainer NewContainer
-///@ MigrationRule Proto Item RemovedContainer Remove
+///@ MigrationRule Proto Item RemovedContainer __remove__
 ```
 
 Владеющий проект определяет расположение объявлений проектных метаданных и срок хранения правил. Цель переименования обязана существовать в принимающей ревизии. Удаление допустимо, только если политика загрузки может безопасно отбросить ссылку или сущность; иначе мигрируйте на совместимую замену.

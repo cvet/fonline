@@ -411,6 +411,9 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 <a id="symbol-script-property-map-mapdaylightcapacity-0d41c8641c"></a>
 - [`symbol-script-property-map-mapdaylightcapacity-0d41c8641c`](../../en/reference/script-api/properties.md#symbol-script-property-map-mapdaylightcapacity-0d41c8641c)
 
+<a id="symbol-script-property-map-removedstaticitemids-efb24df074"></a>
+- [`symbol-script-property-map-removedstaticitemids-efb24df074`](../../en/reference/script-api/properties.md#symbol-script-property-map-removedstaticitemids-efb24df074)
+
 <a id="symbol-script-property-map-scrollaxialarea-cd4ca3919c"></a>
 - [`symbol-script-property-map-scrollaxialarea-cd4ca3919c`](../../en/reference/script-api/properties.md#symbol-script-property-map-scrollaxialarea-cd4ca3919c)
 

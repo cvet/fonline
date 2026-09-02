@@ -55,6 +55,9 @@ Continue with the [canonical reference](../../en/reference/map-format/properties
 <a id="entry-map-format-property-map-mapdaylightcapacity-ff67981cf7"></a>
 - [`entry-map-format-property-map-mapdaylightcapacity-ff67981cf7`](../../en/reference/map-format/properties.md#entry-map-format-property-map-mapdaylightcapacity-ff67981cf7)
 
+<a id="entry-map-format-property-map-removedstaticitemids-d786e0caf9"></a>
+- [`entry-map-format-property-map-removedstaticitemids-d786e0caf9`](../../en/reference/map-format/properties.md#entry-map-format-property-map-removedstaticitemids-d786e0caf9)
+
 <a id="entry-map-format-property-map-scrollaxialarea-7689a8035d"></a>
 - [`entry-map-format-property-map-scrollaxialarea-7689a8035d`](../../en/reference/map-format/properties.md#entry-map-format-property-map-scrollaxialarea-7689a8035d)
 

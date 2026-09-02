@@ -3435,6 +3435,30 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
     CHECK(str_hashes.contains(hashes.ToHashedString("pistol")));
 }
 
+TEST_CASE("PropertiesNullableProtoReferenceAcceptsRemovedMigrationTarget")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("RemovedProtoReferenceEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto respawn_map_prop = registrar.RegisterProperty({"Common", "ProtoMap", "RespawnMap", "Mutable", "Persistent", "PublicSync", "Nullable"});
+    auto required_map_prop = registrar.RegisterProperty({"Common", "ProtoMap", "RequiredMap", "Mutable", "Persistent", "PublicSync"});
+    hstring proto_rule = hashes.ToHashedString("Proto");
+    hstring map_type = hashes.ToHashedString("Map");
+    hstring removed_map = hashes.ToHashedString("removed_map");
+    resolver.AddMigrationRule(proto_rule, map_type, removed_map, hstring {});
+
+    Properties props(&registrar);
+    CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, respawn_map_prop, "removed_map", hashes, resolver));
+    CHECK(PropertiesSerializer::SavePropertyToValue(&props, respawn_map_prop, hashes, resolver) == AnyData::Value {string {""}});
+    CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&props, respawn_map_prop, AnyData::Value {string {"removed_map"}}, hashes, resolver));
+    CHECK(PropertiesSerializer::SavePropertyToValue(&props, respawn_map_prop, hashes, resolver) == AnyData::Value {string {""}});
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, required_map_prop, "removed_map", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&props, required_map_prop, AnyData::Value {string {"removed_map"}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, respawn_map_prop, "missing_map", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&props, respawn_map_prop, AnyData::Value {string {"missing_map"}}, hashes, resolver));
+}
+
 TEST_CASE("PropertiesSerializerRejectsInvalidTypedInputs")
 {
     HashStorage hashes {};

@@ -359,6 +359,9 @@ Continue with the [canonical reference](../../en/reference/prototype-format/prop
 <a id="entry-prototype-format-property-map-mapdaylightcapacity-cf047a301d"></a>
 - [`entry-prototype-format-property-map-mapdaylightcapacity-cf047a301d`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-mapdaylightcapacity-cf047a301d)
 
+<a id="entry-prototype-format-property-map-removedstaticitemids-9706943141"></a>
+- [`entry-prototype-format-property-map-removedstaticitemids-9706943141`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-removedstaticitemids-9706943141)
+
 <a id="entry-prototype-format-property-map-scrollaxialarea-592636e933"></a>
 - [`entry-prototype-format-property-map-scrollaxialarea-592636e933`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-map-scrollaxialarea-592636e933)
 

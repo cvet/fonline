@@ -189,7 +189,6 @@ private:
     const hstring _critterCollectionName {};
     const hstring _itemCollectionName {};
     const hstring _protoMigrationRuleName {};
-    const hstring _removeMigrationReplacement {};
 };
 
 FO_END_NAMESPACE

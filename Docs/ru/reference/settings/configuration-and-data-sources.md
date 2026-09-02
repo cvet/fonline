@@ -6,7 +6,7 @@ document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
 
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"4c5e66b77304abde63753e812b1b4365b5845b2835a3c4071fca158402de2d59"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"9b0ad62af49c90d55e6de8b9e5e0e2a0c250483a61df6bcc9f4316fc7a074ff8"} -->
 
 # Конфигурация и источники данных
 
@@ -171,6 +171,8 @@ Cached directory mounts создают snapshot файлового индекс�
 Snapshot нового источника снимается до его публикации. Более поздний mount имеет больший приоритет и заменяет каждый заявленный им indexed path, что совпадает с существующим reverse-mount probe order. `ReindexDataSources()` строит новый индекс отдельно и заменяет прежний только после успешного получения всех snapshots; `CleanDataSources()` очищает и источники, и индекс. После setup точечное чтение остаётся lock-free. Если indexed source владеет путём, но не может открыть его, `ReadFile()` возвращает отсутствие файла, не переходя к lower-priority duplicate.
 
 `FilterFiles()` и `GetAllFiles()` продолжают перебирать источники по порядку даже при индексированных точечных lookup-операциях. Загрузка script modules, регистрация прототипов и другие consumers зависят от source-by-source order, который unordered index не сохраняет.
+
+`Common.Packaged` — fixed auto-setting, заполняемый из packaged marker исполняемого файла в `GlobalSettings::ApplyAutoSettings()`. После загрузки настроек runtime-политика обязана читать этот снимок (`settings.Packaged`), чтобы скопированные или подставленные настройки оставались внутренне согласованными и тестируемыми. Прямые проверки `IsPackaged()` зарезервированы за решениями bootstrap до настроек и за `FileSystem::AddPackSource()`, где физический marker исполняемого файла намеренно выбирает монтирование архива или каталога; тесты также могут смотреть на этот marker при выборе совместимых фикстур.
 
 Installed clients сохраняют read-only base resources, смонтированные из `ClientResources`, и поверх них добавляют writable resource overlay из `fs_make_writable_path(UserWritablePath, ClientResources)`. `GetClientResources()` является единственной точкой сборки, общей для gameplay и проверки локальной metadata version в updater, поэтому validation и runtime lookup не могут выбрать разные packs. Updater записывает resource patches в overlay, а для splash применяет тот же precedence до начала текущего скачивания. Ошибка чтения ZIP entry включает archive path и resource-relative entry в context `DataSourceException`; short read дополнительно сообщает expected bytes, фактический read result и close result, а CRC/close failure отдельно сохраняет close result. Пути обновления native runtime binaries принадлежат разделу [Разделение client runtime и updater](../../explanation/runtime/client-updater.md).
 

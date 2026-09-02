@@ -6,7 +6,7 @@ document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
 
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"44e2ca6c64a48f8b426f73d0784e25b1edbdcd2712e1462ebcfbd0c6896fa1e3"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"5c45304840459cf4b02d07feff20ca0887a7cf1f6b3b0a47334d0b6aafd5275a"} -->
 
 # Клиентская среда выполнения
 
@@ -234,6 +234,7 @@ Particle resources идут через отдельный backend-neutral factor
 `MapView` - крупнейший client view class, поскольку связывает несколько подсистем:
 
 - загрузку map file/static data через `LoadFromFile()` и `LoadStaticData()`;
+- удаление статических предметов конкретного экземпляра карты: `LoadStaticData()` их пропускает, а на живой карте применяет `ApplyStaticItemRemovals()` по свойству `RemovedStaticItemIds`; удаление одностороннее и на загруженной карте не отменяется — см. [Карты, движение и геометрия](../maps-and-movement.md#удаление-статических-предметов);
 - обработку карты через `Process()`;
 - map rendering через `DrawMap()` и staged render events в `ClientEngine`;
 - field indexes предметов и персонажей;

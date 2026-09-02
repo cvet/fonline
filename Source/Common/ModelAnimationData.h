@@ -87,7 +87,7 @@ void InitializeModelAnimationMemory() noexcept;
 FO_DECLARE_EXCEPTION(ModelAnimationRigDataException);
 
 inline constexpr array<uint8_t, 8> MODEL_DESCRIPTION_MAGIC {'L', 'F', 'M', 'O', 'D', 'I', 'N', 'F'};
-inline constexpr uint16_t MODEL_DESCRIPTION_SCHEMA_VERSION = 2;
+inline constexpr uint16_t MODEL_DESCRIPTION_SCHEMA_VERSION = 3;
 inline constexpr uint16_t MODEL_DESCRIPTION_SUPPORTED_FLAGS = 0;
 
 // Stable schema-1 wire identifiers; preserve their bytes for baked-resource compatibility

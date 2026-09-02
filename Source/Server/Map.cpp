@@ -231,20 +231,17 @@ const_span<ptr<Player>> Map::GetSpectatorPlayers() const noexcept FO_TSA_NO_ANAL
     return _spectatorPlayers;
 }
 
-auto Map::GetStaticItems() noexcept -> span<ptr<StaticItem>>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _staticMap->StaticItems;
-}
-
 auto Map::GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _staticMap->StaticItems;
+
+    if (!_removedStaticItems.empty()) {
+        return _visibleStaticItems;
+    }
+
+    return _staticMap->GetStaticItems();
 }
 
 void Map::AddSpectatorPlayer(ptr<Player> player)
@@ -748,7 +745,7 @@ auto Map::IsHexMovable(mpos hex) const noexcept -> bool
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     const auto& field = _hexField->GetCellForReading(hex);
-    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+    const auto& static_field = GetStaticField(hex);
 
     return !field.MoveBlocked && !static_field.MoveBlocked;
 }
@@ -760,7 +757,7 @@ auto Map::IsHexShootable(mpos hex) const noexcept -> bool
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     const auto& field = _hexField->GetCellForReading(hex);
-    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+    const auto& static_field = GetStaticField(hex);
 
     return !field.ShootBlocked && !static_field.ShootBlocked;
 }
@@ -1242,36 +1239,36 @@ auto Map::IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+    const auto& static_field = GetStaticField(hex);
 
     return !static_field.TriggerItems.empty();
 }
 
-auto Map::GetStaticItem(ident_t id) noexcept -> nptr<StaticItem>
+auto Map::GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    if (auto it = _staticMap->StaticItemsById.find(id); it != _staticMap->StaticItemsById.end()) {
-        return it->second;
+    if (_removedStaticItems.count(id) != 0) {
+        return nullptr;
     }
 
-    return nullptr;
+    return _staticMap->GetStaticItem(id);
 }
 
-auto Map::GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> nptr<StaticItem>
+auto Map::GetStaticItemOnHex(mpos hex, hstring pid) const noexcept -> nptr<StaticItem>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+    const auto& static_field = GetStaticField(hex);
 
     if (static_field.StaticItems.empty()) {
         return nullptr;
     }
 
-    for (auto static_item : const_cast<StaticMap::Field&>(static_field).StaticItems) {
+    for (ptr<StaticItem> static_item : static_field.StaticItems) {
         if (!pid || static_item->GetProtoId() == pid) {
             return static_item;
         }
@@ -1280,14 +1277,14 @@ auto Map::GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> nptr<StaticItem>
     return nullptr;
 }
 
-auto Map::GetStaticItems(hstring pid) -> vector<ptr<StaticItem>>
+auto Map::GetStaticItems(hstring pid) const -> vector<ptr<StaticItem>>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vector<ptr<StaticItem>> items;
 
-    for (auto static_item : _staticMap->StaticItems) {
+    for (auto static_item : GetStaticItems()) {
         if (!pid || static_item->GetProtoId() == pid) {
             items.emplace_back(static_item);
         }
@@ -1296,23 +1293,23 @@ auto Map::GetStaticItems(hstring pid) -> vector<ptr<StaticItem>>
     return items;
 }
 
-auto Map::GetStaticItemsOnHex(mpos hex) noexcept -> span<ptr<StaticItem>>
+auto Map::GetStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticItem>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     // Reuse the guaranteed shared prototype cell without invoking mutating GetCellForWriting.
     // Runtime-map locks do not serialize this cross-map static grid
-    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+    const auto& static_field = GetStaticField(hex);
 
     if (static_field.StaticItems.empty()) {
         return {};
     }
 
-    return const_cast<StaticMap::Field&>(static_field).StaticItems;
+    return static_field.StaticItems;
 }
 
-auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vector<ptr<StaticItem>>
+auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) const -> vector<ptr<StaticItem>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1325,13 +1322,13 @@ auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vecto
 
     for (int32_t i = 0; i < hexes_in_radius; i++) {
         if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
-            const auto& static_field = _staticMap->HexField->GetCellForReading(cur_hex);
+            const auto& static_field = GetStaticField(cur_hex);
 
             if (static_field.StaticItems.empty()) {
                 continue;
             }
 
-            for (auto static_item : const_cast<StaticMap::Field&>(static_field).StaticItems) {
+            for (ptr<StaticItem> static_item : static_field.StaticItems) {
                 if (seen.insert(static_item).second && (!pid || static_item->GetProtoId() == pid)) {
                     items.emplace_back(static_item);
                 }
@@ -1342,18 +1339,155 @@ auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vecto
     return items;
 }
 
-auto Map::GetTriggerStaticItemsOnHex(mpos hex) noexcept -> span<ptr<StaticItem>>
+auto Map::GetTriggerStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticItem>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+    const auto& static_field = GetStaticField(hex);
 
     if (static_field.TriggerItems.empty()) {
         return {};
     }
 
-    return const_cast<StaticMap::Field&>(static_field).TriggerItems;
+    return static_field.TriggerItems;
+}
+
+auto Map::HasStaticItem(ident_t static_item_id) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    // Asks the baked map, so a removed item still answers true. GetStaticItem() is the query that hides it
+    return _staticMap->HasStaticItem(static_item_id);
+}
+
+auto Map::HasRemovedStaticItems() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    return !_removedStaticItems.empty();
+}
+
+void Map::VerifyStaticItemRemovalsOnlyGrow(const_span<ident_t> new_ids) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (_removedStaticItems.empty()) {
+        return;
+    }
+
+    unordered_set<ident_t> new_removed;
+    new_removed.reserve(new_ids.size());
+
+    for (ident_t static_item_id : new_ids) {
+        new_removed.emplace(static_item_id);
+    }
+
+    // A static item leaves the map for good: clients on it are only ever told to drop one. Checking before
+    // the store refuses a shrinking write instead of persisting what those clients will never reach
+    for (ident_t applied_id : _removedStaticItems) {
+        FO_VERIFY_AND_THROW(new_removed.count(applied_id) != 0, "Static item removal cannot be undone on a live map", GetId(), GetProtoId(), applied_id);
+    }
+}
+
+auto Map::RemoveStaticItem(ident_t static_item_id) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    FO_VERIFY_AND_THROW(HasStaticItem(static_item_id), "Map has no static item with this id", GetId(), GetProtoId(), static_item_id);
+
+    if (_removedStaticItems.count(static_item_id) != 0) {
+        return false;
+    }
+
+    vector<ident_t> removed_ids = GetRemovedStaticItemIds();
+    removed_ids.emplace_back(static_item_id);
+    SetRemovedStaticItemIds(removed_ids);
+    RefreshRemovedStaticItems();
+
+    return true;
+}
+
+void Map::RefreshRemovedStaticItems()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    unordered_set<ident_t> removed;
+
+    if (IsNonEmptyRemovedStaticItemIds()) {
+        vector<ident_t> removed_ids = GetRemovedStaticItemIds();
+        removed.reserve(removed_ids.size());
+
+        for (ident_t static_item_id : removed_ids) {
+            // An id the current bake no longer contains stays in the stored list but contributes nothing to the
+            // overlay: rebaked content legitimately drops static items, and a saved map must still load
+            if (_staticMap->HasStaticItem(static_item_id)) {
+                removed.emplace(static_item_id);
+            }
+        }
+    }
+
+    if (removed == _removedStaticItems) {
+        return;
+    }
+
+    _removedStaticItems = std::move(removed);
+    RebuildStaticOverlay();
+}
+
+auto Map::GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (!_staticFieldOverrides.empty()) {
+        if (auto it = _staticFieldOverrides.find(hex); it != _staticFieldOverrides.end()) {
+            return it->second;
+        }
+    }
+
+    return _staticMap->GetField(hex);
+}
+
+void Map::RebuildStaticOverlay()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _staticFieldOverrides.clear();
+    _visibleStaticItems.clear();
+
+    if (_removedStaticItems.empty()) {
+        return;
+    }
+
+    const_span<ptr<StaticItem>> baked_items = _staticMap->GetStaticItems();
+    _visibleStaticItems.reserve(baked_items.size());
+
+    for (ptr<StaticItem> static_item : baked_items) {
+        if (_removedStaticItems.count(static_item->GetId()) == 0) {
+            _visibleStaticItems.emplace_back(static_item);
+        }
+    }
+
+    unordered_set<mpos> dirty_hexes;
+
+    for (ident_t static_item_id : _removedStaticItems) {
+        _staticMap->ForEachItemHex(static_item_id, [&dirty_hexes](mpos item_hex) { dirty_hexes.emplace(item_hex); });
+    }
+
+    for (mpos hex : dirty_hexes) {
+        _staticFieldOverrides.emplace(hex, _staticMap->BuildFieldWithout(hex, _removedStaticItems));
+    }
 }
 
 auto Map::IsOutsideArea(mpos hex) const noexcept -> bool
@@ -1408,7 +1542,11 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     }
 
     if (IsTriggerStaticItemOnHex(from_hex)) {
-        for (auto static_item : GetTriggerStaticItemsOnHex(from_hex)) {
+        // Own the list: a callback below may call RemoveStaticItem(), which rebuilds the very field the
+        // returned span borrows from
+        auto from_triggers = to_vector(GetTriggerStaticItemsOnHex(from_hex));
+
+        for (auto static_item : from_triggers) {
             if (static_item->TriggerScriptFunc) {
                 static_item->TriggerScriptFunc.Call(cr, static_item, false, dir);
 
@@ -1428,7 +1566,9 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     }
 
     if (IsTriggerStaticItemOnHex(to_hex)) {
-        for (auto static_item : GetTriggerStaticItemsOnHex(to_hex)) {
+        auto to_triggers = to_vector(GetTriggerStaticItemsOnHex(to_hex));
+
+        for (auto static_item : to_triggers) {
             if (static_item->TriggerScriptFunc) {
                 static_item->TriggerScriptFunc.Call(cr, static_item, true, dir);
 

@@ -112,11 +112,14 @@ void EntityLock::Acquire(uint64_t ticket)
     // Looped because `atomic::wait` may return spuriously: the notification is best-effort and the standard
     // allows a wake before the value changes
     int32_t state = WaitEntry::STATE_WAITING;
+    TimeMeter wait_time;
 
     while (state == WaitEntry::STATE_WAITING) {
         entry_it->State.wait(WaitEntry::STATE_WAITING, std::memory_order_acquire);
         state = entry_it->State.load(std::memory_order_acquire);
     }
+
+    timespan lock_wait_duration = wait_time.GetDuration();
 
     locker.lock();
     _waitQueue.erase(entry_it);
@@ -130,6 +133,8 @@ void EntityLock::Acquire(uint64_t ticket)
     auto owner_thread = _ownerThread.load(std::memory_order_acquire);
     FO_STRONG_ASSERT(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
     TSanAcquire(this);
+
+    SyncContext::RecordLockWait(lock_wait_duration);
 }
 
 void EntityLock::AcquireShared(uint64_t ticket)
@@ -172,11 +177,14 @@ void EntityLock::AcquireShared(uint64_t ticket)
     locker.unlock();
 
     int32_t state = WaitEntry::STATE_WAITING;
+    TimeMeter wait_time;
 
     while (state == WaitEntry::STATE_WAITING) {
         entry_it->State.wait(WaitEntry::STATE_WAITING, std::memory_order_acquire);
         state = entry_it->State.load(std::memory_order_acquire);
     }
+
+    timespan lock_wait_duration = wait_time.GetDuration();
 
     locker.lock();
     _waitQueue.erase(entry_it);
@@ -189,6 +197,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
     FO_VERIFY_AND_THROW(state == WaitEntry::STATE_GRANTED, "Shared entity lock waiter woke up in a non-granted state", ticket, state);
     // GrantWaiters recorded this thread in `_sharedHolders` before waking it
     TSanAcquire(this);
+    SyncContext::RecordLockWait(lock_wait_duration);
 }
 
 void EntityLock::AbortPendingWaiters() noexcept
@@ -288,11 +297,14 @@ void EntityLock::RegisterDescendantHold(uint64_t ticket)
     locker.unlock();
 
     int32_t state = WaitEntry::STATE_WAITING;
+    TimeMeter wait_time;
 
     while (state == WaitEntry::STATE_WAITING) {
         entry_it->State.wait(WaitEntry::STATE_WAITING, std::memory_order_acquire);
         state = entry_it->State.load(std::memory_order_acquire);
     }
+
+    timespan lock_wait_duration = wait_time.GetDuration();
 
     locker.lock();
     _waitQueue.erase(entry_it);
@@ -304,6 +316,7 @@ void EntityLock::RegisterDescendantHold(uint64_t ticket)
 
     FO_VERIFY_AND_THROW(state == WaitEntry::STATE_GRANTED, "Descendant-hold waiter woke up in a non-granted state", ticket, state);
     // GrantWaiters recorded this thread in `_descendantHolders` before waking it
+    SyncContext::RecordLockWait(lock_wait_duration);
 }
 
 auto EntityLock::TryRegisterDescendantHold() -> bool
@@ -680,6 +693,15 @@ void SyncContext::Deactivate() noexcept
     if (CurrentContext == this) {
         CurrentContext = _previousContext;
         _previousContext = nullptr;
+    }
+}
+
+void SyncContext::RecordLockWait(timespan duration) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    for (nptr<SyncContext> context = CurrentContext; context; context = context->_previousContext) {
+        context->_lockWaitDuration += duration;
     }
 }
 

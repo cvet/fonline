@@ -393,7 +393,7 @@ There is no auto-detection of memory vs disk mode in C++. Choose explicitly per 
 ## Installed vs portable writable data
 
 A **portable** build writes its cache, log, and self-update files next to the exe — fine for a zip the
-user unpacks anywhere. An **installed** build (MSI in `Program Files`, a package under `/usr/...`) sits
+user unpacks anywhere. The Windows MSI defaults to `%LOCALAPPDATA%`, but an **installed** build may still sit
 in a read-only directory, so those writes must go to a per-user writable location instead.
 
 `Client.UserWritablePath` selects the model, resolved at startup by `ResolveUserWritablePath(settings)` (`Source/Frontend/ApplicationInit.cpp`, called from `LoadAppSettings`):
@@ -416,7 +416,16 @@ install dir and patches override from the user dir — and the **self-updated na
 uses it for the local metadata-version check. The version accepted before connection is therefore the version
 gameplay will read rather than a separately assembled view with potentially different precedence. The updater
 also mounts the writable overlay above its install-dir splash pack: startup can then use a splash repaired by
-an earlier updater run before the current run downloads anything.
+an earlier updater run before the current run downloads anything. The updater's packaged-mode gates and
+resource-root choices read the already loaded `Common.Packaged` snapshot; direct executable-marker checks are
+limited to the pre-settings bootstrap and the filesystem's physical archive-versus-directory selection.
+
+This precedence is also the recovery path after `METADATA_FILE_VERSION` changes: a new runtime treats an
+unreadable old install pack as having no local metadata version, downloads the current pack into the writable
+overlay, re-reads that overlay successfully, and only then constructs `ClientEngine`. The strict old-layout
+rejection is not relaxed. If the updater cannot complete that repair, the client exits with `Client update
+failed. Please install the latest full client package.` instead of surfacing `MetadataOutdatedException` from
+gameplay startup or misreporting a resource failure as a native-module failure.
 
 **Native binary self-update for installed builds writes the runtime into the writable root**
 (`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
@@ -448,7 +457,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **Client packages** include the host executable and the matching runtime library renamed to the same basename next to it (for example, `<client-host>.exe` and `<client-host>.dll`). The host derives the library name from its own executable basename at startup, so no config patching is required to point one at the other.
 - **Sibling client variants are not dependency companions.** Regular and headless hosts/runtimes share a build-output directory, so the generic DLL/DSO companion scan excludes every Engine-owned `Client`/`ClientLib` and `ClientHeadless`/`ClientLibHeadless` input and alias. The packager then copies only the variants explicitly requested by the package under their packaged basenames. A stale headless build output therefore cannot leak into an ordinary portable, ZIP, or MSI client payload, while a package with the `Headless` token still receives its explicit headless host/runtime pair.
 - **Server packages** also stage every available client runtime library under `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) so a different-platform client connecting to this server can self-update its native modules.
-- **Windows Client packages with the `Wix` pack** build a required MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config, adds the `INSTALLED` marker only while the MSI payload is generated, and registers the product URI scheme through HKCU registry entries. A missing WiX/wixl toolset or a generator failure fails the package instead of silently publishing only the Raw/Zip siblings.
+- **Windows Client packages with the `Wix` pack** build a required MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or an explicit command-line/UI choice still overrides that default. A missing WiX/wixl toolset or a generator failure fails the package instead of silently publishing only the Raw/Zip siblings.
 - **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (for example, `<client-host>.dll.pdb`) — both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp / `backward-cpp` resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging — symbol gaps are never silently tolerated.
 - **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
 
@@ -582,7 +591,7 @@ instead of looping back to the game which would only reject the connection again
 
 | Symptom | First signal |
 |---------|--------------|
-| Host can't find runtime, no fallback possible | embedded host's resource updater fails to download anything; client message box `Failed to update native client modules for binary target <target>` |
+| Host can't find runtime, no fallback possible, or resource repair cannot complete | client message box `Client update failed. Please install the latest full client package.` |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
@@ -609,7 +618,7 @@ Local validation steps:
 8. Interrupt a client mid-download (kill the network) and reconnect — the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 → restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `<client-host>`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
-11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and not show the same update prompt again. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
+11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
 
 ## See Also
 

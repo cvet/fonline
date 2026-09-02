@@ -263,7 +263,7 @@ TEST_CASE("DequeObject")
 
         test_deque moved = std::move(source);
         CHECK(Collect(moved) == Collect(copy));
-        CHECK(source.empty());
+        CHECK(source.empty()); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from container contract
 
         test_deque other;
         other.push_back(99);

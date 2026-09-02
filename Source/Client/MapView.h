@@ -218,6 +218,7 @@ public:
     void SetScrollCheck(bool enabled);
     void LoadFromFile(string_view map_name, string_view file_name, const string& str);
     void LoadStaticData();
+    void ApplyStaticItemRemovals();
     void Process();
 
     void DrawMap();
@@ -339,6 +340,8 @@ private:
     void RemoveCritterFromField(ptr<CritterHexView> cr);
     void SetMultihexCritter(ptr<CritterHexView> cr, bool set);
     void DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex);
+
+    [[nodiscard]] auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
 
     auto AddItemInternal(ptr<ItemHexView> item) -> ptr<ItemHexView>;
     void AddItemToField(ptr<ItemHexView> item);

@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 # Скриптовый runtime
 
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"d6a5936921700b287bbf61eedb62222bdfc77544246392156b217f3bfb1e7b0f"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"3a85b54cc74f281136b582feeccfafce495b376fb33dd78c98c849e46bd97c2b"} -->
 
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
@@ -105,6 +105,8 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 - cleanup и post-cleanup callbacks освобождают ресурсы backend в контролируемом порядке.
 
 Таким образом, AngelScript используется в двух режимах: tooling mode во время компиляции и runtime mode. Одинаковый код метаданных и регистрации типов должен оставаться совместимым с обоими.
+
+Диагностика превышений времени использует `Script.OverrunReportTime` как независимый порог для двух измерений. `Script execution overrun` сообщает wall time за вычетом накопленного ожидания entity-lock в серверном контексте синхронизации, а `Script lock wait overrun` — саму составляющую contention. Оба сообщения содержат длительности исполнения, ожидания блокировок и полного wall time, поэтому вычислительно тяжёлая и ожидающая функции остаются раздельно искомыми и не теряют общую картину задержки. Не-серверные движки возвращают нулевое ожидание блокировок. Значение ноль по-прежнему отключает обе диагностики, а подключённый отладчик по-прежнему их подавляет.
 
 AngelScript назначает IDs зарегистрированных object types лениво. Разные script contexts могут одновременно запросить один новый type, поэтому vendored runtime читает и инициализирует `asCTypeInfo::typeId` под reader/writer lock Engine и повторно читает значение после получения exclusive access. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads` запускает 16 native workers для 128 новых типов через публичный `asITypeInfo::GetTypeId()` и требует один одинаковый валидный ID для каждого типа.
 

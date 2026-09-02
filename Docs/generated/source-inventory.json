@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_inventory.py",
   "script_api": {
-    "export_method_declarations": 957,
+    "export_method_declarations": 959,
     "method_file_count": 18,
     "method_files": [
       {
@@ -71,7 +71,7 @@
       },
       {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "export_method_declarations": 77
+        "export_method_declarations": 79
       },
       {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",

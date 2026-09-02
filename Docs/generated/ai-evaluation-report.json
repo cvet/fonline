@@ -2569,8 +2569,8 @@
           "top_document_ids": [
             "native-essentials",
             "documentation-home",
-            "build-workflow",
             "client-updater",
+            "build-workflow",
             "generated-api-metadata"
           ]
         },

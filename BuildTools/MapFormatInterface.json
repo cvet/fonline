@@ -28,6 +28,7 @@
     "source_mapper": "Source/Tools/Mapper.cpp",
     "map_serializer": "Source/Client/MapView.cpp",
     "server_loader": "Source/Server/MapManager.cpp",
+    "server_static_map": "Source/Server/StaticMap.cpp",
     "client_loader": "Source/Client/MapView.cpp",
     "api_model_generator": "BuildTools/docs_api.py",
     "api_model": "Docs/generated/api.json",
@@ -285,7 +286,7 @@
       "requirement": "A Static item must use MapHex ownership.",
       "stability": "experimental",
       "description": "Static items become immutable map-grid entries and contribute movement, shooting, trigger, and multihex state.",
-      "source": {"path": "Source/Server/MapManager.cpp", "anchors": ["if (item->GetStatic())", "StaticItemsById", "MoveBlocked"]}
+      "source": {"path": "Source/Server/StaticMap.cpp", "anchors": ["AddStaticItem", "_staticItemsById.emplace", "MoveBlocked"]}
     },
     {
       "id": "map-format.rule.bounds",

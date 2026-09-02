@@ -8846,3 +8846,82 @@ Disposition:
 - Merge-readiness still depends on current remote CI, including the real Linux
   external-parser path and package/runtime acceptance; this local report does
   not substitute for those gates.
+
+## 2026-09-02 - per-instance static item removal and proto-removal token reconciliation
+
+Scope and source revisions:
+
+- Reconciled the documentation branch at
+  `c134715443bbb8f92a4c62f5bce263c92f7463d6` with Engine `origin/master`
+  through `5ed235ce3582f7c49b541e10b6e56f0c5fbba230`. The ten incoming commits
+  add per-instance static item removal on a shared `StaticMap`, split script
+  lock wait from execution overrun, replace the proto-removal migration token
+  with `__remove__`, route packaged-mode policy through the `Common.Packaged`
+  snapshot, add MSI install-directory selection, and recover a client whose
+  install pack predates the current metadata layout.
+- Ten conflicts were legacy documentation routes; their redirect/stub role was
+  preserved and every reusable contract was reconciled in the canonical
+  English/Russian owners instead. `Docs/MapsMovementGeometry.md` merged without
+  a conflict marker and had upstream prose spliced into the stub, which was
+  reverted the same way. The one code conflict, `Source/Common/EntityProperties.h`,
+  kept both sides: the new `RemovedStaticItemIds` property with the branch's
+  per-property description.
+
+Contract and documentation changes:
+
+- Maps and movement now owns the static item removal model end to end: the
+  append-only property, the three derived caches, the `GetStaticField()` funnel
+  every static and blocking query passes through, the `ScrollBlocked` seed, and
+  the two client paths. Server runtime, client runtime, script-method ownership,
+  and the testing guide link into it rather than restating it.
+- Server runtime records the `OnPlayerLogin` client-visible failure boundary,
+  the per-`SyncContext` lock-wait accumulation returned by `RunScriptContext()`,
+  and the `__remove__` deletion token, which `CheckMigrationRule()` now answers
+  with an engaged `optional` holding an empty hash. Proto-reference properties
+  follow the same distinction and clear only when `Nullable`.
+- The prototype-format guide's deletion example moves from `Remove` to
+  `__remove__`; embedding projects must migrate every rule that spells the old
+  token, because it now resolves to a proto named `Remove` rather than deleting.
+- Baking documentation pins `LFMODINF` at schema 3 with the union AABB from
+  schema 2 and the per-animation boxes from schema 3, and names compatibility
+  marker `0.0.46`.
+- Configuration, client-updater, and BuildTools pipeline documentation record
+  the `Common.Packaged` snapshot boundary, the metadata-recovery path through
+  the writable overlay, and the MSI installation-directory dialog with its
+  `%LOCALAPPDATA%` default, remembered path, and registry storage.
+- The native-codegen scope contract is re-pinned from 2501 to 2505 symbols with
+  a new inventory hash, and the map-format model's static-placement anchor moves
+  from `MapManager.cpp` to the new `StaticMap.cpp` module.
+- Generated API, prototype-format, map-format, reference, public-contract,
+  inventory, snippets, description translations, locale status, site/search
+  data, AI evaluation, manifest, and AI-delivery artifacts were regenerated in
+  dependency order. Ten Russian owner pages carry current source hashes.
+
+Validation:
+
+- Documentation checks pass 310/310 normative snippets, 159 evidence blocks,
+  183 external-parser checks, 197/197 current locale pairs, 4975/4975 generated
+  description translations, 397 maintained Markdown entries, 386 public
+  AI-delivery documents, and all 65 retrieval checks across 27 tasks at 100
+  percent success and 0.915 MRR.
+- Contract-diff reconciliation against `c134715443bbb8f92a4c62f5bce263c92f7463d6`
+  reports 23 changes across the 18 tracked domains and 15 required dispositions,
+  all recorded: the inventory re-pin, the 0.0.46 compatibility marker, and the
+  thirteen `MapProperty` enum values that shift because the new property is
+  inserted ahead of `Size`.
+- Full `test_docs_*.py` discovery reached 550 tests. Every failure was a pinned
+  count the reconciliation legitimately moved - the symbol inventory, the
+  per-stability split, and the description-translation totals - and all are
+  updated to the current values.
+- The engine C++ suite was not rebuilt locally; the incoming range is upstream
+  code already validated on `master`, and no engine source was changed here
+  beyond the scope-contract pin.
+
+Disposition:
+
+- The reusable Engine contract and generated corpus are reconciled for review.
+  Publish the Engine documentation branch before the embedding project branch
+  so the root gitlink never points at an unavailable commit.
+- Merge-readiness still depends on current remote CI, including the real Linux
+  external-parser path, the native unit-test suite, and package/runtime
+  acceptance; this local report does not substitute for those gates.

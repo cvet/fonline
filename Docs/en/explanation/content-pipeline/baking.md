@@ -1051,8 +1051,15 @@ animation-only tracks are identity, while a separate presence byte remains
 zero.
 
 The baked `.fo3d` contract is now explicitly versioned. Every description starts
-with `LFMODINF`, schema `1`, and zero flags, followed by the existing positional
-description and one required length-prefixed `LFOZZRIG` schema-1 payload. The rig
+with `LFMODINF`, schema `3`, and zero flags, followed by the existing positional
+description and one required length-prefixed `LFOZZRIG` schema-1 payload. Schema 2
+appended the union AABB to every geometry link and schema 3 appended the counted,
+`(StateAnim, ActionAnim)`-keyed per-animation boxes described above, so the client
+uses the active clip's envelope instead of the union for every pose. Each step is an
+incompatible binary layout: any further `LFMODINF` field bumps
+`MODEL_DESCRIPTION_SCHEMA_VERSION` in the same change, and the schema-3 transition
+uses compatibility marker `0.0.46` so a new runtime and a full resource bake travel
+together. The rig
 payload stores the canonical rig/cache signatures, canonical skeleton, base
 remap, each unique resolved animation/remap pair, and a sorted
 `(StateAnim, ActionAnim) -> (clip index, reversed)` table. Clip identities are

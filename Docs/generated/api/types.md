@@ -2508,6 +2508,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-mapproperty-none-23bf9e84fc"></a>
 - [`symbol-script-enum-value-mapproperty-none-23bf9e84fc`](../../en/reference/script-api/types.md#symbol-script-enum-value-mapproperty-none-23bf9e84fc)
 
+<a id="symbol-script-enum-value-mapproperty-removedstaticitemids-d2caf1b3aa"></a>
+- [`symbol-script-enum-value-mapproperty-removedstaticitemids-d2caf1b3aa`](../../en/reference/script-api/types.md#symbol-script-enum-value-mapproperty-removedstaticitemids-d2caf1b3aa)
+
 <a id="symbol-script-enum-value-mapproperty-scrollaxialarea-79e9b2730e"></a>
 - [`symbol-script-enum-value-mapproperty-scrollaxialarea-79e9b2730e`](../../en/reference/script-api/types.md#symbol-script-enum-value-mapproperty-scrollaxialarea-79e9b2730e)
 

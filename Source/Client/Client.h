@@ -427,6 +427,7 @@ protected:
     void OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop);
     void OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop);
 
+    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property> prop);

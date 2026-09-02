@@ -637,7 +637,7 @@ namespace ServerEngineInitGateTest
     }
 }
 
-TEST_CASE("ServerResourcesMountBakedServerEntries")
+TEST_CASE("ServerResourcesFollowPackagedSetting")
 {
     if (IsPackaged()) {
         SKIP("Baked directory mounting is only used by unpackaged test binaries");
@@ -666,6 +666,14 @@ TEST_CASE("ServerResourcesMountBakedServerEntries")
     CHECK(resources.ReadFileText("payload.txt") == "baked-server");
     CHECK(resources.IsFileExists("payload.txt"));
     CHECK_FALSE(resources.IsFileExists("client-only.txt"));
+
+    BakerTests::OverrideSetting(settings.Packaged, true);
+
+    FileSystem packaged_resources = GetServerResources(settings);
+
+    CHECK(packaged_resources.ReadFileText("payload.txt") == "packaged-server");
+    CHECK(packaged_resources.IsFileExists("payload.txt"));
+    CHECK_FALSE(packaged_resources.IsFileExists("client-only.txt"));
 }
 
 TEST_CASE("ServerEngineConnectionAcceptPredicates")

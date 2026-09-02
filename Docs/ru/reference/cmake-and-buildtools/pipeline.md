@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 
 # Конвейер BuildTools
 
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"e57908d1abe04b5e519ec1a569c344f518695f2df89eb6845b44858ff5b50e73"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"3b79b4e72227c4798de907e4658e8d7dda89c7193bf6a5656ed5ade8acc8de95"} -->
 
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
@@ -254,10 +254,14 @@ post-processing. Для Windows Client package с pack `Wix` он после sta
 вызывает `msicreator/createmsi.py`: MSI получает временный marker `INSTALLED`,
 используемый разрешением writable path установленного client, регистрирует
 deep-link URI scheme, создаёт Start Menu и Desktop shortcuts и icon в
-Add/Remove Programs. MSI обязателен при запросе `Wix`; отсутствие toolset
-(`wixl` на POSIX hosts, где в Debian/Ubuntu он поставляется отдельным apt
-package `wixl`, а не `msitools`; WiX `candle`/`light` на Windows) или ошибка
-generator/build завершает packaging ошибкой. Installer values читаются из
+Add/Remove Programs и всегда показывает редактируемый диалог выбора
+installation directory. Оба поддерживаемых build hosts используют одно и то же
+inline-описание диалога, поэтому он не пропадает, когда production собирает
+через `wixl` на Linux. MSI обязателен при запросе `Wix`; отсутствие toolset
+(`wixl` 0.102 или новее на POSIX hosts, вместе с его bundled extension `ui`;
+WiX `candle`/`light` на Windows) или ошибка generator/build завершает packaging
+ошибкой. В Debian/Ubuntu `wixl` поставляется отдельным apt package `wixl`, а не
+`msitools`. Installer values читаются из
 конфига встраивающего проекта, поэтому packager остаётся game-agnostic:
 
 - product/manufacturer/comments name берётся из `Common.GameName` с fallback к
@@ -269,7 +273,22 @@ generator/build завершает packaging ошибкой. Installer values ч
 - стабильный WiX `UpgradeCode` берётся из `Packaging.MsiUpgradeCode` и не
   должен меняться после первого выпуска MSI;
 - icon Add/Remove Programs берётся из optional `Packaging.AppIcon`;
-- install directory и MSI base name берутся из package nice name.
+- имя install directory и MSI base name берутся из package nice name.
+
+Явный `INSTALLDIR`, переданный в `msiexec`, имеет высший приоритет. Иначе первая
+интерактивная установка предпочитает путь, запомненный предыдущим MSI, а затем
+per-user writable fallback `%LOCALAPPDATA%\<Common.GameName>`. Выбранный путь
+сохраняется в `HKCU\Software\<nice-name>\InstallLocation`, а экран выбора
+каталога всегда допускает прямое редактирование или обзор, включая явный выбор
+`Program Files`. Standalone MSI не обращается к installation infrastructure
+Steam или другого магазина.
+
+Обновление MSI намеренно сохраняет запомненный путь в `Program Files` вместо
+переноса существующего дерева. Обновлённый marker `INSTALLED` по-прежнему
+направляет cache, logs, resources и обновления native runtime в per-user
+writable overlay, описанный в
+[Client Updater](../../explanation/runtime/client-updater.md), поэтому
+сохранённое расположение executable не мешает последующим self-updates.
 
 Portable Raw/Zip artifacts завершаются до MSI и не содержат marker
 `INSTALLED`, поэтому остаются portable.

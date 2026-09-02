@@ -76,14 +76,13 @@ class PackageGenerator:
             else:
                 self.arch = 32 if '32' in platform.architecture()[0] else 64
         self.final_output = '%s-%s-%d.msi' % (self.basename, self.version, self.arch)
+        self.install_root_dir = 'LocalAppDataFolder'
         if self.arch == 64:
-            self.progfile_dir = 'ProgramFiles64Folder'
             if platform.system() == "Windows":
                 redist_glob = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Redist\\MSVC\\*\\MergeModules\\Microsoft_VC141_CRT_x64.msm'
             else:
                 redist_glob = '/usr/share/msicreator/Microsoft_VC141_CRT_x64.msm'
         else:
-            self.progfile_dir = 'ProgramFilesFolder'
             if platform.system() == "Windows":
                 redist_glob = 'C:\\Program Files\\Microsoft Visual Studio\\2017\\Community\\VC\\Redist\\MSVC\\*\\MergeModules\\Microsoft_VC141_CRT_x86.msm'
             else:
@@ -95,10 +94,18 @@ class PackageGenerator:
             self.redist_path = trials[0]
         self.component_num = 0
         self.registry_entries = jsondata.get('registry_entries', None)
+        self.install_location_registry = jsondata.get('install_location_registry', None)
         self.major_upgrade = jsondata.get('major_upgrade', None)
         self.parts = jsondata['parts']
         self.feature_components = {}
         self.feature_properties = {}
+        self.registry_action_keys: set[tuple[str, str]] = set()
+        self.args1: list[str] = []
+        self.args2: list[str] = []
+        if self.major_upgrade is not None and self.major_upgrade.get('AllowSameVersionUpgrades') == 'yes':
+            # WiX ICE61 cannot distinguish the intentional same-version major-upgrade policy from a
+            # version-range authoring mistake. Keep all other linker warnings enabled.
+            self.args2.append('-sice:ICE61')
 
     def generate_files(self) -> None:
         self.root = ET.Element('Wix', {'xmlns': 'http://schemas.microsoft.com/wix/2006/wi'})
@@ -141,8 +148,8 @@ class PackageGenerator:
             'Id': 'TARGETDIR',
             'Name': 'SourceDir',
         })
-        progfiledir = ET.SubElement(targetdir, 'Directory', {
-            'Id': self.progfile_dir,
+        installrootdir = ET.SubElement(targetdir, 'Directory', {
+            'Id': self.install_root_dir,
         })
         pmf = ET.SubElement(targetdir, 'Directory', {'Id': 'ProgramMenuFolder'},)
         if self.startmenu_shortcut is not None:
@@ -154,7 +161,7 @@ class PackageGenerator:
             ET.SubElement(pmf, 'Directory', {'Id': 'DesktopFolder',
                                              'Name': 'Desktop',
             })
-        installdir = ET.SubElement(progfiledir, 'Directory', {
+        installdir = ET.SubElement(installrootdir, 'Directory', {
             'Id': 'INSTALLDIR',
             'Name': self.installdir,
         })
@@ -211,14 +218,9 @@ class PackageGenerator:
                                                   'KeyPath': 'yes',
                                                   })
 
-        ET.SubElement(product, 'Property', {
-            'Id': 'WIXUI_INSTALLDIR',
-            'Value': 'INSTALLDIR',
-        })
-        if platform.system() == "Windows":
-            ET.SubElement(product, 'UIRef', {
-                'Id': 'WixUI_FeatureTree',
-            })
+        ET.SubElement(product, 'UIRef', {'Id': 'FOnlineInstallDirUI'})
+        self.create_previous_install_detection(product)
+        self.create_install_directory_ui()
 
         top_feature = ET.SubElement(product, 'Feature', {
             'Id': 'Complete',
@@ -270,12 +272,170 @@ class PackageGenerator:
         with open(self.main_xml, 'w') as of:
             of.write(doc.toprettyxml(indent=' '))
 
+    def create_previous_install_detection(self, product: ET.Element) -> None:
+        if self.install_location_registry is None:
+            return
+
+        search = self.install_location_registry
+        prop = ET.SubElement(product, 'Property', {'Id': 'PREVIOUSINSTALLDIR'})
+        ET.SubElement(prop, 'RegistrySearch', {
+            'Id': 'PreviousInstallDirRegistrySearch',
+            'Root': search['root'],
+            'Key': search['key'],
+            'Name': search['name'],
+            'Type': 'directory',
+            'Win64': search.get('win64', 'no'),
+        })
+        ET.SubElement(product, 'CustomAction', {
+            'Id': 'SetInstallDirFromPreviousInstall',
+            'Property': 'INSTALLDIR',
+            'Value': '[PREVIOUSINSTALLDIR]',
+        })
+        install_ui_sequence = ET.SubElement(product, 'InstallUISequence')
+        action = ET.SubElement(install_ui_sequence, 'Custom', {
+            'Action': 'SetInstallDirFromPreviousInstall',
+            'After': 'AppSearch',
+        })
+        action.text = 'NOT Installed AND NOT INSTALLDIR AND PREVIOUSINSTALLDIR'
+
+    def create_install_directory_ui(self) -> None:
+        fragment = ET.SubElement(self.root, 'Fragment')
+        ui = ET.SubElement(fragment, 'UI', {'Id': 'FOnlineInstallDirUI'})
+        ET.SubElement(ui, 'TextStyle', {'Id': 'WixUI_Font_Normal', 'FaceName': 'Tahoma', 'Size': '8'})
+        ET.SubElement(ui, 'TextStyle', {'Id': 'WixUI_Font_Bigger', 'FaceName': 'Tahoma', 'Size': '12'})
+        ET.SubElement(ui, 'TextStyle', {'Id': 'WixUI_Font_Title', 'FaceName': 'Tahoma', 'Size': '9', 'Bold': 'yes'})
+        ET.SubElement(ui, 'Property', {'Id': 'DefaultUIFont', 'Value': 'WixUI_Font_Normal'})
+        ET.SubElement(ui, 'Property', {'Id': 'ARPNOMODIFY', 'Value': '1'})
+
+        install_dialog = ET.SubElement(ui, 'Dialog', {
+            'Id': 'FOnlineInstallDirDlg',
+            'Width': '370',
+            'Height': '270',
+            'Title': '[ProductName] Setup',
+        })
+        ET.SubElement(install_dialog, 'Control', {
+            'Id': 'Title', 'Type': 'Text', 'X': '20', 'Y': '18', 'Width': '330', 'Height': '20',
+            'Transparent': 'yes', 'NoPrefix': 'yes', 'Text': '{\\WixUI_Font_Title}Choose installation folder',
+        })
+        ET.SubElement(install_dialog, 'Control', {
+            'Id': 'Description', 'Type': 'Text', 'X': '20', 'Y': '50', 'Width': '330', 'Height': '30',
+            'NoPrefix': 'yes', 'Text': 'Install [ProductName] in this folder:',
+        })
+        ET.SubElement(install_dialog, 'Control', {
+            'Id': 'Folder', 'Type': 'PathEdit', 'X': '20', 'Y': '90', 'Width': '330', 'Height': '18',
+            'Property': 'INSTALLDIR',
+        })
+        browse = ET.SubElement(install_dialog, 'Control', {
+            'Id': 'ChangeFolder', 'Type': 'PushButton', 'X': '20', 'Y': '118', 'Width': '80', 'Height': '18',
+            'Text': 'Browse...',
+        })
+        publish = ET.SubElement(browse, 'Publish', {'Event': 'SpawnDialog', 'Value': 'FOnlineBrowseDlg'})
+        publish.text = '1'
+        ET.SubElement(install_dialog, 'Control', {
+            'Id': 'BottomLine', 'Type': 'Line', 'X': '0', 'Y': '234', 'Width': '370', 'Height': '0',
+        })
+        install = ET.SubElement(install_dialog, 'Control', {
+            'Id': 'Install', 'Type': 'PushButton', 'X': '232', 'Y': '243', 'Width': '64', 'Height': '17',
+            'Default': 'yes', 'Text': 'Install',
+        })
+        publish = ET.SubElement(install, 'Publish', {'Event': 'SetTargetPath', 'Value': 'INSTALLDIR', 'Order': '1'})
+        publish.text = '1'
+        publish = ET.SubElement(install, 'Publish', {'Event': 'EndDialog', 'Value': 'Return', 'Order': '2'})
+        publish.text = '1'
+        cancel = ET.SubElement(install_dialog, 'Control', {
+            'Id': 'Cancel', 'Type': 'PushButton', 'X': '304', 'Y': '243', 'Width': '56', 'Height': '17',
+            'Cancel': 'yes', 'Text': 'Cancel',
+        })
+        publish = ET.SubElement(cancel, 'Publish', {'Event': 'SpawnDialog', 'Value': 'CancelDlg'})
+        publish.text = '1'
+
+        browse_dialog = ET.SubElement(ui, 'Dialog', {
+            'Id': 'FOnlineBrowseDlg',
+            'Width': '370',
+            'Height': '270',
+            'Title': 'Browse for Folder',
+        })
+        ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'Title', 'Type': 'Text', 'X': '20', 'Y': '15', 'Width': '330', 'Height': '20',
+            'Transparent': 'yes', 'NoPrefix': 'yes', 'Text': '{\\WixUI_Font_Title}Choose a folder',
+        })
+        directory_combo = ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'DirectoryCombo', 'Type': 'DirectoryCombo', 'X': '20', 'Y': '48', 'Width': '240', 'Height': '80',
+            'Property': 'INSTALLDIR', 'Fixed': 'yes',
+        })
+        ET.SubElement(directory_combo, 'Subscribe', {'Event': 'IgnoreChange', 'Attribute': 'IgnoreChange'})
+        up = ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'Up', 'Type': 'PushButton', 'X': '270', 'Y': '48', 'Width': '75', 'Height': '18', 'Text': 'Up',
+        })
+        publish = ET.SubElement(up, 'Publish', {'Event': 'DirectoryListUp', 'Value': '0'})
+        publish.text = '1'
+        new_folder = ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'NewFolder', 'Type': 'PushButton', 'X': '270', 'Y': '74', 'Width': '75', 'Height': '18', 'Text': 'New folder',
+        })
+        publish = ET.SubElement(new_folder, 'Publish', {'Event': 'DirectoryListNew', 'Value': '0'})
+        publish.text = '1'
+        ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'DirectoryList', 'Type': 'DirectoryList', 'X': '20', 'Y': '102', 'Width': '325', 'Height': '92',
+            'Property': 'INSTALLDIR', 'Sunken': 'yes', 'TabSkip': 'no',
+        })
+        ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'PathLabel', 'Type': 'Text', 'X': '20', 'Y': '200', 'Width': '325', 'Height': '10',
+            'TabSkip': 'no', 'Text': 'Folder:',
+        })
+        ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'PathEdit', 'Type': 'PathEdit', 'X': '20', 'Y': '212', 'Width': '325', 'Height': '18',
+            'Property': 'INSTALLDIR',
+        })
+        ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'BottomLine', 'Type': 'Line', 'X': '0', 'Y': '234', 'Width': '370', 'Height': '0',
+        })
+        ok = ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'OK', 'Type': 'PushButton', 'X': '240', 'Y': '243', 'Width': '56', 'Height': '17',
+            'Default': 'yes', 'Text': 'OK',
+        })
+        publish = ET.SubElement(ok, 'Publish', {'Event': 'SetTargetPath', 'Value': 'INSTALLDIR', 'Order': '1'})
+        publish.text = '1'
+        publish = ET.SubElement(ok, 'Publish', {'Event': 'EndDialog', 'Value': 'Return', 'Order': '2'})
+        publish.text = '1'
+        browse_cancel = ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'Cancel', 'Type': 'PushButton', 'X': '304', 'Y': '243', 'Width': '56', 'Height': '17',
+            'Cancel': 'yes', 'Text': 'Cancel',
+        })
+        publish = ET.SubElement(browse_cancel, 'Publish', {'Event': 'Reset', 'Value': '0', 'Order': '1'})
+        publish.text = '1'
+        publish = ET.SubElement(browse_cancel, 'Publish', {'Event': 'EndDialog', 'Value': 'Return', 'Order': '2'})
+        publish.text = '1'
+
+        for dialog_id in ('CancelDlg', 'ErrorDlg', 'ExitDialog', 'FatalError', 'FilesInUse', 'MsiRMFilesInUse', 'ProgressDlg', 'UserExit'):
+            ET.SubElement(ui, 'DialogRef', {'Id': dialog_id})
+        publish = ET.SubElement(ui, 'Publish', {
+            'Dialog': 'ExitDialog', 'Control': 'Finish', 'Event': 'EndDialog', 'Value': 'Return', 'Order': '999',
+        })
+        publish.text = '1'
+        install_sequence = ET.SubElement(ui, 'InstallUISequence')
+        show = ET.SubElement(install_sequence, 'Show', {'Dialog': 'FOnlineInstallDirDlg', 'Before': 'ProgressDlg'})
+        show.text = 'NOT Installed'
+        ET.SubElement(fragment, 'UIRef', {'Id': 'WixUI_Common'})
+
     def create_registry_entries(self, comp: ET.Element, reg: dict[str, str]) -> None:
-        reg_key = ET.SubElement(comp, 'RegistryKey', {
+        reg_key_attrs = {
             'Root': reg['root'],
             'Key': reg['key'],
-            'Action': reg['action'],
-        })
+        }
+        action = reg.get('action')
+        registry_key = (reg['root'], reg['key'])
+        if action == 'createAndRemoveOnUninstall' and registry_key not in self.registry_action_keys:
+            # wixl 0.103 does not expose WiX's replacement attributes for the deprecated Action
+            # field. Registry values still uninstall correctly there; WiX can additionally remove
+            # the empty key without emitting its Action deprecation warning.
+            if platform.system() == "Windows":
+                reg_key_attrs['ForceCreateOnInstall'] = 'yes'
+                reg_key_attrs['ForceDeleteOnUninstall'] = 'yes'
+        elif action is not None:
+            if action != 'createAndRemoveOnUninstall':
+                reg_key_attrs['Action'] = action
+        self.registry_action_keys.add(registry_key)
+        reg_key = ET.SubElement(comp, 'RegistryKey', reg_key_attrs)
         value_attrs = {
             'Type': reg['type'],
             'Value': reg['value'],
@@ -349,7 +509,7 @@ class PackageGenerator:
                 })
 
         for dirname in cur_node.dirs:
-            dir_id = os.path.join(current_dir, dirname).replace('\\', '_').replace('/', '_')
+            dir_id = self.path_to_id(os.path.join(current_dir, dirname))
             dir_node = ET.SubElement(parent_xml_node, 'Directory', {
                 'Id': dir_id,
                 'Name': dirname,
@@ -375,7 +535,7 @@ class PackageGenerator:
                                    '-dWixUILicenseRtf=' + self.license_file] + \
                                    self.args2 + ['-out', self.final_output, self.main_o])
         else:
-            subprocess.check_output([os.path.join(wixdir, 'wixl'), '-o', self.final_output, self.main_xml])
+            subprocess.check_output([os.path.join(wixdir, 'wixl'), '--ext', 'ui', '-o', self.final_output, self.main_xml])
 
 
 def create_parser() -> argparse.ArgumentParser:

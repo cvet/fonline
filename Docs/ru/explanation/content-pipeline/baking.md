@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"04a34b6a717f9ecc782138ba46eb937f3e34782ace3e0bf6aa3888291642cca0"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"d58c529ce1368d1051edb641bb86bf75053eb5112ed77e20352f56c595da2d43"} -->
 
 # Конвейер запекания ресурсов
 
@@ -446,7 +446,7 @@ Reader получает expected identity и до Ozz codec отклоняет m
 
 `ModelInfoBaker` строит canonical runtime skeleton, unique animations, remaps, presence masks и nearest timelines. Payload проходит write/read-back validation. Signed TRS допускает mirror через X scale и требует `T*R*S` round-trip с relative tolerance `1e-4`; shear, zero scale, invalid quaternion/ranges/durations/timepoints, более 1024 joints или 65535 timepoints и animated aliased roots запрещены. Missing base tracks заполняются canonical rest, animation-only — identity, presence byte остаётся zero.
 
-Каждый `.fo3d` output начинается с `LFMODINF`, schema `1`, flags `0`, затем positional description и обязательный length-prefixed `LFOZZRIG` schema 1. Rig содержит signatures, skeleton, base remap, unique animation/remap pairs и sorted `(StateAnim, ActionAnim) -> (clip index, reversed)`. Manifest повторяет source identity/signature и сверяет их с nested `LFOZZARC`. Counts/order/duplicates/bindings/remaps/consumption/tags/topology/rest/tracks/durations проверяются до публикации immutable `ModelInformation`. Unversioned descriptions не поддерживаются; compatibility marker mesh transition — `0.0.30`, нужен полный rebake.
+Каждый `.fo3d` output начинается с `LFMODINF`, schema `3`, flags `0`, затем positional description и обязательный length-prefixed `LFOZZRIG` schema 1. Schema 2 добавила к каждому geometry link union AABB, а schema 3 — счётный набор per-animation боксов с ключом `(StateAnim, ActionAnim)`, поэтому client берёт envelope активного клипа, а не union для любой позы. Каждый шаг несовместим по binary layout: любое следующее поле `LFMODINF` поднимает `MODEL_DESCRIPTION_SCHEMA_VERSION` тем же изменением, а переход на schema 3 использует compatibility marker `0.0.46`, поэтому новый runtime и полный rebake ресурсов едут вместе. Rig содержит signatures, skeleton, base remap, unique animation/remap pairs и sorted `(StateAnim, ActionAnim) -> (clip index, reversed)`. Manifest повторяет source identity/signature и сверяет их с nested `LFOZZARC`. Counts/order/duplicates/bindings/remaps/consumption/tags/topology/rest/tracks/durations проверяются до публикации immutable `ModelInformation`. Unversioned descriptions не поддерживаются; compatibility marker mesh transition — `0.0.30`, нужен полный rebake.
 
 Generated Ozz rig является единственным production clip/pose payload. `ModelAnimationController` хранит LF timeline/events и Ozz clip metadata; sampling, blending, movement replacement, procedural rotations и local-to-model выполняются per-instance. Cross-model sharing или persisted cache требуют отдельного измеренного обоснования.
 

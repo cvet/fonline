@@ -437,6 +437,9 @@ public:
     // Persistent identifiers of the dynamic items placed directly on this map.
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, ItemIds);
+    // Identifiers of the baked static items this map instance has dropped; removal is one-way for the life of the instance.
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(vector<ident_t>, RemovedStaticItemIds);
     // Width and height of the map grid in hexes.
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(msize, Size);

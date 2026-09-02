@@ -104,6 +104,8 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+Runtime overrun diagnostics use `Script.OverrunReportTime` as an independent threshold for two measurements. `Script execution overrun` reports wall time after subtracting the server synchronization context's accumulated entity-lock wait, while `Script lock wait overrun` reports the contention component itself. Both messages include execution, lock-wait, and total wall durations, so a compute-heavy function and a wait-heavy function stay separately searchable without losing the full latency picture. Non-server engines return zero lock wait. A value of zero still disables both diagnostics, and an attached debugger still suppresses them.
+
 AngelScript assigns registered object type IDs lazily. Separate script contexts may request the same fresh type concurrently, so the vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine reader/writer lock and refreshes the value after acquiring exclusive access. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads` drives 16 native workers over 128 new types through public `asITypeInfo::GetTypeId()` and requires one identical valid ID per type.
 
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.

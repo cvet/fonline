@@ -841,9 +841,9 @@ namespace TestEventsAndRemoteCalls
     {
         vector<pair<string_view, string_view>> cases = {
             {"///@ MigrationRule Property Item OnlyOneArg", "insufficient parameters"},
-            {"///@ MigrationRule Property Item . Remove", "insufficient parameters"},
-            {"///@ MigrationRule Property Item . Bad Remove", "malformed dotted name"},
-            {"///@ MigrationRule Property Item Bad Name Remove", "too many rule arguments"},
+            {"///@ MigrationRule Property Item . _", "insufficient parameters"},
+            {"///@ MigrationRule Property Item . Bad _", "malformed dotted name"},
+            {"///@ MigrationRule Property Item Bad Name _", "too many rule arguments"},
             {"///@ MigrationRule Property Item Bad .", "malformed dotted name"},
         };
 
@@ -858,7 +858,7 @@ namespace TestEventsAndRemoteCalls
 namespace TestMigration
 {
 ///@ MigrationRule Property Item Weapon.AmmoPid Weapon.Ammo
-///@ MigrationRule Proto Modifier LegacyAchvO9tCm0 Remove
+///@ MigrationRule Proto Modifier LegacyAchvO9tCm0 __remove__
 }
 )");
 
@@ -907,7 +907,7 @@ namespace TestMigration
         reader.VerifyEnd();
 
         CHECK(std::ranges::count(migration_entries, vector<string> {"Property", "Item", "Weapon.AmmoPid", "Weapon.Ammo"}) == 1);
-        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "LegacyAchvO9tCm0", "Remove"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "LegacyAchvO9tCm0", "__remove__"}) == 1);
         CHECK(settings_entries.empty());
 
         EngineMetadata meta {[] { }};
@@ -920,7 +920,7 @@ namespace TestMigration
 
         auto proto_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString("LegacyAchvO9tCm0"));
         REQUIRE(proto_rule.has_value());
-        CHECK(proto_rule.value() == meta.Hashes.ToHashedString("Remove"));
+        CHECK_FALSE(static_cast<bool>(proto_rule.value()));
     }
 
     SECTION("serializes ref type fields declared via property tags")

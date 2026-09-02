@@ -2931,6 +2931,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-regenerate-6859be5974"></a>
 - [`symbol-script-method-server-map-regenerate-6859be5974`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-regenerate-6859be5974)
 
+<a id="symbol-script-method-server-map-removestaticitem-7b30d7a907ece580-03dd5163f1"></a>
+- [`symbol-script-method-server-map-removestaticitem-7b30d7a907ece580-03dd5163f1`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-removestaticitem-7b30d7a907ece580-03dd5163f1)
+
+<a id="symbol-script-method-server-map-removestaticitem-a89f4bb2ef62c35a-f733d20ec3"></a>
+- [`symbol-script-method-server-map-removestaticitem-a89f4bb2ef62c35a-f733d20ec3`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-removestaticitem-a89f4bb2ef62c35a-f733d20ec3)
+
 <a id="symbol-script-method-server-map-setupscript-8d7c938e4c"></a>
 - [`symbol-script-method-server-map-setupscript-8d7c938e4c`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-setupscript-8d7c938e4c)
 
