@@ -207,7 +207,7 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IsPackaged()) {
+    if (settings.Packaged) {
         FileSystem resources;
         resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
         resources.AddPacksSource(settings.ClientResources, settings.MapperResourceEntries);

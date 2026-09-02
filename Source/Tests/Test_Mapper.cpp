@@ -2393,7 +2393,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 
     // The key sweep below presses F11, which dumps the atlases, so the directories it writes are cleared
     // once the case is done
-    const set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+    set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
 
     auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
 

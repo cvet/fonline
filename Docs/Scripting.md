@@ -88,6 +88,13 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+Runtime overrun diagnostics use `Script.OverrunReportTime` as an independent threshold for two measurements.
+`Script execution overrun` reports wall time after subtracting the server synchronization context's accumulated
+entity-lock wait, while `Script lock wait overrun` reports the contention component itself. Both messages include
+execution, lock-wait, and total wall durations, so a compute-heavy function and a wait-heavy function remain
+separately searchable without losing the full latency picture. Non-server engines return zero lock wait. As
+before, a value of zero disables both diagnostics and an attached debugger suppresses them.
+
 Separate script contexts may request a registered object's type id concurrently during first use. AngelScript
 assigns that id lazily, so FOnline's vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine
 reader/writer lock and refreshes the local value after acquiring the exclusive lock. No caller may observe the
@@ -185,6 +192,8 @@ Each exported function is marked with `///@ ExportMethod` and normally starts wi
 For entity instance methods, the AngelScript dispatch layer validates the receiver before entering the native method body. `Entity_MethodCall` calls `CheckScriptEntityAccessAndNonDestroyed`, which checks server sync coverage and destroyed state for the `self` entity. Do not add an entry-only `ValidateEntityAccess(self)` or repeat the receiver check before ordinary receiver reads. Later in the body, validate entities only at real access/assert boundaries such as event dispatch or post-reentry continuation. When a covered entity must keep its own lock across a detach or reparent, use the cover-retaining, idempotent `EnsureEntitySynced(...)`; it retains existing caller cover — never releasing or parking on it — and cannot acquire an omitted dependency.
 
 When adding a method, route it to the side that owns the state it mutates. For example, authoritative item creation belongs under server methods, while sprite/UI helpers belong under client/common frontend methods.
+
+The VM stores a `bool` as one byte inside a four-byte stack slot, so the bytes above it keep whatever the slot held before. Native-call marshalling normalizes that at the ABI boundary — `as_callfunc_x64_gcc.cpp`, `as_callfunc_x64_msvc.cpp`, and `as_callfunc_arm64.cpp` copy only the value's own bytes into the zeroed argument slot — because a callee is entitled to treat a `bool` argument register as 0 or 1 and fold arithmetic on it. The engine's own `string opAdd(bool)` is such a callee: clang folds `strlen(b ? "true" : "false")` into `b ^ 5`, so a dirty register turned a four-byte append into a two-gigabyte one and crashed the client script that built a status line out of bools. Pinned by `AngelScriptNativeCallNormalizesBoolArgument` in `Source/Tests/Test_AngelScriptAlignment.cpp`.
 
 Client render helpers such as `Game.DrawSprite`, `Game.DrawSpritePattern`, and `Game.DrawSpriteRegion` are valid only during render-facing script callbacks (`RenderIface` / GUI draw callbacks). `Game.DrawSpriteRegion(sprId, uv0, uv1, pos, size, color)` draws a normalized `[0, 1]` sub-rectangle of the sprite's original logical image into a destination rectangle; polygon-cropped atlas frames are remapped through their source offset and transparent cropped margins remain transparent in the destination. `Game.DrawSpritePattern` follows the same logical-image contract for every complete or partial tile. Region drawing is intended for reusable GUI composition such as script-side 9-slice panels, and returns `false` when the sprite cannot provide atlas-region drawing.
 

@@ -205,7 +205,19 @@ and enters the game without staging another update.
 > launch an `INSTALLED` host reads and validates that selector before `InitApp`, then loads the writable
 > DLL directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed,
 > names a different runtime, or points to neither a live nor staged file. Portable clients never consult
-> this selector.
+> this selector. Gameplay resources use the same overlay precedence: `GetClientResources()` mounts the
+> read-only install packs first and then mounts any per-user resource packs on top. The updater reads its
+> local metadata version through that same function rather than assembling a second pack set, so the
+> version it validates is the one gameplay will read, and a repaired overlay pack cannot pass updater
+> validation and then be bypassed in favour of a damaged install-dir copy. `Updater` layers the overlay
+> over its splash pack too — the splash is drawn before this run downloads anything, so it would
+> otherwise keep rendering an install-dir copy an earlier run already replaced. This precedence is also
+> the recovery path after `METADATA_FILE_VERSION` changes: a new runtime treats an unreadable old install
+> pack as having no local metadata version, downloads the current pack into the writable overlay, re-reads
+> that overlay successfully, and only then constructs `ClientEngine`. The strict old-layout rejection is
+> not relaxed. If the updater cannot complete that repair, the client exits with `Client update failed.
+> Please install the latest full client package.` instead of surfacing `MetadataOutdatedException` from
+> gameplay startup or misidentifying a resource failure as a native-module failure.
 
 > **Deployed hosts are frozen.** The host `.exe` is never delivered by the updater (only the runtime
 > DLL is). A client built before this fix (one that attempted an in-process same-path reload) cannot be
@@ -397,10 +409,13 @@ bad install config never bricks startup.
 What moves to the writable root (via the free path helper `fs::make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
-patches** — the updater writes them under `<root>/<ClientResources>` and layers that dir on top of the
-read-only install-dir base as a higher-priority resource source (`Updater.cpp`, `Client.cpp`), so the base
-resources are read from the install dir and patches override from the user dir — and the **self-updated native
-runtime** (see below).
+patches** — the updater writes them under `<root>/<ClientResources>`, while both the updater's post-sync
+metadata check and `ClientEngine` obtain their identically ordered pack view from `GetClientResources()`.
+That view layers the writable packs on top of the read-only install-dir base, so the files the updater
+validated are exactly the files gameplay opens — and the **self-updated native runtime** (see below).
+The updater's packaged-mode gates and resource-root choices use the already loaded read-only
+`Common.Packaged` snapshot; direct executable-marker checks are limited to the pre-settings bootstrap and
+the filesystem's physical archive-versus-directory selection.
 
 **Native binary self-update for installed builds writes the runtime into the writable root**
 (`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
@@ -438,7 +453,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order invariant.
+Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, verifies the exact entry list, and streams every entry through Python's CRC-checking reader; a damaged archive fails packaging before it can become the server's updater source. The `Embedded` pack goes through the same check on its in-memory buffer before it is patched into the executable, where a corrupt archive would otherwise be undetectable until a player's client failed to read it. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order and post-build validation invariants.
 
 The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data.
 
@@ -499,14 +514,14 @@ instead of looping back to the game which would only reject the connection again
 
 | Symptom | First signal |
 |---------|--------------|
-| Host can't find runtime, no fallback possible | embedded host's resource updater fails to download anything; client message box `Failed to update native client modules for binary target <target>` |
+| Host can't find runtime, no fallback possible, or resource repair cannot complete | client message box `Client update failed. Please install the latest full client package.` |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
 | Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `logging::type::warning`), client gets disconnected |
 | Client data does not match the server data | server log `Connected client X runs metadata version A while the server runs B`; updater log `synced resources run metadata version A while the server runs B, resources <dir>`. Both name the two versions - find which resource directory came from a different bake |
 | Server distributing resources it does not run on | server startup fails with `Distributed client resources were baked apart from the server resources`, naming both resource directories and both layout versions |
-| Baked resources predate the current metadata format | startup fails at the metadata header: `does not start with the metadata file marker`, `file version does not match the engine`, or `carries no version` - run a full rebake |
+| Server or unpackaged development resources predate the current metadata format | startup fails at the metadata header: `does not start with the metadata file marker`, `file version does not match the engine`, or `carries no version` - run a full rebake. A packaged client with an old install pack recovers through the writable updater overlay before gameplay startup; if that repair fails, install the latest full client package |
 | Server has no native update for this target | message box `Server doesn't provide a native client update for binary target <target>` |
 | Stale staging file | `<live>-staging` survived a previous failed swap; the next `LF_Client.exe` startup promotes it via `ApplyStagedBinaryUpdate` before loading the runtime |
 | Linux host logs `LoadModule failed` for a present, valid runtime `.so`, then `trying embedded fallback` on every launch | `dlopen` rejected the module. Two engine build rules must hold (see "Linux module isolation" above): the module is linked with `-Wl,-Bsymbolic` (`AddSharedApplication`), and no vendored code forces initial-exec TLS on Linux — an IE-model TLS relocation fails `dlopen` with `cannot allocate memory in static TLS block` (diagnose with a standalone `dlopen` of the `.so`, e.g. via `python3 -c "import ctypes; ctypes.CDLL('./<runtime>.so')"`). A silently-engaged embedded fallback makes a native self-update loop: the downloaded `.so` is promoted on disk but never executed |
@@ -526,7 +541,7 @@ Local validation steps:
 8. Interrupt a client mid-download (kill the network) and reconnect â€” the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 â†’ restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `LF_Client.exe`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
-11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and not show the same update prompt again. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
+11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
 
 ## See Also
 

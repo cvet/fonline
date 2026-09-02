@@ -281,8 +281,8 @@ TEST_CASE("NetBuffer")
     {
         NetInBuffer in_buf {8};
         in_buf.SetMaxBufLen(8);
-        const array<uint8_t, 5> first = {1, 2, 3, 4, 5};
-        const array<uint8_t, 4> second = {6, 7, 8, 9};
+        array<uint8_t, 5> first = {1, 2, 3, 4, 5};
+        array<uint8_t, 4> second = {6, 7, 8, 9};
         in_buf.AddData(first);
         CHECK(in_buf.GetBufferedUnreadSize() == first.size());
         CHECK_THROWS_AS(in_buf.AddData(second), NetBufferException);

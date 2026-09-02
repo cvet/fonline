@@ -18,7 +18,7 @@ import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Literal, Sequence
+from typing import IO, Callable, Iterable, Literal, Sequence
 
 import buildtools
 import foconfig
@@ -322,6 +322,26 @@ def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipIn
 				return False
 			if not archive_chunk:
 				return True
+
+
+def validate_resource_zip(archive_source: str | Path | IO[bytes], expected_entries: Sequence[str], description: str | None = None) -> None:
+	archive_name = description if description is not None else str(archive_source)
+	try:
+		with zipfile.ZipFile(archive_source, 'r') as archive:
+			actual_entries = [info.filename for info in archive.infolist()]
+			assert actual_entries == list(expected_entries), f'Resource pack entry list mismatch: {archive_name}'
+
+			for info in archive.infolist():
+				try:
+					with archive.open(info) as entry:
+						while entry.read(1024 * 1024):
+							pass
+				except Exception as error:
+					raise AssertionError(f'Resource pack validation failed for {archive_name}: {info.filename}: {error}') from error
+	except AssertionError:
+		raise
+	except Exception as error:
+		raise AssertionError(f'Resource pack validation failed for {archive_name}: {error}') from error
 
 
 def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
@@ -909,10 +929,13 @@ class Packager:
 			return config_name, file.read().encode()
 
 	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
+		zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+
 		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
 			for arcname, file_path in zip_entries:
 				self.write_stable_zip_entry(archive, file_path, arcname)
+
+		validate_resource_zip(archive_path, [arcname for arcname, _ in zip_entries])
 
 	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
 		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
@@ -924,11 +947,12 @@ class Packager:
 
 	def make_embedded_pack(self, files: Sequence[str], base_path: str) -> bytes:
 		embedded_buffer = io.BytesIO()
+		zip_entries = [os.path.relpath(file_path, base_path).replace(os.sep, '/') for file_path in files]
 		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for file_path in files:
-				arcname = os.path.relpath(file_path, base_path).replace(os.sep, '/')
+			for arcname, file_path in zip(zip_entries, files):
 				self.write_stable_zip_entry(archive, file_path, arcname)
 		data = embedded_buffer.getvalue()
+		validate_resource_zip(io.BytesIO(data), zip_entries, 'embedded resource pack')
 		return struct.pack('I', len(data)) + data
 
 	def ensure_resource_dirs(self) -> None:
@@ -1525,7 +1549,13 @@ class Packager:
 			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
 			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
 		else:
-			assert shutil.which('wixl') is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
+			wixl = shutil.which('wixl')
+			assert wixl is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
+			version_output = subprocess.check_output([wixl, '--version'], text=True).strip()
+			version_match = re.search(r'(\d+)\.(\d+)(?:\.(\d+))?', version_output)
+			assert version_match is not None, 'Unable to determine wixl version from: ' + version_output
+			version = tuple(int(part or '0') for part in version_match.groups())
+			assert version >= (0, 102, 0), 'Wix pack directory UI requires wixl 0.102 or newer (found %s)' % version_output
 
 	def make_wix_installer(self) -> None:
 		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register
@@ -1557,6 +1587,7 @@ class Packager:
 		arches = self.iter_arches()
 		assert len(arches) == 1, 'Wix pack requires exactly one Windows architecture per package entry'
 		input_arch = buildtools.resolve_windows_binary_arch(arches[0])
+		msi_arch = 32 if input_arch == 'win32' else 64
 		binary_output_postfix = self.args.binary_output_postfix
 		name_base = self.args.nicename + ('_' + binary_output_postfix if binary_output_postfix else '')
 
@@ -1570,6 +1601,21 @@ class Packager:
 			{'root': 'HKCU', 'key': 'Software\\Classes\\%s\\shell\\open\\command' % scheme, 'action': 'createAndRemoveOnUninstall',
 			 'name': '', 'type': 'string', 'value': command_value, 'key_path': 'no'},
 		]
+		install_location_registry = {
+			'root': 'HKCU',
+			'key': 'Software\\' + self.args.nicename,
+			'name': 'InstallLocation',
+			'win64': 'yes' if msi_arch == 64 else 'no',
+		}
+		registry_entries.append({
+			'root': install_location_registry['root'],
+			'key': install_location_registry['key'],
+			'action': 'createAndRemoveOnUninstall',
+			'name': install_location_registry['name'],
+			'type': 'string',
+			'value': '[INSTALLDIR]',
+			'key_path': 'no',
+		})
 
 		staged_dir = os.path.basename(self.target_output_path)
 		work_dir = os.path.dirname(self.target_output_path)
@@ -1584,8 +1630,9 @@ class Packager:
 			'license_file': '',
 			'upgrade_guid': upgrade_code,
 			'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
-			'arch': 32 if input_arch == 'win32' else 64,
+			'arch': msi_arch,
 			'registry_entries': registry_entries,
+			'install_location_registry': install_location_registry,
 			'startmenu_shortcut': exe_name,
 			'desktop_shortcut': exe_name,
 			'parts': [{'id': 'MainProgram', 'title': game_name, 'description': 'Game client', 'staged_dir': staged_dir}],

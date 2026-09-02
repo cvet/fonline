@@ -35,6 +35,8 @@ Read this page together with:
 - `Source/Server/Critter.cpp`
 - `Source/Server/Map.h`
 - `Source/Server/Map.cpp`
+- `Source/Server/StaticMap.h`
+- `Source/Server/StaticMap.cpp`
 - `Source/Server/Location.h`
 - `Source/Server/Location.cpp`
 - `Source/Server/Item.h`
@@ -182,7 +184,7 @@ These are engine extension points. The scripts that implement actual game rules 
 
 Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map. A partial-stack `MoveItem()` splits the source before delivery, and the split's init event can re-enter scripts and destroy the destination; if it does, the helper folds the split count back into the surviving source stack and destroys the undeliverable split item, so a failed split move is lossless rather than leaving an orphaned `Nowhere` item. `ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, so handlers can destroy that detached item, but ordinary script movement APIs require a current holder and do not move `Nowhere` items.
 
-Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex.
+Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex. A static item the map instance has removed contributes no trigger at all, because `VerifyTrigger()` reads the same per-instance static overlay as the rest of the static queries.
 
 ## Entity synchronization and locking
 
@@ -269,6 +271,13 @@ together but stops at the first exclusive one, so readers batch without starving
 lock and force-aborts its parked waiters, and rejects later acquisitions so a tick firing after shutdown cannot
 deadlock on an empty owner field.
 
+Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside
+`EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer
+context in the synchronous call chain, because an outer script's wall time includes a nested script callback's
+wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not
+counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting
+backend so diagnostics can separate contention from execution cost.
+
 A multi-lock `Ensure` is all-or-nothing: it validates compatibility for the whole batch under the state mutexes
 and only then commits ownership, and it escalates in a global order, releasing an already-held ancestor down to
 zero and re-taking it the same number of times so the parent context's recursion and intention counters are
@@ -301,7 +310,9 @@ Custom entities held directly by the global game object share its singleton `Ent
 
 Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializer`. The database facade and backends are documented in [Persistence.md](Persistence.md).
 
-A persisted entity whose proto resolves through a `Proto <Type> <Name> Remove` migration rule is **dropped** on load: `LoadEntityDoc()` detects that the proto migration rule maps the saved proto to the `Remove` sentinel and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. `OnCritterPreLoad` destruction is the script-controlled equivalent for a fully restored critter and also returns null without a load error after `DestroyCritter()` removes its persistent graph. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A dropped critter requested directly through `ServerEngine::LoadCritter()` is not silently returned — the wrapper raises so a player login cannot continue without its character.
+A persisted entity whose proto resolves through a `Proto <Type> <Name> __remove__` migration rule is **dropped** on load: `CheckMigrationRule()` represents the `__remove__` deletion token as an engaged `optional` containing an empty hash, while `nullopt` continues to mean that no rule exists. `LoadEntityDoc()` detects that empty replacement and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. `OnCritterPreLoad` destruction is the script-controlled equivalent for a fully restored critter and also returns null without a load error after `DestroyCritter()` removes its persistent graph. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A dropped critter requested directly through `ServerEngine::LoadCritter()` is not silently returned — the wrapper raises so a player login cannot continue without its character.
+
+Persisted properties whose base type is a proto reference use the same distinction while their owning entity is restored. A rename stores the replacement proto id in memory. An empty replacement produced by the `__remove__` deletion token clears the value only when the property is `Nullable`; a non-nullable property still rejects it because the embedding project must provide a valid replacement. An unknown proto with no migration rule remains an error. This conversion happens before script load events, so a script migration can repair related nullable fields after the entity is structurally loadable.
 
 ## Player and connection flow
 
@@ -393,7 +404,7 @@ The reusable geometry, path finding, blockers, line tracing, and map-loading con
 - move items between critters, maps, and containers;
 - remove item-holder relationships.
 
-`Item` owns container membership and multihex entries. `StaticItem` is the static-map specialization used by map content.
+`Item` owns container membership and multihex entries. `StaticItem` is the static-map specialization used by map content. Static items are built once per `ProtoMap` into the shared `StaticMap` (`Source/Server/StaticMap.h`), carry the `ident_t` their map file authored, and are never registered, persisted, or destroyed as runtime entities. A map instance drops individual static items through its own `RemovedStaticItemIds` list rather than by mutating that shared data; the model, the accessors it filters, and the client half are described in [MapsMovementGeometry.md](MapsMovementGeometry.md#static-item-removal).
 
 ## Map, location, item, and critter entities
 

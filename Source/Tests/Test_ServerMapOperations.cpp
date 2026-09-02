@@ -1453,6 +1453,56 @@ namespace MapOpsTest
         return 0;
     }
 
+    int TestMapStaticItemRemoval()
+    {
+        array<hstring> mapPids = {"StaticMap".hstr()};
+        Location loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        ident visibleId = map.GetStaticItems("TestStaticItem".hstr())[0].StaticId;
+        if (visibleId == ZERO_IDENT) return -3;
+
+        mpos hex(12, 13);
+        if (map.IsHexMovable(hex)) return -4;
+
+        if (!map.RemoveStaticItem(visibleId)) return -5;
+        if (map.RemovedStaticItemIds.find(visibleId) < 0) return -6;
+        if (map.GetStaticItem(visibleId) !is null) return -7;
+        if (map.GetStaticItemsOnHex(hex).length() != 0) return -8;
+        if (!map.IsHexMovable(hex)) return -9;
+        if (map.RemovedStaticItemIds.length() != 1) return -10;
+        if (map.RemoveStaticItem(visibleId)) return -11;
+
+        // The handle overload takes a second, still present item, so it succeeds and records another id
+        StaticItem hiddenItem = map.GetStaticItems("TestStaticHiddenItem".hstr())[0];
+        if (!map.RemoveStaticItem(hiddenItem)) return -12;
+        if (map.GetStaticItems().length() != 0) return -13;
+        if (map.RemovedStaticItemIds.length() != 2) return -14;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    void TestMapRemoveUnknownStaticItemThrows()
+    {
+        array<hstring> mapPids = {"StaticMap".hstr()};
+        Location loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        if (loc is null) {
+            return;
+        }
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) {
+            return;
+        }
+
+        ident unknownId;
+        map.RemoveStaticItem(unknownId);
+    }
+
     int TestGameStaticMapQueries()
     {
         ProtoMap? mapProto = Game.GetProtoMap("TestMap".hstr());
@@ -5232,6 +5282,16 @@ TEST_CASE("MapStaticItems")
         RUN_FUNC("MapOpsTest::TestGameStaticMapQueries");
     }
 
+    SECTION("StaticItemRemoval")
+    {
+        RUN_FUNC("MapOpsTest::TestMapStaticItemRemoval");
+    }
+
+    SECTION("RemoveUnknownStaticItemThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestMapRemoveUnknownStaticItemThrows", "Static item not found on map");
+    }
+
     SECTION("GetStaticItemsOnHexInvalidHexThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestMapGetStaticItemsOnHexInvalidHexThrows", "Invalid hex arg");
@@ -5289,32 +5349,167 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
 
     auto static_map = server->MapMngr.GetStaticMap(map_proto);
 
-    REQUIRE(static_map->CritterBillets.size() == 1);
-    CHECK(static_map->CritterBillets.front().first == ident_t {11});
-    CHECK(static_map->CritterBillets.front().second->GetProtoId() == static_critter_pid);
-    CHECK(static_map->CritterBillets.front().second->GetHex() == mpos {10, 11});
+    const_span<StaticMap::CritterBillet> critter_billets = static_map->GetCritterBillets();
+    REQUIRE(critter_billets.size() == 1);
+    CHECK(critter_billets.front().first == ident_t {11});
+    CHECK(critter_billets.front().second->GetProtoId() == static_critter_pid);
+    CHECK(critter_billets.front().second->GetHex() == mpos {10, 11});
 
-    REQUIRE(static_map->ItemBillets.size() == 2);
-    REQUIRE(static_map->StaticItems.size() == 2);
-    REQUIRE(static_map->StaticItemsById.contains(ident_t {21}));
-    REQUIRE(static_map->StaticItemsById.contains(ident_t {22}));
+    REQUIRE(static_map->GetOwnedItemBillets().size() == 2);
+    REQUIRE(static_map->GetStaticItems().size() == 2);
+    REQUIRE(static_map->HasStaticItem(ident_t {21}));
+    REQUIRE(static_map->HasStaticItem(ident_t {22}));
 
-    auto visible_item = static_map->StaticItemsById.at(ident_t {21});
-    auto hidden_item = static_map->StaticItemsById.at(ident_t {22});
+    auto visible_item = static_map->GetStaticItem(ident_t {21});
+    auto hidden_item = static_map->GetStaticItem(ident_t {22});
+    REQUIRE(visible_item);
+    REQUIRE(hidden_item);
     CHECK(visible_item->GetProtoId() == visible_item_pid);
     CHECK(hidden_item->GetProtoId() == hidden_item_pid);
     CHECK(visible_item->GetHex() == mpos {12, 13});
     CHECK(hidden_item->GetHex() == mpos {14, 15});
 
-    const auto& visible_field = static_map->HexField->GetCellForReading(mpos {12, 13});
+    const auto& visible_field = static_map->GetField(mpos {12, 13});
     CHECK(std::ranges::find(visible_field.StaticItems, visible_item) != visible_field.StaticItems.end());
     CHECK(visible_field.MoveBlocked);
     CHECK(visible_field.ShootBlocked);
 
-    const auto& hidden_field = static_map->HexField->GetCellForReading(mpos {14, 15});
+    const auto& hidden_field = static_map->GetField(mpos {14, 15});
     CHECK(std::ranges::find(hidden_field.StaticItems, hidden_item) != hidden_field.StaticItems.end());
     CHECK(hidden_field.MoveBlocked);
     CHECK(hidden_field.ShootBlocked);
+}
+
+TEST_CASE("MapStaticItemRemoval")
+{
+    MAKE_SERVER;
+
+    ident_t visible_id {21};
+    ident_t hidden_id {22};
+    mpos visible_hex {12, 13};
+    mpos hidden_hex {14, 15};
+    hstring visible_pid = get_func("TestStaticItem");
+
+    auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), vector<hstring> {get_func("StaticMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(static_cast<bool>(map));
+
+    SECTION("StaticItemsCarryTheirMapFileId")
+    {
+        auto visible_item = map->GetStaticItem(visible_id);
+        REQUIRE(visible_item);
+        CHECK(visible_item->GetId() == visible_id);
+        CHECK(visible_item->GetProtoId() == visible_pid);
+    }
+
+    SECTION("RemovalHidesTheItemFromEveryQuery")
+    {
+        REQUIRE(map->GetStaticItems().size() == 2);
+        REQUIRE(map->IsHexMovable(visible_hex) == false);
+
+        CHECK(map->RemoveStaticItem(visible_id));
+
+        CHECK(map->HasRemovedStaticItems());
+        CHECK(map->GetRemovedStaticItemIds() == vector<ident_t> {visible_id});
+        CHECK_FALSE(static_cast<bool>(map->GetStaticItem(visible_id)));
+        CHECK(map->GetStaticItems().size() == 1);
+        CHECK(map->GetStaticItems(visible_pid).empty());
+        CHECK(map->GetStaticItemsOnHex(visible_hex).empty());
+        CHECK_FALSE(static_cast<bool>(map->GetStaticItemOnHex(visible_hex, visible_pid)));
+        CHECK(map->GetStaticItemsInRadius(visible_hex, 5, visible_pid).empty());
+
+        // The item was the only thing blocking its hex, so passability must follow the removal
+        CHECK(map->IsHexMovable(visible_hex));
+        CHECK(map->IsHexShootable(visible_hex));
+
+        // HasStaticItem asks the baked map, not the instance
+        CHECK(map->HasStaticItem(visible_id));
+
+        // Untouched neighbours keep both their identity and their blocking
+        CHECK(static_cast<bool>(map->GetStaticItem(hidden_id)));
+        CHECK_FALSE(map->IsHexMovable(hidden_hex));
+
+        // Removing twice is a no-op rather than a duplicated id in the stored list
+        CHECK_FALSE(map->RemoveStaticItem(visible_id));
+        CHECK(map->GetRemovedStaticItemIds().size() == 1);
+    }
+
+    SECTION("RemovingEveryStaticItemLeavesAnEmptyMap")
+    {
+        REQUIRE(map->RemoveStaticItem(visible_id));
+        REQUIRE(map->RemoveStaticItem(hidden_id));
+
+        CHECK(map->GetStaticItems().empty());
+        CHECK(map->IsHexMovable(visible_hex));
+        CHECK(map->IsHexMovable(hidden_hex));
+    }
+
+    SECTION("RemovalIsOneWayForTheLifeOfTheMap")
+    {
+        REQUIRE(map->RemoveStaticItem(visible_id));
+
+        // Taking an id back out of the list is refused rather than quietly failing to bring the item back:
+        // clients already on the map are only ever told to drop a static item
+        CHECK_THROWS_AS(map->SetRemovedStaticItemIds(vector<ident_t> {}), VerificationException);
+
+        // The refusal precedes the store, so list and overlay both stand. Rejecting after the write would
+        // persist the shrunk list and silently undo the removal on the next server start
+        CHECK(map->GetRemovedStaticItemIds() == vector<ident_t> {visible_id});
+        CHECK_FALSE(static_cast<bool>(map->GetStaticItem(visible_id)));
+        CHECK(map->IsHexMovable(visible_hex));
+
+        // Growing the list is the only accepted direction
+        CHECK_NOTHROW(map->SetRemovedStaticItemIds(vector<ident_t> {visible_id, hidden_id}));
+        CHECK(map->GetStaticItems().empty());
+    }
+
+    SECTION("RegenerateKeepsRemovals")
+    {
+        REQUIRE(map->RemoveStaticItem(visible_id));
+
+        // Regeneration rebuilds map content, not the baked static layer
+        server->MapMngr.RegenerateMap(map);
+
+        CHECK(map->GetRemovedStaticItemIds() == vector<ident_t> {visible_id});
+        CHECK_FALSE(static_cast<bool>(map->GetStaticItem(visible_id)));
+        CHECK(map->GetStaticItems().size() == 1);
+    }
+
+    SECTION("RemovalIsPerMapInstance")
+    {
+        auto other_loc = server->MapMngr.CreateLocation(get_func("TestLocation"), vector<hstring> {get_func("StaticMap")});
+        auto other_map = other_loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(other_map));
+
+        REQUIRE(map->RemoveStaticItem(visible_id));
+
+        // The StaticMap is shared by every instance of the proto, so a removal must never reach it
+        CHECK(static_cast<bool>(other_map->GetStaticItem(visible_id)));
+        CHECK(other_map->GetStaticItems().size() == 2);
+        CHECK_FALSE(other_map->IsHexMovable(visible_hex));
+
+        auto static_map = server->MapMngr.GetStaticMap(map->GetProtoMap());
+        CHECK(static_map->GetStaticItems().size() == 2);
+        CHECK(static_map->GetField(visible_hex).MoveBlocked);
+
+        server->MapMngr.DestroyLocation(other_loc);
+    }
+
+    SECTION("RebuiltFieldKeepsTheBakedScrollBlock")
+    {
+        // A scroll block is baked into the field with no owning item. Simulate one on the item hex the way
+        // the map loader writes it, so removing the item must not open the hex
+        auto static_map = server->MapMngr.GetStaticMap(map->GetProtoMap());
+        static_map->MarkScrollBlocked(visible_hex);
+
+        REQUIRE(map->RemoveStaticItem(visible_id));
+
+        CHECK(map->GetStaticItemsOnHex(visible_hex).empty());
+        CHECK(map->IsHexShootable(visible_hex));
+        CHECK_FALSE(map->IsHexMovable(visible_hex));
+    }
+
+    server->MapMngr.DestroyLocation(loc);
 }
 
 TEST_CASE("MapLocationRelationship")

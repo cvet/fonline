@@ -297,9 +297,27 @@ void MapView::LoadFromFile(string_view map_name, string_view file_name, const st
     RebuildMapNow();
 }
 
+auto MapView::CollectRemovedStaticItemIds() const -> unordered_set<ident_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_set<ident_t> removed_ids;
+
+    if (IsNonEmptyRemovedStaticItemIds()) {
+        for (ident_t removed_id : GetRemovedStaticItemIds()) {
+            removed_ids.emplace(removed_id);
+        }
+    }
+
+    return removed_ids;
+}
+
 void MapView::LoadStaticData()
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Static items the map instance dropped are skipped outright: no view, no field entry, no sprite
+    unordered_set<ident_t> removed_ids = CollectRemovedStaticItemIds();
 
     auto file = _engine->Resources.ReadFile(strex("{}.fomap-bin-client", GetProtoId()));
 
@@ -345,6 +363,9 @@ void MapView::LoadStaticData()
             ident_t static_id = ident_t {reader.read<ident_t::underlying_type>()};
             auto item_pid_hash = reader.read<hstring::hash_t>();
             hstring item_pid = _engine->Hashes.resolve_hash(item_pid_hash);
+
+            // A removed record still has to be walked past, because the entries are variable length and the
+            // reader has no index to seek with
             auto item_proto = _engine->GetProtoItem(item_pid);
             FO_VERIFY_AND_THROW(item_proto, "Missing required item prototype");
 
@@ -354,11 +375,17 @@ void MapView::LoadStaticData()
             props_data.resize(props_data_size);
             span<uint8_t> props_data_span = props_data;
             reader.read_bytes(props_data_span);
+
+            if (removed_ids.count(static_id) != 0) {
+                continue;
+            }
+
             item_props.RestoreAllData(props_data);
 
             auto item_props_ptr = make_nptr(&item_props);
             auto static_item = safe_alloc::make_refcounted<ItemHexView>(this, static_id, item_proto, item_props_ptr);
             static_item->SetStatic(true);
+
             AddItemInternal(static_item);
         }
     }
@@ -410,6 +437,37 @@ void MapView::LoadStaticData()
     }
 
     RebuildMapNow();
+}
+
+void MapView::ApplyStaticItemRemovals()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_set<ident_t> removed_ids = CollectRemovedStaticItemIds();
+    bool fog_dirty = false;
+
+    // The list only ever grows, so this is the whole of the live path: drop what the map no longer has.
+    // An item is never built back here, and the server rejects a list that shrank
+    vector<ptr<ItemHexView>> to_destroy;
+
+    for (ptr<ItemHexView> item : _staticItems) {
+        if (removed_ids.count(item->GetId()) != 0) {
+            fog_dirty = fog_dirty || !item->GetShootThru();
+            to_destroy.emplace_back(item);
+        }
+    }
+
+    if (to_destroy.empty()) {
+        return;
+    }
+
+    DestroyItems(to_destroy);
+
+    if (fog_dirty) {
+        RebuildFog();
+    }
+
+    RebuildMap();
 }
 
 void MapView::Process()

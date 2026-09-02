@@ -44,8 +44,175 @@ static auto MakeTempMountedDir(string_view name) -> string
     return fs::path_to_string(base);
 }
 
+// Stands in for a pack: hands over its whole content, so a file system built from these indexes itself
+class SnapshotTestSource final : public DataSource
+{
+public:
+    explicit SnapshotTestSource(string name, map<string, string> files) :
+        _name {std::move(name)},
+        _files {std::move(files)}
+    {
+    }
+    SnapshotTestSource(const SnapshotTestSource&) = delete;
+    SnapshotTestSource(SnapshotTestSource&&) noexcept = delete;
+    auto operator=(const SnapshotTestSource&) = delete;
+    auto operator=(SnapshotTestSource&&) noexcept = delete;
+    ~SnapshotTestSource() override = default;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _name; }
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool override { return _files.contains(path); }
+
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override
+    {
+        auto it = _files.find(path);
+
+        if (it == _files.end()) {
+            return false;
+        }
+
+        size = it->second.size();
+        write_time = 1000;
+        return true;
+    }
+
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override
+    {
+        auto it = _files.find(path);
+
+        if (it == _files.end()) {
+            return nullptr;
+        }
+
+        size = it->second.size();
+        write_time = 1000;
+
+        auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
+        memory::copy(buf.get(), it->second.data(), size);
+
+        auto released_buf = make_ptr<const uint8_t*>(buf.release());
+        return make_unique_del_ptr(released_buf, [](const uint8_t* raw_buf) noexcept {
+            unique_arr_ptr<const uint8_t> owned_buf {raw_buf};
+            ignore_unused(owned_buf);
+        });
+    }
+
+    [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override
+    {
+        ignore_unused(dir, recursive, ext);
+
+        vector<string> names;
+
+        for (const auto& [path, content] : _files) {
+            names.emplace_back(path);
+        }
+
+        return names;
+    }
+
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override
+    {
+        vector<IndexedFile> files;
+
+        for (const auto& [path, content] : _files) {
+            files.emplace_back(IndexedFile {path, content.size(), 1000});
+        }
+
+        return files;
+    }
+
+private:
+    string _name;
+    map<string, string> _files;
+};
+
 TEST_CASE("FileSystem")
 {
+    // The index has to reproduce the probe order exactly: a source mounted later sits in front of the
+    // others, so it takes every path it shares with them
+    SECTION("IndexedLookupsFollowTheProbeOrder")
+    {
+        FileSystem resources;
+        resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Lower", map<string, string> {{"shared.txt", "lower"}, {"only-lower.txt", "kept"}}));
+        resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Upper", map<string, string> {{"shared.txt", "upper-wins"}, {"only-upper.txt", "kept"}}));
+
+        CHECK(resources.IsFileExists("shared.txt"));
+        CHECK(resources.IsFileExists("only-lower.txt"));
+        CHECK(resources.IsFileExists("only-upper.txt"));
+        CHECK_FALSE(resources.IsFileExists("missing.txt"));
+
+        CHECK(resources.ReadFileText("shared.txt") == "upper-wins");
+        CHECK(resources.ReadFileText("only-lower.txt") == "kept");
+        CHECK(resources.ReadFileText("missing.txt").empty());
+
+        auto shared_header = resources.ReadFileHeader("shared.txt");
+        REQUIRE(shared_header);
+        CHECK(shared_header.GetSize() == 10);
+        CHECK(shared_header.GetDataSource()->GetPackName() == "Upper");
+        CHECK_FALSE(resources.ReadFileHeader("missing.txt"));
+
+        auto lower_header = resources.ReadFileHeader("only-lower.txt");
+        REQUIRE(lower_header);
+        CHECK(lower_header.GetDataSource()->GetPackName() == "Lower");
+    }
+
+    // One source that cannot hand over a snapshot has to take the whole file system back to probing, or a
+    // live directory mounted beside packs would answer from a snapshot taken before it changed
+    SECTION("ALiveSourceDropsTheFileSystemBackToProbing")
+    {
+        string temp_dir = MakeTempMountedDir("file_system_mixed_sources");
+        bool removed_before = fs::remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("on-disk.txt").str(), string_view {"disk"}));
+
+        FileSystem resources;
+        resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Pack", map<string, string> {{"in-pack.txt", "pack"}}));
+        resources.AddDirSource(temp_dir, true);
+
+        CHECK(resources.ReadFileText("in-pack.txt") == "pack");
+        CHECK(resources.ReadFileText("on-disk.txt") == "disk");
+        CHECK(resources.IsFileExists("on-disk.txt"));
+        CHECK_FALSE(resources.IsFileExists("missing.txt"));
+
+        // A file that appears after mounting is invisible until the dir source reindexes, index or no index
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("late.txt").str(), string_view {"late"}));
+        CHECK_FALSE(resources.IsFileExists("late.txt"));
+        CHECK(resources.ReindexDataSources());
+        CHECK(resources.ReadFileText("late.txt") == "late");
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+
+    SECTION("ReindexKeepsTheIndexAgreeingWithTheSources")
+    {
+        FileSystem resources;
+        resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Lower", map<string, string> {{"shared.txt", "lower"}}));
+        resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Upper", map<string, string> {{"shared.txt", "upper"}}));
+
+        ignore_unused(resources.ReindexDataSources());
+
+        CHECK(resources.ReadFileText("shared.txt") == "upper");
+
+        auto header = resources.ReadFileHeader("shared.txt");
+        REQUIRE(header);
+        CHECK(header.GetDataSource()->GetPackName() == "Upper");
+    }
+
+    SECTION("CleanedFileSystemAnswersNothing")
+    {
+        FileSystem resources;
+        resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Pack", map<string, string> {{"in-pack.txt", "pack"}}));
+
+        CHECK(resources.IsFileExists("in-pack.txt"));
+
+        resources.CleanDataSources();
+
+        CHECK_FALSE(resources.IsFileExists("in-pack.txt"));
+        CHECK(resources.ReadFileText("in-pack.txt").empty());
+        CHECK(resources.GetAllFiles().GetFilesCount() == 0);
+    }
+
     SECTION("MountedDirectorySupportsFilteringAndReading")
     {
         string temp_dir = MakeTempMountedDir("filesystem_mount");

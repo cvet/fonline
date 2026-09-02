@@ -213,7 +213,7 @@ static void MainEntry([[maybe_unused]] void* data)
         if (!Data->Client) {
             try {
                 if (!Data->ResourcesSynced) {
-                    if (!IsPackaged()) {
+                    if (!GetApp()->Settings.Packaged) {
                         Data->ResourcesSynced = true;
                         return;
                     }

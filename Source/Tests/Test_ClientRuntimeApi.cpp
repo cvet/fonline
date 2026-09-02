@@ -56,6 +56,17 @@ static auto FailUnexpectedRuntimePromotion(string_view) -> bool
 
 TEST_CASE("ClientRuntimeApi")
 {
+    SECTION("NativeModuleSelfUpdateSupportMatchesPlatformLifecycle")
+    {
+        CHECK(CanSelfUpdateNativeModules(UpdatePlatform::Windows));
+        CHECK(CanSelfUpdateNativeModules(UpdatePlatform::Linux));
+        CHECK(CanSelfUpdateNativeModules(UpdatePlatform::MacOS));
+        CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::Android));
+        CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::IOS));
+        CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::Web));
+        CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::Unknown));
+    }
+
     SECTION("CurrentHostAbiIsSupported")
     {
         CHECK(IsSupportedClientRuntimeAbi(FO_CLIENT_RUNTIME_HOST_ABI_VERSION));

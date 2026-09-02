@@ -39,6 +39,14 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(DataSourceException);
 
+// One entry of a source's content, as handed to a file system that indexes what it mounted
+struct IndexedFile
+{
+    string Path {};
+    size_t Size {};
+    uint64_t WriteTime {};
+};
+
 class DataSource
 {
 public:
@@ -58,6 +66,7 @@ public:
     [[nodiscard]] virtual auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool = 0;
     [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> = 0;
+    [[nodiscard]] virtual auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> { return std::nullopt; }
 
     virtual auto Reindex() -> bool { return false; }
 };
@@ -82,6 +91,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override { return _dataSource->GetFileInfo(path, size, write_time); }
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override { return _dataSource->OpenFile(path, size, write_time); }
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return _dataSource->GetFileNames(dir, recursive, ext); }
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override { return _dataSource->GetIndexSnapshot(); }
 
     auto Reindex() -> bool override { return _dataSource->Reindex(); }
 

@@ -211,7 +211,7 @@ A default-constructed generator seeds itself from `std::random_device`; the `uin
 Engine code allocates through one of two surfaces, and nothing else:
 
 - **The `fo` container aliases** from `Containers.h` — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` and friends. Use these, never the `std::` originals. `string` and `wstring` are the engine `basic_string` and `deque` the engine `basic_deque`, both described above; the rest are the standard containers instantiated on `safe_allocator`.
-- **`safe_alloc`** — `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` for typed objects, and the raw tier `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` plus `MallocAlignedRaw` / `FreeAlignedRaw` for C-ABI boundaries.
+- **`safe_alloc`** — `make_unique` / `make_shared` / `make_refcounted` / `make_raw_arr` / `make_unique_arr` for typed objects, and the raw tier `malloc_raw` / `calloc_raw` / `realloc_raw` / `free_raw` plus `malloc_aligned_raw` / `free_aligned_raw` for C-ABI boundaries.
 
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `safe_allocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
 

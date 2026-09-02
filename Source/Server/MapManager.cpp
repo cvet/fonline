@@ -103,7 +103,7 @@ void MapManager::LoadFromResources()
 
                     reader.verify_payload_count(cr_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
-                    static_map->CritterBillets.reserve(cr_count);
+                    static_map->ReserveCritters(cr_count);
 
                     for (uint32_t i = 0; i < cr_count; i++) {
                         ident_t cr_id = ident_t {reader.read<ident_t::underlying_type>()};
@@ -128,7 +128,7 @@ void MapManager::LoadFromResources()
                         auto cr = safe_alloc::make_refcounted<Critter>(_engine, ident_t {}, cr_proto, cr_props_ptr);
                         cr->SetEntityLock(nullptr);
 
-                        static_map->CritterBillets.emplace_back(cr_id, cr);
+                        static_map->AddCritterBillet(cr_id, cr);
 
                         // Checks
                         if (auto hex = cr->GetHex(); !map_size.is_valid_pos(hex)) {
@@ -143,11 +143,7 @@ void MapManager::LoadFromResources()
 
                     reader.verify_payload_count(item_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
-                    static_map->ItemBillets.reserve(item_count);
-                    static_map->HexItemBillets.reserve(item_count);
-                    static_map->ChildItemBillets.reserve(item_count);
-                    static_map->StaticItems.reserve(item_count);
-                    static_map->StaticItemsById.reserve(item_count);
+                    static_map->ReserveItems(item_count);
 
                     for (uint32_t i = 0; i < item_count; i++) {
                         ident_t item_id = ident_t {reader.read<ident_t::underlying_type>()};
@@ -169,9 +165,9 @@ void MapManager::LoadFromResources()
                         item_props.RestoreAllData(props_data);
 
                         auto item_props_ptr = make_nptr(&item_props);
-                        auto item = safe_alloc::make_refcounted<StaticItem>(_engine, ident_t {}, item_proto, item_props_ptr);
+                        auto item = safe_alloc::make_refcounted<StaticItem>(_engine, item_id, item_proto, item_props_ptr);
                         item->SetEntityLock(nullptr);
-                        static_map->ItemBillets.emplace_back(item_id, item);
+                        static_map->AddOwnedItemBillet(item_id, item);
 
                         // Checks
                         if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -206,63 +202,15 @@ void MapManager::LoadFromResources()
                         // Sort
                         if (item->GetStatic()) {
                             FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
-                            static_map->StaticItems.emplace_back(item);
-                            static_map->StaticItemsById.emplace(item_id, item);
-
-                            auto add_item_to_field = [item_ = ptr<StaticItem> {item}](ptr<StaticMap::Field> static_field) {
-                                if (!vec_exists(static_field->StaticItems, item_)) {
-                                    static_field->StaticItems.reserve(static_field->StaticItems.size() + 1);
-                                    static_field->StaticItems.emplace_back(item_);
-
-                                    if (item_->GetIsTrigger()) {
-                                        static_field->TriggerItems.reserve(static_field->TriggerItems.size() + 1);
-                                        static_field->TriggerItems.emplace_back(item_);
-                                    }
-
-                                    if (!item_->GetNoBlock()) {
-                                        static_field->MoveBlocked = true;
-                                    }
-                                    if (!item_->GetShootThru()) {
-                                        static_field->ShootBlocked = true;
-                                        static_field->MoveBlocked = true;
-                                    }
-                                }
-                            };
-
-                            auto hex = item->GetHex();
-                            auto static_field = static_map->HexField->GetCellForWriting(hex);
-                            add_item_to_field(static_field);
-
-                            if (item->IsNonEmptyMultihexLines()) {
-                                GeometryHelper::ForEachMultihexLines(item->GetMultihexLines(), hex, map_size, [&](mpos multihex) {
-                                    auto multihex_field = static_map->HexField->GetCellForWriting(multihex);
-                                    add_item_to_field(multihex_field);
-                                });
-                            }
-
-                            if (item->IsNonEmptyMultihexMesh()) {
-                                for (auto multihex : item->GetMultihexMesh()) {
-                                    if (multihex != hex && map_size.is_valid_pos(multihex)) {
-                                        auto multihex_field = static_map->HexField->GetCellForWriting(multihex);
-                                        add_item_to_field(multihex_field);
-
-                                        if (item->IsNonEmptyMultihexLines()) {
-                                            GeometryHelper::ForEachMultihexLines(item->GetMultihexLines(), multihex, map_size, [&](mpos line_hex) {
-                                                auto line_field = static_map->HexField->GetCellForWriting(line_hex);
-                                                add_item_to_field(line_field);
-                                            });
-                                        }
-                                    }
-                                }
-                            }
+                            static_map->AddStaticItem(item_id, item);
                         }
                         else {
                             if (item->GetOwnership() == ItemOwnership::MapHex) {
-                                static_map->HexItemBillets.emplace_back(item_id, item);
+                                static_map->AddHexItemBillet(item_id, item);
                             }
                             else {
                                 FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::CritterInventory || item->GetOwnership() == ItemOwnership::ItemContainer, "Map item load produced item with unsupported ownership");
-                                static_map->ChildItemBillets.emplace_back(item_id, item);
+                                static_map->AddChildItemBillet(item_id, item);
                             }
                         }
                     }
@@ -286,18 +234,13 @@ void MapManager::LoadFromResources()
                             (axial_hex.x >= scroll_area.x + scroll_area.width - scroll_block_size && axial_hex.x <= scroll_area.x + scroll_area.width + scroll_block_size) || //
                             (axial_hex.y >= scroll_area.y - scroll_block_size && axial_hex.y <= scroll_area.y + scroll_block_size) || //
                             (axial_hex.y >= scroll_area.y + scroll_area.height - scroll_block_size && axial_hex.y <= scroll_area.y + scroll_area.height + scroll_block_size)) {
-                            auto field = static_map->HexField->GetCellForWriting(hex);
-                            field->MoveBlocked = true;
+                            static_map->MarkScrollBlocked(hex);
                         }
                     }
                 }
             }
 
-            static_map->CritterBillets.shrink_to_fit();
-            static_map->ItemBillets.shrink_to_fit();
-            static_map->HexItemBillets.shrink_to_fit();
-            static_map->ChildItemBillets.shrink_to_fit();
-            static_map->StaticItems.shrink_to_fit();
+            static_map->ShrinkToFit();
 
             return static_map;
         }));
@@ -340,14 +283,14 @@ void MapManager::GenerateMapContent(ptr<Map> map)
     unordered_map<ident_t, ident_t> id_map;
 
     // Generate critters
-    for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
+    for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->GetCritterBillets()) {
         auto cr = _engine->CrMngr.CreateCritterOnMap(base_cr->GetProtoId(), base_cr->GetProperties(), map, base_cr->GetHex(), base_cr->GetDir());
         id_map.emplace(base_cr_id, cr->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     }
 
     // Generate hex items
-    for (auto&& [base_item_id, base_item] : map->GetStaticMap()->HexItemBillets) {
+    for (auto&& [base_item_id, base_item] : map->GetStaticMap()->GetHexItemBillets()) {
         auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, base_item->GetProperties());
         id_map.emplace(base_item_id, item->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
@@ -356,7 +299,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
     }
 
     // Add children items
-    for (const auto& base_item : map->GetStaticMap()->ChildItemBillets | std::views::values) {
+    for (const auto& base_item : map->GetStaticMap()->GetChildItemBillets() | std::views::values) {
         // Map id to owner
         ident_t owner_id;
 

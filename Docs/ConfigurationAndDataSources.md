@@ -103,7 +103,7 @@ That baseline arrives with `BaseEngine`, so it is not yet applied while `InitApp
 
 Do not document one embedding project's `.fomain` contents as universal engine behavior. Use project docs for concrete values; use this page for the engine mechanics that consume them.
 
-Client startup has one extra resolution step for installed layouts: `ResolveUserWritablePath(settings)` in `Source/Frontend/ApplicationInit.cpp` resolves `Client.UserWritablePath` before the local-config cache is read. The writable-path knobs (`Client.UserWritablePath`, `Baking.CacheResources`) live in the config and sub-config, which are applied earlier, so the cache location is known without consulting the command line. The command line is then applied to the live settings exactly **once**, after the config, sub-config and local config, so it takes final precedence over all of them; a single pass also keeps `+`-append overrides (`-Setting +value`) from accumulating twice. That single pass logs each `Set <name> to <value>` override. In that log, settings whose name contains one of the masking tokens are printed as `Set <name> to ***`, so a credential such as `Auth.WebTokenVerifySecret` never appears in plaintext (server logs may be shared). The tokens are the `Common.SecretSettingTokens` setting (a case-insensitive substring list, default `secret token password apikey`), which `GlobalSettings::IsSecretSettingName()` reads. Command-line overrides are logged only on the final pass — after `ApplyDefaultSettings()` and the config file have run — so the list is already populated, and an embedding project extends it through config to cover credentials the generic tokens miss (Last Frontier sets `Common.SecretSettingTokens = secret token password apikey dsn` so `Sentry.Dsn` is masked). Empty means portable unless an `INSTALLED` marker sits next to the executable; `*` resolves through `platform::get_user_data_base()` plus `Common.GameName`; an explicit path is resolved directly. If the target directory or required cache/resource subdirs cannot be created, the resolver logs a warning and reverts to portable layout.
+Client startup has one extra resolution step for installed layouts: `ResolveUserWritablePath(settings)` in `Source/Frontend/ApplicationInit.cpp` resolves `Client.UserWritablePath` before the local-config cache is read. The writable-path knobs (`Client.UserWritablePath`, `Baking.CacheResources`) live in the config and sub-config, which are applied earlier, so the cache location is known without consulting the command line. The command line is then applied to the live settings exactly **once**, after the config, sub-config and local config, so it takes final precedence over all of them; a single pass also keeps `+`-append overrides (`-Setting +value`) from accumulating twice. That single pass logs each `Set <name> to <value>` override. In that log, settings whose name contains one of the masking tokens are printed as `Set <name> to ***`, so a credential such as `Auth.WebTokenVerifySecret` never appears in plaintext (server logs may be shared). The tokens are the `Common.SecretSettingTokens` setting (a case-insensitive substring list, default `secret token password apikey`), which `GlobalSettings::IsSecretSettingName()` reads. Command-line overrides are logged only on the final pass — after `ApplyDefaultSettings()` and the config file have run — so the list is already populated, and an embedding project extends it through config to cover credentials the generic tokens miss (Last Frontier sets `Common.SecretSettingTokens = secret token password apikey dsn` so `Sentry.Dsn` is masked). Empty means portable unless an `INSTALLED` marker sits next to the executable; `*` resolves through `Platform::GetUserDataBase()` plus `Common.GameName`; an explicit path is resolved directly. If the target directory or required cache/resource subdirs cannot be created, the resolver logs a warning and reverts to portable layout.
 
 ## Resource packs and data sources
 
@@ -133,7 +133,44 @@ Cached directory mounts snapshot their file index when mounted. Long-running too
 
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
 
-Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs::make_writable_path(UserWritablePath, ClientResources)` on top in client/updater paths. The updater writes resource patches into that overlay, so current files win lookup/hash checks without modifying the install directory. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
+### Shared index over mounted sources
+
+A point lookup (`ReadFile()`, `ReadFileHeader()`, `IsFileExists()`) is answered from one shared index when every
+mounted source could hand its content over; otherwise the sources are probed in mount order as before.
+`DataSource::GetIndexSnapshot()` is that hand-over: a source whose content is fixed until it is remounted returns
+all of it, and a source whose answer depends on the world at call time returns `nullopt`. The default is `nullopt`,
+so a source that says nothing keeps being probed - a missed override costs a lookup, a wrong one serves a file that
+has since moved.
+
+Every pack-backed source offers a snapshot - `ZipFile`, `EmbeddedFile`, `FalloutDat`, `FilesList` - and so does the
+empty stand-in a `maybe_not_available` mount produces when its pack is absent. That last one is not a detail:
+`GetClientResources()` mounts every pack name a second time against the writable overlay so a downloaded pack wins
+over the installed copy, and on a client that has downloaded nothing yet every one of those is absent. If an absent
+pack withheld a snapshot, the file system the game actually plays on would be off the index by default.
+
+Directory sources offer none, cached or otherwise. `CachedDir` could - its file tree is already a snapshot refreshed
+only by `Reindex`, so indexing it would add no staleness of its own - and it is withheld by decision rather than by
+capability: unpacked mounts go through `CachedDir`, and development runs are meant to keep the probe loop. A file
+system mounted entirely from packs - what a packaged client, server, mapper and viewer use - therefore resolves a
+path with a single hash lookup, while a development run over directories, the baker's live input dirs and the
+on-demand baker data source keep probing. Mixing needs no configuration: one source without a snapshot
+disables the index for that file system. The decision is per instance rather than per build, because a packaged
+client also builds mixed file systems: the updater's own resources, and the file system that checks a pushed file
+list, both mount the resource directory as a non-cached dir to size the pack files while the updater is rewriting
+them, and that directory must not be answered from a snapshot.
+
+The index is filled as sources are mounted. A new source goes in front of the others and claims every path it holds
+away from them, which is the shadowing the probe loop already produced; `ReindexDataSources()` rebuilds it. It is
+never populated from a lookup: the read path takes no lock, because the source list is only mutated during setup,
+and filling an index lazily from a `const` lookup would either race or put a mutex on every read.
+
+`FilterFiles()` and `GetAllFiles()` stay on the source loop even where the index exists. Their output order is
+source by source, and consumers depend on it - script module load order, prototype registration - which a hash
+container does not preserve.
+
+`Common.Packaged` is a fixed auto-setting populated from the executable's packaged marker by `GlobalSettings::ApplyAutoSettings()`. After settings are loaded, runtime policy must read that snapshot (`settings.Packaged`) so copied or injected settings remain internally consistent and testable. Direct `IsPackaged()` checks are reserved for pre-settings bootstrap decisions and `FileSystem::AddPackSource()`, where the physical executable marker deliberately selects archive-versus-directory mounting; tests may also inspect that marker when choosing compatible fixtures.
+
+Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs::make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` owns that ordering for both the updater's post-sync metadata check and the gameplay `ClientEngine`; do not reconstruct the pack view independently in either path. The updater writes resource patches into that overlay, so the exact current files that pass validation also win runtime lookup and hash checks without modifying the install directory. A ZIP entry read failure identifies the archive path and the resource-relative entry in `DataSourceException` context; short reads also record the expected byte count, actual read result, and close result. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
 
 ## Low-level disk access
 
@@ -147,7 +184,7 @@ An entry is stored as one plain file named after the entry, with path separators
 
 ## Settings store
 
-`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `platform::get_user_data_base()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
+`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `Platform::GetUserDataBase()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
 
 Only the GUI tools reference it (Mapper `MapperEngine::_uiSettings`, migrated from the resource `Cache`; standalone AnimationViewer / ParticleViewer, each loading in its constructor and saving on shutdown). It lives in `CommonLib` for simplicity, but because the client and server reference no `SettingsStorage` symbol, the linker (`/OPT:REF` plus on-demand static-library inclusion) drops the object from the shipped client/server binaries — so the Windows registry calls never land where antivirus heuristics might flag them. ImGui's own `imgui.ini` autosave stays disabled (`Application.cpp`), so all layout persistence flows through this store.
 

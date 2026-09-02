@@ -1200,7 +1200,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
     size_t offset = 0;
 
     while (offset < content.size()) {
-        auto remaining = content.size() - offset;
+        size_t remaining = content.size() - offset;
         auto read_pos = make_ptr(content.data() + offset);
 
         int64_t read_size = osfile::read_file_chunk(_fd, read_pos, remaining);
@@ -1319,7 +1319,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
     size_t offset = 0;
 
     while (offset < normalized_content.size()) {
-        auto remaining = normalized_content.size() - offset;
+        size_t remaining = normalized_content.size() - offset;
         auto write_pos = make_ptr(normalized_content.data() + offset);
 
         int64_t written_size = osfile::write_file_chunk(_fd, write_pos, remaining);

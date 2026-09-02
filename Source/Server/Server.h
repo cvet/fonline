@@ -96,7 +96,7 @@ public:
     void UnlockForPropertyAccessShared() noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
-    void RunScriptContext(const function<void()>& callback) override;
+    auto RunScriptContext(const function<void()>& callback) -> timespan override;
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
     auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomEntity(type_name, pid); }
@@ -293,7 +293,9 @@ private:
     void OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop);
 
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
-    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, ptr<const void> new_value);
+    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
+    void OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
     void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);

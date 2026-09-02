@@ -226,6 +226,13 @@ namespace AlignTest
 
         return 1;
     }
+
+    // A bool travels to a native function in a register, and `string opAdd(bool)` folds the literal length
+    // into arithmetic on it, so the stale bytes above the bool byte of its stack DWORD must not travel along
+    string ConcatBool(bool flag)
+    {
+        return "flag=" + flag;
+    }
 }
 )"},
                 },
@@ -398,6 +405,60 @@ TEST_CASE("AngelScriptValueAlignment")
     call_and_check("AlignTest::UseGlobals", 87);
     call_and_check("AlignTest::UseArrays", 16);
     call_and_check("AlignTest::UseAny", 1);
+}
+
+TEST_CASE("AngelScriptNativeCallNormalizesBoolArgument")
+{
+    auto settings = AlignTestRig::MakeSettings();
+    auto server = AlignTestRig::MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = AlignTestRig::WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
+    auto context_mngr = backend->GetContextMngr();
+    REQUIRE(context_mngr);
+
+    auto ctx = context_mngr->RequestContext();
+    uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
+    auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
+
+    nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
+    REQUIRE(as_engine != nullptr);
+    REQUIRE(as_engine->GetModuleCount() >= 1);
+
+    nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
+    REQUIRE(script_module != nullptr);
+
+    nptr<AngelScript::asIScriptFunction> concat_bool = script_module->GetFunctionByDecl("string AlignTest::ConcatBool(bool)");
+    REQUIRE(concat_bool != nullptr);
+
+    // The VM writes one byte for a bool and leaves the rest of its stack DWORD as it found it, so the slot is
+    // filled here the way a reused slot arrives: the low byte carries the bool, the bytes above it carry litter
+    REQUIRE(ctx->Prepare(concat_bool.get()) >= 0);
+
+    nptr<void> flag_slot = ctx->GetAddressOfArg(0);
+    REQUIRE(flag_slot);
+    *cast_from_void<uint32_t*>(flag_slot) = 0x7F390401U;
+
+    REQUIRE(ctx->Execute() == AngelScript::asEXECUTION_FINISHED);
+
+    nptr<void> concat_result = ctx->GetReturnObject();
+    REQUIRE(concat_result);
+    CHECK(*cast_from_void<const string*>(concat_result) == "flag=true");
 }
 
 #endif

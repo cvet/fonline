@@ -414,7 +414,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                 nanotime now = nanotime::now();
 
                 if (front_fire > now) {
-                    // Wait until the earliest job becomes due, or until something nearer arrives
+                    // wait until the earliest job becomes due, or until something nearer arrives
                     _workSignal.wait_until(locker, front_fire.value());
                     continue;
                 }

@@ -54,8 +54,7 @@ EntityManager::EntityManager(ptr<ServerEngine> engine) :
     _mapCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Map::ENTITY_TYPE_NAME))},
     _critterCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Critter::ENTITY_TYPE_NAME))},
     _itemCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Item::ENTITY_TYPE_NAME))},
-    _protoMigrationRuleName {engine->Hashes.to_hashed_string("Proto")},
-    _removeMigrationReplacement {engine->Hashes.to_hashed_string("Remove")}
+    _protoMigrationRuleName {engine->Hashes.to_hashed_string("Proto")}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -921,7 +920,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
 
         // A proto removed on purpose by a migration rule skips cleanly so callers drop the entity, while a
         // genuinely missing one keeps its id and surfaces later as proto-not-found
-        if (auto migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && migrated.value() == _removeMigrationReplacement) {
+        if (optional<hstring> migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && !migrated.value()) {
             logging::write(logging::type::info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
             return {};
         }
@@ -979,6 +978,10 @@ void EntityManager::CallInit(ptr<Map> map, bool first_time)
     }
 
     auto map_holder = map.hold_ref();
+
+    // Static removals arrive from the database as a bare id list; the map turns them into its overlay here,
+    // before any script or visibility pass can observe a static item the instance no longer has
+    map->RefreshRemovedStaticItems();
 
     map->SetInitCalled();
 

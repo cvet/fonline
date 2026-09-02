@@ -32,6 +32,7 @@
 //
 
 #include <chrono>
+#include <filesystem>
 #include <thread>
 
 #include "catch_amalgamated.hpp"
@@ -48,6 +49,7 @@
 #include "DefaultSprites.h"
 #include "EffectBaker.h"
 #include "ImGuiStuff.h"
+#include "MetadataRegistration.h"
 #include "ModelAnimationData.h"
 #include "ModelInfoBaker.h"
 #include "ModelManager.h"
@@ -125,6 +127,17 @@ namespace
         BakerTests::ApplySelfContainedClientSettings(settings);
 
         return settings;
+    }
+
+    static auto MakeTempClientResourceDir(string_view name) -> string
+    {
+        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+        return fs::path_to_string(base);
+    }
+
+    static auto CanUseDirectoryBackedClientResourceFixtures() noexcept -> bool
+    {
+        return !IsPackaged();
     }
 
     static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
@@ -1942,6 +1955,101 @@ BoundsMaxZ = 1 1 1 1
 #endif
 }
 
+TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
+{
+    if (!CanUseDirectoryBackedClientResourceFixtures()) {
+        SKIP("Directory-backed resource-pack fixtures require an unpackaged test binary");
+    }
+
+    string unique_name = strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
+    string writable_root = MakeTempClientResourceDir("writable_overlay");
+    bool removed_base_before = fs::remove_dir_tree(unique_name);
+    bool removed_writable_before = fs::remove_dir_tree(writable_root);
+    ignore_unused(removed_base_before);
+    ignore_unused(removed_writable_before);
+
+    auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
+        fs::remove_dir_tree(unique_name);
+        fs::remove_dir_tree(writable_root);
+    });
+
+    string pack_name = "ClientPack";
+    string metadata_file = "Metadata.fometa-client";
+    string writable_resources = fs::make_writable_path(writable_root, unique_name);
+
+    STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
+    constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
+    vector<uint8_t> outdated_metadata;
+    data_writer outdated_writer {outdated_metadata};
+    outdated_writer.write<uint32_t>(METADATA_FILE_MAGIC);
+    outdated_writer.write<uint16_t>(outdated_file_version);
+    outdated_writer.write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
+    outdated_writer.write_string_bytes(BakerTests::TEST_METADATA_VERSION);
+    outdated_writer.write<uint16_t>(uint16_t {0});
+
+    vector<uint8_t> current_metadata = BakerTests::MakeEmptyMetadataBlob();
+    REQUIRE(fs::write_file(strex(unique_name).combine_path(pack_name).combine_path(metadata_file).str(), outdated_metadata));
+    REQUIRE(fs::write_file(strex(writable_resources).combine_path(pack_name).combine_path(metadata_file).str(), current_metadata));
+
+    FileSystem install_resources;
+    install_resources.AddPacksSource(unique_name, {pack_name});
+    vector<uint8_t> installed_metadata = ReadMetadataBin(&install_resources, "Client");
+    CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
+
+    GlobalSettings settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Packaged, true);
+    BakerTests::OverrideSetting(settings.ClientResources, unique_name);
+    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {pack_name});
+    settings.UserWritablePath = writable_root;
+
+    FileSystem resources = GetClientResources(settings);
+    vector<uint8_t> recovered_metadata = ReadMetadataBin(&resources, "Client");
+
+    CHECK(ReadMetadataVersion(recovered_metadata) == BakerTests::TEST_METADATA_VERSION);
+
+    EngineMetadata metadata {[] { }};
+    metadata.RegisterSide(EngineSideKind::ClientSide);
+    CHECK_NOTHROW(RegisterDynamicMetadata(&metadata, recovered_metadata));
+}
+
+TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
+{
+    if (!CanUseDirectoryBackedClientResourceFixtures()) {
+        SKIP("Directory-backed resource-pack fixtures require an unpackaged test binary");
+    }
+
+    string unique_name = strex("lf_client_pack_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
+    string writable_root = MakeTempClientResourceDir("writable_overlay");
+    bool removed_base_before = fs::remove_dir_tree(unique_name);
+    bool removed_writable_before = fs::remove_dir_tree(writable_root);
+    ignore_unused(removed_base_before);
+    ignore_unused(removed_writable_before);
+
+    auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
+        fs::remove_dir_tree(unique_name);
+        fs::remove_dir_tree(writable_root);
+    });
+
+    string writable_resources = fs::make_writable_path(writable_root, unique_name);
+    REQUIRE(fs::write_file(strex(unique_name).combine_path("Main/shared.txt").str(), string_view {"install-base"}));
+    REQUIRE(fs::write_file(strex(unique_name).combine_path("Main/base-only.txt").str(), string_view {"base-only"}));
+    REQUIRE(fs::write_file(strex(unique_name).combine_path("Fallback/fallback.txt").str(), string_view {"base-fallback"}));
+    REQUIRE(fs::write_file(strex(writable_resources).combine_path("Main/shared.txt").str(), string_view {"writable-overlay"}));
+    REQUIRE(fs::write_file(strex(writable_resources).combine_path("Main/overlay-only.txt").str(), string_view {"overlay-only"}));
+
+    GlobalSettings settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Packaged, true);
+    BakerTests::OverrideSetting(settings.ClientResources, unique_name);
+    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {"Main", "Fallback"});
+    settings.UserWritablePath = writable_root;
+
+    FileSystem resources = GetClientResources(settings);
+    CHECK(resources.ReadFileText("shared.txt") == "writable-overlay");
+    CHECK(resources.ReadFileText("base-only.txt") == "base-only");
+    CHECK(resources.ReadFileText("overlay-only.txt") == "overlay-only");
+    CHECK(resources.ReadFileText("fallback.txt") == "base-fallback");
+}
+
 #if FO_ENABLE_3D
 TEST_CASE("ClientEngineLoadsModelMeshBakerOutputThroughRuntimeParser")
 {
@@ -1975,6 +2083,8 @@ f 1 2 3
 
 TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 {
+    static_assert(MODEL_DESCRIPTION_SCHEMA_VERSION == 3);
+
     vector<pair<string, vector<uint8_t>>> malformed_resources;
 
     malformed_resources.emplace_back("Models/VertexCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
@@ -2065,6 +2175,15 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         vector<uint8_t> data;
         data_writer writer {data};
         writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.write<uint16_t>(uint16_t {2});
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        malformed_resources.emplace_back("Models/DescriptionOldSchema.fo3d", std::move(data));
+    }
+
+    {
+        vector<uint8_t> data;
+        data_writer writer {data};
+        writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
         writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
         writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
         writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
@@ -2115,7 +2234,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         malformed_resources.emplace_back("Models/DescriptionGeometryFlagOutOfRange.fo3d", std::move(data));
     }
 
-    array<pair<string_view, string_view>, 18> expected_failures {{
+    array<pair<string_view, string_view>, 19> expected_failures {{
         {"Models/VertexCountBomb.fbx", "vertex count exceeds maximum addressable count"},
         {"Models/IndexCountBomb.fbx", "mesh indices"},
         {"Models/IndexOutOfBounds.fbx", "outside vertex count"},
@@ -2129,6 +2248,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         {"Models/InvalidSkinWeightSum.fbx", "skin-weight sum"},
         {"Models/ChildCountBomb.fbx", "child count exceeds maximum"},
         {"Models/HierarchyDepthBomb.fbx", "hierarchy depth"},
+        {"Models/DescriptionOldSchema.fo3d", "Unsupported baked model description schema"},
         {"Models/DescriptionStringBomb.fo3d", "String length exceeds remaining buffer"},
         {"Models/DescriptionLinksBomb.fo3d", "links"},
         {"Models/DescriptionNestedCountBomb.fo3d", "disabled meshes"},
@@ -2956,7 +3076,7 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
     // The sweep below dumps the atlases, so the directories it writes are cleared once the case is done
-    const set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+    set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
 
     auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
 
@@ -3627,7 +3747,7 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 {
     // The ImGui sweep below writes under `Workspace/`, relative to whatever directory the binary was launched
-    // from, and `ImGui::log_to_file` asserts on a file it cannot open — aborting the frame mid-sweep
+    // from, and `ImGui::LogToFile` asserts on a file it cannot open — aborting the frame mid-sweep
     (void)fs::create_directories("Workspace");
 
     auto settings = MakeClientTestSettings();

@@ -316,6 +316,8 @@ public:
     FO_ENTITY_PROPERTY(vector<ident_t>, CritterIds);
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, ItemIds);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(vector<ident_t>, RemovedStaticItemIds);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(msize, Size);
     ///@ ExportProperty Common Persistent

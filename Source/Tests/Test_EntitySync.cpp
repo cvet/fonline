@@ -1003,6 +1003,80 @@ TEST_CASE("SyncContext")
         CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
     }
 
+    SECTION("LockWaitIsSeparatedFromExecutionAcrossNestedContexts")
+    {
+        EntityLock singleton;
+        std::atomic_bool holder_ready {false};
+        std::atomic_bool release_holder {false};
+
+        std::thread holder([&]() {
+            singleton.Acquire(0);
+            holder_ready.store(true);
+
+            while (!release_holder.load()) {
+                std::this_thread::yield();
+            }
+
+            singleton.Release();
+        });
+        auto join_holder = scope_exit([&holder, &release_holder]() noexcept {
+            release_holder.store(true);
+            holder.join();
+        });
+
+        while (!holder_ready.load()) {
+            std::this_thread::yield();
+        }
+
+        SyncContext outer;
+        SyncContext inner;
+        outer.Activate();
+        inner.Activate();
+
+        std::thread releaser([&]() {
+            while (singleton.WaiterCount() != 1) {
+                std::this_thread::yield();
+            }
+
+            precise_sleep(std::chrono::milliseconds {40});
+            release_holder.store(true);
+        });
+        auto join_releaser = scope_exit([&releaser]() noexcept { releaser.join(); });
+
+        time_meter wait_only_time;
+        inner.LockSingleton(make_ptr(&singleton));
+        timespan wait_only_total = wait_only_time.get_duration();
+        inner.UnlockSingleton(make_ptr(&singleton));
+
+        releaser.join();
+        join_releaser.release();
+        holder.join();
+        join_holder.release();
+
+        timespan inner_lock_wait = inner.GetLockWaitDuration();
+        timespan outer_lock_wait = outer.GetLockWaitDuration();
+        CHECK(inner_lock_wait >= timespan {std::chrono::milliseconds {30}});
+        CHECK(inner_lock_wait <= wait_only_total);
+        CHECK(inner_lock_wait.div<float64_t>(wait_only_total) >= 0.75);
+        CHECK(outer_lock_wait == inner_lock_wait);
+
+        time_meter compute_only_time;
+        uint64_t checksum = 1;
+
+        while (compute_only_time.get_duration() < timespan {std::chrono::milliseconds {25}}) {
+            checksum = checksum * 6364136223846793005ULL + 1442695040888963407ULL;
+        }
+
+        CHECK(checksum != 1);
+        CHECK(inner.GetLockWaitDuration() == inner_lock_wait);
+        CHECK(outer.GetLockWaitDuration() == outer_lock_wait);
+
+        inner.Release();
+        inner.Deactivate();
+        outer.Release();
+        outer.Deactivate();
+    }
+
     SECTION("ActivateDeactivate")
     {
         SyncContext ctx;

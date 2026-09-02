@@ -158,7 +158,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     ApplicationInitHook(flags, settings);
 
     // Prebake resources
-    if (!IsPackaged() && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
+    if (!settings.Packaged && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
         logging::write("Prebake resources");
         PrebakeResources(settings);
     }

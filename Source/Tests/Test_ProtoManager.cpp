@@ -136,7 +136,7 @@ TEST_CASE("ProtoManager")
         CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_location_type, rest_stop_day_pid), location_proto.get()));
     }
 
-    SECTION("MigrationRuleRemoveResolvesToSentinel")
+    SECTION("MigrationRuleDeletionTokenResolvesToPresentEmptyValue")
     {
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
@@ -144,15 +144,13 @@ TEST_CASE("ProtoManager")
         hstring proto_rule = meta.Hashes.to_hashed_string("Proto");
         hstring item_type = meta.Hashes.to_hashed_string("Item");
         hstring removed_pid = meta.Hashes.to_hashed_string("RemovedKnife");
-        hstring remove_sentinel = meta.Hashes.to_hashed_string("Remove");
 
-        meta.RegisterMigrationRule("Proto", "Item", "RemovedKnife", "Remove");
+        meta.RegisterMigrationRule("Proto", "Item", "RemovedKnife", "__remove__");
 
-        // A deleted proto resolves to the "Remove" sentinel; EntityManager keys its clean entity drop
-        // on exactly this. The proto itself is gone, so lookups still return null
+        // An engaged empty result distinguishes an intentional deletion from no migration rule
         auto resolved = meta.CheckMigrationRule(proto_rule, item_type, removed_pid);
         CHECK(resolved.has_value());
-        CHECK(resolved.value() == remove_sentinel);
+        CHECK_FALSE(static_cast<bool>(resolved.value()));
         CHECK_FALSE(static_cast<bool>(meta.GetProtoItem(removed_pid)));
     }
 
