@@ -77,7 +77,7 @@ public:
             *raw_length = numeric_cast<AngelScript::asUINT>(pstr->size());
         }
         if (raw_data != nullptr && !pstr->empty()) {
-            mem_copy(raw_data, pstr->data(), pstr->size());
+            memory::copy(raw_data, pstr->data(), pstr->size());
         }
 
         return 0;

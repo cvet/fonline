@@ -451,7 +451,7 @@ protected:
             bson_destroy(&reply);
         }
         else {
-            write_log("Mongo reconnect probe failed: {}", error.message);
+            logging::write("Mongo reconnect probe failed: {}", error.message);
         }
 
         return ok;

@@ -573,21 +573,21 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
         return "not-held";
     };
 
-    write_log("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity != nullptr ? entity->GetName() : string_view {}, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
+    logging::write("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity != nullptr ? entity->GetName() : string_view {}, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
 
     for (auto walk = try_hold_entity(entity); walk; walk = walk->GetParentRaw()) {
-        write_log("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
+        logging::write("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
 
     auto widen = entity != nullptr ? entity->GetSyncWidenEntity() : nullptr;
 
     for (auto walk = try_hold_entity(widen); walk; walk = walk->GetParentRaw()) {
-        write_log("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
+        logging::write("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
 
     // The offending call site. An uncovered access is always a bug to fix, and script-side catch
     // handlers otherwise swallow the exception before its stack is ever reported
-    safe_call([] { write_log("SyncDiag   stack:\n{}", format_stack_trace(get_stack_trace())); });
+    safe_call([] { logging::write("SyncDiag   stack:\n{}", stack_trace::format(stack_trace::get())); });
 }
 
 // Single-threaded logic runs every job on one worker, so no cover can ever be contended and the whole
@@ -1510,7 +1510,7 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
         }
 
         if (round % 10000 == 0) {
-            write_log("Fair lock re-acquire is spinning: round {} over {} ops", round, ops.size());
+            logging::write("Fair lock re-acquire is spinning: round {} over {} ops", round, ops.size());
         }
 
         // Park on the contended op alone (blocking, FIFO ticket), holding nothing

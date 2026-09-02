@@ -889,7 +889,7 @@ static auto CreateObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_typ
     }
 
     ptr<void> obj = safe_alloc::make_raw_arr<uint8_t>(element_size);
-    mem_fill(obj, 0, element_size);
+    memory::fill(obj, 0, element_size);
     return obj;
 }
 
@@ -918,7 +918,7 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
     }
 
     ptr<void> copied = safe_alloc::make_raw_arr<uint8_t>(element_size);
-    mem_fill(copied, 0, element_size);
+    memory::fill(copied, 0, element_size);
 
     if ((sub_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
         auto copied_obj = NativeDataProvider::ReadHandleSlot(value);
@@ -942,7 +942,7 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
         *cast_from_void<int64_t*>(copied.get()) = *cast_from_void<const int64_t*>(value.get());
     }
     else if (sub_type_id > AngelScript::asTYPEID_DOUBLE) { // Enums - copy actual size
-        mem_copy(copied, value, element_size);
+        memory::copy(copied, value, element_size);
     }
 
     return copied;

@@ -389,7 +389,7 @@ void ParticleViewer::SelectParticle(string_view path)
     }
     catch (const std::exception& ex) {
         _selectionError = strex("Failed to load: {}", ex.what()).str();
-        write_log("ParticleViewer: failed to load '{}': {}", _selectedPath, ex.what());
+        logging::write("ParticleViewer: failed to load '{}': {}", _selectedPath, ex.what());
         return;
     }
 

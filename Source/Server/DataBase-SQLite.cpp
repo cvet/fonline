@@ -212,7 +212,7 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         InitializeSQLiteRuntime();
-        fs_create_directories(storage_dir);
+        fs::create_directories(storage_dir);
         OpenDataBase();
         StartCommitThread();
     }
@@ -359,7 +359,7 @@ protected:
             return true;
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
             return false;
         }
     }
@@ -646,7 +646,7 @@ private:
 
             vector<uint8_t> result(sizeof(int64_t));
             int64_t value = numeric_key->underlying_value();
-            mem_copy(result.data(), &value, sizeof(value));
+            memory::copy(result.data(), &value, sizeof(value));
             return result;
         }
 
@@ -664,7 +664,7 @@ private:
             }
 
             int64_t value {};
-            mem_copy(&value, key_data.data(), sizeof(value));
+            memory::copy(&value, key_data.data(), sizeof(value));
 
             if (value <= 0) {
                 throw DataBaseException("DbSQLite invalid numeric key", value);

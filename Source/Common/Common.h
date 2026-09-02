@@ -45,8 +45,8 @@ FO_BEGIN_NAMESPACE
 // Force change of compatability version
 ///@ MigrationRule Version 0 0 45
 
-extern auto IsPackaged() -> bool;
-extern auto GetPackagedRuntimeName() -> string;
+auto IsPackaged() -> bool;
+auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
@@ -233,7 +233,7 @@ public:
                 cb._unsubscribeCallback();
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
@@ -266,7 +266,7 @@ public:
                 throw GenericException("Some of subscriber still subscribed", _subscriberCallbacks.size());
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }

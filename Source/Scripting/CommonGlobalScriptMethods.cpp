@@ -57,7 +57,7 @@ FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
 {
     ignore_unused(engine);
 
-    write_log("{}", text);
+    logging::write("{}", text);
 }
 
 ///@ ExportMethod

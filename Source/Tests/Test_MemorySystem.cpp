@@ -41,18 +41,18 @@ TEST_CASE("MemorySystem")
 {
     SECTION("BackupMemoryChunksCanBeReleasedAndReinitialized")
     {
-        init_backup_memory_chunks();
+        memory::init_backup_chunks();
 
         size_t released = 0;
-        while (free_backup_memory_chunk()) {
+        while (memory::free_backup_chunk()) {
             released++;
         }
 
         CHECK(released == 100);
-        CHECK_FALSE(free_backup_memory_chunk());
+        CHECK_FALSE(memory::free_backup_chunk());
 
-        init_backup_memory_chunks();
-        CHECK(free_backup_memory_chunk());
+        memory::init_backup_chunks();
+        CHECK(memory::free_backup_chunk());
     }
 
     SECTION("SafeAllocConstructsObjectsAndZeroInitializedArrays")
@@ -178,26 +178,26 @@ TEST_CASE("MemorySystem")
     {
         char buf[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
 
-        mem_move(buf + 2, buf, 4);
+        memory::move(buf + 2, buf, 4);
         CHECK(string_view {buf, 8} == "ababcdgh");
 
-        mem_fill(buf, 'x', 3);
+        memory::fill(buf, 'x', 3);
         CHECK(string_view {buf, 3} == "xxx");
 
         const char ref[3] = {'x', 'x', 'x'};
-        CHECK(mem_compare(buf, ref, 3));
-        CHECK(mem_compare(nullptr, nullptr, 0));
+        CHECK(memory::compare(buf, ref, 3));
+        CHECK(memory::compare(nullptr, nullptr, 0));
     }
 
     SECTION("ReportBadAllocInvokesCallback")
     {
         bool callback_called = false;
-        set_bad_alloc_callback([&]() { callback_called = true; });
+        memory::set_bad_alloc_callback([&]() { callback_called = true; });
 
-        report_bad_alloc("Test bad alloc", "UnitType", 7, 77);
+        memory::report_bad_alloc("Test bad alloc", "UnitType", 7, 77);
 
         CHECK(callback_called);
-        set_bad_alloc_callback({});
+        memory::set_bad_alloc_callback({});
     }
 }
 

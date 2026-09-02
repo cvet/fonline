@@ -58,7 +58,7 @@ FO_BEGIN_NAMESPACE
 static auto MakeTempBakerSetupDir(string_view name) -> string
 {
     auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    return fs::path_to_string(base);
 }
 
 static auto MakeBakerSetupReportPath(string_view output_dir) -> string
@@ -81,7 +81,7 @@ static auto ReadBakerSetupReport(string_view output_dir) -> nlohmann::json
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto report_data = fs_read_file(MakeBakerSetupReportPath(output_dir));
+    auto report_data = fs::read_file(MakeBakerSetupReportPath(output_dir));
     REQUIRE(report_data.has_value());
     return nlohmann::json::parse(*report_data);
 }
@@ -140,7 +140,7 @@ static auto MakeBakerSetupSpriteMeshTga() -> vector<uint8_t>
 
 static void SetBakerSetupFileWriteTime(string_view path, std::filesystem::file_time_type time)
 {
-    std::filesystem::last_write_time(std::filesystem::path {fs_make_path(path)}, time);
+    std::filesystem::last_write_time(std::filesystem::path {fs::make_path(path)}, time);
 }
 
 static auto CalcBakerSetupZipCrc32(string_view data) noexcept -> uint32_t
@@ -345,25 +345,25 @@ TEST_CASE("BakerDataSource")
     string stale_input_path = strex(input_dir).combine_path("Data/stale.json").str();
     string stale_output_path = strex(output_dir).combine_path("Core/Data/stale.json").str();
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
-    REQUIRE(fs_write_file(prebaked_input_path, string_view {"source-prebaked"}));
+    REQUIRE(fs::write_file(prebaked_input_path, string_view {"source-prebaked"}));
     std::this_thread::sleep_for(std::chrono::milliseconds {2});
-    REQUIRE(fs_write_file(prebaked_output_path, string_view {"cached-prebaked"}));
-    REQUIRE(fs_last_write_time(prebaked_input_path) <= fs_last_write_time(prebaked_output_path));
+    REQUIRE(fs::write_file(prebaked_output_path, string_view {"cached-prebaked"}));
+    REQUIRE(fs::last_write_time(prebaked_input_path) <= fs::last_write_time(prebaked_output_path));
 
-    REQUIRE(fs_write_file(runtime_input_path, string_view {"runtime-source"}));
-    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/Nested/child.json").str(), string_view {"nested-source"}));
-    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/_scratch.json").str(), string_view {"scratch"}));
-    REQUIRE(fs_write_file(stale_input_path, string_view {"stale-source"}));
-    REQUIRE(fs_write_file(stale_output_path, string_view {"stale-output"}));
-    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/readme.txt").str(), string_view {"ignored"}));
+    REQUIRE(fs::write_file(runtime_input_path, string_view {"runtime-source"}));
+    REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/Nested/child.json").str(), string_view {"nested-source"}));
+    REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/_scratch.json").str(), string_view {"scratch"}));
+    REQUIRE(fs::write_file(stale_input_path, string_view {"stale-source"}));
+    REQUIRE(fs::write_file(stale_output_path, string_view {"stale-output"}));
+    REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/readme.txt").str(), string_view {"ignored"}));
 
     auto stale_base_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {5};
     SetBakerSetupFileWriteTime(runtime_input_path, stale_base_time);
     SetBakerSetupFileWriteTime(stale_output_path, stale_base_time);
     SetBakerSetupFileWriteTime(stale_input_path, stale_base_time + std::chrono::minutes {1});
-    REQUIRE(fs_last_write_time(stale_input_path) > fs_last_write_time(stale_output_path));
+    REQUIRE(fs::last_write_time(stale_input_path) > fs::last_write_time(stale_output_path));
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
@@ -398,7 +398,7 @@ Bakers = {}
 
     REQUIRE(data_source.GetFileInfo("Data/prebaked.json", size, write_time));
     CHECK(size == string_view {"cached-prebaked"}.size());
-    CHECK(write_time == fs_last_write_time(prebaked_input_path));
+    CHECK(write_time == fs::last_write_time(prebaked_input_path));
 
     auto prebaked_data = data_source.OpenFile("Data/prebaked.json", size, write_time);
     REQUIRE(prebaked_data);
@@ -406,23 +406,23 @@ Bakers = {}
     CHECK(prebaked_data_ptr.reinterpret_as<char>().as_str(size) == "cached-prebaked");
 
     string runtime_output_path = strex(output_dir).combine_path("Core/Data/runtime.json").str();
-    CHECK_FALSE(fs_exists(runtime_output_path));
+    CHECK_FALSE(fs::exists(runtime_output_path));
 
     auto runtime_data = data_source.OpenFile("Data/runtime.json", size, write_time);
     REQUIRE(runtime_data);
     ptr<const uint8_t> runtime_data_ptr = runtime_data;
     CHECK(runtime_data_ptr.reinterpret_as<char>().as_str(size) == "runtime-source");
-    REQUIRE(fs_read_file(runtime_output_path).has_value());
-    CHECK(*fs_read_file(runtime_output_path) == "runtime-source");
+    REQUIRE(fs::read_file(runtime_output_path).has_value());
+    CHECK(*fs::read_file(runtime_output_path) == "runtime-source");
     CHECK(write_time != 0);
 
     auto stale_data = data_source.OpenFile("Data/stale.json", size, write_time);
     REQUIRE(stale_data);
     ptr<const uint8_t> stale_data_ptr = stale_data;
     CHECK(stale_data_ptr.reinterpret_as<char>().as_str(size) == "stale-source");
-    REQUIRE(fs_read_file(stale_output_path).has_value());
-    CHECK(*fs_read_file(stale_output_path) == "stale-source");
-    CHECK(write_time == fs_last_write_time(stale_input_path));
+    REQUIRE(fs::read_file(stale_output_path).has_value());
+    CHECK(*fs::read_file(stale_output_path) == "stale-source");
+    CHECK(write_time == fs::last_write_time(stale_input_path));
 
     CHECK_FALSE(data_source.GetFileInfo("Data/missing.json", size, write_time));
     CHECK_FALSE(data_source.OpenFile("Data/missing.json", size, write_time));
@@ -444,7 +444,7 @@ Bakers = {}
     CHECK(data_source.GetFileNames("Data/Nested/child/extra", true, "json").empty());
     CHECK(data_source.GetFileNames("Data", true, "txt").empty());
 
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 #if FO_ANGELSCRIPT_SCRIPTING && FO_ENABLE_3D
@@ -457,14 +457,14 @@ TEST_CASE("BakerDataSourceRegistersPackOutputsInDependencyOrder")
     string metadata_output_path = strex(temp_dir).combine_path("output/Metadata/Metadata.fometa-client").str();
     string model_input_path = strex(temp_dir).combine_path("model_input/placeholder.txt").str();
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
-    REQUIRE(fs_write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
-    REQUIRE(fs_write_file(model_input_path, string_view {"placeholder"}));
+    REQUIRE(fs::write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
+    REQUIRE(fs::write_file(model_input_path, string_view {"placeholder"}));
 
     auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
     SetBakerSetupFileWriteTime(metadata_input_path, source_time);
-    REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
+    REQUIRE(fs::write_file(metadata_output_path, MakeEmptyMetadataBlob()));
     SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
 
     GlobalSettings settings {true};
@@ -491,7 +491,7 @@ Bakers = {}
     BakerDataSource data_source {&settings};
 
     CHECK(data_source.IsFileExists("Metadata.fometa-client"));
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
@@ -506,11 +506,11 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     string model_mesh_path = strex(temp_dir).combine_path("model_input/Body.fbx").str();
     string metadata_output_dir = strex(temp_dir).combine_path("output/Metadata").str();
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
-    REQUIRE(fs_write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
-    REQUIRE(fs_write_file(model_desc_path, string_view {"Model Body.fbx\n"}));
-    REQUIRE(fs_write_file(model_mesh_path, string_view {"placeholder"}));
+    REQUIRE(fs::write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
+    REQUIRE(fs::write_file(model_desc_path, string_view {"Model Body.fbx\n"}));
+    REQUIRE(fs::write_file(model_mesh_path, string_view {"placeholder"}));
 
     auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
     SetBakerSetupFileWriteTime(metadata_input_path, source_time);
@@ -523,7 +523,7 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
 
     for (string_view target : metadata_targets) {
         string metadata_output_path = strex(metadata_output_dir).combine_path(strex("Metadata.fometa-{}", target).str()).str();
-        REQUIRE(fs_write_file(metadata_output_path, MakeEmptyMetadataBlob()));
+        REQUIRE(fs::write_file(metadata_output_path, MakeEmptyMetadataBlob()));
         SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
     }
 
@@ -556,7 +556,7 @@ Bakers = {}
     CHECK(data_source.IsFileExists("Metadata.fometa-server"));
     CHECK(data_source.IsFileExists("Metadata.fometa-client"));
     CHECK(data_source.IsFileExists("Metadata.fometa-mapper"));
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 #endif
 
@@ -568,12 +568,12 @@ TEST_CASE("BakerDataSourcePrefersLaterResourcePack")
     string base_output_path = strex(temp_dir).combine_path("output/Base/Data/shared.json").str();
     string override_output_path = strex(temp_dir).combine_path("output/Override/Data/shared.json").str();
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
-    REQUIRE(fs_write_file(base_input_path, string_view {"base-source"}));
-    REQUIRE(fs_write_file(override_input_path, string_view {"override-source"}));
-    REQUIRE(fs_write_file(base_output_path, string_view {"base-output"}));
-    REQUIRE(fs_write_file(override_output_path, string_view {"override-output"}));
+    REQUIRE(fs::write_file(base_input_path, string_view {"base-source"}));
+    REQUIRE(fs::write_file(override_input_path, string_view {"override-source"}));
+    REQUIRE(fs::write_file(base_output_path, string_view {"base-output"}));
+    REQUIRE(fs::write_file(override_output_path, string_view {"override-output"}));
 
     auto base_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {4};
     auto override_time = base_time + std::chrono::minutes {1};
@@ -611,8 +611,8 @@ Bakers = {}
     REQUIRE(data);
     ptr<const uint8_t> data_ptr = data;
     CHECK(data_ptr.reinterpret_as<char>().as_str(size) == "override-output");
-    CHECK(write_time == fs_last_write_time(override_input_path));
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(write_time == fs::last_write_time(override_input_path));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 TEST_CASE("BakerMasterRawCopy")
@@ -631,11 +631,11 @@ TEST_CASE("BakerMasterRawCopy")
     string report_path = MakeBakerSetupReportPath(output_dir);
     string full_report_path = MakeBakerSetupFullReportPath(output_dir);
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
-    REQUIRE(fs_write_file(source_path, string_view {"raw-copy"}));
-    REQUIRE(fs_write_file(excluded_source_path, string_view {"scratch"}));
-    REQUIRE(fs_write_file(outdated_path, string_view {"obsolete"}));
+    REQUIRE(fs::write_file(source_path, string_view {"raw-copy"}));
+    REQUIRE(fs::write_file(excluded_source_path, string_view {"scratch"}));
+    REQUIRE(fs::write_file(outdated_path, string_view {"obsolete"}));
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
@@ -656,20 +656,20 @@ Bakers = {}
 
     MasterBaker first_baker {&settings};
     REQUIRE(first_baker.BakeAll());
-    REQUIRE(fs_read_file(output_path).has_value());
-    CHECK(*fs_read_file(output_path) == "raw-copy");
-    CHECK_FALSE(fs_exists(excluded_output_path));
-    CHECK_FALSE(fs_exists(outdated_path));
-    CHECK(fs_read_file(build_hash_path).has_value());
-    REQUIRE(fs_write_file(internal_cache_path, "cache-state"));
-    REQUIRE(fs_write_file(stale_effekseer_cache_path, "stale-cache"));
+    REQUIRE(fs::read_file(output_path).has_value());
+    CHECK(*fs::read_file(output_path) == "raw-copy");
+    CHECK_FALSE(fs::exists(excluded_output_path));
+    CHECK_FALSE(fs::exists(outdated_path));
+    CHECK(fs::read_file(build_hash_path).has_value());
+    REQUIRE(fs::write_file(internal_cache_path, "cache-state"));
+    REQUIRE(fs::write_file(stale_effekseer_cache_path, "stale-cache"));
 
-    REQUIRE(fs_exists(report_path));
-    REQUIRE(fs_exists(full_report_path));
-    auto full_report_data = fs_read_file(full_report_path);
+    REQUIRE(fs::exists(report_path));
+    REQUIRE(fs::exists(full_report_path));
+    auto full_report_data = fs::read_file(full_report_path);
     REQUIRE(full_report_data.has_value());
-    auto report_parent = std::filesystem::path {fs_make_path(report_path)}.parent_path();
-    auto output_path_object = std::filesystem::path {fs_make_path(output_dir)};
+    auto report_parent = std::filesystem::path {fs::make_path(report_path)}.parent_path();
+    auto output_path_object = std::filesystem::path {fs::make_path(output_dir)};
     CHECK(report_parent == output_path_object);
 
     nlohmann::json first_report = ReadBakerSetupReport(output_dir);
@@ -708,7 +708,7 @@ Bakers = {}
 
     MasterBaker incremental_baker {&settings};
     REQUIRE(incremental_baker.BakeAll());
-    CHECK(fs_read_file(full_report_path) == full_report_data);
+    CHECK(fs::read_file(full_report_path) == full_report_data);
 
     nlohmann::json incremental_report = ReadBakerSetupReport(output_dir);
     CHECK(incremental_report.at("status") == "success");
@@ -728,20 +728,20 @@ Bakers = {}
 
     auto future_source_time = std::filesystem::file_time_type::clock::now() + std::chrono::minutes {1};
     SetBakerSetupFileWriteTime(source_path, future_source_time);
-    REQUIRE(fs_last_write_time(source_path) > fs_last_write_time(output_path));
-    uint64_t output_write_time_before_rebake = fs_last_write_time(output_path);
+    REQUIRE(fs::last_write_time(source_path) > fs::last_write_time(output_path));
+    uint64_t output_write_time_before_rebake = fs::last_write_time(output_path);
 
     MasterBaker stale_source_baker {&settings};
     REQUIRE(stale_source_baker.BakeAll());
-    REQUIRE(fs_read_file(output_path).has_value());
-    CHECK(*fs_read_file(output_path) == "raw-copy");
-    CHECK(fs_last_write_time(output_path) >= output_write_time_before_rebake);
-    CHECK(fs_read_file(build_hash_path).has_value());
-    REQUIRE(fs_read_file(internal_cache_path).has_value());
-    CHECK(*fs_read_file(internal_cache_path) == "cache-state");
-    CHECK_FALSE(fs_exists(stale_effekseer_cache_path));
+    REQUIRE(fs::read_file(output_path).has_value());
+    CHECK(*fs::read_file(output_path) == "raw-copy");
+    CHECK(fs::last_write_time(output_path) >= output_write_time_before_rebake);
+    CHECK(fs::read_file(build_hash_path).has_value());
+    REQUIRE(fs::read_file(internal_cache_path).has_value());
+    CHECK(*fs::read_file(internal_cache_path) == "cache-state");
+    CHECK_FALSE(fs::exists(stale_effekseer_cache_path));
 
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 TEST_CASE("BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename")
@@ -754,9 +754,9 @@ TEST_CASE("BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename")
     string output_data_dir = strex(output_dir).combine_path("Core/Data").str();
     string upper_output_path = strex(output_data_dir).combine_path("Keep.json").str();
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
-    REQUIRE(fs_write_file(lower_source_path, string_view {"before-rename"}));
+    REQUIRE(fs::write_file(lower_source_path, string_view {"before-rename"}));
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
@@ -781,8 +781,8 @@ Bakers = {}
 
     // A case-only rename, the kind a content-naming pass makes: the baked entry keeps its pre-rename name unless
     // the baker reconciles it, and incremental baking never revisits a file it considers up to date
-    REQUIRE(fs_remove_file(lower_source_path));
-    REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
+    REQUIRE(fs::remove_file(lower_source_path));
+    REQUIRE(fs::write_file(upper_source_path, string_view {"after-rename"}));
 
     {
         MasterBaker second_baker {&settings};
@@ -794,8 +794,8 @@ Bakers = {}
 
     std::error_code ec;
 
-    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(output_data_dir)}, ec}) {
-        string entry_name = fs_path_to_string(entry.path().filename());
+    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs::make_path(output_data_dir)}, ec}) {
+        string entry_name = fs::path_to_string(entry.path().filename());
 
         if (entry_name == "Keep.json") {
             exact_upper_name_found = true;
@@ -808,10 +808,10 @@ Bakers = {}
     CHECK_FALSE(ec);
     CHECK(exact_upper_name_found);
     CHECK_FALSE(exact_lower_name_found);
-    REQUIRE(fs_read_file(upper_output_path).has_value());
-    CHECK(*fs_read_file(upper_output_path) == "after-rename");
+    REQUIRE(fs::read_file(upper_output_path).has_value());
+    CHECK(*fs::read_file(upper_output_path) == "after-rename");
 
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 TEST_CASE("BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename")
@@ -824,9 +824,9 @@ TEST_CASE("BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename")
     string output_pack_dir = strex(output_dir).combine_path("Core").str();
     string upper_output_path = strex(output_pack_dir).combine_path("Data/keep.json").str();
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
-    REQUIRE(fs_write_file(lower_source_path, string_view {"before-rename"}));
+    REQUIRE(fs::write_file(lower_source_path, string_view {"before-rename"}));
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
@@ -851,8 +851,8 @@ Bakers = {}
 
     // Rename the authored *directory* by letter case only. Creating the new output directory reuses the existing
     // one and keeps its name, so every path underneath would silently keep the pre-rename spelling
-    REQUIRE(fs_remove_dir_tree(strex(input_dir).combine_path("data").str()));
-    REQUIRE(fs_write_file(upper_source_path, string_view {"after-rename"}));
+    REQUIRE(fs::remove_dir_tree(strex(input_dir).combine_path("data").str()));
+    REQUIRE(fs::write_file(upper_source_path, string_view {"after-rename"}));
 
     {
         MasterBaker second_baker {&settings};
@@ -864,8 +864,8 @@ Bakers = {}
 
     std::error_code ec;
 
-    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(output_pack_dir)}, ec}) {
-        string entry_name = fs_path_to_string(entry.path().filename());
+    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs::make_path(output_pack_dir)}, ec}) {
+        string entry_name = fs::path_to_string(entry.path().filename());
 
         if (entry_name == "Data") {
             exact_upper_dir_found = true;
@@ -878,10 +878,10 @@ Bakers = {}
     CHECK_FALSE(ec);
     CHECK(exact_upper_dir_found);
     CHECK_FALSE(exact_lower_dir_found);
-    REQUIRE(fs_read_file(upper_output_path).has_value());
-    CHECK(*fs_read_file(upper_output_path) == "after-rename");
+    REQUIRE(fs::read_file(upper_output_path).has_value());
+    CHECK(*fs::read_file(upper_output_path) == "after-rename");
 
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 TEST_CASE("BakerResourcePacksCanSplitSharedInputDirectoryByGlob")
@@ -890,11 +890,11 @@ TEST_CASE("BakerResourcePacksCanSplitSharedInputDirectoryByGlob")
     string input_dir = strex(temp_dir).combine_path("input").str();
     string output_dir = strex(temp_dir).combine_path("output").str();
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
-    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/json-keep.json").str(), string_view {"json"}));
-    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/text-keep.json").str(), string_view {"text"}));
-    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/private/secret.json").str(), string_view {"secret"}));
+    REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/json-keep.json").str(), string_view {"json"}));
+    REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/text-keep.json").str(), string_view {"text"}));
+    REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/private/secret.json").str(), string_view {"secret"}));
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
@@ -920,13 +920,13 @@ Bakers = {}
 
     MasterBaker baker {&settings};
     REQUIRE(baker.BakeAll());
-    CHECK(fs_read_file(strex(output_dir).combine_path("Json/Data/json-keep.json").str()).has_value());
-    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Json/Data/text-keep.json").str()));
-    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Json/Data/private/secret.json").str()));
-    CHECK(fs_read_file(strex(output_dir).combine_path("Text/Data/text-keep.json").str()).has_value());
-    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Text/Data/json-keep.json").str()));
+    CHECK(fs::read_file(strex(output_dir).combine_path("Json/Data/json-keep.json").str()).has_value());
+    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Json/Data/text-keep.json").str()));
+    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Json/Data/private/secret.json").str()));
+    CHECK(fs::read_file(strex(output_dir).combine_path("Text/Data/text-keep.json").str()).has_value());
+    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Text/Data/json-keep.json").str()));
 
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 TEST_CASE("BakerMasterImageReport")
@@ -937,10 +937,10 @@ TEST_CASE("BakerMasterImageReport")
     string source_path = strex(input_dir).combine_path("gfx/report.tga").str();
     string output_path = strex(output_dir).combine_path("Art/gfx/report.tga").str();
 
-    ignore_unused(fs_remove_dir_tree(temp_dir));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 
     vector<uint8_t> source_data = MakeBakerSetupSpriteMeshTga();
-    REQUIRE(fs_write_file(source_path, {source_data.data(), source_data.size()}));
+    REQUIRE(fs::write_file(source_path, {source_data.data(), source_data.size()}));
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
@@ -964,8 +964,8 @@ Bakers = {}
 
     MasterBaker baker {&settings};
     REQUIRE(baker.BakeAll());
-    REQUIRE(fs_exists(output_path));
-    REQUIRE(fs_exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));
+    REQUIRE(fs::exists(output_path));
+    REQUIRE(fs::exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));
 
     nlohmann::json report = ReadBakerSetupReport(output_dir);
     CHECK(report.at("schemaVersion") == 1);
@@ -1055,13 +1055,13 @@ Bakers = {}
     BakerTests::OverrideSetting(settings.ForceBaking, false);
     MasterBaker incremental_baker {&settings};
     REQUIRE(incremental_baker.BakeAll());
-    REQUIRE(fs_exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));
+    REQUIRE(fs::exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));
 
     nlohmann::json incremental_report = ReadBakerSetupReport(output_dir);
     CHECK(incremental_report.at("status") == "success");
     CHECK(incremental_report.at("totals").at("filesChanged") == 0);
 
-    CHECK(fs_remove_dir_tree(temp_dir));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 TEST_CASE("BakerMasterRawCopyEdges")
@@ -1076,10 +1076,10 @@ TEST_CASE("BakerMasterRawCopyEdges")
         string outdated_path = strex(output_dir).combine_path("Core/Data/outdated.json").str();
         string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
 
-        REQUIRE(fs_write_file(source_path, string_view {"force-source"}));
-        REQUIRE(fs_write_file(outdated_path, string_view {"outdated"}));
+        REQUIRE(fs::write_file(source_path, string_view {"force-source"}));
+        REQUIRE(fs::write_file(outdated_path, string_view {"outdated"}));
 
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
@@ -1100,12 +1100,12 @@ Bakers = {}
 
         MasterBaker baker {&settings};
         REQUIRE(baker.BakeAll());
-        REQUIRE(fs_read_file(output_path).has_value());
-        CHECK(*fs_read_file(output_path) == "force-source");
-        CHECK_FALSE(fs_exists(outdated_path));
-        CHECK(fs_read_file(build_hash_path).has_value());
+        REQUIRE(fs::read_file(output_path).has_value());
+        CHECK(*fs::read_file(output_path) == "force-source");
+        CHECK_FALSE(fs::exists(outdated_path));
+        CHECK(fs::read_file(build_hash_path).has_value());
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("Build hash mismatch forces output rebuild")
@@ -1118,11 +1118,11 @@ Bakers = {}
         string outdated_path = strex(output_dir).combine_path("Core/Data/outdated.json").str();
         string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
 
-        REQUIRE(fs_write_file(source_path, string_view {"hash-source"}));
-        REQUIRE(fs_write_file(outdated_path, string_view {"outdated"}));
-        REQUIRE(fs_write_file(build_hash_path, string_view {"old-build"}));
+        REQUIRE(fs::write_file(source_path, string_view {"hash-source"}));
+        REQUIRE(fs::write_file(outdated_path, string_view {"outdated"}));
+        REQUIRE(fs::write_file(build_hash_path, string_view {"old-build"}));
 
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
@@ -1142,13 +1142,13 @@ Bakers = {}
 
         MasterBaker baker {&settings};
         REQUIRE(baker.BakeAll());
-        REQUIRE(fs_read_file(output_path).has_value());
-        CHECK(*fs_read_file(output_path) == "hash-source");
-        CHECK_FALSE(fs_exists(outdated_path));
-        REQUIRE(fs_read_file(build_hash_path).has_value());
-        CHECK(*fs_read_file(build_hash_path) != "old-build");
+        REQUIRE(fs::read_file(output_path).has_value());
+        CHECK(*fs::read_file(output_path) == "hash-source");
+        CHECK_FALSE(fs::exists(outdated_path));
+        REQUIRE(fs::read_file(build_hash_path).has_value());
+        CHECK(*fs::read_file(build_hash_path) != "old-build");
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("Missing input directory reports bake failure")
@@ -1157,7 +1157,7 @@ Bakers = {}
         string output_dir = strex(temp_dir).combine_path("output").str();
         string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
 
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
@@ -1177,11 +1177,11 @@ Bakers = {}
 
         MasterBaker baker {&settings};
         CHECK_FALSE(baker.BakeAll());
-        CHECK_FALSE(fs_read_file(build_hash_path).has_value());
+        CHECK_FALSE(fs::read_file(build_hash_path).has_value());
 
         string report_path = MakeBakerSetupReportPath(output_dir);
-        REQUIRE(fs_exists(report_path));
-        CHECK(std::filesystem::path {fs_make_path(report_path)}.parent_path() == std::filesystem::path {fs_make_path(output_dir)});
+        REQUIRE(fs::exists(report_path));
+        CHECK(std::filesystem::path {fs::make_path(report_path)}.parent_path() == std::filesystem::path {fs::make_path(output_dir)});
 
         nlohmann::json report = ReadBakerSetupReport(output_dir);
         CHECK(report.at("schemaVersion") == 1);
@@ -1191,7 +1191,7 @@ Bakers = {}
         CHECK(report.at("bakers").is_array());
         CHECK(report.at("packs").is_array());
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 }
 
@@ -1205,9 +1205,9 @@ TEST_CASE("BakerMasterRawCopyPackInputs")
         string output_path = strex(output_dir).combine_path("Core/Data/from_pack.json").str();
         string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
 
-        REQUIRE(fs_write_file(pack_path, MakeBakerSetupStoredZip("Data/from_pack.json", "packed-source")));
+        REQUIRE(fs::write_file(pack_path, MakeBakerSetupStoredZip("Data/from_pack.json", "packed-source")));
 
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
@@ -1226,11 +1226,11 @@ Bakers = {}
 
         MasterBaker baker {&settings};
         REQUIRE(baker.BakeAll());
-        REQUIRE(fs_read_file(output_path).has_value());
-        CHECK(*fs_read_file(output_path) == "packed-source");
-        CHECK(fs_read_file(build_hash_path).has_value());
+        REQUIRE(fs::read_file(output_path).has_value());
+        CHECK(*fs::read_file(output_path) == "packed-source");
+        CHECK(fs::read_file(build_hash_path).has_value());
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("InputFiles read failure reports bake failure")
@@ -1241,9 +1241,9 @@ Bakers = {}
         string output_path = strex(output_dir).combine_path("Core/Data/broken.json").str();
         string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
 
-        REQUIRE(fs_write_file(pack_path, MakeBakerSetupStoredZip("Data/broken.json", "tiny", 32)));
+        REQUIRE(fs::write_file(pack_path, MakeBakerSetupStoredZip("Data/broken.json", "tiny", 32)));
 
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
@@ -1262,10 +1262,10 @@ Bakers = {}
 
         MasterBaker baker {&settings};
         CHECK_FALSE(baker.BakeAll());
-        CHECK_FALSE(fs_read_file(output_path).has_value());
-        CHECK_FALSE(fs_read_file(build_hash_path).has_value());
+        CHECK_FALSE(fs::read_file(output_path).has_value());
+        CHECK_FALSE(fs::read_file(build_hash_path).has_value());
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 }
 

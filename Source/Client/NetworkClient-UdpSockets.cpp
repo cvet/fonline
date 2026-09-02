@@ -108,7 +108,7 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
     }
 
     _connectStartTime = nanotime::now();
-    write_log("Connecting to server '{}:{}' over UDP", _requestHost, _remotePort);
+    logging::write("Connecting to server '{}:{}' over UDP", _requestHost, _remotePort);
 }
 
 NetworkClientConnection_UdpSockets::~NetworkClientConnection_UdpSockets()
@@ -249,7 +249,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
                 _remotePort = port;
                 _isConnecting = false;
                 _isConnected = true;
-                write_log("Connected to server '{}:{}' over UDP", _remoteHost, _remotePort);
+                logging::write("Connected to server '{}:{}' over UDP", _remoteHost, _remotePort);
             }
 
             continue;
@@ -296,7 +296,7 @@ void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
     uint32_t connect_timeout_ms = numeric_cast<uint32_t>(std::max(_settings->UdpConnectTimeout, _settings->UdpConnectRetry));
 
     if (_connectStartTime != nanotime::zero && now - _connectStartTime >= std::chrono::milliseconds {connect_timeout_ms}) {
-        write_log("UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
+        logging::write("UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
         Disconnect();
         return;
     }

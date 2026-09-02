@@ -186,7 +186,7 @@ void hash_storage::handle_resolve_hash_failure(hstring::hash_t h) const noexcept
         _resolve_hash_failure_handler(h);
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

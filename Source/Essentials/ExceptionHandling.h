@@ -41,13 +41,16 @@
 FO_BEGIN_NAMESPACE
 
 // Engine exception handling
-using exception_callback = copyable_function<void(string_view message, const catched_stack_trace_data& st, bool fatal_error)>;
+namespace exceptions
+{
+    using callback = copyable_function<void(string_view message, const stack_trace::catched_data& st, bool fatal_error)>;
 
-[[noreturn]] extern void report_exception_and_exit(const std::exception& ex) noexcept;
-extern void report_exception_and_continue(const std::exception& ex) noexcept;
-extern void set_exception_callback(exception_callback callback) noexcept;
-extern auto get_exception_callback() noexcept -> exception_callback;
-extern void install_crash_handler_stack_for_this_thread() noexcept;
+    [[noreturn]] void report_and_exit(const std::exception& ex) noexcept;
+    void report_and_continue(const std::exception& ex) noexcept;
+    void set_callback(callback handler) noexcept;
+    auto get_callback() noexcept -> callback;
+    void install_crash_handler_stack() noexcept;
+}
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 
@@ -61,11 +64,11 @@ extern void install_crash_handler_stack_for_this_thread() noexcept;
         ~exception_name() override = default; \
         template<typename... Args> \
         explicit exception_name(FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE stack_trace_data> {}, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE stack_trace::data> {}, message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
-        exception_name(const FO_NAMESPACE stack_trace_data& st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+        exception_name(const FO_NAMESPACE stack_trace::data& st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(#exception_name, FO_NAMESPACE make_nptr(&st), message, std::forward<Args>(args)...) \
         { \
         } \
@@ -80,7 +83,7 @@ extern void install_crash_handler_stack_for_this_thread() noexcept;
 \
     protected: \
         template<typename... Args> \
-        exception_name(FO_NAMESPACE string_view derived_name, FO_NAMESPACE nptr<const FO_NAMESPACE stack_trace_data> st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+        exception_name(FO_NAMESPACE string_view derived_name, FO_NAMESPACE nptr<const FO_NAMESPACE stack_trace::data> st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(derived_name, st, message, std::forward<Args>(args)...) \
         { \
         } \
@@ -95,7 +98,7 @@ public:
     ~BaseEngineException() override = default;
 
     template<typename... Args>
-    explicit BaseEngineException(string_view name, nptr<const stack_trace_data> st, string_view message, Args&&... args) noexcept :
+    explicit BaseEngineException(string_view name, nptr<const stack_trace::data> st, string_view message, Args&&... args) noexcept :
         _name {name}
     {
         try {
@@ -122,7 +125,7 @@ public:
             _stack_trace = *st;
         }
         else {
-            _stack_trace = get_stack_trace();
+            _stack_trace = stack_trace::get();
         }
     }
 
@@ -148,14 +151,14 @@ public:
     [[nodiscard]] auto name() const noexcept -> const char* { return _name.c_str(); }
     [[nodiscard]] auto message() const noexcept -> string_view { return _message; }
     [[nodiscard]] auto params() const noexcept -> const_span<string> { return _params; }
-    [[nodiscard]] auto stack_trace() const noexcept -> const stack_trace_data& { return _stack_trace; }
+    [[nodiscard]] auto stack_trace() const noexcept -> const stack_trace::data& { return _stack_trace; }
 
 private:
     string _name;
     string _message {};
     string _extended_message {};
     vector<string> _params {};
-    stack_trace_data _stack_trace {};
+    stack_trace::data _stack_trace {};
 };
 
 #define FO_VERIFY_AND_THROW(expr, ...) \
@@ -169,7 +172,7 @@ private:
             throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
         } \
         catch (const FO_NAMESPACE VerificationException& caught_ex) { \
-            FO_NAMESPACE report_exception_and_continue(caught_ex); \
+            FO_NAMESPACE exceptions::report_and_continue(caught_ex); \
         } \
     }
 
@@ -179,7 +182,7 @@ private:
             throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
         } \
         catch (const FO_NAMESPACE VerificationException& caught_ex) { \
-            FO_NAMESPACE report_exception_and_continue(caught_ex); \
+            FO_NAMESPACE exceptions::report_and_continue(caught_ex); \
         } \
         return; \
     }
@@ -190,7 +193,7 @@ private:
             throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
         } \
         catch (const FO_NAMESPACE VerificationException& caught_ex) { \
-            FO_NAMESPACE report_exception_and_continue(caught_ex); \
+            FO_NAMESPACE exceptions::report_and_continue(caught_ex); \
         } \
         return ret; \
     }
@@ -201,7 +204,7 @@ private:
             throw FO_NAMESPACE StrongAssertationException(__VA_ARGS__, __FILE__, __LINE__); \
         } \
         catch (const FO_NAMESPACE StrongAssertationException& caught_ex) { \
-            FO_NAMESPACE report_exception_and_exit(caught_ex); \
+            FO_NAMESPACE exceptions::report_and_exit(caught_ex); \
         } \
     }
 
@@ -212,7 +215,7 @@ private:
         throw FO_NAMESPACE StrongAssertationException("Unknown exception", __FILE__, __LINE__); \
     } \
     catch (const FO_NAMESPACE StrongAssertationException& caught_ex) { \
-        FO_NAMESPACE report_exception_and_exit(caught_ex); \
+        FO_NAMESPACE exceptions::report_and_exit(caught_ex); \
     }
 
 // Common exceptions

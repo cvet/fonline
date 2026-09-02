@@ -50,8 +50,8 @@ TEST_CASE("Platform")
 
         REQUIRE(exe_path.has_value());
         CHECK_FALSE(exe_path->empty());
-        CHECK(std::filesystem::exists(fs_make_path(*exe_path)));
-        CHECK(std::filesystem::is_regular_file(fs_make_path(*exe_path)));
+        CHECK(std::filesystem::exists(fs::make_path(*exe_path)));
+        CHECK(std::filesystem::is_regular_file(fs::make_path(*exe_path)));
     }
 
     SECTION("CurrentProcessIdStringMatchesRuntime")

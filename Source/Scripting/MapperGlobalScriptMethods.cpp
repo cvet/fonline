@@ -893,9 +893,9 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
                 auto row = make_ptr(row_buf.data());
                 auto top_row = make_ptr(pixels.data() + top);
                 auto bottom_row = make_ptr(pixels.data() + bottom);
-                mem_copy(row, top_row, row_bytes);
-                mem_copy(top_row, bottom_row, row_bytes);
-                mem_copy(bottom_row, row, row_bytes);
+                memory::copy(row, top_row, row_bytes);
+                memory::copy(top_row, bottom_row, row_bytes);
+                memory::copy(bottom_row, row, row_bytes);
             }
         }
     }

@@ -231,7 +231,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, hash_resolver& hashes) 
     FO_STACK_TRACE_ENTRY();
 
     if (!resources.IsFileExists(MODEL_ANIMATION_INFO_FILE_NAME)) {
-        write_log(log_type::info, "Model animation info document '{}' is not present", MODEL_ANIMATION_INFO_FILE_NAME);
+        logging::write(logging::type::info, "Model animation info document '{}' is not present", MODEL_ANIMATION_INFO_FILE_NAME);
         return {};
     }
 

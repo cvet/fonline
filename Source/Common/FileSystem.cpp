@@ -159,7 +159,7 @@ auto File::GetStr() const -> string
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        mem_copy(result.data(), _fileBuf, result.size());
+        memory::copy(result.data(), _fileBuf, result.size());
     }
 
     return result;
@@ -176,7 +176,7 @@ auto File::GetData() const -> vector<uint8_t>
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        mem_copy(result.data(), _fileBuf, result.size());
+        memory::copy(result.data(), _fileBuf, result.size());
     }
 
     return result;
@@ -218,7 +218,7 @@ auto FileReader::GetStr() const -> string
 
     if (!result.empty()) {
         auto source = make_ptr(_buf.data());
-        mem_copy(result.data(), source, result.size());
+        memory::copy(result.data(), source, result.size());
     }
 
     return result;
@@ -233,7 +233,7 @@ auto FileReader::GetData() const -> vector<uint8_t>
 
     if (!result.empty()) {
         auto source = make_ptr(_buf.data());
-        mem_copy(result.data(), source, result.size());
+        memory::copy(result.data(), source, result.size());
     }
 
     return result;
@@ -346,7 +346,7 @@ void FileReader::CopyData(span<uint8_t> buf)
     }
 
     auto source = make_ptr(_buf.data()).offset(_curPos);
-    mem_copy(buf.data(), source, buf.size());
+    memory::copy(buf.data(), source, buf.size());
     _curPos += buf.size();
 }
 
@@ -391,7 +391,7 @@ auto FileReader::GetStrNT() -> string
 
     if (!str.empty()) {
         auto source = make_ptr(_buf.data()).offset(_curPos);
-        mem_copy(str.data(), source, str.size());
+        memory::copy(str.data(), source, str.size());
     }
 
     _curPos += len + 1;

@@ -77,7 +77,7 @@ static void ImGuiLogError(ImGuiContext* ctx, void* user_data, const char* msg) n
     ignore_unused(user_data);
 
     const ImGuiWindow* window = ctx != nullptr ? ctx->CurrentWindow : nullptr;
-    write_log(log_type::error, "ImGui error in window '{}': {}", window != nullptr ? window->Name : "(none)", msg != nullptr ? msg : "(no message)");
+    logging::write(logging::type::error, "ImGui error in window '{}': {}", window != nullptr ? window->Name : "(none)", msg != nullptr ? msg : "(no message)");
 }
 
 void ImGuiExt::Init()

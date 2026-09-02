@@ -87,7 +87,7 @@ static void ServerEntry()
         Data->Server.reset();
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -153,7 +153,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         }
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -278,7 +278,7 @@ int main(int argc, char** argv)
 #endif
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -307,7 +307,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
         }
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

@@ -109,7 +109,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
         }
     });
 
-    write_log("Connected to server via interthread communication");
+    logging::write("Connected to server via interthread communication");
 
     _isConnecting = false;
     _isConnected = true;
@@ -162,7 +162,7 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
         buf.resize(buf.size() * 2);
     }
 
-    mem_copy(buf.data(), state->Received.data(), recv_size);
+    memory::copy(buf.data(), state->Received.data(), recv_size);
     state->Received.clear();
 
     return recv_size;

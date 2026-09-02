@@ -59,7 +59,7 @@ int32_t main(int32_t argc, char** argv)
         return result;
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

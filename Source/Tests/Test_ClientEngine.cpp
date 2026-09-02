@@ -3628,7 +3628,7 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 {
     // The ImGui sweep below writes under `Workspace/`, relative to whatever directory the binary was launched
     // from, and `ImGui::log_to_file` asserts on a file it cannot open — aborting the frame mid-sweep
-    (void)fs_create_directories("Workspace");
+    (void)fs::create_directories("Workspace");
 
     auto settings = MakeClientTestSettings();
     auto client_resources = MakeUnitTestFontResources();

@@ -113,7 +113,7 @@ static auto ReadInstructionValue(ptr<const AngelScript::asDWORD> instruction, si
 
     T value {};
     auto instruction_word = InstructionWordAt(instruction, word_offset);
-    mem_copy(&value, instruction_word, sizeof(value));
+    memory::copy(&value, instruction_word, sizeof(value));
     return value;
 }
 

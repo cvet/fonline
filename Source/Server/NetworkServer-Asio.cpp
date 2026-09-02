@@ -110,7 +110,7 @@ auto NetworkServer::StartAsioServer(ptr<ServerNetworkSettings> settings, NewConn
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log("Listen TCP connections on port {}", settings->ServerPort);
+    logging::write("Listen TCP connections on port {}", settings->ServerPort);
 
     try {
         return safe_alloc::make_unique<NetworkServer_Asio>(settings, std::move(callback));
@@ -154,10 +154,10 @@ void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation
     }
 
     if (_port != 0) {
-        write_log(log_type::warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
+        logging::write(logging::type::warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
     }
     else {
-        write_log(log_type::warning, "TCP socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
+        logging::write(logging::type::warning, "TCP socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
     }
 }
 
@@ -171,7 +171,7 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
         }
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
@@ -307,7 +307,7 @@ void NetworkServer_Asio::Run()
             break;
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }
@@ -349,7 +349,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
                     std::rethrow_exception(exception);
                 }
                 catch (const std::exception& ex) {
-                    report_exception_and_continue(ex);
+                    exceptions::report_and_continue(ex);
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();
@@ -363,7 +363,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
     }
     else {
         if (error != asio::error::operation_aborted) {
-            write_log(log_type::warning, "Accept error: {}", GetAsioErrorText(error));
+            logging::write(logging::type::warning, "Accept error: {}", GetAsioErrorText(error));
         }
     }
 }

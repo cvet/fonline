@@ -104,7 +104,7 @@ Results:
 - Added a `Source paths inspected` section to `Docs/ClientUpdater.md`.
 - Replaced obsolete package-entry wording with the current `build_runtime_update_target_name` owner in `BuildTools/package.py`.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `UpdaterBackend`, `LoadFromClientResources`, `ProcessUpdateFile`, `GetUpdateDescriptor`, `FO_CLIENT_RUNTIME_HOST_ABI_VERSION`, `ClientRuntimeMetadata`, `ClientRuntimeExports`, `ClientRuntimeResult`, `FO_QueryClientRuntimeExports`, `ApplyStagedBinaryUpdate`, `GetClientRuntimeLivePath`, `MakeClientRuntimeStagingPath`, `RunClientFromLibrary`, `RunEmbeddedOrLoadedClient`, `ResolveRequestedClientRuntime`, `ResolveUserWritablePath`, `fs_make_writable_path`, `platform::get_user_data_base`, `CanSelfUpdateNativeModules`, `FO_UPDATER_VERSION`, `UpdateFileTarget`, `ClientBinaries`, `ClientResources`, `GetCurrentBinaryUpdateTargetName`, `UpdateFileMaxPortionSize`, `UpdateFilesInMemory`, `PlatformBinaries`, and `build_runtime_update_target_name`.
+- Symbol spot checks found the documented owners and APIs in current source, including `UpdaterBackend`, `LoadFromClientResources`, `ProcessUpdateFile`, `GetUpdateDescriptor`, `FO_CLIENT_RUNTIME_HOST_ABI_VERSION`, `ClientRuntimeMetadata`, `ClientRuntimeExports`, `ClientRuntimeResult`, `FO_QueryClientRuntimeExports`, `ApplyStagedBinaryUpdate`, `GetClientRuntimeLivePath`, `MakeClientRuntimeStagingPath`, `RunClientFromLibrary`, `RunEmbeddedOrLoadedClient`, `ResolveRequestedClientRuntime`, `ResolveUserWritablePath`, `fs::make_writable_path`, `platform::get_user_data_base`, `CanSelfUpdateNativeModules`, `FO_UPDATER_VERSION`, `UpdateFileTarget`, `ClientBinaries`, `ClientResources`, `GetCurrentBinaryUpdateTargetName`, `UpdateFileMaxPortionSize`, `UpdateFilesInMemory`, `PlatformBinaries`, and `build_runtime_update_target_name`.
 - Promoted in `Docs/DocumentationBacklog.md`: `ClientUpdater.md` from `drafted` to `verified`.
 
 Follow-up:
@@ -129,11 +129,11 @@ Source areas checked:
 Results:
 
 - Added `Source paths inspected` sections to the web, Android, and native debugging docs.
-- Corrected stale stack/exception documentation from the previous context-object / deferred-log callback model to the current `catched_stack_trace_data`, `format_stack_trace(const catched_stack_trace_data&)`, `write_log_message`, and `safe_write_stack_trace` model.
+- Corrected stale stack/exception documentation from the previous context-object / deferred-log callback model to the current `stack_trace::catched_data`, `stack_trace::format(const stack_trace::catched_data&)`, `logging::write_message`, and `logging::safe_write_stack_trace` model.
 - Corrected the AngelScript provider name from the old stack-frame wording to current `CollectScriptStackLayers` / script-layer behavior.
 - Corrected web preset references to the parent `../../CMakePresets.json` path.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source/config, including `package-web-debug`, `prepare-host-workspace`, `Workspace/web-debug`, `package-android-debug`, `android-arm64`, `launch-game`, `FOnlineActivity`, `ClientNetwork.ServerHost`, `FO_STACK_TRACE_ENTRY`, `stack_trace_data`, `catched_stack_trace_data`, `set_script_stack_trace_provider`, `CollectScriptStackLayers`, `resolve_stack_trace`, `format_stack_trace`, `safe_write_stack_trace`, `get_stack_trace_entry`, `BaseEngineException`, `write_log_message`, and `set_async_log_writing`.
+- Symbol spot checks found the documented owners and APIs in current source/config, including `package-web-debug`, `prepare-host-workspace`, `Workspace/web-debug`, `package-android-debug`, `android-arm64`, `launch-game`, `FOnlineActivity`, `ClientNetwork.ServerHost`, `FO_STACK_TRACE_ENTRY`, `stack_trace::data`, `stack_trace::catched_data`, `stack_trace::set_script_provider`, `CollectScriptStackLayers`, `stack_trace::resolve`, `stack_trace::format`, `logging::safe_write_stack_trace`, `stack_trace::get_entry`, `BaseEngineException`, `logging::write_message`, and `logging::set_async_writing`.
 - Promoted in `Docs/DocumentationBacklog.md`: `WebDebugging.md`, `AndroidDebugging.md`, and `Debugging.md` from `drafted` to `verified`.
 
 Follow-up:

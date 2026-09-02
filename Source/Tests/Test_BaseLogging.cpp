@@ -53,9 +53,9 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        log_to_file(string(log_path.string()));
-        write_base_log("alpha\n");
-        write_base_log("beta");
+        logging::to_file(string(log_path.string()));
+        logging::write_base("alpha\n");
+        logging::write_base("beta");
 
         std::ifstream input(log_path, std::ios::binary);
         REQUIRE(input);
@@ -64,7 +64,7 @@ TEST_CASE("BaseLogging")
         CHECK(content == "alpha\nbeta");
 
         input.close();
-        log_to_file(NullLogPath);
+        logging::to_file(NullLogPath);
 
         uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
@@ -77,14 +77,14 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        log_to_file(string(log_path.string()));
-        write_base_log("first round content\n");
+        logging::to_file(string(log_path.string()));
+        logging::write_base("first round content\n");
 
         // Reopen the same file. Truncation should drop the previous payload
-        log_to_file(string(log_path.string()));
-        write_base_log("second\n");
+        logging::to_file(string(log_path.string()));
+        logging::write_base("second\n");
 
-        log_to_file(NullLogPath);
+        logging::to_file(NullLogPath);
 
         std::ifstream input(log_path, std::ios::binary);
         REQUIRE(input);
@@ -110,10 +110,10 @@ TEST_CASE("BaseLogging")
             existing_log << "existing\n";
         }
 
-        log_to_file(string(log_path.string()), true);
-        write_base_log("engine\n");
+        logging::to_file(string(log_path.string()), true);
+        logging::write_base("engine\n");
 
-        log_to_file(NullLogPath);
+        logging::to_file(NullLogPath);
 
         std::ifstream input(log_path, std::ios::binary);
         REQUIRE(input);
@@ -133,18 +133,18 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        log_to_file(string(log_path.string()));
-        set_async_log_writing(true);
+        logging::to_file(string(log_path.string()));
+        logging::set_async_writing(true);
 
         constexpr int32_t message_count = 256;
 
         for (int32_t i = 0; i < message_count; i++) {
-            write_base_log(strex("async-line-{}\n", i));
+            logging::write_base(strex("async-line-{}\n", i));
         }
 
         // Disabling async joins the worker, draining whatever is still queued
-        set_async_log_writing(false);
-        log_to_file(NullLogPath);
+        logging::set_async_writing(false);
+        logging::to_file(NullLogPath);
 
         std::ifstream input(log_path, std::ios::binary);
         REQUIRE(input);
@@ -168,24 +168,24 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        log_to_file(string(log_path.string()));
+        logging::to_file(string(log_path.string()));
 
         // Sync path
-        write_base_log("sync-before\n");
+        logging::write_base("sync-before\n");
 
-        set_async_log_writing(true);
-        write_base_log("async-payload\n");
-        set_async_log_writing(false);
+        logging::set_async_writing(true);
+        logging::write_base("async-payload\n");
+        logging::set_async_writing(false);
 
         // Re-enable to make sure the worker can be restarted cleanly
-        set_async_log_writing(true);
-        write_base_log("async-second-round\n");
-        set_async_log_writing(false);
+        logging::set_async_writing(true);
+        logging::write_base("async-second-round\n");
+        logging::set_async_writing(false);
 
         // Sync path again
-        write_base_log("sync-after\n");
+        logging::write_base("sync-after\n");
 
-        log_to_file(NullLogPath);
+        logging::to_file(NullLogPath);
 
         std::ifstream input(log_path, std::ios::binary);
         REQUIRE(input);
@@ -208,12 +208,12 @@ TEST_CASE("BaseLogging")
 
         std::filesystem::create_directories(log_path.parent_path());
 
-        log_to_file(string(log_path.string()));
-        set_async_log_writing(true);
+        logging::to_file(string(log_path.string()));
+        logging::set_async_writing(true);
 
         // Simulate the crash path: route to the synchronous writer without stopping/joining the worker
-        suspend_async_log_writing();
-        write_base_log("crash-trace-line\n");
+        logging::suspend_async_writing();
+        logging::write_base("crash-trace-line\n");
 
         // The line must already be on disk while the async worker is still running (no join happened)
         {
@@ -224,8 +224,8 @@ TEST_CASE("BaseLogging")
             CHECK(content.find("crash-trace-line\n") != std::string::npos);
         }
 
-        set_async_log_writing(false);
-        log_to_file(NullLogPath);
+        logging::set_async_writing(false);
+        logging::to_file(NullLogPath);
 
         uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);

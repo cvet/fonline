@@ -394,7 +394,7 @@ public:
                 return true;
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
         else {
@@ -411,7 +411,7 @@ public:
                 return true;
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
 
@@ -521,7 +521,7 @@ namespace NativeDataProvider
 }
 
 // Defined where Entity is complete: this header only forward-declares it
-[[noreturn]] extern void ThrowScriptEntityTypeMismatch(ptr<Entity> entity);
+[[noreturn]] void ThrowScriptEntityTypeMismatch(ptr<Entity> entity);
 
 namespace NativeDataCaller
 {

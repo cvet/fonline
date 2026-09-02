@@ -36,8 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto GetServerSettings() -> unordered_set<string>;
-extern auto GetClientSettings() -> unordered_set<string>;
+auto GetServerSettings() -> unordered_set<string>;
+auto GetClientSettings() -> unordered_set<string>;
 
 MetadataBaker::MetadataBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
@@ -74,7 +74,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     }
 
     for (const auto& config_path : _context->Settings->GetAppliedConfigs()) {
-        max_write_time = std::max(max_write_time, fs_last_write_time(config_path));
+        max_write_time = std::max(max_write_time, fs::last_write_time(config_path));
     }
 
     if (filtered_files.empty()) {
@@ -124,7 +124,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
                 throw;
             }
 
-            write_log("Metadata error: {}", ex.what());
+            logging::write("Metadata error: {}", ex.what());
             errors++;
         }
     }
@@ -326,7 +326,7 @@ auto MetadataBaker::MakeMetadataVersion(const TagsParsingContext& ctx) const -> 
         }
     }
 
-    uint64_t metadata_hash = fs_hash_data(make_const_span(metadata_source));
+    uint64_t metadata_hash = fs::hash_data(make_const_span(metadata_source));
     return strex("{:016x}", metadata_hash).str();
 }
 

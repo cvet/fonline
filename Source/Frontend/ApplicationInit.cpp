@@ -47,7 +47,7 @@ static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
 
 static unique_nptr<Application> App {};
 
-extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
+void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing);
@@ -107,7 +107,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     }
 
     // Create global data as soon as possible
-    create_global_data();
+    global_data::create();
 
     // Write log and show message box on exception
     SetupExceptionCallback(is_enum_set(flags, AppInitFlags::ShowMessageOnException));
@@ -118,13 +118,13 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 #endif
 
     // Logging
-    log_to_file(GetExeLogFileName(), is_enum_set(flags, AppInitFlags::AppendLogFile));
+    logging::to_file(GetExeLogFileName(), is_enum_set(flags, AppInitFlags::AppendLogFile));
 
     if (is_enum_set(flags, AppInitFlags::DisableLogTags)) {
-        log_disable_tags();
+        logging::disable_tags();
     }
 
-    write_log("Starting {}", FO_NICE_NAME);
+    logging::write("Starting {}", FO_NICE_NAME);
 
     // Load settings
     auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
@@ -132,13 +132,13 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     // Installed client: the install dir is read-only, so move the log file into the per-user writable
     // data dir now that settings (and the resolved writable path) are known
     if (!settings.UserWritablePath.empty()) {
-        string log_path = fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName());
-        write_log("Switch log to path '{}'", log_path);
-        log_to_file(log_path, is_enum_set(flags, AppInitFlags::AppendLogFile));
-        write_log("Starting {}", FO_NICE_NAME);
+        string log_path = fs::make_writable_path(settings.UserWritablePath, GetExeLogFileName());
+        logging::write("Switch log to path '{}'", log_path);
+        logging::to_file(log_path, is_enum_set(flags, AppInitFlags::AppendLogFile));
+        logging::write("Starting {}", FO_NICE_NAME);
     }
 
-    write_log("Version: {}", settings.GameVersion);
+    logging::write("Version: {}", settings.GameVersion);
 
     // Disable message box on exception if headless window is used
     if (is_enum_set(flags, AppInitFlags::ShowMessageOnException) && settings.HeadlessWindow) {
@@ -147,7 +147,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     // Switch logging to a dedicated worker thread once the user setting is known
     if (settings.AsyncLogWrite) {
-        set_async_log_writing(true);
+        logging::set_async_writing(true);
     }
 
     // Diagnostic self-test: with logging, the exception callback and the async-log mode all live, verify
@@ -159,7 +159,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     // Prebake resources
     if (!IsPackaged() && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
-        write_log("Prebake resources");
+        logging::write("Prebake resources");
         PrebakeResources(settings);
     }
 
@@ -167,7 +167,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     App = safe_alloc::make_unique<Application>(std::move(settings), flags);
 
     // Request quit on bad alloc
-    set_bad_alloc_callback([]() FO_DEFERRED { GetApp()->RequestQuit(); });
+    memory::set_bad_alloc_callback([]() FO_DEFERRED { GetApp()->RequestQuit(); });
 
     // Request quit on interrupt signals
     SetupSignals();
@@ -180,11 +180,11 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 {
     FO_STACK_TRACE_ENTRY();
 
-    set_exception_callback([show_message_on_exception](string_view message, const catched_stack_trace_data& st, bool fatal_error) FO_DEFERRED {
-        write_log_message(log_type::error, message, &st);
+    exceptions::set_callback([show_message_on_exception](string_view message, const stack_trace::catched_data& st, bool fatal_error) FO_DEFERRED {
+        logging::write_message(logging::type::error, message, &st);
 
         if (fatal_error) {
-            write_log_message(log_type::error, "Shutdown!");
+            logging::write_message(logging::type::error, "Shutdown!");
 
 #if FO_WEB
             if (IsAppInitialized()) {
@@ -194,7 +194,7 @@ static void SetupExceptionCallback(bool show_message_on_exception)
         }
 
         if (show_message_on_exception || (!IsPackaged() && (fatal_error || !IsAppInitialized()))) {
-            Application::ShowErrorMessage(message, format_stack_trace(st), fatal_error);
+            Application::ShowErrorMessage(message, stack_trace::format(st), fatal_error);
         }
     });
 }
@@ -247,9 +247,9 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             auto dir = std::filesystem::current_path();
 
             while (true) {
-                string config_path = fs_path_to_string(dir / FO_MAIN_CONFIG);
+                string config_path = fs::path_to_string(dir / FO_MAIN_CONFIG);
 
-                if (fs_exists(config_path) && !fs_is_dir(config_path)) {
+                if (fs::exists(config_path) && !fs::is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
                     config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
                     break;
@@ -265,7 +265,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             }
         }
 
-        write_log("Apply config {}", strex(config_to_apply_dir).combine_path(config_to_apply));
+        logging::write("Apply config {}", strex(config_to_apply_dir).combine_path(config_to_apply));
         settings.ApplyConfigAtPath(config_to_apply, config_to_apply_dir);
 
         // Apply sub config
@@ -297,7 +297,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
         for (const auto& sub_config_name : sub_configs_to_apply) {
             if (!sub_config_name.empty() && sub_config_name != "NONE") {
-                write_log("Apply sub config {}", sub_config_name);
+                logging::write("Apply sub config {}", sub_config_name);
                 settings.ApplySubConfigSection(sub_config_name);
             }
         }
@@ -310,9 +310,9 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     // cache below — and all later cache/log/update writes — land in the per-user writable directory
     ResolveUserWritablePath(settings);
 
-    string cache_dir = fs_make_writable_path(settings.UserWritablePath, settings.CacheResources);
+    string cache_dir = fs::make_writable_path(settings.UserWritablePath, settings.CacheResources);
 
-    if (fs_is_dir(cache_dir)) {
+    if (fs::is_dir(cache_dir)) {
         auto cache = CacheStorage(cache_dir);
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
@@ -338,7 +338,7 @@ void ResolveUserWritablePath(GlobalSettings& settings)
         // present next to the exe; otherwise stay portable
         auto exe_path = platform::get_exe_path();
 
-        if (!exe_path.has_value() || !fs_exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
+        if (!exe_path.has_value() || !fs::exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
             settings.UserWritablePath = "";
             return;
         }
@@ -350,7 +350,7 @@ void ResolveUserWritablePath(GlobalSettings& settings)
         string base = platform::get_user_data_base();
 
         if (base.empty()) {
-            write_log(log_type::warning, "Client user-writable path requested but no user data dir found; using portable layout");
+            logging::write(logging::type::warning, "Client user-writable path requested but no user data dir found; using portable layout");
             settings.UserWritablePath = "";
             return;
         }
@@ -358,10 +358,10 @@ void ResolveUserWritablePath(GlobalSettings& settings)
         root = strex(base).combine_path(settings.GameName).str();
     }
 
-    root = fs_resolve_path(root);
+    root = fs::resolve_path(root);
 
-    if (!fs_create_directories(root)) {
-        write_log(log_type::warning, "Can't create client user-writable path '{}'; using portable layout", root);
+    if (!fs::create_directories(root)) {
+        logging::write(logging::type::warning, "Can't create client user-writable path '{}'; using portable layout", root);
         settings.UserWritablePath = "";
         return;
     }
@@ -370,10 +370,10 @@ void ResolveUserWritablePath(GlobalSettings& settings)
 
     // Pre-create the writable cache + resource-overlay subdirs so the cache and the self-update
     // resource writer never fail on a missing parent directory
-    fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources));
-    fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
+    fs::create_directories(fs::make_writable_path(settings.UserWritablePath, settings.CacheResources));
+    fs::create_directories(fs::make_writable_path(settings.UserWritablePath, settings.ClientResources));
 
-    write_log("Client user-writable data path: {}", root);
+    logging::write("Client user-writable data path: {}", root);
 }
 
 static void PrebakeResources(BakingSettings& settings)
@@ -407,7 +407,7 @@ static void PrebakeResources(BakingSettings& settings)
         }
     }
     else {
-        if (fs_exists(settings.BakeOutput) && fs_is_dir(settings.BakeOutput)) {
+        if (fs::exists(settings.BakeOutput) && fs::is_dir(settings.BakeOutput)) {
             if (!settings.IgnoreMissingBakerWarning) {
                 Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
             }

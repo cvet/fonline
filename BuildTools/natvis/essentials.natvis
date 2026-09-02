@@ -83,8 +83,8 @@
     </Expand>
   </Type>
 
-  <Type Name="fo::stack_trace_frame">
-    <DisplayString Condition="type == fo::stack_trace_frame::frame_type::script">[Script] {function,s} @ {file,s}:{line}</DisplayString>
+  <Type Name="fo::stack_trace::frame">
+    <DisplayString Condition="type == fo::stack_trace::frame::frame_type::script">[Script] {function,s} @ {file,s}:{line}</DisplayString>
     <DisplayString>[Native] {function,s} @ {file,s}:{line}</DisplayString>
     <Expand>
       <Item Name="Type">type</Item>
@@ -94,7 +94,7 @@
     </Expand>
   </Type>
 
-  <Type Name="fo::script_stack_trace_layer">
+  <Type Name="fo::stack_trace::script_layer">
     <DisplayString>{script_frames._Mypair._Myval2._Mylast - script_frames._Mypair._Myval2._Myfirst} script frames + {birth_native_frame_count} birth native frames</DisplayString>
     <Expand>
       <Item Name="[script frames]">script_frames</Item>
@@ -102,7 +102,7 @@
     </Expand>
   </Type>
 
-  <Type Name="fo::stack_trace_data">
+  <Type Name="fo::stack_trace::data">
     <DisplayString Condition="native_frame_count == 0 &amp;&amp; script_layers._Ptr == 0">empty stack</DisplayString>
     <DisplayString>{native_frame_count} native frames + script layers</DisplayString>
     <Expand>

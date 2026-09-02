@@ -110,7 +110,7 @@ void SettingsStorageImpl::SetEntry(string_view key, string_view value)
 
 #if FO_WINDOWS
     if (!winapi::registry_write_value(_subKey, string(key), string(value))) {
-        write_log("Settings: failed to write registry value - {}\\{}", _subKey, key);
+        logging::write("Settings: failed to write registry value - {}\\{}", _subKey, key);
     }
 
 #else

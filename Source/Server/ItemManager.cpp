@@ -244,7 +244,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
             }
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         // Each teardown pass must strictly reduce the item's remaining dependencies; a non-converging

@@ -246,7 +246,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
             sprite_info_entries[entry.SourcePath] = std::move(entry);
         }
         catch (const std::exception& ex) {
-            write_log("Image baking error: {}", ex.what());
+            logging::write("Image baking error: {}", ex.what());
             errors++;
         }
     }
@@ -531,7 +531,7 @@ static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -
     for (uint16_t y = 0; y < shot.Height; y++) {
         size_t source_offset = numeric_cast<size_t>(y) * source_row_size;
         size_t destination_offset = numeric_cast<size_t>(numeric_cast<int32_t>(y) + padding) * destination_row_size + destination_x_offset;
-        mem_copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
+        memory::copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
     }
 
     return result;
@@ -624,7 +624,7 @@ static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const
         size_t source_y = numeric_cast<size_t>(numeric_cast<int32_t>(y) + minimum_vertex.y);
         size_t source_offset = source_y * source_row_size + source_x_offset;
         size_t destination_offset = numeric_cast<size_t>(y) * cropped_row_size;
-        mem_copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
+        memory::copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
     }
 
     return optional<ImageBaker::FrameShot> {std::move(result)};
@@ -1874,7 +1874,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             const_span<uint8_t> spr_data = reader.GetCurDataSpan(data_len);
 
             if (!spr_data.empty()) {
-                mem_copy(data.data(), spr_data.data(), spr_data.size());
+                memory::copy(data.data(), spr_data.data(), spr_data.size());
             }
         }
 
@@ -2696,7 +2696,7 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
             {
                 ignore_unused(png_ptr);
                 ignore_unused(error_msg);
-                // write_log("PNG loading warning: {}", error_msg);
+                // logging::write("PNG loading warning: {}", error_msg);
             }
         };
 
@@ -2717,7 +2717,7 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
                 FO_VERIFY_AND_THROW(io_ptr, "PNG read cursor is null");
                 auto source = make_ptr(*io_ptr);
                 auto target = make_ptr(png_data);
-                mem_copy(target, source, length);
+                memory::copy(target, source, length);
                 auto next_source = source.offset(length);
                 *io_ptr = next_source.get();
             }
@@ -2790,7 +2790,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
         if (cur_pos + len <= data.size()) {
             if (len != 0) {
                 auto source = make_ptr(data.data() + cur_pos);
-                mem_copy(out, source, len);
+                memory::copy(out, source, len);
             }
 
             cur_pos += (len);

@@ -76,7 +76,7 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
         std::invoke(callable, std::forward<Args>(args)...);
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

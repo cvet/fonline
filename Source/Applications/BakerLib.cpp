@@ -51,13 +51,13 @@ FO_EXPORT_FUNC auto FO_BakeResources(void* baking_settings) noexcept -> bool
     tracy::GetProfiler().RequestShutdown();
 #endif
 
-    create_global_data();
-    log_to_file(strex("{}_BakerLib.log", FO_DEV_NAME));
+    global_data::create();
+    logging::to_file(strex("{}_BakerLib.log", FO_DEV_NAME));
 
     auto settings = cast_from_void<BakingSettings*>(baking_settings);
 
     if (!settings) {
-        write_log("Baker DLL: baking rejected, settings pointer is null");
+        logging::write("Baker DLL: baking rejected, settings pointer is null");
         return false;
     }
 

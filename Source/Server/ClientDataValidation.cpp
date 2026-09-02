@@ -59,7 +59,7 @@ static auto ReadTrivialValue(const_span<uint8_t> data) -> T
 
     if (!data.empty()) {
         auto target = make_ptr(&value).template reinterpret_as<uint8_t>();
-        mem_copy(target, data.data(), sizeof(T));
+        memory::copy(target, data.data(), sizeof(T));
     }
 
     return value;
@@ -75,7 +75,7 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
 
     if (!data.empty()) {
         auto target = make_ptr(&value).reinterpret_as<uint8_t>();
-        mem_copy(target, data.data(), data.size());
+        memory::copy(target, data.data(), data.size());
     }
 
     return value;
@@ -300,7 +300,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, data_r
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required enum underlying type");
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
         // Supported enum underlying types are uint8/uint16/uint32/int32 — none of them are narrow signed,
-        // so mem_copy into a zero-initialized int32 gives the correct numeric value for any size
+        // so memory::copy into a zero-initialized int32 gives the correct numeric value for any size
         FO_VERIFY_AND_THROW(type.Size <= sizeof(int32_t), "Enum payload is wider than the validation scratch integer", type.Name, type.Size, sizeof(int32_t));
 
         int32_t value = ReadPaddedInt32(reader.read_bytes(type.Size));

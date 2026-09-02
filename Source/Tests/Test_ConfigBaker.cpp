@@ -46,7 +46,7 @@ FO_BEGIN_NAMESPACE
 #if FO_ANGELSCRIPT_SCRIPTING
 static auto MakeConfigBakerTempDir() -> string
 {
-    return fs_path_to_string(std::filesystem::temp_directory_path() / std::format("lf_config_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+    return fs::path_to_string(std::filesystem::temp_directory_path() / std::format("lf_config_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
 }
 
 static void AddConfigBakerMetadata(BakerTests::TestRig& rig)
@@ -149,9 +149,9 @@ TEST_CASE("ConfigBaker")
     SECTION("BakesCompleteRootConfig")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(fs_make_path(temp_dir)));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path, MakeCompleteConfigBakerConfig()));
+        REQUIRE(fs::write_file(config_path, MakeCompleteConfigBakerConfig()));
 
         TestRig rig;
         AddConfigBakerMetadata(rig);
@@ -172,15 +172,15 @@ TEST_CASE("ConfigBaker")
         CHECK(server_config.find("Common.AsyncLogWrite=") == string::npos);
 
         std::error_code ec;
-        std::filesystem::remove_all(fs_make_path(temp_dir), ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
     SECTION("OmitsGameOnlyMetadataSettingsFromInternalConfig")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(fs_make_path(temp_dir)));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(fs::write_file(config_path,
             MakeCompleteConfigBakerConfig() +
                 "Server.CustomEnabled = true\n"
                 "Client.CustomTitle = Frontend\n"
@@ -206,15 +206,15 @@ TEST_CASE("ConfigBaker")
         CHECK(client_config.find("Unknown.CustomSetting=") == string::npos);
 
         std::error_code ec;
-        std::filesystem::remove_all(fs_make_path(temp_dir), ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
     SECTION("KeepsGameOnlySubConfigDeltasInInternalConfig")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(fs_make_path(temp_dir)));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(fs::write_file(config_path,
             MakeCompleteConfigBakerConfig() +
                 "Server.CustomEnabled = true\n"
                 "Client.CustomTitle = Frontend\n"
@@ -245,15 +245,15 @@ TEST_CASE("ConfigBaker")
         CHECK(sub_client_config.find("Server.CustomEnabled=") == string::npos);
 
         std::error_code ec;
-        std::filesystem::remove_all(fs_make_path(temp_dir), ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
     SECTION("KeepsBootstrapGameSettingWhenSubConfigRepeatsRootValue")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(fs_make_path(temp_dir)));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(fs::write_file(config_path,
             MakeCompleteConfigBakerConfig() +
                 "Baking.BootstrapGameSettings = Client.CustomTitle\n"
                 "Server.CustomEnabled = true\n"
@@ -282,15 +282,15 @@ TEST_CASE("ConfigBaker")
         CHECK(rig.GetOutputText("Override.fomain-server").find("Server.CustomEnabled=0\n") != string::npos);
 
         std::error_code ec;
-        std::filesystem::remove_all(fs_make_path(temp_dir), ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
     SECTION("RejectsBootstrapGameSettingThatIsNotDeclared")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(fs_make_path(temp_dir)));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(fs::write_file(config_path,
             MakeCompleteConfigBakerConfig() +
                 "Baking.BootstrapGameSettings = Client.CustomTytle\n"
                 "Client.CustomTitle = Frontend\n"));
@@ -304,7 +304,7 @@ TEST_CASE("ConfigBaker")
         REQUIRE_THROWS_WITH(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""), Catch::Matchers::ContainsSubstring("Bootstrap game setting is not a declared game setting"));
 
         std::error_code ec;
-        std::filesystem::remove_all(fs_make_path(temp_dir), ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
     SECTION("BakingRequiresSingleAppliedRootConfig")
@@ -321,10 +321,10 @@ TEST_CASE("ConfigBaker")
         auto temp_dir = std::filesystem::temp_directory_path() / "lf-configbaker-test";
         std::filesystem::create_directories(temp_dir);
         auto fomain_path = temp_dir / "Test.fomain";
-        fs_write_file(fs_path_to_string(fomain_path), "GameName = Test\n");
+        fs::write_file(fs::path_to_string(fomain_path), "GameName = Test\n");
 
         TestRig rig;
-        rig.Settings.ApplyConfigAtPath("Test.fomain", fs_path_to_string(temp_dir));
+        rig.Settings.ApplyConfigAtPath("Test.fomain", fs::path_to_string(temp_dir));
 
         ConfigBaker baker(rig.MakeContext());
 
@@ -337,9 +337,9 @@ TEST_CASE("ConfigBaker")
     SECTION("BakingReportsIncompleteConfigSettings")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(fs_make_path(temp_dir)));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(fs::write_file(config_path,
             "Common.GameName = RootGame\n"
             "[SubConfig]\n"
             "Name = Child\n"
@@ -353,7 +353,7 @@ TEST_CASE("ConfigBaker")
         CHECK_THROWS_AS(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""), ConfigBakerException);
 
         std::error_code ec;
-        std::filesystem::remove_all(fs_make_path(temp_dir), ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
     SECTION("SetupBakersReturnsRequestedBaker")

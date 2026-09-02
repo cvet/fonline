@@ -498,10 +498,10 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     int32_t new_layers[MODEL_LAYERS_COUNT];
 
     if (layers) {
-        mem_copy(new_layers, layers, sizeof(_curLayers));
+        memory::copy(new_layers, layers, sizeof(_curLayers));
     }
     else {
-        mem_copy(new_layers, _curLayers, sizeof(_curLayers));
+        memory::copy(new_layers, _curLayers, sizeof(_curLayers));
     }
 
     // Animation layers
@@ -511,7 +511,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
     }
 
-    bool layers_changed = !mem_compare(new_layers, _curLayers, sizeof(new_layers));
+    bool layers_changed = !memory::compare(new_layers, _curLayers, sizeof(new_layers));
 
     // Try skip redundant calls
     bool may_skip_redundant = !is_enum_set(flags, ModelAnimFlags::Init) && !is_enum_set(flags, ModelAnimFlags::PlayOnce);
@@ -520,7 +520,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         return false;
     }
 
-    mem_copy(_curLayers, new_layers, sizeof(_curLayers));
+    memory::copy(_curLayers, new_layers, sizeof(_curLayers));
 
     bool mesh_changed = false;
     vector<hstring> fast_transition_bones;
@@ -2622,7 +2622,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
     ptr<float32_t> proj_matrix = proj_buf->ProjMatrix;
     auto draw_projection_values = make_ptr(glm::value_ptr(_drawProj));
-    mem_copy(proj_matrix, draw_projection_values, 16 * sizeof(float32_t));
+    memory::copy(proj_matrix, draw_projection_values, 16 * sizeof(float32_t));
 
     if (combined_mesh->Textures[0]) {
         effect->MainTex = combined_mesh->Textures[0]->MainTex;
@@ -2652,12 +2652,12 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 
     ptr<float32_t> ground_position = model_buf->GroundPosition;
     auto ground_position_values = make_ptr(glm::value_ptr(_groundPos));
-    mem_copy(ground_position, ground_position_values, 3 * sizeof(float32_t));
+    memory::copy(ground_position, ground_position_values, 3 * sizeof(float32_t));
     model_buf->GroundPosition[3] = 0.0f;
 
     ptr<float32_t> light_color = model_buf->LightColor;
     auto light_color_values = make_ptr(glm::value_ptr(_modelMngr->_lightColor));
-    mem_copy(light_color, light_color_values, 4 * sizeof(float32_t));
+    memory::copy(light_color, light_color_values, 4 * sizeof(float32_t));
 
     if (effect->IsNeedModelTexBuf()) {
         auto& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
@@ -2666,11 +2666,11 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
             if (combined_mesh->Textures[i]) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
                 size_t texture_uniform_offset = i * 4 * sizeof(float32_t);
-                mem_copy(&custom_tex_buf->TexAtlasOffset[texture_uniform_offset], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
+                memory::copy(&custom_tex_buf->TexAtlasOffset[texture_uniform_offset], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
 
                 auto texture_size = make_ptr(&custom_tex_buf->TexSize[texture_uniform_offset]);
                 ptr<const float32_t> texture_size_data = combined_mesh->Textures[i]->MainTex->SizeData;
-                mem_copy(texture_size, texture_size_data, 4 * sizeof(float32_t));
+                memory::copy(texture_size, texture_size_data, 4 * sizeof(float32_t));
             }
             else {
                 effect->ModelTex[i] = nullptr;

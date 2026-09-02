@@ -39,20 +39,20 @@ FO_BEGIN_NAMESPACE
 
 TEST_CASE("Logging")
 {
-    set_log_callback("", {});
+    logging::set_callback("", {});
 
     SECTION("CallbackReceivesFormattedMessage")
     {
         vector<string> captured;
 
-        set_log_callback("capture", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured.emplace_back(message); });
-        write_log("Hello {}", 42);
+        logging::set_callback("capture", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
+        logging::write("Hello {}", 42);
 
         REQUIRE(captured.size() == 1);
         CHECK(captured.front().find("Hello 42") != string::npos);
         CHECK(captured.front().ends_with('\n'));
 
-        set_log_callback("capture", {});
+        logging::set_callback("capture", {});
     }
 
     SECTION("CallbackReplacementUsesLastRegisteredHandler")
@@ -60,23 +60,23 @@ TEST_CASE("Logging")
         int32_t first_count = 0;
         int32_t second_count = 0;
 
-        set_log_callback("replace", [&](log_type, string_view, nptr<const catched_stack_trace_data>) { first_count++; });
-        set_log_callback("replace", [&](log_type, string_view, nptr<const catched_stack_trace_data>) { second_count++; });
-        write_log(log_type::warning, "Replacement {}", 1);
+        logging::set_callback("replace", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { first_count++; });
+        logging::set_callback("replace", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { second_count++; });
+        logging::write(logging::type::warning, "Replacement {}", 1);
 
         CHECK(first_count == 0);
         CHECK(second_count == 1);
 
-        set_log_callback("replace", {});
+        logging::set_callback("replace", {});
     }
 
     SECTION("CallbackCanBeClearedByEmptyKey")
     {
         int32_t callback_count = 0;
 
-        set_log_callback("clear-me", [&](log_type, string_view, nptr<const catched_stack_trace_data>) { callback_count++; });
-        set_log_callback("", {});
-        write_log_message(log_type::error, "should not hit callback");
+        logging::set_callback("clear-me", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { callback_count++; });
+        logging::set_callback("", {});
+        logging::write_message(logging::type::error, "should not hit callback");
 
         CHECK(callback_count == 0);
     }
@@ -85,47 +85,47 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        set_log_callback("reentrant", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) {
+        logging::set_callback("reentrant", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             captured.emplace_back(message);
 
             if (captured.size() == 1) {
-                write_log_message(log_type::info, "nested callback log");
+                logging::write_message(logging::type::info, "nested callback log");
             }
         });
 
-        write_log_message(log_type::info, "outer callback log");
+        logging::write_message(logging::type::info, "outer callback log");
 
         REQUIRE(captured.size() == 1);
         CHECK(captured.front().find("outer callback log") != string::npos);
 
-        set_log_callback("reentrant", {});
+        logging::set_callback("reentrant", {});
     }
 
     SECTION("StringViewOverloadDeliversRawText")
     {
         vector<string> captured;
 
-        set_log_callback("sv", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured.emplace_back(message); });
+        logging::set_callback("sv", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
         string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders
-        write_log(string_view {raw});
+        logging::write(string_view {raw});
 
         REQUIRE(captured.size() == 1);
         CHECK(captured.front().find("raw {} payload") != string::npos);
 
-        set_log_callback("sv", {});
+        logging::set_callback("sv", {});
     }
 
     SECTION("LogTypePreservesMessageContent")
     {
         vector<string> captured;
 
-        set_log_callback("type", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured.emplace_back(message); });
+        logging::set_callback("type", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
-        write_log(log_type::info, "info-line");
-        write_log(log_type::info_section, "section-line");
-        write_log(log_type::warning, "notice-line");
-        write_log(log_type::error, "error-line");
+        logging::write(logging::type::info, "info-line");
+        logging::write(logging::type::info_section, "section-line");
+        logging::write(logging::type::warning, "notice-line");
+        logging::write(logging::type::error, "error-line");
 
         REQUIRE(captured.size() == 4);
         CHECK(captured[0].find("info-line") != string::npos);
@@ -133,29 +133,29 @@ TEST_CASE("Logging")
         CHECK(captured[2].find("notice-line") != string::npos);
         CHECK(captured[3].find("error-line") != string::npos);
 
-        set_log_callback("type", {});
+        logging::set_callback("type", {});
     }
 
     SECTION("RepeatedMessagesAreCollapsedUntilDifferentMessage")
     {
         vector<string> captured;
 
-        set_log_callback("repeat", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured.emplace_back(message); });
+        logging::set_callback("repeat", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
-        write_log_message(log_type::warning, "repeat-collapse");
-        write_log_message(log_type::warning, "repeat-collapse");
-        write_log_message(log_type::warning, "repeat-collapse");
+        logging::write_message(logging::type::warning, "repeat-collapse");
+        logging::write_message(logging::type::warning, "repeat-collapse");
+        logging::write_message(logging::type::warning, "repeat-collapse");
 
         REQUIRE(captured.size() == 1);
         CHECK(captured.front().find("repeat-collapse") != string::npos);
 
-        write_log_message(log_type::warning, "repeat-collapse-next");
+        logging::write_message(logging::type::warning, "repeat-collapse-next");
 
         REQUIRE(captured.size() == 3);
         CHECK(captured[1].find("...and 2 more same messages") != string::npos);
         CHECK(captured[2].find("repeat-collapse-next") != string::npos);
 
-        set_log_callback("repeat", {});
+        logging::set_callback("repeat", {});
     }
 
     SECTION("MultipleCallbacksFireForEachMessage")
@@ -165,16 +165,16 @@ TEST_CASE("Logging")
         string last_first;
         string last_second;
 
-        set_log_callback("first", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) {
+        logging::set_callback("first", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             first_count++;
             last_first = string(message);
         });
-        set_log_callback("second", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) {
+        logging::set_callback("second", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             second_count++;
             last_second = string(message);
         });
 
-        write_log("broadcast {}", 7);
+        logging::write("broadcast {}", 7);
 
         CHECK(first_count == 1);
         CHECK(second_count == 1);
@@ -182,22 +182,22 @@ TEST_CASE("Logging")
         CHECK(last_second.find("broadcast 7") != string::npos);
 
         // Removing one key must leave the other intact
-        set_log_callback("first", {});
-        write_log("only second");
+        logging::set_callback("first", {});
+        logging::write("only second");
 
         CHECK(first_count == 1);
         CHECK(second_count == 2);
         CHECK(last_second.find("only second") != string::npos);
 
-        set_log_callback("second", {});
+        logging::set_callback("second", {});
     }
 
     SECTION("MessageHasTimestampPrefix")
     {
         vector<string> captured;
 
-        set_log_callback("tag", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured.emplace_back(message); });
-        write_log("tagged");
+        logging::set_callback("tag", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
+        logging::write("tagged");
 
         REQUIRE(captured.size() == 1);
         // Default tagging adds [DD/MM/YY] [HH:MM:SS] before the message body
@@ -205,10 +205,10 @@ TEST_CASE("Logging")
         CHECK(captured.front().find("] [") != string::npos);
         CHECK(captured.front().find("tagged") != string::npos);
 
-        set_log_callback("tag", {});
+        logging::set_callback("tag", {});
     }
 
-    set_log_callback("", {});
+    logging::set_callback("", {});
 }
 
 FO_END_NAMESPACE

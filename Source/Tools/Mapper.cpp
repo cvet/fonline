@@ -204,7 +204,7 @@ void MapperEngine::InitIface()
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log("Init interface");
+    logging::write("Init interface");
 
     // Interface
     MainPanelPos = {-1, -1};
@@ -227,7 +227,7 @@ void MapperEngine::InitIface()
     ActivePanelMode = INT_MODE_ITEM;
     ProtoWidth = 50;
     ProtosOnScreen = MainPanelContentRect.width / ProtoWidth;
-    mem_fill(TabIndex, 0, sizeof(TabIndex));
+    memory::fill(TabIndex, 0, sizeof(TabIndex));
     CritterDir = hdir::SouthWest;
     CurMode = CUR_MODE_DEFAULT;
     SelectItemsEnabled = true;
@@ -240,7 +240,7 @@ void MapperEngine::InitIface()
     CurPDef = SprMngr.LoadSprite("CurDefault.png", AtlasType::IfaceSprites);
     CurPHand = SprMngr.LoadSprite("CurHand.png", AtlasType::IfaceSprites);
 
-    write_log("Init interface complete");
+    logging::write("Init interface complete");
 }
 
 void MapperEngine::ResetImGuiSettings()
@@ -6605,11 +6605,11 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
     string dir = strex(fomap_path).extract_dir().str();
 
     if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
+        bool dir_ok = fs::create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create the map output directory", dir, fomap_path, fomap_name);
     }
 
-    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream fomap_file {std::filesystem::path {fs::make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open the map file for writing", fomap_path, fomap_name, final_content.size());
 
     if (!final_content.empty()) {
@@ -6681,11 +6681,11 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     string dir = strex(fomap_path).extract_dir().str();
 
     if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
+        bool dir_ok = fs::create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Unable to create the target map directory", dir);
     }
 
-    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream fomap_file {std::filesystem::path {fs::make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(fomap_file, "Unable to open the fomap file for writing", fomap_path);
 
     if (!fomap_content.empty()) {

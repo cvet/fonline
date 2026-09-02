@@ -288,8 +288,8 @@ TEST_CASE("EffectBaker")
         local_rig.AddSourceFile("Effects/BadVertex.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = ; }\n\n[FragmentShader]\nlayout(location = 0) out vec4 FragColor;\nvoid main(void) { FragColor = vec4(1.0); }\n");
 
         vector<string> captured_messages;
-        set_log_callback("effect-baker-diagnostic-line-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { set_log_callback("effect-baker-diagnostic-line-test", {}); });
+        logging::set_callback("effect-baker-diagnostic-line-test", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured_messages.emplace_back(message); });
+        auto remove_callback = scope_exit([]() noexcept { logging::set_callback("effect-baker-diagnostic-line-test", {}); });
 
         EffectBaker baker {local_rig.MakeContext()};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), EffectBakerException);

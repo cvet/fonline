@@ -304,14 +304,14 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                     auto& text_pack = it->second.at(string(pack_name));
 
                     if (text_pack.CheckIntersections(proto_text.second)) {
-                        write_log("Proto text intersection detected for proto {} and pack {}", pid, pack_name);
+                        logging::write("Proto text intersection detected for proto {} and pack {}", pid, pack_name);
                         errors++;
                     }
 
                     text_pack.Merge(proto_text.second);
                 }
                 else {
-                    write_log(log_type::warning, "Unsupported language {} in proto {}", proto_text.first, pid);
+                    logging::write(logging::type::warning, "Unsupported language {} in proto {}", proto_text.first, pid);
                 }
             }
         }

@@ -63,7 +63,7 @@ int main(int argc, char** argv)
         exit_app(baking_result);
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

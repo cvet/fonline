@@ -37,45 +37,62 @@
 
 FO_BEGIN_NAMESPACE
 
-struct stack_trace_frame
+namespace stack_trace
 {
-    enum class frame_type : uint8_t
+    inline constexpr size_t MAX_NATIVE_FRAMES = 128;
+    inline constexpr size_t RESOLVE_CACHE_MAX_ENTRIES = 4096;
+
+    using native_frame_address = uintptr_t;
+
+    struct frame
     {
-        native,
-        script,
+        enum class frame_type : uint8_t
+        {
+            native,
+            script,
+        };
+
+        frame_type type {frame_type::native};
+        std::string function {};
+        std::string file {};
+        uint32_t line {};
     };
 
-    frame_type type {frame_type::native};
-    std::string function {};
-    std::string file {};
-    uint32_t line {};
-};
+    struct script_layer
+    {
+        std::vector<frame> script_frames {};
+        std::array<native_frame_address, MAX_NATIVE_FRAMES> birth_native_frames {};
+        uint32_t birth_native_frame_count {};
+        bool birth_native_truncated {};
+    };
 
-inline constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 128;
-inline constexpr size_t STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES = 4096;
-using native_stack_frame_address = uintptr_t;
+    struct data
+    {
+        std::array<native_frame_address, MAX_NATIVE_FRAMES> native_frames {};
+        uint32_t native_frame_count {};
+        bool native_truncated {};
+        std::shared_ptr<const std::vector<script_layer>> script_layers {};
+    };
 
-struct script_stack_trace_layer
-{
-    std::vector<stack_trace_frame> script_frames {};
-    std::array<native_stack_frame_address, STACK_TRACE_MAX_NATIVE_FRAMES> birth_native_frames {};
-    uint32_t birth_native_frame_count {};
-    bool birth_native_truncated {};
-};
+    struct catched_data
+    {
+        optional<data> origin {};
+        data catched {};
+    };
 
-struct stack_trace_data
-{
-    std::array<native_stack_frame_address, STACK_TRACE_MAX_NATIVE_FRAMES> native_frames {};
-    uint32_t native_frame_count {};
-    bool native_truncated {};
-    std::shared_ptr<const std::vector<script_stack_trace_layer>> script_layers {};
-};
+    using script_provider = std::function<void(std::vector<script_layer>& out_layers)>;
 
-struct catched_stack_trace_data
-{
-    optional<stack_trace_data> origin {};
-    stack_trace_data catched {};
-};
+    void set_script_provider(script_provider provider) noexcept;
+    auto has_script_provider() noexcept -> bool;
+    auto get() noexcept -> data;
+    void capture_native_frames(std::array<native_frame_address, MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
+    void clear_resolved_cache() noexcept;
+    auto get_resolved_cache_size() noexcept -> size_t;
+    auto resolve(const data& st) -> std::vector<frame>;
+    auto get_entry(uint32_t deep) noexcept -> std::optional<frame>;
+    auto format(const data& st) -> std::string;
+    auto format(const catched_data& st) -> std::string;
+}
 
 #if FO_TRACY
 #define FO_STACK_TRACE_ENTRY() ZoneScoped
@@ -85,18 +102,5 @@ struct catched_stack_trace_data
 #define FO_STACK_TRACE_ENTRY_NAMED(name)
 #endif
 #define FO_NO_STACK_TRACE_ENTRY()
-
-using script_stack_trace_provider = std::function<void(std::vector<script_stack_trace_layer>& out_layers)>;
-
-extern void set_script_stack_trace_provider(script_stack_trace_provider provider) noexcept;
-extern auto has_script_stack_trace_provider() noexcept -> bool;
-extern auto get_stack_trace() noexcept -> stack_trace_data;
-extern void capture_native_stack_frames(std::array<native_stack_frame_address, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
-extern void clear_resolved_stack_trace_cache() noexcept;
-extern auto get_resolved_stack_trace_cache_size() noexcept -> size_t;
-extern auto resolve_stack_trace(const stack_trace_data& st) -> std::vector<stack_trace_frame>;
-extern auto get_stack_trace_entry(uint32_t deep) noexcept -> std::optional<stack_trace_frame>;
-extern auto format_stack_trace(const stack_trace_data& st) -> std::string;
-extern auto format_stack_trace(const catched_stack_trace_data& st) -> std::string;
 
 FO_END_NAMESPACE

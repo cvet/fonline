@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
+auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
 
 Critter::Critter(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),

@@ -84,13 +84,13 @@ The essentials layer should stay dependency-light. It is included by most of the
 
 `BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
-The order is both a compile-time and link-time rule. A module may include and call only modules to its left; declaring an API in an early header and defining it in a later `.cpp` is still a reverse dependency. Direct includes and namespace-level `extern` definition ownership are checked by `BuildTools/tests/test_essentials_layering.py`. Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
+The order is both a compile-time and link-time rule. A module may include and call only modules to its left; declaring an API in an early header and defining it in a later `.cpp` is still a reverse dependency. Direct includes and namespace-level definition ownership are checked by `BuildTools/tests/test_essentials_layering.py`. Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
 `Threading` deliberately follows `ExceptionHandling`, its deepest dependency, while remaining early enough for value headers such as `HashedString` to guard their state with the shared synchronization primitives. See [ThreadSafetyAnalysis.md](ThreadSafetyAnalysis.md).
 
 ## Naming
 
-Essentials is spelled in **snake_case**, and every layer above it in **PascalCase**. This is the layer's identity written into its names: Essentials is the engine's standard-library-shaped vocabulary, so `data_writer`, `safe_alloc::make_unique`, `write_log`, `hash_storage::to_hashed_string` and the private `_read_pos` read the way `std::` reads, while `ServerEngine`, `ProtoManager` and `SpriteManager` above them do not. The spelling therefore tells a reader which side of the boundary a name lives on without looking it up.
+Essentials is spelled in **snake_case**, and every layer above it in **PascalCase**. This is the layer's identity written into its names: Essentials is the engine's standard-library-shaped vocabulary, so `data_writer`, `safe_alloc::make_unique`, `logging::write`, `hash_storage::to_hashed_string` and the private `_read_pos` read the way `std::` reads, while `ServerEngine`, `ProtoManager` and `SpriteManager` above them do not. The spelling therefore tells a reader which side of the boundary a name lives on without looking it up.
 
 Five kinds of name stay PascalCase inside the layer, in every case because the name is not Essentials' to choose:
 
@@ -103,6 +103,36 @@ Five kinds of name stay PascalCase inside the layer, in every case because the n
 | The global crash hooks in `ExceptionHandling.cpp` — `GetCrashStream`, `SetCrashStackTrace`, `SetCrashSignalInfo`, `SetCrashSehInfo`, `SetCrashTerminationInfo` | The vendored `backward.hpp` declares them by name at global scope (`// (FOnline Patch)`); the spelling is part of that contract, not ours |
 
 Module **file** names are PascalCase as well (`MemorySystem.h`, `BasicCore.h`): the `Essentials.h` include-order block and `BuildTools/tests/test_essentials_layering.py` are keyed on them, and file naming is an engine-wide convention rather than a per-layer one.
+
+## Namespaces
+
+A free function that has to carry its module's name gets that module's namespace instead, and the word comes out of the
+name. `write_base_log` said "base log" in the identifier because nothing else could; `logging::write_base` says it in the
+scope, which is where it belongs. The layer already read this way at its edges — `winapi::close_handle`,
+`posix::sync_file`, `platform::get_exe_path`, `utf8::decode` — and now does so throughout:
+
+| Namespace | Module | Reads as |
+|---|---|---|
+| `logging::` | `Logging.*` + `BaseLogging.*` | `logging::write(...)`, `logging::type::warning`, `logging::write_base(...)`, `logging::to_file(path)` |
+| `stack_trace::` | `StackTrace.*` | `stack_trace::get()`, `stack_trace::format(st)`, `stack_trace::data`, `stack_trace::frame` |
+| `exceptions::` | `ExceptionHandling.*` | `exceptions::report_and_continue(ex)`, `exceptions::set_callback(...)` |
+| `fatal::` | `FatalError.*` | `fatal::report_and_exit(msg)` |
+| `global_data::` | `GlobalData.*` | `global_data::create()`, `global_data::destroy()` |
+| `memory::` | `MemorySystem.*` | `memory::copy(...)`, `memory::report_bad_alloc(...)` |
+| `fs::` | `DiskFileSystem.*` | `fs::exists(path)`, `fs::read_file(path)`, `fs::iterate_dir(...)` |
+
+Once a module takes a namespace its whole free surface moves in, types included, so it is never split across two
+scopes — `stack_trace::data` sits beside `stack_trace::get()`, and `memory::bad_alloc_callback` beside
+`memory::set_bad_alloc_callback`. The exception-type hierarchy stays in the engine namespace under its own convention,
+and so do `safe_alloc` / `safe_allocator`, which are vocabulary rather than a module service.
+
+The test is the name, not the module. A function that never needed a prefix is already the layer's vocabulary and stays
+bare: `numeric_cast`, `iround`, `checked_add`, `safe_call`, `copy_hold_ref`, the `vec_*` helpers, `coarse_sleep`,
+`precise_sleep`, `run_async`, `exit_app`, `make_stream_string`. Those read as language, and qualifying them would only
+add noise.
+
+One namespace name is not ours to pick: `log` collides with `::log` from `<cmath>`, which vendored headers call
+unqualified, so the module is `logging::`.
 
 ## Subsystem map
 
@@ -120,9 +150,9 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 ### Diagnostics and failure handling
 
-`BaseLogging.*` and `Logging.*` provide the logging foundation. `write_log_message()` collapses immediate duplicates by `log_type` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `log_to_file()` opens the log file without an exclusive lock (the platform default: MSVC `std::ofstream` opens deny-none, POSIX has no mandatory open lock) so two engine modules in one process — e.g. a runtime host EXE and the runtime DLL it loads, each with its own copy of the engine global data — can both hold the same file open at once, and every write seeks to end of file first (`write_sync`) so neither handle overwrites content the other appended; the `append` parameter still selects truncate (default) vs append for the initial open. `write_log`/`write_base_log` degrade safely when their global data is not yet created (falling back to the base log, then to `std::cout`), and a runtime host can open the log early — after `create_global_data()`, `log_to_file(GetExeLogFileName(), false)` (Frontend) — so its pre-`InitApp` diagnostics reach the file.
+`BaseLogging.*` and `Logging.*` provide the logging foundation. `logging::write_message()` collapses immediate duplicates by `logging::type` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `logging::to_file()` opens the log file without an exclusive lock (the platform default: MSVC `std::ofstream` opens deny-none, POSIX has no mandatory open lock) so two engine modules in one process — e.g. a runtime host EXE and the runtime DLL it loads, each with its own copy of the engine global data — can both hold the same file open at once, and every write seeks to end of file first (`write_sync`) so neither handle overwrites content the other appended; the `append` parameter still selects truncate (default) vs append for the initial open. `logging::write`/`logging::write_base` degrade safely when their global data is not yet created (falling back to the base log, then to `std::cout`), and a runtime host can open the log early — after `global_data::create()`, `logging::to_file(GetExeLogFileName(), false)` (Frontend) — so its pre-`InitApp` diagnostics reach the file.
 
-`FatalError.*` is the early, native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and then delegates only the mechanical process termination to `BasicCore::ExitApp(false)`. It owns `report_fatal_and_exit`, `report_strong_assert_and_exit`, and `FO_BASIC_STRONG_ASSERT`; it deliberately does not construct exception objects or depend on the later `ExceptionHandling` module. `exit_app(false)` itself remains status-only because its callers include both controlled command failures and fatal invariant failures.
+`FatalError.*` is the early, native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and then delegates only the mechanical process termination to `BasicCore::ExitApp(false)`. It owns `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit`, and `FO_BASIC_STRONG_ASSERT`; it deliberately does not construct exception objects or depend on the later `ExceptionHandling` module. `exit_app(false)` itself remains status-only because its callers include both controlled command failures and fatal invariant failures.
 
 `StackTrace.*` captures and formats native/script stack information, including a capped global cache for resolved native frames, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Debugging.md](Debugging.md).
 
@@ -142,7 +172,7 @@ A target of at most `FUNCTION_INLINE_TARGET_SIZE` bytes that is nothrow-move-con
 
 A `copyable_function` narrows to `move_only_function` by adopting or copying its target in place, never by wrapping it in a second indirection. The reverse conversion does not exist — a move-only target cannot become copyable.
 
-Calling an empty wrapper is a defect, not a recoverable condition: it hits `FO_BASIC_STRONG_ASSERT` instead of throwing `std::bad_function_call`. Check with `operator bool` where absence is legitimate. The module sits above `SmartPointers` and `MemorySystem` in the include order, so its heap tier uses the globally replaced `operator new` directly and exits through `report_fatal_and_exit` on exhaustion rather than through `safe_alloc`.
+Calling an empty wrapper is a defect, not a recoverable condition: it hits `FO_BASIC_STRONG_ASSERT` instead of throwing `std::bad_function_call`. Check with `operator bool` where absence is legitimate. The module sits above `SmartPointers` and `MemorySystem` in the include order, so its heap tier uses the globally replaced `operator new` directly and exits through `fatal::report_and_exit` on exhaustion rather than through `safe_alloc`.
 
 #### String vocabulary
 
@@ -157,7 +187,7 @@ The 31 default is not a guess: it is the value a peak-size census produced in an
 
 Two lookup rules are load-bearing and easy to break. `operator<<` lives in the engine namespace because Catch2 is included before the engine headers and can only reach it through ADL. `operator>>` lives in the global namespace instead, beside the `FO_DECLARE_TYPE_PARSER` operators: an `operator>>` inside the engine namespace would hide every one of those from unqualified lookup in engine code. `getline` is an engine-namespace overload, so calls must be unqualified — `std::getline` cannot find it.
 
-The standard string streams are specified on `std::basic_string`, so they keep the `stream_string` alias and text handed to one is copied through `make_stream_string`. `std::filesystem::path` likewise only recognises the standard string shapes; build a path from an engine string with `fs_make_path`, which is the correct engine idiom anyway because it carries UTF-8 rather than the native narrow encoding.
+The standard string streams are specified on `std::basic_string`, so they keep the `stream_string` alias and text handed to one is copied through `make_stream_string`. `std::filesystem::path` likewise only recognises the standard string shapes; build a path from an engine string with `fs::make_path`, which is the correct engine idiom anyway because it carries UTF-8 rather than the native narrow encoding.
 
 #### Deque vocabulary
 
@@ -185,7 +215,7 @@ Engine code allocates through one of two surfaces, and nothing else:
 
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `safe_allocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
 
-The underlying `rpmalloc` primitives are deliberately **not** exported from `MemorySystem.h`. They return null on failure and would be a second, equally reachable entry point that skips the contract; they live as file-local statics in `MemorySystem.cpp`. The `mem_copy` / `mem_move` / `mem_fill` / `mem_compare` / `mem_read_unaligned` / `mem_write_unaligned` block operations are unrelated to allocation and remain public.
+The underlying `rpmalloc` primitives are deliberately **not** exported from `MemorySystem.h`. They return null on failure and would be a second, equally reachable entry point that skips the contract; they live as file-local statics in `MemorySystem.cpp`. The `memory::copy` / `memory::move` / `memory::fill` / `memory::compare` / `memory::read_unaligned` / `memory::write_unaligned` block operations are unrelated to allocation and remain public.
 
 The vendored rpmalloc keeps its upstream 256 MiB spans on 64-bit targets. On 32-bit targets it uses one `LARGE_PAGE_SIZE` (16 MiB) per span: pre-`VirtualAlloc2` Windows has to reserve `size + alignment`, so an upstream 256 MiB aligned span can require a contiguous 512 MiB reservation inside the process's 2 GiB address space and make even the first tiny allocation fail. The smaller x86 span preserves every built-in page class while avoiding that startup dependency on a single huge address-space hole.
 
@@ -193,11 +223,11 @@ Three distinct things are at stake when code bypasses this vocabulary, and they 
 
 | | What actually happens |
 |---|---|
-| **Separate heap** | Global `operator new`/`delete` are replaced with rpmalloc, so every `new` and every `std::allocator` already lands in the engine heap. But rpmalloc is built with `ENABLE_OVERRIDE=0`, so C `malloc`/`free` is **not** intercepted — anything allocating through it lives in the CRT heap, outside rpmalloc, invisible to `allocator_get_in_use_bytes()` and to Tracy allocation tracking. |
+| **Separate heap** | Global `operator new`/`delete` are replaced with rpmalloc, so every `new` and every `std::allocator` already lands in the engine heap. But rpmalloc is built with `ENABLE_OVERRIDE=0`, so C `malloc`/`free` is **not** intercepted — anything allocating through it lives in the CRT heap, outside rpmalloc, invisible to `memory::get_in_use_bytes()` and to Tracy allocation tracking. |
 | **Wrong out-of-memory policy** | `std::allocator` throws `std::bad_alloc` instead of following the terminate-on-OOM model in [ExceptionSafety.md](ExceptionSafety.md) §1. |
 | **Alignment** | `safe_allocator` routes over-aligned element types through the aligned `operator new`/`delete` overloads. Note that the over-alignment test must stay a member *function*: `alignof(T)` needs a complete `T`, while the allocator has to remain usable with an incomplete one, since `std::vector<T>` may be declared before `T` is defined. |
 
-Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. `std::function` is no longer among them — engine code uses `move_only_function` / `copyable_function`, whose heap tier terminates like the rest of the engine; the one remaining `std::function` is the `StackTrace.h` script-provider hook, which sits above the callable module in the include order. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `get_stack_trace()` from `report_bad_alloc`, so the reporting path must not depend on the allocator that just failed.
+Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. `std::function` is no longer among them — engine code uses `move_only_function` / `copyable_function`, whose heap tier terminates like the rest of the engine; the one remaining `std::function` is the `StackTrace.h` script-provider hook, which sits above the callable module in the include order. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `stack_trace::get()` from `memory::report_bad_alloc`, so the reporting path must not depend on the allocator that just failed.
 
 #### Third-party allocators
 
@@ -229,7 +259,7 @@ When vendoring or updating a library, check whether it has an allocator hook and
 
 ### Filesystem, compression, sockets, and work threads
 
-`DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
+`DiskFileSystem.*` is the low-level disk abstraction. `fs::make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
 
 When a `work_thread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
 

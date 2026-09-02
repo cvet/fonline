@@ -161,7 +161,7 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
     auto disconnect = [this]() FO_DEFERRED {
         RecordDisconnectReason(DisconnectReason::ClientClosed);
-        write_log("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
+        logging::write("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
         AsyncReceiveData({});
     };
 
@@ -172,7 +172,7 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
         _inBuf.SetMaxBufLen(numeric_cast<size_t>(_settings->MaxBufferedInputSize));
     }
 
-    write_log("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
+    logging::write("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
 
     _netConnection->SetAsyncCallbacks(send, receive, disconnect);
 }
@@ -431,7 +431,7 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
             }
             catch (const NetBufferException& ex) {
                 if (!_inputOverflowed.exchange(true, std::memory_order_relaxed)) {
-                    report_exception_and_continue(ex);
+                    exceptions::report_and_continue(ex);
                 }
             }
         }

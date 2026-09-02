@@ -373,7 +373,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     if (!Settings.DisableGamepad && SDL_WasInit(SDL_INIT_GAMEPAD) == 0 && !SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
-        write_log("SDL_InitSubSystem SDL_INIT_GAMEPAD failed: {}", SDL_GetError());
+        logging::write("SDL_InitSubSystem SDL_INIT_GAMEPAD failed: {}", SDL_GetError());
     }
 
     if (!Settings.DisableGamepad) {
@@ -399,7 +399,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                     auto silence = numeric_cast<uint8_t>(SDL_GetSilenceValueForFormat(app->_ctx->AudioSpec.format));
                     auto audio_stream_data = app->_ctx->AudioStreamBuf.data();
 
-                    mem_fill(audio_stream_data, silence, numeric_cast<size_t>(additional_amount));
+                    memory::fill(audio_stream_data, silence, numeric_cast<size_t>(additional_amount));
 
                     if (app->_ctx->AudioStreamWriter) {
                         span<uint8_t> audio_stream_span = {audio_stream_data, numeric_cast<size_t>(additional_amount)};
@@ -425,19 +425,19 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                         _ctx->AudioStream = std::move(audio_stream);
                     }
                     else {
-                        write_log("SDL resume audio device failed, error {}", SDL_GetError());
+                        logging::write("SDL resume audio device failed, error {}", SDL_GetError());
                     }
                 }
                 else {
-                    write_log("SDL get audio device format failed, error {}", SDL_GetError());
+                    logging::write("SDL get audio device format failed, error {}", SDL_GetError());
                 }
             }
             else {
-                write_log("SDL open audio device stream failed, error {}", SDL_GetError());
+                logging::write("SDL open audio device stream failed, error {}", SDL_GetError());
             }
         }
         else {
-            write_log("SDL init audio subsystem failed, error {}", SDL_GetError());
+            logging::write("SDL init audio subsystem failed, error {}", SDL_GetError());
         }
     }
 
@@ -2025,8 +2025,8 @@ void Application::BeginFrame()
             _ctx->EventsQueue.emplace_back(ev2);
         } break;
         case SDL_EVENT_DROP_FILE: {
-            if (auto file_size = fs_file_size(sdl_event.drop.data)) {
-                std::ifstream file {fs_open_ifstream(sdl_event.drop.data)};
+            if (auto file_size = fs::file_size(sdl_event.drop.data)) {
+                std::ifstream file {fs::open_ifstream(sdl_event.drop.data)};
 
                 if (!file) {
                     break;
@@ -2405,7 +2405,7 @@ void Application::RequestQuit(bool success) noexcept
     }
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
-        write_log("Quit requested");
+        logging::write("Quit requested");
 
         _onQuitDispatcher();
         _quitEvent.notify_all();
@@ -3094,7 +3094,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
         buf.resize(numeric_cast<size_t>(dst_len));
 
         if (!buf.empty()) {
-            mem_copy(buf.data(), converted_data, buf.size());
+            memory::copy(buf.data(), converted_data, buf.size());
         }
     }
 

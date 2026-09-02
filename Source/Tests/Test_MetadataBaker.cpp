@@ -167,10 +167,10 @@ TEST_CASE("MetadataBaker")
 
     SECTION("uses the applied config write time for setting values")
     {
-        string temp_dir = fs_path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
-        REQUIRE(fs_create_directories(temp_dir));
+        string temp_dir = fs::path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+        REQUIRE(fs::create_directories(temp_dir));
         string config_path = strex(temp_dir).combine_path("Test.fomain").str();
-        REQUIRE(fs_write_file(config_path, "Coverage.Enabled = true\n"));
+        REQUIRE(fs::write_file(config_path, "Coverage.Enabled = true\n"));
 
         rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
         rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
@@ -183,8 +183,8 @@ TEST_CASE("MetadataBaker")
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(checked_write_times.size() == 3);
-        CHECK(std::ranges::all_of(checked_write_times, [&](uint64_t write_time) { return write_time == fs_last_write_time(config_path); }));
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(std::ranges::all_of(checked_write_times, [&](uint64_t write_time) { return write_time == fs::last_write_time(config_path); }));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("returns without output when bake checker rejects every side")

@@ -143,7 +143,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
             auto target = make_ptr(output.data());
             auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-            mem_copy(target, source, offset);
+            memory::copy(target, source, offset);
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
@@ -156,7 +156,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
                 auto stream_target = make_ptr(output.data()).offset(offset);
                 auto stream_source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-                mem_copy(stream_target, stream_source, write);
+                memory::copy(stream_target, stream_source, write);
                 sound->ConvertedBufCur += write;
                 offset += write;
             }
@@ -164,7 +164,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             // Cut off end
             if (offset < output.size()) {
                 auto silence_target = make_ptr(output.data()).offset(offset);
-                mem_fill(silence_target, silence, output.size() - offset);
+                memory::fill(silence_target, silence, output.size() - offset);
             }
         }
         else {
@@ -172,7 +172,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             if (!output.empty()) {
                 auto target = make_ptr(output.data());
                 auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-                mem_copy(target, source, output.size());
+                memory::copy(target, source, output.size());
             }
             sound->ConvertedBufCur += output.size();
         }
@@ -211,7 +211,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
         // Give silent
         if (!output.empty()) {
             auto silence_target = make_ptr(output.data());
-            mem_fill(silence_target, silence, output.size());
+            memory::fill(silence_target, silence, output.size());
         }
         return true;
     }
@@ -219,7 +219,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     // Give silent
     if (!output.empty()) {
         auto silence_target = make_ptr(output.data());
-        mem_fill(silence_target, silence, output.size());
+        memory::fill(silence_target, silence, output.size());
     }
 
     return false;
@@ -275,7 +275,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     uint32_t dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MakeUInt('R', 'I', 'F', 'F')) {
-        write_log("'RIFF' not found");
+        logging::write("'RIFF' not found");
         return false;
     }
 
@@ -284,21 +284,21 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MakeUInt('W', 'A', 'V', 'E')) {
-        write_log("'WAVE' not found");
+        logging::write("'WAVE' not found");
         return false;
     }
 
     dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MakeUInt('f', 'm', 't', ' ')) {
-        write_log("'fmt ' not found");
+        logging::write("'fmt ' not found");
         return false;
     }
 
     dw_buf = reader.GetLEUInt32();
 
     if (dw_buf == 0) {
-        write_log("Unknown format");
+        logging::write("Unknown format");
         return false;
     }
 
@@ -316,7 +316,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     constexpr size_t wave_format_base_size = 16;
 
     if (dw_buf < wave_format_base_size) {
-        write_log("Unknown format");
+        logging::write("Unknown format");
         return false;
     }
 
@@ -324,7 +324,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     reader.ReadBytes(wave_format_bytes);
 
     if (waveformatex.WFormatTag != 1) {
-        write_log("Compressed files not supported");
+        logging::write("Compressed files not supported");
         return false;
     }
 
@@ -339,7 +339,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     }
 
     if (dw_buf != MakeUInt('d', 'a', 't', 'a')) {
-        write_log("Unknown format2");
+        logging::write("Unknown format2");
         return false;
     }
 
@@ -359,7 +359,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
         sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
         break;
     default:
-        write_log("Unknown format");
+        logging::write("Unknown format");
         return false;
     }
 
@@ -404,7 +404,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     int32_t dec_data = acm->readAndDecompress(buf.get(), buf_size);
 
     if (dec_data != buf_size) {
-        write_log("Decode Acm error");
+        logging::write("Decode Acm error");
         return false;
     }
 
@@ -491,26 +491,26 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     int32_t error = ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
-        write_log("Open OGG file '{}' fail, error:", fname);
+        logging::write("Open OGG file '{}' fail, error:", fname);
 
         switch (error) {
         case OV_EREAD:
-            write_log("A read from media returned an error");
+            logging::write("A read from media returned an error");
             break;
         case OV_ENOTVORBIS:
-            write_log("Bitstream does not contain any Vorbis data");
+            logging::write("Bitstream does not contain any Vorbis data");
             break;
         case OV_EVERSION:
-            write_log("Vorbis version mismatch");
+            logging::write("Vorbis version mismatch");
             break;
         case OV_EBADHEADER:
-            write_log("Invalid Vorbis bitstream header");
+            logging::write("Invalid Vorbis bitstream header");
             break;
         case OV_EFAULT:
-            write_log("Internal logic fault; indicates a bug or heap/stack corruption");
+            logging::write("Internal logic fault; indicates a bug or heap/stack corruption");
             break;
         default:
-            write_log("Unknown error code {}", error);
+            logging::write("Unknown error code {}", error);
             break;
         }
 

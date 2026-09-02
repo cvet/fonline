@@ -59,7 +59,7 @@ extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
 
     if (size_t copy_size = std::min(old_size, new_size); copy_size != 0) {
         FO_STRONG_ASSERT(old_data, "Reallocation requested a copy but the previous block pointer is null");
-        mem_copy(new_ptr, old_data, copy_size);
+        memory::copy(new_ptr, old_data, copy_size);
     }
 
     allocator.deallocate(old_data.get(), old_size);
@@ -211,7 +211,7 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            write_log("Model mesh baking error: {}", ex.what());
+            logging::write("Model mesh baking error: {}", ex.what());
             errors++;
         }
     }
@@ -525,11 +525,11 @@ static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBone
                     skin_bone = FindBakedModelBone(root_bone, skin_bone_name);
 
                     if (!skin_bone) {
-                        write_log("Skin bone '{}' for mesh '{}' not found", skin_bone_name, fbx_node->name.data);
+                        logging::write("Skin bone '{}' for mesh '{}' not found", skin_bone_name, fbx_node->name.data);
                     }
                 }
                 else {
-                    write_log("Empty skin bone in fbx cluster for mesh '{}' not found", fbx_node->name.data);
+                    logging::write("Empty skin bone in fbx cluster for mesh '{}' not found", fbx_node->name.data);
                 }
 
                 if (!skin_bone) {

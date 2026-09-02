@@ -112,11 +112,11 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
                 LoadPropertyFromValue(props, prop, doc_value, hashes, name_resolver);
             }
             else {
-                // write_log(log_type::warning, "Skip unknown property {}", key);
+                // logging::write(logging::type::warning, "Skip unknown property {}", key);
             }
         }
         catch (const std::exception& ex) {
-            write_log(log_type::warning, "Unable to load property {}: {}", doc_key, ex.what());
+            logging::write(logging::type::warning, "Unable to load property {}: {}", doc_key, ex.what());
             is_error = true;
         }
     }
@@ -292,7 +292,7 @@ static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> b
 
     auto lhs_data = RawBytesPtr(lhs);
     auto rhs_data = RawBytesPtr(rhs);
-    return mem_compare(lhs_data, rhs_data, lhs.size());
+    return memory::compare(lhs_data, rhs_data, lhs.size());
 }
 
 template<typename T>
@@ -305,7 +305,7 @@ static auto ReadRawValue(span<const uint8_t> data) -> T
     T value {};
     auto source = RawBytesPtr(data);
     auto target = RawMutableObjectBytes(value);
-    mem_copy(target, source, sizeof(value));
+    memory::copy(target, source, sizeof(value));
     return value;
 }
 
@@ -391,7 +391,7 @@ static auto ReadCursorEnumValue(RawReadCursor& cursor, size_t size) -> int32_t
     if (!bytes.empty()) {
         auto bytes_ptr = RawBytesPtr(bytes);
         auto enum_value_ptr = RawMutableObjectBytes(enum_value);
-        mem_copy(enum_value_ptr, bytes_ptr, bytes.size());
+        memory::copy(enum_value_ptr, bytes_ptr, bytes.size());
     }
 
     return enum_value;
@@ -435,7 +435,7 @@ static void WriteRawBytes(ptr<uint8_t> target, size_t& data_pos, nptr<const void
     if (size != 0) {
         FO_VERIFY_AND_THROW(source, "Raw write source is null for a non-empty copy");
         auto target_pos = RawWritePtrAt(target, data_pos);
-        mem_copy(target_pos, source, size);
+        memory::copy(target_pos, source, size);
     }
 
     data_pos += size;

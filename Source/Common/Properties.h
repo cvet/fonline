@@ -82,7 +82,7 @@ public:
 
         if (size != 0) {
             FO_VERIFY_AND_THROW(value, "Source value pointer is null");
-            mem_copy(data, value, size);
+            memory::copy(data, value, size);
         }
     }
 
@@ -90,7 +90,7 @@ public:
     void SetAs(T value)
     {
         auto target = Alloc(sizeof(T));
-        mem_copy(target, &value, sizeof(T));
+        memory::copy(target, &value, sizeof(T));
     }
 
     void Pass(span<const uint8_t> value);
@@ -674,7 +674,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
             size_t arr_size = data.size() / prop->GetBaseSize();
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
-            mem_copy(result.data(), data.data(), data.size());
+            memory::copy(result.data(), data.data(), data.size());
         }
     }
 
@@ -802,7 +802,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
             size_t arr_size = data.size() / prop->GetBaseSize();
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
-            mem_copy(result.data(), data.data(), data.size());
+            memory::copy(result.data(), data.data(), data.size());
         }
     }
 
@@ -997,7 +997,7 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
             }
 
             auto buf = prop_data.Alloc(data_size);
-            mem_fill(buf, 0, data_size);
+            memory::fill(buf, 0, data_size);
             size_t data_pos = 0;
 
             uint32_t arr_size = static_cast<uint32_t>(new_value.size());
@@ -1011,7 +1011,7 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
                 data_pos += sizeof(str_size);
 
                 if (str_size != 0) {
-                    mem_copy(buf.offset(data_pos), str.data(), str_size);
+                    memory::copy(buf.offset(data_pos), str.data(), str_size);
                     data_pos += str_size;
                 }
             }

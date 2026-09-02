@@ -771,8 +771,8 @@ namespace ClientServerIntegrationClient
 
         std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
         string dir_name = strex("lf_client_updater_{}_{}", name, suffix).str();
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name)};
-        return fs_path_to_string(base);
+        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
+        return fs::path_to_string(base);
     }
 
     static auto PrepareClientUpdaterBakeOutput() -> string
@@ -782,7 +782,7 @@ namespace ClientServerIntegrationClient
         string bake_dir = MakeTempClientUpdaterBakeDir("resources");
         string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
 
-        REQUIRE(fs_create_directories(fonts_dir));
+        REQUIRE(fs::create_directories(fonts_dir));
 
         constexpr string_view default_font = R"(Version 2
 Image Default.png
@@ -798,10 +798,10 @@ Letter ' '
 End
 )";
 
-        REQUIRE(fs_write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
+        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
 
         vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
-        REQUIRE(fs_write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
+        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
 
         return bake_dir;
     }
@@ -1652,10 +1652,10 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     REQUIRE(startup_error.empty());
     REQUIRE(InterthreadListeners.count(port) == 1);
 
-    auto previous_exception_callback = get_exception_callback();
+    auto previous_exception_callback = exceptions::get_callback();
     std::atomic_int exception_reports {};
-    set_exception_callback([&exception_reports](string_view, const catched_stack_trace_data&, bool) { exception_reports.fetch_add(1); });
-    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { set_exception_callback(std::move(previous)); });
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
     std::atomic_bool disconnected {};
     auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
@@ -2046,7 +2046,7 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
     string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs_remove_dir_tree(updater_bake_output); });
+    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
     BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
 
     // The rig has no resource packs to read a version back from, and this case is about the hash list rather

@@ -197,7 +197,7 @@ void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender>
     overlay_buf->Upload(EffectUsage::Primitive, out_index, out_index);
 
     effect->ProjBuf = RenderEffect::ProjBuffer();
-    mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(proj_matrix), sizeof(effect->ProjBuf->ProjMatrix));
+    memory::copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(proj_matrix), sizeof(effect->ProjBuf->ProjMatrix));
     effect->DrawBuffer(overlay_buf, 0, out_index);
 
     overlay_buf->VertCount = 0;

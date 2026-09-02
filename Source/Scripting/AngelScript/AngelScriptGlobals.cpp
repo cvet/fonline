@@ -185,7 +185,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {
-            indirect_args[index] = mem_read_unaligned<void*>(arg_data);
+            indirect_args[index] = memory::read_unaligned<void*>(arg_data);
             args_data.emplace_back(make_ptr(indirect_args[index].get_pp()).void_cast());
         }
         else {
@@ -202,7 +202,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         return true;
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
         return false;
     }
 }
@@ -331,8 +331,8 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     if (!failed) {
         const auto& enum_type = meta->GetBaseType(*enum_name);
         auto result_arg = GetGenericArgAddress(gen, 1);
-        mem_fill(result_arg, 0, enum_type.Size);
-        mem_copy(result_arg, &enum_value, enum_type.Size);
+        memory::fill(result_arg, 0, enum_type.Size);
+        memory::copy(result_arg, &enum_value, enum_type.Size);
     }
 
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
@@ -348,7 +348,7 @@ static void Game_TryEnumToString(AngelScript::asIScriptGeneric* gen)
     int32_t enum_index = 0;
     const auto& enum_type = meta->GetBaseType(*enum_name);
     auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
-    mem_copy(&enum_index, enum_arg, enum_type.Size);
+    memory::copy(&enum_index, enum_arg, enum_type.Size);
 
     bool failed = false;
     string enum_value_name {meta->ResolveEnumValueName(*enum_name, enum_index, &failed)};
@@ -371,7 +371,7 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
     int32_t enum_index = 0;
     const auto& enum_type = meta->GetBaseType(*enum_name);
     auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
-    mem_copy(&enum_index, enum_arg, enum_type.Size);
+    memory::copy(&enum_index, enum_arg, enum_type.Size);
     bool full_spec = *GetGenericAddressArgAs<bool>(gen, 1);
 
     bool failed = false;

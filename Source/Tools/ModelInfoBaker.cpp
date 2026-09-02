@@ -444,7 +444,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            write_log("Model description baking error: {}", ex.what());
+            logging::write("Model description baking error: {}", ex.what());
             errors++;
         }
     }
@@ -642,7 +642,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
     }
     else if (token == "Subset") {
         (void)TakeModelDescriptionToken(tokens, index, token, fname, line);
-        write_log("Tag 'Subset' obsolete, use 'Mesh' instead");
+        logging::write("Tag 'Subset' obsolete, use 'Mesh' instead");
     }
     else if (token == "Layer" || token == "Value") {
         string value = TakeModelDescriptionToken(tokens, index, token, fname, line);

@@ -838,7 +838,7 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     bytes.resize(data.size());
 
     if (!data.empty()) {
-        mem_copy(bytes.data(), data.data(), data.size());
+        memory::copy(bytes.data(), data.data(), data.size());
     }
 
     rig.AddSourceFile(path, bytes, write_time);

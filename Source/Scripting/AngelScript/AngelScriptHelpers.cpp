@@ -584,7 +584,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
     auto resolve_hash = [prop](const_span<uint8_t> hash_data) -> hstring {
         FO_VERIFY_AND_THROW(hash_data.size() == sizeof(hstring::hash_t), "Serialized hash payload size does not match hash storage size");
-        hstring::hash_t hash = mem_read_unaligned<hstring::hash_t>(hash_data.data());
+        hstring::hash_t hash = memory::read_unaligned<hstring::hash_t>(hash_data.data());
         return hash ? prop->GetRegistrar()->GetHashResolver()->resolve_hash(hash) : hstring();
     };
 
@@ -608,7 +608,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
     auto resolve_enum = [](const_span<uint8_t> enum_data) -> int32_t {
         int32_t result = 0;
-        mem_copy(&result, enum_data.data(), enum_data.size());
+        memory::copy(&result, enum_data.data(), enum_data.size());
         return result;
     };
     auto create_ref_obj = [prop](const_span<uint8_t> ref_data) -> refcount_ptr<DynamicRefTypeInstance> { return CreateRefTypeScriptObjectFromProperty(prop, ref_data); };
@@ -633,19 +633,19 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         else if (prop->IsBaseTypeEnum()) {
             FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             FO_VERIFY_AND_THROW(data_size <= sizeof(int32_t), "Serialized enum payload is wider than AngelScript integer storage", prop->GetName(), data_size, sizeof(int32_t));
-            mem_fill(construct_addr, 0, sizeof(int32_t));
+            memory::fill(construct_addr, 0, sizeof(int32_t));
             auto value_data = span_read_bytes(data_span, data_pos, data_size);
-            mem_copy(construct_addr, value_data.data(), data_size);
+            memory::copy(construct_addr, value_data.data(), data_size);
         }
         else if (prop->IsBaseTypePrimitive()) {
             FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             auto value_data = span_read_bytes(data_span, data_pos, data_size);
-            mem_copy(construct_addr, value_data.data(), data_size);
+            memory::copy(construct_addr, value_data.data(), data_size);
         }
         else if (prop->IsBaseTypeStruct()) {
             FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             auto value_data = span_read_bytes(data_span, data_pos, data_size);
-            mem_copy(construct_addr, value_data.data(), data_size);
+            memory::copy(construct_addr, value_data.data(), data_size);
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -735,12 +735,12 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                 if (prop->GetBaseSize() == sizeof(int32_t)) {
                     auto values_data = span_read_bytes(data_span, data_pos, data_size);
-                    mem_copy(arr->At(0), values_data.data(), data_size);
+                    memory::copy(arr->At(0), values_data.data(), data_size);
                 }
                 else {
                     for (uint32_t i = 0; i < arr_size; i++) {
                         auto value_data = span_read_bytes(data_span, data_pos, prop->GetBaseSize());
-                        mem_copy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
+                        memory::copy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
                     }
                 }
             }
@@ -752,7 +752,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
                 arr->Resize(numeric_cast<int32_t>(arr_size));
                 auto values_data = span_read_bytes(data_span, data_pos, data_size);
-                mem_copy(arr->At(0), values_data.data(), data_size);
+                memory::copy(arr->At(0), values_data.data(), data_size);
             }
         }
         else if (prop->IsBaseTypeStruct()) {
@@ -764,7 +764,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                 for (uint32_t i = 0; i < arr_size; i++) {
                     auto value_data = span_read_bytes(data_span, data_pos, prop->GetBaseSize());
-                    mem_copy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
+                    memory::copy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
                 }
             }
         }
@@ -835,12 +835,12 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             if (prop->GetBaseSize() == sizeof(int32_t)) {
                                 auto values_data = span_read_aligned_bytes(data_span, data_pos, values_size, alignment_for_size(prop->GetBaseSize()));
-                                mem_copy(arr->At(0), values_data.data(), values_size);
+                                memory::copy(arr->At(0), values_data.data(), values_size);
                             }
                             else {
                                 for (uint32_t i = 0; i < arr_size; i++) {
                                     auto value_data = span_read_aligned_bytes(data_span, data_pos, prop->GetBaseSize(), alignment_for_size(prop->GetBaseSize()));
-                                    mem_copy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
+                                    memory::copy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
                                 }
                             }
                         }
@@ -849,14 +849,14 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             size_t values_size = arr_size * prop->GetBaseSize();
                             auto values_data = span_read_aligned_bytes(data_span, data_pos, values_size, alignment_for_size(prop->GetBaseSize()));
-                            mem_copy(arr->At(0), values_data.data(), values_size);
+                            memory::copy(arr->At(0), values_data.data(), values_size);
                         }
                         else if (prop->IsBaseTypeStruct()) {
                             arr->Resize(numeric_cast<int32_t>(arr_size));
 
                             for (uint32_t i = 0; i < arr_size; i++) {
                                 auto value_data = span_read_aligned_bytes(data_span, data_pos, prop->GetBaseSize(), alignment_for_size(prop->GetBaseSize()));
-                                mem_copy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
+                                memory::copy(arr->At(numeric_cast<int32_t>(i)), value_data.data(), prop->GetBaseSize());
                             }
                         }
                         else {
@@ -1107,7 +1107,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
                 // Make buffer
                 auto buf = prop_data.Alloc(data_size);
-                mem_fill(buf, 0, data_size);
+                memory::fill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
 
@@ -1159,7 +1159,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
             if (data_size != 0) {
                 if (prop->IsBaseTypeRefType()) {
                     auto buf = prop_data.Alloc(data_size);
-                    mem_fill(buf, 0, data_size);
+                    memory::fill(buf, 0, data_size);
                     auto buf_span = make_span(buf, data_size);
                     size_t data_pos = 0;
 
@@ -1305,7 +1305,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
                 // Make buffer
                 auto buf = prop_data.Alloc(data_size);
-                mem_fill(buf, 0, data_size);
+                memory::fill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
 
@@ -1421,7 +1421,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
                 // Make buffer
                 auto buf = prop_data.Alloc(data_size);
-                mem_fill(buf, 0, data_size);
+                memory::fill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
 
@@ -1479,7 +1479,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
                 // Make buffer
                 auto buf = prop_data.Alloc(data_size);
-                mem_fill(buf, 0, data_size);
+                memory::fill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
 
@@ -1549,7 +1549,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
             if (data_size != 0) {
                 auto buf = prop_data.Alloc(data_size);
-                mem_fill(buf, 0, data_size);
+                memory::fill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
 

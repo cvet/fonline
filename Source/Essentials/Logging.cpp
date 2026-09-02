@@ -41,10 +41,10 @@
 
 FO_BEGIN_NAMESPACE
 
-static void emit_log_message(log_type type, string_view message, nptr<const catched_stack_trace_data> st);
+static void emit_log_message(logging::type type, string_view message, nptr<const stack_trace::catched_data> st);
 static void flush_log_message_repeats_locked();
-static auto is_same_as_last_log_message(log_type type, string_view message) -> bool;
-static void remember_last_log_message(log_type type, string_view message) noexcept;
+static auto is_same_as_last_log_message(logging::type type, string_view message) -> bool;
+static void remember_last_log_message(logging::type type, string_view message) noexcept;
 static void clear_last_log_message() noexcept;
 static void flush_log_at_exit();
 
@@ -64,41 +64,41 @@ struct logging_data
     }
 
     std::recursive_mutex locker {};
-    vector<pair<string, log_func>> log_functions {};
+    vector<pair<string, logging::callback>> log_functions {};
     std::atomic_bool log_functions_in_process {};
     std::thread::id main_thread_id {};
-    optional<log_type> last_log_type {};
+    optional<logging::type> last_log_type {};
     string last_log_message {};
     uint64_t same_log_message_count {};
     bool tags_disabled {};
 };
-FO_GLOBAL_DATA(logging_data, logging);
+FO_GLOBAL_DATA(logging_data, log_state);
 
-extern void write_log_message(log_type type, string_view message, nptr<const catched_stack_trace_data> st) noexcept
+void logging::write_message(logging::type type, string_view message, nptr<const stack_trace::catched_data> st) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        if (logging == nullptr) {
+        if (log_state == nullptr) {
             string result;
             result.reserve(message.length() + 1);
             result += message;
             result += '\n';
 
             if (st) {
-                write_base_log(result, st.get());
+                logging::write_base(result, st.get());
             }
             else {
-                write_base_log(result);
+                logging::write_base(result);
             }
 
             return;
         }
 
-        std::scoped_lock locker {logging->locker};
+        std::scoped_lock locker {log_state->locker};
 
         if (is_same_as_last_log_message(type, message)) {
-            logging->same_log_message_count++;
+            log_state->same_log_message_count++;
             return;
         }
 
@@ -111,38 +111,38 @@ extern void write_log_message(log_type type, string_view message, nptr<const cat
     }
 }
 
-extern void set_log_callback(string_view key, log_func callback)
+void logging::set_callback(string_view key, logging::callback callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker {logging->locker};
+    std::scoped_lock locker {log_state->locker};
 
     flush_log_message_repeats_locked();
 
     if (!key.empty()) {
-        std::erase_if(logging->log_functions, [key](auto&& e) { return e.first == key; });
+        std::erase_if(log_state->log_functions, [key](auto&& e) { return e.first == key; });
 
         if (callback) {
-            logging->log_functions.emplace_back(key, std::move(callback));
+            log_state->log_functions.emplace_back(key, std::move(callback));
         }
     }
     else {
-        logging->log_functions.clear();
+        log_state->log_functions.clear();
     }
 }
 
-extern void log_disable_tags()
+void logging::disable_tags()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker {logging->locker};
+    std::scoped_lock locker {log_state->locker};
 
     flush_log_message_repeats_locked();
 
-    logging->tags_disabled = true;
+    log_state->tags_disabled = true;
 }
 
-static void emit_log_message(log_type type, string_view message, nptr<const catched_stack_trace_data> st)
+static void emit_log_message(logging::type type, string_view message, nptr<const stack_trace::catched_data> st)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -150,12 +150,12 @@ static void emit_log_message(log_type type, string_view message, nptr<const catc
     string result;
     result.reserve(message.length() + 64);
 
-    if (!logging->tags_disabled) {
+    if (!log_state->tags_disabled) {
         time_desc_t time = nanotime::now().desc(true);
         result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
         result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
 
-        if (std::thread::id thread_id = std::this_thread::get_id(); thread_id != logging->main_thread_id) {
+        if (std::thread::id thread_id = std::this_thread::get_id(); thread_id != log_state->main_thread_id) {
             result += strex("[{}] ", get_this_thread_name());
         }
     }
@@ -164,21 +164,21 @@ static void emit_log_message(log_type type, string_view message, nptr<const catc
     result += '\n';
 
     if (st) {
-        write_base_log(result, st.get());
+        logging::write_base(result, st.get());
     }
     else {
-        write_base_log(result);
+        logging::write_base(result);
     }
 
-    if (!logging->log_functions.empty()) {
-        if (logging->log_functions_in_process) {
+    if (!log_state->log_functions.empty()) {
+        if (log_state->log_functions_in_process) {
             return;
         }
 
-        logging->log_functions_in_process = true;
-        auto reset_in_process = scope_exit([]() noexcept { logging->log_functions_in_process = false; });
+        log_state->log_functions_in_process = true;
+        auto reset_in_process = scope_exit([]() noexcept { log_state->log_functions_in_process = false; });
 
-        for (const auto& func : logging->log_functions | std::views::values) {
+        for (const auto& func : log_state->log_functions | std::views::values) {
             func(type, result, st);
         }
     }
@@ -197,12 +197,12 @@ static void flush_log_message_repeats_locked()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!logging->last_log_type.has_value()) {
+    if (!log_state->last_log_type.has_value()) {
         return;
     }
 
-    optional<log_type> last_log_type = logging->last_log_type;
-    uint64_t same_message_count = logging->same_log_message_count;
+    optional<logging::type> last_log_type = log_state->last_log_type;
+    uint64_t same_message_count = log_state->same_log_message_count;
 
     clear_last_log_message();
 
@@ -226,36 +226,36 @@ static void flush_log_at_exit()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (logging != nullptr) {
-        std::scoped_lock locker {logging->locker};
+    if (log_state != nullptr) {
+        std::scoped_lock locker {log_state->locker};
 
         flush_log_message_repeats_locked();
     }
 }
 
-static auto is_same_as_last_log_message(log_type type, string_view message) -> bool
+static auto is_same_as_last_log_message(logging::type type, string_view message) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return logging->last_log_type.has_value() && *logging->last_log_type == type && string_view {logging->last_log_message} == message;
+    return log_state->last_log_type.has_value() && *log_state->last_log_type == type && string_view {log_state->last_log_message} == message;
 }
 
-static void remember_last_log_message(log_type type, string_view message) noexcept
+static void remember_last_log_message(logging::type type, string_view message) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    logging->last_log_type = type;
-    logging->last_log_message.assign(message);
-    logging->same_log_message_count = 0;
+    log_state->last_log_type = type;
+    log_state->last_log_message.assign(message);
+    log_state->same_log_message_count = 0;
 }
 
 static void clear_last_log_message() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    logging->last_log_type.reset();
-    logging->last_log_message.clear();
-    logging->same_log_message_count = 0;
+    log_state->last_log_type.reset();
+    log_state->last_log_message.clear();
+    log_state->same_log_message_count = 0;
 }
 
 FO_END_NAMESPACE

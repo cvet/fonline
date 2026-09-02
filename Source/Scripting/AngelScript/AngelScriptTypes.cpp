@@ -146,7 +146,7 @@ static void DefaultInitStructFields(ptr<void> obj, const BaseTypeDesc& type)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    mem_fill(obj, 0, type.Size);
+    memory::fill(obj, 0, type.Size);
 
     if (type.StructLayout) {
         for (const auto& field : type.StructLayout->Fields) {
@@ -180,7 +180,7 @@ static void GenericType_ConstructCopy(AngelScript::asIScriptGeneric* gen)
     auto obj = GetGenericObjectAs<void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
-    mem_copy(obj, other, type->Size);
+    memory::copy(obj, other, type->Size);
 }
 
 static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
@@ -193,7 +193,7 @@ static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
 
     VisitBaseTypePrimitive(obj.get(), *type, [&index, &gen](auto&& v) {
         auto arg = GetGenericAddressArgAs<const void>(gen, index);
-        mem_copy(&v, arg, sizeof(v));
+        memory::copy(&v, arg, sizeof(v));
         index++;
     });
 }
@@ -314,7 +314,7 @@ static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
     auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
-    bool equals = mem_compare(obj, other, type->Size);
+    bool equals = memory::compare(obj, other, type->Size);
     new (gen->GetAddressOfReturnLocation()) bool(equals);
 }
 

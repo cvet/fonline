@@ -100,7 +100,7 @@ This exists because a case-only rename of an input is invisible to everything el
 
 The reconciliation runs once per bake over the set the bakers already produced, so it costs no per-write work, never deletes and recreates a file, and — unlike a check on the write path — also repairs outputs that the current bake skipped as up to date. On a case-sensitive filesystem the pre-rename name does not collide with the new one, the outdated sweep removes it normally, and both steps find nothing to do.
 
-Covered by `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename` and `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` in `Source/Tests/Test_BakerSetup.cpp`. The underlying per-primitive behavior — `fs_rename()` establishes the requested spelling, `fs_write_file()` and `fs_create_directories()` keep whatever is already there — is pinned on both filesystem kinds by `DiskFileSystemNameCase` in `Source/Tests/Test_DiskFileSystem.cpp`.
+Covered by `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename` and `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` in `Source/Tests/Test_BakerSetup.cpp`. The underlying per-primitive behavior — `fs::rename()` establishes the requested spelling, `fs::write_file()` and `fs::create_directories()` keep whatever is already there — is pinned on both filesystem kinds by `DiskFileSystemNameCase` in `Source/Tests/Test_DiskFileSystem.cpp`.
 
 ## CMake entry points
 

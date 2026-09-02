@@ -71,7 +71,7 @@ struct base_logging_data
     struct async_entry
     {
         std::string message {};
-        std::optional<catched_stack_trace_data> stack_trace_of {};
+        std::optional<stack_trace::catched_data> stack_trace_of {};
     };
 
     std::mutex log_locker {};
@@ -86,7 +86,7 @@ struct base_logging_data
 };
 FO_GLOBAL_DATA(base_logging_data, base_logging);
 
-extern void log_to_file(string_view path, bool append)
+void logging::to_file(string_view path, bool append)
 {
     if (build_condition<FO_WEB>()) {
         return;
@@ -110,11 +110,11 @@ extern void log_to_file(string_view path, bool append)
     }
 
     if (open_failed) {
-        write_base_log(std::string("Can't create log file '").append(path).append("'\n"));
+        logging::write_base(std::string("Can't create log file '").append(path).append("'\n"));
     }
 }
 
-extern void set_async_log_writing(bool enabled)
+void logging::set_async_writing(bool enabled)
 {
     if (build_condition<FO_WEB>()) {
         return;
@@ -128,21 +128,21 @@ extern void set_async_log_writing(bool enabled)
     }
 }
 
-extern void suspend_async_log_writing() noexcept
+void logging::suspend_async_writing() noexcept
 {
     if (base_logging != nullptr) {
         base_logging->async_enabled.store(false, std::memory_order_release);
     }
 }
 
-extern void write_base_log(string_view message, const catched_stack_trace_data* st) noexcept
+void logging::write_base(string_view message, const stack_trace::catched_data* st) noexcept
 {
     try {
         if (base_logging == nullptr) {
             std::cout << message;
 
             if (st != nullptr) {
-                std::cout << format_stack_trace(*st) << "\n";
+                std::cout << stack_trace::format(*st) << "\n";
             }
 
             std::cout.flush();
@@ -188,7 +188,7 @@ extern void write_base_log(string_view message, const catched_stack_trace_data* 
             std::string combined;
             combined.reserve(message.size() + 256);
             combined.append(message);
-            combined.append(format_stack_trace(*st));
+            combined.append(stack_trace::format(*st));
             combined.append("\n");
             write_sync(combined);
         }
@@ -270,7 +270,7 @@ static void async_worker_loop() noexcept
                         std::string combined;
                         combined.reserve(entry.message.size() + 256);
                         combined.append(entry.message);
-                        combined.append(format_stack_trace(entry.stack_trace_of.value()));
+                        combined.append(stack_trace::format(entry.stack_trace_of.value()));
                         combined.append("\n");
                         write_sync(combined);
                     }
@@ -336,31 +336,31 @@ static void flush_log_at_exit()
     }
 }
 
-extern void safe_write_stack_trace(const stack_trace_data& st) noexcept
+void logging::safe_write_stack_trace(const stack_trace::data& st) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     char itoa_buf[64] = {};
 
     if (st.native_truncated) {
-        write_base_log("Stack trace (most recent call first, truncated at ");
-        write_base_log(itoa(static_cast<int64_t>(STACK_TRACE_MAX_NATIVE_FRAMES), itoa_buf, 10));
-        write_base_log(" frames):\n");
+        logging::write_base("Stack trace (most recent call first, truncated at ");
+        logging::write_base(itoa(static_cast<int64_t>(stack_trace::MAX_NATIVE_FRAMES), itoa_buf, 10));
+        logging::write_base(" frames):\n");
     }
     else {
-        write_base_log("Stack trace (most recent call first):\n");
+        logging::write_base("Stack trace (most recent call first):\n");
     }
 
     bool resolution_succeeded = false;
 
     try {
-        auto resolved = resolve_stack_trace(st);
+        auto resolved = stack_trace::resolve(st);
 
         for (const auto& frame : resolved) {
-            write_base_log("- [");
-            write_base_log(frame.type == stack_trace_frame::frame_type::script ? "Script" : "Native");
-            write_base_log("] ");
-            write_base_log(frame.function);
+            logging::write_base("- [");
+            logging::write_base(frame.type == stack_trace::frame::frame_type::script ? "Script" : "Native");
+            logging::write_base("] ");
+            logging::write_base(frame.function);
 
             if (!frame.file.empty()) {
                 std::string_view file_name {frame.file};
@@ -369,14 +369,14 @@ extern void safe_write_stack_trace(const stack_trace_data& st) noexcept
                     file_name = file_name.substr(pos + 1);
                 }
 
-                write_base_log(" (");
-                write_base_log(file_name);
-                write_base_log(" line ");
-                write_base_log(itoa(static_cast<int64_t>(frame.line), itoa_buf, 10));
-                write_base_log(")");
+                logging::write_base(" (");
+                logging::write_base(file_name);
+                logging::write_base(" line ");
+                logging::write_base(itoa(static_cast<int64_t>(frame.line), itoa_buf, 10));
+                logging::write_base(")");
             }
 
-            write_base_log("\n");
+            logging::write_base("\n");
         }
 
         resolution_succeeded = true;
@@ -389,22 +389,22 @@ extern void safe_write_stack_trace(const stack_trace_data& st) noexcept
         if (st.script_layers) {
             for (const auto& layer : *st.script_layers) {
                 for (const auto& frame : layer.script_frames) {
-                    write_base_log("- [Script] ");
-                    write_base_log(frame.function);
-                    write_base_log("\n");
+                    logging::write_base("- [Script] ");
+                    logging::write_base(frame.function);
+                    logging::write_base("\n");
                 }
             }
         }
 
         for (uint32_t i = 0; i < st.native_frame_count; i++) {
-            write_base_log("- [Native] 0x");
-            native_stack_frame_address addr = st.native_frames[i];
-            write_base_log(itoa(static_cast<int64_t>(addr), itoa_buf, 16));
-            write_base_log("\n");
+            logging::write_base("- [Native] 0x");
+            stack_trace::native_frame_address addr = st.native_frames[i];
+            logging::write_base(itoa(static_cast<int64_t>(addr), itoa_buf, 16));
+            logging::write_base("\n");
         }
     }
 
-    write_base_log("\n");
+    logging::write_base("\n");
 }
 
 FO_END_NAMESPACE

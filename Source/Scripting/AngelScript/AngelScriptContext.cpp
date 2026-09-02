@@ -50,8 +50,8 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, uint32_t stack_level) noexcept -> optional<stack_trace_frame>;
-static void CollectScriptStackLayers(std::vector<script_stack_trace_layer>& out_layers) noexcept;
+static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, uint32_t stack_level) noexcept -> optional<stack_trace::frame>;
+static void CollectScriptStackLayers(std::vector<stack_trace::script_layer>& out_layers) noexcept;
 
 static auto IsSameScriptContext(ptr<const AngelScript::asIScriptContext> lhs, ptr<const AngelScript::asIScriptContext> rhs) noexcept -> bool
 {
@@ -62,7 +62,7 @@ static auto IsSameScriptContext(ptr<const AngelScript::asIScriptContext> lhs, pt
 
 struct AngelScriptStackTraceInstaller
 {
-    AngelScriptStackTraceInstaller() noexcept { set_script_stack_trace_provider(&CollectScriptStackLayers); }
+    AngelScriptStackTraceInstaller() noexcept { stack_trace::set_script_provider(&CollectScriptStackLayers); }
 };
 FO_GLOBAL_DATA(AngelScriptStackTraceInstaller, AngelScriptStackTraceInstall);
 
@@ -280,7 +280,7 @@ auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptCo
     }
     ctx_ext->Exception = {};
 
-    capture_native_stack_frames(ctx_ext->BirthNativeFrames, ctx_ext->BirthNativeFrameCount, ctx_ext->BirthNativeTruncated, 1);
+    stack_trace::capture_native_frames(ctx_ext->BirthNativeFrames, ctx_ext->BirthNativeFrameCount, ctx_ext->BirthNativeTruncated, 1);
 
     if (_contextSetupCallback) {
         _contextSetupCallback(ctx, AngelScriptContextSetupReason::Request);
@@ -356,7 +356,7 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
         vec_add_unique_value(_freeContexts, ctx_holder);
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
@@ -455,7 +455,7 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
                 exec_result = ctx->Execute();
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
                 ctx->SetException(ex.what());
                 exec_result = AngelScript::asEXECUTION_EXCEPTION;
             }
@@ -469,7 +469,7 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
             if (execution_duration >= _overrunTimeout && !is_run_in_debugger()) {
                 if constexpr (!FO_DEBUG) {
                     string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
-                    write_log("Script execution overrun: {} ({})", func_decl, execution_duration);
+                    logging::write("Script execution overrun: {} ({})", func_decl, execution_duration);
                 }
             }
         }
@@ -595,11 +595,11 @@ void AngelScriptContextManager::ResumeSpecificContext(ptr<AngelScript::asIScript
         RunContext(ctx, true, true);
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
-static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, uint32_t stack_level) noexcept -> optional<stack_trace_frame>
+static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, uint32_t stack_level) noexcept -> optional<stack_trace::frame>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -614,8 +614,8 @@ static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, u
         int32_t ctx_line = ctx->GetLineNumber(as_stack_level);
         auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
 
-        stack_trace_frame frame;
-        frame.type = stack_trace_frame::frame_type::script;
+        stack_trace::frame frame;
+        frame.type = stack_trace::frame::frame_type::script;
 
         if (auto decl = make_nptr(func->GetDeclaration(true)); decl) {
             frame.function = decl.get();
@@ -639,7 +639,7 @@ static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, u
     }
 }
 
-static void CollectScriptStackLayers(std::vector<script_stack_trace_layer>& out_layers) noexcept
+static void CollectScriptStackLayers(std::vector<stack_trace::script_layer>& out_layers) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -653,7 +653,7 @@ static void CollectScriptStackLayers(std::vector<script_stack_trace_layer>& out_
         while (ctx) {
             auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
 
-            script_stack_trace_layer layer;
+            stack_trace::script_layer layer;
             auto callstack_size = ctx->GetCallstackSize();
             layer.script_frames.reserve(callstack_size);
 
@@ -773,7 +773,7 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* raw_ctx, AngelSc
 
         const auto safe_copy = [](auto& to, size_t& len, string_view from) {
             len = std::min(from.length(), to.size() - 1);
-            mem_copy(to.data(), from.data(), len);
+            memory::copy(to.data(), from.data(), len);
             to[len] = 0;
         };
 

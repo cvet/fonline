@@ -102,7 +102,7 @@ static void LogEffekseerRejection(string_view path, string_view reason)
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log(log_type::warning, "Effekseer particle '{}' rejected: {}", path, reason);
+    logging::write(logging::type::warning, "Effekseer particle '{}' rejected: {}", path, reason);
 }
 
 static auto ToUtf8(const char16_t* value) -> string
@@ -346,14 +346,14 @@ public:
 
         // A distortion map is an ordinary image in the atlas; what differs is how the shader reads it, not how it loads
         if (texture_type != Effekseer::TextureType::Color && texture_type != Effekseer::TextureType::Distortion) {
-            write_log(log_type::warning, "Effekseer texture '{}' rejected: only color and distortion textures are supported", ToUtf8(path));
+            logging::write(logging::type::warning, "Effekseer texture '{}' rejected: only color and distortion textures are supported", ToUtf8(path));
             return nullptr;
         }
 
         string texture_path = strex(ToUtf8(path)).format_path().str();
         auto [render_texture, atlas_rect] = _textureLoader(texture_path);
         if (!render_texture) {
-            write_log(log_type::warning, "Effekseer texture '{}' is missing", texture_path);
+            logging::write(logging::type::warning, "Effekseer texture '{}' is missing", texture_path);
             return nullptr;
         }
 
@@ -386,18 +386,18 @@ public:
         File file = _resources->ReadFile(model_path);
 
         if (!file) {
-            write_log(log_type::warning, "Effekseer model '{}' is missing", model_path);
+            logging::write(logging::type::warning, "Effekseer model '{}' is missing", model_path);
             return nullptr;
         }
 
         const_span<uint8_t> data = file.GetDataSpan();
 
         if (data.empty() || data.size() > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-            write_log(log_type::warning, "Effekseer model '{}' has an unusable size", model_path, data.size());
+            logging::write(logging::type::warning, "Effekseer model '{}' has an unusable size", model_path, data.size());
             return nullptr;
         }
         if (optional<string> error = ValidateEffekseerModelPayload(data)) {
-            write_log(log_type::warning, "Effekseer model '{}' is invalid: {}", model_path, *error);
+            logging::write(logging::type::warning, "Effekseer model '{}' is invalid: {}", model_path, *error);
             return nullptr;
         }
 
@@ -1301,7 +1301,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = CullModeType::None;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        memory::copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture->Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture->PointSampled ? 1.0f : 0.0f;
@@ -1406,7 +1406,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = CullModeType::None;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        memory::copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
         effect->BackgroundTex = background.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
@@ -1800,7 +1800,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = CullModeType::None;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        memory::copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
@@ -2152,7 +2152,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = CullModeType::None;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        memory::copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
@@ -2906,7 +2906,7 @@ private:
         effect->DepthVariant = render_state->DepthVariant;
         effect->CullMode = _node->CullMode;
         effect->ProjBuf = RenderEffect::ProjBuffer();
-        mem_copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
+        memory::copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(system->ViewProjMatrix), sizeof(effect->ProjBuf->ProjMatrix));
         effect->MainTex = texture.Texture;
         effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;

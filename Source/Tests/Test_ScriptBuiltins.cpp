@@ -3526,16 +3526,16 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         auto func = server->FindFunc<void>(fn("ScriptBuiltins::InvalidIntConversionFromAny"));
         REQUIRE(func);
 
-        auto prev_callback = get_exception_callback();
+        auto prev_callback = exceptions::get_callback();
         string message;
         string traceback;
         bool fatal = true;
-        set_exception_callback([&](string_view msg, const catched_stack_trace_data& st, bool is_fatal) {
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data& st, bool is_fatal) {
             message = string(msg);
-            traceback = format_stack_trace(st);
+            traceback = stack_trace::format(st);
             fatal = is_fatal;
         });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         CHECK(message.find("Invalid int value for any conversion") != string::npos);
@@ -3776,10 +3776,10 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = get_exception_callback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4322,10 +4322,10 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = get_exception_callback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4592,10 +4592,10 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = get_exception_callback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4714,10 +4714,10 @@ TEST_CASE("ScriptBuiltinsReflectionOperations")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = get_exception_callback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);

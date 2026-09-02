@@ -98,7 +98,7 @@ template<typename T>
 
     T data;
     const_span<uint8_t> bytes = span_read_bytes(buffer, pos, sizeof(T));
-    mem_copy(&data, bytes.data(), sizeof(T));
+    memory::copy(&data, bytes.data(), sizeof(T));
     return data;
 }
 
@@ -144,13 +144,13 @@ template<typename T>
 inline void span_write_bytes(span<uint8_t> buffer, size_t& pos, const_span<uint8_t> data)
 {
     span<uint8_t> bytes = span_write_bytes(buffer, pos, data.size());
-    mem_copy(bytes.data(), data.data(), data.size());
+    memory::copy(bytes.data(), data.data(), data.size());
 }
 
 inline void span_write_bytes(span<uint8_t> buffer, size_t& pos, nptr<const void> source, size_t size)
 {
     span<uint8_t> bytes = span_write_bytes(buffer, pos, size);
-    mem_copy(bytes.data(), source, size);
+    memory::copy(bytes.data(), source, size);
 }
 
 [[nodiscard]] inline auto span_write_aligned_bytes(span<uint8_t> buffer, size_t& pos, size_t size, size_t alignment) -> span<uint8_t>
@@ -165,13 +165,13 @@ inline void span_write_bytes(span<uint8_t> buffer, size_t& pos, nptr<const void>
 inline void span_write_aligned_bytes(span<uint8_t> buffer, size_t& pos, const_span<uint8_t> data, size_t alignment)
 {
     span<uint8_t> bytes = span_write_aligned_bytes(buffer, pos, data.size(), alignment);
-    mem_copy(bytes.data(), data.data(), data.size());
+    memory::copy(bytes.data(), data.data(), data.size());
 }
 
 inline void span_write_aligned_bytes(span<uint8_t> buffer, size_t& pos, nptr<const void> source, size_t size, size_t alignment)
 {
     span<uint8_t> bytes = span_write_aligned_bytes(buffer, pos, size, alignment);
-    mem_copy(bytes.data(), source, size);
+    memory::copy(bytes.data(), source, size);
 }
 
 template<typename T>

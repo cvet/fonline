@@ -1879,10 +1879,10 @@ BoundsMaxZ = 3.5
 #define RUN_CM_FUNC_THROWS(func_name, expected_message) \
     auto func = server->FindFunc<void>(get_func("CommonMethods::" func_name)); \
     REQUIRE(func); \
-    auto prev_callback = get_exception_callback(); \
+    auto prev_callback = exceptions::get_callback(); \
     string message; \
-    set_exception_callback([&](string_view msg, const catched_stack_trace_data&, bool) { message = string(msg); }); \
-    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); }); \
+    exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); }); \
+    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); }); \
     CHECK_FALSE(func.Call()); \
     INFO(message); \
     CHECK(message.find(expected_message) != string::npos)

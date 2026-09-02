@@ -1738,7 +1738,7 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         });
     });
 
-    REQUIRE(fs_write_file((maps_dir / "ReferenceMap.fomap").generic_string(), MakeMapText(MakeItemBlock(10, TILE_A, 5, 5))));
+    REQUIRE(fs::write_file((maps_dir / "ReferenceMap.fomap").generic_string(), MakeMapText(MakeItemBlock(10, TILE_A, 5, 5))));
 
     auto settings = MakeMapperTestSettings();
     BakerTests::OverrideSetting(settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
@@ -2942,7 +2942,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     });
 
     string reference_map = MakeMapText(MakeItemBlock(10, TILE_A, 5, 5));
-    REQUIRE(fs_write_file((maps_dir / "ReferenceMap.fomap").generic_string(), reference_map));
+    REQUIRE(fs::write_file((maps_dir / "ReferenceMap.fomap").generic_string(), reference_map));
 
     auto settings = MakeMapperTestSettings();
     BakerTests::OverrideSetting(settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});

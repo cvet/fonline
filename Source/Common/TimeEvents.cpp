@@ -566,7 +566,7 @@ auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
     }
 
     if (!call_result && repeat_duration) {
-        write_log("Time event {}{} stopped due to exception", te->FuncName.first, te->FuncName.second != 0 ? " (delegate)" : "");
+        logging::write("Time event {}{} stopped due to exception", te->FuncName.first, te->FuncName.second != 0 ? " (delegate)" : "");
     }
 
     return FiredTimeEvent {.CallResult = call_result, .Context = std::move(context)};
@@ -644,7 +644,7 @@ void TimeEventManager::CancelAllForEntity(ptr<Entity> entity) noexcept
             NotifyCancel(cid);
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
         catch (...) {
             FO_UNKNOWN_EXCEPTION();

@@ -500,7 +500,7 @@ auto MapView::CalculateMapRenderTargetSize() const noexcept -> isize32
     };
 
     if (actual_size != requested_size) {
-        write_log(log_type::warning, "Map render target size {}x{} requested by View.MapRenderTargetScale {} is not supported; using {}x{}", requested_size.width, requested_size.height, map_rt_scale, actual_size.width, actual_size.height);
+        logging::write(logging::type::warning, "Map render target size {}x{} requested by View.MapRenderTargetScale {} is not supported; using {}x{}", requested_size.width, requested_size.height, map_rt_scale, actual_size.width, actual_size.height);
     }
 
     return actual_size;

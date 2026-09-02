@@ -83,7 +83,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     string_view host = _settings->ServerHost;
     uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-    write_log("Connecting to server '{}:{}'", host, port);
+    logging::write("Connecting to server '{}:{}'", host, port);
 
 #else
     const string_view host = _settings->WebSocketHost;
@@ -91,11 +91,11 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
 
     if (!_settings->SecuredWebSockets) {
         WebRelated::SetWebSocketScheme(false);
-        write_log("Connecting to server 'ws://{}:{}'", host, port);
+        logging::write("Connecting to server 'ws://{}:{}'", host, port);
     }
     else {
         WebRelated::SetWebSocketScheme(true);
-        write_log("Connecting to server 'wss://{}:{}'", host, port);
+        logging::write("Connecting to server 'wss://{}:{}'", host, port);
     }
 #endif
 
@@ -111,7 +111,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
 
 #if !FO_WEB
         if (_settings->DisableTcpNagle && !_sock.set_nodelay(true)) {
-            write_log("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
+            logging::write("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
         }
 #endif
 
@@ -136,7 +136,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     }
 
     if (_settings->DisableTcpNagle && !_sock.set_nodelay(true)) {
-        write_log("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
+        logging::write("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
     }
 
     // After proxy connect succeeds, the network layer expects the same notion of "connected"
@@ -310,7 +310,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
                 throw NetworkClientException("Socket error during async connect", sock_error);
             }
 
-            write_log("Connection established");
+            logging::write("Connection established");
 
             _isConnecting = false;
             _isConnected = true;

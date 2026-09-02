@@ -123,7 +123,7 @@ void stream_compressor::compress(const_span<uint8_t> buf, vector<uint8_t>& resul
 
     if (!_impl) {
         _impl = safe_alloc::make_unique<impl>();
-        mem_fill(&_impl->stream, 0, sizeof(z_stream));
+        memory::fill(&_impl->stream, 0, sizeof(z_stream));
 
         _impl->stream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
             constexpr safe_allocator<uint8_t> allocator;
@@ -200,7 +200,7 @@ void stream_decompressor::decompress(const_span<uint8_t> buf, vector<uint8_t>& r
 
     if (!_impl) {
         _impl = safe_alloc::make_unique<impl>();
-        mem_fill(&_impl->stream, 0, sizeof(z_stream));
+        memory::fill(&_impl->stream, 0, sizeof(z_stream));
 
         _impl->stream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
             constexpr safe_allocator<uint8_t> allocator;

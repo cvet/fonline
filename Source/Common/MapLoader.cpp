@@ -154,7 +154,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
-            write_log(log_type::warning, "Proto critter invalid data");
+            logging::write(logging::type::warning, "Proto critter invalid data");
             errors++;
             continue;
         }
@@ -166,7 +166,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         auto proto = meta.GetProtoCritter(hashed_proto_name);
 
         if (!proto) {
-            write_log(log_type::warning, "Proto critter '{}' not found", proto_name);
+            logging::write(logging::type::warning, "Proto critter '{}' not found", proto_name);
             errors++;
         }
         else {
@@ -174,8 +174,8 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
                 cr_load(id, proto, kv);
             }
             catch (const std::exception& ex) {
-                write_log(log_type::warning, "Unable to load critter '{}'", proto_name);
-                report_exception_and_continue(ex);
+                logging::write(logging::type::warning, "Unable to load critter '{}'", proto_name);
+                exceptions::report_and_continue(ex);
                 errors++;
             }
         }
@@ -187,7 +187,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
-            write_log(log_type::warning, "Proto item invalid data");
+            logging::write(logging::type::warning, "Proto item invalid data");
             errors++;
             continue;
         }
@@ -199,7 +199,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
         auto proto = meta.GetProtoItem(hashed_proto_name);
 
         if (!proto) {
-            write_log(log_type::warning, "Proto item '{}' not found", proto_name);
+            logging::write(logging::type::warning, "Proto item '{}' not found", proto_name);
             errors++;
         }
         else {
@@ -207,8 +207,8 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
                 item_load(id, proto, kv);
             }
             catch (const std::exception& ex) {
-                write_log(log_type::warning, "Unable to load item '{}'", proto_name);
-                report_exception_and_continue(ex);
+                logging::write(logging::type::warning, "Unable to load item '{}'", proto_name);
+                exceptions::report_and_continue(ex);
                 errors++;
             }
         }

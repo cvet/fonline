@@ -131,7 +131,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
         if (all_languages.emplace(lang_name).second) {
             if (std::ranges::find(bake_languages.Languages, lang_name) == bake_languages.Languages.end()) {
-                write_log(log_type::warning, "Unsupported language: {}. Skip", lang_name);
+                logging::write(logging::type::warning, "Unsupported language: {}. Skip", lang_name);
             }
             else {
                 languages.emplace(lang_name);

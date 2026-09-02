@@ -1930,13 +1930,13 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
     auto clear_dispatcher_hooks = scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); });
 
     size_t cancellation_exception_reports = 0;
-    auto previous_exception_callback = get_exception_callback();
-    set_exception_callback([&cancellation_exception_reports](string_view message, const catched_stack_trace_data&, bool) {
+    auto previous_exception_callback = exceptions::get_callback();
+    exceptions::set_callback([&cancellation_exception_reports](string_view message, const stack_trace::catched_data&, bool) {
         if (message.find("Injected time-event cancellation notification failure") != string_view::npos) {
             cancellation_exception_reports++;
         }
     });
-    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { set_exception_callback(std::move(previous)); });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
     REQUIRE_NOTHROW(server->TimeEventMngr.CancelAllForEntity(cr));
     CHECK(cancel_calls == event_count);
@@ -2202,9 +2202,9 @@ TEST_CASE("TimeEventManagerFiresScriptCallbacks")
     {
         (void)start_self_event("LocEntity::OnCritterThrowingTimer", timespan {std::chrono::seconds {5}});
 
-        auto prev_callback = get_exception_callback();
-        set_exception_callback([](string_view, const catched_stack_trace_data&, bool) { });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
+        auto prev_callback = exceptions::get_callback();
+        exceptions::set_callback([](string_view, const stack_trace::catched_data&, bool) { });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         backdate_all_events();
         server->TimeEventMngr.ProcessTimeEvents();

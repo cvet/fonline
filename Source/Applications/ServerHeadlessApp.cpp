@@ -41,7 +41,7 @@
 FO_USING_NAMESPACE();
 
 FO_BEGIN_NAMESPACE
-extern void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
+void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
 FO_END_NAMESPACE
 
 static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<GlobalSettings>>& client_settings, vector<refcount_ptr<ClientEngine>>& clients);
@@ -77,7 +77,7 @@ int main(int argc, char** argv)
             }
 
             if (server->IsStartingError()) {
-                write_log(log_type::error, "Server startup failed, shutting down");
+                logging::write(logging::type::error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
 
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
         exit_app(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -103,7 +103,7 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log("Auto start embedded headless client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
+    logging::write("Auto start embedded headless client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
 
     FrameBalancer balancer {false, 0, 100}; // 100 fps
 

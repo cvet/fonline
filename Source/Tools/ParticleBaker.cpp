@@ -54,7 +54,7 @@ static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::filesystem::path particle_dir {fs_make_path(strex(particle_file.GetPath()).extract_dir().normalize_path_slashes())};
+    std::filesystem::path particle_dir {fs::make_path(strex(particle_file.GetPath()).extract_dir().normalize_path_slashes())};
 
     for (size_t group_index = 0; group_index < system->getNbGroups(); group_index++) {
         const SPK::Ref<SPK::Group>& group = system->getGroup(group_index);
@@ -76,7 +76,7 @@ static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<
 
         string normalized_path = strex(texture_path).normalize_path_slashes();
         bool has_drive_prefix = normalized_path.size() >= 2 && normalized_path[1] == ':' && ((normalized_path[0] >= 'A' && normalized_path[0] <= 'Z') || (normalized_path[0] >= 'a' && normalized_path[0] <= 'z'));
-        std::filesystem::path relative_path {fs_make_path(normalized_path)};
+        std::filesystem::path relative_path {fs::make_path(normalized_path)};
 
         if (normalized_path.starts_with('/') || has_drive_prefix || relative_path.is_absolute()) {
             throw ParticleBakerException("SPARK particle texture path must be relative", particle_file.GetPath(), texture_path);
@@ -131,7 +131,7 @@ static auto ParseEffekseerDependencySnapshot(string_view snapshot) -> optional<v
 
     string_view project_path = project_line.substr(0, project_first_tab);
 
-    if (!std::filesystem::path {fs_make_path(project_path)}.is_absolute()) {
+    if (!std::filesystem::path {fs::make_path(project_path)}.is_absolute()) {
         return std::nullopt;
     }
 
@@ -151,7 +151,7 @@ static auto ParseEffekseerDependencySnapshot(string_view snapshot) -> optional<v
 
             string path {line.substr(0, first_tab)};
 
-            if (!std::filesystem::path {fs_make_path(path)}.is_absolute()) {
+            if (!std::filesystem::path {fs::make_path(path)}.is_absolute()) {
                 return std::nullopt;
             }
 
@@ -177,8 +177,8 @@ static auto BuildEffekseerDependencySnapshot(string_view project_path, size_t pr
     max_write_time = project_write_time;
 
     for (const string& dependency_path : dependency_paths) {
-        optional<size_t> dependency_size = fs_file_size(dependency_path);
-        uint64_t dependency_write_time = fs_last_write_time(dependency_path);
+        optional<size_t> dependency_size = fs::file_size(dependency_path);
+        uint64_t dependency_write_time = fs::last_write_time(dependency_path);
 
         if (dependency_size && dependency_write_time != 0) {
             snapshot += strex("{}\t{}\t{}\n", dependency_path, *dependency_size, dependency_write_time);
@@ -206,8 +206,8 @@ static auto TryGetCachedEffekseerDependencyWriteTime(const BakingContext& contex
         return source_write_time;
     }
 
-    string project_path = fs_resolve_path(project_file.GetDiskPath());
-    optional<string> cached_snapshot = fs_read_file(cache_path);
+    string project_path = fs::resolve_path(project_file.GetDiskPath());
+    optional<string> cached_snapshot = fs::read_file(cache_path);
     optional<vector<string>> dependency_paths = cached_snapshot ? ParseEffekseerDependencySnapshot(*cached_snapshot) : std::nullopt;
     uint64_t dependency_write_time = 0;
     optional<string> current_snapshot = dependency_paths ? optional<string> {BuildEffekseerDependencySnapshot(project_path, project_file.GetSize(), source_write_time, *dependency_paths, dependency_write_time)} : std::nullopt;
@@ -224,10 +224,10 @@ static auto ResolveEffekseerDependencyPaths(const File& project_file, const vect
     FO_STACK_TRACE_ENTRY();
 
     vector<string> resolved_paths;
-    string project_path = fs_resolve_path(project_file.GetDiskPath());
-    string source_root_path = fs_resolve_path(project_file.GetDataSource()->GetPackName());
-    std::filesystem::path project_dir = std::filesystem::path {fs_make_path(project_path)}.parent_path();
-    std::filesystem::path source_root = std::filesystem::path {fs_make_path(source_root_path)}.lexically_normal();
+    string project_path = fs::resolve_path(project_file.GetDiskPath());
+    string source_root_path = fs::resolve_path(project_file.GetDataSource()->GetPackName());
+    std::filesystem::path project_dir = std::filesystem::path {fs::make_path(project_path)}.parent_path();
+    std::filesystem::path source_root = std::filesystem::path {fs::make_path(source_root_path)}.lexically_normal();
 
     for (string dependency_path : compiler_dependencies) {
         if (dependency_path.empty()) {
@@ -237,7 +237,7 @@ static auto ResolveEffekseerDependencyPaths(const File& project_file, const vect
             throw ParticleBakerException("Effekseer compiler produced an invalid dependency path", project_path, dependency_path);
         }
 
-        std::filesystem::path relative_path {fs_make_path(strex(dependency_path).normalize_path_slashes())};
+        std::filesystem::path relative_path {fs::make_path(strex(dependency_path).normalize_path_slashes())};
 
         if (relative_path.is_absolute()) {
             throw ParticleBakerException("Effekseer project dependency path must be relative", project_path, dependency_path);
@@ -251,7 +251,7 @@ static auto ResolveEffekseerDependencyPaths(const File& project_file, const vect
             throw ParticleBakerException("Effekseer project dependency escapes its directory resource source", project_file.GetPath(), dependency_path, source_root_path);
         }
 
-        resolved_paths.emplace_back(fs_path_to_string(resolved_path));
+        resolved_paths.emplace_back(fs::path_to_string(resolved_path));
     }
 
     std::ranges::sort(resolved_paths);
@@ -264,7 +264,7 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
 {
     FO_STACK_TRACE_ENTRY();
 
-    string project_path = fs_resolve_path(project_file.GetDiskPath());
+    string project_path = fs::resolve_path(project_file.GetDiskPath());
     vector<string> compiler_dependencies;
 
     try {
@@ -279,14 +279,14 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
     string dependency_snapshot = BuildEffekseerDependencySnapshot(project_path, project_file.GetSize(), project_file.GetWriteTime(), dependency_paths, dependency_write_time);
     string cache_path = GetEffekseerDependencyCachePath(context, output_path);
 
-    if (!cache_path.empty() && !fs_write_file(cache_path, dependency_snapshot)) {
+    if (!cache_path.empty() && !fs::write_file(cache_path, dependency_snapshot)) {
         throw ParticleBakerException("Failed to refresh Effekseer dependency cache", output_path, cache_path);
     }
 
     if (!context.Settings->BakeOutput.empty()) {
         string baked_output_path = strex(context.Settings->BakeOutput).combine_path(context.PackName).combine_path(output_path).str();
 
-        if (fs_exists(baked_output_path) && !fs_remove_file(baked_output_path)) {
+        if (fs::exists(baked_output_path) && !fs::remove_file(baked_output_path)) {
             throw ParticleBakerException("Failed to invalidate stale Effekseer particle", output_path, baked_output_path);
         }
     }
@@ -601,7 +601,7 @@ class EffekseerBoundsModelLoader final : public Effekseer::ModelLoader
 {
 public:
     EffekseerBoundsModelLoader(string source_root_path, string project_path) :
-        _sourceRoot {std::filesystem::path {fs_make_path(fs_resolve_path(source_root_path))}.lexically_normal()},
+        _sourceRoot {std::filesystem::path {fs::make_path(fs::resolve_path(source_root_path))}.lexically_normal()},
         _projectPath {std::move(project_path)}
     {
         FO_STACK_TRACE_ENTRY();
@@ -619,7 +619,7 @@ public:
 
         string normalized_path = strex(model_path).normalize_path_slashes();
         bool has_drive_prefix = normalized_path.size() >= 2 && normalized_path[1] == ':' && ((normalized_path[0] >= 'A' && normalized_path[0] <= 'Z') || (normalized_path[0] >= 'a' && normalized_path[0] <= 'z'));
-        std::filesystem::path relative_path {fs_make_path(normalized_path)};
+        std::filesystem::path relative_path {fs::make_path(normalized_path)};
 
         if (normalized_path.starts_with('/') || has_drive_prefix || relative_path.is_absolute()) {
             throw ParticleBakerException("Effekseer model dependency path must be relative", _projectPath, model_path);
@@ -630,7 +630,7 @@ public:
         auto first_component = source_relative_path.begin();
 
         if (source_relative_path.empty() || source_relative_path.is_absolute() || (first_component != source_relative_path.end() && *first_component == "..")) {
-            throw ParticleBakerException("Effekseer model dependency escapes its directory resource source", _projectPath, model_path, fs_path_to_string(_sourceRoot));
+            throw ParticleBakerException("Effekseer model dependency escapes its directory resource source", _projectPath, model_path, fs::path_to_string(_sourceRoot));
         }
 
         // The lexical check rejects ".." traversal. Resolve existing symlinks/junctions as well before opening the
@@ -639,26 +639,26 @@ public:
         std::filesystem::path canonical_source_root = std::filesystem::weakly_canonical(_sourceRoot, canonical_error);
 
         if (canonical_error) {
-            throw ParticleBakerException("Effekseer model resource source could not be resolved", _projectPath, fs_path_to_string(_sourceRoot), canonical_error.message());
+            throw ParticleBakerException("Effekseer model resource source could not be resolved", _projectPath, fs::path_to_string(_sourceRoot), canonical_error.message());
         }
 
         canonical_error.clear();
         std::filesystem::path canonical_resolved_path = std::filesystem::weakly_canonical(resolved_path, canonical_error);
 
         if (canonical_error) {
-            throw ParticleBakerException("Effekseer model dependency path could not be resolved", _projectPath, model_path, fs_path_to_string(resolved_path), canonical_error.message());
+            throw ParticleBakerException("Effekseer model dependency path could not be resolved", _projectPath, model_path, fs::path_to_string(resolved_path), canonical_error.message());
         }
 
         std::filesystem::path canonical_relative_path = canonical_resolved_path.lexically_relative(canonical_source_root);
         auto canonical_first_component = canonical_relative_path.begin();
 
         if (canonical_relative_path.empty() || canonical_relative_path.is_absolute() || (canonical_first_component != canonical_relative_path.end() && *canonical_first_component == "..")) {
-            throw ParticleBakerException("Effekseer model dependency resolves outside its directory resource source", _projectPath, model_path, fs_path_to_string(canonical_source_root));
+            throw ParticleBakerException("Effekseer model dependency resolves outside its directory resource source", _projectPath, model_path, fs::path_to_string(canonical_source_root));
         }
 
         resolved_path = std::move(canonical_resolved_path);
-        string resolved_path_string = fs_path_to_string(resolved_path);
-        optional<string> data = fs_read_file(resolved_path_string);
+        string resolved_path_string = fs::path_to_string(resolved_path);
+        optional<string> data = fs::read_file(resolved_path_string);
 
         if (!data) {
             throw ParticleBakerException("Effekseer model dependency is missing", _projectPath, model_path, resolved_path_string);
@@ -923,7 +923,7 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
             throw ParticleBakerException("Effekseer text projects can only be compiled from a directory resource source", file.GetPath(), file.GetDataSource()->GetPackName());
         }
 
-        string project_path = fs_resolve_path(file.GetDiskPath());
+        string project_path = fs::resolve_path(file.GetDiskPath());
         string output_path = strex(file.GetPath()).change_file_extension("efk");
         EffekseerCompilerOutput compiled;
 
@@ -950,7 +950,7 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
         _context->WriteData(output_path, compiled.Binary);
         string cache_path = GetEffekseerDependencyCachePath(*_context, output_path);
 
-        if (!cache_path.empty() && !fs_write_file(cache_path, dependency_snapshot)) {
+        if (!cache_path.empty() && !fs::write_file(cache_path, dependency_snapshot)) {
             throw ParticleBakerException("Failed to write Effekseer dependency cache", output_path, cache_path);
         }
     }

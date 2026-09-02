@@ -494,7 +494,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
         auto sep = pair_text.find('=');
 
         if (sep == string::npos) {
-            write_log("Animation viewer: bad Render.ModelLayerProperties entry, expected <PropertyName>=<LayerIndex>: {}", pair_text);
+            logging::write("Animation viewer: bad Render.ModelLayerProperties entry, expected <PropertyName>=<LayerIndex>: {}", pair_text);
             continue;
         }
 
@@ -507,7 +507,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
         }
 
         if (!strex(index_text).is_number()) {
-            write_log("Animation viewer: bad layer index in Render.ModelLayerProperties: {}", pair_text);
+            logging::write("Animation viewer: bad layer index in Render.ModelLayerProperties: {}", pair_text);
             continue;
         }
 

@@ -1534,15 +1534,15 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(strex(path).normalize_path_slashes())}).lexically_normal();
-    return fs_path_to_string(resolved);
+    std::filesystem::path resolved = (std::filesystem::path {fs::make_path(context.ProjectDirectory)} / std::filesystem::path {fs::make_path(strex(path).normalize_path_slashes())}).lexically_normal();
+    return fs::path_to_string(resolved);
 }
 
 [[nodiscard]] static auto ReadTextureSize(const CompilerContext& context, string_view path) -> optional<std::pair<float32_t, float32_t>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    optional<string> bytes = fs_read_file(ResolveDependencyPath(context, path));
+    optional<string> bytes = fs::read_file(ResolveDependencyPath(context, path));
 
     if (!bytes || bytes->size() < 18) {
         return std::nullopt;
@@ -2443,7 +2443,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     }
 
     CompilerContext context;
-    context.ProjectDirectory = fs_path_to_string(std::filesystem::path {fs_make_path(project_path)}.parent_path());
+    context.ProjectDirectory = fs::path_to_string(std::filesystem::path {fs::make_path(project_path)}.parent_path());
     nptr<const XmlNode> root = Find(&project, "Root");
 
     if (!root) {

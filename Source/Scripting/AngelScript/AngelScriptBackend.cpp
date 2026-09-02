@@ -117,7 +117,7 @@ static void CopyScriptTextToBuffer(std::vector<char, Allocator>& data, const str
         return;
     }
 
-    mem_copy(data.data(), text.data(), text.size());
+    memory::copy(data.data(), text.data(), text.size());
 }
 
 static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) noexcept
@@ -245,7 +245,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
                 _debuggerEndpointServer.emplace(make_ptr(this));
             }
             catch (...) {
-                write_log("Can't start AngelScript debugger endpoint server");
+                logging::write("Can't start AngelScript debugger endpoint server");
             }
         }
     }
@@ -266,7 +266,7 @@ void AngelScriptBackend::SendMessage(string_view message) const
         _messageCallback(message);
     }
     else {
-        write_log(message);
+        logging::write(message);
     }
 }
 
@@ -291,7 +291,7 @@ public:
 
         _binBuf->resize(_binBuf->size() + size);
         ptr<AngelScript::asBYTE> target = _binBuf->data() + _writePos;
-        mem_copy(target, source, size);
+        memory::copy(target, source, size);
         _writePos += size;
 
         return 0;
@@ -312,7 +312,7 @@ public:
         }
 
         ptr<const AngelScript::asBYTE> source = _binBuf->data() + _readPos;
-        mem_copy(target, source, size);
+        memory::copy(target, source, size);
         _readPos += size;
 
         return 0;
@@ -359,10 +359,10 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     auto source_endian_tag = reader.read<uint8_t>();
 
     if (source_pointer_size != AS_BYTECODE_POINTER_SIZE) {
-        write_log("Loading cross-platform bytecode: compiled with {}-bit pointers, running with {}-bit pointers", source_pointer_size * 8, AS_BYTECODE_POINTER_SIZE * 8);
+        logging::write("Loading cross-platform bytecode: compiled with {}-bit pointers, running with {}-bit pointers", source_pointer_size * 8, AS_BYTECODE_POINTER_SIZE * 8);
     }
     if (source_endian_tag != AS_BYTECODE_ENDIAN_TAG) {
-        write_log("Loading cross-endian bytecode: source endian tag {}, local endian tag {}", source_endian_tag, AS_BYTECODE_ENDIAN_TAG);
+        logging::write("Loading cross-endian bytecode: source endian tag {}, local endian tag {}", source_endian_tag, AS_BYTECODE_ENDIAN_TAG);
     }
 
     vector<AngelScript::asBYTE> buf(reader.read<uint32_t>());
@@ -594,7 +594,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         throw ScriptCompilerException("Preprocessor failed", errors.String);
     }
     else if (!errors.String.empty()) {
-        write_log("Preprocessor message: {}", errors.String);
+        logging::write("Preprocessor message: {}", errors.String);
     }
 
     string attribute_errors;

@@ -628,7 +628,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
 
     if (ext.empty()) {
         break_into_debugger();
-        write_log("Extension not found, file '{}'", path);
+        logging::write("Extension not found, file '{}'", path);
         _nonFoundSprites.emplace(path);
         return nullptr;
     }
@@ -637,7 +637,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
 
     if (it == _spriteFactoryMap.end()) {
         break_into_debugger();
-        write_log("Unknown extension, file '{}'", path);
+        logging::write("Unknown extension, file '{}'", path);
         _nonFoundSprites.emplace(path);
         return nullptr;
     }
@@ -647,7 +647,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
     if (!spr) {
         if (!no_warn_if_not_exists) {
             break_into_debugger();
-            write_log("Sprite not found: '{}'", path);
+            logging::write("Sprite not found: '{}'", path);
         }
 
         _nonFoundSprites.emplace(path);

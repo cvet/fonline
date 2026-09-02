@@ -280,7 +280,7 @@ auto DataSource::MountDir(string_view dir, bool recursive, bool non_cached, bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!fs_is_dir(dir)) {
+    if (!fs::is_dir(dir)) {
         if (maybe_not_available) {
             return safe_alloc::make_unique<DummySpace>();
         }
@@ -302,7 +302,7 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
 
     FO_VERIFY_AND_THROW(!name.empty(), "Pack data source mount requested an empty pack name", dir, maybe_not_available);
 
-    auto is_file_present = [](string_view path) -> bool { return static_cast<bool>(fs_open_ifstream(path)); };
+    auto is_file_present = [](string_view path) -> bool { return static_cast<bool>(fs::open_ifstream(path)); };
 
     string path = strex(dir).combine_path(name);
 
@@ -367,7 +367,7 @@ NonCachedDir::NonCachedDir(string_view fname, bool recursive) :
     FO_STACK_TRACE_ENTRY();
 
     _baseDir = fname;
-    _baseDir = fs_resolve_path(_baseDir);
+    _baseDir = fs::resolve_path(_baseDir);
     _baseDir += "/";
 }
 
@@ -381,10 +381,10 @@ auto NonCachedDir::IsFileExists(string_view path) const -> bool
 
     string full_path = strex(_baseDir).combine_path(path);
 
-    if (!fs_exists(full_path)) {
+    if (!fs::exists(full_path)) {
         return false;
     }
-    if (fs_is_dir(full_path)) {
+    if (fs::is_dir(full_path)) {
         return false;
     }
 
@@ -400,14 +400,14 @@ auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
     }
 
     string full_path = strex(_baseDir).combine_path(path);
-    auto file = fs_open_ifstream(full_path);
+    auto file = fs::open_ifstream(full_path);
 
     if (!file) {
         return false;
     }
 
-    size = stream_get_size(file);
-    write_time = fs_last_write_time(full_path);
+    size = fs::stream_get_size(file);
+    write_time = fs::last_write_time(full_path);
     return true;
 }
 
@@ -420,21 +420,21 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
     }
 
     string full_path = strex(_baseDir).combine_path(path);
-    auto file = fs_open_ifstream(full_path);
+    auto file = fs::open_ifstream(full_path);
 
     if (!file) {
         return nullptr;
     }
 
-    size = stream_get_size(file);
+    size = fs::stream_get_size(file);
     auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
-    if (!stream_read_exact(file, make_span(buf_data, size))) {
+    if (!fs::stream_read_exact(file, make_span(buf_data, size))) {
         throw DataSourceException("Can't read file from non cached dir", _baseDir, path);
     }
 
-    write_time = fs_last_write_time(full_path);
+    write_time = fs::last_write_time(full_path);
     return MakeFileBufferHolder(std::move(buf));
 }
 
@@ -448,13 +448,13 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
 
     string full_dir = strex(_baseDir).combine_path(dir).str();
 
-    if (!dir.empty() && !fs_is_dir(full_dir)) {
+    if (!dir.empty() && !fs::is_dir(full_dir)) {
         return {};
     }
 
     vector<string> fnames;
 
-    fs_iterate_dir(full_dir, recursive && _recursive, [&fnames](string_view path2, size_t size, uint64_t write_time) {
+    fs::iterate_dir(full_dir, recursive && _recursive, [&fnames](string_view path2, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
         fnames.emplace_back(path2);
     });
@@ -468,7 +468,7 @@ CachedDir::CachedDir(string_view fname, bool recursive) :
     FO_STACK_TRACE_ENTRY();
 
     _baseDir = fname;
-    _baseDir = fs_resolve_path(_baseDir);
+    _baseDir = fs::resolve_path(_baseDir);
     _baseDir += "/";
 
     Reindex();
@@ -481,7 +481,7 @@ auto CachedDir::Reindex() -> bool
     unordered_map<string, FileEntry> files_tree;
     vector<string> files_tree_names;
 
-    fs_iterate_dir(_baseDir, _recursive, [&](string_view path, size_t size, uint64_t write_time) {
+    fs::iterate_dir(_baseDir, _recursive, [&](string_view path, size_t size, uint64_t write_time) {
         FileEntry fe;
         fe.FileName = strex("{}{}", _baseDir, path);
         fe.FileSize = size;
@@ -541,7 +541,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     }
 
     const auto& fe = it->second;
-    auto file = fs_open_ifstream(fe.FileName);
+    auto file = fs::open_ifstream(fe.FileName);
 
     if (!file) {
         throw DataSourceException("Can't read file from cached dir", _baseDir, path);
@@ -551,7 +551,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
-    if (!stream_read_exact(file, make_span(buf_data, size))) {
+    if (!fs::stream_read_exact(file, make_span(buf_data, size))) {
         return nullptr;
     }
 
@@ -575,13 +575,13 @@ FalloutDat::FalloutDat(string_view fname)
     scoped_lock locker {_datFileLocker};
 
     _readBuf.resize(0x40000);
-    _datFile = fs_open_ifstream(fname);
+    _datFile = fs::open_ifstream(fname);
 
     if (!_datFile) {
         throw DataSourceException("Cannot open fallout dat file", fname);
     }
 
-    _writeTime = fs_last_write_time(fname);
+    _writeTime = fs::last_write_time(fname);
 
     if (!ReadTree()) {
         throw DataSourceException("Read fallout dat file tree failed");
@@ -594,19 +594,19 @@ bool FalloutDat::ReadTree()
 
     uint32_t version = 0;
 
-    if (!stream_set_read_pos(_datFile, -12, std::ios_base::end)) {
+    if (!fs::stream_set_read_pos(_datFile, -12, std::ios_base::end)) {
         return false;
     }
 
     auto version_buf = object_to_bytes(version);
 
-    if (!stream_read_exact(_datFile, version_buf)) {
+    if (!fs::stream_read_exact(_datFile, version_buf)) {
         return false;
     }
 
     // DAT 2.1 Arcanum
     if (version == 0x44415431) { // 1TAD
-        if (!stream_set_read_pos(_datFile, -4, std::ios_base::end)) {
+        if (!fs::stream_set_read_pos(_datFile, -4, std::ios_base::end)) {
             return false;
         }
 
@@ -614,12 +614,12 @@ bool FalloutDat::ReadTree()
 
         auto tree_size_buf = object_to_bytes(tree_size);
 
-        if (!stream_read_exact(_datFile, tree_size_buf)) {
+        if (!fs::stream_read_exact(_datFile, tree_size_buf)) {
             return false;
         }
 
         // Read tree
-        if (!stream_set_read_pos(_datFile, -numeric_cast<int32_t>(tree_size), std::ios_base::end)) {
+        if (!fs::stream_set_read_pos(_datFile, -numeric_cast<int32_t>(tree_size), std::ios_base::end)) {
             return false;
         }
 
@@ -627,16 +627,16 @@ bool FalloutDat::ReadTree()
 
         auto files_total_buf = object_to_bytes(files_total);
 
-        if (!stream_read_exact(_datFile, files_total_buf)) {
+        if (!fs::stream_read_exact(_datFile, files_total_buf)) {
             return false;
         }
 
         tree_size -= 28 + 4; // Subtract information block and files total
         _memTree = safe_alloc::make_unique_arr<uint8_t>(tree_size);
-        mem_fill(_memTree, 0, tree_size);
+        memory::fill(_memTree, 0, tree_size);
         ptr<uint8_t> tree_data = _memTree.get();
 
-        if (!stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
+        if (!fs::stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
             return false;
         }
 
@@ -649,19 +649,19 @@ bool FalloutDat::ReadTree()
             uint32_t fnsz = 0;
             auto fnsz_target = make_ptr(&fnsz).reinterpret_as<uint8_t>();
             ptr<const uint8_t> fnsz_source = tree_entry;
-            mem_copy(fnsz_target, fnsz_source, sizeof(fnsz));
+            memory::copy(fnsz_target, fnsz_source, sizeof(fnsz));
 
             uint32_t type = 0;
             auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
             auto type_source = tree_entry.offset(4 + fnsz + 4);
-            mem_copy(type_target, type_source, sizeof(type));
+            memory::copy(type_target, type_source, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
                 string raw_name;
                 raw_name.resize(numeric_cast<size_t>(fnsz));
                 auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
                 auto raw_name_source = tree_entry.offset(4);
-                mem_copy(raw_name_target, raw_name_source, raw_name.size());
+                memory::copy(raw_name_target, raw_name_source, raw_name.size());
                 string name = strex(raw_name).normalize_path_slashes();
 
                 if (type == 2) {
@@ -681,33 +681,33 @@ bool FalloutDat::ReadTree()
     }
 
     // DAT 2.0 Fallout2
-    if (!stream_set_read_pos(_datFile, -8, std::ios_base::end)) {
+    if (!fs::stream_set_read_pos(_datFile, -8, std::ios_base::end)) {
         return false;
     }
 
     uint32_t tree_size = 0;
     auto tree_size_buf = object_to_bytes(tree_size);
 
-    if (!stream_read_exact(_datFile, tree_size_buf)) {
+    if (!fs::stream_read_exact(_datFile, tree_size_buf)) {
         return false;
     }
 
     uint32_t dat_size = 0;
     auto dat_size_buf = object_to_bytes(dat_size);
 
-    if (!stream_read_exact(_datFile, dat_size_buf)) {
+    if (!fs::stream_read_exact(_datFile, dat_size_buf)) {
         return false;
     }
 
     // Check for DAT1.0 Fallout1 dat file
-    if (!stream_set_read_pos(_datFile, 0, std::ios_base::beg)) {
+    if (!fs::stream_set_read_pos(_datFile, 0, std::ios_base::beg)) {
         return false;
     }
 
     uint32_t dir_count = 0;
     auto dir_count_buf = object_to_bytes(dir_count);
 
-    if (!stream_read_exact(_datFile, dir_count_buf)) {
+    if (!fs::stream_read_exact(_datFile, dir_count_buf)) {
         return false;
     }
 
@@ -718,19 +718,19 @@ bool FalloutDat::ReadTree()
     }
 
     // Check for truncated
-    if (stream_get_size(_datFile) != dat_size) {
+    if (fs::stream_get_size(_datFile) != dat_size) {
         return false;
     }
 
     // Read tree
-    if (!stream_set_read_pos(_datFile, -(numeric_cast<int32_t>(tree_size) + 8), std::ios_base::end)) {
+    if (!fs::stream_set_read_pos(_datFile, -(numeric_cast<int32_t>(tree_size) + 8), std::ios_base::end)) {
         return false;
     }
 
     uint32_t files_total = 0;
     auto files_total_buf = object_to_bytes(files_total);
 
-    if (!stream_read_exact(_datFile, files_total_buf)) {
+    if (!fs::stream_read_exact(_datFile, files_total_buf)) {
         return false;
     }
 
@@ -738,7 +738,7 @@ bool FalloutDat::ReadTree()
     _memTree = safe_alloc::make_unique_arr<uint8_t>(tree_size);
     ptr<uint8_t> tree_data = _memTree.get();
 
-    if (!stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
+    if (!fs::stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
         return false;
     }
 
@@ -751,7 +751,7 @@ bool FalloutDat::ReadTree()
         uint32_t name_len = 0;
         auto name_len_target = make_ptr(&name_len).reinterpret_as<uint8_t>();
         ptr<const uint8_t> name_len_source = tree_entry;
-        mem_copy(name_len_target, name_len_source, sizeof(name_len));
+        memory::copy(name_len_target, name_len_source, sizeof(name_len));
 
         if (tree_pos + 4 + name_len > tree_size) {
             return false;
@@ -762,7 +762,7 @@ bool FalloutDat::ReadTree()
             raw_name.resize(numeric_cast<size_t>(name_len));
             auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
             auto raw_name_source = tree_entry.offset(4);
-            mem_copy(raw_name_target, raw_name_source, raw_name.size());
+            memory::copy(raw_name_target, raw_name_source, raw_name.size());
             string name = strex(raw_name).normalize_path_slashes();
 
             auto file_info = tree_entry.offset(4 + name_len);
@@ -803,7 +803,7 @@ auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64_t& write_tim
     uint32_t real_size = 0;
     auto real_size_target = make_ptr(&real_size).reinterpret_as<uint8_t>();
     auto real_size_source = file_info.offset(1);
-    mem_copy(real_size_target, real_size_source, sizeof(real_size));
+    memory::copy(real_size_target, real_size_source, sizeof(real_size));
 
     size = real_size;
     write_time = _writeTime;
@@ -826,24 +826,24 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
     uint8_t type = 0;
     auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
     auto type_source = file_info;
-    mem_copy(type_target, type_source, sizeof(type));
+    memory::copy(type_target, type_source, sizeof(type));
 
     uint32_t real_size = 0;
     auto real_size_target = make_ptr(&real_size).reinterpret_as<uint8_t>();
     auto real_size_source = file_info.offset(1);
-    mem_copy(real_size_target, real_size_source, sizeof(real_size));
+    memory::copy(real_size_target, real_size_source, sizeof(real_size));
 
     uint32_t packed_size = 0;
     auto packed_size_target = make_ptr(&packed_size).reinterpret_as<uint8_t>();
     auto packed_size_source = file_info.offset(5);
-    mem_copy(packed_size_target, packed_size_source, sizeof(packed_size));
+    memory::copy(packed_size_target, packed_size_source, sizeof(packed_size));
 
     int32_t offset = 0;
     auto offset_target = make_ptr(&offset).reinterpret_as<uint8_t>();
     auto offset_source = file_info.offset(9);
-    mem_copy(offset_target, offset_source, sizeof(offset));
+    memory::copy(offset_target, offset_source, sizeof(offset));
 
-    if (!stream_set_read_pos(_datFile, offset, std::ios_base::beg)) {
+    if (!fs::stream_set_read_pos(_datFile, offset, std::ios_base::beg)) {
         throw DataSourceException("Can't read file from fallout dat (1)", path);
     }
 
@@ -853,7 +853,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
 
     if (type == 0) {
         // Plane data
-        if (!stream_read_exact(_datFile, make_span(buf_data, size))) {
+        if (!fs::stream_read_exact(_datFile, make_span(buf_data, size))) {
             throw DataSourceException("Can't read file from fallout dat (2)", path);
         }
     }
@@ -888,7 +888,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
                 auto read_buf = make_nptr(_readBuf.data());
                 stream.next_in = read_buf.get();
 
-                if (!stream_read_exact(_datFile, make_span(read_buf, len))) {
+                if (!fs::stream_read_exact(_datFile, make_span(read_buf, len))) {
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
                 }
 
@@ -919,7 +919,7 @@ struct EmbeddedZipMemStream
 
 ZipFile::ZipFile(string_view fname) :
     _fileName {fname},
-    _fileStream {safe_alloc::make_unique<std::ifstream>(fs_open_ifstream(_fileName))}
+    _fileStream {safe_alloc::make_unique<std::ifstream>(fs::open_ifstream(_fileName))}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -931,7 +931,7 @@ ZipFile::ZipFile(string_view fname) :
         throw DataSourceException("Can't open zip file", _fileName);
     }
 
-    _writeTime = fs_last_write_time(_fileName);
+    _writeTime = fs::last_write_time(_fileName);
 
     ffunc.zopen_file = [](voidpf opaque, const char*, int32_t) -> voidpf {
         nptr<void> stream = opaque;
@@ -945,24 +945,24 @@ ZipFile::ZipFile(string_view fname) :
             return 0;
         }
         FO_VERIFY_AND_THROW(buf != nullptr, "Zip read callback received a null output buffer");
-        return stream_read_exact(*file, make_span(buf, size)) ? size : 0;
+        return fs::stream_read_exact(*file, make_span(buf, size)) ? size : 0;
     };
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
         auto file = cast_from_void<std::ifstream*>(stream);
         FO_VERIFY_AND_THROW(file, "Zip tell callback received a null file stream");
-        return numeric_cast<long>(stream_get_read_pos(*file));
+        return numeric_cast<long>(fs::stream_get_read_pos(*file));
     };
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32_t origin) -> long {
         auto file = cast_from_void<std::ifstream*>(stream);
         FO_VERIFY_AND_THROW(file, "Zip seek callback received a null file stream");
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
-            return stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::beg) ? 0 : -1;
+            return fs::stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::beg) ? 0 : -1;
         case ZLIB_FILEFUNC_SEEK_CUR:
-            return stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::cur) ? 0 : -1;
+            return fs::stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::cur) ? 0 : -1;
         case ZLIB_FILEFUNC_SEEK_END:
-            return stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::end) ? 0 : -1;
+            return fs::stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::end) ? 0 : -1;
         default:
             return -1;
         }
@@ -1122,7 +1122,7 @@ EmbeddedFile::EmbeddedFile()
     }
 
     if (default_array) {
-        write_log("Embedded resources not really embed");
+        logging::write("Embedded resources not really embed");
         return;
     }
 
@@ -1136,7 +1136,7 @@ EmbeddedFile::EmbeddedFile()
         uint32_t embedded_size = 0;
 
         auto embedded_size_target = make_ptr(&embedded_size).reinterpret_as<uint8_t>();
-        mem_copy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
+        memory::copy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
 
         auto mem_stream = safe_alloc::make_unique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
 
@@ -1344,7 +1344,7 @@ FilesList::FilesList()
     _filesTree.clear();
     _filesTreeNames.clear();
 
-    auto files_tree_content = fs_read_file("FilesTree.txt");
+    auto files_tree_content = fs::read_file("FilesTree.txt");
 
     if (!files_tree_content) {
         throw DataSourceException("Can't open 'FilesTree.txt' in file list assets");
@@ -1359,7 +1359,7 @@ FilesList::FilesList()
             continue;
         }
 
-        auto file = fs_open_ifstream(name);
+        auto file = fs::open_ifstream(name);
 
         if (!file) {
             throw DataSourceException("Can't open file in file list assets", name);
@@ -1367,8 +1367,8 @@ FilesList::FilesList()
 
         FileEntry fe;
         fe.FileName = name;
-        fe.FileSize = stream_get_size(file);
-        fe.WriteTime = fs_last_write_time(name);
+        fe.FileSize = fs::stream_get_size(file);
+        fe.WriteTime = fs::last_write_time(name);
 
         _filesTree.emplace(name, std::move(fe));
         _filesTreeNames.emplace_back(name);
@@ -1415,7 +1415,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     }
 
     const auto& fe = it->second;
-    auto file = fs_open_ifstream(fe.FileName);
+    auto file = fs::open_ifstream(fe.FileName);
 
     if (!file) {
         throw DataSourceException("Can't open file in file list assets", path);
@@ -1425,7 +1425,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
-    if (!stream_read_exact(file, make_span(buf_data, size))) {
+    if (!fs::stream_read_exact(file, make_span(buf_data, size))) {
         throw DataSourceException("Can't read file in file list assets", path);
     }
 

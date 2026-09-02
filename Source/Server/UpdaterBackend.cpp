@@ -48,7 +48,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log("Load client data packs for synchronization");
+    logging::write("Load client data packs for synchronization");
 
     // Built into locals and swapped in by a no-throw tail, so a throw mid-load leaves every member untouched
     // instead of half-rebuilt
@@ -61,29 +61,29 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     auto add_sync_file = [&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
 
-        auto file = fs_open_ifstream(disk_path);
+        auto file = fs::open_ifstream(disk_path);
 
         if (!file) {
             throw UpdaterException("Resource pack for client not found", disk_path);
         }
 
-        size_t file_size = stream_get_size(file);
+        size_t file_size = fs::stream_get_size(file);
 
         if (settings.UpdateFilesInMemory) {
             data.InMemory = true;
             data.MemoryData.resize(file_size);
 
-            if (!stream_read_exact(file, data.MemoryData)) {
+            if (!fs::stream_read_exact(file, data.MemoryData)) {
                 throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
             data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs_hash_data(data.MemoryData);
+            data.Hash = fs::hash_data(data.MemoryData);
         }
         else {
             data.DiskPath = string(disk_path);
             data.Size = numeric_cast<uint64_t>(file_size);
-            auto file_hash = fs_hash_file(disk_path);
+            auto file_hash = fs::hash_file(disk_path);
 
             if (!file_hash.has_value()) {
                 throw UpdaterException("Can't hash resource pack for client", disk_path);
@@ -101,12 +101,12 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         return info;
     };
 
-    auto client_resources_dir = std::filesystem::path {fs_make_path(settings.ClientResources)};
+    auto client_resources_dir = std::filesystem::path {fs::make_path(settings.ClientResources)};
 
     for (const auto& resource_entry : settings.ClientResourceEntries) {
         if (resource_entry != "Embedded") {
             string pack_name = strex("{}.zip", resource_entry).str();
-            string pack_disk_path = fs_path_to_string(client_resources_dir / fs_make_path(pack_name));
+            string pack_disk_path = fs::path_to_string(client_resources_dir / fs::make_path(pack_name));
             auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
             common_update_files.emplace_back(std::move(info));
         }
@@ -114,8 +114,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
     VerifyClientResourcesMetadata(settings, server_metadata_version);
 
-    auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
-    string platform_binaries_path = fs_path_to_string(platform_binaries_dir);
+    auto platform_binaries_dir = std::filesystem::path {fs::make_path(settings.PlatformBinaries)};
+    string platform_binaries_path = fs::path_to_string(platform_binaries_dir);
 
     if (std::filesystem::exists(platform_binaries_dir)) {
         FO_VERIFY_AND_THROW(std::filesystem::is_directory(platform_binaries_dir), "Platform binaries path exists but is not a directory", platform_binaries_path);
@@ -125,13 +125,13 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
                 continue;
             }
 
-            string binary_target_name = fs_path_to_string(platform_entry.path().filename());
-            FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path, fs_path_to_string(platform_entry.path()));
+            string binary_target_name = fs::path_to_string(platform_entry.path().filename());
+            FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path, fs::path_to_string(platform_entry.path()));
 
             for (const auto& binary_entry : std::filesystem::recursive_directory_iterator {platform_entry.path()}) {
-                FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs_path_to_string(binary_entry.path()));
-                string disk_path = fs_path_to_string(binary_entry.path());
-                string client_file_name = fs_path_to_string(binary_entry.path().filename());
+                FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs::path_to_string(binary_entry.path()));
+                string disk_path = fs::path_to_string(binary_entry.path());
+                string client_file_name = fs::path_to_string(binary_entry.path().filename());
                 auto info = add_sync_file(disk_path, client_file_name, UpdateFileTarget::ClientBinaries);
                 binary_target_update_files[string(binary_target_name)].emplace_back(std::move(info));
             }
@@ -196,7 +196,7 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
         throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.ClientResources, client_metadata_version, settings.ServerResources, server_metadata_version);
     }
 
-    write_log("Client data packs match the server metadata version {}", client_metadata_version);
+    logging::write("Client data packs match the server metadata version {}", client_metadata_version);
 }
 
 auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>
@@ -220,13 +220,13 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     in_buf.Unlock();
 
     if (file_index >= _updateFiles.size()) {
-        write_log(log_type::warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
+        logging::write(logging::type::warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
     if (update_file_max_portion_size <= 0) {
-        write_log(log_type::warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
+        logging::write(logging::type::warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
@@ -235,7 +235,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     uint64_t file_size = update_file.Size;
 
     if (start_offset > file_size) {
-        write_log(log_type::warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
+        logging::write(logging::type::warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
@@ -250,10 +250,10 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     if (update_portion_size != 0 && !update_file.InMemory) {
         // The descriptor is a start-time snapshot while the bytes are read now, so a pack replaced under a
         // live server would travel to the client under the hash announced for the previous one
-        auto current_disk_size = fs_file_size(update_file.DiskPath);
+        auto current_disk_size = fs::file_size(update_file.DiskPath);
 
         if (!current_disk_size.has_value() || *current_disk_size != update_file.Size) {
-            write_log(log_type::warning, "Update file '{}' changed on disk since startup, announced size {}, current size {}, client host '{}'", update_file.DiskPath, update_file.Size, current_disk_size.value_or(0), connection->GetHost());
+            logging::write(logging::type::warning, "Update file '{}' changed on disk since startup, announced size {}, current size {}, client host '{}'", update_file.DiskPath, update_file.Size, current_disk_size.value_or(0), connection->GetHost());
             connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }
@@ -263,7 +263,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         auto read_update_file_portion = [](string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) {
             FO_STACK_TRACE_ENTRY();
 
-            auto file = fs_open_ifstream(disk_path);
+            auto file = fs::open_ifstream(disk_path);
 
             if (!file) {
                 return false;
@@ -275,11 +275,11 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
                 return false;
             }
 
-            return stream_read_exact(file, data);
+            return fs::stream_read_exact(file, data);
         };
 
         if (!read_update_file_portion(update_file.DiskPath, start_offset, disk_update_data)) {
-            write_log(log_type::warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
+            logging::write(logging::type::warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
             connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }

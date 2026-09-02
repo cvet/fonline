@@ -193,7 +193,7 @@ auto TextPack::CheckIntersections(TextPack& other) -> bool
         const_span<pair<TextPackKey, string>> other_entries = other.FindEntries(key);
 
         if (!other_entries.empty()) {
-            write_log("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other_entries.size(), value, other_entries.front().second);
+            logging::write("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other_entries.size(), value, other_entries.front().second);
             result = true;
         }
     }

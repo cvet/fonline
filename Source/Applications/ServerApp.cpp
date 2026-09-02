@@ -46,7 +46,7 @@
 FO_USING_NAMESPACE();
 
 FO_BEGIN_NAMESPACE
-extern void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
+void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
 FO_END_NAMESPACE
 
 enum class WindowLayoutMode : uint8_t
@@ -91,21 +91,21 @@ int main(int argc, char** argv) // Handled by SDL
         bool os_size_saved = false;
         isize32 os_size_before_first_child {};
 
-        list<pair<vector<string>, catched_stack_trace_data>> log_buffer;
+        list<pair<vector<string>, stack_trace::catched_data>> log_buffer;
         mutex log_buffer_locker;
         int32_t exception_count = 0;
 
-        set_log_callback("ServerApp", [&](log_type type, string_view str, nptr<const catched_stack_trace_data> st) FO_DEFERRED {
+        logging::set_callback("ServerApp", [&](logging::type type, string_view str, nptr<const stack_trace::catched_data> st) FO_DEFERRED {
             scoped_lock locker {log_buffer_locker};
 
             auto lines = strex(str).split('\n');
-            log_buffer.emplace_back(std::move(lines), st ? *st : catched_stack_trace_data {std::nullopt, get_stack_trace()});
+            log_buffer.emplace_back(std::move(lines), st ? *st : stack_trace::catched_data {std::nullopt, stack_trace::get()});
 
             if (log_buffer.size() > numeric_cast<size_t>(GetApp()->Settings.MaxServerLogLines)) {
                 log_buffer.pop_front();
             }
 
-            if (type == log_type::error) {
+            if (type == logging::type::error) {
                 exception_count++;
             }
         });
@@ -169,7 +169,7 @@ int main(int argc, char** argv) // Handled by SDL
                 }
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
             }
             catch (...) {
                 FO_UNKNOWN_EXCEPTION();
@@ -177,7 +177,7 @@ int main(int argc, char** argv) // Handled by SDL
         };
 
         if (!GetApp()->Settings.NoStart) {
-            write_log("Auto start server");
+            logging::write("Auto start server");
         }
 
         // Gui loop
@@ -192,7 +192,7 @@ int main(int argc, char** argv) // Handled by SDL
 
             if (server && get_server()->IsStarted() && GetApp()->Settings.AutoStartClientOnServer > 0 && !start_client_triggered) {
                 start_client_triggered = true;
-                write_log("Auto start embedded client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
+                logging::write("Auto start embedded client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
 
                 for (int32_t i = 0; i < GetApp()->Settings.AutoStartClientOnServer; i++) {
                     start_client();
@@ -481,7 +481,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                                 time_desc_t time = nanotime::now().desc(true);
                                 string log_name = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
-                                std::ofstream log_file {std::filesystem::path {fs_make_path(log_name)}, std::ios::binary | std::ios::trunc};
+                                std::ofstream log_file {std::filesystem::path {fs::make_path(log_name)}, std::ios::binary | std::ios::trunc};
 
                                 if (log_file && !log_lines.empty()) {
                                     log_file.write(log_lines.data(), static_cast<std::streamsize>(log_lines.size()));
@@ -513,7 +513,7 @@ int main(int argc, char** argv) // Handled by SDL
                                 running_server->DrawGui();
                             }
                             catch (const std::exception& ex) {
-                                report_exception_and_continue(ex);
+                                exceptions::report_and_continue(ex);
                             }
                             catch (...) {
                                 FO_UNKNOWN_EXCEPTION();
@@ -534,7 +534,7 @@ int main(int argc, char** argv) // Handled by SDL
                                             ImGuiTextUnformatted(lines[i]);
                                         }
 
-                                        auto formatted = st.origin.has_value() ? format_stack_trace(st) : format_stack_trace(st.catched);
+                                        auto formatted = st.origin.has_value() ? stack_trace::format(st) : stack_trace::format(st.catched);
 
                                         for (const auto& st_line : strex(formatted).split('\n')) {
                                             ImGuiTextUnformatted(st_line);
@@ -690,7 +690,7 @@ int main(int argc, char** argv) // Handled by SDL
                 }
                 catch (const std::exception& ex) {
                     exception_count++;
-                    report_exception_and_continue(ex);
+                    exceptions::report_and_continue(ex);
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();
@@ -725,11 +725,11 @@ int main(int argc, char** argv) // Handled by SDL
         exit_app(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
-        set_log_callback("", nullptr);
-        report_exception_and_exit(ex);
+        logging::set_callback("", nullptr);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
-        set_log_callback("", nullptr);
+        logging::set_callback("", nullptr);
         FO_UNKNOWN_EXCEPTION();
     }
 }

@@ -141,15 +141,15 @@ TEST_CASE("WorkThread")
 
     SECTION("ExceptionHandlerRunsBeforeGlobalExceptionReport")
     {
-        auto prev_callback = get_exception_callback();
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { set_exception_callback(std::move(prev)); });
+        auto prev_callback = exceptions::get_callback();
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         work_thread worker {"ExceptionOrderWorker"};
         std::atomic_bool handler_called = false;
         std::atomic_bool report_called = false;
         std::atomic_bool report_saw_handler = false;
 
-        set_exception_callback([&](string_view, const catched_stack_trace_data&, bool) {
+        exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) {
             report_saw_handler = handler_called.load();
             report_called = true;
         });

@@ -159,18 +159,18 @@ FileCacheStorage::FileCacheStorage(string_view real_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _workPath = fs_resolve_path(real_path);
+    _workPath = fs::resolve_path(real_path);
 }
 
 auto FileCacheStorage::CreateCacheStorage() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!fs_is_dir(_workPath)) {
-        fs_create_directories(_workPath);
+    if (!fs::is_dir(_workPath)) {
+        fs::create_directories(_workPath);
 
-        if (!fs_is_dir(_workPath)) {
-            write_log(log_type::warning, "Can't create dir for cache '{}'", _workPath);
+        if (!fs::is_dir(_workPath)) {
+            logging::write(logging::type::warning, "Can't create dir for cache '{}'", _workPath);
             return false;
         }
     }
@@ -183,7 +183,7 @@ auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
     FO_STACK_TRACE_ENTRY();
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
-    return fs_exists(path);
+    return fs::exists(path);
 }
 
 auto FileCacheStorage::GetString(string_view entry_name) const -> string
@@ -191,7 +191,7 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
     FO_STACK_TRACE_ENTRY();
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
-    auto str = fs_read_file(path);
+    auto str = fs::read_file(path);
 
     if (!str) {
         return {};
@@ -205,7 +205,7 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
     FO_STACK_TRACE_ENTRY();
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
-    auto data = fs_read_file(path);
+    auto data = fs::read_file(path);
 
     if (!data) {
         return {};
@@ -219,16 +219,16 @@ auto FileCacheStorage::GetDataBounded(string_view entry_name, size_t max_size) c
     FO_STACK_TRACE_ENTRY();
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
-    auto file_size = fs_file_size(path);
+    auto file_size = fs::file_size(path);
 
     if (!file_size.has_value()) {
-        return {.Status = fs_exists(path) ? CacheStorageReadStatus::Failed : CacheStorageReadStatus::Missing};
+        return {.Status = fs::exists(path) ? CacheStorageReadStatus::Failed : CacheStorageReadStatus::Missing};
     }
     if (file_size.value() > max_size) {
         return {.Status = CacheStorageReadStatus::TooLarge};
     }
 
-    auto data = fs_read_file_bounded(path, max_size);
+    auto data = fs::read_file_bounded(path, max_size);
 
     if (!data.has_value()) {
         return {.Status = CacheStorageReadStatus::Failed};
@@ -247,9 +247,9 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
 
-    if (!fs_write_file(path, str)) {
-        fs_remove_file(path);
-        write_log(log_type::warning, "Can't write cache at '{}'", path);
+    if (!fs::write_file(path, str)) {
+        fs::remove_file(path);
+        logging::write(logging::type::warning, "Can't write cache at '{}'", path);
     }
 }
 
@@ -270,9 +270,9 @@ auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
 
-    if (!fs_write_file(path, data)) {
-        fs_remove_file(path);
-        write_log(log_type::warning, "Can't write cache at '{}'", path);
+    if (!fs::write_file(path, data)) {
+        fs::remove_file(path);
+        logging::write(logging::type::warning, "Can't write cache at '{}'", path);
         return false;
     }
 
@@ -284,7 +284,7 @@ void FileCacheStorage::RemoveEntry(string_view entry_name)
     FO_STACK_TRACE_ENTRY();
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
-    fs_remove_file(path);
+    fs::remove_file(path);
 }
 
 FO_END_NAMESPACE

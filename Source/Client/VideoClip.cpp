@@ -273,7 +273,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
 
         if (r != TH_DUPFRAME) {
             if (r != 0) {
-                write_log("Frame does not contain encoded video data, error {}", r);
+                logging::write("Frame does not contain encoded video data, error {}", r);
                 Stop();
                 return _impl->RenderedTextureData;
             }
@@ -282,7 +282,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
             r = th_decode_ycbcr_out(_impl->DecoderContext.get(), _impl->ColorBuffer);
 
             if (r != 0) {
-                write_log("th_decode_ycbcr_out() failed, error {}", r);
+                logging::write("th_decode_ycbcr_out() failed, error {}", r);
                 Stop();
                 return _impl->RenderedTextureData;
             }
@@ -321,7 +321,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         dj = 1;
         break;
     default:
-        write_log("Wrong pixel format {}", _impl->VideoInfo.Value.pixel_fmt);
+        logging::write("Wrong pixel format {}", _impl->VideoInfo.Value.pixel_fmt);
         Stop();
         return _impl->RenderedTextureData;
     }
@@ -411,7 +411,7 @@ int32_t VideoClip::DecodePacket()
 
             auto dest_buf = make_ptr(ogg_sync_buffer(&_impl->SyncState.Value, read_bytes));
             auto source = make_ptr(_impl->RawVideoData.data()).offset(_impl->ReadPos);
-            mem_copy(dest_buf, source, read_bytes);
+            memory::copy(dest_buf, source, read_bytes);
             _impl->ReadPos += read_bytes;
             ogg_sync_wrote(&_impl->SyncState.Value, read_bytes);
         }

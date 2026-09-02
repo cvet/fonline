@@ -138,7 +138,7 @@ void ParticlePreviewSubEditor::Initialize()
         Play(*preview_hex);
     }
     else {
-        write_log(log_type::warning, "Mapper startup particle preview cannot resolve a placement hex for '{}'", _resourcePath);
+        logging::write(logging::type::warning, "Mapper startup particle preview cannot resolve a placement hex for '{}'", _resourcePath);
     }
 }
 
@@ -387,7 +387,7 @@ void ParticlePreviewSubEditor::Play(mpos hex)
     _previewMap = _mapper->GetCurMap().as_ptr();
     _previewHex = hex;
     AttachMapSprite();
-    write_log("Mapper particle preview started: '{}' at ({}, {}), seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, _seed, _scale, _prewarm);
+    logging::write("Mapper particle preview started: '{}' at ({}, {}), seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, _seed, _scale, _prewarm);
 }
 
 void ParticlePreviewSubEditor::AttachMapSprite()
@@ -525,7 +525,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     }
 
     if (had_index && (added_count != 0 || modified_count != 0 || removed_count != 0)) {
-        write_log("Mapper particle resources reindexed: {} added, {} modified, {} removed", added_count, modified_count, removed_count);
+        logging::write("Mapper particle resources reindexed: {} added, {} modified, {} removed", added_count, modified_count, removed_count);
     }
 }
 
@@ -640,7 +640,7 @@ void ParticleEditorManager::DrawWindows()
             sub_editor->DrawWindows();
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }

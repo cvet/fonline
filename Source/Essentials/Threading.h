@@ -237,13 +237,13 @@ private:
 // Pool workers live until process teardown so rpmalloc thread heaps remain adoptable
 
 // Set or query the calling thread's Tracy, OS, and log name
-extern void set_this_thread_name(const string& name) noexcept;
-extern auto get_this_thread_name() noexcept -> string_view;
+void set_this_thread_name(const string& name) noexcept;
+auto get_this_thread_name() noexcept -> string_view;
 
 // Sleep without std::this_thread::sleep_for, which rounds up to the OS timer tick and parks a sub-millisecond wait
 // for a full one. coarse_sleep parks and spends no CPU; precise_sleep hits the deadline by spinning the tail out
-extern void coarse_sleep(std::chrono::nanoseconds duration) noexcept;
-extern void precise_sleep(std::chrono::nanoseconds duration) noexcept;
+void coarse_sleep(std::chrono::nanoseconds duration) noexcept;
+void precise_sleep(std::chrono::nanoseconds duration) noexcept;
 
 // Move-only run_thread completion handle exposing join, detach, and get_id without the future type.
 // Destruction detaches rather than terminating; call join when completion is required
@@ -278,7 +278,7 @@ private:
 
 // Submit to the unbounded run-thread pool and return a joinable or discardable handle.
 // Workers persist for process lifetime so rpmalloc thread heaps remain adoptable
-[[nodiscard]] extern auto run_thread(string_view task_name, function<void()> task) -> thread;
+[[nodiscard]] auto run_thread(string_view task_name, function<void()> task) -> thread;
 
 // Launch mode for `run_async`. There are three meaningful modes, exposed as the named constants below — pass one of
 // them to `run_async(mode, ...)`
@@ -296,8 +296,8 @@ inline constexpr async_launch_mode launch_deferred_only {.use_async = false, .us
 inline constexpr async_launch_mode launch_async_and_deferred {.use_async = true, .use_deferred = true};
 
 // submit_async always queues; try_submit_async returns false at a fully busy cap for inline fallback
-extern void submit_async(string_view task_name, function<void()> task);
-extern auto try_submit_async(string_view task_name, function<void()> task) -> bool;
+void submit_async(string_view task_name, function<void()> task);
+auto try_submit_async(string_view task_name, function<void()> task) -> bool;
 
 // Run under the selected launch mode and propagate task exceptions through future.get().
 // The bounded pool is for short jobs; use run_thread for long-lived loops

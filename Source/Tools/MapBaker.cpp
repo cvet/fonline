@@ -327,7 +327,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            write_log("Map baking error: {}", ex.what());
+            logging::write("Map baking error: {}", ex.what());
             errors++;
         }
     }

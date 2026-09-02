@@ -214,7 +214,7 @@ static void worker_loop(thread_pool* pool) noexcept
             }
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
         catch (...) {
             FO_UNKNOWN_EXCEPTION();
@@ -253,7 +253,7 @@ static void internal_shutdown(thread_pool& pool) noexcept
             }
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
         catch (...) {
             FO_UNKNOWN_EXCEPTION();
@@ -282,7 +282,7 @@ static void submit_run_thread(string_view task_name, function<void()> task)
     submit_impl(pool, task_name, std::move(task), /*can_queue*/ true);
 }
 
-extern void set_this_thread_name(const string& name) noexcept
+void set_this_thread_name(const string& name) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -299,7 +299,7 @@ extern void set_this_thread_name(const string& name) noexcept
 #endif
 }
 
-extern auto get_this_thread_name() noexcept -> string_view
+auto get_this_thread_name() noexcept -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -316,7 +316,7 @@ extern auto get_this_thread_name() noexcept -> string_view
     return {thread_name.data(), thread_name.size()};
 }
 
-extern void coarse_sleep(std::chrono::nanoseconds duration) noexcept
+void coarse_sleep(std::chrono::nanoseconds duration) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -325,7 +325,7 @@ extern void coarse_sleep(std::chrono::nanoseconds duration) noexcept
     }
 }
 
-extern void precise_sleep(std::chrono::nanoseconds duration) noexcept
+void precise_sleep(std::chrono::nanoseconds duration) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -344,7 +344,7 @@ extern void precise_sleep(std::chrono::nanoseconds duration) noexcept
     }
 }
 
-extern auto run_thread(string_view task_name, function<void()> task) -> thread
+auto run_thread(string_view task_name, function<void()> task) -> thread
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -371,7 +371,7 @@ extern auto run_thread(string_view task_name, function<void()> task) -> thread
             }
             catch (...) {
             }
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
             return;
         }
         catch (...) {

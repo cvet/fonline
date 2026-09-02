@@ -47,7 +47,7 @@ static_assert(false, "Client runtime library is supported only on Windows, Linux
 #endif
 
 FO_BEGIN_NAMESPACE
-extern void ApplicationShutdownHook();
+void ApplicationShutdownHook();
 FO_END_NAMESPACE
 
 struct ClientAppData
@@ -76,10 +76,10 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+    logging::write("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     if (!IsSupportedClientRuntimeAbi(host_abi_version) || raw_exports == nullptr) {
-        write_log("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null");
+        logging::write("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null");
         return false;
     }
 
@@ -97,7 +97,7 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     exports->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION;
     exports->Run = &RunClientRuntimeAbi;
 
-    write_log("Client runtime DLL: exports ready, runtime {}, build {}, compatibility {}, ABI {}", runtime_name, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
+    logging::write("Client runtime DLL: exports ready, runtime {}, build {}, compatibility {}, ABI {}", runtime_name, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
     return true;
 }
 
@@ -114,10 +114,10 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
     }
 
     try {
-        write_log("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+        logging::write("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
         InitApp(args, combine_enum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
-        write_log("Client runtime DLL: compatibility version: {}", GetApp()->Settings.CompatibilityVersion);
+        logging::write("Client runtime DLL: compatibility version: {}", GetApp()->Settings.CompatibilityVersion);
 
         auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
 
@@ -127,7 +127,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
             balancer.EndLoop();
         }
 
-        write_log("Client runtime DLL: main loop exited");
+        logging::write("Client runtime DLL: main loop exited");
 
         bool quit_success = GetApp()->GetRequestedQuitSuccess();
         CleanupClientApp();
@@ -135,19 +135,19 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         if (runtime_result) {
             if (Data->ReloadRequested) {
                 FO_VERIFY_AND_THROW(!Data->StagedRuntimePath.empty(), "Client runtime requested reload but did not provide a staged runtime path", quit_success, Data->ReloadRequested);
-                write_log("Client runtime DLL: requesting reload from {}", Data->StagedRuntimePath);
+                logging::write("Client runtime DLL: requesting reload from {}", Data->StagedRuntimePath);
                 runtime_result->ResultKind = ClientRuntimeResultKind::ReloadRequested;
                 runtime_result->Success = true;
                 runtime_result->RequestedRuntimePath = Data->StagedRuntimePath.c_str();
             }
             else {
-                write_log("Client runtime DLL: returning shutdown, success {}", quit_success ? "yes" : "no");
+                logging::write("Client runtime DLL: returning shutdown, success {}", quit_success ? "yes" : "no");
                 runtime_result->Success = quit_success;
             }
         }
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
         CleanupClientApp();
 
         if (runtime_result) {
@@ -159,11 +159,11 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
     }
 
     if (IsAppInitialized()) {
-        write_log("Client runtime DLL: resetting application before return");
+        logging::write("Client runtime DLL: resetting application before return");
         ResetApp();
     }
 
-    write_log("Client runtime DLL: calling application shutdown hook");
+    logging::write("Client runtime DLL: calling application shutdown hook");
     safe_call([] { ApplicationShutdownHook(); });
 
     string_view result_kind = "none";
@@ -174,7 +174,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         result_success = runtime_result->Success;
     }
 
-    write_log("Client runtime DLL: finished with {}, result pointer {}, success {}", result_kind, runtime_result ? "set" : "null", result_success ? "yes" : "no");
+    logging::write("Client runtime DLL: finished with {}, result pointer {}, success {}", result_kind, runtime_result ? "set" : "null", result_success ? "yes" : "no");
 }
 
 static auto GetClient() -> ptr<ClientEngine>
@@ -198,7 +198,7 @@ static void MainEntry([[maybe_unused]] void* data)
             GetApp()->BeginFrame();
         }
         catch (const std::exception& ex) {
-            report_exception_and_exit(ex);
+            exceptions::report_and_exit(ex);
         }
 
         auto end_frame = scope_success([&]() {
@@ -206,7 +206,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 GetApp()->EndFrame();
             }
             catch (const std::exception& ex) {
-                report_exception_and_exit(ex);
+                exceptions::report_and_exit(ex);
             }
         });
 
@@ -219,7 +219,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
 
                     if (!Data->ResourceUpdater) {
-                        write_log("Client runtime DLL: creating updater");
+                        logging::write("Client runtime DLL: creating updater");
                         Data->ResourceUpdater.emplace(&GetApp()->Settings, &GetApp()->MainWindow);
                     }
 
@@ -235,17 +235,17 @@ static void MainEntry([[maybe_unused]] void* data)
 
                     switch (result) {
                     case UpdaterResult::ResourcesReady:
-                        write_log("Client runtime DLL: updater finished, resources ready");
+                        logging::write("Client runtime DLL: updater finished, resources ready");
                         Data->ResourcesSynced = true;
                         break;
                     case UpdaterResult::BinariesStaged:
                         Data->StagedRuntimePath = staged_runtime_path;
                         Data->ReloadRequested = true;
-                        write_log("Client runtime DLL: updater staged binaries at {}", Data->StagedRuntimePath);
+                        logging::write("Client runtime DLL: updater staged binaries at {}", Data->StagedRuntimePath);
                         GetApp()->RequestQuit();
                         return;
                     default:
-                        write_log("Client runtime DLL: updater failed");
+                        logging::write("Client runtime DLL: updater failed");
                         ShowUpdaterFailure(result);
                         GetApp()->RequestQuit();
                         return;
@@ -260,7 +260,7 @@ static void MainEntry([[maybe_unused]] void* data)
 #endif
             }
             catch (const std::exception& ex) {
-                report_exception_and_exit(ex);
+                exceptions::report_and_exit(ex);
             }
         }
 
@@ -275,10 +275,10 @@ static void MainEntry([[maybe_unused]] void* data)
             Data->Client.reset();
         }
         catch (const MetadataNotFoundException& ex) {
-            report_exception_and_exit(ex);
+            exceptions::report_and_exit(ex);
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
 
             if (GetApp()->Settings.RecreateClientOnError) {
                 auto client = GetClient();
@@ -288,7 +288,7 @@ static void MainEntry([[maybe_unused]] void* data)
         }
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
 }
 

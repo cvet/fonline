@@ -142,9 +142,9 @@ namespace
                     uint32_t signature {};
                     uint32_t message_size {};
                     NetMessage message {};
-                    mem_copy(&signature, data.data() + offset, sizeof(signature));
-                    mem_copy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
-                    mem_copy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
+                    memory::copy(&signature, data.data() + offset, sizeof(signature));
+                    memory::copy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
+                    memory::copy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
 
                     FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
                     FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);

@@ -603,7 +603,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         throw AppInitException("SDL_CreateGPUDevice failed", SDL_GetError(), settings.SDLGpuDriver);
     }
 
-    write_log("Used SDL_GPU rendering ({})", SDL_GetGPUDeviceDriver(_ctx->Device.get()));
+    logging::write("Used SDL_GPU rendering ({})", SDL_GetGPUDeviceDriver(_ctx->Device.get()));
 
     // Shader format: prefer the SPIR-V flavor (Vulkan), fall back to MSL (Metal)
     SDL_GPUShaderFormat device_formats = SDL_GetGPUShaderFormats(_ctx->Device.get());
@@ -631,7 +631,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             FO_VERIFY_AND_THROW(swapchain_params_ok, "SDL_SetGPUSwapchainParameters failed", SDL_GetError());
         }
         else {
-            write_log("SDL_GPU immediate present mode is not supported, VSync stays enabled");
+            logging::write("SDL_GPU immediate present mode is not supported, VSync stays enabled");
         }
     }
 
@@ -1193,7 +1193,7 @@ auto SDLGpu_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     auto mapped = MapTransferBuffer(_ctx, transfer_buf, false);
-    mem_copy(result.data(), mapped, read_size);
+    memory::copy(result.data(), mapped, read_size);
     SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
 
     return result;
@@ -1219,7 +1219,7 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     auto transfer_buf = EnsureTransferBuffer(_ctx, _ctx->UploadTransferBuf, _ctx->UploadTransferBufSize, upload_size, false);
 
     auto mapped = MapTransferBuffer(_ctx, transfer_buf, true);
-    mem_copy(mapped, data.data(), upload_size);
+    memory::copy(mapped, data.data(), upload_size);
     SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
 
     auto copy_pass = EnsureCopyPass(_ctx);
@@ -1338,17 +1338,17 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     if (vertices_data_size != 0) {
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
-            mem_copy(mapped_bytes, Vertices3D.data(), vertices_data_size);
+            memory::copy(mapped_bytes, Vertices3D.data(), vertices_data_size);
         }
         else {
-            mem_copy(mapped_bytes, Vertices.data(), vertices_data_size);
+            memory::copy(mapped_bytes, Vertices.data(), vertices_data_size);
         }
 #else
-        mem_copy(mapped_bytes, Vertices.data(), vertices_data_size);
+        memory::copy(mapped_bytes, Vertices.data(), vertices_data_size);
 #endif
     }
     if (indices_data_size != 0) {
-        mem_copy(mapped_bytes.get() + vertices_data_size, Indices.data(), indices_data_size);
+        memory::copy(mapped_bytes.get() + vertices_data_size, Indices.data(), indices_data_size);
     }
 
     SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
@@ -1573,14 +1573,14 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
-        mem_copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         auto main_texture_size = main_tex_buf->MainTexSize;
         auto main_texture_size_data = main_tex->SizeData;
-        mem_copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
+        memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     // Derived buffers are per-draw: if the draw throws before the end-of-function reset, clear them here so

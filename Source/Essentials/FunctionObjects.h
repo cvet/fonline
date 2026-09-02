@@ -92,7 +92,7 @@ namespace details
         }
 
         if (mem == nullptr) {
-            report_fatal_and_exit("Failed to allocate function target");
+            fatal::report_and_exit("Failed to allocate function target");
         }
 
         return mem;

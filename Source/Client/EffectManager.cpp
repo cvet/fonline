@@ -59,7 +59,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
         }
 
         break_into_debugger();
-        write_log("Effect file '{}' not found", path2);
+        logging::write("Effect file '{}' not found", path2);
         return {};
     });
 

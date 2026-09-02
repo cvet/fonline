@@ -64,7 +64,7 @@ void exit_app(bool success) noexcept
     }
 }
 
-extern auto is_run_in_debugger() noexcept -> bool
+auto is_run_in_debugger() noexcept -> bool
 {
 #if FO_WINDOWS
     std::call_once(run_in_debugger_once, [] { run_in_debugger = ::IsDebuggerPresent() != FALSE; });
@@ -105,7 +105,7 @@ extern auto is_run_in_debugger() noexcept -> bool
     return run_in_debugger;
 }
 
-extern auto break_into_debugger() noexcept -> bool
+auto break_into_debugger() noexcept -> bool
 {
     if (is_run_in_debugger()) {
 #if FO_WINDOWS
@@ -131,7 +131,7 @@ extern auto break_into_debugger() noexcept -> bool
     return false;
 }
 
-extern auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*
+auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*
 {
     int32_t i = 0;
     bool is_negative = false;

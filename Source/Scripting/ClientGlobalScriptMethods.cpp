@@ -1302,7 +1302,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
         }
     });
 
-    mem_fill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
+    memory::fill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
 
     for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
         client->DrawCritterModelLayers[i] = layers[i];
@@ -1561,9 +1561,9 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
             for (int32_t y = 0; y < size.height / 2; y++) {
                 auto top = numeric_cast<size_t>(y) * width;
                 auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                mem_copy(row_buf_data, pixels_data.get() + top, row_bytes);
-                mem_copy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
-                mem_copy(pixels_data.get() + bottom, row_buf_data, row_bytes);
+                memory::copy(row_buf_data, pixels_data.get() + top, row_bytes);
+                memory::copy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
+                memory::copy(pixels_data.get() + bottom, row_buf_data, row_bytes);
             }
         }
     }
@@ -1572,7 +1572,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
-        if (!fs_create_directories(dir)) {
+        if (!fs::create_directories(dir)) {
             throw ScriptException("Can't create directory for screenshot", filePath);
         }
     }
@@ -1589,12 +1589,12 @@ FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view fi
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
-        if (!fs_create_directories(dir)) {
+        if (!fs::create_directories(dir)) {
             throw ScriptException("Can't open file for writing", filePath);
         }
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream file {std::filesystem::path {fs::make_path(path)}, std::ios::binary | std::ios::trunc};
 
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);

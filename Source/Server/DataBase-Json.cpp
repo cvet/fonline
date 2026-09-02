@@ -55,7 +55,7 @@ public:
         _storageDir {storage_dir},
         _jsonIndent {db_settings->JsonIndent}
     {
-        fs_create_directories(storage_dir);
+        fs::create_directories(storage_dir);
         StartCommitThread();
     }
 
@@ -72,7 +72,7 @@ protected:
 
         string dir = strex("{}/{}", _storageDir, collection_name).str();
 
-        if (!fs_create_directories(dir)) {
+        if (!fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't ensure collection directory", dir);
         }
     }
@@ -87,7 +87,7 @@ protected:
         vector<DataBaseKey> ids;
 
         std::error_code ec;
-        auto dir_path = std::filesystem::path {fs_make_path(strex(_storageDir).combine_path(collection_name))};
+        auto dir_path = std::filesystem::path {fs::make_path(strex(_storageDir).combine_path(collection_name))};
         auto dir_iterator = std::filesystem::directory_iterator(dir_path, ec);
 
         if (!ec) {
@@ -136,7 +136,7 @@ protected:
 
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        auto json = fs_read_file(path);
+        auto json = fs::read_file(path);
 
         if (!json) {
             return {};
@@ -166,7 +166,7 @@ protected:
 
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        if (fs_exists(path)) {
+        if (fs::exists(path)) {
             throw DataBaseException("DbJson File exists for inserting", path);
         }
 
@@ -189,19 +189,19 @@ protected:
 
         string dir = strex(path).extract_dir().str();
 
-        if (!dir.empty() && !fs_create_directories(dir)) {
+        if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file", path);
         }
 
         string tmp_path = strex("{}.tmp", path).str();
 
-        if (!fs_write_file(tmp_path, pretty_json_dump)) {
-            fs_remove_file(tmp_path);
+        if (!fs::write_file(tmp_path, pretty_json_dump)) {
+            fs::remove_file(tmp_path);
             throw DataBaseException("DbJson Can't write file", path);
         }
 
-        if (!fs_rename(tmp_path, path)) {
-            fs_remove_file(tmp_path);
+        if (!fs::rename(tmp_path, path)) {
+            fs::remove_file(tmp_path);
             throw DataBaseException("DbJson Can't commit file", path);
         }
     }
@@ -216,7 +216,7 @@ protected:
 
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        auto json = fs_read_file(path);
+        auto json = fs::read_file(path);
 
         if (!json) {
             throw DataBaseException("DbJson Can't open file for reading", path);
@@ -246,19 +246,19 @@ protected:
 
         string dir = strex(path).extract_dir().str();
 
-        if (!dir.empty() && !fs_create_directories(dir)) {
+        if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file for writing", path);
         }
 
         string tmp_path = strex("{}.tmp", path).str();
 
-        if (!fs_write_file(tmp_path, pretty_json_dump)) {
-            fs_remove_file(tmp_path);
+        if (!fs::write_file(tmp_path, pretty_json_dump)) {
+            fs::remove_file(tmp_path);
             throw DataBaseException("DbJson Can't write file", path);
         }
 
-        if (!fs_rename(tmp_path, path)) {
-            fs_remove_file(tmp_path);
+        if (!fs::rename(tmp_path, path)) {
+            fs::remove_file(tmp_path);
             throw DataBaseException("DbJson Can't commit file", path);
         }
     }
@@ -271,7 +271,7 @@ protected:
 
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        if (!fs_remove_file(path)) {
+        if (!fs::remove_file(path)) {
             throw DataBaseException("DbJson Can't delete file", path);
         }
     }

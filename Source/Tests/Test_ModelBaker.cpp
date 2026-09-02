@@ -444,8 +444,8 @@ static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig, string_view ta
     FO_STACK_TRACE_ENTRY();
 
     vector<string> captured_messages;
-    set_log_callback("model-info-animation-geometry-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
-    auto remove_callback = scope_exit([]() noexcept { set_log_callback("model-info-animation-geometry-test", {}); });
+    logging::set_callback("model-info-animation-geometry-test", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured_messages.emplace_back(message); });
+    auto remove_callback = scope_exit([]() noexcept { logging::set_callback("model-info-animation-geometry-test", {}); });
     CHECK_THROWS_AS(BakeModelInfoFiles(rig, target_path), ModelInfoBakerException);
 
     auto diagnostic = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Model description baking error:") != string::npos; });
@@ -1214,8 +1214,8 @@ TEST_CASE("ModelMeshBakerOrchestration")
         rig.AddSourceFile("Models/UnweightedVertex.fbx", MakeMinimalSkinnedAsciiFbx("BrokenSkin", cluster_weights), 9);
 
         vector<string> captured_messages;
-        set_log_callback("model-mesh-unweighted-vertex-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { set_log_callback("model-mesh-unweighted-vertex-test", {}); });
+        logging::set_callback("model-mesh-unweighted-vertex-test", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured_messages.emplace_back(message); });
+        auto remove_callback = scope_exit([]() noexcept { logging::set_callback("model-mesh-unweighted-vertex-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/UnweightedVertex.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
@@ -1243,8 +1243,8 @@ TEST_CASE("ModelMeshBakerOrchestration")
         rig.AddSourceFile("Models/TooWide.fbx", MakeWideHierarchyAsciiFbx("WideNode", MODEL_ANIMATION_RIG_MAX_JOINTS), 9);
 
         vector<string> captured_messages;
-        set_log_callback("model-mesh-wide-hierarchy-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { set_log_callback("model-mesh-wide-hierarchy-test", {}); });
+        logging::set_callback("model-mesh-wide-hierarchy-test", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured_messages.emplace_back(message); });
+        auto remove_callback = scope_exit([]() noexcept { logging::set_callback("model-mesh-wide-hierarchy-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/TooWide.fbx"), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
@@ -1265,8 +1265,8 @@ f 1 2 3
             9);
 
         vector<string> captured_messages;
-        set_log_callback("model-mesh-non-finite-test", [&](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured_messages.emplace_back(message); });
-        auto remove_callback = scope_exit([]() noexcept { set_log_callback("model-mesh-non-finite-test", {}); });
+        logging::set_callback("model-mesh-non-finite-test", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured_messages.emplace_back(message); });
+        auto remove_callback = scope_exit([]() noexcept { logging::set_callback("model-mesh-non-finite-test", {}); });
 
         ModelMeshBaker baker(rig.MakeContext());
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/NonFinite.obj"), ModelMeshBakerException);

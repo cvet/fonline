@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 static auto MakeTempSettingsDir(string_view name) -> string
 {
     auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    return fs::path_to_string(base);
 }
 
 TEST_CASE("Settings")
@@ -168,8 +168,8 @@ TEST_CASE("Settings")
     {
         // Capture the "Set <name> to <value>" lines emitted by the logging pass
         string captured;
-        set_log_callback("settings_secret_redaction_test", [&captured](log_type, string_view message, nptr<const catched_stack_trace_data>) { captured += message; });
-        auto remove_callback = scope_exit([]() noexcept { set_log_callback("settings_secret_redaction_test", nullptr); });
+        logging::set_callback("settings_secret_redaction_test", [&captured](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured += message; });
+        auto remove_callback = scope_exit([]() noexcept { logging::set_callback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
         // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
@@ -217,11 +217,11 @@ TEST_CASE("Settings")
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
         string temp_dir = MakeTempSettingsDir("settings_config");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("payload.txt").str(), string_view {"  loaded value  "}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("main.fomain").str(), string_view {"ExternalValue = $FILE{payload.txt}\n"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("payload.txt").str(), string_view {"  loaded value  "}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("main.fomain").str(), string_view {"ExternalValue = $FILE{payload.txt}\n"}));
 
         GlobalSettings settings {false};
         settings.ApplyConfigAtPath("main.fomain", temp_dir);
@@ -229,7 +229,7 @@ TEST_CASE("Settings")
         CHECK(settings.GetAppliedConfigs().size() == 1);
         CHECK(settings.GetCustomSetting("ExternalValue") == "loaded value");
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("ApplyConfigAtPathThrowsForMissingConfig")
@@ -297,17 +297,17 @@ TEST_CASE("Settings")
         // An explicit absolute path is the installed layout: resolve it, create it, and pre-create the
         // cache + resource-overlay subdirs under it
         string root = MakeTempSettingsDir("settings_writable_root");
-        ignore_unused(fs_remove_dir_tree(root));
+        ignore_unused(fs::remove_dir_tree(root));
 
         settings.UserWritablePath = root;
         ResolveUserWritablePath(settings);
 
-        CHECK(settings.UserWritablePath == fs_resolve_path(root));
-        CHECK(fs_is_dir(settings.UserWritablePath));
-        CHECK(fs_is_dir(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources)));
-        CHECK(fs_is_dir(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources)));
+        CHECK(settings.UserWritablePath == fs::resolve_path(root));
+        CHECK(fs::is_dir(settings.UserWritablePath));
+        CHECK(fs::is_dir(fs::make_writable_path(settings.UserWritablePath, settings.CacheResources)));
+        CHECK(fs::is_dir(fs::make_writable_path(settings.UserWritablePath, settings.ClientResources)));
 
-        ignore_unused(fs_remove_dir_tree(root));
+        ignore_unused(fs::remove_dir_tree(root));
     }
 
     SECTION("ResolveUserWritablePathPortableStaysEmpty")
@@ -328,16 +328,16 @@ TEST_CASE("Settings")
         // A root whose parent is a regular file can't be created: the resolver must fail safe to portable
         // rather than brick startup
         string temp_dir = MakeTempSettingsDir("settings_writable_blocker");
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
         string blocker = strex(temp_dir).combine_path("blocker").str();
-        REQUIRE(fs_write_file(blocker, string_view {"x"}));
+        REQUIRE(fs::write_file(blocker, string_view {"x"}));
 
         settings.UserWritablePath = strex(blocker).combine_path("sub").str();
         ResolveUserWritablePath(settings);
 
         CHECK(settings.UserWritablePath.empty());
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
     }
 }
 

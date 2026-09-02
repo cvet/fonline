@@ -72,8 +72,8 @@ struct except_handling_data
     }
 
     std::mutex callback_locker {};
-    exception_callback callback {};
-    optional<stack_trace_data> crash_stack_trace {};
+    exceptions::callback callback {};
+    optional<stack_trace::data> crash_stack_trace {};
     optional<string> crash_info {};
 };
 FO_GLOBAL_DATA(except_handling_data, exception_handling);
@@ -98,7 +98,7 @@ private:
     bool _first_call = true;
 };
 
-static auto make_error_stack_trace(const std::exception& ex) noexcept -> catched_stack_trace_data;
+static auto make_error_stack_trace(const std::exception& ex) noexcept -> stack_trace::catched_data;
 static void set_crash_info(string info) noexcept;
 static auto safe_write_crash_info() noexcept -> bool;
 static auto format_seh_crash_info(uint32_t code, uint32_t flags, nptr<const void> address) -> string;
@@ -111,19 +111,19 @@ static backward_o_stream_buffer crash_stream_buf;
 static auto crash_stream = std::ostream(&crash_stream_buf); // Passed to Printer::print in backward.hpp
 
 FO_END_NAMESPACE
-extern void SetCrashStackTrace() noexcept // Called in backward.hpp
+void SetCrashStackTrace() noexcept // Called in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        FO_NAMESPACE exception_handling->crash_stack_trace = FO_NAMESPACE get_stack_trace();
+        FO_NAMESPACE exception_handling->crash_stack_trace = FO_NAMESPACE stack_trace::get();
     }
     catch (...) {
         // Best effort: keep the original fatal error alive even if stack capture fails
     }
 }
 
-extern void SetCrashSignalInfo(int32_t signum, int32_t code, const void* address) noexcept // Called in backward.hpp
+void SetCrashSignalInfo(int32_t signum, int32_t code, const void* address) noexcept // Called in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -134,7 +134,7 @@ extern void SetCrashSignalInfo(int32_t signum, int32_t code, const void* address
     }
 }
 
-extern void SetCrashSehInfo(uint32_t code, uint32_t flags, const void* address) noexcept // Called in backward.hpp
+void SetCrashSehInfo(uint32_t code, uint32_t flags, const void* address) noexcept // Called in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -145,7 +145,7 @@ extern void SetCrashSehInfo(uint32_t code, uint32_t flags, const void* address) 
     }
 }
 
-extern void SetCrashTerminationInfo(const char* reason) noexcept // Called in backward.hpp
+void SetCrashTerminationInfo(const char* reason) noexcept // Called in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -156,7 +156,7 @@ extern void SetCrashTerminationInfo(const char* reason) noexcept // Called in ba
     }
 }
 
-extern auto GetCrashStream() noexcept -> std::ostream& // Passed to Printer::print in backward.hpp
+auto GetCrashStream() noexcept -> std::ostream& // Passed to Printer::print in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -164,19 +164,19 @@ extern auto GetCrashStream() noexcept -> std::ostream& // Passed to Printer::pri
 }
 FO_BEGIN_NAMESPACE
 
-extern void report_exception_and_exit(const std::exception& ex) noexcept
+void exceptions::report_and_exit(const std::exception& ex) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
         auto st = make_error_stack_trace(ex);
 
-        if (auto callback = get_exception_callback()) {
+        if (auto callback = exceptions::get_callback()) {
             callback(ex.what(), st, true);
         }
         else {
-            write_base_log(strex("{}\n", ex.what()), &st);
-            write_base_log("Shutdown!\n\n");
+            logging::write_base(strex("{}\n", ex.what()), &st);
+            logging::write_base("Shutdown!\n\n");
         }
     }
     catch (...) {
@@ -186,19 +186,19 @@ extern void report_exception_and_exit(const std::exception& ex) noexcept
     exit_app(false);
 }
 
-extern void report_exception_and_continue(const std::exception& ex) noexcept
+void exceptions::report_and_continue(const std::exception& ex) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
         auto st = make_error_stack_trace(ex);
 
-        if (auto callback = get_exception_callback()) {
+        if (auto callback = exceptions::get_callback()) {
             callback(ex.what(), st, false);
         }
         else {
-            write_base_log(strex("{}\n", ex.what()), &st);
-            write_base_log("\n\n");
+            logging::write_base(strex("{}\n", ex.what()), &st);
+            logging::write_base("\n\n");
         }
     }
     catch (...) {
@@ -207,7 +207,7 @@ extern void report_exception_and_continue(const std::exception& ex) noexcept
     break_into_debugger();
 }
 
-extern void set_exception_callback(exception_callback callback) noexcept
+void exceptions::set_callback(exceptions::callback callback) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -216,7 +216,7 @@ extern void set_exception_callback(exception_callback callback) noexcept
     exception_handling->callback = std::move(callback);
 }
 
-extern auto get_exception_callback() noexcept -> exception_callback
+auto exceptions::get_callback() noexcept -> exceptions::callback
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -244,7 +244,7 @@ public:
 
 #endif
 
-extern void install_crash_handler_stack_for_this_thread() noexcept
+void exceptions::install_crash_handler_stack() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -282,17 +282,17 @@ extern void install_crash_handler_stack_for_this_thread() noexcept
 #endif
 }
 
-static auto make_error_stack_trace(const std::exception& ex) noexcept -> catched_stack_trace_data
+static auto make_error_stack_trace(const std::exception& ex) noexcept -> stack_trace::catched_data
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     auto ex_ptr = make_nptr(&ex);
 
     if (auto base_engine_ex = ex_ptr.dyn_cast<const BaseEngineException>()) {
-        return catched_stack_trace_data {base_engine_ex->stack_trace(), get_stack_trace()};
+        return stack_trace::catched_data {base_engine_ex->stack_trace(), stack_trace::get()};
     }
     else {
-        return catched_stack_trace_data {std::nullopt, get_stack_trace()};
+        return stack_trace::catched_data {std::nullopt, stack_trace::get()};
     }
 }
 
@@ -308,7 +308,7 @@ auto backward_o_stream_buffer::overflow(int_type ch) -> int_type
     FO_NO_STACK_TRACE_ENTRY();
 
     const char s[] = {static_cast<char>(ch)};
-    write_base_log(string_view {s, 1});
+    logging::write_base(string_view {s, 1});
     return ch;
 }
 
@@ -321,7 +321,7 @@ auto backward_o_stream_buffer::xsputn(const char_type* s, std::streamsize count)
         _first_call = false;
     }
 
-    write_base_log(string_view {s, static_cast<string_view::size_type>(count)});
+    logging::write_base(string_view {s, static_cast<string_view::size_type>(count)});
     return count;
 }
 
@@ -329,18 +329,18 @@ void backward_o_stream_buffer::write_header() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    suspend_async_log_writing();
+    logging::suspend_async_writing();
 
-    write_base_log("\nFATAL ERROR!\n");
+    logging::write_base("\nFATAL ERROR!\n");
 
     if (!safe_write_crash_info()) {
-        write_base_log("Crash reason: unavailable\n");
+        logging::write_base("Crash reason: unavailable\n");
     }
 
-    write_base_log("\n");
+    logging::write_base("\n");
 
     if (exception_handling->crash_stack_trace.has_value()) {
-        safe_write_stack_trace(*exception_handling->crash_stack_trace);
+        logging::safe_write_stack_trace(*exception_handling->crash_stack_trace);
     }
 }
 
@@ -362,7 +362,7 @@ static auto safe_write_crash_info() noexcept -> bool
 
     try {
         if (exception_handling->crash_info.has_value()) {
-            write_base_log(strex("Crash reason: {}\n", *exception_handling->crash_info));
+            logging::write_base(strex("Crash reason: {}\n", *exception_handling->crash_info));
             return true;
         }
     }

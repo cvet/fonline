@@ -327,12 +327,12 @@ struct fixed_string
 // Generic helpers
 
 // Mechanical process termination only; failure callers own any diagnostics they require
-[[noreturn]] extern void exit_app(bool success) noexcept;
+[[noreturn]] void exit_app(bool success) noexcept;
 
-extern auto is_run_in_debugger() noexcept -> bool;
-extern auto break_into_debugger() noexcept -> bool;
+auto is_run_in_debugger() noexcept -> bool;
+auto break_into_debugger() noexcept -> bool;
 
-extern auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
+auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
 
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)

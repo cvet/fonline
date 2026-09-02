@@ -120,7 +120,7 @@ static void ParticleViewerEntry([[maybe_unused]] void* data)
                 Data->Viewer->SetFillViewport(true);
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
                 GetApp()->RequestQuit();
                 GetApp()->EndFrame();
                 return;
@@ -131,13 +131,13 @@ static void ParticleViewerEntry([[maybe_unused]] void* data)
             DrawViewerFrame();
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         GetApp()->EndFrame();
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -196,7 +196,7 @@ int main(int argc, char** argv) // Handled by SDL
         exit_app(true);
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

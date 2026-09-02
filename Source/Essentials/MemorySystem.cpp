@@ -45,9 +45,9 @@ FO_BEGIN_NAMESPACE
 
 struct memory_system_data
 {
-    memory_system_data() { init_backup_memory_chunks(); }
+    memory_system_data() { memory::init_backup_chunks(); }
 
-    bad_alloc_callback callback {};
+    memory::bad_alloc_callback callback {};
 };
 FO_GLOBAL_DATA(memory_system_data, memory_system);
 
@@ -84,7 +84,7 @@ FO_END_NAMESPACE
 #define CRTDECL
 #endif
 
-extern void CRTDECL operator delete(void* p) noexcept
+void CRTDECL operator delete(void* p) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -96,7 +96,7 @@ extern void CRTDECL operator delete(void* p) noexcept
 #endif
 }
 
-extern void CRTDECL operator delete[](void* p) noexcept
+void CRTDECL operator delete[](void* p) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -108,7 +108,7 @@ extern void CRTDECL operator delete[](void* p) noexcept
 #endif
 }
 
-extern void* CRTDECL operator new(std::size_t size) noexcept(false)
+void* CRTDECL operator new(std::size_t size) noexcept(false)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -126,7 +126,7 @@ extern void* CRTDECL operator new(std::size_t size) noexcept(false)
     return p;
 }
 
-extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
+void* CRTDECL operator new[](std::size_t size) noexcept(false)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -144,7 +144,7 @@ extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
     return p;
 }
 
-extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& /*tag*/) noexcept
+void* CRTDECL operator new(std::size_t size, const std::nothrow_t& /*tag*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -159,7 +159,7 @@ extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& /*tag*
     return p;
 }
 
-extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& /*tag*/) noexcept
+void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& /*tag*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -174,7 +174,7 @@ extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& /*ta
     return p;
 }
 
-extern void CRTDECL operator delete(void* p, std::size_t /*size*/) noexcept
+void CRTDECL operator delete(void* p, std::size_t /*size*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -186,7 +186,7 @@ extern void CRTDECL operator delete(void* p, std::size_t /*size*/) noexcept
 #endif
 }
 
-extern void CRTDECL operator delete[](void* p, std::size_t /*size*/) noexcept
+void CRTDECL operator delete[](void* p, std::size_t /*size*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -198,7 +198,7 @@ extern void CRTDECL operator delete[](void* p, std::size_t /*size*/) noexcept
 #endif
 }
 
-extern void CRTDECL operator delete(void* p, std::align_val_t /*align*/) noexcept
+void CRTDECL operator delete(void* p, std::align_val_t /*align*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -210,7 +210,7 @@ extern void CRTDECL operator delete(void* p, std::align_val_t /*align*/) noexcep
 #endif
 }
 
-extern void CRTDECL operator delete[](void* p, std::align_val_t /*align*/) noexcept
+void CRTDECL operator delete[](void* p, std::align_val_t /*align*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -222,7 +222,7 @@ extern void CRTDECL operator delete[](void* p, std::align_val_t /*align*/) noexc
 #endif
 }
 
-extern void CRTDECL operator delete(void* p, std::size_t /*size*/, std::align_val_t /*align*/) noexcept
+void CRTDECL operator delete(void* p, std::size_t /*size*/, std::align_val_t /*align*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -234,7 +234,7 @@ extern void CRTDECL operator delete(void* p, std::size_t /*size*/, std::align_va
 #endif
 }
 
-extern void CRTDECL operator delete[](void* p, std::size_t /*size*/, std::align_val_t /*align*/) noexcept
+void CRTDECL operator delete[](void* p, std::size_t /*size*/, std::align_val_t /*align*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -246,7 +246,7 @@ extern void CRTDECL operator delete[](void* p, std::size_t /*size*/, std::align_
 #endif
 }
 
-extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
+void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -264,7 +264,7 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noex
     return p;
 }
 
-extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
+void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -282,7 +282,7 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) no
     return p;
 }
 
-extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& /*tag*/) noexcept
+void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& /*tag*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -297,7 +297,7 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, cons
     return p;
 }
 
-extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& /*tag*/) noexcept
+void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& /*tag*/) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -324,14 +324,14 @@ auto safe_alloc::malloc_raw(size_t size) noexcept -> nptr<void>
     nptr<void> mem = mem_malloc(size);
 
     if (!mem && size != 0) {
-        report_bad_alloc("Raw malloc failed", "byte", 1, size);
+        memory::report_bad_alloc("Raw malloc failed", "byte", 1, size);
 
-        while (!mem && free_backup_memory_chunk()) {
+        while (!mem && memory::free_backup_chunk()) {
             mem = mem_malloc(size);
         }
 
         if (!mem) {
-            report_and_exit("Failed to allocate raw from backup pool");
+            memory::report_and_exit("Failed to allocate raw from backup pool");
         }
     }
 
@@ -343,21 +343,21 @@ auto safe_alloc::calloc_raw(size_t num, size_t size) noexcept -> nptr<void>
     FO_NO_STACK_TRACE_ENTRY();
 
     if (size != 0 && num > std::numeric_limits<size_t>::max() / size) {
-        report_bad_alloc("Raw calloc size overflow", "byte", num, size);
-        report_and_exit("Raw calloc size overflow");
+        memory::report_bad_alloc("Raw calloc size overflow", "byte", num, size);
+        memory::report_and_exit("Raw calloc size overflow");
     }
 
     nptr<void> mem = mem_calloc(num, size);
 
     if (!mem && num != 0 && size != 0) {
-        report_bad_alloc("Raw calloc failed", "byte", num, size);
+        memory::report_bad_alloc("Raw calloc failed", "byte", num, size);
 
-        while (!mem && free_backup_memory_chunk()) {
+        while (!mem && memory::free_backup_chunk()) {
             mem = mem_calloc(num, size);
         }
 
         if (!mem) {
-            report_and_exit("Failed to allocate raw zeroed from backup pool");
+            memory::report_and_exit("Failed to allocate raw zeroed from backup pool");
         }
     }
 
@@ -371,14 +371,14 @@ auto safe_alloc::realloc_raw(nptr<void> ptr, size_t size) noexcept -> nptr<void>
     nptr<void> mem = mem_realloc(ptr, size);
 
     if (!mem && size != 0) {
-        report_bad_alloc("Raw realloc failed", "byte", 1, size);
+        memory::report_bad_alloc("Raw realloc failed", "byte", 1, size);
 
-        while (!mem && free_backup_memory_chunk()) {
+        while (!mem && memory::free_backup_chunk()) {
             mem = mem_realloc(ptr, size);
         }
 
         if (!mem) {
-            report_and_exit("Failed to reallocate raw from backup pool");
+            memory::report_and_exit("Failed to reallocate raw from backup pool");
         }
     }
 
@@ -397,21 +397,21 @@ auto safe_alloc::malloc_aligned_raw(size_t size, size_t alignment) noexcept -> n
     FO_NO_STACK_TRACE_ENTRY();
 
     if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
-        report_bad_alloc("Raw aligned malloc received invalid alignment", "byte", alignment, size);
-        report_and_exit("Raw aligned allocation alignment is invalid");
+        memory::report_bad_alloc("Raw aligned malloc received invalid alignment", "byte", alignment, size);
+        memory::report_and_exit("Raw aligned allocation alignment is invalid");
     }
 
     nptr<void> mem = mem_aligned_malloc(size, alignment);
 
     if (!mem && size != 0) {
-        report_bad_alloc("Raw aligned malloc failed", "byte", alignment, size);
+        memory::report_bad_alloc("Raw aligned malloc failed", "byte", alignment, size);
 
-        while (!mem && free_backup_memory_chunk()) {
+        while (!mem && memory::free_backup_chunk()) {
             mem = mem_aligned_malloc(size, alignment);
         }
 
         if (!mem) {
-            report_and_exit("Failed to allocate raw aligned from backup pool");
+            memory::report_and_exit("Failed to allocate raw aligned from backup pool");
         }
     }
 
@@ -453,7 +453,7 @@ static auto mem_calloc(size_t num, size_t size) noexcept -> nptr<void>
     }
     void* p = tracy::rpmalloc(result_size);
     if (p != nullptr) {
-        mem_fill(p, 0, result_size);
+        memory::fill(p, 0, result_size);
     }
     tracy_alloc(p, result_size);
     return p;
@@ -537,7 +537,7 @@ static void mem_aligned_free(nptr<void> ptr) noexcept
 #endif
 }
 
-extern auto allocator_get_in_use_bytes() noexcept -> size_t
+auto memory::get_in_use_bytes() noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -565,7 +565,7 @@ extern auto allocator_get_in_use_bytes() noexcept -> size_t
 #endif
 }
 
-extern void init_backup_memory_chunks()
+void memory::init_backup_chunks()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -579,7 +579,7 @@ extern void init_backup_memory_chunks()
     backup_memory_chunks_count.store(BACKUP_MEMORY_CHUNKS);
 }
 
-extern auto free_backup_memory_chunk() noexcept -> bool
+auto memory::free_backup_chunk() noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -597,14 +597,14 @@ extern auto free_backup_memory_chunk() noexcept -> bool
     }
 }
 
-void set_bad_alloc_callback(bad_alloc_callback callback) noexcept
+void memory::set_bad_alloc_callback(memory::bad_alloc_callback callback) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     memory_system->callback = std::move(callback);
 }
 
-extern void report_bad_alloc(string_view message, string_view type_str, size_t count, size_t size) noexcept
+void memory::report_bad_alloc(string_view message, string_view type_str, size_t count, size_t size) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -612,30 +612,30 @@ extern void report_bad_alloc(string_view message, string_view type_str, size_t c
 
     char itoa_buf[64] = {};
 
-    write_base_log("\nBAD ALLOC!\n\n");
-    write_base_log(message);
-    write_base_log("\n");
-    write_base_log("Type: ");
-    write_base_log(type_str);
-    write_base_log("\n");
-    write_base_log("Count: ");
-    write_base_log(itoa(static_cast<int64_t>(count), itoa_buf, 10));
-    write_base_log("\n");
-    write_base_log("Size: ");
-    write_base_log(itoa(static_cast<int64_t>(size), itoa_buf, 10));
-    write_base_log("\n\n");
-    safe_write_stack_trace(get_stack_trace());
+    logging::write_base("\nBAD ALLOC!\n\n");
+    logging::write_base(message);
+    logging::write_base("\n");
+    logging::write_base("Type: ");
+    logging::write_base(type_str);
+    logging::write_base("\n");
+    logging::write_base("Count: ");
+    logging::write_base(itoa(static_cast<int64_t>(count), itoa_buf, 10));
+    logging::write_base("\n");
+    logging::write_base("Size: ");
+    logging::write_base(itoa(static_cast<int64_t>(size), itoa_buf, 10));
+    logging::write_base("\n\n");
+    logging::safe_write_stack_trace(stack_trace::get());
 
     if (memory_system->callback) {
         memory_system->callback();
     }
 }
 
-extern void report_and_exit(string_view message) noexcept
+void memory::report_and_exit(string_view message) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    write_base_log(message);
+    logging::write_base(message);
 
     exit_app(false);
 }

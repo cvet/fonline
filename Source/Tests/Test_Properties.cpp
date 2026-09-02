@@ -482,14 +482,14 @@ namespace
     [[nodiscard]] auto MakeRawUInt16(uint16_t value) -> vector<uint8_t>
     {
         vector<uint8_t> result(sizeof(value));
-        mem_copy(result.data(), &value, sizeof(value));
+        memory::copy(result.data(), &value, sizeof(value));
         return result;
     }
 
     [[nodiscard]] auto MakeRawInt32(int32_t value) -> vector<uint8_t>
     {
         vector<uint8_t> result(sizeof(value));
-        mem_copy(result.data(), &value, sizeof(value));
+        memory::copy(result.data(), &value, sizeof(value));
         return result;
     }
 
@@ -1518,7 +1518,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0);
         FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
-        mem_copy(&store_type, store_type_data, sizeof(store_type));
+        memory::copy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);
@@ -1559,7 +1559,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0);
         FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
-        mem_copy(&store_type, store_type_data, sizeof(store_type));
+        memory::copy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);
@@ -1599,7 +1599,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0);
         FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
-        mem_copy(&store_type, store_type_data, sizeof(store_type));
+        memory::copy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);
@@ -2813,21 +2813,21 @@ TEST_CASE("PropertiesRejectNonFiniteFloatValues")
 
     array<uint8_t, sizeof(int32_t) + sizeof(float32_t) + sizeof(bool)> raw_waypoint {};
     float32_t raw_distance = std::numeric_limits<float32_t>::infinity();
-    mem_copy(raw_waypoint.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
+    memory::copy(raw_waypoint.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_waypoint_data;
     raw_waypoint_data.Set(raw_waypoint.data(), raw_waypoint.size());
     CHECK_THROWS(props.SetValue(waypoint_prop, raw_waypoint_data));
 
     array<uint8_t, sizeof(float32_t) + sizeof(int32_t)> raw_float_key_dict {};
-    mem_copy(raw_float_key_dict.data(), &raw_distance, sizeof(raw_distance));
+    memory::copy(raw_float_key_dict.data(), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_float_key_dict_data;
     raw_float_key_dict_data.Set(raw_float_key_dict.data(), raw_float_key_dict.size());
     CHECK_THROWS(props.SetValue(float_dict_key_prop, raw_float_key_dict_data));
 
     array<uint8_t, sizeof(int32_t) + sizeof(float32_t)> raw_float_value_dict {};
-    mem_copy(raw_float_value_dict.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
+    memory::copy(raw_float_value_dict.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_float_value_dict_data;
     raw_float_value_dict_data.Set(raw_float_value_dict.data(), raw_float_value_dict.size());

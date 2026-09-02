@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 static auto MakeTempMountedDir(string_view name) -> string
 {
     auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    return fs::path_to_string(base);
 }
 
 TEST_CASE("FileSystem")
@@ -49,16 +49,16 @@ TEST_CASE("FileSystem")
     SECTION("MountedDirectorySupportsFilteringAndReading")
     {
         string temp_dir = MakeTempMountedDir("filesystem_mount");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/a.txt").str(), string_view {"alpha"}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/aroot.txt").str(), string_view {"not-root"}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/b.bin").str(), string_view {"beta"}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("texts/nested/c.txt").str(), string_view {"gamma"}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("maps/Generated/_compose.fomap").str(), string_view {"scratch"}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("maps/Generated/Authored.fomap").str(), string_view {"authored"}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("root.txt").str(), string_view {"root"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("texts/a.txt").str(), string_view {"alpha"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("texts/aroot.txt").str(), string_view {"not-root"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("texts/b.bin").str(), string_view {"beta"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("texts/nested/c.txt").str(), string_view {"gamma"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("maps/Generated/_compose.fomap").str(), string_view {"scratch"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("maps/Generated/Authored.fomap").str(), string_view {"authored"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("root.txt").str(), string_view {"root"}));
 
         FileSystem fs;
         fs.AddDirSource(temp_dir, true);
@@ -120,7 +120,7 @@ TEST_CASE("FileSystem")
         FileCollection single_character_names = fs.FilterFiles(single_character_patterns, no_patterns);
         CHECK(single_character_names.GetFilesCount() == 2);
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("FileReaderSupportsEndianReadsSeekingAndFragments")
@@ -168,10 +168,10 @@ TEST_CASE("FileSystem")
     SECTION("FileCollectionReportsMissingEntriesWithoutThrowing")
     {
         string temp_dir = MakeTempMountedDir("filesystem_missing_lookup");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("entries/one.txt").str(), string_view {"one"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("entries/one.txt").str(), string_view {"one"}));
 
         FileSystem fs;
         fs.AddDirSource(temp_dir, true);
@@ -182,23 +182,23 @@ TEST_CASE("FileSystem")
         CHECK_FALSE(files.FindFileByName("missing"));
         CHECK_FALSE(files.FindFileByPath("entries/missing.txt"));
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("CachedDirectoryCanRefreshItsFileIndex")
     {
         string temp_dir = MakeTempMountedDir("filesystem_refresh");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("first.txt").str(), string_view {"first"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("first.txt").str(), string_view {"first"}));
 
         FileSystem fs;
         fs.AddDirSource(temp_dir, true);
 
         REQUIRE(fs.IsFileExists("first.txt"));
         REQUIRE_FALSE(fs.IsFileExists("second.txt"));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("second.txt").str(), string_view {"second"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("second.txt").str(), string_view {"second"}));
         REQUIRE_FALSE(fs.IsFileExists("second.txt"));
 
         CHECK(fs.ReindexDataSources());
@@ -207,15 +207,15 @@ TEST_CASE("FileSystem")
         CHECK(fs.ReadFileText("second.txt") == "second");
 
         CHECK_FALSE(fs.ReindexDataSources());
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("first.txt").str(), string_view {"first updated"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("first.txt").str(), string_view {"first updated"}));
         CHECK(fs.ReindexDataSources());
         CHECK(fs.ReadFileText("first.txt") == "first updated");
 
-        REQUIRE(fs_remove_file(strex(temp_dir).combine_path("second.txt").str()));
+        REQUIRE(fs::remove_file(strex(temp_dir).combine_path("second.txt").str()));
         CHECK(fs.ReindexDataSources());
         CHECK_FALSE(fs.IsFileExists("second.txt"));
         CHECK_FALSE(fs.ReindexDataSources());
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 }
 

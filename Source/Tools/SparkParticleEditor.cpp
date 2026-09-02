@@ -131,7 +131,7 @@ public:
                 }
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
                 ++it;
             }
         }
@@ -245,7 +245,7 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
         auto file = baked_resources->ReadFile(path);
 
         if (!file) {
-            write_log("SPARK particle editor could not read sprite resource '{}'", path);
+            logging::write("SPARK particle editor could not read sprite resource '{}'", path);
             return {nullptr, {}};
         }
 
@@ -401,7 +401,7 @@ SparkParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> sett
     }
     else {
         LoadError = strex("Failed to load SPARK particle preview for '{}'", asset_path);
-        write_log("SPARK particle editor: failed to load preview for '{}'", asset_path);
+        logging::write("SPARK particle editor: failed to load preview for '{}'", asset_path);
     }
 }
 
@@ -647,7 +647,7 @@ auto SparkParticleEditor::SaveChanges() -> bool
 
     if (!saver->save(path, base_system.get(), path)) {
         _saveError = strex("Failed to save particle source '{}'", _assetPath);
-        write_log(log_type::error, "SPARK particle editor failed to save '{}'", _assetPath);
+        logging::write(logging::type::error, "SPARK particle editor failed to save '{}'", _assetPath);
         return false;
     }
 

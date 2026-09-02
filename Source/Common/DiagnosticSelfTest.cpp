@@ -67,7 +67,7 @@ static void RunSelfTestCrash(string_view mode)
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log(log_type::warning, "Diagnostic self-test: inducing crash '{}'", mode);
+    logging::write(logging::type::warning, "Diagnostic self-test: inducing crash '{}'", mode);
 
     // Raw std::thread models an unguarded engine-thread failure.
     // work_thread catches job exceptions and therefore cannot exercise process termination
@@ -77,7 +77,7 @@ static void RunSelfTestCrash(string_view mode)
         auto crasher = std::thread([main_mode] {
             // Mirror what every long-lived engine worker thread does at entry so the self-test
             // faithfully exercises a properly set-up thread (notably for stack-overflow crashes)
-            install_crash_handler_stack_for_this_thread();
+            exceptions::install_crash_handler_stack();
             RunSelfTestCrash(main_mode);
         });
 
@@ -119,11 +119,11 @@ static void RunSelfTestCrash(string_view mode)
         CrashByFatalExit();
     }
     else if (mode == "main_failure_exit") {
-        write_log("Self-test controlled failure exit");
+        logging::write("Self-test controlled failure exit");
         exit_app(false);
     }
     else {
-        write_log(log_type::warning, "Diagnostic self-test: unknown crash mode '{}', continuing", mode);
+        logging::write(logging::type::warning, "Diagnostic self-test: unknown crash mode '{}', continuing", mode);
     }
 }
 
@@ -256,7 +256,7 @@ static void CrashByFatalExit()
 {
     FO_STACK_TRACE_ENTRY();
 
-    report_fatal_and_exit("Self-test crash: fatal exit");
+    fatal::report_and_exit("Self-test crash: fatal exit");
 }
 
 FO_END_NAMESPACE

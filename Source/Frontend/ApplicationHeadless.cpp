@@ -495,7 +495,7 @@ void Application::RequestQuit(bool success) noexcept
     }
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
-        write_log("Quit requested");
+        logging::write("Quit requested");
 
         _quitEvent.notify_all();
     }

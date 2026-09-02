@@ -44,14 +44,17 @@ static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= MAX_SERIALIZED_ALIGNMENT);
 #endif
 
 // Safe memory allocation
-using bad_alloc_callback = function<void()>;
+namespace memory
+{
+    using bad_alloc_callback = function<void()>;
 
-extern void init_backup_memory_chunks();
-extern auto free_backup_memory_chunk() noexcept -> bool;
-extern void set_bad_alloc_callback(bad_alloc_callback callback) noexcept;
-extern void report_bad_alloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
-[[noreturn]] extern void report_and_exit(string_view message) noexcept;
-extern auto allocator_get_in_use_bytes() noexcept -> size_t;
+    void init_backup_chunks();
+    auto free_backup_chunk() noexcept -> bool;
+    void set_bad_alloc_callback(bad_alloc_callback callback) noexcept;
+    void report_bad_alloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
+    [[noreturn]] void report_and_exit(string_view message) noexcept;
+    auto get_in_use_bytes() noexcept -> size_t;
+}
 
 template<typename T>
 class safe_allocator
@@ -80,22 +83,22 @@ public:
     [[nodiscard]] auto allocate(size_t count) const noexcept -> T*
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
-            report_bad_alloc("Safe allocator bad size", typeid(T).name(), count, count * sizeof(T));
-            report_and_exit("Alloc size overflow");
+            memory::report_bad_alloc("Safe allocator bad size", typeid(T).name(), count, count * sizeof(T));
+            memory::report_and_exit("Alloc size overflow");
         }
 
         size_t size = sizeof(T) * count;
         nptr<void> mem = allocate_raw(size);
 
         if (!mem) {
-            report_bad_alloc("Safe allocator failed", typeid(T).name(), count, size);
+            memory::report_bad_alloc("Safe allocator failed", typeid(T).name(), count, size);
 
-            while (!mem && free_backup_memory_chunk()) {
+            while (!mem && memory::free_backup_chunk()) {
                 mem = allocate_raw(size);
             }
 
             if (!mem) {
-                report_and_exit("Failed to allocate from backup pool");
+                memory::report_and_exit("Failed to allocate from backup pool");
             }
         }
 
@@ -190,8 +193,8 @@ public:
     static auto make_raw_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
-            report_bad_alloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
-            report_and_exit("Alloc raw size overflow");
+            memory::report_bad_alloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
+            memory::report_and_exit("Alloc raw size overflow");
         }
 
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
@@ -216,8 +219,8 @@ public:
     static auto make_unique_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
-            report_bad_alloc("Make unique array bad size", typeid(T).name(), count, count * sizeof(T));
-            report_and_exit("Alloc unique size overflow");
+            memory::report_bad_alloc("Make unique array bad size", typeid(T).name(), count, count * sizeof(T));
+            memory::report_and_exit("Alloc unique size overflow");
         }
 
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
@@ -232,14 +235,14 @@ private:
         nptr<T> ptr = alloc();
 
         if (!ptr) {
-            report_bad_alloc(alloc_desc, typeid(T).name(), count, size);
+            memory::report_bad_alloc(alloc_desc, typeid(T).name(), count, size);
 
-            while (!ptr && free_backup_memory_chunk()) {
+            while (!ptr && memory::free_backup_chunk()) {
                 ptr = alloc();
             }
 
             if (!ptr) {
-                report_and_exit(exhausted_desc);
+                memory::report_and_exit(exhausted_desc);
             }
         }
 
@@ -247,49 +250,52 @@ private:
     }
 };
 
-// Memory block operations
-inline void mem_copy(nptr<void> dest, nptr<const void> src, size_t size) noexcept
+namespace memory
 {
-    // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero.
-    // So check size first
-    if (size != 0) {
-        std::memcpy(dest.get(), src.get(), size);
+    // Memory block operations
+    inline void copy(nptr<void> dest, nptr<const void> src, size_t size) noexcept
+    {
+        // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero.
+        // So check size first
+        if (size != 0) {
+            std::memcpy(dest.get(), src.get(), size);
+        }
     }
-}
 
-inline void mem_move(nptr<void> dest, nptr<const void> src, size_t size) noexcept
-{
-    if (size != 0) {
-        std::memmove(dest.get(), src.get(), size);
+    inline void move(nptr<void> dest, nptr<const void> src, size_t size) noexcept
+    {
+        if (size != 0) {
+            std::memmove(dest.get(), src.get(), size);
+        }
     }
-}
 
-inline void mem_fill(nptr<void> ptr, int32_t value, size_t size) noexcept
-{
-    if (size != 0) {
-        std::memset(ptr.get(), value, size);
+    inline void fill(nptr<void> ptr, int32_t value, size_t size) noexcept
+    {
+        if (size != 0) {
+            std::memset(ptr.get(), value, size);
+        }
     }
-}
 
-inline auto mem_compare(nptr<const void> ptr1, nptr<const void> ptr2, size_t size) noexcept -> bool
-{
-    return size == 0 || std::memcmp(ptr1.get(), ptr2.get(), size) == 0;
-}
+    inline auto compare(nptr<const void> ptr1, nptr<const void> ptr2, size_t size) noexcept -> bool
+    {
+        return size == 0 || std::memcmp(ptr1.get(), ptr2.get(), size) == 0;
+    }
 
-template<typename T>
-inline auto mem_read_unaligned(nptr<const void> src) noexcept -> T
-{
-    static_assert(std::is_trivially_copyable_v<T>);
-    T value;
-    std::memcpy(&value, src.get(), sizeof(T));
-    return value;
-}
+    template<typename T>
+    inline auto read_unaligned(nptr<const void> src) noexcept -> T
+    {
+        static_assert(std::is_trivially_copyable_v<T>);
+        T value;
+        std::memcpy(&value, src.get(), sizeof(T));
+        return value;
+    }
 
-template<typename T>
-inline void mem_write_unaligned(nptr<void> dest, const T& value) noexcept
-{
-    static_assert(std::is_trivially_copyable_v<T>);
-    std::memcpy(dest.get(), &value, sizeof(T));
+    template<typename T>
+    inline void write_unaligned(nptr<void> dest, const T& value) noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<T>);
+        std::memcpy(dest.get(), &value, sizeof(T));
+    }
 }
 
 FO_END_NAMESPACE

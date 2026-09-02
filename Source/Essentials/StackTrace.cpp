@@ -55,14 +55,14 @@ FO_BEGIN_NAMESPACE
 
 struct resolved_native_frame_cache_entry
 {
-    stack_trace_frame frame {};
+    stack_trace::frame frame {};
     uintptr_t function_key {};
 };
 
 struct stack_trace_state
 {
     std::mutex provider_locker {};
-    script_stack_trace_provider provider {};
+    stack_trace::script_provider provider {};
     std::mutex resolved_native_frames_locker {};
     std::unordered_map<uintptr_t, resolved_native_frame_cache_entry> resolved_native_frames {};
     std::deque<uintptr_t> resolved_native_frame_order {};
@@ -71,41 +71,41 @@ struct stack_trace_state
 #endif
 };
 
-static void collect_script_layers(std::vector<script_stack_trace_layer>& out_layers) noexcept;
-static void resolve_native_range(const stack_trace_data& st, uint32_t from, uint32_t to, std::vector<stack_trace_frame>& out) noexcept;
-static auto find_layer_native_anchor(const stack_trace_data& st, const script_stack_trace_layer& layer, uint32_t search_from) noexcept -> uint32_t;
-static auto same_frame_function(native_stack_frame_address a, native_stack_frame_address b) noexcept -> bool;
-static auto resolve_function_key(native_stack_frame_address addr) noexcept -> uintptr_t;
-static auto resolve_native_frame(native_stack_frame_address addr, uint32_t index) -> resolved_native_frame_cache_entry;
-static auto resolve_native_frame_uncached(native_stack_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry;
+static void collect_script_layers(std::vector<stack_trace::script_layer>& out_layers) noexcept;
+static void resolve_native_range(const stack_trace::data& st, uint32_t from, uint32_t to, std::vector<stack_trace::frame>& out) noexcept;
+static auto find_layer_native_anchor(const stack_trace::data& st, const stack_trace::script_layer& layer, uint32_t search_from) noexcept -> uint32_t;
+static auto same_frame_function(stack_trace::native_frame_address a, stack_trace::native_frame_address b) noexcept -> bool;
+static auto resolve_function_key(stack_trace::native_frame_address addr) noexcept -> uintptr_t;
+static auto resolve_native_frame(stack_trace::native_frame_address addr, uint32_t index) -> resolved_native_frame_cache_entry;
+static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry;
 #if HAS_NATIVE_TRACE
 static auto get_native_trace_resolver() noexcept -> backward::TraceResolver&;
 #endif
-static auto try_get_resolved_native_frame_from_cache(native_stack_frame_address addr) -> std::optional<resolved_native_frame_cache_entry>;
-static void store_resolved_native_frame_in_cache(native_stack_frame_address addr, const resolved_native_frame_cache_entry& entry) noexcept;
-static auto make_native_address_cache_entry(native_stack_frame_address addr) noexcept -> resolved_native_frame_cache_entry;
-static auto make_native_address_frame(native_stack_frame_address addr) noexcept -> stack_trace_frame;
-static auto make_native_function_key(native_stack_frame_address addr, std::string_view name) noexcept -> uintptr_t;
-static auto make_native_address_key(native_stack_frame_address addr) noexcept -> uintptr_t;
-static auto is_low_native_address(native_stack_frame_address addr) noexcept -> bool;
+static auto try_get_resolved_native_frame_from_cache(stack_trace::native_frame_address addr) -> std::optional<resolved_native_frame_cache_entry>;
+static void store_resolved_native_frame_in_cache(stack_trace::native_frame_address addr, const resolved_native_frame_cache_entry& entry) noexcept;
+static auto make_native_address_cache_entry(stack_trace::native_frame_address addr) noexcept -> resolved_native_frame_cache_entry;
+static auto make_native_address_frame(stack_trace::native_frame_address addr) noexcept -> stack_trace::frame;
+static auto make_native_function_key(stack_trace::native_frame_address addr, std::string_view name) noexcept -> uintptr_t;
+static auto make_native_address_key(stack_trace::native_frame_address addr) noexcept -> uintptr_t;
+static auto is_low_native_address(stack_trace::native_frame_address addr) noexcept -> bool;
 static auto is_unresolved_native_name(std::string_view s) noexcept -> bool;
 static void trim_in_place(std::string& s) noexcept;
 static auto get_stack_trace_state() noexcept -> stack_trace_state&;
 
-extern auto get_stack_trace() noexcept -> stack_trace_data
+auto stack_trace::get() noexcept -> stack_trace::data
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    stack_trace_data st;
+    stack_trace::data st;
 
-    capture_native_stack_frames(st.native_frames, st.native_frame_count, st.native_truncated, 1);
+    stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 1);
 
     try {
-        std::vector<script_stack_trace_layer> script_layers;
+        std::vector<stack_trace::script_layer> script_layers;
         collect_script_layers(script_layers);
 
         if (!script_layers.empty()) {
-            st.script_layers = std::make_shared<const std::vector<script_stack_trace_layer>>(std::move(script_layers));
+            st.script_layers = std::make_shared<const std::vector<stack_trace::script_layer>>(std::move(script_layers));
         }
     }
     catch (...) {
@@ -115,11 +115,11 @@ extern auto get_stack_trace() noexcept -> stack_trace_data
     return st;
 }
 
-extern auto resolve_stack_trace(const stack_trace_data& st) -> std::vector<stack_trace_frame>
+auto stack_trace::resolve(const stack_trace::data& st) -> std::vector<stack_trace::frame>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    std::vector<stack_trace_frame> frames;
+    std::vector<stack_trace::frame> frames;
 
     if (!st.script_layers || st.script_layers->empty()) {
         frames.reserve(st.native_frame_count);
@@ -159,7 +159,7 @@ extern auto resolve_stack_trace(const stack_trace_data& st) -> std::vector<stack
     return frames;
 }
 
-extern auto format_stack_trace(const stack_trace_data& st) -> std::string
+auto stack_trace::format(const stack_trace::data& st) -> std::string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -167,13 +167,13 @@ extern auto format_stack_trace(const stack_trace_data& st) -> std::string
     ss << "Stack trace (most recent call first";
 
     if (st.native_truncated) {
-        ss << ", truncated at " << STACK_TRACE_MAX_NATIVE_FRAMES << " frames";
+        ss << ", truncated at " << stack_trace::MAX_NATIVE_FRAMES << " frames";
     }
 
     ss << "):";
 
-    for (const auto& frame : resolve_stack_trace(st)) {
-        ss << "\n- [" << (frame.type == stack_trace_frame::frame_type::script ? "Script" : "Native") << "] " << frame.function;
+    for (const auto& frame : stack_trace::resolve(st)) {
+        ss << "\n- [" << (frame.type == stack_trace::frame::frame_type::script ? "Script" : "Native") << "] " << frame.function;
 
         if (!frame.file.empty()) {
             std::string_view file_name {frame.file};
@@ -189,16 +189,16 @@ extern auto format_stack_trace(const stack_trace_data& st) -> std::string
     return ss.str();
 }
 
-extern auto format_stack_trace(const catched_stack_trace_data& st) -> std::string
+auto stack_trace::format(const stack_trace::catched_data& st) -> std::string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (!st.origin.has_value()) {
-        return "Catched at: " + format_stack_trace(st.catched);
+        return "Catched at: " + stack_trace::format(st.catched);
     }
 
-    auto origin_formatted = format_stack_trace(*st.origin);
-    auto catched_st = format_stack_trace(st.catched);
+    auto origin_formatted = stack_trace::format(*st.origin);
+    auto catched_st = stack_trace::format(st.catched);
 
     // Skip 'Stack trace (most recent ...'
     auto pos = catched_st.find('\n');
@@ -219,12 +219,12 @@ extern auto format_stack_trace(const catched_stack_trace_data& st) -> std::strin
     return origin_formatted.substr(0, pos).append(" <- Catched here").append(pos != std::string::npos ? origin_formatted.substr(pos) : "");
 }
 
-extern auto get_stack_trace_entry(uint32_t deep) noexcept -> std::optional<stack_trace_frame>
+auto stack_trace::get_entry(uint32_t deep) noexcept -> std::optional<stack_trace::frame>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        auto resolved = resolve_stack_trace(get_stack_trace());
+        auto resolved = stack_trace::resolve(stack_trace::get());
 
         if (deep < resolved.size()) {
             return resolved[deep];
@@ -237,7 +237,7 @@ extern auto get_stack_trace_entry(uint32_t deep) noexcept -> std::optional<stack
     return std::nullopt;
 }
 
-extern void capture_native_stack_frames(std::array<native_stack_frame_address, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
+void stack_trace::capture_native_frames(std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -246,14 +246,14 @@ extern void capture_native_stack_frames(std::array<native_stack_frame_address, S
 
 #if FO_WINDOWS
     ULONG skip_count = 1u + skip;
-    constexpr ULONG REQUEST_COUNT = static_cast<ULONG>(STACK_TRACE_MAX_NATIVE_FRAMES) + 1u;
+    constexpr ULONG REQUEST_COUNT = static_cast<ULONG>(stack_trace::MAX_NATIVE_FRAMES) + 1u;
     void* raw_frames[REQUEST_COUNT];
     USHORT captured = RtlCaptureStackBackTrace(skip_count, REQUEST_COUNT, raw_frames, nullptr);
-    out_truncated = captured > STACK_TRACE_MAX_NATIVE_FRAMES;
-    uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(STACK_TRACE_MAX_NATIVE_FRAMES));
+    out_truncated = captured > stack_trace::MAX_NATIVE_FRAMES;
+    uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(stack_trace::MAX_NATIVE_FRAMES));
 
     for (uint32_t i = 0; i < n; i++) {
-        out_frames[i] = std::bit_cast<native_stack_frame_address>(raw_frames[i]);
+        out_frames[i] = std::bit_cast<stack_trace::native_frame_address>(raw_frames[i]);
     }
 
     out_count = n;
@@ -262,13 +262,13 @@ extern void capture_native_stack_frames(std::array<native_stack_frame_address, S
     try {
         backward::StackTrace native;
         size_t skip_count = static_cast<size_t>(2) + skip;
-        native.load_here(STACK_TRACE_MAX_NATIVE_FRAMES + skip_count + 1);
+        native.load_here(stack_trace::MAX_NATIVE_FRAMES + skip_count + 1);
         native.skip_n_firsts(skip_count);
-        out_truncated = native.size() > STACK_TRACE_MAX_NATIVE_FRAMES;
-        size_t count = std::min(native.size(), STACK_TRACE_MAX_NATIVE_FRAMES);
+        out_truncated = native.size() > stack_trace::MAX_NATIVE_FRAMES;
+        size_t count = std::min(native.size(), stack_trace::MAX_NATIVE_FRAMES);
 
         for (size_t i = 0; i < count; i++) {
-            out_frames[i] = std::bit_cast<native_stack_frame_address>(native[i].addr);
+            out_frames[i] = std::bit_cast<stack_trace::native_frame_address>(native[i].addr);
         }
 
         out_count = static_cast<uint32_t>(count);
@@ -283,7 +283,7 @@ extern void capture_native_stack_frames(std::array<native_stack_frame_address, S
 #endif
 }
 
-extern void set_script_stack_trace_provider(script_stack_trace_provider provider) noexcept
+void stack_trace::set_script_provider(stack_trace::script_provider provider) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -293,7 +293,7 @@ extern void set_script_stack_trace_provider(script_stack_trace_provider provider
     state.provider = std::move(provider);
 }
 
-extern auto has_script_stack_trace_provider() noexcept -> bool
+auto stack_trace::has_script_provider() noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -303,7 +303,7 @@ extern auto has_script_stack_trace_provider() noexcept -> bool
     return !!state.provider;
 }
 
-extern void clear_resolved_stack_trace_cache() noexcept
+void stack_trace::clear_resolved_cache() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -319,7 +319,7 @@ extern void clear_resolved_stack_trace_cache() noexcept
     }
 }
 
-extern auto get_resolved_stack_trace_cache_size() noexcept -> size_t
+auto stack_trace::get_resolved_cache_size() noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -336,11 +336,11 @@ extern auto get_resolved_stack_trace_cache_size() noexcept -> size_t
     return 0;
 }
 
-static void collect_script_layers(std::vector<script_stack_trace_layer>& out_layers) noexcept
+static void collect_script_layers(std::vector<stack_trace::script_layer>& out_layers) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    script_stack_trace_provider provider;
+    stack_trace::script_provider provider;
 
     {
         stack_trace_state& state = get_stack_trace_state();
@@ -359,7 +359,7 @@ static void collect_script_layers(std::vector<script_stack_trace_layer>& out_lay
     }
 }
 
-static void resolve_native_range(const stack_trace_data& st, uint32_t from, uint32_t to, std::vector<stack_trace_frame>& out) noexcept
+static void resolve_native_range(const stack_trace::data& st, uint32_t from, uint32_t to, std::vector<stack_trace::frame>& out) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -369,7 +369,7 @@ static void resolve_native_range(const stack_trace_data& st, uint32_t from, uint
 
     try {
         for (uint32_t i = from; i < to; i++) {
-            native_stack_frame_address addr = st.native_frames[i];
+            stack_trace::native_frame_address addr = st.native_frames[i];
 
             if (addr == 0) {
                 continue;
@@ -383,7 +383,7 @@ static void resolve_native_range(const stack_trace_data& st, uint32_t from, uint
     }
 }
 
-static auto find_layer_native_anchor(const stack_trace_data& st, const script_stack_trace_layer& layer, uint32_t search_from) noexcept -> uint32_t
+static auto find_layer_native_anchor(const stack_trace::data& st, const stack_trace::script_layer& layer, uint32_t search_from) noexcept -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -397,8 +397,8 @@ static auto find_layer_native_anchor(const stack_trace_data& st, const script_st
     uint32_t matched = 0;
 
     while (matched < birth_n && matched < trace_n) {
-        native_stack_frame_address birth_addr = layer.birth_native_frames[birth_n - 1 - matched];
-        native_stack_frame_address trace_addr = st.native_frames[trace_n - 1 - matched];
+        stack_trace::native_frame_address birth_addr = layer.birth_native_frames[birth_n - 1 - matched];
+        stack_trace::native_frame_address trace_addr = st.native_frames[trace_n - 1 - matched];
 
         if (!same_frame_function(birth_addr, trace_addr)) {
             break;
@@ -420,7 +420,7 @@ static auto find_layer_native_anchor(const stack_trace_data& st, const script_st
     return anchor;
 }
 
-static auto same_frame_function(native_stack_frame_address a, native_stack_frame_address b) noexcept -> bool
+static auto same_frame_function(stack_trace::native_frame_address a, stack_trace::native_frame_address b) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -435,7 +435,7 @@ static auto same_frame_function(native_stack_frame_address a, native_stack_frame
     return resolve_function_key(a) == resolve_function_key(b);
 }
 
-static auto resolve_function_key(native_stack_frame_address addr) noexcept -> uintptr_t
+static auto resolve_function_key(stack_trace::native_frame_address addr) noexcept -> uintptr_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -452,7 +452,7 @@ static auto resolve_function_key(native_stack_frame_address addr) noexcept -> ui
     }
 }
 
-static auto resolve_native_frame(native_stack_frame_address addr, uint32_t index) -> resolved_native_frame_cache_entry
+static auto resolve_native_frame(stack_trace::native_frame_address addr, uint32_t index) -> resolved_native_frame_cache_entry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -474,7 +474,7 @@ static auto resolve_native_frame(native_stack_frame_address addr, uint32_t index
 }
 
 #if HAS_NATIVE_TRACE
-static auto resolve_native_frame_uncached(native_stack_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry
+static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -492,8 +492,8 @@ static auto resolve_native_frame_uncached(native_stack_frame_address addr, uint3
             resolved = get_native_trace_resolver().resolve(backward::Trace(std::bit_cast<void*>(addr), index));
         }
 
-        stack_trace_frame frame;
-        frame.type = stack_trace_frame::frame_type::native;
+        stack_trace::frame frame;
+        frame.type = stack_trace::frame::frame_type::native;
         frame.function = resolved.source.function.empty() ? resolved.object_function : resolved.source.function;
         frame.file = resolved.source.filename;
         frame.line = resolved.source.line;
@@ -522,7 +522,7 @@ static auto resolve_native_frame_uncached(native_stack_frame_address addr, uint3
 }
 
 #else
-static auto resolve_native_frame_uncached(native_stack_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry
+static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -531,7 +531,7 @@ static auto resolve_native_frame_uncached(native_stack_frame_address addr, uint3
 }
 #endif
 
-static auto try_get_resolved_native_frame_from_cache(native_stack_frame_address addr) -> std::optional<resolved_native_frame_cache_entry>
+static auto try_get_resolved_native_frame_from_cache(stack_trace::native_frame_address addr) -> std::optional<resolved_native_frame_cache_entry>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -548,7 +548,7 @@ static auto try_get_resolved_native_frame_from_cache(native_stack_frame_address 
     return it->second;
 }
 
-static void store_resolved_native_frame_in_cache(native_stack_frame_address addr, const resolved_native_frame_cache_entry& entry) noexcept
+static void store_resolved_native_frame_in_cache(stack_trace::native_frame_address addr, const resolved_native_frame_cache_entry& entry) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -562,12 +562,12 @@ static void store_resolved_native_frame_in_cache(native_stack_frame_address addr
             return;
         }
 
-        while (state.resolved_native_frames.size() >= STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES && !state.resolved_native_frame_order.empty()) {
+        while (state.resolved_native_frames.size() >= stack_trace::RESOLVE_CACHE_MAX_ENTRIES && !state.resolved_native_frame_order.empty()) {
             state.resolved_native_frames.erase(state.resolved_native_frame_order.front());
             state.resolved_native_frame_order.pop_front();
         }
 
-        if (state.resolved_native_frames.size() >= STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES) {
+        if (state.resolved_native_frames.size() >= stack_trace::RESOLVE_CACHE_MAX_ENTRIES) {
             state.resolved_native_frames.clear();
             state.resolved_native_frame_order.clear();
         }
@@ -580,7 +580,7 @@ static void store_resolved_native_frame_in_cache(native_stack_frame_address addr
     }
 }
 
-static auto make_native_address_cache_entry(native_stack_frame_address addr) noexcept -> resolved_native_frame_cache_entry
+static auto make_native_address_cache_entry(stack_trace::native_frame_address addr) noexcept -> resolved_native_frame_cache_entry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -590,12 +590,12 @@ static auto make_native_address_cache_entry(native_stack_frame_address addr) noe
     return entry;
 }
 
-static auto make_native_address_frame(native_stack_frame_address addr) noexcept -> stack_trace_frame
+static auto make_native_address_frame(stack_trace::native_frame_address addr) noexcept -> stack_trace::frame
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    stack_trace_frame frame;
-    frame.type = stack_trace_frame::frame_type::native;
+    stack_trace::frame frame;
+    frame.type = stack_trace::frame::frame_type::native;
 
     char hex_buf[32];
     (void)std::snprintf(hex_buf, sizeof(hex_buf), "%p", std::bit_cast<void*>(addr));
@@ -604,7 +604,7 @@ static auto make_native_address_frame(native_stack_frame_address addr) noexcept 
     return frame;
 }
 
-static auto make_native_function_key(native_stack_frame_address addr, std::string_view name) noexcept -> uintptr_t
+static auto make_native_function_key(stack_trace::native_frame_address addr, std::string_view name) noexcept -> uintptr_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -615,14 +615,14 @@ static auto make_native_function_key(native_stack_frame_address addr, std::strin
     return static_cast<uintptr_t>(std::hash<std::string_view> {}(name));
 }
 
-static auto make_native_address_key(native_stack_frame_address addr) noexcept -> uintptr_t
+static auto make_native_address_key(stack_trace::native_frame_address addr) noexcept -> uintptr_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return addr;
 }
 
-static auto is_low_native_address(native_stack_frame_address addr) noexcept -> bool
+static auto is_low_native_address(stack_trace::native_frame_address addr) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 

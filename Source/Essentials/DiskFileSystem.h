@@ -42,38 +42,41 @@
 
 FO_BEGIN_NAMESPACE
 
-using fs_file_visitor = function<void(string_view, size_t, uint64_t)>;
+namespace fs
+{
+    using file_visitor = function<void(string_view, size_t, uint64_t)>;
 
-// Filesystem helpers
-auto fs_make_path(string_view path) -> std::u8string;
-auto fs_path_to_string(const std::filesystem::path& path) -> string;
-auto fs_resolve_path(string_view path) -> string;
-auto fs_exists(string_view path) noexcept -> bool;
-auto fs_is_dir(string_view path) noexcept -> bool;
-auto fs_is_absolute_path(string_view path) noexcept -> bool;
-auto fs_is_relative_path(string_view path) noexcept -> bool;
-auto fs_make_writable_path(string_view user_writable_path, string_view relative) -> string;
-auto fs_create_directories(string_view dir) noexcept -> bool;
-auto fs_last_write_time(string_view path) noexcept -> uint64_t;
-auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;
-auto fs_hash_file(string_view path) -> optional<uint64_t>;
-auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
-auto fs_read_file(string_view path) -> optional<string>;
-auto fs_read_file_bounded(string_view path, size_t max_size) -> optional<string>;
-auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool;
-auto fs_write_file(string_view path, string_view content) -> bool;
-auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool;
-auto fs_remove_file(string_view path) noexcept -> bool;
-auto fs_remove_dir_tree(string_view dir) noexcept -> bool;
-auto fs_touch_file(string_view path) noexcept -> bool;
-auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool;
-auto fs_open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
-void fs_iterate_dir(string_view dir, bool recursive, const fs_file_visitor& visitor);
+    // Filesystem helpers
+    auto make_path(string_view path) -> std::u8string;
+    auto path_to_string(const std::filesystem::path& path) -> string;
+    auto resolve_path(string_view path) -> string;
+    auto exists(string_view path) noexcept -> bool;
+    auto is_dir(string_view path) noexcept -> bool;
+    auto is_absolute_path(string_view path) noexcept -> bool;
+    auto is_relative_path(string_view path) noexcept -> bool;
+    auto make_writable_path(string_view user_writable_path, string_view relative) -> string;
+    auto create_directories(string_view dir) noexcept -> bool;
+    auto last_write_time(string_view path) noexcept -> uint64_t;
+    auto file_size(string_view path) noexcept -> optional<uint64_t>;
+    auto hash_file(string_view path) -> optional<uint64_t>;
+    auto hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
+    auto read_file(string_view path) -> optional<string>;
+    auto read_file_bounded(string_view path, size_t max_size) -> optional<string>;
+    auto compare_file_content(string_view path, const_span<uint8_t> content) -> bool;
+    auto write_file(string_view path, string_view content) -> bool;
+    auto write_file(string_view path, const_span<uint8_t> content) -> bool;
+    auto remove_file(string_view path) noexcept -> bool;
+    auto remove_dir_tree(string_view dir) noexcept -> bool;
+    auto touch_file(string_view path) noexcept -> bool;
+    auto rename(string_view from_path, string_view to_path) noexcept -> bool;
+    auto open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
+    void iterate_dir(string_view dir, bool recursive, const file_visitor& visitor);
 
-// Stream helpers
-auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool;
-auto stream_get_size(std::istream& stream) -> size_t;
-auto stream_get_read_pos(std::istream& stream) -> size_t;
-auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool;
+    // Stream helpers
+    auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool;
+    auto stream_get_size(std::istream& stream) -> size_t;
+    auto stream_get_read_pos(std::istream& stream) -> size_t;
+    auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool;
+}
 
 FO_END_NAMESPACE

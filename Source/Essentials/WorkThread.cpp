@@ -63,7 +63,7 @@ work_thread::~work_thread()
         }
     }
     catch (const std::exception& ex) {
-        report_exception_and_continue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -200,7 +200,7 @@ void work_thread::thread_entry() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    install_crash_handler_stack_for_this_thread();
+    exceptions::install_crash_handler_stack();
 
     try {
         while (true) {
@@ -296,12 +296,12 @@ void work_thread::thread_entry() noexcept
                                 }
                             }
                             catch (const std::exception& ex2) {
-                                report_exception_and_continue(ex2);
+                                exceptions::report_and_continue(ex2);
                             }
                         }
                     }
 
-                    report_exception_and_continue(ex);
+                    exceptions::report_and_continue(ex);
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();
@@ -315,7 +315,7 @@ void work_thread::thread_entry() noexcept
         }
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

@@ -65,7 +65,7 @@ int main(int argc, char** argv)
             }
 
             if (server->IsStartingError()) {
-                write_log(log_type::error, "Server startup failed, shutting down");
+                logging::write(logging::type::error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
 
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
         exit_app(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

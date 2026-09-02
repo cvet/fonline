@@ -362,7 +362,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     _ctx = safe_alloc::make_unique<Context>();
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
-    write_log("Used OpenGL rendering");
+    logging::write("Used OpenGL rendering");
 
     _ctx->Settings = &settings;
     _ctx->RenderDebug = settings.RenderDebug;
@@ -485,7 +485,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
         if (!has_ext) {
             string msg = critical ? "Critical" : "Not critical";
-            write_log("OpenGL extension '{}' not supported. {}", ext_name, msg);
+            logging::write("OpenGL extension '{}' not supported. {}", ext_name, msg);
             if (critical) {
                 extension_errors++;
             }
@@ -505,7 +505,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     // Map framebuffer_object_ext to framebuffer_object
 #if !FO_OPENGL_ES
     if (GL_HAS_CTX(framebuffer_object_ext, _ctx.get()) && !GL_HAS_CTX(framebuffer_object, _ctx.get())) {
-        write_log("Map framebuffer_object_ext pointers");
+        logging::write("Map framebuffer_object_ext pointers");
         _ctx->OGL_framebuffer_object = true;
         glGenFramebuffers = glGenFramebuffersEXT;
         glGenRenderbuffers = glGenRenderbuffersEXT;
@@ -572,7 +572,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
 
     if (max_uniform_components < 1024) {
-        write_log("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
+        logging::write("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
 #endif
 
@@ -1482,14 +1482,14 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
-        mem_copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         auto main_texture_size = main_tex_buf->MainTexSize;
         auto main_texture_size_data = main_tex->SizeData;
-        mem_copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
+        memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     // Every shader-required block must be rewritten each draw: a stale binding points into the shared
@@ -1550,7 +1550,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             const auto& buf_value = buf.value();
             size_t aligned_offset = (scratch.size() + alignment - 1) & ~(alignment - 1);
             scratch.resize(aligned_offset + sizeof(buf_value));
-            mem_copy(scratch.data() + aligned_offset, &buf_value, sizeof(buf_value));
+            memory::copy(scratch.data() + aligned_offset, &buf_value, sizeof(buf_value));
             block_offsets[block_index] = aligned_offset;
             block_sizes[block_index] = sizeof(buf_value);
             block_index++;

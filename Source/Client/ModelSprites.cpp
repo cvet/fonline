@@ -402,7 +402,7 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
         }
         else {
             break_into_debugger();
-            write_log("Texture '{}' not found", path);
+            logging::write("Texture '{}' not found", path);
             _loadedMeshTextures[path] = nullptr;
         }
     }

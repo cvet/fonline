@@ -294,7 +294,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
                 }
             }
             catch (const std::exception& ex) {
-                report_exception_and_continue(ex);
+                exceptions::report_and_continue(ex);
             }
 
             // A pass that does not strictly reduce the remaining dependencies can never converge, so this exits

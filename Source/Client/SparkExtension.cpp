@@ -238,7 +238,7 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
         }
 
         if (base_system && !SetupSparkSystemRenderers(path, base_system, this)) {
-            write_log("SPARK particle '{}' has a missing render effect or texture", path);
+            logging::write("SPARK particle '{}' has a missing render effect or texture", path);
             base_system = SPK::Ref<SPK::System>();
         }
 
@@ -793,7 +793,7 @@ namespace SPK::FO
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         ptr<float32_t> projection_matrix = _effect->ProjBuf->ProjMatrix;
         ptr<const float32_t> projection_matrix_values = glm::value_ptr(_runtime->_impl->ViewProjectionMatrix);
-        mem_copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
         _effect->ParticleSamplingBuf = RenderEffect::ParticleSamplingBuffer();
         _effect->MainTex = _texture;
 

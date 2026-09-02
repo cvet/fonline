@@ -1315,14 +1315,14 @@ static auto MakeDistortionFixtureRig(float32_t intensity, int32_t alpha_blend) -
     FO_STACK_TRACE_ENTRY();
 
     std::filesystem::path temp_dir = std::filesystem::temp_directory_path() / std::format("fo_effekseer_distortion_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    string project_path = fs_path_to_string(temp_dir / "Refraction.efkproj");
-    string texture_path = fs_path_to_string(temp_dir / "Texture" / "Distortion.png");
-    auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(fs_path_to_string(temp_dir)); });
+    string project_path = fs::path_to_string(temp_dir / "Refraction.efkproj");
+    string texture_path = fs::path_to_string(temp_dir / "Texture" / "Distortion.png");
+    auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(fs::path_to_string(temp_dir)); });
 
     string project = ParticleTests::MakeDistortionProject(intensity, alpha_blend);
     vector<uint8_t> image = ParticleTests::MakeFixtureImageHeader(8, 8);
-    REQUIRE(fs_write_file(project_path, project));
-    REQUIRE(fs_write_file(texture_path, string_view {reinterpret_cast<const char*>(image.data()), image.size()}));
+    REQUIRE(fs::write_file(project_path, project));
+    REQUIRE(fs::write_file(texture_path, string_view {reinterpret_cast<const char*>(image.data()), image.size()}));
 
     EffekseerCompilerOutput compiled = CompileEffekseerProject(project_path, {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
 
@@ -1486,7 +1486,7 @@ TEST_CASE("Effekseer capability census", "[.census]")
         }
 
         auto file = std::ifstream {entry.path(), std::ios::binary};
-        string relative = strex(fs_path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes();
+        string relative = strex(fs::path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes();
         dependencies.emplace(strex("Particles/{}", relative), vector<uint8_t> {std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {}});
     }
 
@@ -1500,7 +1500,7 @@ TEST_CASE("Effekseer capability census", "[.census]")
             continue;
         }
 
-        string relative_path = strex(fs_path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes();
+        string relative_path = strex(fs::path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes();
         vector<uint8_t> data;
 
         {
@@ -1521,7 +1521,7 @@ TEST_CASE("Effekseer capability census", "[.census]")
         }
 
         accepted++;
-        write_log("CENSUSPASS\tParticles/{}", relative_path);
+        logging::write("CENSUSPASS\tParticles/{}", relative_path);
 
         // Play it for a few frames so the node renderers run: a rejection that only a real draw can reach retires the
         // handle, which the runtime reports as the system going inactive
@@ -1539,11 +1539,11 @@ TEST_CASE("Effekseer capability census", "[.census]")
         }
         else {
             retired_while_drawing++;
-            write_log("CENSUSRETIRED\tParticles/{}", relative_path);
+            logging::write("CENSUSRETIRED\tParticles/{}", relative_path);
         }
     }
 
-    write_log("CENSUSDONE\twalked={}\taccepted={}\tdrewToCompletion={}\tretiredWhileDrawing={}", walked, accepted, drawn, retired_while_drawing);
+    logging::write("CENSUSDONE\twalked={}\taccepted={}\tdrewToCompletion={}\tretiredWhileDrawing={}", walked, accepted, drawn, retired_while_drawing);
     CHECK(walked != 0);
 }
 

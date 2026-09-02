@@ -280,7 +280,7 @@ public:
                 }
 
                 auto main_texture_size = main_tex_buf->MainTexSize;
-                mem_copy(main_texture_size, size_data, 4 * sizeof(float32_t));
+                memory::copy(main_texture_size, size_data, 4 * sizeof(float32_t));
             }
         }
 

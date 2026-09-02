@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void ClientInitHook(ptr<ClientEngine>);
+void ClientInitHook(ptr<ClientEngine>);
 
 auto GetClientResources(GlobalSettings& settings) -> FileSystem
 {
@@ -58,7 +58,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
     SndMngr(Settings, make_ptr(&Resources), window->GetAudio()),
-    Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    Cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -89,11 +89,11 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(this, *settings, Resources);
 #endif
 
-    write_log("Client compatibility version: {}", Settings->CompatibilityVersion);
+    logging::write("Client compatibility version: {}", Settings->CompatibilityVersion);
 
     string metadata_version = !Settings->ForceMetadataVersion.empty() ? Settings->ForceMetadataVersion : string(GetMetadataVersion());
     _conn.SetMetadataVersion(metadata_version);
-    write_log("Client metadata version: {}", metadata_version);
+    logging::write("Client metadata version: {}", metadata_version);
 
     Hashes.set_resolve_hash_failure_handler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
 
@@ -223,7 +223,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
     SndMngr(Settings, make_ptr(&Resources), window->GetAudio()),
-    Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    Cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -321,7 +321,7 @@ void ClientEngine::ProcessScheduledCallbacks()
             body();
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }
@@ -797,7 +797,7 @@ void ClientEngine::Net_OnInitData()
         if (!Settings->UserWritablePath.empty()) {
             // Installed client: self-update resource patches live in the per-user writable dir; layer
             // it on top so the up-to-date file wins the size/hash check below
-            resources.AddDirSource(fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
+            resources.AddDirSource(fs::make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
         }
 
         auto reader = data_reader(data);
@@ -856,7 +856,7 @@ void ClientEngine::Net_OnHashList()
     }
 
     if (count != 0) {
-        write_log("Learned {} previously unresolved hash(es) from server", count);
+        logging::write("Learned {} previously unresolved hash(es) from server", count);
     }
 }
 
@@ -864,7 +864,7 @@ void ClientEngine::Net_OnLoginSuccess()
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log("Authentication success");
+    logging::write("Authentication success");
 
     auto player_id = _conn.InBuf->Read<ident_t>();
     _conn.InBuf->ReadPropsData(_globalsPropertiesData);
@@ -1487,7 +1487,7 @@ void ClientEngine::Net_OnChosenAddItem()
     auto chosen = GetChosen();
 
     if (!chosen) {
-        write_log("Chosen is not created on add item");
+        logging::write("Chosen is not created on add item");
         break_into_debugger();
 
         // Skip rest data
@@ -1530,7 +1530,7 @@ void ClientEngine::Net_OnChosenRemoveItem()
     auto chosen = GetChosen();
 
     if (!chosen) {
-        write_log("Chosen is not created in remove item");
+        logging::write("Chosen is not created in remove item");
         break_into_debugger();
         return;
     }
@@ -1635,7 +1635,7 @@ void ClientEngine::Net_OnPlaceToGameComplete()
 
     OnMapLoaded.Fire();
 
-    write_log("Map loaded");
+    logging::write("Map loaded");
 }
 
 void ClientEngine::Net_OnProperty()
@@ -1771,7 +1771,7 @@ void ClientEngine::Net_OnLoadMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    write_log("Change map");
+    logging::write("Change map");
 
     auto loc_id = _conn.InBuf->Read<ident_t>();
     auto map_id = _conn.InBuf->Read<ident_t>();
@@ -1812,10 +1812,10 @@ void ClientEngine::Net_OnLoadMap()
         ReceiveCustomEntities(location);
         ReceiveCustomEntities(map);
 
-        write_log("Start load map");
+        logging::write("Start load map");
     }
     else {
-        write_log("Start load global map");
+        logging::write("Start load global map");
     }
 
     OnMapLoad.Fire();

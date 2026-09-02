@@ -61,7 +61,7 @@ int main(int argc, char** argv)
 
         FO_VERIFY_AND_THROW(!GetApp()->Settings.BakeOutput.empty(), "AngelScript compiler cannot prepare metadata without a bake output directory", GetApp()->Settings.GetResourcePacks().size());
 
-        write_log("Prepare metadata");
+        logging::write("Prepare metadata");
         FileSystem metadata_files;
 
         for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
@@ -80,11 +80,11 @@ int main(int argc, char** argv)
                 string dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
-                    bool dir_ok = fs_create_directories(dir);
+                    bool dir_ok = fs::create_directories(dir);
                     FO_VERIFY_AND_THROW(dir_ok, "Failed to create metadata output directory", dir, output_path, res_pack.Name);
                 }
 
-                std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
+                std::ofstream file {std::filesystem::path {fs::make_path(output_path)}, std::ios::binary | std::ios::trunc};
                 FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
@@ -108,23 +108,23 @@ int main(int argc, char** argv)
                 const_span<string> params = ex.params();
 
                 if (params.size() >= 2 && !params.front().empty()) {
-                    write_log("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
+                    logging::write("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
                 }
                 else {
-                    write_log("{}", ex.what());
+                    logging::write("{}", ex.what());
                 }
 
-                write_log("Metadata preparing failed!");
+                logging::write("Metadata preparing failed!");
                 exit_app(false);
             }
             catch (const std::exception& ex) {
-                write_log("{}", ex.what());
-                write_log("Metadata preparing failed!");
+                logging::write("{}", ex.what());
+                logging::write("Metadata preparing failed!");
                 exit_app(false);
             }
         }
 
-        write_log("Compile scripts");
+        logging::write("Compile scripts");
 
         for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
             if (!vec_exists(res_pack.Bakers, AngelScriptBaker::NAME)) {
@@ -142,11 +142,11 @@ int main(int argc, char** argv)
                 string dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
-                    bool dir_ok = fs_create_directories(dir);
+                    bool dir_ok = fs::create_directories(dir);
                     FO_VERIFY_AND_THROW(dir_ok, "Failed to create AngelScript output directory", dir, output_path, res_pack.Name);
                 }
 
-                std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
+                std::ofstream file {std::filesystem::path {fs::make_path(output_path)}, std::ios::binary | std::ios::trunc};
                 FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
@@ -167,17 +167,17 @@ int main(int argc, char** argv)
                 scripts_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
             }
             catch (const std::exception& ex) {
-                write_log("AngelScript compile error: {}", ex.what());
-                write_log("Scripts compilation failed!");
+                logging::write("AngelScript compile error: {}", ex.what());
+                logging::write("Scripts compilation failed!");
                 exit_app(false);
             }
         }
 
-        write_log("Scripts compilation succeeded!");
+        logging::write("Scripts compilation succeeded!");
         exit_app(true);
     }
     catch (const std::exception& ex) {
-        report_exception_and_exit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

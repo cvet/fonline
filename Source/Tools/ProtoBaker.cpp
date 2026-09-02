@@ -116,7 +116,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            write_log("Proto baking error: {}", ex.what());
+            logging::write("Proto baking error: {}", ex.what());
             errors++;
         }
     }

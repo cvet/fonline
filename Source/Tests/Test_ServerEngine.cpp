@@ -84,13 +84,13 @@ namespace
     static auto MakeTempServerResourceDir(string_view name) -> string
     {
         auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs_path_to_string(base);
+        return fs::path_to_string(base);
     }
 
     static void RemoveServerHealthFile(string_view name) noexcept
     {
         std::error_code ec;
-        (void)std::filesystem::remove(std::filesystem::path {fs_make_path(name)}, ec);
+        (void)std::filesystem::remove(std::filesystem::path {fs::make_path(name)}, ec);
     }
 
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
@@ -644,17 +644,17 @@ TEST_CASE("ServerResourcesMountBakedServerEntries")
     }
 
     string temp_dir = MakeTempServerResourceDir("baked_entries");
-    bool removed_before = fs_remove_dir_tree(temp_dir);
+    bool removed_before = fs::remove_dir_tree(temp_dir);
     ignore_unused(removed_before);
 
-    auto cleanup = scope_exit([&temp_dir]() noexcept { fs_remove_dir_tree(temp_dir); });
+    auto cleanup = scope_exit([&temp_dir]() noexcept { fs::remove_dir_tree(temp_dir); });
 
     string baked_dir = strex(temp_dir).combine_path("Baked").str();
     string packaged_dir = strex(temp_dir).combine_path("Packaged").str();
 
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
-    REQUIRE(fs_write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
+    REQUIRE(fs::write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
+    REQUIRE(fs::write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
+    REQUIRE(fs::write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
 
     auto settings = MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.BakeOutput, baked_dir);
@@ -889,7 +889,7 @@ TEST_CASE("ServerEngineWritesHealthFile")
     REQUIRE(WaitForUnlockedServerCondition(
         server.get(), locked,
         [&health_file_name, &health_content] {
-            auto content = fs_read_file(health_file_name);
+            auto content = fs::read_file(health_file_name);
 
             if (!content.has_value() || content->find("Server uptime:") == string::npos || content->find("Connections:") == string::npos) {
                 return false;
@@ -1607,12 +1607,12 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
         {
             bool sync_diag_seen = false;
-            set_log_callback("entity_access_valid_diagnose_test", [&sync_diag_seen](log_type, string_view message, nptr<const catched_stack_trace_data>) {
+            logging::set_callback("entity_access_valid_diagnose_test", [&sync_diag_seen](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
                 if (message.find("SyncDiag access-without-sync") != string_view::npos) {
                     sync_diag_seen = true;
                 }
             });
-            auto clear_log_callback = scope_exit([]() noexcept { set_log_callback("entity_access_valid_diagnose_test", {}); });
+            auto clear_log_callback = scope_exit([]() noexcept { logging::set_callback("entity_access_valid_diagnose_test", {}); });
 
             CHECK_FALSE(IsEntityAccessValid(cr_b, false));
             CHECK_FALSE(sync_diag_seen);

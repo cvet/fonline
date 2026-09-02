@@ -44,7 +44,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>);
+CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>);
 
 MapManager::MapManager(ptr<ServerEngine> engine) :
     _engine {engine}
@@ -311,8 +311,8 @@ void MapManager::LoadFromResources()
             _staticMaps.emplace(static_map_loading.first, std::move(static_map));
         }
         catch (const std::exception& ex) {
-            write_log("Failed to load map {}", static_map_loading.first->GetProtoId());
-            report_exception_and_continue(ex);
+            logging::write("Failed to load map {}", static_map_loading.first->GetProtoId());
+            exceptions::report_and_continue(ex);
             errors++;
         }
     }
@@ -636,7 +636,7 @@ void MapManager::DestroyLocation(ptr<Location> loc)
             }
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         // Each pass must strictly reduce the location's remaining inner entities; non-convergence is corruption
@@ -706,7 +706,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
             }
         }
         catch (const std::exception& ex) {
-            report_exception_and_continue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         // Each pass must strictly reduce the map's remaining content; non-convergence is corruption

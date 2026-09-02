@@ -214,7 +214,7 @@ void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view conf
 
     string config_path = strex(config_dir).combine_path(config_name);
 
-    if (auto settings_content = fs_read_file(config_path)) {
+    if (auto settings_content = fs::read_file(config_path)) {
         _appliedConfigs.emplace_back(config_path);
 
         auto config = ConfigFile(*settings_content);
@@ -261,7 +261,7 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
                 string shown = IsSecretSettingName(key) ? string("***") : value;
-                write_log(log_type::info, "Set {} to {}", key, shown);
+                logging::write(logging::type::info, "Set {} to {}", key, shown);
                 SetValue(key, value);
             }
         }
@@ -479,20 +479,20 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                             end_pos++;
                         }
                         else {
-                            write_log(log_type::warning, "Environment variable {} for setting {} is not found", name, setting_name);
+                            logging::write(logging::type::warning, "Environment variable {} for setting {} is not found", name, setting_name);
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
                         }
                     }
                     else {
-                        string file_path = fs_is_absolute_path(name) ? name : strex(config_dir).combine_path(name);
-                        if (auto file_content = fs_read_file(file_path)) {
+                        string file_path = fs::is_absolute_path(name) ? name : strex(config_dir).combine_path(name);
+                        if (auto file_content = fs::read_file(file_path)) {
                             *file_content = strvex(*file_content).trim();
 
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + *file_content;
                             end_pos++;
                         }
                         else {
-                            write_log(log_type::warning, "File {} for setting {} is not found", file_path, setting_name);
+                            logging::write(logging::type::warning, "File {} for setting {} is not found", file_path, setting_name);
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
                         }
                     }

@@ -272,11 +272,11 @@ failed - drive only what is reachable.
 `backward.hpp` only — they carry no engine namespace and appear in no engine
 header, so a test declares them exactly as that header does. The report is
 emitted through the base log on the first write to the crash stream, so point
-`log_to_file` at a private file, write one line into `GetCrashStream()` and read
+`logging::to_file` at a private file, write one line into `GetCrashStream()` and read
 the report back instead of letting "FATAL ERROR!" leak into the test console.
-Restore the log with `log_to_file("/dev/null")` (`"NUL"` on Windows); there is no
+Restore the log with `logging::to_file("/dev/null")` (`"NUL"` on Windows); there is no
 "stop logging to a file" call. Terminating reporters are covered out of process
-through `DiagnosticSelfTest`: `main_strong_assert` covers `report_exception_and_exit`,
+through `DiagnosticSelfTest`: `main_strong_assert` covers `exceptions::report_and_exit`,
 `main_basic_strong_assert` and `main_fatal_exit` cover the early `FatalError`
 layer, and `main_failure_exit` pins the raw status-only `exit_app(false)` contract.
 The embedding project's

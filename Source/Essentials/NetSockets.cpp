@@ -167,7 +167,7 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
         return std::nullopt;
     }
 
-    mem_copy(&addr, resolved_addr, sizeof(addr));
+    memory::copy(&addr, resolved_addr, sizeof(addr));
     return addr;
 }
 
