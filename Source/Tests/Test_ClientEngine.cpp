@@ -2992,7 +2992,7 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
     // The sweep below dumps the atlases, so the directories it writes are cleared once the case is done
-    const set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+    set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
 
     auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
 
