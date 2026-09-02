@@ -147,7 +147,7 @@ TEST_CASE("ProtoManager")
 
         meta.RegisterMigrationRule("Proto", "Item", "RemovedKnife", "__remove__");
 
-        // An engaged empty result distinguishes an intentional deletion from no migration rule.
+        // An engaged empty result distinguishes an intentional deletion from no migration rule
         auto resolved = meta.CheckMigrationRule(proto_rule, item_type, removed_pid);
         CHECK(resolved.has_value());
         CHECK_FALSE(static_cast<bool>(resolved.value()));
