@@ -1273,6 +1273,25 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(server->EntityMngr.GetItem(inner_id) == nullptr);
     }
 
+    SECTION("ContainerRejectsItsOwnSubtree")
+    {
+        auto outer = server->ItemMngr.CreateItem(get_func("TestItem"), 1, nullptr);
+        auto outer_holder = outer.hold_ref();
+
+        auto inner = server->ItemMngr.AddItemContainer(outer, get_func("TestItem"), 1, {});
+        REQUIRE(inner);
+        auto inner_holder = inner.hold_ref();
+
+        CHECK_THROWS(outer->AddItemToContainer(outer, {}));
+        CHECK_THROWS(inner->AddItemToContainer(outer, {}));
+
+        CHECK(inner->GetOwnership() == ItemOwnership::ItemContainer);
+        CHECK(inner->GetContainerId() == outer->GetId());
+        CHECK(outer->GetOwnership() == ItemOwnership::Nowhere);
+
+        server->ItemMngr.DestroyItem(outer);
+    }
+
     SECTION("DirectLoadMapRestoresCrittersAndItems")
     {
         vector<hstring> map_pids {get_func("TestMap")};

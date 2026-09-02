@@ -2923,6 +2923,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
 
     if (login_result == Entity::EventResult::StopChain) {
         auto connection = player->GetConnection();
+        player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
         player->SetLoggedIn(false);
@@ -3013,6 +3014,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
         if (login_result == Entity::EventResult::StopChain) {
             auto connection = player->GetConnection();
+            player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
             player->SetLoggedIn(false);
             player->DetachCritter();
             player->ResetViewMap();
@@ -3045,10 +3047,12 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         EventResult login_result = OnPlayerLogin.Fire(player, not_logged_in_player);
 
         if (login_result == Entity::EventResult::StopChain) {
+            auto connection = player->GetConnection();
+            player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
             player->SetLoggedIn(false);
-            player->GetConnection()->GracefulDisconnect();
             not_logged_in_player->SetLoggedIn(false);
             not_logged_in_player->MarkAsDestroyed();
+            connection->GracefulDisconnect();
             disconnect_on_error.release();
             throw GenericException("Player reconnect rejected by OnPlayerLogin");
         }
@@ -3114,6 +3118,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) ->
 
     if (login_result == Entity::EventResult::StopChain) {
         auto connection = player->GetConnection();
+        player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
         player->SetLoggedIn(false);
         player->DetachCritter();
         player->MarkAsDestroyed();
