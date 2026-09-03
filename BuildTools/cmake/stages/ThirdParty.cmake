@@ -753,7 +753,17 @@ if(FO_MANAGED_SCRIPTING)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl)
     endif()
 
-    SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+    # dotnet/runtime's own paths sit close to MAX_PATH, and the default location adds the build
+    # directory's name on top: the resource step of System.Globalization.Native runs at 297 characters
+    # there and dies with `C1083: Cannot open compiler generated file`. FO_DOTNET_DIR is therefore an
+    # override — point it at a short path, and it doubles as the place the runtime's own markers make
+    # a repeat build a no-op
+    if(NOT FO_DOTNET_DIR AND NOT "$ENV{FO_DOTNET_DIR}" STREQUAL "")
+        SetValue(FO_DOTNET_DIR "$ENV{FO_DOTNET_DIR}")
+    endif()
+    if(NOT FO_DOTNET_DIR)
+        SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+    endif()
     SetValue(FO_MANAGED_RUNTIME_DIR ${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET})
     FileMakeDirectory(${FO_DOTNET_DIR})
 
