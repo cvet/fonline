@@ -2147,7 +2147,7 @@ MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
 
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
 # subset changes: an unchanged marker leaves an already-prepared host on a runtime built the old way
-MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native'
+MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
 MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
 
 
@@ -2162,6 +2162,37 @@ def resolve_mono_runtime_subset(os_name: str) -> str:
 
 def resolve_mono_marker_suffix(os_name: str) -> str:
 	return MONO_BROWSER_SUBSET_MARKER_SUFFIX if os_name == 'browser' else MONO_SUBSET_MARKER_SUFFIX
+
+
+PATCH_MARKER = '(FOnline Patch) /GL dropped: the published archive is linked by other toolsets and by lld-link'
+
+
+def patch_runtime_sources(runtime_root: Path) -> None:
+	# dotnet/runtime builds the Windows mono runtime with /GL, and a static archive carrying MSVC
+	# whole-program IL can be consumed by exactly one linker build: link.exe rejects IL produced by a
+	# different toolset (C1900) and lld-link cannot read it at all ("is not a native COFF file").
+	# This archive is published and linked on other machines and by clang-cl, so the flag is dropped
+	# at the source rather than worked around per consumer
+	path = runtime_root / 'src' / 'mono' / 'CMakeLists.txt'
+	text = path.read_text(encoding='utf-8')
+
+	if PATCH_MARKER in text:
+		log('Already patched', path)
+		return
+
+	patches = (
+		('    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/GL>) # whole program optimization\n', f'    # {PATCH_MARKER}\n'),
+		('    add_link_options(/LTCG)    # link-time code generation\n', ''),
+	)
+
+	for needle, replacement in patches:
+		if needle not in text:
+			raise SystemExit(f'Cannot patch the mono whole-program-optimization flags, anchor not found in {path}: {needle.strip()}')
+
+		text = text.replace(needle, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched', path, '- dropped /GL and /LTCG')
 
 
 def resolve_interop_shim_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
@@ -2274,6 +2305,8 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		else:
 			log('Clone runtime')
 			clone_git_repo(runtime_root, 'https://github.com/dotnet/runtime.git', branch_name=env['FO_DOTNET_RUNTIME'], depth=1, long_paths=True)
+
+		patch_runtime_sources(runtime_root)
 
 	run_marker_step(clone_marker, 'Prepare runtime source', clone_runtime)
 

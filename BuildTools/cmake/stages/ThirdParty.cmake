@@ -748,9 +748,9 @@ if(FO_MANAGED_SCRIPTING)
     # Keep in sync with the marker suffixes in buildtools.py; only the browser subset carries the
     # JavaScript glue, so only it is invalidated when that glue is added
     if(FO_WEB)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_wasmglue)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_wasmglue)
     else()
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl)
     endif()
 
     SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)

@@ -40,7 +40,7 @@ def test_prebuilt_runtime_is_adopted_instead_of_being_built(tmp_path: Path, monk
 
     workspace = tmp_path / "workspace"
     assert (workspace / "output" / "mono" / "windows.x64.Release" / "lib" / "libmonosgen-2.0.a").is_file()
-    assert (workspace / "READY_windows.x64.Release_mono_runtime_corelib_libs_native").is_file()
+    assert (workspace / "READY_windows.x64.Release_mono_runtime_corelib_libs_native_nogl").is_file()
 
 
 def test_prebuilt_runtime_accepts_a_single_triplet_tree(tmp_path: Path) -> None:
@@ -66,3 +66,46 @@ def test_windows_target_without_a_prebuilt_runtime_is_refused_off_windows(tmp_pa
 
     with pytest.raises(SystemExit, match="no Windows cross-target"):
         _buildtools.setup_mono("windows", "x64", "Release", env)
+
+
+def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
+    # The suffix is the cache key for an already-prepared host, so a rename that reaches only one of
+    # the two places leaves runners serving a runtime built the old way
+    stage = (BUILDTOOLS_DIR / "cmake" / "stages" / "ThirdParty.cmake").read_text(encoding="utf-8")
+
+    for suffix in (_buildtools.MONO_BROWSER_SUBSET_MARKER_SUFFIX, _buildtools.MONO_SUBSET_MARKER_SUFFIX):
+        assert f"READY_${{FO_MONO_TRIPLET}}{suffix})" in stage, suffix
+
+
+def test_mono_whole_program_optimization_is_dropped(tmp_path: Path) -> None:
+    # A published archive carrying MSVC whole-program IL is linkable by exactly one linker build:
+    # link.exe rejects IL from another toolset and lld-link cannot read it at all
+    cmake_lists = tmp_path / "src" / "mono" / "CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    cmake_lists.write_text(
+        "  if(CMAKE_BUILD_TYPE STREQUAL \"Release\")\n"
+        "    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/GL>) # whole program optimization\n"
+        "    add_link_options(/LTCG)    # link-time code generation\n"
+        "  endif()\n",
+        encoding="utf-8",
+    )
+
+    _buildtools.patch_runtime_sources(tmp_path)
+    patched = cmake_lists.read_text(encoding="utf-8")
+
+    assert "/GL>" not in patched
+    assert "/LTCG" not in patched
+    assert _buildtools.PATCH_MARKER in patched
+
+    # Re-running over an already patched tree must not abort the build on the missing anchor
+    _buildtools.patch_runtime_sources(tmp_path)
+    assert cmake_lists.read_text(encoding="utf-8") == patched
+
+
+def test_mono_patch_fails_loudly_when_the_anchor_moves(tmp_path: Path) -> None:
+    cmake_lists = tmp_path / "src" / "mono" / "CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    cmake_lists.write_text("  add_link_options(/LTCG)    # link-time code generation\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        _buildtools.patch_runtime_sources(tmp_path)
