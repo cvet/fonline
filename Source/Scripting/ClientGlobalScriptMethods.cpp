@@ -874,6 +874,20 @@ FO_SCRIPT_API void Client_Game_SimulateTouchTap(ptr<ClientEngine> client, ipos32
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateDisconnect(ptr<ClientEngine> client)
+{
+    // Delivers the notification a real disconnect ends with, leaving the connection itself alone, the way
+    // simulated input delivers a key without a keyboard: a test of the reaction must not end its own session
+    client->OnDisconnected.Fire();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateInfoMessage(ptr<ClientEngine> client, EngineInfoMessage infoMessage, string_view extraText = "")
+{
+    client->OnInfoMessage.Fire(infoMessage, string(extraText));
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCode key, string_view text = "")
 {
     if (key == KeyCode::None) {
