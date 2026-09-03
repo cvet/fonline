@@ -235,9 +235,9 @@ TEST_CASE("HashedString")
 
                 try {
                     for (int32_t i = 0; i < iterations; i++) {
-                        const string value = i % 3 == 0 ? string {"shared_concurrent_value"} : strex("concurrent_{}_{}", thread_index, i % 97).str();
-                        const hstring hs = storage.ToHashedString(value);
-                        const hstring resolved = storage.ResolveHash(hs.as_hash());
+                        string value = i % 3 == 0 ? string {"shared_concurrent_value"} : strex("concurrent_{}_{}", thread_index, i % 97).str();
+                        hstring hs = storage.ToHashedString(value);
+                        hstring resolved = storage.ResolveHash(hs.as_hash());
 
                         if (!hs || resolved != hs || hs.as_str() != value || !storage.CheckHashedString(value)) {
                             failures.fetch_add(1, std::memory_order_relaxed);
@@ -258,7 +258,7 @@ TEST_CASE("HashedString")
 
         CHECK(failures.load(std::memory_order_relaxed) == 0);
 
-        const auto shared = storage.ToHashedString("shared_concurrent_value");
+        hstring shared = storage.ToHashedString("shared_concurrent_value");
         CHECK(shared.as_str() == "shared_concurrent_value");
     }
 }

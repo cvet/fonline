@@ -714,7 +714,7 @@ static void NativeLog(MonoString* text)
         return;
     }
 
-    const string log_text = text_utf8;
+    string log_text = text_utf8;
     mono_free(text_utf8);
     WriteLog("{}", log_text);
 }
@@ -723,7 +723,7 @@ static auto NativeGetHash(MonoString* text) -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string value = ToStringAndFree(text);
+    string value = ToStringAndFree(text);
 
     if (value.empty()) {
         return 0;
@@ -741,7 +741,7 @@ static auto NativeGetHashStr(uint64_t value) -> MonoString*
 
     if (ActiveBackend != nullptr && ActiveBackend->GetMetadata() != nullptr) {
         bool failed = false;
-        const hstring resolved = ActiveBackend->GetMetadata()->Hashes.ResolveHash(value, &failed);
+        hstring resolved = ActiveBackend->GetMetadata()->Hashes.ResolveHash(value, &failed);
 
         if (!failed) {
             text = resolved.as_str();
@@ -783,17 +783,17 @@ static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) 
         return nullptr;
     }
 
-    const string type_name_str = ToStringAndFree(type_name);
+    string type_name_str = ToStringAndFree(type_name);
     ptr<const EngineMetadata> meta = ActiveBackend->GetMetadata();
 
     bool failed = false;
-    const hstring proto_id = meta->Hashes.ResolveHash(static_cast<hstring::hash_t>(proto_id_hash), &failed);
+    hstring proto_id = meta->Hashes.ResolveHash(static_cast<hstring::hash_t>(proto_id_hash), &failed);
 
     if (failed) {
         return nullptr;
     }
 
-    const hstring type_hname = meta->Hashes.ToHashedString(type_name_str);
+    hstring type_hname = meta->Hashes.ToHashedString(type_name_str);
     auto proto = meta->GetProtoEntity(type_hname, proto_id);
     return proto.void_cast();
 }
@@ -806,17 +806,17 @@ static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash
         return static_cast<mono_bool>(0);
     }
 
-    const string type_name_str = ToStringAndFree(type_name);
+    string type_name_str = ToStringAndFree(type_name);
     ptr<const EngineMetadata> meta = ActiveBackend->GetMetadata();
 
     bool failed = false;
-    const hstring proto_id = meta->Hashes.ResolveHash(static_cast<hstring::hash_t>(proto_id_hash), &failed);
+    hstring proto_id = meta->Hashes.ResolveHash(static_cast<hstring::hash_t>(proto_id_hash), &failed);
 
     if (failed) {
         return static_cast<mono_bool>(0);
     }
 
-    const hstring type_hname = meta->Hashes.ToHashedString(type_name_str);
+    hstring type_hname = meta->Hashes.ToHashedString(type_name_str);
     return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, proto_id) != nullptr ? 1 : 0);
 }
 
@@ -830,7 +830,7 @@ static auto NativeGetProtoEntityCount(MonoString* type_name) -> int32_t
         return 0;
     }
 
-    const string type_name_str = ToStringAndFree(type_name);
+    string type_name_str = ToStringAndFree(type_name);
     ptr<const EngineMetadata> meta = ActiveBackend->GetMetadata();
     return numeric_cast<int32_t>(meta->GetProtoEntities(meta->Hashes.ToHashedString(type_name_str)).size());
 }
@@ -843,7 +843,7 @@ static auto NativeGetProtoEntityAt(MonoString* type_name, int32_t index) -> void
         return nullptr;
     }
 
-    const string type_name_str = ToStringAndFree(type_name);
+    string type_name_str = ToStringAndFree(type_name);
     ptr<const EngineMetadata> meta = ActiveBackend->GetMetadata();
     const auto& protos = meta->GetProtoEntities(meta->Hashes.ToHashedString(type_name_str));
 
@@ -888,7 +888,7 @@ static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const bool destroyed = entity_ptr == nullptr || static_cast<const Entity*>(entity_ptr)->IsDestroyed();
+    bool destroyed = entity_ptr == nullptr || static_cast<const Entity*>(entity_ptr)->IsDestroyed();
     return static_cast<mono_bool>(destroyed ? 1 : 0);
 }
 
@@ -898,7 +898,7 @@ static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const bool destroying = entity_ptr != nullptr && static_cast<const Entity*>(entity_ptr)->IsDestroying();
+    bool destroying = entity_ptr != nullptr && static_cast<const Entity*>(entity_ptr)->IsDestroying();
     return static_cast<mono_bool>(destroying ? 1 : 0);
 }
 
@@ -913,7 +913,7 @@ static auto NativeGetEntityName(void* entity_ptr) -> MonoString*
         return mono_string_new(domain, "");
     }
 
-    const string name = string(static_cast<const Entity*>(entity_ptr)->GetName());
+    string name = string(static_cast<const Entity*>(entity_ptr)->GetName());
     return mono_string_new(domain, name.c_str());
 }
 
@@ -1031,7 +1031,7 @@ static auto NativeGetEntityValueAsAnyImpl(void* entity_ptr, int32_t prop_index) 
 
     MonoDomain* domain = GetDomainOrThrow(mono_domain_get());
     auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, false);
-    const any_t value = entity->GetValueAsAny(prop);
+    any_t value = entity->GetValueAsAny(prop);
     return mono_string_new_len(domain, value.data(), numeric_cast<uint32_t>(value.size()));
 }
 
@@ -1115,7 +1115,7 @@ static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, ui
     auto holder = ResolveEntity(backend, holder_ptr);
     ValidateEntityAccess(holder);
 
-    const hstring entry = ResolveInnerEntry(backend, entry_name);
+    hstring entry = ResolveInnerEntry(backend, entry_name);
     hstring proto_id;
 
     if (proto_id_hash != 0) {
@@ -1138,7 +1138,7 @@ static auto NativeHasInnerEntities(void* holder_ptr, MonoString* entry_name) -> 
     auto holder = ResolveEntity(backend, holder_ptr);
     ValidateEntityAccess(holder);
 
-    const hstring entry = ResolveInnerEntry(backend, entry_name);
+    hstring entry = ResolveInnerEntry(backend, entry_name);
     auto entities = holder->GetInnerEntities(entry);
     return static_cast<mono_bool>(entities ? 1 : 0);
 }
@@ -1151,8 +1151,8 @@ static auto NativeGetInnerEntity(void* holder_ptr, MonoString* entry_name, int64
     auto holder = ResolveEntity(backend, holder_ptr);
     ValidateEntityAccess(holder);
 
-    const hstring entry = ResolveInnerEntry(backend, entry_name);
-    const ident_t entity_id {id};
+    hstring entry = ResolveInnerEntry(backend, entry_name);
+    ident_t entity_id {id};
     auto entities = holder->GetInnerEntities(entry);
 
     if (!entities || entities->empty()) {
@@ -1178,8 +1178,8 @@ static auto NativeGetInnerEntityCount(void* holder_ptr, MonoString* entry_name) 
     auto holder = ResolveEntity(backend, holder_ptr);
     ValidateEntityAccess(holder);
 
-    const hstring entry = ResolveInnerEntry(backend, entry_name);
-    const auto entities = CollectManagedInnerEntities(holder, entry);
+    hstring entry = ResolveInnerEntry(backend, entry_name);
+    auto entities = CollectManagedInnerEntities(holder, entry);
     return numeric_cast<int32_t>(entities.size());
 }
 
@@ -1191,8 +1191,8 @@ static auto NativeGetInnerEntityAt(void* holder_ptr, MonoString* entry_name, int
     auto holder = ResolveEntity(backend, holder_ptr);
     ValidateEntityAccess(holder);
 
-    const hstring entry = ResolveInnerEntry(backend, entry_name);
-    const auto entities = CollectManagedInnerEntities(holder, entry);
+    hstring entry = ResolveInnerEntry(backend, entry_name);
+    auto entities = CollectManagedInnerEntities(holder, entry);
 
     if (index < 0 || index >= numeric_cast<int32_t>(entities.size())) {
         return nullptr;
@@ -1263,7 +1263,7 @@ static auto NativeGetSettingULong(MonoString* name) -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string value = GetSettingValueAsString(name);
+    string value = GetSettingValueAsString(name);
     return std::strtoull(value.c_str(), nullptr, 0);
 }
 
@@ -1306,7 +1306,7 @@ static auto NativeGetSettingString(MonoString* name) -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string value = GetSettingValueAsString(name);
+    string value = GetSettingValueAsString(name);
     return mono_string_new(GetDomainOrThrow(mono_domain_get()), value.c_str());
 }
 
@@ -1331,15 +1331,15 @@ static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name,
         throw ScriptSystemException("Null Managed event handler");
     }
 
-    const string owner_type_name = ToStringAndFree(owner_type);
-    const string event_name_str = ToStringAndFree(event_name);
+    string owner_type_name = ToStringAndFree(owner_type);
+    string event_name_str = ToStringAndFree(event_name);
     auto desc = FindEntityTypeDesc(meta, owner_type_name);
 
     if (desc == nullptr) {
         throw ScriptSystemException("Managed event owner type not found", owner_type_name);
     }
 
-    const auto event_it = std::ranges::find_if(desc->Events, [&](const EntityEventDesc& event) { return event.Name == event_name_str; });
+    auto event_it = std::ranges::find_if(desc->Events, [&](const EntityEventDesc& event) { return event.Name == event_name_str; });
 
     if (event_it == desc->Events.end()) {
         throw ScriptSystemException("Managed event not found", owner_type_name, event_name_str);
@@ -1363,7 +1363,7 @@ static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name,
         subscription->Args.emplace_back(arg.Type);
     }
 
-    const uintptr_t token = subscription->Handler;
+    uintptr_t token = subscription->Handler;
     Entity::EventCallbackData event_data;
     event_data.Callback = [subscription](FuncCallData& call) -> Entity::EventResult { return DispatchManagedEvent(subscription, call); };
     event_data.SubscriptionPtr = token;
@@ -1380,7 +1380,7 @@ static void NativeUnsubscribeEvent(MonoString* event_name, void* entity_ptr, voi
 
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
-    const string event_name_str = ToStringAndFree(event_name);
+    string event_name_str = ToStringAndFree(event_name);
     entity->UnsubscribeEvent(event_name_str, reinterpret_cast<uintptr_t>(subscription));
 }
 
@@ -1392,41 +1392,41 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
     nptr<EngineMetadata> meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
-    const string owner_type_name = ToStringAndFree(owner_type);
-    const string event_name_str = ToStringAndFree(event_name);
+    string owner_type_name = ToStringAndFree(owner_type);
+    string event_name_str = ToStringAndFree(event_name);
     auto desc = FindEntityTypeDesc(meta, owner_type_name);
 
     if (desc == nullptr) {
         throw ScriptSystemException("Managed event owner type not found", owner_type_name);
     }
 
-    const auto event_it = std::ranges::find_if(desc->Events, [&](const EntityEventDesc& event) { return event.Name == event_name_str; });
+    auto event_it = std::ranges::find_if(desc->Events, [&](const EntityEventDesc& event) { return event.Name == event_name_str; });
 
     if (event_it == desc->Events.end()) {
         throw ScriptSystemException("Managed event not found", owner_type_name, event_name_str);
     }
 
     auto entity = ResolveEntity(backend, entity_ptr);
-    const size_t args_count = args != nullptr ? mono_array_length(args) : 0;
+    size_t args_count = args != nullptr ? mono_array_length(args) : 0;
 
     if (args_count != event_it->Args.size()) {
         throw ScriptSystemException("Managed event argument count mismatch", owner_type_name, event_name_str, args_count, event_it->Args.size());
     }
 
-    const size_t first_event_arg = desc->IsGlobal ? 0 : 1;
-    const size_t call_args_count = args_count + first_event_arg;
+    size_t first_event_arg = desc->IsGlobal ? 0 : 1;
+    size_t call_args_count = args_count + first_event_arg;
 
     if (call_args_count > MAX_CALL_ARGS) {
         throw ScriptSystemException("Managed event argument count exceeds bridge limit", owner_type_name, event_name_str, call_args_count);
     }
 
-    const uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
+    uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
     auto free_args_handle = scope_exit([args_handle]() noexcept {
         if (args_handle != 0) {
             mono_gchandle_free(args_handle);
         }
     });
-    const auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
+    auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
 
     array<void*, MAX_CALL_ARGS> args_data {};
     array<ManagedNativeValue, MAX_CALL_ARGS> native_args {};
@@ -1469,7 +1469,7 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
         }
     });
 
-    const auto result = entity->FireEvent(event_name_str, call);
+    auto result = entity->FireEvent(event_name_str, call);
     reconcile_ref_type_owners();
 
     for (size_t i = 0; i < args_count; i++) {
@@ -1493,7 +1493,7 @@ static auto NativeGetPropertyImpl(MonoString* owner_type, MonoString* property_n
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
     entity->ValidateAccess();
-    const string property_name_str = ToStringAndFree(property_name);
+    string property_name_str = ToStringAndFree(property_name);
     auto nullable_prop = entity->GetProperties()->GetRegistrar()->FindProperty(property_name_str);
 
     if (!nullable_prop) {
@@ -1543,7 +1543,7 @@ static void NativeSetPropertyImpl(MonoString* owner_type, MonoString* property_n
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
     entity->ValidateAccess();
-    const string property_name_str = ToStringAndFree(property_name);
+    string property_name_str = ToStringAndFree(property_name);
     auto nullable_prop = entity->GetProperties()->GetRegistrar()->FindProperty(property_name_str);
 
     if (!nullable_prop) {
@@ -1592,9 +1592,9 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
         throw ScriptSystemException("Null Managed property getter");
     }
 
-    const string owner_type_name = ToStringAndFree(owner_type);
+    string owner_type_name = ToStringAndFree(owner_type);
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, true, true);
-    const uint32_t getter_handle = mono_gchandle_new(getter, false);
+    uint32_t getter_handle = mono_gchandle_new(getter, false);
 
     prop->SetGetter([backend, getter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>) -> PropertyRawData FO_DEFERRED {
         BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
@@ -1602,7 +1602,7 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
 
         PropertyRawData prop_data;
         engine->RunScriptContext([&] {
-            const ActiveBackendScope active_backend {backend};
+            ActiveBackendScope active_backend {backend};
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
@@ -1637,16 +1637,16 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
         throw ScriptSystemException("Null Managed property setter");
     }
 
-    const string owner_type_name = ToStringAndFree(owner_type);
+    string owner_type_name = ToStringAndFree(owner_type);
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, false, true);
-    const uint32_t setter_handle = mono_gchandle_new(setter, false);
+    uint32_t setter_handle = mono_gchandle_new(setter, false);
 
     prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
         BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
         engine->RunScriptContext([&] {
-            const ActiveBackendScope active_backend {backend};
+            ActiveBackendScope active_backend {backend};
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
@@ -1684,16 +1684,16 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
         throw ScriptSystemException("Null Managed property setter");
     }
 
-    const string owner_type_name = ToStringAndFree(owner_type);
+    string owner_type_name = ToStringAndFree(owner_type);
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, false, true);
-    const uint32_t setter_handle = mono_gchandle_new(setter, false);
+    uint32_t setter_handle = mono_gchandle_new(setter, false);
 
     prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
         BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
         engine->RunScriptContext([&] {
-            const ActiveBackendScope active_backend {backend};
+            ActiveBackendScope active_backend {backend};
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
@@ -1733,9 +1733,9 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
         throw ScriptSystemException("Null Managed deferred property setter");
     }
 
-    const string owner_type_name = ToStringAndFree(owner_type);
+    string owner_type_name = ToStringAndFree(owner_type);
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, false, false);
-    const uint32_t setter_handle = mono_gchandle_new(setter, false);
+    uint32_t setter_handle = mono_gchandle_new(setter, false);
 
     // Reaction-only post-set callback: the managed delegate receives just the entity and runs after the value is
     // written
@@ -1744,7 +1744,7 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
         FO_VERIFY_AND_THROW(engine, "Managed deferred property setter requires an engine context");
 
         engine->RunScriptContext([&] {
-            const ActiveBackendScope active_backend {backend};
+            ActiveBackendScope active_backend {backend};
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
@@ -1773,27 +1773,27 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
 
     auto backend = GetActiveBackendOrThrow();
     ptr<EngineMetadata> meta = backend->GetMetadata();
-    const string owner_type_name = ToStringAndFree(owner_type);
-    const string method_name_str = ToStringAndFree(method_name);
+    string owner_type_name = ToStringAndFree(owner_type);
+    string method_name_str = ToStringAndFree(method_name);
     auto ref_type_desc = FindRefTypeDesc(meta, owner_type_name);
-    const bool is_ref_type_method = ref_type_desc != nullptr;
+    bool is_ref_type_method = ref_type_desc != nullptr;
     auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
-    const size_t args_count = args != nullptr ? mono_array_length(args) : 0;
-    const uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
+    size_t args_count = args != nullptr ? mono_array_length(args) : 0;
+    uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
     auto free_args_handle = scope_exit([args_handle]() noexcept {
         if (args_handle != 0) {
             mono_gchandle_free(args_handle);
         }
     });
-    const auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
+    auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
     auto method = FindMethod(meta, owner_type_name, method_name_str, method_index, args_count);
 
     if (method == nullptr) {
         throw ScriptSystemException("Managed method not found", owner_type_name, method_name_str, method_index, args_count);
     }
 
-    const bool is_ref_type_factory = is_ref_type_method && method->Name == "__Factory";
-    const size_t first_method_arg = is_ref_type_factory ? 0 : 1;
+    bool is_ref_type_factory = is_ref_type_method && method->Name == "__Factory";
+    size_t first_method_arg = is_ref_type_factory ? 0 : 1;
     array<void*, MAX_CALL_ARGS> args_data {};
     array<ManagedNativeValue, MAX_CALL_ARGS> native_args {};
     Entity* self_entity = entity.get_no_const();
@@ -1882,7 +1882,7 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
     method->Call(call);
     reconcile_ref_type_owners();
 
-    const size_t mutable_args_count = static_cast<size_t>(std::ranges::count_if(method->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; }));
+    size_t mutable_args_count = static_cast<size_t>(std::ranges::count_if(method->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; }));
 
     if (mutable_args_count != 0) {
         if (!method->Ret && mutable_args_count == 1) {
@@ -1896,12 +1896,12 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
         }
 
         MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
-        const size_t result_count = mutable_args_count + (method->Ret ? 1 : 0);
+        size_t result_count = mutable_args_count + (method->Ret ? 1 : 0);
         MonoArray* result = mono_array_new(domain, mono_get_object_class(), result_count);
-        const uint32_t result_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(result), 0);
+        uint32_t result_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(result), 0);
         auto free_result_handle = scope_exit([result_handle]() noexcept { mono_gchandle_free(result_handle); });
         size_t result_index = 0;
-        const auto get_result = [result_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(result_handle)); };
+        auto get_result = [result_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(result_handle)); };
 
         if (method->Ret) {
             MonoObject* ret = BoxNativeCallValue(backend, method->Ret, ret_data, call.Accessor.get());
@@ -1969,23 +1969,23 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
         return INVOKE_STATUS_FAILED;
     }
 
-    const string func_name_str = ToStringAndFree(func_name);
-    const hstring hashed_func_name = backend->GetMetadata()->Hashes.ToHashedString(func_name_str);
-    const size_t args_count = args != nullptr ? mono_array_length(args) : 0;
+    string func_name_str = ToStringAndFree(func_name);
+    hstring hashed_func_name = backend->GetMetadata()->Hashes.ToHashedString(func_name_str);
+    size_t args_count = args != nullptr ? mono_array_length(args) : 0;
 
     if (args_count > MAX_CALL_ARGS) {
         throw ScriptSystemException("Managed Invoke supports too many arguments", func_name_str, args_count, MAX_CALL_ARGS);
     }
 
-    const uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
+    uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
     auto free_args_handle = scope_exit([args_handle]() noexcept {
         if (args_handle != 0) {
             mono_gchandle_free(args_handle);
         }
     });
-    const auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
+    auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
 
-    const auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
+    auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
 
     for (ptr<ScriptFuncDesc> func_desc : candidates) {
         const bool is_void_call = !func_desc->Ret && func_desc->Args.size() == args_count;
@@ -2153,9 +2153,9 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
     nptr<EngineMetadata> meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
-    const string full_name_str = ToStringAndFree(full_name);
-    const string attr_name_str = ToStringAndFree(attr_name);
-    const string ret_type_str = ToStringAndFree(ret_type_name);
+    string full_name_str = ToStringAndFree(full_name);
+    string attr_name_str = ToStringAndFree(attr_name);
+    string ret_type_str = ToStringAndFree(ret_type_name);
 
     if (handler == nullptr) {
         throw ScriptSystemException("Null Managed global script func handler", full_name_str);
@@ -2165,7 +2165,7 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
     vector<ComplexTypeDesc> args;
     bool supported = true;
 
-    const size_t param_count = param_type_names != nullptr ? mono_array_length(param_type_names) : 0;
+    size_t param_count = param_type_names != nullptr ? mono_array_length(param_type_names) : 0;
 
     for (size_t i = 0; i < param_count; i++) {
         MonoString* param_mono_str = mono_array_get(param_type_names, MonoString*, i);
@@ -2195,10 +2195,10 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
     nptr<ScriptSystem> script_sys = meta.dyn_cast<ScriptSystem>();
     FO_VERIFY_AND_THROW(script_sys, "Backend metadata does not expose a script system");
 
-    const hstring hashed_func_name = meta->Hashes.ToHashedString(full_name_str);
+    hstring hashed_func_name = meta->Hashes.ToHashedString(full_name_str);
 
     if (skip_existing_script_func != 0) {
-        const auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
+        auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
 
         for (ptr<ScriptFuncDesc> candidate : candidates) {
             if (!candidate->Call || candidate->Ret != ret || candidate->Args.size() != args.size() || !candidate->AttributeChecker(attr_name_str)) {
@@ -2220,7 +2220,7 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
         }
     }
 
-    const uint32_t handler_handle = mono_gchandle_new(handler, false);
+    uint32_t handler_handle = mono_gchandle_new(handler, false);
 
     auto func_desc = SafeAlloc::MakeUnique<ScriptFuncDesc>();
     func_desc->Name = hashed_func_name;
@@ -2247,7 +2247,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
     nptr<EngineMetadata> meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
-    const string name = ToStringAndFree(name_str);
+    string name = ToStringAndFree(name_str);
 
     if (handler == nullptr) {
         throw ScriptSystemException("Null Managed remote call handler", name);
@@ -2259,9 +2259,9 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
         return;
     }
 
-    const hstring name_hashed = meta->Hashes.ToHashedString(name);
-    const auto inbound_calls = meta->GetInboundRemoteCalls();
-    const auto it = inbound_calls->find(name_hashed);
+    hstring name_hashed = meta->Hashes.ToHashedString(name);
+    auto inbound_calls = meta->GetInboundRemoteCalls();
+    auto it = inbound_calls->find(name_hashed);
 
     if (it == inbound_calls->end()) {
         return;
@@ -2269,14 +2269,14 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
 
     const RemoteCallDesc& inbound_call = it->second;
 
-    const bool managed_declared_call = strvex(inbound_call.SubsystemHint).ends_with("cs");
-    const bool client_facade_call = engine->GetSide() == EngineSideKind::ClientSide && strvex(inbound_call.SubsystemHint).ends_with("fos");
+    bool managed_declared_call = strvex(inbound_call.SubsystemHint).ends_with("cs");
+    bool client_facade_call = engine->GetSide() == EngineSideKind::ClientSide && strvex(inbound_call.SubsystemHint).ends_with("fos");
 
     if (!managed_declared_call && !client_facade_call) {
         return;
     }
 
-    const bool server_side = engine->GetSide() == EngineSideKind::ServerSide;
+    bool server_side = engine->GetSide() == EngineSideKind::ServerSide;
 
     // Build the call's argument type list: the server side prepends the calling Player, then the wire args
     vector<ComplexTypeDesc> args;
@@ -2307,14 +2307,14 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
         throw ScriptSystemException("Managed remote call argument count mismatch", name);
     }
 
-    const uint32_t handler_handle = mono_gchandle_new(handler, false);
+    uint32_t handler_handle = mono_gchandle_new(handler, false);
     backend->AddRemoteCallHandlerGcHandle(handler_handle);
 
     // The handler outlives this registration, so the declaration's structural wire limits are copied out of
     // the RemoteCallDesc rather than captured by reference
-    const hstring call_name = inbound_call.Name;
-    const size_t max_payload_size = inbound_call.MaxPayloadSize;
-    const size_t max_collection_size = inbound_call.MaxCollectionSize;
+    hstring call_name = inbound_call.Name;
+    size_t max_payload_size = inbound_call.MaxPayloadSize;
+    size_t max_collection_size = inbound_call.MaxCollectionSize;
     vector<string> wire_arg_names;
     wire_arg_names.reserve(inbound_call.Args.size());
 
@@ -2342,7 +2342,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
             RemoteCallReadStorage storage;
             list<ManagedArrayBridgeData> array_bridges;
             list<refcount_ptr<DynamicRefTypeInstance>> ref_instances;
-            const RemoteCallWireHooks hooks {
+            RemoteCallWireHooks hooks {
                 .RawToRefType = [&ref_instances](const BaseTypeDesc& type, span<const uint8_t> raw_data) -> ptr<void> {
                     // Deserialize the ref type's fields into a DynamicRefTypeInstance (shared engine type); the
                     // MANAGED_DATA_ACCESSOR boxes it into a managed object (CreateRefTypeObject) when invoking
@@ -2372,7 +2372,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
                     // Array. Wire: int32 count, then each element (shared scalar format). Deserialize into a managed
                     // List rooted by a bridge so the MANAGED_DATA_ACCESSOR can read it back when boxing the argument
                     const string& wire_arg_name = wire_arg_names[arg_index - (server_side ? 1 : 0)];
-                    const int32_t count = reader.Read<int32_t>();
+                    int32_t count = reader.Read<int32_t>();
                     FO_VERIFY_AND_THROW(count >= 0, "Remote call array element count is negative");
                     FO_VERIFY_AND_THROW(max_collection_size == 0 || numeric_cast<size_t>(count) <= max_collection_size, "Arr size exceeds structural remote-call limit", call_name, wire_arg_name, count, max_collection_size);
                     reader.VerifyPayloadCount(numeric_cast<size_t>(count), GetRemoteCallSimpleValueMinWireSize(arg_type.BaseType));
@@ -2421,7 +2421,7 @@ static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoA
     nptr<EngineMetadata> meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
-    const string name = ToStringAndFree(name_str);
+    string name = ToStringAndFree(name_str);
 
     nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
 
@@ -2429,9 +2429,9 @@ static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoA
         throw ScriptSystemException("Managed remote call send without a game engine", name);
     }
 
-    const hstring name_hashed = meta->Hashes.ToHashedString(name);
-    const auto outbound_calls = meta->GetOutboundRemoteCalls();
-    const auto it = outbound_calls->find(name_hashed);
+    hstring name_hashed = meta->Hashes.ToHashedString(name);
+    auto outbound_calls = meta->GetOutboundRemoteCalls();
+    auto it = outbound_calls->find(name_hashed);
 
     if (it == outbound_calls->end()) {
         throw ScriptSystemException("Unknown managed outbound remote call", name);
@@ -2446,7 +2446,7 @@ static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoA
         caller_entity = ExtractEntityPtr(caller);
     }
     FO_VERIFY_AND_THROW(caller_entity, "Managed remote call send requires a caller", name);
-    const auto data = SerializeManagedRemoteCallArgs(backend.as_ptr(), outbound_call.Args, args_array, name);
+    auto data = SerializeManagedRemoteCallArgs(backend.as_ptr(), outbound_call.Args, args_array, name);
 
     engine->SendRemoteCall(name_hashed, caller_entity, data);
 }
@@ -2462,7 +2462,7 @@ static void NativeLoopbackRemoteCall(MonoObject* caller, MonoString* name_str, M
     nptr<EngineMetadata> meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
-    const string name = ToStringAndFree(name_str);
+    string name = ToStringAndFree(name_str);
 
     nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
 
@@ -2470,9 +2470,9 @@ static void NativeLoopbackRemoteCall(MonoObject* caller, MonoString* name_str, M
         throw ScriptSystemException("Managed remote call loopback without a game engine", name);
     }
 
-    const hstring name_hashed = meta->Hashes.ToHashedString(name);
-    const auto inbound_calls = meta->GetInboundRemoteCalls();
-    const auto it = inbound_calls->find(name_hashed);
+    hstring name_hashed = meta->Hashes.ToHashedString(name);
+    auto inbound_calls = meta->GetInboundRemoteCalls();
+    auto it = inbound_calls->find(name_hashed);
 
     if (it == inbound_calls->end()) {
         throw ScriptSystemException("Unknown managed inbound remote call for loopback", name);
@@ -2601,7 +2601,7 @@ static auto GetSettingValueAsString(MonoString* name) -> string
     FO_STACK_TRACE_ENTRY();
 
     GlobalSettings* settings = GetBackendSettings(GetActiveBackendOrThrow());
-    const string setting_name = ToStringAndFree(name);
+    string setting_name = ToStringAndFree(name);
     return GetSettingValueAsString(settings, setting_name);
 }
 
@@ -2621,7 +2621,7 @@ static void SetSettingValueFromString(MonoString* name, string value)
     FO_STACK_TRACE_ENTRY();
 
     GlobalSettings* settings = GetBackendSettings(GetActiveBackendOrThrow());
-    const string setting_name = ToStringAndFree(name);
+    string setting_name = ToStringAndFree(name);
     SetSettingValueFromString(settings, setting_name, std::move(value));
 }
 
@@ -2657,8 +2657,8 @@ static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend,
     nptr<EngineMetadata> meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
-    const string owner_type_name = ToStringAndFree(owner_type);
-    const string property_name_str = ToStringAndFree(property_name);
+    string owner_type_name = ToStringAndFree(owner_type);
+    string property_name_str = ToStringAndFree(property_name);
     auto nullable_registrar = meta->GetPropertyRegistrar(owner_type_name);
 
     if (!nullable_registrar) {
@@ -2695,7 +2695,7 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ActiveBackendScope active_backend {backend};
+    ActiveBackendScope active_backend {backend};
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
@@ -2758,7 +2758,7 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
         // Rebuild the caller's array from the managed List return (the reverse of BoxNativeCallValue's Array read)
         accessor->ClearArray(ret_data);
 
-        const size_t array_size = value != nullptr ? GetManagedListCount(backend, value) : 0;
+        size_t array_size = value != nullptr ? GetManagedListCount(backend, value) : 0;
 
         for (size_t i = 0; i < array_size; i++) {
             MonoObject* element = GetManagedListItem(backend, value, i);
@@ -2837,7 +2837,7 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
         throw ScriptSystemException("Invalid Managed callback type");
     }
 
-    const uint32_t handler_handle = mono_gchandle_new(handler, false);
+    uint32_t handler_handle = mono_gchandle_new(handler, false);
     ComplexTypeDesc ret = callback->Type.CallbackArgs->front();
     vector<ComplexTypeDesc> args;
 
@@ -2889,7 +2889,7 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
     }
     if (type.Kind == ComplexTypeKind::Array) {
         MonoObject* list = CreateManagedList(backend, type.BaseType);
-        const size_t size = accessor->GetArraySize(data);
+        size_t size = accessor->GetArraySize(data);
 
         for (size_t i = 0; i < size; i++) {
             MonoObject* item = BoxNativeSimpleValue(backend, type.BaseType, accessor->GetArrayElement(data, i).get());
@@ -2901,7 +2901,7 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
     if (type.Kind == ComplexTypeKind::Dict) {
         FO_VERIFY_AND_THROW(type.KeyType, "Dictionary type has no key type");
         MonoObject* dictionary = CreateManagedDictionary(backend, *type.KeyType, type.BaseType);
-        const size_t size = accessor->GetDictSize(data);
+        size_t size = accessor->GetDictSize(data);
 
         for (size_t i = 0; i < size; i++) {
             auto [key, value] = accessor->GetDictElement(data, i);
@@ -2966,7 +2966,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ActiveBackendScope active_backend {subscription->Backend.as_ptr()};
+    ActiveBackendScope active_backend {subscription->Backend.as_ptr()};
 
     MonoDomain* domain = GetDomainOrThrow(subscription->Backend->GetDomain());
 
@@ -2996,9 +2996,9 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
     // Root the boxed argument array across the managed invoke and re-fetch it on each use: DynamicInvoke writes
     // mutated ref arguments back into it
-    const uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), subscription->Args.size())), 0);
+    uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), subscription->Args.size())), 0);
     auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
-    const auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
+    auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
     for (size_t i = 0; i < subscription->Args.size(); i++) {
         MonoObject* arg = BoxNativeCallValue(subscription->Backend.as_ptr(), subscription->Args[i], ptr<void>(call.ArgsData[i]).get(), call.Accessor.get());
@@ -3022,7 +3022,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
         return Entity::EventResult::ContinueChain;
     }
 
-    const auto result = *static_cast<int32_t*>(mono_object_unbox(ret));
+    auto result = *static_cast<int32_t*>(mono_object_unbox(ret));
     return static_cast<Entity::EventResult>(result);
 }
 
@@ -3034,7 +3034,7 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
 
     // Serialize boxed managed args into the shared RemoteCallWire byte format (the same format the AngelScript
     // backend reads/writes). Scalar args only for now (collections/ref types come later).
-    const size_t arg_count = args_array != nullptr ? mono_array_length(args_array) : 0;
+    size_t arg_count = args_array != nullptr ? mono_array_length(args_array) : 0;
 
     if (arg_count != call_args.size()) {
         throw ScriptSystemException("Managed remote call argument count mismatch", name);
@@ -3042,7 +3042,7 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
 
     vector<uint8_t> data;
     DataWriter writer(data);
-    const RemoteCallWireHooks hooks {
+    RemoteCallWireHooks hooks {
         .RefTypeToRaw = [](const BaseTypeDesc& type, ptr<void> arg) -> vector<uint8_t> {
             // Two levels of indirection: arg is `&storage.RefTypePtr` — the address of the slot, always valid, hence
             // ptr
@@ -3072,7 +3072,7 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
         }
         else if (arg.Type.Kind == ComplexTypeKind::Array) {
             // Wire: int32 count, then each element (shared scalar format) — matches AngelScript's array framing
-            const size_t count = arg_obj != nullptr ? GetManagedListCount(backend, arg_obj) : 0;
+            size_t count = arg_obj != nullptr ? GetManagedListCount(backend, arg_obj) : 0;
             writer.Write<int32_t>(numeric_cast<int32_t>(count));
 
             for (size_t j = 0; j < count; j++) {
@@ -3098,7 +3098,7 @@ static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
         return;
     }
 
-    const size_t old_size = data.size();
+    size_t old_size = data.size();
     data.resize(old_size + bytes.size());
     MemCopy(data.data() + old_size, bytes.data(), bytes.size());
 }
@@ -3176,7 +3176,7 @@ static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, st
     FO_STACK_TRACE_ENTRY();
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
-    const string property_enum_name = strex("{}Property", owner_type_name).str();
+    string property_enum_name = strex("{}Property", owner_type_name).str();
     MonoClass* enum_class = FindFOnlineClass(backend, property_enum_name);
     int32_t value = prop->GetRegIndex();
     return mono_value_box(domain, enum_class, &value);
@@ -3268,7 +3268,7 @@ static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, 
 
         if (!field_raw_data.empty()) {
             MonoObject* field_value = BoxPropertyValue(backend, field_prop.get(), field_raw_data);
-            const string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
+            string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
             SetManagedPropertyValue(backend, obj, field_name, field_value);
         }
     }
@@ -3292,7 +3292,7 @@ static auto CreateRefTypeObject(ptr<const ManagedScriptBackend> backend, const B
         }
 
         ptr<DynamicRefTypeInstance> ref_instance = make_ptr(static_cast<DynamicRefTypeInstance*>(ref_ptr));
-        const span<const uint8_t> raw_data = ref_instance->GetSerializedRawData(base_type);
+        span<const uint8_t> raw_data = ref_instance->GetSerializedRawData(base_type);
         return CreateDynamicRefTypeObject(backend, base_type, raw_data);
     }
 
@@ -3314,7 +3314,7 @@ static auto CreateDynamicRefTypeFromManaged(ptr<ManagedScriptBackend> backend, c
 
     for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
         auto field_prop = fields_registrar->GetPropertyByIndexUnsafe(i);
-        const string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
+        string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
         MonoObject* field_value = GetManagedPropertyValue(backend, value, field_name);
         PropertyRawData field_data = ConvertManagedObjectToPropertyData(backend, field_prop.get(), field_value);
         ref_instance->SetValue(field_prop, field_data);
@@ -3507,7 +3507,7 @@ static auto GetManagedPropertyValue(ptr<const ManagedScriptBackend> backend, Mon
         return nullptr;
     }
 
-    const string property_name_str {property_name};
+    string property_name_str {property_name};
     MonoClass* klass = mono_object_get_class(obj);
     MonoProperty* prop = mono_class_get_property_from_name(klass, property_name_str.c_str());
 
@@ -3533,7 +3533,7 @@ static void SetManagedPropertyValue(ptr<const ManagedScriptBackend> backend, Mon
 
     ignore_unused(backend);
 
-    const string property_name_str {property_name};
+    string property_name_str {property_name};
     MonoClass* klass = mono_object_get_class(obj);
     MonoProperty* prop = mono_class_get_property_from_name(klass, property_name_str.c_str());
 
@@ -3590,7 +3590,7 @@ static auto GetManagedListCount(ptr<const ManagedScriptBackend> backend, MonoObj
         throw ScriptSystemException("Managed list count failed");
     }
 
-    const int32_t count = *static_cast<int32_t*>(mono_object_unbox(result));
+    int32_t count = *static_cast<int32_t*>(mono_object_unbox(result));
     FO_VERIFY_AND_THROW(count >= 0, "Managed list count is negative");
     return numeric_cast<size_t>(count);
 }
@@ -3665,7 +3665,7 @@ static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, M
         throw ScriptSystemException("Managed dictionary count failed");
     }
 
-    const int32_t count = *static_cast<int32_t*>(mono_object_unbox(result));
+    int32_t count = *static_cast<int32_t*>(mono_object_unbox(result));
     FO_VERIFY_AND_THROW(count >= 0, "Managed dictionary count is negative");
     return numeric_cast<size_t>(count);
 }
@@ -3790,7 +3790,7 @@ static auto GetManagedByteArrayItem(ptr<const ManagedScriptBackend> backend, Mon
         throw ScriptSystemException("Managed byte array item read failed");
     }
 
-    const int32_t item = *static_cast<int32_t*>(mono_object_unbox(result));
+    int32_t item = *static_cast<int32_t*>(mono_object_unbox(result));
     FO_VERIFY_AND_THROW(item >= 0 && item <= UINT8_MAX, "Managed byte array item is out of byte range");
     return numeric_cast<uint8_t>(item);
 }
@@ -3809,7 +3809,7 @@ static void CopyManagedByteArrayToNative(ptr<const ManagedScriptBackend> backend
         throw ScriptSystemException("Managed byte array size mismatch", mono_array_length(bytes), size);
     }
 
-    const uint32_t bytes_handle = mono_gchandle_new(value, 0);
+    uint32_t bytes_handle = mono_gchandle_new(value, 0);
     auto free_bytes_handle = scope_exit([bytes_handle]() noexcept { mono_gchandle_free(bytes_handle); });
     uint8_t* raw_data = static_cast<uint8_t*>(data);
 
@@ -3916,7 +3916,7 @@ static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, cons
             return storage.Callback.get();
         }
 
-        const string delegate_key = GetManagedDelegateKey(backend, value);
+        string delegate_key = GetManagedDelegateKey(backend, value);
         storage.Callback = SafeAlloc::MakeUnique<ManagedCallbackBridgeData>();
         storage.Callback->Backend = backend;
         storage.Callback->Type = type;
@@ -4049,7 +4049,7 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
         // Preserve the concrete runtime type when boxing an abstract entity argument or the Entity base
         // itself: a script receiving an Entity parameter cannot downcast unless the wrapper carries it
         if (entity && (base_type.IsAbstractEntity || base_type.Name == "Entity")) {
-            const string entity_type_name = string(entity->GetTypeName());
+            string entity_type_name = string(entity->GetTypeName());
             managed_type_name = entity.dyn_cast<const ProtoEntity>() ? strex("Proto{}", entity_type_name).str() : entity_type_name;
         }
 
@@ -4085,7 +4085,7 @@ static auto BoxSimplePropertyValue(ptr<const ManagedScriptBackend> backend, cons
     }
     if (base_type.IsHashedString) {
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hashed string raw data size does not match a hash");
-        const hstring::hash_t value = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
+        hstring::hash_t value = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
         return CreateHashObject(backend, value);
     }
     if (base_type.IsFixedType || base_type.IsEntityProto) {
@@ -4123,13 +4123,13 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
         }
 
         if (prop->IsArrayOfString()) {
-            const auto data_span = const_span<uint8_t> {raw_data.data(), raw_data.size()};
+            auto data_span = const_span<uint8_t> {raw_data.data(), raw_data.size()};
             size_t data_pos = 0;
-            const uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
+            uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
             for (uint32_t i = 0; i < arr_size; i++) {
-                const uint32_t str_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
-                const string text = span_read_string(data_span, data_pos, str_size);
+                uint32_t str_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
+                string text = span_read_string(data_span, data_pos, str_size);
                 MonoObject* item = reinterpret_cast<MonoObject*>(mono_string_new_len(GetDomainOrThrow(backend->GetDomain()), text.data(), numeric_cast<uint32_t>(text.size())));
                 AddManagedListItem(backend, list, item);
             }
@@ -4141,13 +4141,13 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
                 throw ScriptSystemException("Managed property ref type array is not supported", prop->GetName());
             }
 
-            const auto data_span = const_span<uint8_t> {raw_data.data(), raw_data.size()};
+            auto data_span = const_span<uint8_t> {raw_data.data(), raw_data.size()};
             size_t data_pos = 0;
-            const uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
+            uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
             for (uint32_t i = 0; i < arr_size; i++) {
-                const uint32_t ref_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
-                const auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_size, MAX_SERIALIZED_ALIGNMENT);
+                uint32_t ref_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
+                auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_size, MAX_SERIALIZED_ALIGNMENT);
                 MonoObject* item = CreateDynamicRefTypeObject(backend, base_type, ref_data);
                 AddManagedListItem(backend, list, item);
             }
@@ -4156,7 +4156,7 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
         }
         else {
             FO_VERIFY_AND_THROW(raw_data.size() % base_type.Size == 0, "Array property raw data size is not a multiple of the element size");
-            const size_t arr_size = raw_data.size() / base_type.Size;
+            size_t arr_size = raw_data.size() / base_type.Size;
 
             for (size_t i = 0; i < arr_size; i++) {
                 MonoObject* item = BoxSimplePropertyValue(backend, base_type, {data, base_type.Size});
@@ -4186,27 +4186,27 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
             throw ScriptSystemException("Corrupted Managed dictionary property", prop->GetName());
         }
 
-        const auto data_span = const_span<uint8_t> {raw_data.data(), raw_data.size()};
+        auto data_span = const_span<uint8_t> {raw_data.data(), raw_data.size()};
         size_t data_pos = 0;
 
         while (data_pos < raw_data.size()) {
-            const auto key_data = span_read_aligned_bytes(data_span, data_pos, key_type.Size, alignment_for_size(key_type.Size));
+            auto key_data = span_read_aligned_bytes(data_span, data_pos, key_type.Size, alignment_for_size(key_type.Size));
             MonoObject* key = BoxSimplePropertyValue(backend, key_type, key_data);
 
             if (prop->IsDictOfArray()) {
                 MonoObject* list = CreateManagedList(backend, base_type);
-                const uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
+                uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
                 for (uint32_t i = 0; i < arr_size; i++) {
                     MonoObject* item = nullptr;
 
                     if (prop->IsDictOfArrayOfString()) {
-                        const uint32_t text_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
-                        const auto text_data = span_read_bytes(data_span, data_pos, text_size);
+                        uint32_t text_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
+                        auto text_data = span_read_bytes(data_span, data_pos, text_size);
                         item = BoxSimplePropertyValue(backend, base_type, text_data);
                     }
                     else {
-                        const auto item_data = span_read_aligned_bytes(data_span, data_pos, base_type.Size, alignment_for_size(base_type.Size));
+                        auto item_data = span_read_aligned_bytes(data_span, data_pos, base_type.Size, alignment_for_size(base_type.Size));
                         item = BoxSimplePropertyValue(backend, base_type, item_data);
                     }
 
@@ -4216,7 +4216,7 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
                 AddManagedDictionaryItem(backend, dictionary, key, list);
             }
             else {
-                const auto value_data = span_read_aligned_bytes(data_span, data_pos, base_type.Size, alignment_for_size(base_type.Size));
+                auto value_data = span_read_aligned_bytes(data_span, data_pos, base_type.Size, alignment_for_size(base_type.Size));
                 MonoObject* item = BoxSimplePropertyValue(backend, base_type, value_data);
                 AddManagedDictionaryItem(backend, dictionary, key, item);
             }
@@ -4239,26 +4239,26 @@ static auto ConvertManagedSimpleObjectToPropertyData(ptr<ManagedScriptBackend> b
     PropertyRawData prop_data;
 
     if (base_type.Name == "any") {
-        const string text = ManagedObjectToString(value);
+        string text = ManagedObjectToString(value);
         prop_data.Set(text.data(), text.size());
     }
     else if (base_type.IsString) {
-        const string text = ToStringAndFree(reinterpret_cast<MonoString*>(value));
+        string text = ToStringAndFree(reinterpret_cast<MonoString*>(value));
         prop_data.Set(text.data(), text.size());
     }
     else if (base_type.IsHashedString) {
-        const hstring hash = ResolveManagedHashValue(backend, ExtractHashValue(value));
+        hstring hash = ResolveManagedHashValue(backend, ExtractHashValue(value));
         prop_data.SetAs(hash.as_hash());
     }
     else if (base_type.IsFixedType || base_type.IsEntityProto) {
-        const hstring::hash_t proto_hash = ExtractProtoHashFromManagedEntity(value);
+        hstring::hash_t proto_hash = ExtractProtoHashFromManagedEntity(value);
         prop_data.SetAs(proto_hash);
     }
     else if (base_type.IsRefType && IsDynamicManagedRefType(base_type)) {
         refcount_nptr<DynamicRefTypeInstance> ref_instance = CreateDynamicRefTypeFromManaged(backend, base_type, value);
 
         if (ref_instance) {
-            const span<const uint8_t> raw_data = ref_instance->GetSerializedRawData(base_type);
+            span<const uint8_t> raw_data = ref_instance->GetSerializedRawData(base_type);
 
             if (!raw_data.empty()) {
                 prop_data.Set(raw_data.data(), raw_data.size());
@@ -4302,7 +4302,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
 
         PropertyRawData prop_data;
         const BaseTypeDesc& key_type = prop->GetDictKeyType();
-        const size_t dict_size = GetManagedDictionaryCount(backend, value);
+        size_t dict_size = GetManagedDictionaryCount(backend, value);
 
         if (dict_size == 0) {
             return prop_data;
@@ -4324,8 +4324,8 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
             MonoObject* item = GetManagedDictionaryValue(backend, value, i);
 
             if (prop->IsDictOfArray()) {
-                const size_t arr_size = GetManagedListCount(backend, item);
-                const uint32_t arr_size_value = numeric_cast<uint32_t>(arr_size);
+                size_t arr_size = GetManagedListCount(backend, item);
+                uint32_t arr_size_value = numeric_cast<uint32_t>(arr_size);
                 AppendAlignedRawValue(data, arr_size_value, sizeof(uint32_t));
 
                 for (size_t j = 0; j < arr_size; j++) {
@@ -4333,7 +4333,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
                     PropertyRawData item_data = ConvertManagedSimpleObjectToPropertyData(backend, base_type, list_item);
 
                     if (prop->IsDictOfArrayOfString()) {
-                        const uint32_t item_size = numeric_cast<uint32_t>(item_data.GetSize());
+                        uint32_t item_size = numeric_cast<uint32_t>(item_data.GetSize());
                         AppendAlignedRawValue(data, item_size, sizeof(uint32_t));
                         AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
                     }
@@ -4362,7 +4362,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
     }
 
     PropertyRawData prop_data;
-    const size_t arr_size = GetManagedListCount(backend, value);
+    size_t arr_size = GetManagedListCount(backend, value);
 
     if (arr_size == 0) {
         return prop_data;
@@ -4371,13 +4371,13 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
     vector<uint8_t> data;
 
     if (prop->IsArrayOfString()) {
-        const uint32_t arr_size_value = numeric_cast<uint32_t>(arr_size);
+        uint32_t arr_size_value = numeric_cast<uint32_t>(arr_size);
         AppendAlignedRawValue(data, arr_size_value, sizeof(uint32_t));
 
         for (size_t i = 0; i < arr_size; i++) {
             MonoObject* item = GetManagedListItem(backend, value, i);
-            const string text = ToStringAndFree(reinterpret_cast<MonoString*>(item));
-            const uint32_t text_size = numeric_cast<uint32_t>(text.size());
+            string text = ToStringAndFree(reinterpret_cast<MonoString*>(item));
+            uint32_t text_size = numeric_cast<uint32_t>(text.size());
             AppendAlignedRawValue(data, text_size, sizeof(uint32_t));
             AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(text.data()), text.size()});
         }
@@ -4387,7 +4387,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
             throw ScriptSystemException("Managed property ref type array is not supported", prop->GetName());
         }
 
-        const uint32_t arr_size_value = numeric_cast<uint32_t>(arr_size);
+        uint32_t arr_size_value = numeric_cast<uint32_t>(arr_size);
         AppendRawValue(data, arr_size_value);
 
         for (size_t i = 0; i < arr_size; i++) {
@@ -4399,7 +4399,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
                 raw_data = ref_instance->GetSerializedRawData(base_type);
             }
 
-            const uint32_t ref_size = numeric_cast<uint32_t>(raw_data.size());
+            uint32_t ref_size = numeric_cast<uint32_t>(raw_data.size());
             AppendAlignedRawValue(data, ref_size, sizeof(uint32_t));
             AppendAlignedRawBytes(data, raw_data, MAX_SERIALIZED_ALIGNMENT);
         }
@@ -4539,7 +4539,7 @@ static auto FindFOnlineClass(ptr<const ManagedScriptBackend> backend, string_vie
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string class_name_str {class_name};
+    string class_name_str {class_name};
 
     for (nptr<void> image_ptr : backend->GetImages()) {
         nptr<MonoImage> image = image_ptr.reinterpret_as<MonoImage>();
@@ -4696,7 +4696,7 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
     // Array element: "T[]" -> Array desc wrapping the element base type. The managed registration emits this for
     // List<T> / T[] params and returns (see ScriptFuncRegistration.EngineTypeName), so collection-typed bridges (e.g
     if (type_name.ends_with("[]")) {
-        const string_view elem_name = type_name.substr(0, type_name.size() - 2);
+        string_view elem_name = type_name.substr(0, type_name.size() - 2);
 
         if (!meta->IsValidBaseType(elem_name)) {
             return {};
@@ -4744,7 +4744,7 @@ static auto ResolveProtoEntityFromRawData(ptr<const ManagedScriptBackend> backen
     hstring::hash_t proto_hash {};
     MemCopy(&proto_hash, raw_data.data(), sizeof(proto_hash));
 
-    const hstring proto_id = backend->GetMetadata()->Hashes.ResolveHash(proto_hash);
+    hstring proto_id = backend->GetMetadata()->Hashes.ResolveHash(proto_hash);
     auto proto = backend->GetMetadata()->GetProtoEntity(base_type.HashedName, proto_id);
     return cast_from_void<ProtoEntity*>(proto.void_cast());
 }
@@ -4772,7 +4772,7 @@ static auto ResolveInnerEntry(ptr<ManagedScriptBackend> backend, MonoString* ent
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string entry_name_str = ToStringAndFree(entry_name);
+    string entry_name_str = ToStringAndFree(entry_name);
     return backend->GetMetadata()->Hashes.ToHashedString(entry_name_str);
 }
 
@@ -4914,7 +4914,7 @@ static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hst
     }
 
     bool failed = false;
-    const hstring backend_value = backend->GetMetadata()->Hashes.ResolveHash(value, &failed);
+    hstring backend_value = backend->GetMetadata()->Hashes.ResolveHash(value, &failed);
 
     if (!failed) {
         return backend_value;
@@ -4943,7 +4943,7 @@ static auto CollectAssemblyResources(const FileSystem& resources, string_view ta
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string assembly_dir = strex("Assemblies/{}Assemblies", target_name).str();
+    string assembly_dir = strex("Assemblies/{}Assemblies", target_name).str();
     vector<ManagedAssemblyResource> result;
 
     for (const FileHeader& file : resources.FilterFiles("dll", assembly_dir, false)) {
@@ -4989,7 +4989,7 @@ static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>
     candidates.emplace_back(std::filesystem::current_path() / "ManagedRuntime");
 
     if (const auto exe_path = Platform::GetExePath()) {
-        const auto exe_dir = std::filesystem::path(fs_make_path(*exe_path)).parent_path();
+        auto exe_dir = std::filesystem::path(fs_make_path(*exe_path)).parent_path();
         candidates.emplace_back(exe_dir / "ManagedRuntime");
     }
 
@@ -5076,19 +5076,19 @@ static void ConfigureManagedRuntime()
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
 #endif
 
-    const auto runtime_dir = FindManagedRuntimeDir();
+    auto runtime_dir = FindManagedRuntimeDir();
 
     // Continuing without it only defers the failure into Mono, which aborts on a bare `corlib' assertion
     // once it cannot find System.Private.CoreLib; the directory is expected next to the binary or in cwd
     FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", std::filesystem::current_path().string(), Platform::GetExePath().value_or(""));
 
-    const auto lib_dir = *runtime_dir / "lib";
-    const auto etc_dir = *runtime_dir / "etc";
-    const auto config_file = etc_dir / "mono" / "config";
-    const string lib_dir_str = fs_path_to_string(lib_dir);
-    const string etc_dir_str = fs_path_to_string(etc_dir);
-    const string config_file_str = fs_path_to_string(config_file);
-    const string assembly_search_path = BuildAssemblySearchPath(lib_dir);
+    auto lib_dir = *runtime_dir / "lib";
+    auto etc_dir = *runtime_dir / "etc";
+    auto config_file = etc_dir / "mono" / "config";
+    string lib_dir_str = fs_path_to_string(lib_dir);
+    string etc_dir_str = fs_path_to_string(etc_dir);
+    string config_file_str = fs_path_to_string(config_file);
+    string assembly_search_path = BuildAssemblySearchPath(lib_dir);
 
     mono_set_dirs(lib_dir_str.c_str(), etc_dir_str.c_str());
 
@@ -5159,7 +5159,7 @@ static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_pat
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto existing_data = fs_read_file(disk_path.string());
+    auto existing_data = fs_read_file(disk_path.string());
 
     if (!existing_data.has_value()) {
         return false;
@@ -5187,7 +5187,7 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
         return restored_paths;
     }
 
-    const auto cache_root =
+    auto cache_root =
         std::filesystem::current_path() / "Cache" / "ManagedAssemblies" / fs_make_path(MakeManagedAssemblyCacheKey(assembly_resources));
     restored_paths.reserve(assembly_resources.size());
 
@@ -5215,21 +5215,21 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::filesystem::path bake_root {bake_output_dir};
+    std::filesystem::path bake_root {bake_output_dir};
     std::error_code ec;
 
     if (!std::filesystem::is_directory(bake_root, ec)) {
         return {};
     }
 
-    const string target_subdir = strex("{}Assemblies", target_name).str();
+    string target_subdir = strex("{}Assemblies", target_name).str();
 
     for (std::filesystem::directory_iterator pack_it(bake_root, ec); !ec && pack_it != std::filesystem::directory_iterator(); pack_it.increment(ec)) {
         if (!pack_it->is_directory()) {
             continue;
         }
 
-        const auto target_dir = pack_it->path() / "Assemblies" / fs_make_path(target_subdir);
+        auto target_dir = pack_it->path() / "Assemblies" / fs_make_path(target_subdir);
         std::error_code dir_ec;
 
         if (!std::filesystem::is_directory(target_dir, dir_ec)) {
@@ -5244,7 +5244,7 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
                 continue;
             }
 
-            const string file_name = strex("{}", it->path().filename().string()).str();
+            string file_name = strex("{}", it->path().filename().string()).str();
             result.emplace_back(it->path().lexically_normal());
             has_entry = has_entry || IsManagedEntryAssemblyFileName(file_name, target_name);
         }
@@ -5285,8 +5285,8 @@ static auto MakeManagedPathArray(MonoDomain* domain, const vector<std::filesyste
 
     for (size_t i = 0; i < paths.size(); i++) {
         std::error_code ec;
-        const auto absolute_path = std::filesystem::absolute(paths[i], ec).lexically_normal();
-        const string path = fs_path_to_string(ec ? paths[i].lexically_normal() : absolute_path);
+        auto absolute_path = std::filesystem::absolute(paths[i], ec).lexically_normal();
+        string path = fs_path_to_string(ec ? paths[i].lexically_normal() : absolute_path);
         MonoString* managed_path = mono_string_new(domain, path.c_str());
 
         if (managed_path == nullptr) {
@@ -5354,7 +5354,7 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
     scoped_lock load_locker {ManagedAssemblyLoadLocker};
 
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
-    const string host_path = fs_path_to_string(host_assembly_path);
+    string host_path = fs_path_to_string(host_assembly_path);
     MonoAssembly* host_assembly = mono_domain_assembly_open(domain, host_path.c_str());
 
     if (host_assembly == nullptr) {
@@ -5380,7 +5380,7 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
         throw ScriptSystemException("Managed load-context host methods not found");
     }
 
-    const string context_name = strex("FOnline.{}.{}", GetTargetName(_meta->GetSide()), reinterpret_cast<uintptr_t>(this)).str();
+    string context_name = strex("FOnline.{}.{}", GetTargetName(_meta->GetSide()), reinterpret_cast<uintptr_t>(this)).str();
     MonoString* managed_context_name = mono_string_new(domain, context_name.c_str());
     MonoArray* managed_assembly_paths = MakeManagedPathArray(domain, assembly_paths);
     MonoArray* managed_entry_paths = MakeManagedPathArray(domain, entry_assembly_paths);
@@ -5389,7 +5389,7 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
         throw ScriptSystemException("Can't create Managed load-context name");
     }
 
-    const ActiveBackendScope active_backend {this};
+    ActiveBackendScope active_backend {this};
     void* create_args[] = {managed_context_name, managed_assembly_paths, managed_entry_paths};
     MonoObject* exception = nullptr;
     MonoObject* load_scope = mono_runtime_invoke(create_method, nullptr, create_args, &exception);
@@ -5436,7 +5436,7 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const uint32_t load_scope_handle = _loadScopeGcHandle;
+    uint32_t load_scope_handle = _loadScopeGcHandle;
     _loadScopeGcHandle = 0;
 
     if (load_scope_handle == 0) {
@@ -5457,7 +5457,7 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
                 WriteLog("Managed load-context release method not found");
             }
             else {
-                const ActiveBackendScope active_backend {this};
+                ActiveBackendScope active_backend {this};
                 void* release_args[] = {load_scope};
                 MonoObject* exception = nullptr;
                 mono_runtime_invoke(release_method, nullptr, release_args, &exception);
@@ -5517,7 +5517,7 @@ void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* metho
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ActiveBackendScope active_backend {this};
+    ActiveBackendScope active_backend {this};
 
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
 
@@ -5599,7 +5599,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
 #if FO_WINDOWS
                 // Catch2 owns the top-level SEH filter while a unit-test session is active
-                const bool preserve_test_exception_filter = IsTestingInProgress;
+                bool preserve_test_exception_filter = IsTestingInProgress;
                 LPTOP_LEVEL_EXCEPTION_FILTER test_exception_filter = nullptr;
 
                 if (preserve_test_exception_filter) {
@@ -5633,18 +5633,18 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
     RegisterInternalCalls();
 
-    const auto target_name = GetTargetName(_meta->GetSide());
+    string_view target_name = GetTargetName(_meta->GetSide());
     CreateAliveFlag();
 
-    const auto resource_assemblies = CollectAssemblyResources(resources, target_name);
-    const auto restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
+    auto resource_assemblies = CollectAssemblyResources(resources, target_name);
+    auto restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
 
     vector<std::filesystem::path> assembly_paths;
     vector<std::filesystem::path> entry_assembly_paths;
     optional<std::filesystem::path> host_assembly_path;
 
-    const auto append_assembly_path = [&](const std::filesystem::path& assembly_path) {
-        const string file_name = strex("{}", assembly_path.filename().string()).str();
+    auto append_assembly_path = [&](const std::filesystem::path& assembly_path) {
+        string file_name = strex("{}", assembly_path.filename().string()).str();
 
         if (IsManagedHostAssemblyFileName(file_name)) {
             if (host_assembly_path.has_value() && *host_assembly_path != assembly_path) {
@@ -5687,7 +5687,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
             throw ScriptSystemException("Managed load-context host assembly not found", string(MANAGED_HOST_ASSEMBLY_FILE_NAME));
         }
 
-        const vector<nptr<void>> entry_assemblies = CreateLoadScope(*host_assembly_path, assembly_paths, entry_assembly_paths);
+        vector<nptr<void>> entry_assemblies = CreateLoadScope(*host_assembly_path, assembly_paths, entry_assembly_paths);
 
         for (const nptr<void>& entry_assembly : entry_assemblies) {
             nptr<MonoAssembly> assembly = entry_assembly.reinterpret_as<MonoAssembly>();

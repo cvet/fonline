@@ -1581,7 +1581,7 @@ FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t e
     }
 
     auto ctx = server->RequireCurrentSyncContext();
-    const array<ptr<ServerEntity>, 1> entities {entity};
+    array<ptr<ServerEntity>, 1> entities {entity};
     ctx->SyncEntities(entities);
 
     return !entity->IsDestroyed() && !entity->IsDestroying();

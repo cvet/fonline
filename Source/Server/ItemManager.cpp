@@ -325,9 +325,9 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
             auto result_item_holder = result_item.hold_ref();
             ignore_unused(result_item_holder);
 
-            const int32_t source_count = item->GetCount();
-            const int32_t result_count = result_item->GetCount();
-            const int32_t transfer_count = std::min(count, source_count);
+            int32_t source_count = item->GetCount();
+            int32_t result_count = result_item->GetCount();
+            int32_t transfer_count = std::min(count, source_count);
 
             _engine->OnCritterItemTransferIn.Fire(to_cr, item, result_item, transfer_count);
 

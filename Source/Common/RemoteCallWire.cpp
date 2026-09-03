@@ -60,7 +60,7 @@ void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDe
         writer.Write<hstring::hash_t>(hstr.as_hash());
     }
     else if (type.IsRefType) {
-        const auto raw_data = hooks.RefTypeToRaw(type, value);
+        auto raw_data = hooks.RefTypeToRaw(type, value);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
         if (!raw_data.empty()) {
@@ -83,7 +83,7 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
 
     // Copy primitive/enum bytes out of the transient reader buffer into aligned per-call storage; the call site
     // dereferences the returned pointer as the primitive's type, which requires natural alignment
-    const auto read_plain = [&](size_t size) -> ptr<void> {
+    auto read_plain = [&](size_t size) -> ptr<void> {
         FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
         ptr<uint8_t> buf = storage.StorePlainBytes();
         reader.ReadBytes(make_span(buf, size));
@@ -99,16 +99,16 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
         return read_plain(type.Size);
     }
     else if (type.IsString) {
-        const auto str_len = reader.Read<int32_t>();
+        int32_t str_len = reader.Read<int32_t>();
         FO_VERIFY_AND_THROW(str_len >= 0, "Wire string length must be non-negative");
         return storage.StoreString(string {reader.ReadStringView(numeric_cast<size_t>(str_len))});
     }
     else if (type.IsHashedString) {
-        const auto hash = reader.Read<hstring::hash_t>();
+        auto hash = reader.Read<hstring::hash_t>();
         return storage.StoreHashed(hashes.ResolveHash(hash));
     }
     else if (type.IsRefType) {
-        const uint32_t raw_size = reader.Read<uint32_t>();
+        uint32_t raw_size = reader.Read<uint32_t>();
         const_span<uint8_t> raw_data = reader.ReadBytes(raw_size);
         return hooks.RawToRefType(type, raw_data);
     }
@@ -116,7 +116,7 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
         ptr<uint8_t> buf = storage.StoreStructBytes(type.Size);
 
         for (const auto& field : type.StructLayout->Fields) {
-            const ptr<void> field_data = ReadRemoteCallSimple(reader, field.Type, hashes, storage, hooks);
+            ptr<void> field_data = ReadRemoteCallSimple(reader, field.Type, hashes, storage, hooks);
             MemCopy(buf.offset(field.Offset), field_data, field.Type.Size);
         }
 

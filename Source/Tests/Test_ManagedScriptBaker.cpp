@@ -47,8 +47,8 @@ static void SetProcessEnv(string_view name, string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string name_str {name};
-    const string value_str {value};
+    string name_str {name};
+    string value_str {value};
 
 #if FO_WINDOWS
     (void)_putenv_s(name_str.c_str(), value_str.c_str());
@@ -61,7 +61,7 @@ static void UnsetProcessEnv(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string name_str {name};
+    string name_str {name};
 
 #if FO_WINDOWS
     (void)_putenv_s(name_str.c_str(), "");
@@ -114,12 +114,12 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const std::filesystem::path base_dir = std::filesystem::temp_directory_path();
-        const int64_t stamp = numeric_cast<int64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+        std::filesystem::path base_dir = std::filesystem::temp_directory_path();
+        int64_t stamp = numeric_cast<int64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
         for (uint32_t attempt = 0; attempt < 100; attempt++) {
             std::error_code ec;
-            const std::filesystem::path candidate = base_dir / fs_make_path(strex("FOnlineManagedScriptBakerTest_{}_{}", stamp, attempt));
+            std::filesystem::path candidate = base_dir / fs_make_path(strex("FOnlineManagedScriptBakerTest_{}_{}", stamp, attempt));
 
             if (std::filesystem::create_directory(candidate, ec) && !ec) {
                 _path = candidate;
@@ -229,7 +229,7 @@ mkdir "%ROOT%\MapperAssemblies" 2>nul
 exit /b 0
 )");
 #else
-    const std::filesystem::path script_path = dir / "FakeManagedMsBuild.sh";
+    std::filesystem::path script_path = dir / "FakeManagedMsBuild.sh";
     WriteTextFile(script_path, R"(#!/bin/sh
 if [ -z "$FO_FAKE_MSBUILD_ROOT" ]; then
     exit 1
@@ -284,12 +284,12 @@ TEST_CASE("ManagedScriptBaker")
     using namespace BakerTests;
 
     ScopedTempDirectory temp_dir;
-    const std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
-    const std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
-    const std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
-    const std::filesystem::path managed_reference = managed_source_dir / "References" / "ManagedDependency.dll";
-    const std::filesystem::path managed_analyzer = managed_source_dir / "Analyzers" / "ManagedAnalyzer.csproj";
-    const std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path managed_reference = managed_source_dir / "References" / "ManagedDependency.dll";
+    std::filesystem::path managed_analyzer = managed_source_dir / "Analyzers" / "ManagedAnalyzer.csproj";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
 
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
     WriteTextFile(core_scripts_dir / "CoreTagged.cs", "namespace FOnline {\n    ///@ Enum CoreMirrorTag A\n    public static class CoreTagged {}\n}\n");
@@ -299,11 +299,11 @@ TEST_CASE("ManagedScriptBaker")
     WriteTextFile(managed_reference, "managed-reference\n");
     WriteTextFile(managed_analyzer, "<Project />\n");
 
-    const std::filesystem::path server_source = script_dir / "ServerOnly.cs";
-    const std::filesystem::path client_source = script_dir / "ClientOnly.cs";
-    const std::filesystem::path mapper_source = script_dir / "MapperOnly.cs";
-    const std::filesystem::path shared_source = script_dir / "Shared.cs";
-    const std::filesystem::path tilde_source = script_dir / "Tilde~1.cs";
+    std::filesystem::path server_source = script_dir / "ServerOnly.cs";
+    std::filesystem::path client_source = script_dir / "ClientOnly.cs";
+    std::filesystem::path mapper_source = script_dir / "MapperOnly.cs";
+    std::filesystem::path shared_source = script_dir / "Shared.cs";
+    std::filesystem::path tilde_source = script_dir / "Tilde~1.cs";
 
     WriteTextFile(server_source,
         "#if SERVER\n"
@@ -333,7 +333,7 @@ TEST_CASE("ManagedScriptBaker")
     WriteTextFile(script_dir / "Obsolete.gen.txt", "stale generated sidecar\n");
     WriteTextFile(script_dir / "UnitManaged.Server.gen.csproj", "<Project />\n");
 
-    const std::filesystem::path work_dir = temp_dir.Path() / "Work";
+    std::filesystem::path work_dir = temp_dir.Path() / "Work";
     std::filesystem::create_directories(work_dir);
     WriteTextFile(temp_dir.Path() / "ManagedRoot.fomain", "");
     ScopedCurrentPath current_path(work_dir);
@@ -407,7 +407,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK_FALSE(std::filesystem::exists(script_dir / "Obsolete.gen.sln"));
     CHECK(std::filesystem::exists(script_dir / "Obsolete.gen.txt"));
 
-    const string solution = ReadTextFile(script_dir / "UnitProject.gen.sln");
+    string solution = ReadTextFile(script_dir / "UnitProject.gen.sln");
     CHECK(solution.find("Microsoft Visual Studio Solution File, Format Version 12.00") != string::npos);
     CHECK(solution.find("# <auto-generated />") != string::npos);
     CHECK(solution.find("Do not edit it manually") != string::npos);
@@ -417,7 +417,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(solution.find("Client|AnyCPU = Client|AnyCPU") != string::npos);
     CHECK(solution.find("Mapper|AnyCPU = Mapper|AnyCPU") != string::npos);
 
-    const string unified_project = ReadTextFile(script_dir / "UnitProject.gen.csproj");
+    string unified_project = ReadTextFile(script_dir / "UnitProject.gen.csproj");
     CHECK(unified_project.find("<auto-generated />") != string::npos);
     CHECK(unified_project.find("Do not edit it manually") != string::npos);
     CHECK(unified_project.find("<Configurations>Server;Client;Mapper</Configurations>") != string::npos);
@@ -446,15 +446,15 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("Obsolete.gen.cs") != string::npos);
     CHECK(unified_project.find("<ProjectReference Include=\"FOnline.ManagedHost.gen.csproj\" />") != string::npos);
 
-    const string managed_host_project = ReadTextFile(script_dir / "FOnline.ManagedHost.gen.csproj");
+    string managed_host_project = ReadTextFile(script_dir / "FOnline.ManagedHost.gen.csproj");
     CHECK(managed_host_project.find("<AssemblyName>FOnline.ManagedHost</AssemblyName>") != string::npos);
     CHECK(managed_host_project.find("ManagedHost/ManagedLoadContextHost.cs") != string::npos);
 
-    const string server_enums = ReadTextFile(script_dir / "ServerEnums.gen.cs");
+    string server_enums = ReadTextFile(script_dir / "ServerEnums.gen.cs");
     CHECK(server_enums.find("// <auto-generated />") == 0);
     CHECK(server_enums.find("Do not edit it manually") != string::npos);
 
-    const string server_entities = ReadTextFile(script_dir / "ServerEntities.gen.cs");
+    string server_entities = ReadTextFile(script_dir / "ServerEntities.gen.cs");
     CHECK(server_entities.find("NotImplementedException") == string::npos);
     CHECK(server_entities.find("NotSupportedException") == string::npos);
     CHECK(server_entities.find("public static string ManagedTitle") != string::npos);
@@ -524,7 +524,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("private static GameOnManagedTestEvent __event_OnManagedTest;") != string::npos);
     CHECK(server_entities.find("new GameOnManagedTestEvent(IntPtr.Zero)") != string::npos);
 
-    const string server_events = ReadTextFile(script_dir / "ServerEvents.gen.cs");
+    string server_events = ReadTextFile(script_dir / "ServerEvents.gen.cs");
     CHECK(server_events.find("NotImplementedException") == string::npos);
     CHECK(server_events.find("private readonly IntPtr _entityPtr;") != string::npos);
     CHECK(server_events.find("private GameOnManagedTestEventHandler? _handlers;") == string::npos);
@@ -548,7 +548,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("third = (int)__args[2];") != string::npos);
     CHECK(server_events.find("third = (int)__args[0];") == string::npos);
 
-    const string client_settings = ReadTextFile(script_dir / "ClientSettings.gen.cs");
+    string client_settings = ReadTextFile(script_dir / "ClientSettings.gen.cs");
     CHECK(client_settings.find("public static List<int> View_GlobalDayColorTime") != string::npos);
     CHECK(client_settings.find("global::FOnline.Native.GetSettingIntList(") != string::npos);
     CHECK(client_settings.find("\"View.GlobalDayColorTime\"") != string::npos);
@@ -556,11 +556,11 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(client_settings.find("global::FOnline.Native.GetSettingByteList(") != string::npos);
     CHECK(client_settings.find("\"View.GlobalDayColor\"") != string::npos);
 
-    const string client_types = ReadTextFile(script_dir / "ClientTypes.gen.cs");
+    string client_types = ReadTextFile(script_dir / "ClientTypes.gen.cs");
     CHECK(client_types.find("public static MapSpriteHolder __Factory()") != string::npos);
     CHECK(client_types.find("\"__Factory\",\n                2,\n                IntPtr.Zero,") != string::npos);
 
-    const string server_types = ReadTextFile(script_dir / "ServerTypes.gen.cs");
+    string server_types = ReadTextFile(script_dir / "ServerTypes.gen.cs");
     CHECK(server_types.find("public partial struct hstring") != string::npos);
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);
     CHECK(server_types.find("public partial class ManagedRoute") != string::npos);
@@ -615,10 +615,10 @@ TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisi
     using namespace BakerTests;
 
     ScopedTempDirectory temp_dir;
-    const std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
-    const std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
-    const std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
-    const std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
 
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
@@ -652,13 +652,13 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     using namespace BakerTests;
 
     ScopedTempDirectory temp_dir;
-    const std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
-    const std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
-    const std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
-    const std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
-    const std::filesystem::path shared_source = script_dir / "Shared.cs";
-    const std::filesystem::path fake_msbuild_root = temp_dir.Path() / "Baking" / "TestPack" / "Assemblies";
-    const std::filesystem::path fake_msbuild = WriteFakeManagedMsBuildScript(temp_dir.Path());
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+    std::filesystem::path shared_source = script_dir / "Shared.cs";
+    std::filesystem::path fake_msbuild_root = temp_dir.Path() / "Baking" / "TestPack" / "Assemblies";
+    std::filesystem::path fake_msbuild = WriteFakeManagedMsBuildScript(temp_dir.Path());
 
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");

@@ -68,7 +68,7 @@ static auto ManagedInteropShimLoad(const char* name, int flags, char** err, void
         return nullptr;
     }
 
-    const auto first_entry = FindInteropShimLibrary(name);
+    auto first_entry = FindInteropShimLibrary(name);
 
     if (!first_entry.has_value()) {
         return nullptr;
@@ -89,13 +89,13 @@ static auto ManagedInteropShimSymbol(void* handle, const char* name, char** err,
         return nullptr;
     }
 
-    const size_t first_entry = static_cast<size_t>(reinterpret_cast<uintptr_t>(handle)) - 1;
+    size_t first_entry = static_cast<size_t>(reinterpret_cast<uintptr_t>(handle)) - 1;
 
     if (first_entry >= ManagedPInvokeEntryCount) {
         return nullptr;
     }
 
-    const string_view library = ManagedPInvokeEntries[first_entry].Library;
+    string_view library = ManagedPInvokeEntries[first_entry].Library;
 
     for (size_t i = first_entry; i < ManagedPInvokeEntryCount; i++) {
         if (library != ManagedPInvokeEntries[i].Library) {
@@ -124,7 +124,7 @@ static auto FindInteropShimLibrary(string_view name) -> optional<size_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string normalized = NormalizeInteropShimName(name);
+    string normalized = NormalizeInteropShimName(name);
 
     for (size_t i = 0; i < ManagedPInvokeEntryCount; i++) {
         if (NormalizeInteropShimName(ManagedPInvokeEntries[i].Library) == normalized) {
@@ -141,7 +141,7 @@ static auto NormalizeInteropShimName(string_view name) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t separator_pos = name.find_last_of("/\\");
+    size_t separator_pos = name.find_last_of("/\\");
 
     if (separator_pos != string_view::npos) {
         name.remove_prefix(separator_pos + 1);

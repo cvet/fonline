@@ -412,7 +412,7 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto range = _globalFuncMap.equal_range(func_name);
+    auto range = _globalFuncMap.equal_range(func_name);
 
     for (auto it = range.first; it != range.second; ++it) {
         ptr<ScriptFuncDesc> func = it->second;
@@ -443,7 +443,7 @@ auto ScriptSystem::FindFuncCandidates(hstring func_name) noexcept -> vector<ptr<
     FO_STACK_TRACE_ENTRY();
 
     vector<ptr<ScriptFuncDesc>> result;
-    const auto range = _globalFuncMap.equal_range(func_name);
+    auto range = _globalFuncMap.equal_range(func_name);
 
     for (auto it = range.first; it != range.second; ++it) {
         result.emplace_back(it->second);

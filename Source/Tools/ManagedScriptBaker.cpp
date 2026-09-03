@@ -183,7 +183,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     FO_STACK_TRACE_ENTRY();
 
     if (!target_path.empty()) {
-        const string normalized_target_path = strex(target_path).normalize_path_slashes().str();
+        string normalized_target_path = strex(target_path).normalize_path_slashes().str();
 
         if (!normalized_target_path.starts_with("Assemblies/") || strex(normalized_target_path).get_file_extension() != "dll") {
             return;
@@ -191,28 +191,28 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     auto settings = _context->Settings.as_ptr();
-    const auto managed_config_dir = GetManagedConfigDir(*settings);
-    const auto managed_generated_dir = GetManagedGeneratedDir(settings->ManagedScriptGeneratedDir, managed_config_dir);
-    const auto managed_assemblies_output_dir = GetManagedAssembliesOutputDir(*_context);
-    const auto dir_source_files = CollectManagedDirSources(settings->ManagedScriptDirs, managed_config_dir);
-    const auto managed_host_source = FindManagedHostSource(settings->ManagedScriptDirs, managed_config_dir);
+    auto managed_config_dir = GetManagedConfigDir(*settings);
+    auto managed_generated_dir = GetManagedGeneratedDir(settings->ManagedScriptGeneratedDir, managed_config_dir);
+    auto managed_assemblies_output_dir = GetManagedAssembliesOutputDir(*_context);
+    auto dir_source_files = CollectManagedDirSources(settings->ManagedScriptDirs, managed_config_dir);
+    auto managed_host_source = FindManagedHostSource(settings->ManagedScriptDirs, managed_config_dir);
 
-    const auto assemblies = settings->ManagedScriptAssemblies;
+    auto assemblies = settings->ManagedScriptAssemblies;
 
     if (assemblies.empty()) {
         throw ManagedScriptBakerException("ManagedScriptAssemblies setting is empty");
     }
 
-    const string managed_pack_name = _context->PackName;
-    const string project_name = settings->ManagedScriptProjectName;
+    string managed_pack_name = _context->PackName;
+    string project_name = settings->ManagedScriptProjectName;
 
     if (project_name.empty()) {
         throw ManagedScriptBakerException("ManagedScriptProjectName setting is empty");
     }
 
-    const array<string_view, 3> targets {"Server", "Client", "Mapper"};
-    const array<string_view, 5> generated_file_suffixes {"Enums", "Types", "Entities", "Events", "Settings"};
-    const bool dry_run = settings->ManagedScriptBakerDryRun;
+    array<string_view, 3> targets {"Server", "Client", "Mapper"};
+    array<string_view, 5> generated_file_suffixes {"Enums", "Types", "Entities", "Events", "Settings"};
+    bool dry_run = settings->ManagedScriptBakerDryRun;
 
     struct TargetBakeTask
     {
@@ -229,8 +229,8 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     map<string, vector<string>> project_references;
     unordered_set<string> expected_generated_files;
 
-    for (const string_view target : targets) {
-        for (const string_view suffix : generated_file_suffixes) {
+    for (string_view target : targets) {
+        for (string_view suffix : generated_file_suffixes) {
             expected_generated_files.emplace(MakeGeneratedManagedApiFileName(target, suffix));
         }
     }
@@ -242,24 +242,24 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     // neither compiled nor referenced by the regenerated project on the very first bake after a change
     RemoveStaleGeneratedManagedArtifacts(managed_generated_dir, expected_generated_files);
 
-    for (const string_view target : targets) {
+    for (string_view target : targets) {
         vector<std::filesystem::path> source_files;
         unordered_set<string> source_file_keys;
         vector<string> references;
         unordered_set<string> reference_keys;
 
-        const auto append_source_file = [&](const std::filesystem::path& source_file) {
+        auto append_source_file = [&](const std::filesystem::path& source_file) {
             std::error_code ec;
-            const auto canonical_path = std::filesystem::weakly_canonical(source_file, ec);
-            const auto normalized_path = ec ? source_file.lexically_normal() : canonical_path;
-            const string source_key = strex("{}", normalized_path.string()).str();
+            auto canonical_path = std::filesystem::weakly_canonical(source_file, ec);
+            auto normalized_path = ec ? source_file.lexically_normal() : canonical_path;
+            string source_key = strex("{}", normalized_path.string()).str();
 
             if (source_file_keys.emplace(source_key).second) {
                 source_files.emplace_back(normalized_path);
             }
         };
 
-        const auto append_reference = [&](const string& reference) {
+        auto append_reference = [&](const string& reference) {
             if (reference_keys.emplace(reference).second) {
                 references.emplace_back(reference);
             }
@@ -277,17 +277,17 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         std::ranges::sort(source_files, {}, [](const std::filesystem::path& path) { return path.string(); });
         std::ranges::sort(references);
 
-        const string assembly_res_path = MakeManagedEntryAssemblyResourcePath(managed_pack_name, target);
-        const uint64_t managed_bake_stamp = GetManagedBakeStamp(*_context, target, source_files, references, managed_host_source);
+        string assembly_res_path = MakeManagedEntryAssemblyResourcePath(managed_pack_name, target);
+        uint64_t managed_bake_stamp = GetManagedBakeStamp(*_context, target, source_files, references, managed_host_source);
         bool should_bake = !_context->BakeChecker || _context->BakeChecker(assembly_res_path, managed_bake_stamp);
 
         if (_context->BakeChecker) {
-            const string host_resource_path = MakeManagedOutputAssemblyResourcePath(target, MANAGED_HOST_ASSEMBLY_FILE_NAME);
+            string host_resource_path = MakeManagedOutputAssemblyResourcePath(target, MANAGED_HOST_ASSEMBLY_FILE_NAME);
             should_bake = _context->BakeChecker(host_resource_path, managed_bake_stamp) || should_bake;
 
             for (const std::filesystem::path& assembly_disk_path : CollectManagedOutputAssemblies(managed_assemblies_output_dir, target)) {
-                const string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
-                const string output_resource_path = MakeManagedOutputAssemblyResourcePath(target, output_file_name);
+                string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
+                string output_resource_path = MakeManagedOutputAssemblyResourcePath(target, output_file_name);
 
                 if (output_resource_path != assembly_res_path && output_resource_path != host_resource_path) {
                     should_bake = _context->BakeChecker(output_resource_path, managed_bake_stamp) || should_bake;
@@ -310,19 +310,19 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     GenerateUnifiedProjectFile(managed_generated_dir, strex("{}/{}/Assemblies", settings->BakeOutput, managed_pack_name).str(), managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, ResolveManagedPaths(managed_config_dir, settings->ManagedScriptAnalyzers));
     GenerateSolutionFile(managed_generated_dir, project_name, vector<string> {project_name, string(MANAGED_HOST_PROJECT_NAME)});
 
-    for (const string_view target : targets) {
+    for (string_view target : targets) {
         WriteLog("Generate Managed C# API for {}", target);
 
         if (target == "Server") {
-            const BakerServerEngine engine(*_context->BakedFiles);
+            BakerServerEngine engine(*_context->BakedFiles);
             GenerateTargetApiFiles(engine, managed_generated_dir, target);
         }
         else if (target == "Client") {
-            const BakerClientEngine engine(*_context->BakedFiles);
+            BakerClientEngine engine(*_context->BakedFiles);
             GenerateTargetApiFiles(engine, managed_generated_dir, target);
         }
         else if (target == "Mapper") {
-            const BakerMapperEngine engine(*_context->BakedFiles);
+            BakerMapperEngine engine(*_context->BakedFiles);
             GenerateTargetApiFiles(engine, managed_generated_dir, target);
         }
         else {
@@ -330,24 +330,24 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         }
     }
 
-    const auto project_path = managed_generated_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(project_name));
+    auto project_path = managed_generated_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(project_name));
 
     for (const TargetBakeTask& task : target_tasks) {
         if (!task.ShouldBake) {
             continue;
         }
 
-        const string_view target = task.Target;
-        const string assembly_file_name = MakeManagedAssemblyFileName(managed_pack_name, target);
+        string_view target = task.Target;
+        string assembly_file_name = MakeManagedAssemblyFileName(managed_pack_name, target);
 
         if (dry_run) {
-            const string marker = strex("ManagedScriptBaker dry run {} {}", managed_pack_name, target).str();
+            string marker = strex("ManagedScriptBaker dry run {} {}", managed_pack_name, target).str();
             _context->WriteData(task.ResourcePath, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(marker.data()), marker.size()});
         }
         else {
-            const string msbuild_command = MakeManagedMsBuildCommand(settings->ManagedScriptMsBuild);
-            const string output_path = MakeAbsoluteProjectOutputPath(managed_assemblies_output_dir, target);
-            const string command = strex("{} -noLogo -nodeReuse:false -m -restore -target:Build -p:Configuration={} -p:Platform=AnyCPU -p:OutputPath=\"{}\" \"{}\"", msbuild_command, target, output_path, project_path.generic_string()).str();
+            string msbuild_command = MakeManagedMsBuildCommand(settings->ManagedScriptMsBuild);
+            string output_path = MakeAbsoluteProjectOutputPath(managed_assemblies_output_dir, target);
+            string command = strex("{} -noLogo -nodeReuse:false -m -restore -target:Build -p:Configuration={} -p:Platform=AnyCPU -p:OutputPath=\"{}\" \"{}\"", msbuild_command, target, output_path, project_path.generic_string()).str();
             RemoveManagedOutputAssemblies(managed_assemblies_output_dir, target);
             RemoveManagedBuildSidecars(managed_assemblies_output_dir, target, assembly_file_name);
             RunCommand(command, "ManagedScriptBaker compilation failed");
@@ -356,9 +356,9 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
             bool entry_assembly_written = false;
 
             for (const std::filesystem::path& assembly_disk_path : CollectManagedOutputAssemblies(managed_assemblies_output_dir, target)) {
-                const string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
-                const string resource_path = MakeManagedOutputAssemblyResourcePath(target, output_file_name);
-                const auto assembly_data = ReadFileBytes(assembly_disk_path);
+                string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
+                string resource_path = MakeManagedOutputAssemblyResourcePath(target, output_file_name);
+                auto assembly_data = ReadFileBytes(assembly_disk_path);
                 _context->WriteData(resource_path, assembly_data);
 
                 if (output_file_name == assembly_file_name) {
@@ -439,8 +439,8 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 size_t ctor_args_length = 0;
 
                 for (const FieldDesc& field : type->StructLayout->Fields) {
-                    const string field_name = EscapeCsIdentifier(field.Name);
-                    const string field_type = MakeCsTypeName(field.Type);
+                    string field_name = EscapeCsIdentifier(field.Name);
+                    string field_type = MakeCsTypeName(field.Type);
 
                     out << CS_INDENT << "public " << field_type << " " << field_name << ";\n";
 
@@ -478,7 +478,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "{\n";
 
                     for (const FieldDesc& field : type->StructLayout->Fields) {
-                        const string field_name = EscapeCsIdentifier(field.Name);
+                        string field_name = EscapeCsIdentifier(field.Name);
                         out << CS_INDENT << "    this." << field_name << " = " << field_name << ";\n";
                     }
 
@@ -486,12 +486,12 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 }
 
                 if (!type->StructLayout->Fields.empty()) {
-                    const string struct_name = EscapeCsIdentifier(type->Name);
+                    string struct_name = EscapeCsIdentifier(type->Name);
                     string eq_expr;
                     string hash_args;
 
                     for (const FieldDesc& field : type->StructLayout->Fields) {
-                        const string field_name = EscapeCsIdentifier(field.Name);
+                        string field_name = EscapeCsIdentifier(field.Name);
 
                         if (!eq_expr.empty()) {
                             eq_expr += " && ";
@@ -596,7 +596,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             if (type_name != "Game" && desc->HasAbstract) {
                 // Mirror the AngelScript cast graph: `Abstract<Type> : Entity` carries the content, and the concrete
                 // `<Type>` plus `Proto<Type>`/`Static<Type>` derive from it (so a `<Type>@` IS-A `Abstract<Type>`)
-                const string abstract_name = strex("Abstract{}", type_name).str();
+                string abstract_name = strex("Abstract{}", type_name).str();
                 AppendEntityClass(out, abstract_name, "Entity", *desc, target_name, type_name);
                 AppendEmptyDerivedEntity(out, type_name, abstract_name);
 
@@ -643,14 +643,14 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
         for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
             for (const EntityEventDesc& event : desc->Events) {
-                const string event_type_name = strex("{}{}Event", type_name, event.Name).str();
-                const auto event_arg_declarations = MakeCsEventArgumentDeclarations(type_name, desc->IsGlobal, event.Args);
-                const string delegate_name = strex("{}{}EventHandler", type_name, event.Name).str();
-                const string async_delegate_name = strex("{}{}EventHandlerAsync", type_name, event.Name).str();
-                const string result_delegate_name = strex("{}{}EventHandlerResult", type_name, event.Name).str();
-                const string async_result_delegate_name = strex("{}{}EventHandlerAsyncResult", type_name, event.Name).str();
-                const string owner_literal = EscapeCsStringLiteral(type_name);
-                const string event_literal = EscapeCsStringLiteral(event.Name);
+                string event_type_name = strex("{}{}Event", type_name, event.Name).str();
+                auto event_arg_declarations = MakeCsEventArgumentDeclarations(type_name, desc->IsGlobal, event.Args);
+                string delegate_name = strex("{}{}EventHandler", type_name, event.Name).str();
+                string async_delegate_name = strex("{}{}EventHandlerAsync", type_name, event.Name).str();
+                string result_delegate_name = strex("{}{}EventHandlerResult", type_name, event.Name).str();
+                string async_result_delegate_name = strex("{}{}EventHandlerAsyncResult", type_name, event.Name).str();
+                string owner_literal = EscapeCsStringLiteral(type_name);
+                string event_literal = EscapeCsStringLiteral(event.Name);
 
                 AppendCsCallableDeclaration(out, "    ", "public delegate void ", EscapeCsIdentifier(delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "    ", "public delegate global::System.Threading.Tasks.Task ", EscapeCsIdentifier(async_delegate_name), event_arg_declarations, ";");
@@ -911,7 +911,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         for (const auto& [setting_name, type_name] : export_settings) {
             string accessor_name = setting_name;
             std::ranges::replace(accessor_name, '.', '_');
-            const ComplexTypeDesc setting_type = meta.ResolveComplexType(type_name);
+            ComplexTypeDesc setting_type = meta.ResolveComplexType(type_name);
             AppendSettingProperty(out, setting_type, EscapeCsIdentifier(accessor_name), setting_name, setting_names);
         }
 
@@ -929,7 +929,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
         throw ManagedScriptBakerException("ManagedScriptTargetFramework setting is empty");
     }
 
-    const auto project_path = project_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME));
+    auto project_path = project_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME));
     ostringstream file;
     file << GENERATED_XML_DISCLAIMER;
     file << "<Project Sdk=\"Microsoft.NET.Sdk\">\n";
@@ -961,16 +961,16 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string proj_name = MakeGeneratedManagedUnifiedProjectFileName(project_name);
-    const auto proj_path = project_dir / fs_make_path(proj_name);
+    string proj_name = MakeGeneratedManagedUnifiedProjectFileName(project_name);
+    auto proj_path = project_dir / fs_make_path(proj_name);
 
     if (target_framework.empty()) {
         throw ManagedScriptBakerException("ManagedScriptTargetFramework setting is empty");
     }
 
     ostringstream file;
-    const array<string_view, 3> targets {"Server", "Client", "Mapper"};
-    const array<string_view, 5> generated_files {"Enums", "Types", "Entities", "Events", "Settings"};
+    array<string_view, 3> targets {"Server", "Client", "Mapper"};
+    array<string_view, 5> generated_files {"Enums", "Types", "Entities", "Events", "Settings"};
 
     file << GENERATED_XML_DISCLAIMER;
     file << "<Project Sdk=\"Microsoft.NET.Sdk\">\n";
@@ -1002,7 +1002,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "    <FOnlineBakeRoot Condition=\" '$(FOnlineBakeRoot)' == '' \">$(MSBuildThisFileDirectory)..</FOnlineBakeRoot>\n";
     file << "  </PropertyGroup>\n";
 
-    for (const string_view target : targets) {
+    for (string_view target : targets) {
         file << "  <PropertyGroup Condition=\" '$(Configuration)|$(Platform)' == '" << EscapeXml(target) << "|AnyCPU' \">\n";
         file << "    <DebugType>embedded</DebugType>\n";
         file << "    <Optimize>true</Optimize>\n";
@@ -1012,17 +1012,17 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
         file << "  </PropertyGroup>\n";
     }
 
-    for (const string_view target : targets) {
-        const string condition = strex(" '$(Configuration)' == '{}' ", target).str();
-        const string_view condition_view = condition;
+    for (string_view target : targets) {
+        string condition = strex(" '$(Configuration)' == '{}' ", target).str();
+        string_view condition_view = condition;
 
         file << "  <ItemGroup Condition=\"" << EscapeXml(condition) << "\">\n";
 
-        for (const string_view file_suffix : generated_files) {
+        for (string_view file_suffix : generated_files) {
             file << "    <Compile Include=\"" << EscapeXml(MakeGeneratedManagedApiFileName(target, file_suffix)) << "\" />\n";
         }
 
-        if (const auto it = source_files.find(string(target)); it != source_files.end()) {
+        if (auto it = source_files.find(string(target)); it != source_files.end()) {
             for (const std::filesystem::path& source_file : it->second) {
                 file << "    <Compile Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, source_file)) << "\" />\n";
             }
@@ -1030,7 +1030,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
 
         file << "  </ItemGroup>\n";
 
-        if (const auto it = references.find(string(target)); it != references.end()) {
+        if (auto it = references.find(string(target)); it != references.end()) {
             AppendProjectReferences(file, project_dir, it->second, condition_view);
         }
     }
@@ -1066,13 +1066,13 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string sln_name = MakeGeneratedManagedSolutionFileName(solution_name);
-    const auto sln_path = project_dir / fs_make_path(sln_name);
+    string sln_name = MakeGeneratedManagedSolutionFileName(solution_name);
+    auto sln_path = project_dir / fs_make_path(sln_name);
 
     ostringstream file;
     constexpr string_view CSHARP_PROJECT_TYPE_GUID = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}";
     constexpr string_view SOLUTION_PLATFORM = "AnyCPU";
-    const array<string_view, 3> targets {"Server", "Client", "Mapper"};
+    array<string_view, 3> targets {"Server", "Client", "Mapper"};
 
     vector<string> project_guids;
     project_guids.reserve(project_names.size());
@@ -1085,8 +1085,8 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
     file << "MinimumVisualStudioVersion = 10.0.40219.1\r\n";
 
     for (const string& project_name : project_names) {
-        const string project_guid = MakeManagedSolutionGuid(strex("ManagedProject:{}", project_name).str());
-        const auto project_path = project_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(project_name));
+        string project_guid = MakeManagedSolutionGuid(strex("ManagedProject:{}", project_name).str());
+        auto project_path = project_dir / fs_make_path(MakeGeneratedManagedUnifiedProjectFileName(project_name));
         project_guids.emplace_back(project_guid);
 
         file << "Project(\"" << CSHARP_PROJECT_TYPE_GUID << "\") = \"" << EscapeSolutionString(project_name) << "\", \"" << EscapeSolutionString(MakeSolutionProjectPath(project_dir, project_path)) << "\", \"" << project_guid << "\"\r\n";
@@ -1096,7 +1096,7 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
     file << "Global\r\n";
     file << "\tGlobalSection(SolutionConfigurationPlatforms) = preSolution\r\n";
 
-    for (const string_view target : targets) {
+    for (string_view target : targets) {
         file << "\t\t" << target << "|" << SOLUTION_PLATFORM << " = " << target << "|" << SOLUTION_PLATFORM << "\r\n";
     }
 
@@ -1104,7 +1104,7 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
     file << "\tGlobalSection(ProjectConfigurationPlatforms) = postSolution\r\n";
 
     for (const string& project_guid : project_guids) {
-        for (const string_view target : targets) {
+        for (string_view target : targets) {
             file << "\t\t" << project_guid << "." << target << "|" << SOLUTION_PLATFORM << ".ActiveCfg = " << target << "|" << SOLUTION_PLATFORM << "\r\n";
             file << "\t\t" << project_guid << "." << target << "|" << SOLUTION_PLATFORM << ".Build.0 = " << target << "|" << SOLUTION_PLATFORM << "\r\n";
         }
@@ -1128,10 +1128,10 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
     vector<std::filesystem::path> result;
     unordered_set<string> unique_paths;
 
-    const auto add_source = [&](const std::filesystem::path& path) {
+    auto add_source = [&](const std::filesystem::path& path) {
         std::error_code ec;
-        const auto normalized_path = std::filesystem::weakly_canonical(path, ec);
-        const string key = strex("{}", (ec ? path.lexically_normal() : normalized_path).string()).str();
+        auto normalized_path = std::filesystem::weakly_canonical(path, ec);
+        string key = strex("{}", (ec ? path.lexically_normal() : normalized_path).string()).str();
 
         if (unique_paths.emplace(key).second) {
             result.emplace_back(ec ? path.lexically_normal() : normalized_path);
@@ -1150,7 +1150,7 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
             continue;
         }
 
-        const std::filesystem::path disk_path = fs_make_path(file.GetDiskPath());
+        std::filesystem::path disk_path = fs_make_path(file.GetDiskPath());
 
         if (IsGeneratedManagedArtifactFileName(strex("{}", disk_path.filename().string()).str())) {
             continue;
@@ -1163,7 +1163,7 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
     }
 
     for (const string& source_path : CollectScopedValues(extra_sources, assembly_name, target_name)) {
-        const std::filesystem::path source_file_path = ResolveManagedPath(config_dir, source_path);
+        std::filesystem::path source_file_path = ResolveManagedPath(config_dir, source_path);
 
         if (IsGeneratedManagedArtifactFileName(strex("{}", source_file_path.filename().string()).str())) {
             continue;
@@ -1187,7 +1187,7 @@ auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_reference
     unordered_set<string> unique_refs(result.begin(), result.end());
 
     for (const string& reference_value : CollectScopedValues(extra_references, assembly_name, target_name)) {
-        const bool is_path_reference = reference_value.find('\\') != string::npos || reference_value.find('/') != string::npos || std::filesystem::path(fs_make_path(reference_value)).extension() == ".dll";
+        bool is_path_reference = reference_value.find('\\') != string::npos || reference_value.find('/') != string::npos || std::filesystem::path(fs_make_path(reference_value)).extension() == ".dll";
         string reference = reference_value;
 
         if (is_path_reference) {
@@ -1209,7 +1209,7 @@ auto ManagedScriptBaker::GetManagedGeneratedDir(string_view dir_override, const 
 
     // Empty targets the build GeneratedSource tree (the same one native codegen writes to), so generated
     // managed scripts stay out of the authored source tree unless the project explicitly roots them there
-    const std::filesystem::path generated_dir = dir_override.empty() ? std::filesystem::path {FO_GENERATED_SOURCE_DIR} / "Managed" : ResolveManagedPath(config_dir, dir_override);
+    std::filesystem::path generated_dir = dir_override.empty() ? std::filesystem::path {FO_GENERATED_SOURCE_DIR} / "Managed" : ResolveManagedPath(config_dir, dir_override);
 
     std::error_code ec;
     std::filesystem::create_directories(generated_dir, ec);
@@ -1218,7 +1218,7 @@ auto ManagedScriptBaker::GetManagedGeneratedDir(string_view dir_override, const 
         throw ManagedScriptBakerException("Can't create Managed generated directory", generated_dir.string());
     }
 
-    const auto canonical_dir = std::filesystem::weakly_canonical(generated_dir, ec);
+    auto canonical_dir = std::filesystem::weakly_canonical(generated_dir, ec);
     return ec ? generated_dir.lexically_normal() : canonical_dir;
 }
 
@@ -1228,7 +1228,7 @@ auto ManagedScriptBaker::RunCommand(string_view command, string_view fail_messag
 
     WriteLog("Run ManagedScriptBaker command: {}", command);
 
-    const int32_t exit_code = std::system(string(command).c_str());
+    int32_t exit_code = std::system(string(command).c_str());
 
     if (exit_code != 0) {
         throw ManagedScriptBakerException(fail_message, exit_code);
@@ -1241,14 +1241,14 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
 
     uint64_t stamp = 1;
 
-    const auto merge_disk_file = [&](const string& path) {
-        if (const uint64_t write_time = fs_last_write_time(path); write_time != 0) {
+    auto merge_disk_file = [&](const string& path) {
+        if (uint64_t write_time = fs_last_write_time(path); write_time != 0) {
             stamp = std::max(stamp, write_time);
         }
     };
 
     for (const std::filesystem::path& source_file : source_files) {
-        const string source_file_path = strex("{}", source_file.string()).str();
+        string source_file_path = strex("{}", source_file.string()).str();
         merge_disk_file(source_file_path);
     }
 
@@ -1261,8 +1261,8 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
     }
 
     if (context.BakedFiles) {
-        const string target_lower = strex(target_name).lower();
-        const FileHeader metadata_header = context.BakedFiles->ReadFileHeader(strex("Metadata.fometa-{}", target_lower));
+        string target_lower = strex(target_name).lower();
+        FileHeader metadata_header = context.BakedFiles->ReadFileHeader(strex("Metadata.fometa-{}", target_lower));
 
         if (metadata_header) {
             stamp = std::max(stamp, metadata_header.GetWriteTime());
@@ -1277,8 +1277,8 @@ static auto FindManagedHostSource(const vector<string>& source_dirs, const std::
     FO_STACK_TRACE_ENTRY();
 
     for (const string& source_dir_value : source_dirs) {
-        const std::filesystem::path source_dir = ResolveManagedPath(config_dir, source_dir_value);
-        const array candidates {
+        std::filesystem::path source_dir = ResolveManagedPath(config_dir, source_dir_value);
+        array candidates {
             source_dir / "ManagedHost" / MANAGED_HOST_SOURCE_FILE_NAME,
             source_dir.parent_path() / "ManagedHost" / MANAGED_HOST_SOURCE_FILE_NAME,
         };
@@ -1290,7 +1290,7 @@ static auto FindManagedHostSource(const vector<string>& source_dirs, const std::
                 continue;
             }
 
-            const auto canonical_path = std::filesystem::weakly_canonical(candidate, ec);
+            auto canonical_path = std::filesystem::weakly_canonical(candidate, ec);
             return ec ? candidate.lexically_normal() : canonical_path;
         }
     }
@@ -1406,7 +1406,7 @@ static auto EscapeCsIdentifier(string_view name) -> string
     string result;
     result.reserve(name.size() + 1);
 
-    for (const char c : name) {
+    for (char c : name) {
         result.push_back(IsIdentifierPart(c) ? c : '_');
     }
 
@@ -1447,7 +1447,7 @@ static auto EscapeXml(string_view value) -> string
     string result;
     result.reserve(value.size());
 
-    for (const char c : value) {
+    for (char c : value) {
         switch (c) {
         case '&':
             result += "&amp;";
@@ -1480,7 +1480,7 @@ static auto EscapeCsStringLiteral(string_view value) -> string
     string result;
     result.reserve(value.size());
 
-    for (const char c : value) {
+    for (char c : value) {
         if (c == '\\' || c == '"') {
             result.push_back('\\');
         }
@@ -1495,7 +1495,7 @@ static auto TrimString(string value) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto is_space = [](char c) { return std::isspace(static_cast<unsigned char>(c)) != 0; };
+    auto is_space = [](char c) { return std::isspace(static_cast<unsigned char>(c)) != 0; };
     value.erase(value.begin(), std::find_if_not(value.begin(), value.end(), is_space));
     value.erase(std::find_if_not(value.rbegin(), value.rend(), is_space).base(), value.end());
     return value;
@@ -1505,7 +1505,7 @@ static auto ScopeMatches(string_view scope, string_view value) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string lower_scope = strex(scope).lower().str();
+    string lower_scope = strex(scope).lower().str();
     return scope.empty() || scope == "*" || lower_scope == "all" || scope == value;
 }
 
@@ -1522,16 +1522,16 @@ static auto CollectScopedValues(const vector<string>& entries, string_view assem
             continue;
         }
 
-        const size_t assembly_sep = entry.find(',');
-        const size_t target_sep = assembly_sep != string::npos ? entry.find(',', assembly_sep + 1) : string::npos;
+        size_t assembly_sep = entry.find(',');
+        size_t target_sep = assembly_sep != string::npos ? entry.find(',', assembly_sep + 1) : string::npos;
 
         if (assembly_sep == string::npos || target_sep == string::npos) {
             result.emplace_back(std::move(entry));
             continue;
         }
 
-        const string entry_assembly = TrimString(entry.substr(0, assembly_sep));
-        const string entry_target = TrimString(entry.substr(assembly_sep + 1, target_sep - assembly_sep - 1));
+        string entry_assembly = TrimString(entry.substr(0, assembly_sep));
+        string entry_target = TrimString(entry.substr(assembly_sep + 1, target_sep - assembly_sep - 1));
         string entry_value = TrimString(entry.substr(target_sep + 1));
 
         if (!entry_value.empty() && ScopeMatches(entry_assembly, assembly_name) && ScopeMatches(entry_target, target_name)) {
@@ -1575,13 +1575,13 @@ static auto IsGeneratedManagedApiFile(const std::filesystem::path& path) -> bool
         return false;
     }
 
-    const string stem = strex("{}", path.stem().string()).str();
-    const array<string_view, 3> targets {"Server", "Client", "Mapper"};
-    const array<string_view, 5> suffixes {"Enums", "Types", "Entities", "Events", "Settings"};
+    string stem = strex("{}", path.stem().string()).str();
+    array<string_view, 3> targets {"Server", "Client", "Mapper"};
+    array<string_view, 5> suffixes {"Enums", "Types", "Entities", "Events", "Settings"};
 
-    for (const string_view target : targets) {
-        for (const string_view suffix : suffixes) {
-            const string generated_stem = strex("{}{}", target, suffix).str();
+    for (string_view target : targets) {
+        for (string_view suffix : suffixes) {
+            string generated_stem = strex("{}{}", target, suffix).str();
 
             if (stem == generated_stem || stem == strex("{}.gen", generated_stem).str()) {
                 return true;
@@ -1652,7 +1652,7 @@ static void RemoveStaleGeneratedManagedArtifacts(const std::filesystem::path& pr
             continue;
         }
 
-        const string file_name = strex("{}", it->path().filename().string()).str();
+        string file_name = strex("{}", it->path().filename().string()).str();
         bool generated_by_this_baker = IsGeneratedManagedArtifactFileName(file_name);
 
         if (!generated_by_this_baker && file_name.ends_with(".gen.cs")) {
@@ -1691,7 +1691,7 @@ static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesyst
         config_dir.clear();
     }
 
-    const auto applied_configs = settings.GetAppliedConfigs();
+    auto applied_configs = settings.GetAppliedConfigs();
 
     if (!applied_configs.empty()) {
         std::filesystem::path config_path {fs_make_path(applied_configs.front())};
@@ -1703,7 +1703,7 @@ static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesyst
         config_dir = config_path.parent_path();
     }
 
-    const auto canonical_dir = std::filesystem::weakly_canonical(config_dir, ec);
+    auto canonical_dir = std::filesystem::weakly_canonical(config_dir, ec);
     return ec ? config_dir.lexically_normal() : canonical_dir;
 }
 
@@ -1718,7 +1718,7 @@ static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_v
     }
 
     std::error_code ec;
-    const auto canonical_path = std::filesystem::weakly_canonical(path, ec);
+    auto canonical_path = std::filesystem::weakly_canonical(path, ec);
     return ec ? path.lexically_normal() : canonical_path;
 }
 
@@ -1752,7 +1752,7 @@ static auto CollectManagedDirSources(const vector<string>& source_dirs, const st
     vector<std::filesystem::path> source_files;
 
     for (const string& dir : source_dirs) {
-        const std::filesystem::path source_dir = ResolveManagedPath(config_dir, dir);
+        std::filesystem::path source_dir = ResolveManagedPath(config_dir, dir);
         std::error_code ec;
 
         if (!std::filesystem::exists(source_dir, ec) || ec) {
@@ -1790,19 +1790,19 @@ static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, co
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto absolute_project_dir = std::filesystem::weakly_canonical(project_dir, ec).lexically_normal();
+    auto absolute_project_dir = std::filesystem::weakly_canonical(project_dir, ec).lexically_normal();
 
     if (ec) {
         return strex("{}", path.generic_string()).str();
     }
 
-    const auto absolute_path = std::filesystem::weakly_canonical(path, ec).lexically_normal();
+    auto absolute_path = std::filesystem::weakly_canonical(path, ec).lexically_normal();
 
     if (ec) {
         return strex("{}", path.generic_string()).str();
     }
 
-    const auto relative_path = absolute_path.lexically_relative(absolute_project_dir);
+    auto relative_path = absolute_path.lexically_relative(absolute_project_dir);
     return strex("{}", relative_path.empty() ? absolute_path.generic_string() : relative_path.generic_string()).str();
 }
 
@@ -1822,7 +1822,7 @@ static auto EscapeSolutionString(string_view value) -> string
     string result;
     result.reserve(value.size());
 
-    for (const char c : value) {
+    for (char c : value) {
         switch (c) {
         case '"':
             result.push_back('\'');
@@ -1849,7 +1849,7 @@ static auto HashManagedSolutionGuid(string_view value, uint64_t seed) noexcept -
 
     uint64_t hash = FNV_OFFSET ^ seed;
 
-    for (const char c : value) {
+    for (char c : value) {
         hash ^= static_cast<uint8_t>(c);
         hash *= FNV_PRIME;
     }
@@ -1861,8 +1861,8 @@ static auto MakeManagedSolutionGuid(string_view value) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint64_t first = HashManagedSolutionGuid(value, 0x6D616E6167656401ull);
-    const uint64_t second = HashManagedSolutionGuid(value, 0x736F6C7574696F6Eull);
+    uint64_t first = HashManagedSolutionGuid(value, 0x6D616E6167656401ull);
+    uint64_t second = HashManagedSolutionGuid(value, 0x736F6C7574696F6Eull);
 
     ostringstream output;
     output << '{' << std::uppercase << std::hex << std::setfill('0');
@@ -1877,7 +1877,7 @@ static auto MakeManagedSolutionGuid(string_view value) -> string
     output << std::setw(12) << (second & 0x0000FFFFFFFFFFFFull);
     output << '}';
 
-    const stream_string result = output.str();
+    stream_string result = output.str();
 
     return {result.data(), result.size()};
 }
@@ -1887,8 +1887,8 @@ static auto MakeAbsoluteProjectOutputPath(const std::filesystem::path& assemblie
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto target_output_path = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
-    const auto output_path = std::filesystem::absolute(target_output_path, ec).lexically_normal();
+    auto target_output_path = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
+    auto output_path = std::filesystem::absolute(target_output_path, ec).lexically_normal();
     string result = strex("{}", (ec ? target_output_path.lexically_normal() : output_path).generic_string()).str();
 
     if (result.empty() || result.back() != '/') {
@@ -1905,7 +1905,7 @@ static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::
     FO_VERIFY_AND_THROW(context.Settings, "Baking context has no settings");
 
     std::error_code ec;
-    const auto output_dir =
+    auto output_dir =
         std::filesystem::absolute(std::filesystem::current_path() / fs_make_path(context.Settings->BakeOutput) / fs_make_path(context.PackName) / "Assemblies", ec)
             .lexically_normal();
     return ec ? (std::filesystem::current_path() / fs_make_path(context.Settings->BakeOutput) / fs_make_path(context.PackName) / "Assemblies").lexically_normal()
@@ -2123,7 +2123,7 @@ static void AppendCsCallableDeclaration(ostringstream& out, string_view indent, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string line_prefix = strex("{}{}{}", indent, declaration_prefix, name).str();
+    string line_prefix = strex("{}{}{}", indent, declaration_prefix, name).str();
 
     if (ShouldUseMultilineCsArgumentList(arg_declarations, line_prefix.length() + suffix.length())) {
         out << line_prefix << "(\n";
@@ -2166,7 +2166,7 @@ static auto MakeCsDefaultValueSuffix(const ArgDesc& arg) -> string
     }
 
     const string& default_value = arg.DefaultValue;
-    const char first_ch = default_value.front();
+    char first_ch = default_value.front();
 
     // Numeric / bool / string / char literals are valid C# constants verbatim
     if (first_ch == '"' || first_ch == '\'' || first_ch == '-' || first_ch == '+' || first_ch == '.' || (first_ch >= '0' && first_ch <= '9') || default_value == "true" || default_value == "false") {
@@ -2187,7 +2187,7 @@ static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args) -> vector<strin
     FO_STACK_TRACE_ENTRY();
 
     vector<string> result;
-    const auto arg_names = MakeCsArgumentNames(args);
+    auto arg_names = MakeCsArgumentNames(args);
     result.reserve(args.size());
 
     for (size_t i = 0; i < args.size(); i++) {
@@ -2221,13 +2221,13 @@ static auto MakeCsEventArgumentDeclarations(string_view owner_type_name, bool is
     result.reserve(args.size() + (!is_global ? 1u : 0u));
 
     if (!is_global) {
-        const string self_name = MakeUniqueCsIdentifier(strex(owner_type_name).lower().str(), used_names);
+        string self_name = MakeUniqueCsIdentifier(strex(owner_type_name).lower().str(), used_names);
         result.emplace_back(strex("{} {}", EscapeCsIdentifier(owner_type_name), self_name).str());
     }
 
     for (size_t i = 0; i < args.size(); i++) {
         const ArgDesc& arg = args[i];
-        const string arg_name = MakeUniqueCsIdentifier(arg.Name.empty() ? strex("arg{}", i).str() : arg.Name, used_names);
+        string arg_name = MakeUniqueCsIdentifier(arg.Name.empty() ? strex("arg{}", i).str() : arg.Name, used_names);
         string declaration;
 
         if (arg.RequiresCover) {
@@ -2296,10 +2296,10 @@ static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& 
     out << CS_INDENT << "}\n";
 
     for (ptr<const RemoteCallDesc> call : cs_calls) {
-        const string name = string(call->Name.as_str());
-        const auto arg_decls = MakeCsArgumentDeclarations(call->Args);
-        const auto arg_names = MakeCsArgumentNames(call->Args);
-        const string args_array = arg_names.empty() ? "new object[0]" : strex("new object[] {{ {} }}", JoinCsCommaList(arg_names)).str();
+        string name = string(call->Name.as_str());
+        auto arg_decls = MakeCsArgumentDeclarations(call->Args);
+        auto arg_names = MakeCsArgumentNames(call->Args);
+        string args_array = arg_names.empty() ? "new object[0]" : strex("new object[] {{ {} }}", JoinCsCommaList(arg_names)).str();
 
         out << "\n";
         out << CS_INDENT << "public void " << EscapeCsIdentifier(name) << "(" << JoinCsCommaList(arg_decls) << ")\n";
@@ -2348,7 +2348,7 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
             continue;
         }
 
-        const string property_enum_name = strex("{}Property", type_name).str();
+        string property_enum_name = strex("{}Property", type_name).str();
 
         if (!enum_names.contains(property_enum_name)) {
             continue;
@@ -2360,8 +2360,8 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
             continue;
         }
 
-        const string entity_type = EscapeCsIdentifier(type_name);
-        const string enum_type = EscapeCsIdentifier(property_enum_name);
+        string entity_type = EscapeCsIdentifier(type_name);
+        string enum_type = EscapeCsIdentifier(property_enum_name);
 
         out << CS_INDENT << "public static void SetPropertyGetter<T>(" << enum_type << " property, global::System.Func<" << entity_type << ", T> getter)\n";
         out << CS_INDENT << "{\n";
@@ -2427,7 +2427,7 @@ static void AppendPropertyInfoAccessor(ostringstream& out, string_view type_name
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string enum_type = EscapeCsIdentifier(strex("{}Property", type_name).str());
+    string enum_type = EscapeCsIdentifier(strex("{}Property", type_name).str());
 
     out << CS_INDENT << "public static void GetPropertyInfo(" << enum_type << " property, out bool isDisabled, out bool isVirtual, out bool isDict, out bool isArray, out bool isStringLike, out string enumName, out bool isInt, out bool isFloat, out bool isBool, out int baseSize, out bool isSynced)\n";
     out << CS_INDENT << "{\n";
@@ -2440,7 +2440,7 @@ static void AppendPropertyInfoAccessor(ostringstream& out, string_view type_name
 
     for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
         auto prop = registrar->GetPropertyByIndexUnsafe(i);
-        const auto enum_value = enum_values.find(numeric_cast<int32_t>(prop->GetRegIndex()));
+        auto enum_value = enum_values.find(numeric_cast<int32_t>(prop->GetRegIndex()));
 
         if (enum_value == enum_values.end()) {
             continue;
@@ -2491,7 +2491,7 @@ static void AppendPropertyInfoAccessors(ostringstream& out, const EngineMetadata
     out << "    {\n";
 
     for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
-        const auto enum_it = enum_values_by_index.find(strex("{}Property", type_name).str());
+        auto enum_it = enum_values_by_index.find(strex("{}Property", type_name).str());
 
         if (!desc->PropRegistrar.as_nptr() || enum_it == enum_values_by_index.end()) {
             continue;
@@ -2501,7 +2501,7 @@ static void AppendPropertyInfoAccessors(ostringstream& out, const EngineMetadata
     }
 
     for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetFixedTypes())) {
-        const auto enum_it = enum_values_by_index.find(strex("{}Property", type_name).str());
+        auto enum_it = enum_values_by_index.find(strex("{}Property", type_name).str());
 
         if (!desc->PropRegistrar.as_nptr() || enum_it == enum_values_by_index.end()) {
             continue;
@@ -2891,7 +2891,7 @@ static void AppendSingleMutableArgAssignment(ostringstream& out, const_span<ArgD
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto arg_names = MakeCsArgumentNames(args);
+    auto arg_names = MakeCsArgumentNames(args);
 
     for (size_t i = 0; i < args.size(); i++) {
         const ArgDesc& arg = args[i];
@@ -2909,7 +2909,7 @@ static void AppendMutableArgAssignments(ostringstream& out, const_span<ArgDesc> 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto arg_names = MakeCsArgumentNames(args);
+    auto arg_names = MakeCsArgumentNames(args);
     size_t source_index = source_offset;
 
     for (size_t i = 0; i < args.size(); i++) {
@@ -2927,7 +2927,7 @@ static void AppendMutableEventArgAssignments(ostringstream& out, const_span<ArgD
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto arg_names = MakeCsArgumentNames(args);
+    auto arg_names = MakeCsArgumentNames(args);
 
     for (size_t i = 0; i < args.size(); i++) {
         const ArgDesc& arg = args[i];
@@ -2974,7 +2974,7 @@ static void AppendProperty(ostringstream& out, const string& type_name, const st
 
     out << CS_INDENT << "}";
 
-    if (const optional<string> property_initializer = MakePropertyInitializer(type_name, initializer); property_initializer.has_value()) {
+    if (optional<string> property_initializer = MakePropertyInitializer(type_name, initializer); property_initializer.has_value()) {
         out << " = " << *property_initializer << ";";
     }
 
@@ -2985,19 +2985,19 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string type_name = MakeCsPropertyTypeName(prop);
-    const string decl_type = prop->IsNullable() ? type_name + "?" : type_name;
-    const string property_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
+    string type_name = MakeCsPropertyTypeName(prop);
+    string decl_type = prop->IsNullable() ? type_name + "?" : type_name;
+    string property_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
     const BaseTypeDesc& base_type = prop->GetBaseType();
-    const bool use_narrow_integer_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsInt8 || base_type.IsUInt8 || base_type.IsInt16 || base_type.IsUInt16);
+    bool use_narrow_integer_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsInt8 || base_type.IsUInt8 || base_type.IsInt16 || base_type.IsUInt16);
 
     if (!member_names.emplace(property_name).second) {
         return;
     }
 
-    const string owner_literal = EscapeCsStringLiteral(owner_type_name);
-    const string prop_literal = EscapeCsStringLiteral(prop->GetName());
-    const string entity_ptr = string {MakeTargetPtrExpression(is_static, false)};
+    string owner_literal = EscapeCsStringLiteral(owner_type_name);
+    string prop_literal = EscapeCsStringLiteral(prop->GetName());
+    string entity_ptr = string {MakeTargetPtrExpression(is_static, false)};
 
     out << CS_INDENT << "public ";
 
@@ -3014,7 +3014,7 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     out << CS_INDENT << "    {\n";
 
     if (use_narrow_integer_bridge) {
-        const string property_enum_type = EscapeCsIdentifier(strex("{}Property", owner_type_name).str());
+        string property_enum_type = EscapeCsIdentifier(strex("{}Property", owner_type_name).str());
         out << CS_INDENT << "        return (" << decl_type << ")" << (is_static ? "global::FOnline.Game." : "") << "GetAsInt(\n";
         out << CS_INDENT << "            (global::FOnline." << property_enum_type << ")(" << prop->GetRegIndex() << "));\n";
     }
@@ -3032,7 +3032,7 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
         out << CS_INDENT << "    {\n";
 
         if (use_narrow_integer_bridge) {
-            const string property_enum_type = EscapeCsIdentifier(strex("{}Property", owner_type_name).str());
+            string property_enum_type = EscapeCsIdentifier(strex("{}Property", owner_type_name).str());
             out << CS_INDENT << "        " << (is_static ? "global::FOnline.Game." : "") << "SetAsInt(\n";
             out << CS_INDENT << "            (global::FOnline." << property_enum_type << ")(" << prop->GetRegIndex() << "),\n";
             out << CS_INDENT << "            value);\n";
@@ -3059,8 +3059,8 @@ static void AppendSettingProperty(ostringstream& out, const ComplexTypeDesc& typ
         return;
     }
 
-    const string setting_literal = EscapeCsStringLiteral(setting_name);
-    const string type_name = MakeCsTypeName(type);
+    string setting_literal = EscapeCsStringLiteral(setting_name);
+    string type_name = MakeCsTypeName(type);
     const BaseTypeDesc& base_type = type.BaseType;
     string getter_method;
     string setter_method;
@@ -3199,16 +3199,16 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
         method_name += "Method";
     }
 
-    const auto arg_declarations = MakeCsArgumentDeclarations(method.Args);
-    const string args = JoinCsCommaList(arg_declarations);
-    const string ret = MakeCsTypeName(method.Ret);
-    const string signature = strex("{}({})", method_name, args).str();
+    auto arg_declarations = MakeCsArgumentDeclarations(method.Args);
+    string args = JoinCsCommaList(arg_declarations);
+    string ret = MakeCsTypeName(method.Ret);
+    string signature = strex("{}({})", method_name, args).str();
 
     if (!signatures.emplace(signature).second) {
         return;
     }
 
-    const bool is_method_static = is_static || (is_ref_type_owner && method.Name == "__Factory");
+    bool is_method_static = is_static || (is_ref_type_owner && method.Name == "__Factory");
     string declaration_prefix = "public ";
 
     if (is_method_static) {
@@ -3234,25 +3234,25 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
 
     if (is_method_static && method.Name == "Log" && method.Args.size() == 1 && ret == "void" && MakeCsTypeName(method.Args.front().Type) == "string") {
         unordered_set<string> used_arg_names;
-        const string arg_name = MakeUniqueCsIdentifier(method.Args.front().Name.empty() ? "arg0" : method.Args.front().Name, used_arg_names);
+        string arg_name = MakeUniqueCsIdentifier(method.Args.front().Name.empty() ? "arg0" : method.Args.front().Name, used_arg_names);
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "    global::FOnline.Native.Log(" << arg_name << ");\n";
         out << CS_INDENT << "}\n";
     }
     else if (is_method_static && method.Name == "GetHashStr" && method.Args.size() == 1 && ret == "string" && MakeCsTypeName(method.Args.front().Type) == "ulong") {
         unordered_set<string> used_arg_names;
-        const string arg_name = MakeUniqueCsIdentifier(method.Args.front().Name.empty() ? "arg0" : method.Args.front().Name, used_arg_names);
+        string arg_name = MakeUniqueCsIdentifier(method.Args.front().Name.empty() ? "arg0" : method.Args.front().Name, used_arg_names);
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "    return global::FOnline.Native.GetHashStr(" << arg_name << ");\n";
         out << CS_INDENT << "}\n";
     }
     else if (allow_native_bridge && IsManagedBridgeMethod(method)) {
-        const string owner_literal = EscapeCsStringLiteral(owner_type_name);
-        const string method_literal = EscapeCsStringLiteral(method.Name);
-        const string entity_ptr = string {MakeTargetPtrExpression(is_method_static, is_ref_type_owner)};
-        const bool has_mutable_args = HasMutableArgs(method.Args);
-        const size_t mutable_args_count = CountMutableArgs(method.Args);
-        const string body_indent = strex("{}    ", CS_INDENT).str();
+        string owner_literal = EscapeCsStringLiteral(owner_type_name);
+        string method_literal = EscapeCsStringLiteral(method.Name);
+        string entity_ptr = string {MakeTargetPtrExpression(is_method_static, is_ref_type_owner)};
+        bool has_mutable_args = HasMutableArgs(method.Args);
+        size_t mutable_args_count = CountMutableArgs(method.Args);
+        string body_indent = strex("{}    ", CS_INDENT).str();
 
         if (has_mutable_args) {
             out << CS_INDENT << "{\n";
@@ -3321,7 +3321,7 @@ static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view me
         bool matched = true;
         size_t arg_index = 0;
 
-        for (const string_view arg_type : arg_types) {
+        for (string_view arg_type : arg_types) {
             if (MakeCsTypeName(method.Args[arg_index].Type) != arg_type) {
                 matched = false;
                 break;
@@ -3369,19 +3369,19 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
         }
     }
 
-    const string owner_literal = EscapeCsStringLiteral(owner_type_name);
-    const string entity_ptr = string {MakeTargetPtrExpression(is_static, is_ref_type_owner)};
-    const string body_indent = strex("{}        ", CS_INDENT).str();
+    string owner_literal = EscapeCsStringLiteral(owner_type_name);
+    string entity_ptr = string {MakeTargetPtrExpression(is_static, is_ref_type_owner)};
+    string body_indent = strex("{}        ", CS_INDENT).str();
 
     for (const auto& [method_name_raw, accessors] : accessor_map) {
-        const string property_name = EscapeCsIdentifier(method_name_raw);
+        string property_name = EscapeCsIdentifier(method_name_raw);
 
         if (member_names.count(property_name) != 0) {
             continue;
         }
 
-        const nptr<const MethodDesc> getter = accessors.Getter;
-        const nptr<const MethodDesc> setter = accessors.Setter;
+        nptr<const MethodDesc> getter = accessors.Getter;
+        nptr<const MethodDesc> setter = accessors.Setter;
         string property_type;
 
         if (getter) {
@@ -3396,9 +3396,9 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
 
         // A getter/setter is dispatched through Native.CallMethod by its method index, exactly like a regular method
         // (the backend resolves accessors the same way)
-        const bool getter_bridgeable = !getter || CanUseManagedBridge(getter->Ret);
-        const bool setter_bridgeable = !setter || (!setter->Args.empty() && CanUseManagedBridge(setter->Args.front().Type));
-        const bool emit_bridge = allow_native_bridge && getter_bridgeable && setter_bridgeable;
+        bool getter_bridgeable = !getter || CanUseManagedBridge(getter->Ret);
+        bool setter_bridgeable = !setter || (!setter->Args.empty() && CanUseManagedBridge(setter->Args.front().Type));
+        bool emit_bridge = allow_native_bridge && getter_bridgeable && setter_bridgeable;
 
         member_names.emplace(property_name);
 
@@ -3421,7 +3421,7 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
 
             out << CS_INDENT << "}";
 
-            if (const optional<string> property_initializer = MakePropertyInitializer(property_type, std::nullopt); property_initializer.has_value()) {
+            if (optional<string> property_initializer = MakePropertyInitializer(property_type, std::nullopt); property_initializer.has_value()) {
                 out << " = " << *property_initializer << ";";
             }
 
@@ -3430,8 +3430,8 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
         }
 
         if (getter) {
-            const string getter_ret = MakeCsTypeName(getter->Ret);
-            const string getter_literal = EscapeCsStringLiteral(getter->Name);
+            string getter_ret = MakeCsTypeName(getter->Ret);
+            string getter_literal = EscapeCsStringLiteral(getter->Name);
 
             out << CS_INDENT << "    get\n";
             out << CS_INDENT << "    {\n";
@@ -3443,7 +3443,7 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
         }
 
         if (setter) {
-            const string setter_literal = EscapeCsStringLiteral(setter->Name);
+            string setter_literal = EscapeCsStringLiteral(setter->Name);
 
             out << CS_INDENT << "    set\n";
             out << CS_INDENT << "    {\n";
@@ -3487,8 +3487,8 @@ static void AppendDynamicRefTypeProperties(ostringstream& out, ptr<const Propert
             prop_type += "?";
         }
 
-        const string raw_prop_name = MakeManagedDynamicRefTypePropertyName(prop);
-        const string prop_name = EscapeCsIdentifier(raw_prop_name);
+        string raw_prop_name = MakeManagedDynamicRefTypePropertyName(prop);
+        string prop_name = EscapeCsIdentifier(raw_prop_name);
         FO_VERIFY_AND_THROW(!member_names.contains(prop_name), "Managed dynamic RefType property name collision", owner_type_name, prop->GetName(), raw_prop_name);
         AppendProperty(out, prop_type, prop_name, true, false, false, member_names);
     }
@@ -3514,7 +3514,7 @@ static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistr
             prop_type += "?";
         }
 
-        const string prop_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
+        string prop_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
 
         if (allow_native_bridge && CanUseManagedPropertyBridge(prop)) {
             AppendNativeProperty(out, prop, owner_type_name, is_static, shadows_entity_base, member_names);
@@ -3532,9 +3532,9 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
     FO_VERIFY_AND_THROW(desc.PropRegistrar.as_nptr(), "Entity type has no property registrar");
 
     for (const auto& [component_name, prop] : desc.PropRegistrar->GetComponents()) {
-        const string component_type = strex("{}{}Component", owner_type_name, component_name).str();
-        const string accessor_name = EscapeCsIdentifier(component_name);
-        const string has_accessor_name = EscapeCsIdentifier(strex("Has{}", component_name).str());
+        string component_type = strex("{}{}Component", owner_type_name, component_name).str();
+        string accessor_name = EscapeCsIdentifier(component_name);
+        string has_accessor_name = EscapeCsIdentifier(strex("Has{}", component_name).str());
 
         if (member_names.emplace(accessor_name).second) {
             out << CS_INDENT << "public ";
@@ -3557,8 +3557,8 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
         }
 
         if (member_names.emplace(has_accessor_name).second) {
-            const string owner_literal = EscapeCsStringLiteral(owner_type_name);
-            const string prop_literal = EscapeCsStringLiteral(prop->GetName());
+            string owner_literal = EscapeCsStringLiteral(owner_type_name);
+            string prop_literal = EscapeCsStringLiteral(prop->GetName());
 
             out << CS_INDENT << "public ";
 
@@ -3587,9 +3587,9 @@ static void AppendEventAccessors(ostringstream& out, string_view owner_type_name
     FO_STACK_TRACE_ENTRY();
 
     for (const EntityEventDesc& event : desc.Events) {
-        const string event_type = strex("{}{}Event", owner_type_name, event.Name).str();
-        const string event_name = EscapeCsIdentifier(event.Name);
-        const string backing_name = EscapeCsIdentifier(strex("__event_{}", event.Name).str());
+        string event_type = strex("{}{}Event", owner_type_name, event.Name).str();
+        string event_name = EscapeCsIdentifier(event.Name);
+        string backing_name = EscapeCsIdentifier(strex("__event_{}", event.Name).str());
 
         if (!member_names.emplace(event_name).second) {
             continue;
@@ -3627,12 +3627,12 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool is_static = desc.IsGlobal && class_name == "Game";
+    bool is_static = desc.IsGlobal && class_name == "Game";
     unordered_set<string> member_names;
 
     // The C# class name (`class_name`) can differ from the native entity-type owner used for property/method/event
     // bridging and component-class naming (`owner`)
-    const string_view owner = native_owner_name.empty() ? class_name : native_owner_name;
+    string_view owner = native_owner_name.empty() ? class_name : native_owner_name;
 
     if (is_static) {
         out << "    public static partial class Game\n";
@@ -3685,7 +3685,7 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
     AppendEventAccessors(out, owner, desc, is_static, member_names);
     // Entity synchronization exists only on the server; client and mapper scripts run single-threaded, so a
     // cover contract there would name a guarantee with no mechanism behind it
-    const bool is_synced_entity_owner = !is_static && !is_fixed_type && target_name == "Server";
+    bool is_synced_entity_owner = !is_static && !is_fixed_type && target_name == "Server";
 
     AppendMethods(out, desc.Methods, owner, is_static, false, true, is_synced_entity_owner, member_names);
     AppendEntityHolderAccessors(out, owner, desc, target_name, is_static, member_names);
@@ -3737,7 +3737,7 @@ static void AppendComponentClasses(ostringstream& out, string_view owner_type_na
 
     for (const auto& [component_name, prop] : desc.PropRegistrar->GetComponents()) {
         unordered_set<string> member_names;
-        const string component_type = strex("{}{}Component", owner_type_name, component_name).str();
+        string component_type = strex("{}{}Component", owner_type_name, component_name).str();
 
         out << "    public partial class " << EscapeCsIdentifier(component_type) << " : Entity\n";
         out << "    {\n";
@@ -3774,18 +3774,18 @@ static void AppendEntityHolderAccessors(ostringstream& out, string_view owner_ty
 
     std::ranges::sort(holder_entries, {}, [](const auto& entry) -> const string& { return entry.first; });
 
-    const bool can_create_inner_entities = target_name == "Server";
-    const string entity_ptr = string {MakeTargetPtrExpression(is_static, false)};
+    bool can_create_inner_entities = target_name == "Server";
+    string entity_ptr = string {MakeTargetPtrExpression(is_static, false)};
 
     for (const auto& [entry_name, holder_entry] : holder_entries) {
-        const string target_type {holder_entry->TargetType.as_str()};
-        const string escaped_target_type = EscapeCsIdentifier(target_type);
-        const string escaped_entry_name = EscapeCsIdentifier(entry_name);
-        const string entry_literal = EscapeCsStringLiteral(entry_name);
-        const string add_method_name = strex("Add{}", escaped_entry_name).str();
-        const string has_method_name = strex("Has{}s", escaped_entry_name).str();
-        const string get_all_method_name = strex("Get{}s", escaped_entry_name).str();
-        const string get_one_method_name = strex("Get{}", escaped_entry_name).str();
+        string target_type {holder_entry->TargetType.as_str()};
+        string escaped_target_type = EscapeCsIdentifier(target_type);
+        string escaped_entry_name = EscapeCsIdentifier(entry_name);
+        string entry_literal = EscapeCsStringLiteral(entry_name);
+        string add_method_name = strex("Add{}", escaped_entry_name).str();
+        string has_method_name = strex("Has{}s", escaped_entry_name).str();
+        string get_all_method_name = strex("Get{}s", escaped_entry_name).str();
+        string get_one_method_name = strex("Get{}", escaped_entry_name).str();
 
         if (can_create_inner_entities && member_names.emplace(add_method_name).second) {
             out << CS_INDENT << "public ";
@@ -3907,7 +3907,7 @@ static void AppendPropertyGroupGetters(ostringstream& out, const EngineMetadata&
             continue;
         }
 
-        const string property_enum_name = strex("{}Property", type_name).str();
+        string property_enum_name = strex("{}Property", type_name).str();
 
         if (!enum_names.contains(property_enum_name)) {
             continue;
@@ -3919,13 +3919,13 @@ static void AppendPropertyGroupGetters(ostringstream& out, const EngineMetadata&
             continue;
         }
 
-        const auto groups = registrar->GetPropertyGroups();
+        auto groups = registrar->GetPropertyGroups();
 
         if (groups.empty()) {
             continue;
         }
 
-        const string enum_type = EscapeCsIdentifier(property_enum_name);
+        string enum_type = EscapeCsIdentifier(property_enum_name);
 
         out << "    public static partial class " << EscapeCsIdentifier(strex("{}PropertyGroup", type_name).str()) << "\n";
         out << "    {\n";
@@ -3977,7 +3977,7 @@ static void AppendCustomEntityProtoGetters(ostringstream& out, const EngineMetad
 
     for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
         if (type_name != "Game" && desc->HasProtos && !desc->Exported) {
-            const string proto_class = strex("Proto{}", type_name).str();
+            string proto_class = strex("Proto{}", type_name).str();
             getters.push_back({strex("GetProto{}", type_name).str(), strex("CheckProto{}", type_name).str(), proto_class, type_name});
         }
     }
@@ -4163,13 +4163,13 @@ static void WriteTextFileIfChanged(const std::filesystem::path& file_path, strin
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string new_content {content};
+    string new_content {content};
 
     if (std::ifstream existing_file(file_path, std::ios::binary); existing_file) {
         ostringstream existing_content;
         existing_content << existing_file.rdbuf();
 
-        const stream_string existing_text = existing_content.str();
+        stream_string existing_text = existing_content.str();
 
         if (string_view {existing_text.data(), existing_text.size()} == new_content) {
             return;
@@ -4222,8 +4222,8 @@ static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string file_name = MakeGeneratedManagedApiFileName(target_name, suffix);
-    const auto file_path = project_dir / fs_make_path(file_name);
+    string file_name = MakeGeneratedManagedApiFileName(target_name, suffix);
+    auto file_path = project_dir / fs_make_path(file_name);
     WriteTextFileIfChanged(file_path, content, "Can't create generated C# file");
 
     std::error_code ec;
@@ -4234,8 +4234,8 @@ static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string path_str = strex("{}", path.string()).str();
-    const auto data = fs_read_file(path_str);
+    string path_str = strex("{}", path.string()).str();
+    auto data = fs_read_file(path_str);
 
     if (!data.has_value()) {
         throw ManagedScriptBakerException("Can't read Managed file", path_str);
@@ -4248,7 +4248,7 @@ static auto CollectManagedOutputAssemblies(const std::filesystem::path& assembli
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
+    auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
     vector<std::filesystem::path> result;
 
     std::error_code ec;
@@ -4284,7 +4284,7 @@ static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblie
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
+    auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
 
     std::error_code ec;
 
@@ -4302,7 +4302,7 @@ static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblie
 
     if (ec) {
         std::error_code dir_ec;
-        const bool output_dir_exists = std::filesystem::is_directory(output_dir, dir_ec);
+        bool output_dir_exists = std::filesystem::is_directory(output_dir, dir_ec);
 
         if (output_dir_exists) {
             throw ManagedScriptBakerException("Can't enumerate Managed output assemblies", output_dir.string());
@@ -4317,7 +4317,7 @@ static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_o
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
+    auto output_dir = assemblies_output_dir / fs_make_path(strex("{}Assemblies", target_name));
     string assembly_file_stem = strex(assembly_file_name).erase_file_extension().str();
 
     std::error_code ec;
@@ -4343,11 +4343,11 @@ static void AppendProjectReferences(std::ostream& file, const std::filesystem::p
     file << ">\n";
 
     for (const string& reference : references) {
-        const bool is_path_reference = reference.find('\\') != string::npos || reference.find('/') != string::npos || std::filesystem::path(fs_make_path(reference)).extension().string() == ".dll";
+        bool is_path_reference = reference.find('\\') != string::npos || reference.find('/') != string::npos || std::filesystem::path(fs_make_path(reference)).extension().string() == ".dll";
 
         if (is_path_reference) {
-            const std::filesystem::path reference_path = fs_make_path(reference);
-            const auto hint_path = reference_path.is_absolute() ? reference_path : std::filesystem::current_path() / reference_path;
+            std::filesystem::path reference_path = fs_make_path(reference);
+            auto hint_path = reference_path.is_absolute() ? reference_path : std::filesystem::current_path() / reference_path;
             file << "    <Reference Include=\"" << EscapeXml(reference_path.stem().string()) << "\">\n";
             file << "      <HintPath>" << EscapeXml(MakeRelativeProjectPath(project_dir, hint_path)) << "</HintPath>\n";
             file << "    </Reference>\n";

@@ -102,11 +102,11 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         // Add new entry
         scoped_lock locker {_hashStorageLocker};
 
-        if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+        if (auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
-            const auto collision_detected = s != it->second->Str;
+            bool collision_detected = s != it->second->Str;
 #else
-            const auto collision_detected = s.length() != it->second->Str.length();
+            bool collision_detected = s.length() != it->second->Str.length();
 #endif
 
             if (collision_detected) {
@@ -120,7 +120,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         entry->Hash = hash_value;
         entry->Str = string(s);
 
-        const auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
+        auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
         FO_VERIFY_AND_THROW(inserted, "Hash storage insertion failed");
 
         return hstring(it->second.get());
