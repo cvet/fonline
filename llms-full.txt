@@ -360,7 +360,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 4753dce1bc040eb4398feb9e109f87c0bec8f69c2dc536ee7466c3922a9a4075
+Content SHA-256: b44d54bfe43d398b4725c7927d81cc01272efa6410f1c4e041a690ad5edab91b
 
 ---
 title: FOnline Public Contract Index
@@ -408,10 +408,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2505**
-- Symbols with source-backed descriptions: **2505**
+- Discovered symbols: **2507**
+- Symbols with source-backed descriptions: **2507**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2505**
+- Explicitly classified symbols: **2507**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -19085,7 +19085,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 5c45304840459cf4b02d07feff20ca0887a7cf1f6b3b0a47334d0b6aafd5275a
+Content SHA-256: 54a0aefe3392a528bd5cb75301d26068f123f695b76d495d56a8c67ae560dc42
 
 ---
 layout: default
@@ -19614,7 +19614,7 @@ Input semantics originate in `Source/Frontend/Application.h`; game-specific UI b
 
 `ProcessInputEvent()` is the correct place for this because it is the single point every input source funnels through — SDL events polled by `ProcessInputEvents()`, scripted `Game.Simulate*` calls, and an embedding project's automation bridge alike. A filter placed in the frontend/SDL layer would cover only the OS path and would be invisible to simulated-input tests.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
+Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences. Two network notifications are synthesizable the same way: `Game.SimulateDisconnect()` delivers the `OnDisconnected` notification a real disconnect ends with, and `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Both leave the connection itself untouched — a probe testing the reaction to a dropped session must not end the session it reports through.
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 
@@ -25850,7 +25850,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 5254dffa509fb493bb3d8f4b58c54f14bbf2734adb6ff0792e7b0d9ffdb0378d
+Content SHA-256: 0ffd6c5acbcbea15103fe9f3fcb89363b8115e1bedee5e8df4b7505e7010f73e
 
 ---
 title: Generated API Reference
@@ -25867,7 +25867,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 959 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 961 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 134 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 979 | Entities, enums, value types, reference types, fields, and methods. |
@@ -25878,25 +25878,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2505 |
-| Symbols with descriptions | 2505 |
+| Addressable symbols | 2507 |
+| Symbols with descriptions | 2507 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2505 |
+| Explicitly classified symbols | 2507 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2504 |
+| <code>experimental</code> | 2506 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2505 stable IDs with SHA-256 <code>8e6bab6b90f8b56b1826e42a0abb85dff087bbf9666a5a157e617a80ddd175a3</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2507 stable IDs with SHA-256 <code>0bea01dd879a74c4aa9d7fe1f6cddcbea7fa7a94a06b1e65de7c4508ac8b6fc3</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 

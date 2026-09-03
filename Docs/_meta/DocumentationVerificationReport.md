@@ -8925,3 +8925,62 @@ Disposition:
 - Merge-readiness still depends on current remote CI, including the real Linux
   external-parser path, the native unit-test suite, and package/runtime
   acceptance; this local report does not substitute for those gates.
+
+## 2026-09-04 - simulated network notifications and container self-containment
+
+Scope and source revisions:
+
+- Reconciled the documentation branch at
+  `d5d5e4780ec4070cfdf4b76bd8d77f55067c0561` with Engine `origin/master`
+  through `3dd4eefaefb80e87451af81938fb4d304f2b97ab`. The two incoming commits
+  add `Game.SimulateDisconnect()` / `Game.SimulateInfoMessage()` so a client
+  script can raise the notifications a real session delivers without ending the
+  session it reports through, and `Item::IsInsideContainer()` so a container
+  cannot be placed inside itself.
+- The single conflict was the legacy `Docs/ClientRuntime.md` route. Its stub was
+  preserved and the new paragraph was reconciled into the canonical
+  English/Russian client-runtime owners.
+
+Repository defect found by the merge:
+
+- The clean textual merge left `SimulateKeyPress`'s source description attached
+  to the newly inserted `SimulateDisconnect`, because upstream added the two
+  methods between that comment and its `///@ ExportMethod`. The generated model
+  is what exposed it: one method carried another's description and two carried
+  none. The description was reattached and the two new methods were given their
+  own, so every exported symbol keeps a source-backed description.
+
+Contract and documentation changes:
+
+- The client-runtime guide records both synthesizable notifications and the
+  reason they leave the connection alone.
+- The native-codegen scope contract is re-pinned from 2505 to 2507 symbols with
+  a new inventory hash, and the addition is recorded as one disposition.
+- Generated API, reference, public-contract, inventory, snippets, description
+  translations, locale status, site/search data, AI evaluation, manifest, and
+  AI-delivery artifacts were regenerated in dependency order. The Russian
+  client-runtime page carries a current source hash.
+
+Validation:
+
+- Every documentation generator reports current: 310/310 normative snippets,
+  159 evidence blocks, 183 external-parser checks, 197/197 locale pairs,
+  4977/4977 generated description translations, 397 maintained Markdown
+  entries, and all 65 retrieval checks across 27 tasks at 100 percent success
+  and 0.915 MRR.
+- Contract-diff reconciliation against
+  `d5d5e4780ec4070cfdf4b76bd8d77f55067c0561` reports three changes across the 18
+  tracked domains, one requiring a disposition, which is recorded.
+- The focused owner suites pass 46 tests; the pinned symbol, stability, and
+  description-translation counts were updated to the values this range moved.
+- The engine C++ suite was not rebuilt locally; the incoming range is upstream
+  code already validated on `master`, and no engine source was changed here
+  beyond the scope-contract pin and the description reattachment.
+
+Disposition:
+
+- The reusable Engine contract and generated corpus are reconciled for review.
+  Publish the Engine documentation branch before the embedding project branch
+  so the root gitlink never points at an unavailable commit.
+- Merge-readiness still depends on current remote CI, including the native
+  unit-test suite and the real Linux external-parser path.

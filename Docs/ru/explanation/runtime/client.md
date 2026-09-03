@@ -6,7 +6,7 @@ document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
 
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"5c45304840459cf4b02d07feff20ca0887a7cf1f6b3b0a47334d0b6aafd5275a"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"54a0aefe3392a528bd5cb75301d26068f123f695b76d495d56a8c67ae560dc42"} -->
 
 # Клиентская среда выполнения
 
@@ -319,7 +319,7 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 
 `ProcessInputEvent()` является правильным местом, поскольку через него проходят все input sources: SDL events из `ProcessInputEvents()`, scripted calls `Game.Simulate*` и automation bridge встраиваемого проекта. Filter во frontend/SDL-слое покрыл бы только OS path и был бы невидим simulated-input tests.
 
-Клиентские скрипты могут синтезировать локальный ввод через тот же runtime path для automation и embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)` и `Game.SimulateMouseUp(pos, button)` сохраняют held-button state на протяжении raw mouse gesture, включая позиции вне render window; `Game.SimulateMouseClick(pos, button)` отправляет полный mouse click или wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)` и `Game.SimulateTouchUp(fingerId, pos)` отправляют raw touch streams, `Game.SimulateTouchTap(pos)` - completed tap event, `Game.SimulateKeyPress(key, text)` - одну pair key down/up, а `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` остаётся доступным для two-key sequences.
+Клиентские скрипты могут синтезировать локальный ввод через тот же runtime path для automation и embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)` и `Game.SimulateMouseUp(pos, button)` сохраняют held-button state на протяжении raw mouse gesture, включая позиции вне render window; `Game.SimulateMouseClick(pos, button)` отправляет полный mouse click или wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)` и `Game.SimulateTouchUp(fingerId, pos)` отправляют raw touch streams, `Game.SimulateTouchTap(pos)` - completed tap event, `Game.SimulateKeyPress(key, text)` - одну pair key down/up, а `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` остаётся доступным для two-key sequences. Тем же путём синтезируются два сетевых уведомления: `Game.SimulateDisconnect()` доставляет уведомление `OnDisconnected`, которым заканчивается настоящий разрыв связи, а `Game.SimulateInfoMessage(infoMessage, extraText)` доставляет `OnInfoMessage`. Само соединение оба оставляют нетронутым — проба, проверяющая реакцию на потерянную сессию, не должна обрывать сессию, через которую об этом сообщает.
 
 Для локального prediction движения персонажа `ClientEngine::CritterMoveTo()` синхронизирует активный `MovingContext` с текущим client frame до начала нового движения или отправки stop request. Затем он нормализует локальную pair hex/offset до следующего request, поэтому быстрый start/stop input не сообщает серверу stale на один frame или чрезмерный offset.
 

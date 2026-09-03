@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_inventory.py",
   "script_api": {
-    "export_method_declarations": 959,
+    "export_method_declarations": 961,
     "method_file_count": 18,
     "method_files": [
       {
@@ -15,7 +15,7 @@
       },
       {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "export_method_declarations": 119
+        "export_method_declarations": 121
       },
       {
         "path": "Source/Scripting/ClientImGuiScriptMethods.cpp",

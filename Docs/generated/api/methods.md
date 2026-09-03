@@ -558,6 +558,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-setuserconfig-83f675b8f444529f-ed0732f663"></a>
 - [`symbol-script-method-client-game-setuserconfig-83f675b8f444529f-ed0732f663`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setuserconfig-83f675b8f444529f-ed0732f663)
 
+<a id="symbol-script-method-client-game-simulatedisconnect-df272aa9fe"></a>
+- [`symbol-script-method-client-game-simulatedisconnect-df272aa9fe`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-simulatedisconnect-df272aa9fe)
+
+<a id="symbol-script-method-client-game-simulateinfomessage-8aa6c940a0"></a>
+- [`symbol-script-method-client-game-simulateinfomessage-8aa6c940a0`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-simulateinfomessage-8aa6c940a0)
+
 <a id="symbol-script-method-client-game-simulatekeypress-e22ede9e61"></a>
 - [`symbol-script-method-client-game-simulatekeypress-e22ede9e61`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-simulatekeypress-e22ede9e61)
 

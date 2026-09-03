@@ -1488,6 +1488,18 @@
       "release_note": "Note the MapProperty renumbering alongside per-instance static item removal for this Engine revision.",
       "compatibility": "Numeric MapProperty values change. Engine binaries, generated metadata, and baked resources must come from the same bake, which the metadata-version handshake already enforces.",
       "owner": "runtime-server"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.a740edf726825e51",
+      "baseline_contract_sha256": "cf99e5919a4b01a7fcfa01e4970f29e39ce0fd9f0da7dd8d5735e9ab83dcdf6e",
+      "current_contract_sha256": "fe5a7ad3d670bf52ea844970bef306a5add6570cc305da20f677b2db610c78e9",
+      "classification": "breaking",
+      "rationale": "Client scripts gained Game.SimulateDisconnect and Game.SimulateInfoMessage, raising the strict native-codegen inventory from 2505 to 2507. Both raise a notification a real session would deliver while leaving the connection itself untouched, so an embedded-client probe can test the reaction to a dropped session without ending the session it reports through.",
+      "migration": "Regenerate script and API artifacts against this revision. No existing symbol was removed or renamed, so an embedding project adopts the new inventory pin without changing call sites.",
+      "release_note": "Document the two synthesizable network notifications in the client-runtime guide and the generated script-API reference for this Engine revision.",
+      "compatibility": "The symbols are additive, but strict API-model consumers must adopt the regenerated inventory and its SHA-256 pin. Engine binaries, generated metadata, and baked resources update together.",
+      "owner": "runtime-client"
     }
   ]
 }

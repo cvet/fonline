@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"c8a1e4b17f908e35b21b4b9a4adfa5756865e2748352d8da1f04ea6999f88a5d"} -->
+<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"d64c59e10544161ea3177ef047e15a05b996f762e1402fcb13c2a1dca281c378"} -->
 
 # События движка
 
@@ -156,8 +156,8 @@ generated: true
 
 | Сигнатура | ID символа | Runtime | Контракт | Флаги | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>event Item.OnCritterWalk(Critter critter, bool isIn, mdir dir)</code> | <a id="symbol-script-event-server-item-oncritterwalk-a45f313e76"></a><code>script.event.server.Item.OnCritterWalk</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | - | [Source/Server/Item.h:86](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L86) | Выполняется, когда криттер пересекает область триггера этого статического предмета; `isIn` отличает вход от выхода. |
-| <code>event Item.OnFinish()</code> | <a id="symbol-script-event-server-item-onfinish-6b74680abd"></a><code>script.event.server.Item.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | - | [Source/Server/Item.h:83](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L83) | Выполняется во время завершения этого предмета. |
+| <code>event Item.OnCritterWalk(Critter critter, bool isIn, mdir dir)</code> | <a id="symbol-script-event-server-item-oncritterwalk-a45f313e76"></a><code>script.event.server.Item.OnCritterWalk</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | - | [Source/Server/Item.h:87](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L87) | Выполняется, когда криттер пересекает область триггера этого статического предмета; `isIn` отличает вход от выхода. |
+| <code>event Item.OnFinish()</code> | <a id="symbol-script-event-server-item-onfinish-6b74680abd"></a><code>script.event.server.Item.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:48](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L48) | - | [Source/Server/Item.h:84](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L84) | Выполняется во время завершения этого предмета. |
 
 <a id="group-event-server-location-7a8778e0e8"></a>
 ## <code>Location</code> (server)

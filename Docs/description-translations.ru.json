@@ -12609,6 +12609,14 @@
           "source_sha256": "e3b6a75048d697aec405652b373018b57b2570c2db2ecf60533814ddc0367b6e",
           "translation": "Заменяет кешированную пользовательскую конфигурацию строками ключей и значений в формате `key = value`."
         },
+        "/symbols/@id=script.method.client.Game.SimulateDisconnect/description": {
+          "source_sha256": "9c73f05cf7d68c96536dca03213bd65a28052ffcf12ff4e1eb081a0dd43b8ae9",
+          "translation": "Поднимает уведомление о разрыве связи, не трогая само соединение."
+        },
+        "/symbols/@id=script.method.client.Game.SimulateInfoMessage/description": {
+          "source_sha256": "2cb5adf3f5f22ca2a2db1357c856543c9b8e6c4e5d7a214e4b08aadb7130b516",
+          "translation": "Поднимает информационное сообщение движка с необязательным дополнительным текстом, как его доставил бы сервер."
+        },
         "/symbols/@id=script.method.client.Game.SimulateKeyPress/description": {
           "source_sha256": "f55852dcc2ef6fcfeb5129828c83f864a61313784650fe6e8d764f3bb0cffc18",
           "translation": "Внедряет событие нажатия клавиши с необязательным текстом, а затем событие отпускания; KeyCode::None ничего не делает."

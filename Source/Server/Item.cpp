@@ -101,6 +101,27 @@ auto Item::GetOwnedLock() noexcept -> ptr<EntityLock>
     return &_ownedLock;
 }
 
+auto Item::IsInsideContainer(ptr<const Item> container) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    for (auto current = make_nptr(this).try_hold_ref(); current;) {
+        if (current == container.get()) {
+            return true;
+        }
+
+        if (current->GetOwnership() != ItemOwnership::ItemContainer) {
+            break;
+        }
+
+        current = current->GetParent<Item>();
+    }
+
+    return false;
+}
+
 auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
@@ -240,6 +261,10 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EnsureEntitySynced(item);
+
+    // A container moved into its own subtree tears that branch off the world and makes every holder walk endless,
+    // so the cycle is refused before any ownership is written
+    FO_VERIFY_AND_THROW(!IsInsideContainer(item), "Container cannot be placed inside itself", GetId(), item->GetId());
 
     if (item->GetStackable()) {
         auto item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);

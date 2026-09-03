@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4975,
-    "current_count": 4975,
+    "entry_count": 4977,
+    "current_count": 4977,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2507,
-      "current_count": 2507,
+      "entry_count": 2509,
+      "current_count": 2509,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -7858,6 +7858,18 @@
           "locator": "/symbols/@id=script.method.client.Game.SetUserConfig%2383f675b8f444529f/description",
           "source": "Replaces the cached user configuration with key/value lines serialized as `key = value`.",
           "source_sha256": "e3b6a75048d697aec405652b373018b57b2570c2db2ecf60533814ddc0367b6e",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.SimulateDisconnect/description",
+          "source": "Raises the disconnect notification without touching the connection itself.",
+          "source_sha256": "9c73f05cf7d68c96536dca03213bd65a28052ffcf12ff4e1eb081a0dd43b8ae9",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.SimulateInfoMessage/description",
+          "source": "Raises an engine info message with optional extra text, as the server would deliver it.",
+          "source_sha256": "2cb5adf3f5f22ca2a2db1357c856543c9b8e6c4e5d7a214e4b08aadb7130b516",
           "status": "current"
         },
         {
