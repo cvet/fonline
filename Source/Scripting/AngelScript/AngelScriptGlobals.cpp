@@ -176,7 +176,7 @@ static auto ResolveInvokeResultType(ptr<AngelScript::asIScriptGeneric> gen, Ange
 
     if (!result_type) {
         const nptr<const char> type_decl = as_engine->GetTypeDeclaration(result_type_id, true);
-        throw ScriptException(strex("Unsupported invoke result type '{}'", type_decl ? type_decl.get() : "<unknown>").str());
+        throw ScriptException("Unsupported invoke result type", type_decl ? type_decl.get() : "<unknown>");
     }
 
     return result_type;

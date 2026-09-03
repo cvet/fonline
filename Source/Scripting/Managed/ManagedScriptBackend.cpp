@@ -5340,7 +5340,7 @@ static void ThrowIfManagedException(MonoObject* exception, string_view context)
     FO_STACK_TRACE_ENTRY();
 
     if (exception != nullptr) {
-        throw ScriptSystemException(strex("{}: {}", context, ManagedObjectToString(exception)).str());
+        throw ScriptSystemException("Managed exception", context, ManagedObjectToString(exception));
     }
 }
 
